@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a gate over the table that is the product's differentiator, and the direction of risk is asymmetric: a FALSE EXPLANATION removes a real defect from the finding list permanently and silently, which is strictly worse than a false finding a human dismisses in a minute. Two live false-pass channels were found and closed during the work (clause references, numbered-list ordinals), so the risk is demonstrated, not theoretical.",
-  "commit_hash": "36534942",
+  "commit_hash": "a3c18272",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
@@ -32,14 +32,14 @@
   "functions": [
     {
       "name": "explain_value",
-      "file_line": "services/extracted_data_integrity.py:640",
+      "file_line": "services/extracted_data_integrity.py:660",
       "input": "one stored numeric value, the row's own quoted source_text, and the row's unit string so that unit-sensitive rules can refuse to fire",
       "output": "the name of the first rule that derives the value from the text, paired with the exact substring that rule matched",
       "if_none": "returns UNEXPLAINED with no evidence when no rule fires, and NO_VALUE_STORED when the value is absent or non-numeric or the quote is empty - three outcomes kept distinct, because 'nothing to check' is not 'checked and fine'"
     },
     {
       "name": "explain_row",
-      "file_line": "services/extracted_data_integrity.py:664",
+      "file_line": "services/extracted_data_integrity.py:689",
       "input": "one control row plus the names of its value columns, its source-text column and its unit column",
       "output": "exactly one state for the row plus the per-field rule and evidence, so the printed counts always sum to the table size",
       "if_none": "a row whose values are all absent becomes NO_VALUE_STORED rather than passing; a row with one unexplained end of a range becomes UNEXPLAINED even though its other end was explained"
@@ -53,7 +53,7 @@
     },
     {
       "name": "_rate_candidates",
-      "file_line": "services/extracted_data_integrity.py:482",
+      "file_line": "services/extracted_data_integrity.py:491",
       "input": "the source text, scanned for every 'per N' / 'for every N' phrase and the numbers preceding each one",
       "output": "every plausible numerator and denominator pair with its evidence, nearest numerator first, stopping at a sentence or table-cell break",
       "if_none": "yields a None numerator when nothing numeric precedes the rate, which is the signal the implied-unity rule uses to decide whether assuming 1 is safe"
@@ -186,17 +186,17 @@
     },
     {
       "scenario": "The stored-unit map covers only six literal strings, so the largest unit group in the table falls outside it and the unit guard never fires for those rows.",
-      "what_happens": "A row whose column says spaces/dwelling is treated as having an unknown unit, so a quote mentioning only '3 hours of sunlight' explains a stored parking rate of 3. That is over 450 rows, the single biggest blind spot in the check.",
+      "what_happens": "A row whose column says spaces/dwelling is treated as having an unknown unit, so a quote mentioning only '3 hours of sunlight' explains a stored parking rate of 3. That is over 450 rows, the biggest blind spot in the check.",
       "mitigated": true,
-      "how": "The stored unit resolves by prefix as well as exact match: anything starting '%' is a ratio and anything containing 'spaces/' is a rate. 'rate' and 'count' are deliberately compatible so '2 spaces per dwelling' still explains a spaces/dwelling value.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k \"parking_column\" -q"
+      "how": "The stored unit resolves by prefix as well as exact match: anything starting '%' is a ratio and anything containing 'spaces/' is a rate. rate and count are deliberately compatible so '2 spaces per dwelling' still explains a spaces/dwelling value.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k parking_column -q"
     },
     {
-      "scenario": "The unit guard is applied to exact matching only, so any other rule can still explain a value from a quantity the text says measures something else.",
-      "what_happens": "written_numeral explains a 3 metre setback from 'a minimum of three hours of sunlight'; percentage_phrasing explains a 0.35 metre setback from 'Minimum 35% landscaped area'; unit_conversion explains a 0.9 square metre value from a quoted 900mm.",
+      "scenario": "The unit guard is applied to exact matching only, so every other rule can still explain a value from a quantity the text says measures something else.",
+      "what_happens": "written_numeral explains a 3 metre setback from 'three hours of sunlight'; percentage_phrasing explains a 0.35 metre setback from 'Minimum 35% landscaped area'; unit_conversion explains a 0.9 square metre value from a quoted 900mm.",
       "mitigated": true,
       "how": "written_numeral carries the same family check, percentage_phrasing is gated on a ratio column and unit_conversion on a length column. An unlabelled column is refused for conversions rather than assumed to be metres.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k \"percentage_does_not_explain_a_length or convert_into_an_area or convert_into_an_unlabelled or labelled_as_another_kind\" -q"
+      "repro": "python -m pytest tests/test_control_source_values.py -k \"percentage_does_not_explain_a_length or convert_into_an_area or convert_into_an_unlabelled\" -q"
     },
     {
       "scenario": "The lead-in to a rate is truncated at any full stop, which also splits a decimal numerator.",
@@ -204,12 +204,34 @@
       "mitigated": true,
       "how": "The break pattern ignores a full stop sitting between two digits, so 0.5 survives as the numerator while genuine sentence and table-cell breaks still end the lead.",
       "repro": "python -m pytest tests/test_control_source_values.py -k test_a_decimal_numerator_survives_the_sentence_break_cut -q"
+    },
+    {
+      "scenario": "A stored WHOLE number receives half a unit of rounding slack, because half of its last decimal place is 0.5.",
+      "what_happens": "A quoted '24 spaces per 25 dwellings' derives 0.96 and explains a stored 1, so a rate somebody rounded by judgement reads as a derivation the text states.",
+      "mitigated": true,
+      "how": "A whole-number stored value must match its derivation exactly. Measured against live data first: all five whole-number derived rows are exact products such as 3m x 3m equals 9, so nothing legitimate is lost.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_whole_number_must_match_its_derivation_exactly -q"
+    },
+    {
+      "scenario": "The rate rules carry no column gate, so a parking rate in the quote can explain a value stored in metres when the wrong source_text was attached to a row.",
+      "what_happens": "'1 visitor space per 4 dwellings' explains a stored 0.25 metre setback, and a setback with no support at all reads as derived from its source.",
+      "mitigated": true,
+      "how": "Both rate rules refuse a length, area or time column. Measured first: 0 of the 90 rate-explained rows sit on such a column, so this closes a future path without touching a current one.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_parking_rate_does_not_explain_a_setback -q"
+    },
+    {
+      "scenario": "A Postgres numeric column holds NaN, and every floating point comparison against NaN evaluates False.",
+      "what_happens": "The exact rule's own 'skip when not equal' test is False for NaN, so the row falls through the skip and is returned as an exact match rather than a finding.",
+      "mitigated": true,
+      "how": "explain_value rejects NaN and infinity before any rule runs, returning UNEXPLAINED so a non-finite stored value can never read as supported.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_nan_and_infinity_are_findings_not_matches -q"
     }
   ],
   "post_merge": {
     "db_reset": "No database write of any kind - this check is read-only, so there is nothing to roll back. The 25 baselined rows are real data defects and are NOT fixed here; each needs a ruling against the source PDF. Take the four Waverley deep-soil rows first (631, 632 store 10%% and 635, 636 store 15%% against a quote saying 50%%), then the three Cumberland setbacks (31, 32 front 4.0/5.5 m and 30 rear 8.0 m against a table whose only front figure is 'Minimum 6m').",
     "secrets": "None. DATABASE_URL is already present in CI as a secret and is used by the existing schema-contract job this step joins.",
     "other_repo": "None.",
-    "manual_verify": "Run `python scripts/validate_control_source_values.py` and confirm 1,069 rows across exhaustive states, 961 of 986 derivable, 25 unexplained, 0 NEW, exit 0. Then prove it can fail: delete three ids from scripts/control_source_values_baseline.json, re-run, and confirm 'NEW (not in the baseline): 3' with exit 1 before restoring the file. Add --show-evidence to audit the substring each derived row matched rather than trusting the rule name."
+    "manual_verify": "Run `python scripts/validate_control_source_values.py` and confirm 1,069 rows across exhaustive states, 961 of 986 derivable, 25 unexplained, 0 NEW, exit 0. Then prove it can fail: delete three ids from scripts/control_source_values_baseline.json, re-run, and confirm 'NEW (not in the baseline): 3' with exit 1 before restoring the file. Add --show-evidence to audit the substring each derived row matched rather than trusting the rule name.",
+    "watch": "The baseline is shrink-only and content-addressed. If a future PR raises the count, the reason belongs in the PR body: widening it to make the gate pass defeats the gate. Adversarial review kept finding hardening opportunities after the finding count stopped moving; the 25 findings are stable across all fourteen fixes, and the remaining known ceiling is that 571 of 839 exact matches are consistent-but-not-pinned, which needs clause reading rather than number matching."
   }
 }

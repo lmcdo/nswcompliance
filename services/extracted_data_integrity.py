@@ -334,10 +334,19 @@ def _close(stored: float, derived: float) -> bool:
 
     Both bounds must hold. The absolute bound is half of the stored value's last
     decimal place, so 0.67 accepts 2/3 while 0.005 rejects 0.001. The relative
-    bound stops a whole number from absorbing a large absolute gap.
+    bound stops a large value absorbing a large absolute gap.
+
+    A stored WHOLE number must match exactly. Half of its last decimal place is
+    0.5, which let "24 spaces per 25 dwellings" (0.96) explain a stored 1 —
+    rounding a rate to a whole number is a judgement someone made, not a
+    derivation the text states. All five whole-number derived rows in the table
+    are exact products ("3m x 3m" -> 9), so this costs nothing and closes the gap.
     """
     gap = abs(stored - derived)
-    absolute = 0.5 * (10.0 ** -_decimal_places(stored))
+    places = _decimal_places(stored)
+    if places == 0:
+        return gap <= _EXACT_TOL
+    absolute = 0.5 * (10.0 ** -places)
     return gap <= absolute and gap <= max(_EXACT_TOL, _DERIVED_REL_TOL * abs(derived))
 
 
@@ -518,7 +527,15 @@ def _rate_candidates(source: str):
 
 
 def _rule_ratio_or_rate(value: float, source: str, unit) -> Optional[str]:
-    """A rate written as 'A per B' stored as the quotient A/B."""
+    """A rate written as 'A per B' stored as the quotient A/B.
+
+    Refused on a length, area or time column: a quote reading "1 visitor space per
+    4 dwellings" must not explain a stored 0.25 METRE setback that someone attached
+    the wrong source_text to. No live row relies on it — 0 of the 90 rate-explained
+    rows sit on such a column — so this only closes a future path.
+    """
+    if stored_family(unit) in ("length", "area", "time"):
+        return None
     for a, b, evidence, _lead in _rate_candidates(source):
         if a is None:
             continue
@@ -533,7 +550,10 @@ def _rule_implied_single_unit_rate(value: float, source: str, unit) -> Optional[
     Fires ONLY where no numerator was written. If the text says '2 spaces per 5
     dwellings' and the row stores 0.2, assuming a numerator of 1 would explain a
     value the text contradicts — the exact false pass this check exists to catch.
+    Same column gate as ``_rule_ratio_or_rate``.
     """
+    if stored_family(unit) in ("length", "area", "time"):
+        return None
     for a, b, evidence, _lead in _rate_candidates(source):
         if a is not None:
             continue
@@ -651,6 +671,11 @@ def explain_value(value, source_text, unit=None) -> tuple[str, Optional[str]]:
         number = float(value)
     except (TypeError, ValueError):
         return NO_VALUE_STORED, None
+    # Postgres `numeric` accepts NaN, and every comparison against NaN is False —
+    # so `abs(parsed - value) > tolerance` was False and a NaN row fell straight
+    # through the exact rule's `continue` into an "explained" verdict.
+    if number != number or number in (float("inf"), float("-inf")):
+        return UNEXPLAINED, None
     if not str(source_text or "").strip():
         return MISSING_SOURCE_TEXT, None
     source = str(source_text)

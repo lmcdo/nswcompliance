@@ -225,9 +225,25 @@ Five further holes found in adversarial review and closed:
   1.25 passed against a quote stating 0.125. The cut now ignores a full stop
   between two digits.
 
-None of these eleven changed the finding count — it stayed at 25 throughout —
+- a **whole-number** stored value got half-a-unit of slack, so *"24 spaces per 25
+  dwellings"* (0.96) explained a stored **1**. Rounding a rate to a whole number is
+  a judgement, not a derivation the text states; whole numbers must now match
+  exactly. All five whole-number derived rows are exact products, so this cost
+  nothing.
+- the rate rules had **no column gate**, so *"1 visitor space per 4 dwellings"*
+  could explain a stored 0.25 **metre** setback on a row whose `source_text` was
+  attached to the wrong control. Refused on length, area and time columns.
+- a **NaN** stored value read as explained. Postgres `numeric` accepts NaN and
+  every comparison against it is False, so the exact rule's own "skip if not
+  equal" test was False and the row fell through into a match. NaN and infinity
+  are now findings.
+
+None of these fourteen changed the finding count — it stayed at 25 throughout —
 which is the point: they closed paths by which a *future* wrong value would have
-passed, not paths that were hiding current ones.
+passed, not paths that were hiding current ones. Two were measured against live
+data before being applied, to confirm they cost no legitimate row: whole-number
+exactness affects 5 rows and all 5 are exact products, and the rate column gate
+affects 0 of the 90 rate-explained rows.
 
 ### Why this check can fail
 Two ways: a NEW unexplained row fails against the baseline, and a value edited to

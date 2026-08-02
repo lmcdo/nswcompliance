@@ -199,6 +199,12 @@ class TestRatioOrRate:
         # different numerator.
         assert rule_of(0.2, "2 visitor spaces per 5 dwellings") == UNEXPLAINED
 
+    def test_a_parking_rate_does_not_explain_a_setback(self):
+        # A row whose source_text was attached to the wrong control: the quote is
+        # a parking rate, the column is metres. 0.25 is derivable from the text
+        # and means nothing about a setback.
+        assert rule_of(0.25, "1 visitor space per 4 dwellings", "m") == UNEXPLAINED
+
     def test_a_number_across_a_sentence_break_is_not_a_numerator(self):
         assert rule_of(0.5, "A total of 2 storeys. Parking per 4 dwellings applies") \
             == UNEXPLAINED
@@ -239,6 +245,16 @@ class TestRatioOrRate:
         # Half of the last decimal place of a whole number is 0.5, which alone
         # would let a derived 5.6 explain a stored 6. The relative bound stops it.
         assert rule_of(6, "28 spaces per 5 dwellings") == UNEXPLAINED
+
+    def test_a_whole_number_must_match_its_derivation_exactly(self):
+        # 24/25 is 0.96. Rounding that up to a stored 1 is a judgement someone
+        # made, not a derivation the text states. All five whole-number derived
+        # rows in the live table are exact products, so requiring exactness here
+        # costs nothing.
+        assert rule_of(1, "24 spaces per 25 dwellings", "spaces/dwelling") \
+            == UNEXPLAINED
+        assert rule_of(9, "3m x 3m private open space", "m2") \
+            == "area_from_dimensions"
 
 
 class TestImpliedSingleUnitRate:
@@ -353,6 +369,13 @@ class TestExplainValueEdges:
 
     def test_a_non_numeric_value_is_not_checked(self):
         assert rule_of("see clause", "some text") == NO_VALUE_STORED
+
+    def test_nan_and_infinity_are_findings_not_matches(self):
+        # Postgres numeric accepts NaN, and every comparison against NaN is False
+        # — so the exact rule's "skip if not equal" test was itself False and a
+        # NaN row fell through into an explained verdict.
+        assert rule_of(float("nan"), "minimum setback 6m", "m") == UNEXPLAINED
+        assert rule_of(float("inf"), "minimum setback 6m", "m") == UNEXPLAINED
 
     def test_every_explained_row_carries_evidence(self):
         # An explanation without the substring it used is a shrug with a name on
