@@ -14,7 +14,7 @@
 | DQ-36: Provisions PDF hardcoded "Transport Oriented Development: ✗ Not applicable — property not within 400m of metro station"; the component receives NO TOD data, so the claim was unconditional. Four further SEPPs asserted "✗ Not applicable" for a proposal the report never sees. | ✅ Fixed 2026-08-01 | P1 — false statement of site fact |
 | DQ-35: conveyancing_db.fetch_dcp_setbacks cited rows[0] from the UNFILTERED list, so clause_ref could name a control the function had just suppressed (needs_review) or excluded as belonging to a DIFFERENT zone | ✅ Fixed 2026-08-01 | P1 — citation is the product claim |
 | DQ-34: ContextSection.tsx PDF "Housing SEPP 2021: ✓ Applies" line was a zone-only check, contradicting this same file's own determineDevelopmentPathway() on heritage land | ✅ Fixed 2026-08-01 | P1 — liability language on a definitive claim |
-| DQ-33: Case-sensitive document-naming mismatch (old-verbose vs new-slug convention) causes silent ALL/ALL applicability fallthrough — 18+ Leichhardt rows confirmed, other councils unchecked | 🔍 Logged 2026-08-01, not sized | P1 — silent fallthrough class |
+| DQ-33: document_id naming mismatch (verbose vs slug) caused silent ALL/ALL applicability fallthrough across Marrickville/Ashfield/Leichhardt — **9,854 served rows. FIXED + re-tagged 2026-08-01**; `no_config` on served rows 9,854 → 1,278 | ✅ Fixed 2026-08-01 | P1 — silent fallthrough class |
 | DQ-32: Capacity engine ignores zone when picking setback/landscaping numbers — 560 rows across 168 lga/dev-type groups can return the wrong value | ⏳ Tracked 2026-07-31, not started | P1 |
 | DQ-31: housing-sepp/eligibility over-eligibility — absent `isLMRArea` meant "yes"; the AI router additionally hardcoded `isLMRArea: true` and invented `zone`/`lotSize`/`lotWidth`. **Over-eligibility CLOSED 2026-08-01; full consolidation onto the Python service still open.** | 🟠 Wrong answer fixed, consolidation open | P1 |
 | DQ-30: Applicability tagger — CODE fixed (PR1-4, this PR). **DATA NOT fixed: 286 rows still carry retired zone codes, 14 of them live+actionable in councils the retag covered.** The "0% drift" verification was invalid — it cannot fail. | 🟠 Code fixed, data open 2026-08-01 | P1 — validity, not traffic |
@@ -142,6 +142,53 @@ council onboarding) also hardcode zone-code lists, some with the same retired B1
 codes. Found via `python scripts/lint_hardcoded_zone_codes.py --all` (PR4). Means the
 zone-code problem may go all the way back to how this table's data was written, not just
 how it's queried. Needs its own look — not sized yet.
+
+---
+
+## DQ-33: document_id naming mismatch (fixed + re-tagged 2026-08-01)
+
+**The defect.** The Marrickville / Ashfield / Leichhardt matchers in
+`applicability_tagger.py` were written for a verbose document_id convention
+("Chapter E1", "4.1", "_4_1_"). Every document_id in production uses a slug:
+`Marrickville_DCP_2011__part4_s1_low_density`, `..._chapter_e1_heritage`,
+`..._part_c_s2_urban_character`. `_detect_council()` still matched, so the row looked
+handled — but the PART never resolved and it fell through to ALL/ALL. 9,854 served rows
+across 107 document_ids; 85 of 100 sampled recorded `no_config`.
+
+**Why this one needed a higher bar than the 241-row zone repair.** It NARROWS. Showing an
+irrelevant control is noise; hiding a binding one is the liability, and hiding a rule that
+applies is the original DQ-30 harm. So: a slug resolves ONLY to a key the council's config
+already declares; nothing is invented; anything unrecognised stays ALL with source
+`no_config`. `chapter_e2_haberfield` (118 rows) and `part2_s21` (131 rows) deliberately do
+NOT resolve — the configs declare no such key, and resolving to the nearest neighbour would
+be a guess. Under-matching is a missed improvement; over-matching is a hidden control.
+
+**Blast radius, measured BEFORE the write** (22,007 rows in scope):
+- 1,928 rows change values; 20,079 change provenance only
+- 815 served rows narrow on zones, 882 on dev types
+- highest risk — narrowed to a SINGLE zone: 2 documents / 369 rows
+  (`part4_s1_low_density` → R2, `part6_industrial` → E4; both verified against
+  `lep_zone_coverage` for Inner West)
+
+**Prediction stated before running, and the actual after:** `config_all` 7,761 ·
+`config_specific` 815 · `no_config` 1,278 — matched exactly. Zero rows narrowed while still
+recording `no_config` (which would have meant a guess). Every written zone code exists in
+Inner West's live land-use table.
+
+**Consumer.** `ProvisionsByTocStructure` told Leichhardt users "all N provisions apply
+regardless of dev type — your selection … does not remove any". Correcting the tagger gave
+Leichhardt Part F (food premises) real dev types, making that sentence false. The copy is now
+derived from the data (`anyDevTypeSpecific`) so it cannot drift again. No count display or
+empty-state breaks on a shrunken list, and no row holds an empty zone array (checked, not
+assumed — an empty array would match no zone at all).
+
+**Rollback:** `regulatory_provisions_dq33_backup_20260801` (22,007 rows, all four columns).
+Script: `scripts/retag_applicability_slug_docids.py` (dry-run default, backup-before-write,
+null-safe per-row guard, printed rollback SQL).
+
+**Still open, deliberately:** the ~20% of served provisions that are not controls at all
+(historical narrative, TOC fragments, LaTeX garble). Real, separate, and narrowing
+applicability does not touch it.
 
 ---
 
