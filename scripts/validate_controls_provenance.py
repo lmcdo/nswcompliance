@@ -155,6 +155,11 @@ def classify_rows(rows: Iterable[dict],
             "control_type": row.get("control_type"),
             "claimed_method": row.get("extraction_method"),
             "is_current": row.get("is_current"),
+            # A link to the provision makes a traceable row machine-checkable
+            # rather than human-checkable. Reported, never part of pass/fail:
+            # 450 controls belong to councils with no provisions at all, so
+            # requiring a link would fail on absent corpus, not on a defect.
+            "provision_id": row.get("provision_id"),
             "state": state,
             "evidence": evidence,
         })
@@ -209,7 +214,8 @@ def _fetch_rows(cur) -> list[dict]:  # pragma: no cover - exercised by main()
     # unattributed row is being served right now or merely held.
     cur.execute(
         f"""SELECT id, lga, dev_type, control_type, value_min, value_max, unit,
-                   source_text, section_ref, extraction_method, is_current
+                   source_text, section_ref, extraction_method, is_current,
+                   provision_id
             FROM {TABLE}"""
     )
     columns = [d[0] for d in cur.description]
@@ -253,6 +259,14 @@ def main() -> int:  # pragma: no cover - CLI entry point
         print(f"\n=== {TABLE} provenance ({len(rows):,} rows) ===")
         for state in STATES:
             print(f"  {state:<14} {counts[state]:>5}")
+        linked = sum(1 for r in classified if r.get("provision_id"))
+        traceable = counts[STATE_TRACEABLE]
+        print(f"\n  machine-checkable (linked to a provision): {linked}"
+              f" — the other {len(rows) - linked} can only be re-checked by hand")
+        if traceable:
+            print("  ceiling: 450 controls sit in councils with NO provisions in the"
+                  " corpus,\n  so link coverage is bounded by ingestion rather than"
+                  " by the matcher (DQ-38)")
         mismatches = label_reality_mismatches(classified)
         if mismatches:
             print("\n  advisory — extraction_method vs derived state:")
