@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "A production write to the table that is the product's differentiator, and the direction of risk is asymmetric: a WRONG link would let a later automated check compare a number against someone else's clause and report a confident false verdict, which is worse than the current state of no link at all. Small in row count (34) but it establishes a relationship other code will trust.",
-  "commit_hash": "93ad5086",
+  "commit_hash": "0c57b1b5",
   "files": [
     "scripts/link_controls_to_provisions.py",
     "tests/test_controls_provision_links.py",
@@ -63,14 +63,14 @@
     {
       "name": "band_for",
       "file_line": "scripts/measure_control_quote_gap.py:127",
-      "input": "a run fraction",
+      "input": "a single run fraction between 0.0 and 1.0, produced by longest_run_fraction for one control against its best candidate provision",
       "output": "exactly one of four named bands, so every measured row lands in one state",
       "if_none": "there is no None branch — the final threshold is 0.0, so a fraction always names a band; a collapsed banding function is caught by the test asserting all four are reachable"
     },
     {
       "name": "chapter_tokens",
       "file_line": "scripts/measure_control_quote_gap.py:108",
-      "input": "a control's source_chapter_key or a provision's document_id",
+      "input": "either a control's source_chapter_key such as 'chapter-f-dev-category' or a provision's document_id such as 'Inner_West_Ashfield_DCP_2016__chapter_f_dev_category'",
       "output": "comparable tokens with council name, instrument and year stripped, so the two vocabularies can be tested against each other",
       "if_none": "None or empty yields an empty set, which is a subset of everything — so measure() branches on the empty case FIRST and records no_chapter_key instead of a false chapter_ingested"
     }
