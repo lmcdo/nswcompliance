@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Corrects served regulatory numbers in dcp_setback_controls, the product's core table: canada_bay 701 served a rear setback 4x under the actual control; ryde's and burwood's general primaries existed nowhere so no gate could examine them; fairfield served Chapter-5C narrow-lot values under secondary_dwelling. Wrong served numbers are the silent-liability class, which is the critical tier's definition. Standard would understate it; there is no higher tier.",
- "commit_hash": "666189e9",
+ "commit_hash": "46d89c8a",
  "falsifiable_check": {
   "command": "python scripts/validate_control_source_values.py && python -m pytest tests/test_control_source_values.py tests/enrichment/test_control_type_vocabulary.py -q",
   "passes_when": "every stored control value is derivable from its own source_text by a named rule or sits in the shrink-only baseline; no served row carries a self-declared assumption; the SQL CHECK constraint, the Python CANONICAL_CONTROL_TYPES set and (via the database-marked test) every distinct control_type in production agree; and a quote at exactly the 400-char extractor cap is TRUNCATED_EVIDENCE regardless of its final character",

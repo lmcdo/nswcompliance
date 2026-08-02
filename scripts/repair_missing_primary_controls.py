@@ -359,6 +359,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
             # post-state to count as done. Anything else is a divergence, and
             # continuing would commit the rest of the adjudication around a
             # row in an unknown state (Sol finding, 2026-08-03).
+            # {post_guard} pins the intended is_current / needs_review
+            # post-state per row.
             cur.execute(
                 f"SELECT 1 FROM dcp_setback_controls WHERE id = %s "
                 f"AND {post_guard}", (control_id,))
