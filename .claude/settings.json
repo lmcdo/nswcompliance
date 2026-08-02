@@ -68,6 +68,15 @@
             "command": "cd \"$CLAUDE_PROJECT_DIR/frontend-nextjs\" && npx tsc --noEmit 2>&1 | head -30"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/gitignore-trap-guard.py\""
+          }
+        ]
       }
     ]
   }

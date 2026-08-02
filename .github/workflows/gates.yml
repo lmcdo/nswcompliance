@@ -21,6 +21,7 @@
 #   1b. mutation-count baselines        python-tests
 #   1c. brief field-coverage ratchet    python-tests
 #   1d. schema contract                 schema-contract
+#   1e. controls provenance             schema-contract (shares its live DB access)
 #   2.  jest                            frontend-tests
 #   3.  qa_gate                         qa-and-liability
 #   4.  liability language scan         qa-and-liability
@@ -182,3 +183,9 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/validate_schema_contract.py
+      # Mirrors pre-push step [1e/5]. Lives in this job because it is the one with
+      # live DB access; exits 1 if any numeric control is unattributable.
+      - name: Validate controls provenance
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_controls_provenance.py --quiet
