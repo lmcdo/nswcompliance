@@ -503,10 +503,14 @@ class TestTruncatedEvidence:
     def test_a_quote_cut_at_the_limit_mid_word_is_truncated(self):
         assert evidence_is_truncated("x" * 399 + "a")
 
-    def test_a_complete_quote_of_the_same_length_is_not(self):
-        # Length alone is not the signal — a real 400-char quote ends in
-        # punctuation. Without this the check would condemn correct rows.
-        assert not evidence_is_truncated("x" * 399 + ".")
+    def test_a_quote_at_the_limit_is_truncated_even_ending_in_punctuation(self):
+        # A cut can land immediately AFTER punctuation, so a terminal '.' at
+        # the cap separates nothing: at exactly the extractor limit a complete
+        # quote is indistinguishable from a severed one, and evidence that
+        # cannot be told from severed evidence is not evidence. (The prior
+        # punctuation exemption let exactly this shape be judged on a cut
+        # quote.)
+        assert evidence_is_truncated("x" * 399 + ".")
 
     def test_a_short_quote_is_never_truncated(self):
         assert not evidence_is_truncated("Front setback minimum 6m.")

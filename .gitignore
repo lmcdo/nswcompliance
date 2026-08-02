@@ -617,3 +617,5 @@ latent-scope-data/
 !scripts/repair_camden_front_setbacks.py
 !scripts/refile_secondary_street_setbacks.py
 !scripts/measure_control_type_mismatch.py
+!scripts/repair_canada_bay_rear_setback.py
+!scripts/repair_missing_primary_controls.py

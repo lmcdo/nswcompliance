@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-03T16:40:00+10:00",
-  "target": "scripts/measure_control_type_mismatch.py — commit the DQ-40 v2 detector (control_type vs source_text) plus MISSING_PRIMARY sibling analysis as a durable read-only measurement script.",
-  "findings_summary": "Read-only: one SELECT over dcp_setback_controls (986 numbered rows), no writes, no joins, no loop hazard, no timeout risk. Consolidates two tmp probes that produced the DQ-40 numbers already recorded in the tracker: the v2 foreign-wording patterns (which close the v1 'side boundaries' blind spot that hid canada_bay 701) and the per-council sibling check that answers MISSING_PRIMARY. Known detector false positives documented in code: georges_river 577 and blacktown 109 read 'side AND rear boundaries' and are CORRECT rows. Advisory exit 0 always — it measures, gates do the blocking."
+  "timestamp": "2026-08-03T00:00:00+10:00",
+  "target": "repair canada_bay 701 rear setback (1.5->6.0m, C9 quote in same write); then DQ-40 detector truncation fix + vocab file sync + MISSING_PRIMARY inserts",
+  "findings_summary": "701 pre-state verified live (side-table quote, 400-char truncated, condition NULL); C9 p.E-15 = 6.0m read from source PDF; single-row PK update, no joins, no loop; guard uses IS NULL for nullable condition"
 }

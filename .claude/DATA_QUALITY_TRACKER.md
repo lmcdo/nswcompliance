@@ -11,7 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
-| DQ-40: **28 controls whose `control_type` contradicts their own quote — 26 SERVED.** A secondary-street setback (2–4m) served as the primary front setback (4.5–6m), across ≥10 councils. 24 of the 28 PASS the value checker: the number matches, the control is wrong. A class that check structurally cannot see. | 🔴 Measured 2026-08-03, not fixed | P1 — understates the requirement |
+| DQ-40: **28 controls whose `control_type` contradicts their own quote — 26 SERVED.** A secondary-street setback (2–4m) served as the primary front setback (4.5–6m), across ≥10 councils. 24 of the 28 PASS the value checker: the number matches, the control is wrong. A class that check structurally cannot see. | 🟢 Fixed 2026-08-03 — 20 re-filed (migration 054), canada_bay 701 repaired 1.5→6.0, MISSING_PRIMARY set adjudicated against source (2 adds, 1 retire, 2 fail-closed flags); 3 rows remain open pending non-local sources / authorisation (see section below) | P1 (was) |
 | DQ-39: **25 of 986 stored control values are not derivable from their own quoted `source_text`.** Four Waverley deep-soil rows store 10%/15% against a quote that says 50%; three Cumberland setbacks store 4.0/5.5/8.0 m against a quote whose only figure is "Minimum 6m"; two rows store a number while their own quote says "needs PDF verification". Now gated for all 1,069 rows. | 🟠 Measured + gated 2026-08-02, data not fixed | P1 — the number IS the product |
 | DQ-36: Provisions PDF hardcoded "Transport Oriented Development: ✗ Not applicable — property not within 400m of metro station"; the component receives NO TOD data, so the claim was unconditional. Four further SEPPs asserted "✗ Not applicable" for a proposal the report never sees. | ✅ Fixed 2026-08-01 | P1 — false statement of site fact |
 | DQ-35: conveyancing_db.fetch_dcp_setbacks cited rows[0] from the UNFILTERED list, so clause_ref could name a control the function had just suppressed (needs_review) or excluded as belonging to a DIFFERENT zone | ✅ Fixed 2026-08-01 | P1 — citation is the product claim |
@@ -80,6 +80,69 @@ membership alone not establishing CDC eligibility — the class of issue
 the same heritage check `determineDevelopmentPathway()` already does, or reuse
 `determineDevelopmentPathway()`'s result directly instead of re-deriving eligibility inline a
 second time in the same file.
+
+---
+
+## DQ-40: control_type contradicts its own quote (2026-08-03) — CLOSED with 3 open rows
+
+**Status:** 🟢 Fixed 2026-08-03. Detector: `scripts/measure_control_type_mismatch.py`
+(v2 — matches boundary wording, the v1 blind spot that hid canada_bay 701).
+
+**What was done (all against source PDFs in `data/dcps/`, evidence STRONG):**
+- **canada_bay 701** — served rear 1.5m was the second-storey SIDE setback (C6 table,
+  400-char truncated quote); corrected to **6.0m per C9 printed p.E-15**, quote replaced
+  in the same write (rule 2b). `scripts/repair_canada_bay_rear_setback.py`; backup
+  `dcp_setback_controls_cb701_repair_20260803`.
+- **20 rows re-filed** `front_setback` → `secondary_street_setback` (migration 054 +
+  `scripts/refile_secondary_street_setbacks.py`, applied 2026-08-02; backup
+  `dcp_setback_controls_refile_backup_20260803`). Vocabulary synced 2026-08-03 across
+  `enforce_control_type_vocabulary.sql`, `enrichment/config/control_type_vocabulary.py`,
+  the structured-controls TS maps and SEE CATEGORY_MAP (served rows previously rendered
+  under "Other" with a raw slug).
+- **MISSING_PRIMARY adjudication** (`scripts/repair_missing_primary_controls.py`; backup
+  `dcp_setback_controls_missing_primary_20260803`): ryde front 6.0m ADDED (id 1175,
+  s2.9.1(a) p.25 — was stored NOWHERE); ryde 680 re-filed front→rear (its quote is
+  s2.9.3(a), 8m floor of a greater-of rule) and 681 conditioned as the s2.9.3(b)
+  exception; burwood side 0.9–1.5m ADDED (id 1176, Ch4 s4.5 Table 3 p.221) and 707
+  conditioned as the P10 garage-wall rule; camden 691 re-quoted to Table 4-2 side 0.9m;
+  fairfield 715 re-quoted to 5B.2.3.1(a) and **714 RETIRED** (its 6m is a Chapter 5C
+  narrow-lot garage setback; 5B prescribes NO numeric front setback for secondary
+  dwellings — camden-692 model); fairfield 716 and ryde 682 flagged `needs_review`
+  (fail closed) — see open items.
+- **Truncation escape closed (Sol's case):** `evidence_is_truncated` no longer exempts a
+  400-char quote ending in punctuation — a cut can land after punctuation, and at the
+  extractor cap a complete quote is indistinguishable from a severed one. All 21
+  at-limit rows ended mid-word, so no verdict changed; the hole is closed for the next
+  extraction.
+- Detector heuristics: NARROWING terms inherent to a control type no longer flag it
+  (car_parking↔garage, secondary_street_setback↔corner); settled false positives are
+  suppressed with per-row reasons (KNOWN_FALSE_POSITIVES).
+
+**After state (2026-08-03):** category A = **3 open** (was 28/26 served), category B =
+**0** (was 6), truncated = 19. Value checker green, baseline 41 → 38 (shrink-only).
+
+**Open rows (A):**
+- **884 city_of_sydney** — clause 4.1.2 contains no numbers; stored 0m encodes an
+  observed pattern. Fix (NULL + qualitative) adjudicated but not authorised; also
+  provisional against the Jan-2026 amendment.
+- **570 georges_river** — front 5.5m garage/carport clause; source PDF not local,
+  UNVERIFIABLE this pass.
+- **895 marrickville** — side/rear one-clause shape, likely correct (577/109/105
+  pattern) but source not read; open until it is.
+
+**Held fail-closed (needs_review=TRUE, repair evidence in row's review_reason):**
+- **fairfield 716** — stored rear 6.0m for secondary dwellings is a Chapter 5C
+  narrow-lot value; 5B.2.3.1(a) prescribes **900mm**. STRONG evidence for a 0.9 repair,
+  awaiting authorisation.
+- **ryde 682** — side 4.0m is a design *preference* quote; true general side is
+  s2.9.2(a)/(b) 900mm/1.5m, stored nowhere.
+
+**Extraction gaps found while ruling (ADD candidates, STRONG sources local, NOT done —
+new extraction was out of scope):** ryde side 0.9/1.5 (s2.9.2) + secondary street 2m
+(s2.9.1(b)); camden secondary street 2m + front tiers 6.5m/10m (Table 4-2); fairfield
+corner secondary street 1.5m (5B.2.3.1(c)); burwood two-storey front 9m (Table 3);
+cumberland secondary-dwelling rear 0.9/3m and side 0.9/1.5m per the Table quoted by row
+34 (row 35's 1.2m side carries a basement quote — suspect).
 
 ---
 

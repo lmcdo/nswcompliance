@@ -719,17 +719,21 @@ MISSING_SOURCE_TEXT = "MISSING_SOURCE_TEXT"
 TRUNCATED_EVIDENCE = "TRUNCATED_EVIDENCE"
 FAILING_STATES = (UNEXPLAINED, MISSING_SOURCE_TEXT, TRUNCATED_EVIDENCE)
 
-# The extractor's hard limit. A genuinely complete quote of this length would end
-# in punctuation — that is what separates a coincidence from a cut.
+# The extractor's hard limit. Anything at exactly this length is treated as a
+# cut. An earlier version exempted quotes ending in punctuation ("a complete
+# quote would end in a full stop") — but a cut can land immediately AFTER
+# punctuation, so a terminal '.' at the cap separates nothing: at exactly the
+# limit a complete quote is indistinguishable from a severed one, and evidence
+# that cannot be told from severed evidence is not evidence. (All 21 at-limit
+# rows measured 2026-08-03 end mid-word, so closing the escape changed no
+# verdict; it closes the hole for the next extraction.)
 TRUNCATION_LIMIT = 400
 
 
 def evidence_is_truncated(source_text) -> bool:
-    """True when the quote was cut off mid-sentence at the extractor's limit."""
-    text = str(source_text or "")
-    if len(text) != TRUNCATION_LIMIT:
-        return False
-    return not text.rstrip().endswith((".", "!", "?", ")", "]", "%", ":", ";", '"', "'"))
+    """True when the quote sits at the extractor's hard limit — cut, or
+    indistinguishable from one."""
+    return len(str(source_text or "")) == TRUNCATION_LIMIT
 
 
 def explain_value(value, source_text, unit=None) -> tuple[str, Optional[str]]:

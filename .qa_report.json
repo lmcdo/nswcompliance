@@ -1,319 +1,50 @@
 {
-  "tier": "critical",
-  "justification": "Adds a blocking gate over the table that is the product's differentiator. The direction of risk is asymmetric: a value whose own note admits it was assumed, served as if extracted, is the fabricated-verdict class applied to regulatory numbers. 28 such rows exist and all are already retired, so this passes today and exists solely to stop the 29th being served. Shipped alongside an adjudication of all 25 UNEXPLAINED controls against source PDFs, which retracted a previously-published finding.",
-  "commit_hash": "acb57b77",
-  "files": [
-    "services/extracted_data_integrity.py",
-    "scripts/validate_control_source_values.py",
-    "scripts/control_source_values_baseline.json",
-    "tests/test_control_source_values.py",
-    ".githooks/pre-push",
-    ".github/workflows/gates.yml",
-    ".claude/DATA_QUALITY_TRACKER.md",
-    "docs/extracted-data-integrity.md",
-    ".gitignore",
-    ".claude/.pre-impl-done.json",
-    "docs/qa/controls-adjudication-2026-08.md",
-    "scripts/repair_camden_front_setbacks.py",
-    "migrations/054_secondary_street_setback_control_type.sql",
-    "scripts/refile_secondary_street_setbacks.py",
-    "scripts/measure_control_type_mismatch.py"
-  ],
-  "falsifiable_check": {
-    "command": "python scripts/validate_control_source_values.py",
-    "passes_when": "every control is derivable from its own source_text by a named rule or is in the baseline, AND no control whose own condition/review_reason/source_text admits the value was assumed is is_current",
-    "fails_when": "a served control carries a self-declared assumption (exit 1), or an underivable value is not baselined, or a baselined row changed or became explained without the baseline being updated",
-    "demonstrated_failing": "the fabrication marker was driven directly: it fires on a served row whose condition reads 'Assumed standard NSW POS min', does NOT fire on the same row with condition 'Read from Table 1 page B8', and does NOT fire once the value is set to NULL - which is the fixed state the doctrine asks for, so the gate cannot punish the correct response to its own finding. Live run reports 28 flagged / 0 served / exit 0.",
-    "mutation_evidence": "five tests drive the served-vs-retired distinction and both refusal directions; a marker that always fired would fail the honest-clause and NULL-value tests, and one that never fired would fail the assumed-row and review_reason/source_text tests"
+ "tier": "critical",
+ "justification": "Corrects served regulatory numbers in dcp_setback_controls against their source PDFs: canada_bay 701 served a rear setback 4x under the actual control (1.5m vs C9's 6.0m); ryde's general front setback (6m) and burwood's general side setback existed nowhere, so nothing could have caught a wrong stand-in; fairfield served Chapter-5C narrow-lot values under secondary_dwelling. Every value write carries the verbatim quote supporting the new value in the same statement (extraction-doc rule 2b), was backed up per-row with a printed rollback, and was guarded on the pre-state read at plan time. Also closes the truncation-detection escape (a 400-char quote ending in punctuation was judged on severed evidence) and syncs the secondary_street_setback vocabulary across SQL, Python and the TS display maps so 20 served rows stop rendering under 'Other'.",
+ "commit_hash": "PENDING",
+ "files": [
+  "scripts/repair_canada_bay_rear_setback.py",
+  "scripts/repair_missing_primary_controls.py",
+  "scripts/measure_control_type_mismatch.py",
+  "scripts/control_source_values_baseline.json",
+  "services/extracted_data_integrity.py",
+  "tests/test_control_source_values.py",
+  "enrichment/config/control_type_vocabulary.py",
+  "migrations/enforce_control_type_vocabulary.sql",
+  "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+  "frontend-nextjs/lib/see/responseTemplates.ts",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  "docs/qa/controls-adjudication-2026-08.md",
+  ".gitignore",
+  ".claude/.pre-impl-done.json"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/validate_control_source_values.py && python -m pytest tests/test_control_source_values.py tests/enrichment/test_control_type_vocabulary.py -q",
+  "passes_when": "every stored control value is derivable from its own source_text by a named rule or sits in the shrink-only baseline; no served row carries a self-declared assumption; the SQL CHECK constraint, the Python CANONICAL_CONTROL_TYPES set and (via the database-marked test) every distinct control_type in production agree; and a quote at exactly the 400-char extractor cap is TRUNCATED_EVIDENCE regardless of its final character",
+  "fails_when": "a repaired row's quote no longer supports its value (rule 2b regression \u2014 this exact failure fired on camden 690 when only the value was corrected); the baseline is grown without --allow-growth; secondary_street_setback is removed from either side of the vocabulary sync; or the punctuation exemption is reintroduced into evidence_is_truncated",
+  "demonstrated_failing": "test_a_quote_at_the_limit_is_truncated_even_ending_in_punctuation asserts evidence_is_truncated('x'*399 + '.') \u2014 under the pre-change code this exact assertion fails (the old code returned False for punctuation-terminated 400-char quotes), which is the escape Sol identified. Conversely test_a_short_quote_is_never_truncated fails if the fix overshoots to length-independent truncation. Live DB before/after: canada_bay 701 value_min 1.5->6.0 with quote 'C9. All development...'; detector category A 28->3, category B 6->0; checker exit 0, baseline 41->38 shrink-only.",
+  "mutation_evidence": "evidence_is_truncated hardcoded False -> the mid-word and punctuation tests fail; hardcoded True -> the short-quote/None/empty tests fail. Dropping secondary_street_setback from CANONICAL_CONTROL_TYPES -> test_migration_matches_python_vocabulary fails AND test_every_db_control_type_is_canonical fails against production (20 live rows). Reverting 701's value in the DB while keeping the C9 quote -> the value 1.5 is not derivable from the C9 quote and the row is not baselined -> checker exits non-zero."
+ },
+ "checks": {
+  "pytest_targeted": "tests/test_control_source_values.py 108 passed; tests/enrichment/test_control_type_vocabulary.py 13 passed incl. live-DB drift",
+  "jest": "76 suites / 990 tests passed (worktree, junctioned node_modules)",
+  "db_writes": {
+   "cb701": {
+    "backup": "dcp_setback_controls_cb701_repair_20260803",
+    "predicted": 1,
+    "written": 1
+   },
+   "missing_primary": {
+    "backup": "dcp_setback_controls_missing_primary_20260803",
+    "predicted_updates": 8,
+    "written_updates": 8,
+    "predicted_inserts": 2,
+    "inserted_ids": [
+     1175,
+     1176
+    ]
+   }
   },
-  "pre_impl": {
-    "existing_data": "All 1,069 controls read, not sampled. Confirmed from information_schema that value_min/value_max are numeric (Decimal in psycopg2) and source_text is text. Measured directly: 0 rows have an empty source_text so every row has a quote to check against, 83 rows carry no numeric value at all and need their own state, 50 rows have min != max so both ends need explaining, and there are 18 distinct unit strings dominated by spaces/dwelling 371, m 278 and %% 200. is_current splits 989 current / 80 superseded. One read-only SELECT of 1,069 rows with no join, so no batching and no timeout risk.",
-    "assumption_mismatch": "The remembered figure was '137 rows flagged table-wide'. Re-measured live it is 137 on value_min, 11 on value_max and 142 distinct rows - the original number counted one column. Second and larger mismatch: the task framed the flags as mostly-derivations to be separated from mismatches, which held (961 of 986 are derivable), but the harder problem turned out to be the opposite direction. Two rules were quietly explaining rows on evidence that is not a quantity at all: numbers inside clause references (s4.3.6 explaining a stored 4.3) and numbered-list ordinals (Camden 693, a 2.0 m front setback explained by the '2' of a list item in a clause about front fence height). Closing those returned 6 rows to the finding list. Third: percentage_phrasing measures 0 rows in production - it is reachable and unit-tested, but every real percentage row is a literal match first.",
-    "new_vs_existing": "No existing check compares a control's stored NUMBER to its own quoted source_text. scripts/validate_dcp_setbacks.py covers only the ~280 setback rows and its four signals (CONFLICT, FOREIGN, MAGNITUDE, PLACEHOLDER) never compare value to quote. scripts/validate_controls_provenance.py (#866) classifies provenance from the repo. scripts/link_controls_to_provisions.py (#867) matches quotes against the corpus and is capped at 42 rows by ingestion coverage. scripts/numeric_control_review.py diffs against a re-downloaded PDF. services/extracted_data_integrity.py:value_absent_from_source is the existing flagger and is extended in place, not copied. The baseline-beside-the-script layout, the 0/1/2 exit codes and the shrink-only rule are reused from scripts/validate_schema_contract.py.",
-    "external_source_error": "The only external source is the Supabase connection. No DATABASE_URL exits 2 with an explicit 'nothing was checked, which is not a pass' message rather than reporting a clean run, and both the pre-push step and the CI job treat 2 as a skip and 1 as a failure. An unreadable baseline file also exits 2 rather than being treated as an empty accepted set, because a silently-empty baseline would flag all 25 known rows as new and the natural response to that noise is to regenerate the baseline, which disarms the gate. The script performs no write of any kind.",
-    "frontend_type": "None. This check adds no API surface and no column; it reads dcp_setback_controls and prints. Nothing in frontend-nextjs consumes its output. The states it emits are internal strings compared only against RULE_NAMES, UNEXPLAINED and NO_VALUE_STORED, all exported from the module so a caller cannot drift from a hand-copied literal.",
-    "user_failure_mode": "The user-visible failure this guards against is a served number that its own cited source does not support - a Waverley deep-soil control served as 10%% while the clause quoted beside it reads 'a minimum 50%% of the landscaped area must be deep soil zone'. A professional acting on that number and then reading the quote would find them contradicting each other, which is worse for trust than having no number. The check's own worst failure is the reverse: a rule that explains a row on evidence that is not a quantity removes a real defect from the finding list permanently and silently, which is why every rule must return the substring it matched and why two false-pass channels were closed before this shipped."
-  },
-  "functions": [
-    {
-      "name": "explain_value",
-      "file_line": "services/extracted_data_integrity.py:735",
-      "input": "one stored numeric value, the row's own quoted source_text, and the row's unit string so that unit-sensitive rules can refuse to fire",
-      "output": "the name of the first rule that derives the value from the text, paired with the exact substring that rule matched",
-      "if_none": "returns UNEXPLAINED with no evidence when no rule fires, and NO_VALUE_STORED when the value is absent or non-numeric or the quote is empty - three outcomes kept distinct, because 'nothing to check' is not 'checked and fine'"
-    },
-    {
-      "name": "explain_row",
-      "file_line": "services/extracted_data_integrity.py:764",
-      "input": "one control row plus the names of its value columns, its source-text column and its unit column",
-      "output": "exactly one state for the row plus the per-field rule and evidence, so the printed counts always sum to the table size",
-      "if_none": "a row whose values are all absent becomes NO_VALUE_STORED rather than passing; a row with one unexplained end of a range becomes UNEXPLAINED even though its other end was explained"
-    },
-    {
-      "name": "_quantity_spans",
-      "file_line": "services/extracted_data_integrity.py:315",
-      "input": "the raw source text of one control, which may contain clause references and numbered-list markers alongside real quantities",
-      "output": "value and character span for every number that is a quantity, with numbered-list ordinals removed",
-      "if_none": "text with no quantities yields an empty list, so the exact rule finds nothing and the row falls through to the derived rules rather than matching on a citation"
-    },
-    {
-      "name": "_rate_candidates",
-      "file_line": "services/extracted_data_integrity.py:527",
-      "input": "the source text, scanned for every 'per N' / 'for every N' phrase and the numbers preceding each one",
-      "output": "every plausible numerator and denominator pair with its evidence, nearest numerator first, stopping at a sentence or table-cell break",
-      "if_none": "yields a None numerator when nothing numeric precedes the rate, which is the signal the implied-unity rule uses to decide whether assuming 1 is safe"
-    },
-    {
-      "name": "fabricated_values",
-      "file_line": "services/extracted_data_integrity.py:60",
-      "input": "one control row plus the columns where a writer would confess - condition, review_reason and source_text - and the value column to test",
-      "output": "the row, when it BOTH stores a value and carries language admitting that value was assumed, guessed or awaiting verification",
-      "if_none": "a row storing no value is never flagged however candid its note, because NULL-with-an-explanation is the honest state the gate wants; flagging it would punish the correct fix and push writers to delete the note instead of the guess"
-    },
-    {
-      "name": "evidence_is_truncated",
-      "file_line": "services/extracted_data_integrity.py:727",
-      "input": "one control's stored source_text, which may have been severed by the extractor's 400-character limit",
-      "output": "true only when the quote is exactly at the limit AND does not end in terminal punctuation - the pair that separates a cut from a coincidence",
-      "if_none": "None or an empty quote returns false, because absent evidence is already handled by MISSING_SOURCE_TEXT and NO_VALUE_STORED; conflating the three would hide which of them a row is in"
-    }
-  ],
-  "values": [
-    {
-      "value": "the state assigned to each of the 1,069 rows - one of ten named rules, UNEXPLAINED, or no_value_stored",
-      "read_at": "computed per row from value_min, value_max, source_text and unit at check time; nothing is stored back to the database",
-      "if_missing": "a row whose values are all absent becomes no_value_stored, counted separately and reported separately. Folding it into the explained bucket would overstate the pass rate by about 8 percentage points, and 'nothing to check' is not 'checked and fine'."
-    },
-    {
-      "value": "the accepted-unexplained id list in scripts/control_source_values_baseline.json (25 ids)",
-      "read_at": "load time, before any row is compared against it",
-      "if_missing": "a missing file is an empty baseline, which is correct for a fresh clone. An UNREADABLE file exits 2 instead, because treating a corrupt baseline as empty would turn 25 known rows into new failures and invite a regeneration that silently raises the accepted ceiling."
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Read every control with the quoted source_text its number was taken from, so each stored value can be checked against its own sentence rather than against the provisions corpus.",
-      "file_line": "scripts/validate_control_source_values.py:fetch_rows",
-      "where_clause": "None, deliberately: is_current is SELECTED and its split reported (989 current / 80 superseded) rather than filtered, because filtering would shrink the denominator away from DQ-38's 1,069 and stop this script reconciling with link_controls_to_provisions.py. Read-only, 60s timeout."
-    }
-  ],
-  "break_it": [
-    {
-      "scenario": "A stored value equals a number that is part of a clause reference in its own quote, for example a control storing 4.3 whose source_text opens with the citation 's4.3.6'.",
-      "what_happens": "The exact-match rule reports the row as verified on the strength of its own citation, and the row leaves the finding list permanently even though nothing in the clause supports the number.",
-      "mitigated": true,
-      "how": "The number token carries lookarounds that reject any digit run preceded by a word character or a dot, so 's4.3.6' and 'DS9.2' yield no quantities at all. Closing this cost 5 rows their explanation.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_clause_reference_does_not_explain_a_value -q"
-    },
-    {
-      "scenario": "A stored value equals a numbered-list ordinal in its own quote - Camden control 693 stores a 2.0 m front setback against a clause about front FENCE height whose second list item begins '2.'.",
-      "what_happens": "The row reads as an exact match, so a setback taken from a fencing clause is presented as verified against its source.",
-      "mitigated": true,
-      "how": "_quantity_spans drops any number that begins a line or table cell and is followed by a dot and a word. This was live, not hypothetical: it hid control 693 until the exclusion was added.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_numbered_list_ordinal_does_not_explain_a_value -q"
-    },
-    {
-      "scenario": "The text says '2 spaces per 5 dwellings' and the row stores 0.2 rather than 0.4, so the implied-unity rate rule could derive 1/5 and call it explained.",
-      "what_happens": "A value the quote plainly contradicts is reported as derived from that quote, which is the precise failure the whole check exists to prevent.",
-      "mitigated": true,
-      "how": "The implied-unity rule refuses to fire when any number or written numeral appears in the lead-in to the rate, and a test asserts that exact case stays UNEXPLAINED.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_it_refuses_when_a_numerator_was_written -q"
-    },
-    {
-      "scenario": "A percentage rule divides an arbitrary number in the text by 100 until something matches the stored value, for example reaching a stored 35 from a quoted floor area of 3500 square metres.",
-      "what_happens": "An arithmetic coincidence between two unrelated numbers is presented as provenance for the stored value.",
-      "mitigated": true,
-      "how": "The percentage rule matches only numbers immediately followed by a literal '%' or the words 'per cent', so no bare number can be scaled into an explanation.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_bare_number_is_never_read_as_a_percentage -q"
-    },
-    {
-      "scenario": "City of Sydney control 883 stores a front setback of 0 against a quote reading 'where no front setback is shown on the map', and a nil-phrase rule treats the phrase as a control of zero.",
-      "what_happens": "A sentence about the map being silent is converted into a numeric control, inventing a requirement the DCP never made.",
-      "mitigated": true,
-      "how": "The nil rule requires the word 'required' after the nil phrase, so 'no additional parking is required' matches and 'no front setback is shown' does not. A test pins both directions.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_map_being_silent_is_not_a_control_of_zero -q"
-    },
-    {
-      "scenario": "The number-token lookahead is written too tightly and rejects a number that ends a sentence, such as the 3 in 'Maximum: up to 3.'",
-      "what_happens": "Correct rows lose their explanation and appear in the finding list, which trains a reader to dismiss the list - the same failure as a list full of false positives, in reverse.",
-      "mitigated": true,
-      "how": "The lookahead rejects only a dot followed by a digit, and a regression test asserts a sentence-final number still matches exactly.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_number_at_the_end_of_a_sentence_still_matches -q"
-    },
-    {
-      "scenario": "A control stores a range where one end is quoted and the other is not, for example City of Sydney 885 storing min 3 and max 8 against a qualitative clause about rear building lines.",
-      "what_happens": "Reporting the row on its explained end alone would present a range as verified when its upper bound came from nowhere.",
-      "mitigated": true,
-      "how": "explain_row marks the whole row UNEXPLAINED if any stored end is unexplained, and reports the most-derived rule when all ends pass so a row cannot present as a stronger match than it earned.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_both_ends_of_a_range_must_be_explained -q"
-    },
-    {
-      "scenario": "The baseline file is corrupted or truncated to an empty list while the 25 known unexplained rows are still present.",
-      "what_happens": "Every pre-existing row reads as new, the gate fails loudly on work nobody did, and the natural response is to regenerate the baseline - which silently disarms the gate.",
-      "mitigated": true,
-      "how": "load_baseline treats a missing file as an empty baseline but refuses to run at all on an unreadable one, exiting 2 rather than continuing with a silently empty accepted set.",
-      "repro": "printf 'not json' > scripts/control_source_values_baseline.json && python scripts/validate_control_source_values.py; echo $?  # expect 2, then restore with git checkout scripts/control_source_values_baseline.json"
-    },
-    {
-      "scenario": "The rounding tolerance for derived values is a flat absolute number, so it is simultaneously too loose for small rates and too tight for coarsely-rounded ones.",
-      "what_happens": "A stored 0.005 passes against a quoted rate of 1 per 1000 dwellings (0.001), five times too large; and tightening the same flat number rejects two real rows that store 2/3 as 0.67 and 1/3 as 0.33.",
-      "mitigated": true,
-      "how": "The tolerance is half of the STORED value's own last decimal place, AND capped by a 5 percent relative bound so a whole number cannot absorb a large absolute gap. Both bounds must hold.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k \"tolerance or rounding or absorb\" -q"
-    },
-    {
-      "scenario": "The written-numeral rule matches the common English word 'one' anywhere in the quote, without it counting anything at all.",
-      "what_happens": "A clause reading 'Objective one: provide a minimum 6m front setback' explains a stored 1 m setback that the same sentence contradicts.",
-      "mitigated": true,
-      "how": "The numeral must be followed within two words by a noun the control could be measured in, so 'one car parking space' matches and 'Objective one:' does not.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_numeral_that_is_not_counting_anything_does_not_explain_a_value -q"
-    },
-    {
-      "scenario": "Every number preceding a 'per' phrase is offered as a possible numerator, so a rate can be assembled from two clauses that have nothing to do with each other.",
-      "what_happens": "'Minimum setback 6m and provide 1 space per 4 dwellings' explains a stored 1.5 as 6 divided by 4, when the parking rate the sentence actually states is 0.25.",
-      "mitigated": true,
-      "how": "Only the number immediately before the rate phrase is offered as its numerator, and the lead-in is cut at any sentence or table-cell break.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_rate_is_not_assembled_from_two_unrelated_clauses -q"
-    },
-    {
-      "scenario": "A row already in the baseline is repaired so it becomes explained, but nobody removes it from the baseline file.",
-      "what_happens": "The row stays permanently accepted, so if its old unsupported value is ever restored the gate still exits 0 - the ratchet only ever loosens.",
-      "mitigated": true,
-      "how": "A baseline entry that is now explained FAILS with exit 1 naming the ids to remove, and --write-baseline refuses to add ids without an explicit --allow-growth so the remedy cannot double as the bypass.",
-      "repro": "python -c \"import json,io;p='scripts/control_source_values_baseline.json';d=json.load(io.open(p));d['accepted']['999999']='x';json.dump(d,io.open(p,'w'),indent=2)\" && python scripts/validate_control_source_values.py; echo $?  # expect 1, then git checkout the baseline"
-    },
-    {
-      "scenario": "A control already accepted in the baseline has its stored value edited from one unsupported number to a DIFFERENT unsupported number, or loses its quote entirely.",
-      "what_happens": "Keyed on id alone, the row stays accepted and the gate exits 0, so a brand new defect inherits an old row's exemption.",
-      "mitigated": true,
-      "how": "The baseline stores id -> a digest of the value, unit and source_text, so any change to the inputs the check reads makes the row new again. Demonstrated by rewriting the digest for control 631 and confirming it reappears as BLOCKING with exit 1.",
-      "repro": "python -c \"import json,io;p='scripts/control_source_values_baseline.json';d=json.load(io.open(p));d['accepted']['631']='0'*16;json.dump(d,io.open(p,'w'),indent=2)\" && python scripts/validate_control_source_values.py; echo $?  # expect 1, then git checkout the baseline"
-    },
-    {
-      "scenario": "A quantity in the quote carries an explicit unit that measures a different kind of thing from the row's own column.",
-      "what_happens": "'a minimum of 3 hours of sunlight' explains a stored 3 METRE setback, because the digits match and nothing checks what the text says the number measures.",
-      "mitigated": true,
-      "how": "A matched quantity whose trailing unit belongs to a different family (length, area, ratio, time, count) than the stored unit is skipped. It fires only when BOTH sides are known, so an unlabelled number is never rejected on a guess - inventing findings is the mirror of inventing passes.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k \"labelled_as_another_kind or unit_check_only_fires\" -q"
-    },
-    {
-      "scenario": "The unit-conversion rule accepts both multiplying and dividing by the conversion factor.",
-      "what_happens": "A quoted '0.9mm' explains a stored 900 m, because 0.9 divided by 0.001 is 900.",
-      "mitigated": true,
-      "how": "One direction only. Nothing in this domain is quoted in millimetres and stored in kilometres, so the reverse direction existed only to manufacture matches.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_it_converts_in_one_direction_only -q"
-    },
-    {
-      "scenario": "The stored-unit map covers only six literal strings, so the largest unit group in the table falls outside it and the unit guard never fires for those rows.",
-      "what_happens": "A row whose column says spaces/dwelling is treated as having an unknown unit, so a quote mentioning only '3 hours of sunlight' explains a stored parking rate of 3. That is over 450 rows.",
-      "mitigated": true,
-      "how": "The stored unit resolves by prefix as well as exact match: anything starting '%' is a ratio and anything containing 'spaces/' is a rate. rate and count stay compatible so '2 spaces per dwelling' still explains a spaces/dwelling value.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k parking_column -q"
-    },
-    {
-      "scenario": "The unit guard is applied to exact matching only, so every other rule can still explain a value from a quantity the text says measures something else.",
-      "what_happens": "written_numeral explains a 3 metre setback from 'three hours of sunlight'; percentage_phrasing explains a 0.35 metre setback from 'Minimum 35% landscaped area'; unit_conversion explains a 0.9 square metre value from a quoted 900mm.",
-      "mitigated": true,
-      "how": "written_numeral carries the same family check, percentage_phrasing is gated on a ratio column and unit_conversion on a length column; an unlabelled column is refused rather than assumed to be metres.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k \"percentage_does_not_explain_a_length or convert_into_an_area\" -q"
-    },
-    {
-      "scenario": "The lead-in to a rate is truncated at any full stop, which also splits a decimal numerator.",
-      "what_happens": "'0.5 spaces per 4 dwellings' leaves '5 spaces' as the lead, so the rule derives 5/4 and a stored 1.25 passes against a quote that states 0.125.",
-      "mitigated": true,
-      "how": "The break pattern ignores a full stop sitting between two digits, so 0.5 survives while genuine sentence and table-cell breaks still end the lead.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_decimal_numerator_survives_the_sentence_break_cut -q"
-    },
-    {
-      "scenario": "A stored WHOLE number receives half a unit of rounding slack, because half of its last decimal place is 0.5.",
-      "what_happens": "A quoted '24 spaces per 25 dwellings' derives 0.96 and explains a stored 1, so a rate somebody rounded by judgement reads as a derivation the text states.",
-      "mitigated": true,
-      "how": "A whole-number stored value must match its derivation exactly. Measured first: all five whole-number derived rows are exact products such as 3m x 3m equals 9.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_whole_number_must_match_its_derivation_exactly -q"
-    },
-    {
-      "scenario": "The rate and fraction rules carry no column gate, so a parking rate or a landscaping fraction in the quote can explain a value stored in metres when the wrong source_text was attached to a row.",
-      "what_happens": "'1 visitor space per 4 dwellings' explains a stored 0.25 metre setback, so a setback with no support at all reads as derived from its source.",
-      "mitigated": true,
-      "how": "Both rate rules and the fraction rule refuse a length, area or time column. Measured first: 0 of the 90 rate-explained rows sit on such a column.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k \"parking_rate_does_not_explain_a_setback or fraction_does_not_explain_a_setback\" -q"
-    },
-    {
-      "scenario": "A Postgres numeric column holds NaN, and every floating point comparison against NaN evaluates False.",
-      "what_happens": "The exact rule's own 'skip when not equal' test is False for NaN, so the row falls through the skip and is returned as an exact match rather than a finding.",
-      "mitigated": true,
-      "how": "explain_value rejects NaN and infinity before any rule runs, returning UNEXPLAINED so a non-finite stored value can never read as supported.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_nan_and_infinity_are_findings_not_matches -q"
-    },
-    {
-      "scenario": "A clause label separated from its number by a space is treated as a quantity, because the number-token guard only rejects a label glued on such as s4.3.6.",
-      "what_happens": "'Clause 4.3: minimum setback is 6m' explains a stored 4.3, so the citation vouches for the very value it is supposed to be evidence against.",
-      "mitigated": true,
-      "how": "Clause, Part, Table, Control, Figure, Objective and eleven more labels are excluded from quantity matching, alongside numbered-list ordinals.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k \"spaced_clause_label or every_citation_label\" -q"
-    },
-    {
-      "scenario": "The written-numeral unit guard inspects the text position immediately after the numeral, which is not where the noun is when a word sits between them.",
-      "what_happens": "'a minimum of three full hours of sunlight' puts 'full' where the unit scan looks, so no conflict is detected and a 3 metre setback is explained by a sunlight requirement.",
-      "mitigated": true,
-      "how": "The guard reads the noun the rule itself captured rather than rescanning the text, so an intervening adjective cannot hide the conflict.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_word_between_the_numeral_and_its_noun_does_not_defeat_the_guard -q"
-    },
-    {
-      "scenario": "The implied-unity rate rule assumes a numerator of one whenever no number precedes the rate, even when the quote states no quantity at all.",
-      "what_happens": "'Visitor parking must be considered for every 4 dwellings' yields 1/4 and explains a stored 0.25, inventing the numerator outright.",
-      "mitigated": true,
-      "how": "The implied one must be written as something: an indefinite article followed within four words by a counted noun, as in 'an additional car parking space for every 4 dwellings'.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_the_implied_one_must_actually_be_written_as_something -q"
-    },
-    {
-      "scenario": "A migration NULLs the value of a control that previously carried one, so the row moves into the no_value_stored state.",
-      "what_happens": "The row leaves the checked population entirely and CI passes, even though a served number has silently disappeared - the check cannot tell an intentional blank from a lost value.",
-      "mitigated": true,
-      "how": "The count of valueless rows is ratcheted in the baseline at 83 and a rise fails with exit 1, so blanks have to be confirmed deliberately.",
-      "repro": "Set valueless_rows to 80 in scripts/control_source_values_baseline.json, run python scripts/validate_control_source_values.py and confirm exit 1, then git checkout the baseline"
-    },
-    {
-      "scenario": "A placeholder value is written with a candid note ('Assumed standard NSW POS min - verify against DCP') and the row is left is_current, so it reaches production.",
-      "what_happens": "A guessed regulatory number is served as though it were extracted from a council document, and nothing objects - the value checker cannot flag it because the row's source_text does not have to contain the number for the row to be a guess.",
-      "mitigated": true,
-      "how": "fabricated_values now runs over all 1,069 rows inside the gate and exits 1 when any flagged row is is_current. Scoped to served rows because all 28 existing ones are retired, so the gate passes today rather than being born red and immediately baselined away.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k TestFabricationGate -q"
-    },
-    {
-      "scenario": "The fix for a fabricated row is to null its value, and the gate keeps flagging it anyway.",
-      "what_happens": "The gate punishes the correct response to its own finding, so the only way to make it green is to delete the honest note - which destroys the provenance the note was carrying.",
-      "mitigated": true,
-      "how": "fabricated_values flags only rows that BOTH carry a value AND match the marker, so a NULL value with an honest note is clean. That is the state assert_clean_row already steers writers toward, and a test pins it.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_null_value_with_an_honest_note_is_clean -q"
-    },
-    {
-      "scenario": "A control's source_text was cut off by the extractor at its 400-character limit, and the stored number happens to fall inside the surviving window.",
-      "what_happens": "exact_digit_match fires and the row reads as verified, when whether it passed or failed depended purely on which side of the cut the number landed. Cumberland 28 (front 6m, served) passed this way while cumberland 30 (rear 8m, CORRECT) was falsely flagged - both from the same severed quote.",
-      "mitigated": true,
-      "how": "explain_row tests for truncation BEFORE consulting any rule and returns TRUNCATED_EVIDENCE, a failing state. Detection needs length exactly 400 AND no terminal punctuation, so a genuinely complete quote of that length is not condemned. 23 rows move out of 'explained', lowering the reported figure from 97.5% to 95.7% - the honest direction.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k TestTruncatedEvidence -q"
-    },
-    {
-      "scenario": "The fabrication gate blocks a served row but prints whichever marker field is merely non-empty, rather than the field that actually matched.",
-      "what_happens": "A row whose admission sits in source_text is reported showing an unrelated condition, so whoever fixes it edits the wrong field and the row stays fabricated.",
-      "mitigated": true,
-      "how": "The failure message re-tests each marker field individually and names every one that fired, falling back to an explicit '(marker field not isolated)' rather than guessing.",
-      "repro": "python -m pytest tests/test_control_source_values.py -k TestFabricationGate -q"
-    },
-    {
-      "scenario": "A pattern-based re-type sweeps in rows whose quote mentions a secondary street only in passing.",
-      "what_happens": "blacktown 107 (\"Secondary DWELLING building setback from street 6m\" - a PRIMARY street setback for a granny flat) gets re-filed as a secondary-street control, along with a fence-height clause, a duplex streetscape clause, a tandem-dwelling clause and a garage setback. Six rows silently mislabelled by the fix meant to correct labelling.",
-      "mitigated": true,
-      "how": "Caught in dry run. The pattern now requires secondary to directly qualify street/road/frontage; truncated quotes are excluded outright on the same doctrine as TRUNCATED_EVIDENCE; and one row that still slipped through (fairfield 714, a garage setback) is excluded by id with the reason recorded in code rather than by widening the regex.",
-      "repro": "python scripts/refile_secondary_street_setbacks.py   # dry run: expect 20 rows, none of ids 107/693/702/704/714"
-    }
-  ],
-  "post_merge": {
-    "db_reset": "No database write of any kind - this PR is read-only. The adjudication in docs/qa/controls-adjudication-2026-08.md rules on all 25 UNEXPLAINED controls but changes no data. 8 EXTRACTION_ERROR rows await a write pass; 6 of those are already is_current=FALSE, and the two still served are camden 690 (front 3.5m, should be 4.5m per Table 4-2) and camden 692 (front 4.0m, taken from a driveway crossover width). Separately DQ-40 records 26 SERVED rows whose control_type contradicts their own quote - larger than the 25 and not addressed here.",
-    "secrets": "None. DATABASE_URL is already present in CI as a secret and is used by the existing schema-contract job this step joins.",
-    "other_repo": "None.",
-    "manual_verify": "Run python scripts/validate_control_source_values.py and confirm the new section 'self-declared assumptions (fabricated_values)' reports 28 flagged / 0 served, with exit 0. Then confirm it can fail by running the TestFabricationGate tests, which drive a served assumed row directly rather than mutating production data.",
-    "watch": "The baseline is shrink-only and content-addressed, and the valueless-row count is ratcheted alongside it. If a future PR raises either, the reason belongs in the PR body. Seven rounds of adversarial review each returned real findings while the count of DATA findings never moved off 25 - that is where the hardening stopped, because the remaining suggestions harden a check that no longer changes its answer. The known ceiling is that 571 of 839 exact matches are consistent-but-not-pinned, which needs clause reading rather than number matching. DURING this change the baseline shrank by one: control 690 became explained because its source_text was replaced with a fuller, verbatim-correct extract covering the lot-size tiers. That write was not mine (the repair script sets value_min/condition/review_reason only, and the table has no triggers), and the content-addressed baseline is what caught it. Truncated cohort is therefore 22, not 23."
-  }
+  "detector_after": "A=3 open (884/570/895, blockers stated), B=0, truncated=19"
+ }
 }

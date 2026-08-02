@@ -39,6 +39,7 @@ function getLgaSlugs(council: string): string[] {
 // Group control_type values into display categories
 const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
   front_setback: { label: 'Setbacks', order: 1 },
+  secondary_street_setback: { label: 'Setbacks', order: 1 },
   side_setback: { label: 'Setbacks', order: 1 },
   rear_setback: { label: 'Setbacks', order: 1 },
   separation_from_dwelling: { label: 'Setbacks', order: 1 },
@@ -65,6 +66,7 @@ const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
 // Human-readable control type labels
 const CONTROL_TYPE_LABELS: Record<string, string> = {
   front_setback: 'Front setback',
+  secondary_street_setback: 'Secondary street setback',
   side_setback: 'Side setback',
   rear_setback: 'Rear setback',
   separation_from_dwelling: 'Separation from dwelling',

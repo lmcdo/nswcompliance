@@ -14,7 +14,10 @@ A. Rows whose `control_type` contradicts their own `source_text` — the quote i
    about a different KIND of control than the label says. This is invisible to
    the value checker: the number can match its quote exactly while describing
    the wrong control. Found 31 (28 served) on 2026-08-03; 20 were re-filed to
-   `secondary_street_setback` (migration 053 + refile script), leaving 13.
+   `secondary_street_setback` (migration 054 + refile script), canada_bay 701
+   and the MISSING_PRIMARY set were repaired against source the same day
+   (scripts/repair_canada_bay_rear_setback.py,
+   scripts/repair_missing_primary_controls.py).
 
 B. Rows whose quote NARROWS to a special case (corner lot, secondary frontage,
    garage, upper storey...) while the row carries NO `condition` to scope it —
@@ -88,6 +91,28 @@ NARROWING = re.compile(
     r"upper\s+floor|second\s+storey|battle[- ]axe|fronting\s+open\s+space|"
     r"garage|laneway|rear\s+lane|zero\s+lot", re.I)
 
+# Narrowing wording that is INHERENT to a control type, not a special case: a
+# car_parking control legitimately speaks in garage terms (georges_river 229 and
+# campbelltown 256/257 all STATE the general rule as "one garage/space per
+# dwelling" — adjudicated correct 2026-08-03), and a secondary_street_setback is
+# by definition the corner-lot control (cumberland 34). Without the exemption
+# these correct rows re-appear on every run, which is how a review list gets
+# ignored. A row is still flagged if a NON-inherent narrowing term matches.
+NARROWING_INHERENT = {
+    "car_parking": re.compile(r"garage|carport", re.I),
+    "secondary_street_setback": re.compile(
+        r"corner\s+(?:lot|allotment|site)|secondary\s+(?:street|frontage|road)",
+        re.I),
+}
+
+
+def narrowing_hits(control_type: str, text: str) -> list[str]:
+    hits = [m.group(0) for m in NARROWING.finditer(text)]
+    inherent = NARROWING_INHERENT.get(control_type)
+    if inherent:
+        hits = [h for h in hits if not inherent.search(h)]
+    return hits
+
 # Verified against source PDFs, not defects. Kept here so re-runs do not
 # re-report settled rows; every entry carries its reason.
 KNOWN_FALSE_POSITIVES = {
@@ -97,6 +122,22 @@ KNOWN_FALSE_POSITIVES = {
          "same shape, side filing correct.",
     30: "cumberland: rear 8.0m verified CORRECT against Table 1 p.B8; flagged "
         "only because its 400-char quote severs the rear row (retired anyway).",
+    105: "blacktown: s3.2.5 'Side and rear boundary wall setbacks' — ground "
+         "storey walls min 1.5m from any side OR rear boundary (verified "
+         "against the local Part C PDF p.21, 2026-08-03); one clause governs "
+         "both boundaries, so the side filing is correct. Same settled shape "
+         "as 577/109.",
+    707: "burwood: adjudicated 2026-08-03 — P10 is the garage-WALL side "
+         "setback, now conditioned as such; the general side setback (Table "
+         "3) is stored separately (row 1176). The garage mention is the "
+         "control's own subject, not a foreign control.",
+    715: "fairfield: adjudicated 2026-08-03 — quote is 5B.2.3.1(a), 'minimum "
+         "side and rear setbacks of 900mm'; one clause governs both "
+         "boundaries (577/109/105 shape), side filing correct.",
+    714: "fairfield: adjudicated 2026-08-03 — RETIRED (is_current=FALSE) via "
+         "repair_missing_primary_controls.py: the 6m is a Chapter 5C narrow-"
+         "lot garage setback and Fairfield prescribes no numeric front "
+         "setback for secondary dwellings (5B.2.3.1). Settled by retirement.",
 }
 
 TRUNCATION_LIMIT = 400
@@ -140,7 +181,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
                 and not re.search(rule[1], text, re.I)):
             wrong_type.append(r)
             continue
-        if NARROWING.search(text) and not (r["condition"] or "").strip():
+        if (narrowing_hits(r["control_type"], text)
+                and not (r["condition"] or "").strip()):
             unconditioned.append(r)
 
     def missing_primary(r) -> bool:
