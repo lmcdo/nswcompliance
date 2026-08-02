@@ -315,6 +315,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
         todo_updates, done_updates = [], []
         for spec in UPDATES:
             control_id, guard, gparams = spec[0], spec[1], spec[2]
+            # {guard} pins the row's is_current / needs_review pre-state.
             cur.execute(
                 f"SELECT 1 FROM dcp_setback_controls WHERE id = %s AND {guard}",
                 (control_id, *gparams))
