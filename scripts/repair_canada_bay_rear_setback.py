@@ -186,6 +186,9 @@ def main() -> int:  # pragma: no cover - CLI entry point
         written = cur.rowcount
         conn.commit()
         print(f"  updated {written} row(s) (predicted 1)")
+        # Currency scope: the rollback joins the backup by id and restores every
+        # backed-up column (including is_current) — an is_current filter here
+        # would strand a row that was retired after the backup was taken.
         print(f"\nROLLBACK:\n  UPDATE dcp_setback_controls t SET "
               f"value_min = b.value_min, value_max = b.value_max, "
               f"condition = b.condition, source_text = b.source_text, "

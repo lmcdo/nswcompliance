@@ -308,6 +308,10 @@ def main() -> int:  # pragma: no cover - CLI entry point
     cur.execute("SET statement_timeout = '30000'")
     try:
         # Plan: which updates still match their guard, which inserts are new.
+        # Currency scope: every guard fragment in UPDATES pins the row's
+        # is_current (or needs_review) pre-state explicitly, so the planner has
+        # no blanket currency filter on purpose — it must also see rows already
+        # retired by a prior run to report them as done rather than replan them.
         todo_updates, done_updates = [], []
         for spec in UPDATES:
             control_id, guard, gparams = spec[0], spec[1], spec[2]
