@@ -159,8 +159,11 @@ def main() -> int:  # pragma: no cover - CLI entry point
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--baseline", default=None)
     ap.add_argument("--write-baseline", action="store_true",
-                    help="Rewrite the baseline from the current findings. Use once, "
-                         "deliberately — it raises the accepted ceiling.")
+                    help="Rewrite the baseline from the current findings. Refuses to "
+                         "ADD ids unless --allow-growth is also passed.")
+    ap.add_argument("--allow-growth", action="store_true",
+                    help="Permit --write-baseline to accept rows that were not "
+                         "previously in the baseline. Requires a reason in the PR.")
     ap.add_argument("--show-evidence", action="store_true",
                     help="Print the substring each rule matched, so an explanation "
                          "can be audited rather than trusted.")
@@ -238,12 +241,22 @@ def main() -> int:  # pragma: no cover - CLI entry point
 
     repo = Path(__file__).resolve().parents[1]
     ids = [row["id"] for row in failing]
-    if args.write_baseline:
-        write_baseline(repo, args.baseline, ids)
-        return 0
-
     baseline = load_baseline(repo, args.baseline)
     known = set(baseline.get("ids") or [])
+
+    if args.write_baseline:
+        # Without this, the one command offered to fix a shrink failure would also
+        # silently absorb any NEW finding present at the same moment — turning the
+        # remedy into the bypass.
+        growth = sorted(set(ids) - known)
+        if growth and not args.allow_growth:
+            print(f"ERROR: --write-baseline would ACCEPT {len(growth)} rows that are "
+                  f"not in the baseline: {growth}. That is not a ratchet, it is a "
+                  f"bypass. Fix the data or add the rule; pass --allow-growth only "
+                  f"with a reason recorded in the PR.", file=sys.stderr)
+            return 2
+        write_baseline(repo, args.baseline, ids)
+        return 0
     unknown = [row for row in failing if row["id"] not in known]
     # Only a CURRENT row can block. A superseded control is not served, so failing
     # CI on one would block a release over historical data — but it is still
@@ -285,8 +298,17 @@ def main() -> int:  # pragma: no cover - CLI entry point
         return 1
 
     if fixed:
-        print(f"\n  {len(fixed)} baseline rows are now explained. The baseline is "
-              f"shrink-only: re-run with --write-baseline to lower the ceiling.")
+        # This FAILS rather than advising. A baseline that is never made to shrink
+        # is not a ratchet: a repaired row stays permanently accepted, so if its
+        # old value is ever restored the gate stays green. Recording the shrink in
+        # the same change that earned it is the point.
+        print(f"\nFAILED: {len(fixed)} rows in the baseline are now explained and "
+              f"must be removed from it — {fixed}.\nThe baseline is shrink-only: a "
+              f"row left in it stays accepted forever, so restoring its old value "
+              f"later would not fail.\nRun: python scripts/"
+              f"validate_control_source_values.py --write-baseline",
+              file=sys.stderr)
+        return 1
 
     print("\nPASSED: every control value is either derivable from its own source "
           "text by a named rule, or already accepted in the baseline.")

@@ -92,6 +92,12 @@ class TestPercentagePhrasing:
         # arithmetic coincidence presented as provenance.
         assert rule_of(35, "A floor area of 3500 square metres") == UNEXPLAINED
 
+    def test_a_quoted_percentage_is_never_multiplied_up(self):
+        # The rule once accepted pct * 100 as well, so a quoted 35% explained a
+        # stored 3500. Nobody stores a percentage that way; that direction existed
+        # only to manufacture matches.
+        assert rule_of(3500, "Minimum 35% landscaped area") == UNEXPLAINED
+
 
 class TestUnitConversion:
     def test_millimetres_stored_as_metres(self):
@@ -144,6 +150,13 @@ class TestRatioOrRate:
 
     def test_a_number_across_a_sentence_break_is_not_a_numerator(self):
         assert rule_of(0.5, "A total of 2 storeys. Parking per 4 dwellings applies") \
+            == UNEXPLAINED
+
+    def test_a_rate_is_not_assembled_from_two_unrelated_clauses(self):
+        # Offering every number in the lead-in as a numerator let 6/4 explain a
+        # stored 1.5 here, when the rate the text states is 0.25. Only the number
+        # immediately before the 'per' can be its numerator.
+        assert rule_of(1.5, "Minimum setback 6m and provide 1 space per 4 dwellings") \
             == UNEXPLAINED
 
     def test_a_rate_five_times_too_large_is_not_within_tolerance(self):

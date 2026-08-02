@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a gate over the table that is the product's differentiator, and the direction of risk is asymmetric: a FALSE EXPLANATION removes a real defect from the finding list permanently and silently, which is strictly worse than a false finding a human dismisses in a minute. Two live false-pass channels were found and closed during the work (clause references, numbered-list ordinals), so the risk is demonstrated, not theoretical.",
-  "commit_hash": "c9b50fe4",
+  "commit_hash": "b85fa195",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
@@ -32,14 +32,14 @@
   "functions": [
     {
       "name": "explain_value",
-      "file_line": "services/extracted_data_integrity.py:528",
+      "file_line": "services/extracted_data_integrity.py:539",
       "input": "one stored numeric value, the row's own quoted source_text, and the row's unit string so that unit-sensitive rules can refuse to fire",
       "output": "the name of the first rule that derives the value from the text, paired with the exact substring that rule matched",
       "if_none": "returns UNEXPLAINED with no evidence when no rule fires, and NO_VALUE_STORED when the value is absent or non-numeric or the quote is empty - three outcomes kept distinct, because 'nothing to check' is not 'checked and fine'"
     },
     {
       "name": "explain_row",
-      "file_line": "services/extracted_data_integrity.py:552",
+      "file_line": "services/extracted_data_integrity.py:563",
       "input": "one control row plus the names of its value columns, its source-text column and its unit column",
       "output": "exactly one state for the row plus the per-field rule and evidence, so the printed counts always sum to the table size",
       "if_none": "a row whose values are all absent becomes NO_VALUE_STORED rather than passing; a row with one unexplained end of a range becomes UNEXPLAINED even though its other end was explained"
@@ -53,7 +53,7 @@
     },
     {
       "name": "_rate_candidates",
-      "file_line": "services/extracted_data_integrity.py:386",
+      "file_line": "services/extracted_data_integrity.py:389",
       "input": "the source text, scanned for every 'per N' / 'for every N' phrase and the numbers preceding each one",
       "output": "every plausible numerator and denominator pair with its evidence, nearest numerator first, stopping at a sentence or table-cell break",
       "if_none": "yields a None numerator when nothing numeric precedes the rate, which is the signal the implied-unity rule uses to decide whether assuming 1 is safe"
@@ -143,11 +143,25 @@
       "repro": "python -m pytest tests/test_control_source_values.py -k \"tolerance or rounding or absorb\" -q"
     },
     {
-      "scenario": "The written-numeral rule matches the common English word \"one\" anywhere in the quote, without it counting anything.",
-      "what_happens": "A clause reading \"Objective one: provide a minimum 6m front setback\" explains a stored 1 m setback that the same sentence contradicts.",
+      "scenario": "The written-numeral rule matches the common English word 'one' anywhere in the quote, without it counting anything.",
+      "what_happens": "A clause reading 'Objective one: provide a minimum 6m front setback' explains a stored 1 m setback that the same sentence contradicts.",
       "mitigated": true,
-      "how": "The numeral must be followed within two words by a noun the control could be measured in, so \"one car parking space\" matches and \"Objective one:\" does not.",
+      "how": "The numeral must be followed within two words by a noun the control could be measured in, so 'one car parking space' matches and 'Objective one:' does not.",
       "repro": "python -m pytest tests/test_control_source_values.py -k test_a_numeral_that_is_not_counting_anything_does_not_explain_a_value -q"
+    },
+    {
+      "scenario": "Every number preceding a 'per' phrase is offered as a possible numerator, so a rate can be assembled from two clauses that have nothing to do with each other.",
+      "what_happens": "'Minimum setback 6m and provide 1 space per 4 dwellings' explains a stored 1.5 as 6 divided by 4, when the parking rate the sentence actually states is 0.25.",
+      "mitigated": true,
+      "how": "Only the number immediately before the rate phrase is offered as its numerator, and the lead-in is cut at any sentence or table-cell break.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_rate_is_not_assembled_from_two_unrelated_clauses -q"
+    },
+    {
+      "scenario": "A row in the baseline is repaired so it becomes explained, but nobody removes it from the baseline file.",
+      "what_happens": "The row stays permanently accepted, so if its old unsupported value is ever restored the gate still exits 0 - the ratchet only ever loosens.",
+      "mitigated": true,
+      "how": "A baseline entry that is now explained FAILS with exit 1 and names the ids to remove, and --write-baseline refuses to add ids without an explicit --allow-growth so the remedy cannot double as the bypass.",
+      "repro": "python -c \"import json,io;p='scripts/control_source_values_baseline.json';d=json.load(io.open(p));d['ids']=sorted(d['ids']+[999999]);json.dump(d,io.open(p,'w'),indent=2)\" && python scripts/validate_control_source_values.py; echo $?  # expect 1, then git checkout the baseline"
     }
   ],
   "post_merge": {

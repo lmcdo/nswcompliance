@@ -189,6 +189,18 @@ Five further holes found in adversarial review and closed:
 - `written_numeral` matched "one" anywhere, so *"Objective one: provide a minimum
   6m front setback"* explained a stored 1 m setback. The numeral must now be
   counting something within two words.
+- the rate rule offered **every** number before a "per" as a numerator, so
+  *"Minimum setback 6m and provide 1 space per 4 dwellings"* could explain a
+  stored 1.5 as 6/4 — a rate assembled from two unrelated clauses. Only the
+  nearest number can be a numerator now.
+- `percentage_phrasing` also accepted `pct * 100`, so a quoted 35% explained a
+  stored 3500. Nobody stores a percentage that way; that direction existed only to
+  manufacture matches, and is gone.
+- **the baseline was never made to shrink.** A repaired row stayed accepted
+  forever, so restoring its old value later would not have failed. A baseline
+  entry that is now explained is a **failure** with the one command to fix it —
+  and `--write-baseline` refuses to ADD ids without `--allow-growth`, so the
+  remedy cannot double as the bypass.
 
 ### Why this check can fail
 Two ways: a NEW unexplained row fails against the baseline, and a value edited to

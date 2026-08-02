@@ -351,15 +351,18 @@ def _rule_exact_digit_match(value: float, source: str, unit) -> Optional[str]:
 
 
 def _rule_percentage_phrasing(value: float, source: str, unit) -> Optional[str]:
-    """A percentage written as '35%' stored as 35 or as 0.35 (or the reverse)."""
+    """A percentage written as '35%' stored as the fraction 0.35.
+
+    Only that direction. Multiplying a quoted percentage BY 100 was also accepted
+    once, which let a stored 3500 be "explained" by a quoted 35% — nobody stores a
+    percentage that way, and the rule existed only to manufacture matches.
+    """
     for token in _PERCENT_RE.findall(source):
         pct = _as_float(token)
         if pct is None:
             continue
         if _close(value, pct / 100.0):
             return f"'{token}%' stored as a fraction"
-        if _close(value, pct * 100.0):
-            return f"'{token}%' stored scaled by 100"
     return None
 
 
@@ -408,10 +411,15 @@ def _rate_candidates(source: str):
         if not numerators:
             yield None, b, match.group(0).strip(), lead
             continue
+        # ONLY the nearest numerator. Offering every number in the lead meant a
+        # quote reading "Minimum setback 6m and provide 1 space per 4 dwellings"
+        # could explain a stored 1.5 as 6/4 — a rate assembled from two unrelated
+        # clauses. The number attached to a rate is the one immediately before it.
         for token in reversed(numerators):
             a = _as_float(token)
             if a is not None:
                 yield a, b, f"{token} ... {match.group(0).strip()}", lead
+                break
 
 
 def _rule_ratio_or_rate(value: float, source: str, unit) -> Optional[str]:
@@ -473,7 +481,10 @@ def _rule_area_from_dimensions(value: float, source: str, unit) -> Optional[str]
     explained by a 3 m x 3 m parking bay — a number that happens to match an area
     the row is not measuring.
     """
-    if unit not in (None, "", "m2", "m²", "sqm"):
+    # An explicit area unit is REQUIRED — a NULL unit is not good enough. 49 rows
+    # carry no unit, and reading one of those as square metres would let a 3m x 3m
+    # bay explain a value that is actually a count. All 5 real matches carry 'm2'.
+    if unit not in ("m2", "m²", "sqm"):
         return None
     for first, second in _DIMENSIONS_RE.findall(source):
         a, b = _as_float(first), _as_float(second)
