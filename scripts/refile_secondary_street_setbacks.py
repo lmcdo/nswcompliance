@@ -163,19 +163,24 @@ def main() -> int:  # pragma: no cover - CLI entry point
                       AND is_current = %s""",
                 (REASON, control_id, quote, vmin, cur_flag))
             written += cur.rowcount
+        # All-or-nothing: check the count BEFORE committing. Committing first
+        # and then exiting 2 would leave a partial re-file applied while
+        # claiming failure (Sol finding, 2026-08-03).
+        if written != len(plan):
+            conn.rollback()
+            print(f"\nGUARD MISS: {len(plan) - written} of {len(plan)} rows "
+                  f"changed after planning. EVERYTHING rolled back — nothing "
+                  f"re-typed. Re-run to rebuild the plan. Exiting 2.",
+                  file=sys.stderr)
+            return 2
         conn.commit()
-        print(f"  re-typed {written} rows ({len(plan) - written} skipped by the guard)")
+        print(f"  re-typed {written} rows (all planned rows matched their guard)")
         # Rollback restores the label on every backed-up row regardless of
         # is_current — a mislabel is a mislabel on retired rows too, and the
         # backup join on id makes any currency filter here redundant.
         print(f"\nROLLBACK:\n  UPDATE dcp_setback_controls t "
               f"SET control_type = b.control_type, review_reason = b.review_reason "
               f"FROM {args.backup_table} b WHERE t.id = b.id;")
-        if written != len(plan):
-            print(f"\nPARTIAL APPLY: {len(plan) - written} rows skipped. Re-run to "
-                  f"rebuild the plan. Exiting 2 so this is not read as clean.",
-                  file=sys.stderr)
-            return 2
         return 0
     except Exception as exc:  # noqa: BLE001
         conn.rollback()

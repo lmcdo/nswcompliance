@@ -93,7 +93,7 @@ def build_plan(cur) -> tuple[list, list]:
     exit 0 while the invalid setback stayed served (Sol finding, 2026-08-03).
     """
     cur.execute(
-        """SELECT id, value_min, is_current, condition
+        """SELECT id, value_min, is_current, condition, source_text
            FROM dcp_setback_controls WHERE id = ANY(%s) ORDER BY id""",
         ([row[0] for row in PLAN],),
     )
@@ -109,7 +109,11 @@ def build_plan(cur) -> tuple[list, list]:
         actual_val = None if row[1] is None else f"{float(row[1]):g}"
         expected = None if expect_val is None else f"{float(expect_val):g}"
         if actual_val == expected and row[2] == expect_cur:
-            todo.append(spec)
+            # Carry the evidentiary pre-state read now, so the UPDATE can pin
+            # source_text/condition too — value+currency alone would let the
+            # repair overwrite a row whose evidence changed after planning
+            # (Sol finding, 2026-08-03).
+            todo.append((spec, row[4], row[3]))
             continue
         # Intended post-state: corrected value (or unchanged value for a pure
         # retirement), target currency, and the new condition where one is set.
@@ -154,7 +158,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
         print(f"  rows in plan            : {len(PLAN)}")
         print(f"  still to write          : {len(todo)}")
         print(f"  already in target state : {len(done)}  {done if done else ''}")
-        for spec in todo:
+        for spec, _pre_text, _pre_cond in todo:
             control_id, old_val, _, new_val, new_cur = spec[:5]
             change = (f"value_min {old_val} -> {new_val}" if new_val
                       else f"is_current True -> {new_cur}")
@@ -167,7 +171,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
             print("\nNothing to write.")
             return 0
 
-        ids = [spec[0] for spec in todo]
+        ids = [spec[0] for spec, _pre_text, _pre_cond in todo]
         cur.execute(
             f"CREATE TABLE IF NOT EXISTS {args.backup_table} AS "
             f"SELECT id, value_min, value_max, is_current, condition, review_reason,"
@@ -187,17 +191,24 @@ def main() -> int:  # pragma: no cover - CLI entry point
         print(f"  backed up {len(ids)} rows to {args.backup_table}")
 
         written = 0
-        for spec in todo:
+        for spec, pre_text, pre_cond in todo:
             (control_id, old_val, old_cur, new_val,
              new_cur, new_cond, reason) = spec
+            # Guard on the evidentiary pre-state read at plan time too —
+            # value+currency alone would overwrite a row whose source_text or
+            # condition changed concurrently (Sol finding, 2026-08-03).
+            # IS NOT DISTINCT FROM for the nullable condition.
             if new_val is not None:
                 cur.execute(
                     """UPDATE dcp_setback_controls
                           SET value_min = %s, condition = %s, review_reason = %s,
                               reviewed_at = NOW(), last_verified_at = CURRENT_DATE,
                               needs_review = FALSE
-                        WHERE id = %s AND value_min = %s AND is_current = %s""",
-                    (new_val, new_cond, reason, control_id, old_val, old_cur))
+                        WHERE id = %s AND value_min = %s AND is_current = %s
+                          AND source_text = %s
+                          AND condition IS NOT DISTINCT FROM %s""",
+                    (new_val, new_cond, reason, control_id, old_val, old_cur,
+                     pre_text, pre_cond))
             else:
                 # Retirement only. last_verified_at is deliberately NOT set: a
                 # retired row is not a verified one.
@@ -205,8 +216,11 @@ def main() -> int:  # pragma: no cover - CLI entry point
                     """UPDATE dcp_setback_controls
                           SET is_current = %s, review_reason = %s, reviewed_at = NOW(),
                               needs_review = FALSE
-                        WHERE id = %s AND value_min = %s AND is_current = %s""",
-                    (new_cur, reason, control_id, old_val, old_cur))
+                        WHERE id = %s AND value_min = %s AND is_current = %s
+                          AND source_text = %s
+                          AND condition IS NOT DISTINCT FROM %s""",
+                    (new_cur, reason, control_id, old_val, old_cur,
+                     pre_text, pre_cond))
             written += cur.rowcount
         conn.commit()
         print(f"  updated {written} rows ({len(todo) - written} skipped by the guard)")

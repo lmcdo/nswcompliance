@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-03T00:00:00+10:00",
-  "target": "repair canada_bay 701 rear setback (1.5->6.0m, C9 quote in same write); then DQ-40 detector truncation fix + vocab file sync + MISSING_PRIMARY inserts",
-  "findings_summary": "701 pre-state verified live (side-table quote, 400-char truncated, condition NULL); C9 p.E-15 = 6.0m read from source PDF; single-row PK update, no joins, no loop; guard uses IS NULL for nullable condition"
+  "timestamp": "2026-08-03T12:00:00+10:00",
+  "target": "Sol-review hardening of the four controls repair/refile scripts: exact post-state guards (source_text/condition params), section_ref-keyed insert identity, camden evidentiary guard, refile pre-commit rowcount check",
+  "findings_summary": "same investigation as the close-out pass — all rows/columns already recon'd live this session; no new tables, no new query shapes beyond adding equality predicates on already-read columns"
 }

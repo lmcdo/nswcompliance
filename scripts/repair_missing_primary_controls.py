@@ -113,10 +113,25 @@ RYDE_681_QUOTE = (
     "the minimum rear setback requirement, are to have a minimum rear setback "
     "of 4 m."
 )
+RYDE_681_COND = (
+    "Allotments wider than they are long which cannot achieve the general "
+    "rear setback of 25%-of-site-length or 8m (s2.9.3(b)); the general floor "
+    "is stored separately."
+)
 CAMDEN_691_QUOTE = "Camden DCP 2019 Part 4 Table 4-2: Side setback — 0.9m"
+BURWOOD_707_COND = (
+    "Garage walls attached to a single dwelling (P10); the general side "
+    "setback (900mm single storey / 1.5m second-storey component, Ch 4 s4.5 "
+    "Table 3) is stored separately."
+)
 FF_715_QUOTE = (
     "a) Secondary dwellings (granny flats) require minimum side and rear "
     "setbacks of 900mm."
+)
+FF_715_COND = (
+    "Clause covers side and rear (both 900mm). Separation to principal "
+    "dwelling 1.8m (5B.2.3.1(b)) and corner secondary-street setback 1.5m "
+    "(5B.2.3.1(c)) are NOT stored."
 )
 
 UPDATES = [
@@ -135,7 +150,8 @@ UPDATES = [
         f"write (rule 2b).",
         "ryde 680: front -> rear, full s2.9.3(a) quote",
         "control_type = 'rear_setback' AND value_min = 8.0 AND is_current "
-        "AND condition LIKE 'General rear setback%%'",
+        "AND source_text = %s AND condition = %s",
+        (RYDE_680_QUOTE, RYDE_680_COND),
         True,
     ),
     (
@@ -143,18 +159,17 @@ UPDATES = [
         "control_type = 'rear_setback' AND value_min = 4.0 AND is_current "
         "AND length(source_text) = 400 AND condition IS NULL",
         (),
-        "source_text = %s, condition = 'Allotments wider than they are long "
-        "which cannot achieve the general rear setback of 25%%-of-site-length "
-        "or 8m (s2.9.3(b)); the general floor is stored separately.', "
+        "source_text = %s, condition = %s, "
         "section_ref = 'ryde-part3.3-dwelling-houses.pdf#2.9.3(b)', pdf_page = 28",
-        (RYDE_681_QUOTE,),
+        (RYDE_681_QUOTE, RYDE_681_COND),
         f"{STAMP} quote narrowed to the exact clause the 4.0 comes from — "
         f"s2.9.3(b), the wider-than-long exception (was the truncated "
         f"a+b+c block) — and conditioned so the exception stops reading as "
         f"the rule.",
         "ryde 681: s2.9.3(b) quote + condition",
         "control_type = 'rear_setback' AND value_min = 4.0 AND is_current "
-        "AND condition LIKE 'Allotments wider%%'",
+        "AND source_text = %s AND condition = %s",
+        (RYDE_681_QUOTE, RYDE_681_COND),
         True,
     ),
     (
@@ -172,6 +187,7 @@ UPDATES = [
         "ryde 682: needs_review (preference served as control)",
         "control_type = 'side_setback' AND value_min = 4.0 AND is_current "
         "AND needs_review = TRUE",
+        (),
         False,
     ),
     (
@@ -188,7 +204,8 @@ UPDATES = [
         f"Quote replaced in the same write (rule 2b).",
         "camden 691: Table 4-2 side-setback quote",
         "control_type = 'side_setback' AND value_min = 0.9 AND is_current "
-        "AND source_text LIKE 'Camden DCP 2019 Part 4 Table 4-2%%'",
+        "AND source_text = %s",
+        (CAMDEN_691_QUOTE,),
         True,
     ),
     (
@@ -196,16 +213,15 @@ UPDATES = [
         "control_type = 'side_setback' AND value_min = 0.9 AND is_current "
         "AND condition IS NULL AND source_text LIKE 'P10%%'",
         (),
-        "condition = 'Garage walls attached to a single dwelling (P10); the "
-        "general side setback (900mm single storey / 1.5m second-storey "
-        "component, Ch 4 s4.5 Table 3) is stored separately.'",
-        (),
+        "condition = %s",
+        (BURWOOD_707_COND,),
         f"{STAMP} conditioned as the garage-wall control its own quote "
         f"describes; the general side setback row is inserted separately "
         f"from Table 3.",
         "burwood 707: garage-wall condition",
         "control_type = 'side_setback' AND value_min = 0.9 AND is_current "
-        "AND condition LIKE 'Garage walls%%'",
+        "AND condition = %s",
+        (BURWOOD_707_COND,),
         True,
     ),
     (
@@ -224,8 +240,8 @@ UPDATES = [
         f"(camden-692 model).",
         "fairfield 714: retire (no front setback exists for secondary dwellings)",
         "control_type = 'front_setback' AND value_min = 6.0 "
-        "AND is_current = FALSE "
-        "AND review_reason LIKE '[adjudicated 2026-08-03] retired%%'",
+        "AND is_current = FALSE",
+        (),
         False,
     ),
     (
@@ -235,17 +251,16 @@ UPDATES = [
         (),
         "source_text = %s, section_ref = "
         "'fairfield-ch5-dwelling-houses.pdf#5B.2.3.1(a)', pdf_page = 32, "
-        "condition = 'Clause covers side and rear (both 900mm). Separation to "
-        "principal dwelling 1.8m (5B.2.3.1(b)) and corner secondary-street "
-        "setback 1.5m (5B.2.3.1(c)) are NOT stored.'",
-        (FF_715_QUOTE,),
+        "condition = %s",
+        (FF_715_QUOTE, FF_715_COND),
         f"{STAMP} quote was 5C.2.3.2(a) — Chapter 5C 'Dwelling Houses on "
         f"Narrow Lots', a different chapter — while the value matches the "
         f"actual secondary-dwelling control 5B.2.3.1(a) (printed p.176), now "
         f"quoted directly. Quote replaced in the same write (rule 2b).",
         "fairfield 715: 5B.2.3.1(a) quote + condition",
         "control_type = 'side_setback' AND value_min = 0.9 AND is_current "
-        "AND source_text LIKE 'a) Secondary dwellings%%'",
+        "AND source_text = %s AND condition = %s",
+        (FF_715_QUOTE, FF_715_COND),
         True,
     ),
     (
@@ -263,6 +278,7 @@ UPDATES = [
         "fairfield 716: needs_review (5C value under secondary_dwelling)",
         "control_type = 'rear_setback' AND value_min = 6.0 AND is_current "
         "AND needs_review = TRUE",
+        (),
         False,
     ),
 ]
@@ -347,7 +363,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
         todo_updates, done_updates = [], []
         for spec in UPDATES:
             control_id, guard, gparams = spec[0], spec[1], spec[2]
-            post_guard = spec[7]
+            reason, post_guard, post_params = spec[5], spec[7], spec[8]
             # {guard} pins the row's is_current / needs_review pre-state.
             cur.execute(
                 f"SELECT 1 FROM dcp_setback_controls WHERE id = %s AND {guard}",
@@ -356,14 +372,16 @@ def main() -> int:  # pragma: no cover - CLI entry point
                 todo_updates.append(spec)
                 continue
             # Not in the pre-state: it must PROVE it reached the intended
-            # post-state to count as done. Anything else is a divergence, and
-            # continuing would commit the rest of the adjudication around a
-            # row in an unknown state (Sol finding, 2026-08-03).
+            # post-state to count as done — EXACTLY, including the evidentiary
+            # fields this entry writes (source_text/condition as params) plus
+            # the entry's own review_reason. A prefix match would bless a row
+            # someone half-imitated (Sol findings, 2026-08-03, both rounds).
             # {post_guard} pins the intended is_current / needs_review
             # post-state per row.
             cur.execute(
                 f"SELECT 1 FROM dcp_setback_controls WHERE id = %s "
-                f"AND {post_guard}", (control_id,))
+                f"AND {post_guard} AND review_reason = %s",
+                (control_id, *post_params, reason))
             if cur.fetchone():
                 done_updates.append(spec)
                 continue
@@ -375,11 +393,18 @@ def main() -> int:  # pragma: no cover - CLI entry point
 
         todo_inserts, done_inserts = [], []
         for r in INSERTS:
+            # Identity is (lga, dev_type, control_type, section_ref) — the
+            # section_ref is the stable clause pointer this script sets, not
+            # the mutable free-text condition, so an editor rewording the
+            # condition cannot make a rerun double-insert the same control
+            # (Sol finding, 2026-08-03). Other rows of the same (lga, dev,
+            # type) with different section_refs coexist by design (e.g.
+            # burwood 707 garage-wall beside 1176 Table 3).
             cur.execute(
                 """SELECT id, is_current FROM dcp_setback_controls
                     WHERE lga = %s AND dev_type = %s AND control_type = %s
-                      AND COALESCE(condition, '') = COALESCE(%s, '')""",
-                (r["lga"], r["dev_type"], r["control_type"], r["condition"]))
+                      AND section_ref = %s""",
+                (r["lga"], r["dev_type"], r["control_type"], r["section_ref"]))
             matches = cur.fetchall()
             if any(m[1] for m in matches):
                 # A SERVED twin exists — the control is genuinely present.
@@ -443,7 +468,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
 
         written = 0
         for (control_id, guard, gparams, set_frag, set_params, reason, label,
-             _post_guard, verify_stamp) in todo_updates:
+             _post_guard, _post_params, verify_stamp) in todo_updates:
             # last_verified_at only where the stored content was verified
             # against source THIS pass — a needs_review flag or a retirement
             # is not a verification (camden-692 doctrine).

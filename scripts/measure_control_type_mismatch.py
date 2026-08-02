@@ -186,6 +186,14 @@ def main() -> int:  # pragma: no cover - CLI entry point
             unconditioned.append(r)
 
     def missing_primary(r) -> bool:
+        # KNOWN LIMIT (Sol, 2026-08-03, accepted): siblings are keyed by
+        # (lga, control_type, dev_type) only — a served conditioned EXCEPTION
+        # counts as the primary, and instrument/version is not distinguished.
+        # Condition-presence cannot be the signal: verified general rows carry
+        # scoping conditions too (camden 690, burwood 1176). Distinguishing
+        # general from exception needs the structured condition discriminators
+        # designed in ~/.claude/plans/ce-dcp-condition-structuring-2026-08.md
+        # (a different lane). This is an advisory review list, exit 0.
         siblings = by_key[(r["lga"], r["control_type"], r["dev_type"])]
         return not any(s["is_current"] and s["id"] != r["id"] for s in siblings)
 

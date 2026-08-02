@@ -233,3 +233,29 @@ not verified correct (the camden-692 doctrine: a retired row is not a verified
 one; neither is a flagged one). Reverted from the backup table (3 rows,
 predicted 3) and the script now stamps only rows whose stored content was
 verified against source this pass.
+
+**Round 2** (Sol re-reviewed the fixes): 5 findings — 4 real, fixed; 1
+overridden with a written reason.
+
+- REAL: post-guards matched prefixes (`LIKE 'General rear setback%'`), so a
+  half-imitated row could pass — now exact parameterised equality on
+  source_text/condition PLUS the entry's own review_reason.
+- REAL: the camden UPDATE guard omitted evidentiary fields — now pins
+  source_text and condition (IS NOT DISTINCT FROM) read at plan time.
+- REAL: insert identity keyed on the mutable free-text condition — now keyed
+  on the stable (lga, dev_type, control_type, section_ref); rows of the same
+  type with different section_refs coexist by design (707 beside 1176).
+- REAL: the refile script committed before its rowcount check, so a guard miss
+  left a partial re-file applied under an error exit — the count check now
+  precedes commit and any miss rolls back everything.
+- OVERRIDDEN: "missing_primary counts a conditioned exception as the primary
+  and ignores instrument/version." The detector is advisory-only (exit 0,
+  never served output), and condition-presence cannot be the signal — verified
+  GENERAL rows legitimately carry scoping conditions (camden 690, burwood
+  1176). Distinguishing general from exception needs the structured condition
+  discriminators owned by `ce-dcp-condition-structuring-2026-08` (a different
+  lane). Limitation documented in the function itself.
+
+All dry-runs re-verified after round 2: missing-primary 8/8 proven against the
+EXACT post-state + 2/2 present via section_ref identity; cb701 exact match;
+camden 2/2 in target state; refile plans 0.
