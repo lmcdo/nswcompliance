@@ -33,15 +33,20 @@ real mismatch survives inside it.
 
 So this separates derivation from mismatch. Every row lands in EXACTLY ONE state:
 
-    no_value_stored       the row records a rule with no number (nothing to check;
-                          NOT a pass — it is counted separately and reported)
-    exact_digit_match     the number is literally in the quote
-    percentage_phrasing   '35%' stored as 35 or 0.35
-    unit_conversion       '900mm' stored as 0.9 m
-    ratio_or_rate         '1 space per 4 dwellings' stored as 0.25
-    area_from_dimensions  '3m x 3m' stored as 9
-    written_numeral       'three hours' stored as 3
-    UNEXPLAINED           <- the finding
+    exact_digit_match        the number is literally in the quote
+    percentage_phrasing      '35%' stored as the fraction 0.35
+    unit_conversion          '900mm' stored as 0.9 m
+    fraction_literal         'min 1/3' stored as 0.333
+    ratio_or_rate            '1 space per 4 dwellings' stored as 0.25
+    implied_single_unit_rate 'a space for every 4 dwellings' stored as 0.25
+    area_from_dimensions     '3m x 3m' stored as 9
+    written_numeral          'three hours' stored as 3
+    explicit_nil_requirement 'no additional parking is required' stored as 0
+    built_to_boundary_zero   'may be built to the rear boundary' stored as 0
+    UNEXPLAINED              <- the finding
+    MISSING_SOURCE_TEXT      a number with no quote at all <- also the finding
+    no_value_stored          a control with no number (nothing to check; NOT a
+                             pass — counted and reported separately)
 
 Every explanation carries the substring it matched, printed with `--show-evidence`.
 A rule that could not show its evidence would be a shrug with a name on it.
@@ -50,20 +55,37 @@ WHY IT CAN FAIL
 ---------------
 The project's standing lesson is that a check which cannot go red is not a
 verification (DQ-30's "0% drift" compared the data to the code that produced it).
-This one can go red two ways: a NEW unexplained row fails the baseline, and a row
-whose stored number is edited to something its quote does not support becomes
-unexplained on the next run. The baseline is shrink-only — fixing rows lowers the
-ceiling and it never rises without an explicit --write-baseline.
+This one goes red four ways:
+
+  * a control that no named rule explains is not in the baseline;
+  * a control that IS in the baseline has since had its value, unit or quote
+    changed — the baseline stores a digest of those, not just the id, so swapping
+    one unsupported number for a different one does not stay accepted;
+  * a baselined row has become explained and was not removed from the baseline —
+    leaving it there would keep it accepted forever, so restoring its old value
+    later would not fail;
+  * a number is stored with no source_text at all.
+
+Only `is_current` rows block; superseded ones are reported, never dropped.
+`--write-baseline` refuses to ADD rows without `--allow-growth`, so the command
+offered to fix a shrink failure cannot double as the bypass.
 
 WHAT IT DOES NOT PROVE
 ----------------------
 That the number is CORRECT. It proves the number is consistent with the sentence
 stored beside it. If the quote itself was mis-transcribed, both agree and this
 passes — that failure mode belongs to the extraction gates, not here.
+
+And consistency is weaker than it sounds where a quote holds several numbers:
+571 of the 839 exact matches (68.1%) sit in a quote carrying more than one
+distinct quantity, so the stored value appears in its source but is not pinned by
+it. That split is printed. Closing it means reading clauses rather than matching
+numbers, which is a different tool.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -85,6 +107,26 @@ DEFAULT_BASELINE = "scripts/control_source_values_baseline.json"
 STATES = (*RULE_NAMES, UNEXPLAINED, MISSING_SOURCE_TEXT, NO_VALUE_STORED)
 
 
+def fingerprint(row: dict) -> str:
+    """What was accepted, not merely which row was accepted.
+
+    prior-art-checked: reuse not viable because no existing baseline in this repo
+    is content-addressed. scripts/schema_contract_baseline.json keys on
+    (file, ref) string pairs and scripts/check_test_baselines.py compares a plain
+    integer floor; neither carries a digest of the accepted content, which is the
+    whole point here.
+
+    Keying the baseline on `id` alone meant a baselined control could change its
+    stored value from one unsupported number to a DIFFERENT unsupported number —
+    or lose its quote entirely — and stay accepted, because the id had not moved.
+    The digest covers exactly the inputs the check reads, so any change to them
+    makes the row new again.
+    """
+    payload = "|".join(str(row.get(f)) for f in
+                       (*VALUE_FIELDS, "unit", "source_text"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
 def load_baseline(repo: Path, path: str | None) -> dict:
     """The accepted unexplained rows. A missing file is an empty baseline.
 
@@ -94,7 +136,7 @@ def load_baseline(repo: Path, path: str | None) -> dict:
     """
     p = repo / (path or DEFAULT_BASELINE)
     if not p.exists():
-        return {"ids": []}
+        return {"accepted": {}}
     try:
         return json.loads(p.read_text(encoding="utf-8"))
     except Exception as exc:  # noqa: BLE001
@@ -103,20 +145,22 @@ def load_baseline(repo: Path, path: str | None) -> dict:
         raise SystemExit(2)
 
 
-def write_baseline(repo: Path, path: str | None, ids: list[int]) -> None:
+def write_baseline(repo: Path, path: str | None, accepted: dict) -> None:
     p = repo / (path or DEFAULT_BASELINE)
     p.write_text(
         json.dumps({
-            "note": "Control ids whose stored value no named rule derives from "
-                    "their own source_text. Shrink-only: fixing a row lowers this "
-                    "ceiling. Adding to it requires an explicit --write-baseline "
-                    "and should carry a reason in the PR.",
-            "count": len(ids),
-            "ids": sorted(ids),
+            "note": "Controls whose stored value no named rule derives from their "
+                    "own source_text. Keyed id -> digest of the value, unit and "
+                    "quote, so editing an accepted row to a DIFFERENT unsupported "
+                    "value makes it a new finding rather than leaving it accepted. "
+                    "Shrink-only: a row that becomes explained must be removed, and "
+                    "--write-baseline refuses to add ids without --allow-growth.",
+            "count": len(accepted),
+            "accepted": {str(k): v for k, v in sorted(accepted.items())},
         }, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"Baseline written to {p} ({len(ids)} unexplained rows).")
+    print(f"Baseline written to {p} ({len(accepted)} unexplained rows).")
 
 
 def classify_rows(rows: list[dict]) -> tuple[Counter, dict, list[dict]]:
@@ -240,24 +284,28 @@ def main() -> int:  # pragma: no cover - CLI entry point
             print(f"      quote  : {text!r}")
 
     repo = Path(__file__).resolve().parents[1]
-    ids = [row["id"] for row in failing]
+    current = {row["id"]: fingerprint(row) for row in failing}
     baseline = load_baseline(repo, args.baseline)
-    known = set(baseline.get("ids") or [])
+    known = {int(k): v for k, v in (baseline.get("accepted") or {}).items()}
 
     if args.write_baseline:
         # Without this, the one command offered to fix a shrink failure would also
         # silently absorb any NEW finding present at the same moment — turning the
         # remedy into the bypass.
-        growth = sorted(set(ids) - known)
+        growth = sorted(cid for cid, digest in current.items()
+                        if known.get(cid) != digest)
         if growth and not args.allow_growth:
             print(f"ERROR: --write-baseline would ACCEPT {len(growth)} rows that are "
-                  f"not in the baseline: {growth}. That is not a ratchet, it is a "
+                  f"not in the baseline, or whose value or quote has changed since "
+                  f"they were accepted: {growth}. That is not a ratchet, it is a "
                   f"bypass. Fix the data or add the rule; pass --allow-growth only "
                   f"with a reason recorded in the PR.", file=sys.stderr)
             return 2
-        write_baseline(repo, args.baseline, ids)
+        write_baseline(repo, args.baseline, current)
         return 0
-    unknown = [row for row in failing if row["id"] not in known]
+    # A row is unknown when its id is absent from the baseline OR its value, unit
+    # or quote has changed since it was accepted there.
+    unknown = [row for row in failing if known.get(row["id"]) != current[row["id"]]]
     # Only a CURRENT row can block. A superseded control is not served, so failing
     # CI on one would block a release over historical data — but it is still
     # reported, because silently dropping it would shrink the check's coverage
@@ -267,11 +315,11 @@ def main() -> int:  # pragma: no cover - CLI entry point
     # closed — anything that is not explicitly superseded can block.
     new = [row for row in unknown if row["is_current"] is not False]
     new_superseded = [row for row in unknown if row["is_current"] is False]
-    fixed = sorted(known - set(ids))
+    fixed = sorted(set(known) - set(current))
 
     print(f"\n=== baseline ===")
     print(f"  accepted rows in the baseline : {len(known)}")
-    print(f"  failing now                   : {len(ids)}  "
+    print(f"  failing now                   : {len(current)}  "
           f"({sum(1 for r in failing if r['is_current'])} current, "
           f"{sum(1 for r in failing if not r['is_current'])} superseded)")
     print(f"  NEW and current — BLOCKING    : {len(new)}")

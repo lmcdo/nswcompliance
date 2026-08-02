@@ -201,6 +201,17 @@ Five further holes found in adversarial review and closed:
   entry that is now explained is a **failure** with the one command to fix it —
   and `--write-baseline` refuses to ADD ids without `--allow-growth`, so the
   remedy cannot double as the bypass.
+- **the baseline was keyed on `id` alone**, so a baselined control could have its
+  value swapped for a *different* unsupported number, or lose its quote entirely,
+  and stay accepted. It now stores `id -> digest(value_min, value_max, unit,
+  source_text)`, so any change to what the check reads makes the row new again.
+- `unit_conversion` accepted both directions, so a quoted "0.9mm" explained a
+  stored 900 m. One direction only now.
+- a matched quantity whose text says it measures something else explained a value
+  anyway — *"a minimum of 3 hours of sunlight"* explained a **3 metre** setback.
+  A trailing unit in a different family (length / area / ratio / time / count) now
+  disqualifies the match, and only when BOTH sides are known, so an unlabelled
+  number is never rejected on a guess.
 
 ### Why this check can fail
 Two ways: a NEW unexplained row fails against the baseline, and a value edited to

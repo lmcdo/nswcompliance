@@ -336,6 +336,51 @@ def _close(stored: float, derived: float) -> bool:
     return gap <= absolute and gap <= max(_EXACT_TOL, _DERIVED_REL_TOL * abs(derived))
 
 
+# What a number is measured in, when the text says so right after it. A quantity
+# carrying an explicit unit cannot explain a value stored in an incompatible one:
+# "a minimum of 3 hours of sunlight" must not explain a 3 metre setback.
+_TRAILING_UNIT_RE = re.compile(
+    r"\s*(mm|cm|m2|sqm|metres?|meters?|m|%|per\s?cent|hours?|storeys?|"
+    r"stories|spaces?|dwellings?|units?|beds?|bedrooms?|trees?|days?|years?)"
+    r"(?![a-z0-9])", re.I)
+
+# Units that measure the same KIND of thing. A quantity whose trailing unit is in
+# a different family from the row's unit cannot explain it.
+_UNIT_FAMILY = {
+    "mm": "length", "cm": "length", "m": "length", "metre": "length",
+    "metres": "length", "meter": "length", "meters": "length",
+    "m2": "area", "m²": "area", "sqm": "area",
+    "%": "ratio", "per cent": "ratio", "percent": "ratio",
+    "hour": "time", "hours": "time", "day": "time", "days": "time",
+    "year": "time", "years": "time",
+    "storey": "count", "storeys": "count", "stories": "count",
+    "space": "count", "spaces": "count", "dwelling": "count",
+    "dwellings": "count", "unit": "count", "units": "count",
+    "bed": "count", "beds": "count", "bedroom": "count", "bedrooms": "count",
+    "tree": "count", "trees": "count",
+}
+_STORED_UNIT_FAMILY = {"m": "length", "m2": "area", "m²": "area", "%": "ratio",
+                       "hours": "time", "storeys": "count"}
+
+
+def _family_conflict(source: str, end: int, unit) -> bool:
+    """True when the text labels this quantity as a different KIND of thing.
+
+    Only fires when BOTH sides are known: an unlabelled number, or a stored unit
+    this does not recognise, is never rejected on these grounds. Rejecting on a
+    guess would manufacture findings, which is the mirror of the failure the rule
+    exists to prevent.
+    """
+    stored_family = _STORED_UNIT_FAMILY.get((unit or "").strip())
+    if not stored_family:
+        return False
+    match = _TRAILING_UNIT_RE.match(source, end)
+    if not match:
+        return False
+    text_family = _UNIT_FAMILY.get(re.sub(r"\s+", " ", match.group(1).lower()))
+    return bool(text_family) and text_family != stored_family
+
+
 def _rule_exact_digit_match(value: float, source: str, unit) -> Optional[str]:
     """The number appears literally in the text.
 
@@ -345,8 +390,12 @@ def _rule_exact_digit_match(value: float, source: str, unit) -> Optional[str]:
     list ordinals are excluded for the same reason.
     """
     for parsed, start, end in _quantity_spans(source):
-        if abs(parsed - value) <= _EXACT_TOL:
-            return f"{source[start:end]!r} appears in the source text"
+        if abs(parsed - value) > _EXACT_TOL:
+            continue
+        # "a minimum of 3 hours of sunlight" must not explain a 3 metre setback.
+        if _family_conflict(source, end, unit):
+            continue
+        return f"{source[start:end]!r} appears in the source text"
     return None
 
 
@@ -370,7 +419,9 @@ def _rule_unit_conversion(value: float, source: str, unit) -> Optional[str]:
     """A length quoted in mm or cm and stored in metres (or the reverse).
 
     Only fires when the stored unit is metres or unrecorded — converting a value
-    whose column says 'spaces/dwelling' would be nonsense.
+    whose column says 'spaces/dwelling' would be nonsense. One direction only:
+    dividing BY the factor was also accepted once, so a quoted "0.9mm" explained a
+    stored 900 m. Nothing is ever quoted in millimetres and stored in kilometres.
     """
     if unit not in (None, "", "m", "m2"):
         return None
@@ -381,8 +432,6 @@ def _rule_unit_conversion(value: float, source: str, unit) -> Optional[str]:
             continue
         if _close(value, parsed * factor):
             return f"'{token}{raw_unit}' converted to {parsed * factor:g} m"
-        if _close(value, parsed / factor):
-            return f"'{token}{raw_unit}' converted from {parsed / factor:g}"
     return None
 
 

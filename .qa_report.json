@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a gate over the table that is the product's differentiator, and the direction of risk is asymmetric: a FALSE EXPLANATION removes a real defect from the finding list permanently and silently, which is strictly worse than a false finding a human dismisses in a minute. Two live false-pass channels were found and closed during the work (clause references, numbered-list ordinals), so the risk is demonstrated, not theoretical.",
-  "commit_hash": "b85fa195",
+  "commit_hash": "3f5166e5",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
@@ -32,14 +32,14 @@
   "functions": [
     {
       "name": "explain_value",
-      "file_line": "services/extracted_data_integrity.py:539",
+      "file_line": "services/extracted_data_integrity.py:588",
       "input": "one stored numeric value, the row's own quoted source_text, and the row's unit string so that unit-sensitive rules can refuse to fire",
       "output": "the name of the first rule that derives the value from the text, paired with the exact substring that rule matched",
       "if_none": "returns UNEXPLAINED with no evidence when no rule fires, and NO_VALUE_STORED when the value is absent or non-numeric or the quote is empty - three outcomes kept distinct, because 'nothing to check' is not 'checked and fine'"
     },
     {
       "name": "explain_row",
-      "file_line": "services/extracted_data_integrity.py:563",
+      "file_line": "services/extracted_data_integrity.py:612",
       "input": "one control row plus the names of its value columns, its source-text column and its unit column",
       "output": "exactly one state for the row plus the per-field rule and evidence, so the printed counts always sum to the table size",
       "if_none": "a row whose values are all absent becomes NO_VALUE_STORED rather than passing; a row with one unexplained end of a range becomes UNEXPLAINED even though its other end was explained"
@@ -53,7 +53,7 @@
     },
     {
       "name": "_rate_candidates",
-      "file_line": "services/extracted_data_integrity.py:389",
+      "file_line": "services/extracted_data_integrity.py:438",
       "input": "the source text, scanned for every 'per N' / 'for every N' phrase and the numbers preceding each one",
       "output": "every plausible numerator and denominator pair with its evidence, nearest numerator first, stopping at a sentence or table-cell break",
       "if_none": "yields a None numerator when nothing numeric precedes the rate, which is the signal the implied-unity rule uses to decide whether assuming 1 is safe"
@@ -143,7 +143,7 @@
       "repro": "python -m pytest tests/test_control_source_values.py -k \"tolerance or rounding or absorb\" -q"
     },
     {
-      "scenario": "The written-numeral rule matches the common English word 'one' anywhere in the quote, without it counting anything.",
+      "scenario": "The written-numeral rule matches the common English word 'one' anywhere in the quote, without it counting anything at all.",
       "what_happens": "A clause reading 'Objective one: provide a minimum 6m front setback' explains a stored 1 m setback that the same sentence contradicts.",
       "mitigated": true,
       "how": "The numeral must be followed within two words by a noun the control could be measured in, so 'one car parking space' matches and 'Objective one:' does not.",
@@ -157,11 +157,32 @@
       "repro": "python -m pytest tests/test_control_source_values.py -k test_a_rate_is_not_assembled_from_two_unrelated_clauses -q"
     },
     {
-      "scenario": "A row in the baseline is repaired so it becomes explained, but nobody removes it from the baseline file.",
+      "scenario": "A row already in the baseline is repaired so it becomes explained, but nobody removes it from the baseline file.",
       "what_happens": "The row stays permanently accepted, so if its old unsupported value is ever restored the gate still exits 0 - the ratchet only ever loosens.",
       "mitigated": true,
-      "how": "A baseline entry that is now explained FAILS with exit 1 and names the ids to remove, and --write-baseline refuses to add ids without an explicit --allow-growth so the remedy cannot double as the bypass.",
-      "repro": "python -c \"import json,io;p='scripts/control_source_values_baseline.json';d=json.load(io.open(p));d['ids']=sorted(d['ids']+[999999]);json.dump(d,io.open(p,'w'),indent=2)\" && python scripts/validate_control_source_values.py; echo $?  # expect 1, then git checkout the baseline"
+      "how": "A baseline entry that is now explained FAILS with exit 1 naming the ids to remove, and --write-baseline refuses to add ids without an explicit --allow-growth so the remedy cannot double as the bypass.",
+      "repro": "python -c \"import json,io;p='scripts/control_source_values_baseline.json';d=json.load(io.open(p));d['accepted']['999999']='x';json.dump(d,io.open(p,'w'),indent=2)\" && python scripts/validate_control_source_values.py; echo $?  # expect 1, then git checkout the baseline"
+    },
+    {
+      "scenario": "A control already accepted in the baseline has its stored value edited from one unsupported number to a DIFFERENT unsupported number, or loses its quote entirely.",
+      "what_happens": "Keyed on id alone, the row stays accepted and the gate exits 0, so a brand new defect inherits an old row's exemption.",
+      "mitigated": true,
+      "how": "The baseline stores id -> a digest of the value, unit and source_text, so any change to the inputs the check reads makes the row new again. Demonstrated by rewriting the digest for control 631 and confirming it reappears as BLOCKING with exit 1.",
+      "repro": "python -c \"import json,io;p='scripts/control_source_values_baseline.json';d=json.load(io.open(p));d['accepted']['631']='0'*16;json.dump(d,io.open(p,'w'),indent=2)\" && python scripts/validate_control_source_values.py; echo $?  # expect 1, then git checkout the baseline"
+    },
+    {
+      "scenario": "A quantity in the quote carries an explicit unit that measures a different kind of thing from the row's own column.",
+      "what_happens": "'a minimum of 3 hours of sunlight' explains a stored 3 METRE setback, because the digits match and nothing checks what the text says the number measures.",
+      "mitigated": true,
+      "how": "A matched quantity whose trailing unit belongs to a different family (length, area, ratio, time, count) than the stored unit is skipped. It fires only when BOTH sides are known, so an unlabelled number is never rejected on a guess - inventing findings is the mirror of inventing passes.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k \"labelled_as_another_kind or unit_check_only_fires\" -q"
+    },
+    {
+      "scenario": "The unit-conversion rule accepts both multiplying and dividing by the conversion factor.",
+      "what_happens": "A quoted '0.9mm' explains a stored 900 m, because 0.9 divided by 0.001 is 900.",
+      "mitigated": true,
+      "how": "One direction only. Nothing in this domain is quoted in millimetres and stored in kilometres, so the reverse direction existed only to manufacture matches.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_it_converts_in_one_direction_only -q"
     }
   ],
   "post_merge": {

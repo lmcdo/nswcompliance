@@ -71,6 +71,23 @@ class TestExactDigitMatch:
         assert rule_of(6, "|  Front Setback | 6 | applies to primary frontage", "m") \
             == "exact_digit_match"
 
+    def test_a_quantity_labelled_as_another_kind_of_thing_does_not_explain_it(self):
+        # "a minimum of 3 hours of sunlight" must not explain a 3 METRE setback.
+        # The number matches; the text says what it measures, and it is not this.
+        assert rule_of(3, "a minimum of 3 hours of sunlight to living areas", "m") \
+            == UNEXPLAINED
+
+    def test_the_unit_check_only_fires_when_both_sides_are_known(self):
+        # An unlabelled number, or a stored unit the map does not know, must NOT
+        # be rejected — inventing findings is the mirror of inventing passes.
+        assert rule_of(3, "a minimum of 3 to the boundary", "m") == "exact_digit_match"
+        assert rule_of(3, "a minimum of 3 hours", "spaces/dwelling") \
+            == "exact_digit_match"
+
+    def test_a_matching_unit_family_still_explains_the_value(self):
+        assert rule_of(6, "a minimum front setback of 6 metres", "m") \
+            == "exact_digit_match"
+
     def test_a_near_miss_is_not_a_match(self):
         # No rounding tolerance on exact matching: 0.899 and 0.9 are different
         # numbers and accepting one for the other would swallow a typo.
@@ -111,6 +128,12 @@ class TestUnitConversion:
 
     def test_a_bare_number_is_not_treated_as_millimetres(self):
         assert rule_of(0.9, "control 900 applies to this lot", "m") == UNEXPLAINED
+
+    def test_it_converts_in_one_direction_only(self):
+        # Dividing BY the factor was also accepted once, so a quoted "0.9mm"
+        # explained a stored 900 m. Nothing is quoted in millimetres and stored
+        # in kilometres.
+        assert rule_of(900, "minimum setback 0.9mm", "m") == UNEXPLAINED
 
     def test_it_does_not_fire_on_a_parking_rate(self):
         # Converting a value whose column says 'spaces/dwelling' into metres is
