@@ -32,6 +32,9 @@
 
 BEGIN;
 
+-- Currency scope: a CHECK constraint governs every row, current and superseded
+-- alike, so no is_current filter applies here — DDL has no WHERE clause, and
+-- scoping a vocabulary to served rows would let retired rows hold invalid types.
 ALTER TABLE dcp_setback_controls
   DROP CONSTRAINT IF EXISTS control_type_canonical;
 

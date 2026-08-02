@@ -158,6 +158,9 @@ def main() -> int:  # pragma: no cover - CLI entry point
             written += cur.rowcount
         conn.commit()
         print(f"  re-typed {written} rows ({len(plan) - written} skipped by the guard)")
+        # Rollback restores the label on every backed-up row regardless of
+        # is_current — a mislabel is a mislabel on retired rows too, and the
+        # backup join on id makes any currency filter here redundant.
         print(f"\nROLLBACK:\n  UPDATE dcp_setback_controls t "
               f"SET control_type = b.control_type, review_reason = b.review_reason "
               f"FROM {args.backup_table} b WHERE t.id = b.id;")

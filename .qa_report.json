@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a blocking gate over the table that is the product's differentiator. The direction of risk is asymmetric: a value whose own note admits it was assumed, served as if extracted, is the fabricated-verdict class applied to regulatory numbers. 28 such rows exist and all are already retired, so this passes today and exists solely to stop the 29th being served. Shipped alongside an adjudication of all 25 UNEXPLAINED controls against source PDFs, which retracted a previously-published finding.",
-  "commit_hash": "ab9af777",
+  "commit_hash": "acb57b77",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
