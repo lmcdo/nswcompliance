@@ -72,6 +72,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from services.extracted_data_integrity import (  # noqa: E402
+    FAILING_STATES,
+    MISSING_SOURCE_TEXT,
     NO_VALUE_STORED,
     RULE_NAMES,
     UNEXPLAINED,
@@ -80,7 +82,7 @@ from services.extracted_data_integrity import (  # noqa: E402
 
 VALUE_FIELDS = ["value_min", "value_max"]
 DEFAULT_BASELINE = "scripts/control_source_values_baseline.json"
-STATES = (*RULE_NAMES, UNEXPLAINED, NO_VALUE_STORED)
+STATES = (*RULE_NAMES, UNEXPLAINED, MISSING_SOURCE_TEXT, NO_VALUE_STORED)
 
 
 def load_baseline(repo: Path, path: str | None) -> dict:
@@ -118,19 +120,22 @@ def write_baseline(repo: Path, path: str | None, ids: list[int]) -> None:
 
 
 def classify_rows(rows: list[dict]) -> tuple[Counter, dict, list[dict]]:
-    """State counts, per-council counts, and the unexplained rows themselves."""
+    """State counts, per-council counts, and the failing rows themselves."""
     counts: Counter = Counter()
     per_lga: dict[str, Counter] = defaultdict(Counter)
-    unexplained: list[dict] = []
+    failing: list[dict] = []
     for row in rows:
         result = explain_row(row, value_fields=VALUE_FIELDS,
                             source_field="source_text", unit_field="unit")
         counts[result["state"]] += 1
         per_lga[row.get("lga")][result["state"]] += 1
         row["_result"] = result
-        if result["state"] == UNEXPLAINED:
-            unexplained.append(row)
-    return counts, per_lga, unexplained
+        if result["state"] == "exact_digit_match":
+            counts["exact_uniquely_attributable" if result["uniquely_attributable"]
+                   else "exact_among_several_quantities"] += 1
+        if result["state"] in FAILING_STATES:
+            failing.append(row)
+    return counts, per_lga, failing
 
 
 def fetch_rows(cur) -> list[dict]:
@@ -180,25 +185,38 @@ def main() -> int:  # pragma: no cover - CLI entry point
     finally:
         conn.close()
 
-    counts, per_lga, unexplained = classify_rows(rows)
-    total = sum(counts.values())
+    counts, per_lga, failing = classify_rows(rows)
+    total = len(rows)
 
     print(f"\n=== every control value vs its own source_text ({total:,} rows) ===")
     for state in STATES:
-        marker = "  <- the finding" if state == UNEXPLAINED else ""
+        marker = "  <- the finding" if state in FAILING_STATES else ""
         share = 100.0 * counts[state] / max(1, total)
         print(f"  {state:<22}: {counts[state]:>5}  ({share:5.1f}%){marker}")
-    print(f"  {'TOTAL':<22}: {total:>5}   "
+    print(f"  {'TOTAL':<22}: {sum(counts[s] for s in STATES):>5}   "
           f"(states are exhaustive — every row is in exactly one)")
 
     checked = total - counts[NO_VALUE_STORED]
-    explained = checked - counts[UNEXPLAINED]
+    explained = checked - sum(counts[s] for s in FAILING_STATES)
     print(f"\n  rows carrying a number      : {checked:,}")
     print(f"  derivable from their own quote: {explained:,} "
           f"({100.0 * explained / max(1, checked):.1f}% of those)")
     print(f"  current / superseded          : "
           f"{sum(1 for r in rows if r['is_current'])} / "
           f"{sum(1 for r in rows if not r['is_current'])}")
+
+    # How strong is an exact match, really? A quote holding one quantity pins the
+    # value; a quote holding six is merely CONSISTENT with it. Reported because
+    # "exact_digit_match" otherwise reads as stronger evidence than it is.
+    unique = counts["exact_uniquely_attributable"]
+    among = counts["exact_among_several_quantities"]
+    print(f"\n  of the {unique + among:,} exact matches:")
+    print(f"    quote holds ONE quantity — uniquely attributable : {unique:>5}")
+    print(f"    quote holds several — consistent, not pinned     : {among:>5}  "
+          f"({100.0 * among / max(1, unique + among):.1f}%)")
+    print("    The second group is not a defect list. It is the honest ceiling of a")
+    print("    check that matches numbers rather than reading clauses: the stored")
+    print("    value appears in its source, but so do others.")
 
     if args.show_evidence:
         print("\n=== evidence for a sample of derived rows (audit these) ===")
@@ -219,21 +237,35 @@ def main() -> int:  # pragma: no cover - CLI entry point
             print(f"      quote  : {text!r}")
 
     repo = Path(__file__).resolve().parents[1]
-    ids = [row["id"] for row in unexplained]
+    ids = [row["id"] for row in failing]
     if args.write_baseline:
         write_baseline(repo, args.baseline, ids)
         return 0
 
     baseline = load_baseline(repo, args.baseline)
     known = set(baseline.get("ids") or [])
-    new = [row for row in unexplained if row["id"] not in known]
+    unknown = [row for row in failing if row["id"] not in known]
+    # Only a CURRENT row can block. A superseded control is not served, so failing
+    # CI on one would block a release over historical data — but it is still
+    # reported, because silently dropping it would shrink the check's coverage
+    # without saying so.
+    new = [row for row in unknown if row["is_current"]]
+    new_superseded = [row for row in unknown if not row["is_current"]]
     fixed = sorted(known - set(ids))
 
     print(f"\n=== baseline ===")
-    print(f"  accepted unexplained rows : {len(known)}")
-    print(f"  unexplained now           : {len(ids)}")
-    print(f"  NEW (not in the baseline) : {len(new)}")
-    print(f"  fixed since the baseline  : {len(fixed)}")
+    print(f"  accepted rows in the baseline : {len(known)}")
+    print(f"  failing now                   : {len(ids)}  "
+          f"({sum(1 for r in failing if r['is_current'])} current, "
+          f"{sum(1 for r in failing if not r['is_current'])} superseded)")
+    print(f"  NEW and current — BLOCKING    : {len(new)}")
+    print(f"  NEW but superseded — advisory : {len(new_superseded)}")
+    print(f"  fixed since the baseline      : {len(fixed)}")
+
+    if new_superseded:
+        print(f"\n  advisory: {len(new_superseded)} superseded rows are unsupported "
+              f"by their own quote — {[r['id'] for r in new_superseded]}. Not "
+              f"blocking, because they are not served.")
 
     if new:
         print(f"\n=== NEW unexplained rows (first {args.limit_print}) ===")
@@ -242,11 +274,11 @@ def main() -> int:  # pragma: no cover - CLI entry point
             print(f"  id={row['id']} {row['lga']}/{row['control_type']} "
                   f"min={row['value_min']} max={row['value_max']} unit={row['unit']}")
             print(f"      {text!r}")
-        print(f"\nFAILED: {len(new)} control values are not derivable from their own "
-              f"source text and are not in the baseline.\nEither correct the value, "
-              f"correct the quote, or — if this is a derivation the rules do not yet "
-              f"name — add the rule. Do NOT widen the baseline to make this pass.",
-              file=sys.stderr)
+        print(f"\nFAILED: {len(new)} CURRENT control values are not derivable from "
+              f"their own source text and are not in the baseline.\nEither correct "
+              f"the value, correct the quote, or — if this is a derivation the rules "
+              f"do not yet name — add the rule. Do NOT widen the baseline to make "
+              f"this pass.", file=sys.stderr)
         return 1
 
     if fixed:

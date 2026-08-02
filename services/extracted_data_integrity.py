@@ -464,21 +464,31 @@ DERIVATION_RULES = (
 RULE_NAMES = tuple(name for name, _ in DERIVATION_RULES)
 UNEXPLAINED = "UNEXPLAINED"
 NO_VALUE_STORED = "no_value_stored"
+# A number stored with NO quote at all. Distinct from both of the above and
+# treated as a failure, not a skip: folding it into NO_VALUE_STORED would let a
+# served number with nothing behind it pass as "nothing to check". No row is in
+# this state today (0 of 1,069), which is exactly why it needs a state — the
+# check would otherwise wave through the first one that appears.
+MISSING_SOURCE_TEXT = "MISSING_SOURCE_TEXT"
+FAILING_STATES = (UNEXPLAINED, MISSING_SOURCE_TEXT)
 
 
 def explain_value(value, source_text, unit=None) -> tuple[str, Optional[str]]:
     """Name the rule that derives ``value`` from ``source_text``, with evidence.
 
-    Returns ``(rule_name, evidence)``; ``(UNEXPLAINED, None)`` when no rule fires.
-    A non-numeric or absent value returns ``(NO_VALUE_STORED, None)`` — there is
+    Returns ``(rule_name, evidence)``; ``(UNEXPLAINED, None)`` when no rule fires,
+    and ``(MISSING_SOURCE_TEXT, None)`` when a real number carries no quote at all.
+    An absent or non-numeric value returns ``(NO_VALUE_STORED, None)`` — there is
     nothing to check, which is deliberately NOT the same as passing.
     """
-    if value is None or not str(source_text or "").strip():
+    if value is None:
         return NO_VALUE_STORED, None
     try:
         number = float(value)
     except (TypeError, ValueError):
         return NO_VALUE_STORED, None
+    if not str(source_text or "").strip():
+        return MISSING_SOURCE_TEXT, None
     source = str(source_text)
     for name, rule in DERIVATION_RULES:
         evidence = rule(number, source, unit)
@@ -506,11 +516,22 @@ def explain_row(row: dict, *, value_fields: list[str], source_field: str,
     checked = {f: r for f, r in per_field.items() if r["rule"] != NO_VALUE_STORED}
     if not checked:
         state = NO_VALUE_STORED
+    elif any(r["rule"] == MISSING_SOURCE_TEXT for r in checked.values()):
+        state = MISSING_SOURCE_TEXT
     elif any(r["rule"] == UNEXPLAINED for r in checked.values()):
         state = UNEXPLAINED
     else:
         state = max((r["rule"] for r in checked.values()), key=RULE_NAMES.index)
-    return {"state": state, "fields": per_field}
+
+    # How many DISTINCT quantities the quote holds. An exact match against a quote
+    # carrying one number is uniquely attributable; against a quote carrying six,
+    # the stored value is consistent with the text but so might a different number
+    # be. 68% of exact matches are in the second case, so reporting the split
+    # stops "exact_digit_match" reading as stronger evidence than it is.
+    quantities = len({v for v, _, _ in _quantity_spans(str(row.get(source_field) or ""))})
+    return {"state": state, "fields": per_field,
+            "quote_quantity_count": quantities,
+            "uniquely_attributable": quantities == 1}
 
 
 def assert_clean_row(

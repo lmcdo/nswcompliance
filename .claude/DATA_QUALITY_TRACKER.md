@@ -163,6 +163,21 @@ DQ-29 territory).
   not**. **517** Marrickville stores 0 against *"1 per principal dwelling and
   secondary dwelling combined"* and belongs in group A on a re-read.
 
+### How strong is an exact match, really?
+**571 of the 839 exact matches (68.1%) sit in a quote that holds more than one
+distinct quantity.** The stored value appears in its source — but so do others, so
+the match is *consistent*, not *pinned*. Only 268 are uniquely attributable. That
+split is now printed, because `exact_digit_match` otherwise reads as stronger
+evidence than a number-matching check can give. Closing it properly means reading
+clauses rather than matching numbers, which is a different tool.
+
+Two further holes found in review and closed:
+- a value stored with **no source_text at all** returned `no_value_stored` and
+  passed as "nothing to check". It is now `MISSING_SOURCE_TEXT`, a failing state.
+  0 rows are in it today — which is exactly why it needed one.
+- the gate blocked on superseded rows. Only `is_current` rows can fail now (19 of
+  the 25); the 6 superseded are reported, never silently dropped.
+
 ### Why this check can fail
 Two ways: a NEW unexplained row fails against the baseline, and a value edited to
 something its quote does not support becomes unexplained on the next run.

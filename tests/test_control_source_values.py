@@ -11,6 +11,8 @@ direction alone would catch a broken rule.
 import pytest
 
 from services.extracted_data_integrity import (
+    FAILING_STATES,
+    MISSING_SOURCE_TEXT,
     NO_VALUE_STORED,
     RULE_NAMES,
     UNEXPLAINED,
@@ -222,9 +224,18 @@ class TestExplainValueEdges:
         # counting them as explained would inflate the pass rate by 8%.
         assert rule_of(None, "any text") == NO_VALUE_STORED
 
-    def test_an_empty_quote_cannot_explain_anything(self):
-        assert explain_value(5, "")[0] == NO_VALUE_STORED
-        assert explain_value(5, None)[0] == NO_VALUE_STORED
+    def test_a_number_with_no_quote_at_all_is_a_failure_not_a_skip(self):
+        # Sol finding, verified: this used to return NO_VALUE_STORED, so a served
+        # number with nothing behind it would pass as "nothing to check". No row
+        # is in this state today (0 of 1,069) — which is precisely why it needs
+        # one, or the check waves through the first row that appears in it.
+        assert explain_value(5, "")[0] == MISSING_SOURCE_TEXT
+        assert explain_value(5, None)[0] == MISSING_SOURCE_TEXT
+        assert explain_value(5, "   ")[0] == MISSING_SOURCE_TEXT
+
+    def test_missing_source_text_is_a_failing_state(self):
+        assert MISSING_SOURCE_TEXT in FAILING_STATES
+        assert NO_VALUE_STORED not in FAILING_STATES
 
     def test_a_non_numeric_value_is_not_checked(self):
         assert rule_of("see clause", "some text") == NO_VALUE_STORED
@@ -268,6 +279,32 @@ class TestExplainRow:
         assert explain_row(row, value_fields=["value_min", "value_max"],
                            source_field="source_text",
                            unit_field="unit")["state"] == NO_VALUE_STORED
+
+    def test_a_number_with_no_quote_makes_the_whole_row_fail(self):
+        row = {"value_min": 5, "value_max": None, "unit": "m", "source_text": ""}
+        assert explain_row(row, value_fields=["value_min", "value_max"],
+                           source_field="source_text",
+                           unit_field="unit")["state"] == MISSING_SOURCE_TEXT
+
+    def test_an_exact_match_against_a_single_quantity_is_uniquely_attributable(self):
+        row = {"value_min": 6, "value_max": None, "unit": "m",
+               "source_text": "The minimum front setback is 6m."}
+        result = explain_row(row, value_fields=["value_min", "value_max"],
+                            source_field="source_text", unit_field="unit")
+        assert result["uniquely_attributable"] is True
+        assert result["quote_quantity_count"] == 1
+
+    def test_an_exact_match_among_several_quantities_is_flagged_as_not_pinned(self):
+        # Sol finding, verified and measured: 571 of 839 exact matches (68.1%) are
+        # in this state. The stored value appears in its source, but so do others,
+        # so 'exact_digit_match' must not read as stronger evidence than it is.
+        row = {"value_min": 6, "value_max": None, "unit": "m",
+               "source_text": "Maximum building height 6m; minimum front setback 4m."}
+        result = explain_row(row, value_fields=["value_min", "value_max"],
+                            source_field="source_text", unit_field="unit")
+        assert result["state"] == "exact_digit_match"
+        assert result["uniquely_attributable"] is False
+        assert result["quote_quantity_count"] == 2
 
     def test_per_field_results_are_reported_not_just_the_state(self):
         row = {"value_min": 0.9, "value_max": None, "unit": "m",
