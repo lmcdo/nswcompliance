@@ -130,12 +130,14 @@ second time in the same file.
 - **895 marrickville** — side/rear one-clause shape, likely correct (577/109/105
   pattern) but source not read; open until it is.
 
-**Held fail-closed (needs_review=TRUE, repair evidence in row's review_reason):**
-- **fairfield 716** — stored rear 6.0m for secondary dwellings is a Chapter 5C
-  narrow-lot value; 5B.2.3.1(a) prescribes **900mm**. STRONG evidence for a 0.9 repair,
-  awaiting authorisation.
-- **ryde 682** — side 4.0m is a design *preference* quote; true general side is
-  s2.9.2(a)/(b) 900mm/1.5m, stored nowhere.
+**Held fail-closed — APPLIED 2026-08-03 (authorised):** both repairs executed via
+`scripts/repair_authorized_held_rows.py` (backup
+`dcp_setback_controls_authorized_repairs_20260803`, all-or-nothing, rule 2b):
+- **fairfield 716** — rear 6.0m (Chapter 5C narrow-lot first-floor value) →
+  **0.9m per 5B.2.3.1(a)**, quote replaced in the same write, needs_review cleared.
+- **ryde 682** — side 4.0m (design-preference quote) → **0.9–1.5m per
+  s2.9.2(a)/(b)** (900mm one storey / 1.5m two storey, range-row per burwood
+  1080/1176), needs_review cleared. Baseline 38 → 37 (682 left TRUNCATED_EVIDENCE).
 
 **Extraction gaps found while ruling (ADD candidates, STRONG sources local, NOT done —
 new extraction was out of scope):** ryde side 0.9/1.5 (s2.9.2) + secondary street 2m
