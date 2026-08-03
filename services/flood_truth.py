@@ -72,6 +72,15 @@ from pyproj import Transformer
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 
+# prior-art-checked: shared item-4 modules created this session — extending
+# this pipeline's own envelope, not adding a parallel data source.
+try:
+    from services.execution_manifest import MANIFEST_KEY, build_manifest
+    from services.geometry_checks import check_point_nsw
+except ImportError:
+    from execution_manifest import MANIFEST_KEY, build_manifest
+    from geometry_checks import check_point_nsw
+
 # icontract: runtime postcondition assertions for liability-critical functions.
 # Gracefully degrade if not installed (production may not have it yet).
 try:
@@ -107,6 +116,11 @@ EPI_REST = ("https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
 BOM_SOS2 = "https://www.bom.gov.au/waterdata/services"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
+
+# Algorithm revision for execution manifests (campaign item 4): the
+# multi-source screening method + signal fusion. Bump on method change, not
+# per deploy (deploy identity = execution_manifest.deploy_sha).
+ALGORITHM_VERSION = "flood-multisource-screen-1.0"
 
 DEA_WCS_BASE = "https://ows.dea.ga.gov.au/wcs"
 DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"   # multi-year composite, 1987–present, no time param required
@@ -1338,7 +1352,13 @@ def _build_data_sources(internal_outputs: dict) -> list:
     for lt in _COMPOUND_LAYER_TYPES:
         if internal_outputs.get(f"compound_{lt}") is not None:
             sources.append(f"NSW ePlanning spatial_overlays ({lt})")
-    sources.append("Microsoft Planetary Computer S1 RTC")
+    # Only claim the S1 source when a SAR result actually exists. The
+    # unconditional append served "Microsoft Planetary Computer S1 RTC" on
+    # every report while no S1 query has ever run (sar_flood_detected is
+    # hard-nulled; batch is a Phase-3B stub) — a named source that was never
+    # queried (DQ-44, campaign item 4 census).
+    if internal_outputs.get("sar_flood_detected") is not None:
+        sources.append("Microsoft Planetary Computer S1 RTC")
     return sources
 
 
@@ -1715,6 +1735,14 @@ def run_flood(req: FloodRequest):
                + SES council flood studies (PostGIS) + DEA WOfS (WCS).
     SAR analysis is batch-only (Phase 3B).
     """
+    # Units/CRS entry check (campaign item 4): a swapped or projected
+    # coordinate reproduces identically on every recompute — this is the only
+    # defence. Typed unavailable, never a screening from wrong-CRS input.
+    coord_reason = check_point_nsw(req.lat, req.lng)
+    if coord_reason:
+        raise HTTPException(
+            422, f"Flood screening could not be determined: {coord_reason}")
+
     conn = None
     try:
         conn = _get_conn()
@@ -1724,8 +1752,11 @@ def run_flood(req: FloodRequest):
             # SAR batches, BOM history), so a quarter bounds staleness while
             # keeping the cache's point — skipping a ~60s recompute on repeat
             # lookups. Older rows are recomputed, not served.
+            # prior-art-checked: this module's own cache read gains the
+            # stored `inputs` column so the original execution manifest can
+            # ride the cache-copy like run_date does — no new source.
             cur.execute(
-                "SELECT outputs, confidence, data_sources, run_date "
+                "SELECT outputs, confidence, data_sources, run_date, inputs "
                 "FROM property_reports "
                 "WHERE product='flood' AND address=%s "
                 "  AND run_date > CURRENT_DATE - INTERVAL '90 days' "
@@ -1742,9 +1773,14 @@ def run_flood(req: FloodRequest):
             # The ORIGINAL run_date is carried over — this row is a copy of an
             # older computation, and stamping it with today would relabel a
             # stale result as fresh (fix 2).
+            # The ORIGINAL inputs (incl. the execution manifest) ride along
+            # exactly like run_date: this row is a COPY of an older
+            # computation, and a re-derived manifest would claim inputs the
+            # cached numbers never came from (campaign item 4 cache rule).
             _write_report(
                 req.report_id, req.address, req.lat, req.lng,
-                req.prop_id, {"lat": req.lat, "lng": req.lng},
+                req.prop_id,
+                cached.get("inputs") or {"lat": req.lat, "lng": req.lng},
                 cached["outputs"] or {},
                 run_date=cached.get("run_date"),
             )
@@ -1832,7 +1868,43 @@ def run_flood(req: FloodRequest):
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
-    inputs = {"lat": req.lat, "lng": req.lng}
+    # Execution manifest (campaign item 4): every identity below is read from
+    # the dicts the source queries THEMSELVES returned this run (epi/ems/...),
+    # never a parallel lookup. SAR is recorded as not-queried — the honest
+    # state until Phase 3B exists.
+    manifest = build_manifest(
+        product="flood",
+        algorithm_version=ALGORITHM_VERSION,
+        inputs={
+            "epi_overlay": {"flood_class": epi.get("epi_flood_class"),
+                            "data_currency": epi.get("data_currency"),
+                            "study_name": epi.get("flood_study_name"),
+                            "study_date": epi.get("flood_study_date")},
+            "copernicus_ems": {"activations": [
+                a.get("activation_id") if isinstance(a, dict) else a
+                for a in (ems.get("ems_activations") or [])]},
+            "jrc_surface_water": {"tile_url": _jrc_tile_url(req.lat, req.lng),
+                                  "dataset_year": jrc.get("jrc_data_year")},
+            "dea_wofs": {"layer": DEA_WOFS_LAYER,
+                         "value_pct": wofs.get("dea_wofs_frequency_pct")},
+            "bom_gauge": {"name": bom.get("bom_gauge_name"),
+                          "distance_km": bom.get("bom_gauge_distance_km")},
+            "ses_study": {"name": ses.get("ses_study_name"),
+                          "lga": ses.get("ses_study_lga")},
+            "flood_study_rasters": [
+                {"key": s.get("study_key"), "name": s.get("study_name")}
+                for s in (studies.get("flood_studies") or [])
+                if isinstance(s, dict)],
+            "dem": {"ground_elevation_m_ahd": dem.get("ground_elevation_m_ahd")},
+            "sentinel1_sar": {"queried": False,
+                              "note": "S1 VH analysis is batch-only (Phase 3B); "
+                                      "no SAR observation feeds this report"},
+        },
+        query_params={"lat": req.lat, "lng": req.lng},
+        parcel_identity={"prop_id": req.prop_id},
+    )
+
+    inputs = {"lat": req.lat, "lng": req.lng, MANIFEST_KEY: manifest}
 
     # --- Minimum viable screening: refuse if too few sources responded ---
     available_count = _count_available_sources(internal_outputs)

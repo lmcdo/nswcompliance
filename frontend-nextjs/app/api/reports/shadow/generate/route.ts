@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
     construction_change_score: rawOutputs.construction_change_score != null
       ? Number(rawOutputs.construction_change_score) : null,
     construction_change_detected: Boolean(rawOutputs.construction_change_detected),
+    s2_latest_acquisition: (rawOutputs.s2_latest_acquisition as string | null) ?? null,
     // null = NOT ASSESSED (noon scenario missing/errored) — Boolean() coerced
     // it to false, which rendered a "Concern" verdict from a failed model run
     // (output-grounding fix 1, 2026-08-03).

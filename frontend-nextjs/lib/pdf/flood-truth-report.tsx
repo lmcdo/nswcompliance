@@ -14,6 +14,7 @@ import {
   Image,
 } from '@react-pdf/renderer';
 import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { sarImageryCurrency } from './imagery-currency';
 import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
@@ -775,7 +776,10 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             { source: 'NSW EPI Flood Planning WFS', type: 'Live API query', currency: `Queried ${data.run_date}` },
             { source: 'Council flood study (ARI grids)', type: 'Ingested raster', currency: data.flood_study_date ?? 'See study metadata' },
             { source: 'Copernicus EMS activations', type: 'Live API query', currency: `Queried ${data.run_date}` },
-            { source: 'ESA Sentinel-1 SAR', type: 'Satellite imagery', currency: data.sar_analysis_date ?? 'Most recent pass' },
+            // 'Most recent pass' implied a SAR analysis that has never run
+            // (sar_analysis_date is always null until Phase 3B) — say what is
+            // actually true (campaign item 4 / DQ-44).
+            { source: 'ESA Sentinel-1 SAR', type: 'Satellite imagery', currency: sarImageryCurrency(data.sar_analysis_date) },
             { source: 'JRC Global Surface Water', type: 'Cached raster', currency: 'Landsat 1984–2024' },
             { source: 'DEA Water Observations (WOfS)', type: 'Cached raster', currency: 'Landsat 1987–2024' },
             { source: 'BoM river gauge network', type: 'Live API query', currency: `Queried ${data.run_date}` },
