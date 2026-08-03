@@ -132,7 +132,12 @@ def compute_change_score(lat: float, lng: float, radius_m: float = 100,
         lookup). ``used`` marks the scenes whose BSI contributed to the
         median; a scene attempted but unreadable is recorded with
         used=False, so the manifest cannot claim inputs that were dropped."""
-        from services.execution_manifest import stac_item_identity
+        try:
+            from services.execution_manifest import stac_item_identity
+        except ImportError:
+            # Flat-import deploy mode (services/ on PYTHONPATH) — the same
+            # dual-path every service module uses.
+            from execution_manifest import stac_item_identity
 
         scores = []
         consumed = []

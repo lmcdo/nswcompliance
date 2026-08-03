@@ -1304,8 +1304,17 @@ def run_terrain_analysis(
         # Flood susceptibility (larger buffer for catchment context)
         if include_flood:
             flood_dir = tempfile.mkdtemp(prefix="wbt_flood_", dir=work_dir)
-            dem_bytes_lg, _flood_provider = fetch_dem_region_with_provider(
+            dem_bytes_lg, flood_dem_provider = fetch_dem_region_with_provider(
                 lat, lng, buffer_m=5000)
+            # The flood-susceptibility DEM is a SEPARATE fetch and can be
+            # served by a different provider than the terrain DEM — record it
+            # or the manifest gives incomplete provenance for the flood
+            # values (Sol finding, 2026-08-03).
+            result["execution_manifest"]["inputs"]["flood_dem"] = {
+                "provider": flood_dem_provider,
+                "buffer_m": 5000,
+                "capture_date_published": False,
+            }
             dem_flood_path = os.path.join(flood_dir, "dem.tif")
 
             with rasterio.open(dem_bytes_lg) as src:

@@ -107,6 +107,30 @@ class TestRingChecks:
     def test_empty_rejected(self):
         assert check_rings_epsg3857([]) is not None
 
+    def test_mga_metres_rejected_as_wrong_projected_crs(self):
+        """MGA Zone 56 eastings/northings are metre-scale and inside the
+        WORLD Mercator extent — only the NSW-envelope test catches them
+        (Sol finding, 2026-08-03)."""
+        rings = [[[334000.0, 6250000.0], [334050.0, 6250000.0],
+                  [334050.0, 6250050.0], [334000.0, 6250000.0]]]
+        reason = check_rings_epsg3857(rings)
+        assert reason and "MGA" in reason
+
+    def test_trailing_bad_vertex_rejected(self):
+        """Every vertex is checked — a single trailing WGS84 vertex corrupts
+        the clip just as surely as a leading one."""
+        good = [16833312.0, -4004807.0]
+        rings = [[good, [16833362.0, -4004807.0], [16833362.0, -4004757.0],
+                  [16833330.0, -4004760.0], [16833320.0, -4004770.0],
+                  [16833318.0, -4004780.0], [16833316.0, -4004790.0],
+                  [16833314.0, -4004795.0], [151.2, -33.8], good]]
+        assert check_rings_epsg3857(rings) is not None
+
+    def test_nan_vertex_rejected(self):
+        rings = [[[16833312.0, -4004807.0], [float("nan"), -4004807.0],
+                  [16833362.0, -4004757.0], [16833312.0, -4004807.0]]]
+        assert "non-finite" in check_rings_epsg3857(rings)
+
 
 # ---------------------------------------------------------------------------
 # execution_manifest — frame + STAC identity

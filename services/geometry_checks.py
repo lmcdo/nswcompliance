@@ -28,8 +28,13 @@ from typing import Optional
 NSW_LAT_MIN, NSW_LAT_MAX = -38.0, -27.5
 NSW_LNG_MIN, NSW_LNG_MAX = 140.5, 160.0
 
-# Web Mercator (EPSG:3857) world extent, metres.
-_MERCATOR_MAX = 20_037_508.35
+# NSW envelope in Web Mercator (EPSG:3857) metres — x = lng·R·π/180,
+# y = R·ln(tan(π/4 + φ/2)) over the degree envelope above. World-extent
+# bounds alone would accept OTHER projected CRSes (an MGA Zone 56 easting
+# like 334000 is comfortably inside the world extent — Sol finding,
+# 2026-08-03), so rings must land inside NSW's own Mercator box.
+_M3857_X_MIN, _M3857_X_MAX = 15_640_000.0, 17_810_000.0
+_M3857_Y_MIN, _M3857_Y_MAX = -4_610_000.0, -3_180_000.0
 
 
 def check_point_nsw(lat, lng) -> Optional[str]:
@@ -97,24 +102,33 @@ def check_polygon_wgs84(geojson: Optional[dict],
 
 
 def check_rings_epsg3857(rings) -> Optional[str]:
-    """ArcGIS-style rings that should be EPSG:3857 (Web Mercator metres).
-    Catches WGS84 degrees fed where metres are expected — a degree-valued
-    ring converts into a parcel a few metres wide at Null Island."""
+    """ArcGIS-style rings that should be EPSG:3857 (Web Mercator metres)
+    covering a NSW parcel. Every vertex is checked (a single trailing bad
+    vertex corrupts the clip just as surely) against the NSW Mercator
+    envelope — which also rejects OTHER projected CRSes such as MGA, whose
+    metre values are plausible under a bare world-extent test."""
+    import math
+
     if not rings or not isinstance(rings, (list, tuple)) or not rings[0]:
         return "no rings"
     ring = rings[0]
     if len(ring) < 4:
         return f"outer ring has {len(ring)} points — not a closed polygon"
-    for pt in ring[:8]:
+    for pt in ring:
         if not isinstance(pt, (list, tuple)) or len(pt) < 2:
             return f"malformed ring coordinate {pt!r}"
         try:
-            x, y = float(pt[0]), float(pt[1])
+            x, y = float(pt[0]), float(pt[1])  # qa-ignore: TypeError arm below IS the None guard
         except (TypeError, ValueError):
             return f"non-numeric ring coordinate {pt!r}"
-        if abs(x) > _MERCATOR_MAX or abs(y) > _MERCATOR_MAX:
-            return f"ring coordinate ({x}, {y}) outside Web Mercator extent"
+        if not (math.isfinite(x) and math.isfinite(y)):
+            return f"non-finite ring coordinate ({x}, {y})"
         if abs(x) <= 180 and abs(y) <= 90:
             return (f"ring coordinate ({x}, {y}) is degree-scale — WGS84 fed "
                     f"where EPSG:3857 metres expected")
+        if not (_M3857_X_MIN <= x <= _M3857_X_MAX
+                and _M3857_Y_MIN <= y <= _M3857_Y_MAX):
+            return (f"ring coordinate ({x}, {y}) outside the NSW Web Mercator "
+                    f"envelope — another projected CRS (e.g. MGA) fed as "
+                    f"EPSG:3857?")
     return None
