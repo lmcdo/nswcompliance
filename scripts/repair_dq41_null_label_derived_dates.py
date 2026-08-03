@@ -125,7 +125,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
         cur.execute(
             f"CREATE TABLE {args.backup_table} AS "
             f"SELECT id, effective_date, dcp_version "
-            f"FROM dcp_setback_controls WHERE {COHORT_WHERE}")
+            f"FROM dcp_setback_controls "  # deliberately no is_current scope
+            f"WHERE {COHORT_WHERE}")
         cur.execute(f"SELECT COUNT(*) FROM {args.backup_table}")
         backed = cur.fetchone()[0]
         if backed != EXPECTED_COHORT:
