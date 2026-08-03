@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes served output on every satellite product: report data_sources (flood no longer claims an S1 source that never ran - DQ-44), PDF data-currency wording on three paid-tier reports, typed-absence entry behaviour on five endpoints, and the report envelopes gain execution manifests. Also fixes DQ-45, a P1 crash that collapsed granny-flat detection whenever a structure survived filtering.",
- "commit_hash": "163b1090",
+ "commit_hash": "91887523",
  "files": [
   "services/geometry_checks.py",
   "services/execution_manifest.py",
@@ -55,7 +55,7 @@
   },
   {
    "name": "check_rings_epsg3857",
-   "file_line": "services/geometry_checks.py:99",
+   "file_line": "services/geometry_checks.py:114",
    "input": "ArcGIS-style rings expected to be Web Mercator metres from the lot API",
    "output": "None when metre-scale and in-extent, else a reason (degree-scale rings named as WGS84-fed-as-3857)",
    "if_none": "empty/malformed rings return a reason; granny demotes to unclipped, shadow refuses typed"
