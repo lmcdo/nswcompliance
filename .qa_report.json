@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a rendered provenance line to the PAID conveyancing PDF's DCP section and changes the brief's DCP as_at semantics on a served surface. Also writes to production (new dcp_plan_as_at table, additive effective_date_basis column, 23 populated rows). Wrong wording or a wrongly-attached date here is a false representation inside the legal defence layer (Layer 2), the class disclaimers don't cure.",
- "commit_hash": "412a3788",
+ "commit_hash": "7079619c",
  "files": [
   "migrations/063_dcp_plan_as_at.sql",
   "scripts/conveyancing_db.py",
