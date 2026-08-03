@@ -79,8 +79,8 @@ def check_polygon_wgs84(geojson: Optional[dict],
             return f"malformed coordinate {pt!r}"
         lng, lat = pt[0], pt[1]  # GeoJSON axis order: [lng, lat]
         try:
-            lngs.append(float(lng))
-            lats.append(float(lat))
+            lngs.append(float(lng))  # qa-ignore: TypeError arm below IS the None guard — a None coordinate returns a reason
+            lats.append(float(lat))  # qa-ignore: same guard
         except (TypeError, ValueError):
             return f"non-numeric coordinate {pt!r}"
     reason = check_point_nsw(lats[0], lngs[0])
