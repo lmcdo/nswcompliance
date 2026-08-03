@@ -259,6 +259,26 @@ def pick_dcp_result(registry_names: list[str],
     return top[0], None
 
 
+def resolve_portal_dates(plan_name: Optional[str], plan_url: Optional[str]):
+    """Parse BOTH planName and the URL-decoded planURL. Agreeing (or single-
+    source) evidence attaches; a name/URL date conflict refuses — first-hit-
+    wins could attach a stale planName date while the URL carried a newer
+    amendment (Sol finding, 2026-08-03).
+
+    Returns (hit, source_label, conflict_reason); hit and conflict_reason are
+    mutually exclusive.
+    """
+    name_hit = parse_dated_phrase(plan_name or "")
+    url_hit = parse_dated_phrase(
+        urllib.parse.unquote((plan_url or "").replace("+", " ")))
+    if name_hit and url_hit and name_hit[0] != url_hit[0]:
+        return None, None, (f"planName date {name_hit[0]} conflicts with "
+                            f"planURL date {url_hit[0]} — recording, not "
+                            f"attaching")
+    hit = name_hit or url_hit
+    return hit, ("planName" if name_hit else "planURL") if hit else None, None
+
+
 # prior-art-checked: this is the same file's own resolve/echo loop being
 # restructured (retry the NEXT centroid on an LGA-echo mismatch instead of
 # giving up); the module-header prior-art note covers why the cadastre point
@@ -311,14 +331,14 @@ def fetch_one(slug: str, centroids: list[tuple[float, float]],
     res.plan_name = chosen.get("planName")
     res.plan_url = chosen.get("planURL")
 
-    # Date extraction: planName first, then the URL-decoded planURL.
-    for text, where in ((res.plan_name, "planName"),
-                       (urllib.parse.unquote((res.plan_url or "").replace("+", " ")), "planURL")):
-        hit = parse_dated_phrase(text or "")
-        if hit:
-            res.date_iso, res.precision, res.kind, sub = hit
-            res.evidence = f"{where}: …{sub}…"
-            break
+    hit, source, conflict = resolve_portal_dates(res.plan_name, res.plan_url)
+    if conflict:
+        res.failure = conflict
+        res.checked_unattached = True
+        return res
+    if hit:
+        res.date_iso, res.precision, res.kind, sub = hit
+        res.evidence = f"{source}: …{sub}…"
     if res.date_iso and chosen.get("_shared_phrase_count"):
         res.evidence += (f" [identical dated phrase across "
                          f"{chosen['_shared_phrase_count']} matched plan entries]")

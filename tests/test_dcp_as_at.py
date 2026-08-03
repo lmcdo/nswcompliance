@@ -30,7 +30,11 @@ from conveyancing_db import (  # noqa: E402
     format_as_at_line,
 )
 from extract_dcp_stated_dates import _STATEMENTS  # noqa: E402
-from fetch_dcp_as_at_dates import parse_dated_phrase, pick_dcp_result  # noqa: E402
+from fetch_dcp_as_at_dates import (  # noqa: E402
+    parse_dated_phrase,
+    pick_dcp_result,
+    resolve_portal_dates,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -54,12 +58,16 @@ class TestAsAtWording:
                                   "kind": "adopted", "basis": "stated_in_document"})
         assert line == "Adopted 28 May 2013 (date stated in the plan document)"
 
-    def test_observed_wording_claims_only_the_observation(self):
+    def test_observed_wording_claims_only_the_stored_fact(self):
+        """A URL check cannot establish that the plan is the CURRENT
+        published version (a superseding amendment can live at another URL) —
+        the wording claims only the check itself."""
         line = format_as_at_line({"date": "2026-08-01", "precision": "day",
                                   "kind": None, "basis": "observed_current"})
-        assert line == ("Observed as the current published version on "
-                        "1 August 2026; an in-force date is not available "
-                        "for this plan")
+        assert line == ("All registered source documents for this plan were "
+                        "last checked on or after 1 August 2026; an in-force "
+                        "date is not available")
+        assert "current" not in line.lower()
 
     def test_month_precision_never_renders_a_day(self):
         """A month-precision date stored as the 1st must not gain a day."""
@@ -173,15 +181,19 @@ class TestFetchDcpSetbacksAsAt:
         conn.cursor.return_value = cur
         result = fetch_dcp_setbacks(conn, "waverley", "R2 Low Density")
         assert result["as_at"]["basis"] == "portal_plan_record"
+        assert result["as_at_status"] == "resolved"
         assert result["as_at_line"].startswith("As amended 9 September 2022")
 
-    def test_as_at_failure_does_not_kill_controls(self):
+    def test_as_at_failure_does_not_kill_controls_and_is_disclosed(self):
         """The as-at is provenance FOR the controls; its query failing must
-        degrade to 'no date line', not to 'no DCP section'."""
-        calls = {"n": 0}
+        degrade to a VISIBLE could-not-be-retrieved disclosure — typed as
+        'unavailable', never mistakable for 'checked, none exists' — while
+        the controls still serve. And the failure must roll back only to the
+        probe's savepoint, never the caller's transaction."""
+        executed = []
 
         def flaky_execute(sql, *a, **k):
-            calls["n"] += 1
+            executed.append(sql)
             if "dcp_plan_as_at" in sql:
                 raise RuntimeError("as-at lookup down")
 
@@ -195,6 +207,21 @@ class TestFetchDcpSetbacksAsAt:
         assert result is not None
         assert result["setbacks"]
         assert result["as_at"] is None
+        assert result["as_at_status"] == "unavailable"
+        assert "could not be retrieved" in result["as_at_line"]
+        assert any("ROLLBACK TO SAVEPOINT" in s for s in executed)
+        conn.rollback.assert_not_called()
+
+    def test_checked_absence_renders_no_line_and_is_typed_absent(self):
+        cur = MagicMock()
+        cur.fetchall.return_value = [_control_row()]
+        cur.fetchone.side_effect = [("https://example.gov.au/dcp",),
+                                    (None,) * 7]
+        conn = MagicMock()
+        conn.cursor.return_value = cur
+        result = fetch_dcp_setbacks(conn, "waverley", "R2 Low Density")
+        assert result["as_at"] is None
+        assert result["as_at_status"] == "absent"
         assert result["as_at_line"] is None
 
 
@@ -221,6 +248,31 @@ class TestPortalDateParsing:
 
     def test_empty_and_none_are_none(self):
         assert parse_dated_phrase("") is None
+
+    def test_name_url_date_conflict_refuses(self):
+        """A planName date disagreeing with the planURL's date is recorded,
+        never attached — the URL can carry the newer amendment."""
+        hit, source, conflict = resolve_portal_dates(
+            "Example DCP 2020 (amended March 2024)",
+            "https://x/Example+DCP+as+amended+5+June+2025.pdf")
+        assert hit is None
+        assert conflict is not None and "conflicts" in conflict
+
+    def test_name_url_agreement_attaches(self):
+        hit, source, conflict = resolve_portal_dates(
+            "Example DCP (as amended 9 September 2022)",
+            "https://x/Example+DCP+as+amended+9+September+2022.pdf")
+        assert conflict is None
+        assert hit[0] == "2022-09-09"
+        assert source == "planName"
+
+    def test_url_only_date_attaches_from_url(self):
+        hit, source, conflict = resolve_portal_dates(
+            "Example DCP 2016",
+            "https://x/Example+DCP+as+amended+9+September+2022.pdf")
+        assert conflict is None
+        assert hit[0] == "2022-09-09"
+        assert source == "planURL"
 
 
 # ---------------------------------------------------------------------------

@@ -184,8 +184,13 @@ def format_as_at_line(as_at: Optional[dict]) -> Optional[str]:
     elif basis == "stated_in_document":
         where = "date stated in the plan document"
     elif basis == "observed_current":
-        return (f"Observed as the current published version on {shown}; "
-                f"an in-force date is not available for this plan")
+        # Claims ONLY the stored fact: every registered source document's URL
+        # was checked on/after this date. NOT "current version" — a council
+        # can publish a superseding amendment at another URL and a URL check
+        # cannot see it (Sol finding, 2026-08-03).
+        return (f"All registered source documents for this plan were last "
+                f"checked on or after {shown}; an in-force date is not "
+                f"available")
     else:
         return None
     if kind == "amended":
@@ -310,18 +315,25 @@ def fetch_dcp_setbacks(
         reg = cur.fetchone()
 
         # Plan-level "as at" (campaign item 3). A failure here must not take
-        # the controls down with it: the as-at is provenance FOR the controls,
-        # so it degrades to None ("source unavailable" — no date line renders)
-        # while the controls still serve.
+        # the controls down with it — but it must also stay DISTINGUISHABLE
+        # from "checked, no date exists" (typed-absence doctrine): 'resolved'
+        # renders the dated line, 'absent' renders nothing and is counted by
+        # the coverage check, 'unavailable' renders a could-not-be-retrieved
+        # disclosure. The probe runs inside a SAVEPOINT so a failure never
+        # rolls back work the CALLER may have pending on this connection.
+        as_at = None
+        as_at_status = "unavailable"
         try:
-            as_at = _plan_as_at(cur, lga_slug)
-        except Exception as e:
-            logger.warning("fetch_dcp_setbacks as-at lookup: %s", e)
-            as_at = None
+            cur.execute("SAVEPOINT as_at_probe")
             try:
-                conn.rollback()
-            except Exception:
-                pass
+                as_at = _plan_as_at(cur, lga_slug)
+                as_at_status = "resolved" if as_at else "absent"
+                cur.execute("RELEASE SAVEPOINT as_at_probe")
+            except Exception as e:
+                logger.warning("fetch_dcp_setbacks as-at lookup: %s", e)
+                cur.execute("ROLLBACK TO SAVEPOINT as_at_probe")
+        except Exception as e:
+            logger.warning("fetch_dcp_setbacks as-at savepoint: %s", e)
         cur.close()
     except Exception as e:
         logger.warning("fetch_dcp_setbacks: %s", e)
@@ -450,12 +462,19 @@ def fetch_dcp_setbacks(
         "sd_setbacks":      sd_setbacks,
         "is_da_path":       True,
         "dcp_url":          dcp_url,
-        # Three states: dict = date with basis; None = no defensible date
-        # (either none exists or the lookup failed — the check script counts
-        # both). The line is preformatted HERE so every surface words it
+        # Typed three-state provenance: resolved (dated line) / absent (no
+        # line — counted by the coverage check) / unavailable (visible
+        # could-not-be-retrieved disclosure, never mistakable for a completed
+        # lookup). Lines are preformatted HERE so every surface words them
         # identically.
         "as_at":            as_at,
-        "as_at_line":       format_as_at_line(as_at),
+        "as_at_status":     as_at_status,
+        "as_at_line":       (format_as_at_line(as_at)
+                             if as_at_status == "resolved" else
+                             ("Date provenance for this plan could not be "
+                              "retrieved for this report; the controls in "
+                              "this section were fetched normally"
+                              if as_at_status == "unavailable" else None)),
     }
 
 

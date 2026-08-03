@@ -54,6 +54,14 @@ def main() -> int:  # pragma: no cover - CLI entry point
               AND (needs_review IS NULL OR needs_review = FALSE)
             GROUP BY lga ORDER BY lga""")
     served = dict(cur.fetchall())
+    if not served or sum(served.values()) == 0:
+        # A completion check must be able to fail: an empty serving table
+        # means the production claim set was NOT measured (wrong database,
+        # emptied table) — never a satisfied target (the DQ-30 lesson).
+        print("ERROR: zero served claims found — nothing was measured, which "
+              "is not a pass. Exiting 2.", file=sys.stderr)
+        conn.close()
+        return 2
 
     by_basis: dict[str, list[str]] = {}
     claims_by_basis: dict[str, int] = {}
