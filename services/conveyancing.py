@@ -217,6 +217,87 @@ def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
     return load_regulatory_configs(os.getenv("DATABASE_URL"))
 
 
+def _fetch_pdf_db_data(db_url, lat, lng, lot_wkt, controls, dcp_former_council):
+    """DB queries for the paid PDF: DAs (local), LEP clauses, DCP setbacks,
+    heritage.
+
+    prior-art-checked: this IS the existing inline `_fetch_db_data` closure
+    from generate_conveyancing_pdf, extracted to module level and split — no
+    new data source; the four queries are unchanged. The extraction follows
+    the _nearby_da_count precedent (extracted so its false-zero became a
+    testable three-state). One try-block previously covered all four fetches,
+    so an exception mid-way left the later results empty and the PDF rendered
+    empty-as-absent (absence census row 1; output-grounding fix 3). Each fetch
+    now fails independently and reports itself in `failed`: a failed check
+    renders "could not be determined", never a clean absence.
+
+    Returns (das, lep, dcp, heritage, failed) where failed maps each fetch key
+    (das / lep / dcp / heritage) to True when it could not be completed:
+      das      — None=not fetched (failed), list otherwise.
+      lep      — [] means no key_sites_clause (N/A) or none found; a failed
+                 query keeps [] but sets the lep flag.
+      dcp      — None means council not covered (N/A, not queried) OR failed;
+                 the dcp flag distinguishes the two.
+      heritage — empty shape on failure with the heritage flag set, so an
+                 unchecked supplement is never read as no-heritage.
+    A connection failure fails every applicable fetch.
+    """
+    import psycopg2
+
+    _das = None
+    _lep = []
+    _dcp = None
+    _heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
+    _failed = {"das": True, "lep": False, "dcp": False, "heritage": True}
+    key_sites_clause = controls.get("key_sites_clause")
+    if key_sites_clause:
+        _failed["lep"] = True
+    if dcp_former_council:
+        _failed["dcp"] = True
+    if not db_url:
+        return _das, _lep, _dcp, _heritage, _failed
+    try:
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+    except Exception as e:
+        logger.warning("DB pre-fetch: connection failed — all four checks "
+                       "not assessed: %s", e)
+        return _das, _lep, _dcp, _heritage, _failed
+    try:
+        try:
+            # Nearby DAs from local DB (replaces live ePlanning API).
+            # council_name=None: the 200m Haversine radius filter scopes the
+            # search; the council filter is buggy because the DB uses a
+            # different council-name vocabulary than the LEP-derived name,
+            # so filtering silently returned zero → a false "no DAs".
+            _das = fetch_nearby_das(conn, lat, lng, council_name=None)
+            _failed["das"] = False
+        except Exception as e:
+            logger.warning("DB pre-fetch: nearby-DA query failed: %s", e)
+        epi_name = controls.get("zone_epi", "")
+        prop_zone = controls.get("zone", "")
+        if key_sites_clause:
+            try:
+                _lep = fetch_lep_clauses(conn, key_sites_clause, epi_name)
+                _failed["lep"] = False
+            except Exception as e:
+                logger.warning("DB pre-fetch: LEP-clause query failed: %s", e)
+        if dcp_former_council:
+            try:
+                _dcp = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
+                _failed["dcp"] = False
+            except Exception as e:
+                logger.warning("DB pre-fetch: DCP-setback query failed: %s", e)
+        try:
+            _heritage = fetch_heritage_postgis(conn, lat, lng, lot_wkt=lot_wkt)
+            _failed["heritage"] = False
+        except Exception as e:
+            logger.warning("DB pre-fetch: heritage query failed: %s", e)
+    finally:
+        conn.close()
+    return _das, _lep, _dcp, _heritage, _failed
+
+
 class ConveyancingRequest(BaseModel):
     address: str
     lat: Optional[float] = None
@@ -428,6 +509,12 @@ def run_conveyancing(req: ConveyancingRequest):
             controls, unique_overlays, valuation, covered_layers=covered_layers,
             tax_config_missing=tax_config is None,
             sepp_config_missing=sepp_standards is None,
+            # The badge must see this response's own absence state (output-
+            # grounding fix 3): a failed nearby-DA check renders "could not be
+            # checked", and a report carrying a not-assessed section must not
+            # claim high confidence. No caller passed live_query_failures
+            # before this.
+            live_query_failures=1 if da_fetch_failed else 0,
         ),
         "data_sources": data_sources,
     }
@@ -537,45 +624,9 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     db_url = os.getenv("DATABASE_URL")
 
     def _fetch_db_data():
-        """DB queries: DAs (local), LEP clauses, DCP setbacks, heritage.
-
-        _das is None until fetched: a DB failure renders as "Not assessed" in
-        the PDF DA section, never as "No development applications lodged".
-        """
-        _das = None
-        _lep = []
-        _dcp = None
-        _heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
-        if not db_url:
-            return _das, _lep, _dcp, _heritage
-        conn = None
-        try:
-            conn = psycopg2.connect(db_url)
-            conn.autocommit = True
-            # Nearby DAs from local DB (replaces live ePlanning API).
-            # prior-art-checked: aligns this call with services/intelligence_brief.py
-            # _fetch_nearby_das, which already passes council_name=None — no new
-            # capability, this REMOVES a redundant/buggy filter to match it.
-            # council_name=None: the 200m Haversine radius filter scopes the
-            # search; the council filter is buggy because the DB uses a different
-            # council-name vocabulary than the LEP-derived name, so filtering
-            # silently returned zero → a false "no DAs" in the Nearby Development
-            # Activity section.
-            _das = fetch_nearby_das(conn, lat, lng, council_name=None)
-            key_sites_clause = controls.get("key_sites_clause")
-            epi_name = controls.get("zone_epi", "")
-            prop_zone = controls.get("zone", "")
-            if key_sites_clause:
-                _lep = fetch_lep_clauses(conn, key_sites_clause, epi_name)
-            if dcp_former_council:
-                _dcp = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
-            _heritage = fetch_heritage_postgis(conn, lat, lng, lot_wkt=lot_wkt)
-        except Exception as e:
-            logger.warning("DB pre-fetch failed: %s", e)
-        finally:
-            if conn:
-                conn.close()
-        return _das, _lep, _dcp, _heritage
+        return _fetch_pdf_db_data(
+            db_url, lat, lng, lot_wkt, controls, dcp_former_council,
+        )
 
     def _fetch_shadow():
         """Shadow risk — calls Railway geometric model (~17s)."""
@@ -788,7 +839,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         contam_future = executor.submit(_fetch_contaminated)
         servicing_future = executor.submit(_fetch_servicing)
         coastal_future = executor.submit(_fetch_coastal)
-        das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
+        das, lep_clauses, dcp_setbacks_db, postgis_heritage, db_fetch_failed = db_future.result()
         shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
         anef_live = anef_future.result()
@@ -827,6 +878,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         shadow_result=shadow_result,
         lep_clauses=lep_clauses,
         dcp_setbacks_db=dcp_setbacks_db,
+        db_fetch_failed=db_fetch_failed,
         proximity_m=proximity_m,
         bushfire_live=bushfire_live,
         anef_live=anef_live,
@@ -913,8 +965,22 @@ def _save_pipeline_cache(report_id: str, data: dict) -> None:
             conn.close()
 
 
+# prior-art-checked: reuse not viable — this IS the existing cache reader in
+# this file gaining an age policy; no new data source or capability.
+# Max cache age for PDF assembly (output-grounding fix 2). The cache exists so
+# the PAID PDF can reuse the free-tier run from the same purchase session; the
+# sources beneath it (Portal controls, valuation, overlays) change on external
+# schedules, so its legitimate lifetime is the purchase-decision window, not
+# archival. 24h covers an overnight decision while bounding staleness to one
+# day; an older entry is a MISS and the PDF endpoint re-runs the full pipeline
+# (its existing fallback), so expiry costs latency, never correctness.
+_PIPELINE_CACHE_MAX_AGE_HOURS = 24
+
+
 def _load_pipeline_cache(report_id: str) -> Optional[dict]:
-    """Load cached free-tier pipeline results. Returns None on miss or error."""
+    """Load cached free-tier pipeline results. Returns None on miss, expiry,
+    or error — expiry is logged distinctly from absence so a stale entry is
+    visible as such, not as a mystery miss."""
     db_url = os.getenv("DATABASE_URL")
     if not db_url or not report_id:
         return None
@@ -925,10 +991,18 @@ def _load_pipeline_cache(report_id: str) -> Optional[dict]:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT pipeline_data FROM conveyancing_cache WHERE report_id = %s",
-                (report_id,),
+                "SELECT pipeline_data, "
+                "       created_at < NOW() - make_interval(hours => %s) AS expired "
+                "FROM conveyancing_cache WHERE report_id = %s",
+                (_PIPELINE_CACHE_MAX_AGE_HOURS, report_id),
             )
             row = cur.fetchone()
+        if row and row[1]:
+            logger.info(
+                "Pipeline cache for %s EXPIRED (older than %sh) — full re-run",
+                report_id, _PIPELINE_CACHE_MAX_AGE_HOURS,
+            )
+            return None
         if row and row[0]:
             return row[0] if isinstance(row[0], dict) else json.loads(row[0])
         return None

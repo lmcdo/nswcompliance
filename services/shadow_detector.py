@@ -28,7 +28,8 @@ Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
     ],
     "construction_change_score": float | null,
     "construction_change_detected": bool,
-    "adg_compliant": bool,       # True if Jun 21 noon shadow does NOT overlap subject lot (noon-only gate)
+    "adg_compliant": bool|null,  # noon-only gate; null = NOT ASSESSED (noon scenario
+                                 # missing/errored/overlap unknown) — never a verdict
     "worst_case_scenario": str   # scenario key with longest shadow
   },
   "confidence": str,
@@ -262,32 +263,45 @@ def _build_scenario_list(
     for key, *_ in SHADOW_SCENARIOS:
         _, month, day, hour_utc, description, date_str, time_local, direction_deg = meta_by_key[key]
         shadow_geojson = shadow_map.get(key) or {}
-        if "error" in shadow_geojson:
-            length = 0.0
-            fraction = 0.0
-            overlaps = False
-            on_lot = None
-        else:
-            length = shadow_reach_m(shadow_geojson, lot_geojson)
-            fraction = shadow_overlap_fraction(shadow_geojson, lot_geojson)
-            overlaps = overlaps_lot(shadow_geojson, lot_geojson)
-            on_lot = shadow_on_lot_geojson(shadow_geojson, lot_geojson)
+        if "error" in shadow_geojson or not shadow_geojson:
+            # Typed absence (output-grounding fix 1, 2026-08-03). An errored
+            # scenario previously served shadow_length_m=0.0 and
+            # overlaps_subject_lot=False — a crash rendered as a numeric
+            # "no shadow" claim, which then fed adg_compliant=True. A failed
+            # computation is UNAVAILABLE: every measurement field is None and
+            # the status says why the numbers are missing.
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": str(shadow_geojson.get("error") or "no shadow output")[:160],
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
         scenarios.append({
             "scenario": key,
             "label": description,
             "date": date_str,
             "time_local": time_local,
-            "shadow_length_m": length,
-            "shadow_overlap_fraction": fraction,
+            "status": "computed",
+            "shadow_length_m": shadow_reach_m(shadow_geojson, lot_geojson),
+            "shadow_overlap_fraction": shadow_overlap_fraction(shadow_geojson, lot_geojson),
             "shadow_direction_deg": direction_deg,
-            "overlaps_subject_lot": overlaps,
-            "shadow_on_lot": on_lot,          # shadow clipped to subject lot
-            "shadow_polygon": shadow_geojson if "error" not in shadow_geojson else None,
+            "overlaps_subject_lot": overlaps_lot(shadow_geojson, lot_geojson),
+            "shadow_on_lot": shadow_on_lot_geojson(shadow_geojson, lot_geojson),
+            "shadow_polygon": shadow_geojson,
         })
     return scenarios
 
 
-def _adg_compliant(scenarios: list) -> bool:
+def _adg_compliant(scenarios: list) -> Optional[bool]:
     """
     ADG requires 2 hours solar access 9am–3pm Jun 21 on principal private open space.
 
@@ -301,11 +315,23 @@ def _adg_compliant(scenarios: list) -> bool:
     low solar altitude — treating them as hard gates produces false "always concern"
     results for all suburban lots.  They are retained in the scenario output for
     context but do not drive the ADG compliance verdict.
+
+    THREE-STATE (output-grounding fix 1, 2026-08-03): returns None — "not
+    assessed" — when the noon scenario is missing, its computation errored
+    (status "unavailable"), or its overlap is unknown. The previous code
+    returned True on every one of those paths ("can't assess — default to
+    compliant"): a crash became a compliance pass, the DQ-36 class. A verdict
+    is only issued from a computed noon scenario.
     """
     noon = next((s for s in scenarios if s["scenario"] == "jun21_12pm"), None)
     if noon is None:
-        return True  # can't assess — default to compliant
-    return not bool(noon.get("overlaps_subject_lot"))
+        return None  # not assessed — no noon scenario to gate on
+    if noon.get("status") == "unavailable":
+        return None  # not assessed — noon computation failed
+    overlaps = noon.get("overlaps_subject_lot")
+    if overlaps is None:
+        return None  # not assessed — overlap unknown is not overlap absent
+    return not bool(overlaps)
 
 
 def _worst_case(scenarios: list) -> str:
@@ -451,6 +477,10 @@ def run_shadow(request: ShadowRequest):
         "worst_case_scenario": _worst_case(scenarios),
     }
     confidence = "medium" if height_m != DEFAULT_HEIGHT_M and lep_name != "Local Environmental Plan" else "low"
+    # A run with any unavailable scenario must not out-claim its own data:
+    # cap to "low" (the conveyancing _cap_confidence doctrine; fix 1).
+    if any(s.get("status") == "unavailable" for s in scenarios):
+        confidence = "low"
 
     try:
         _write_report(
