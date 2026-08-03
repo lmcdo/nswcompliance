@@ -1,157 +1,235 @@
 {
  "tier": "critical",
- "justification": "Four typed-absence fixes on served output, three on the PAID conveyancing channel. The headline defects being removed: a crashed shadow scenario served as shadow_length_m 0.0 and fed adg_compliant true (a crash became a compliance pass); a paid PDF could assemble from an arbitrarily old cached run \u2014 and flood re-stamped stale outputs with today's date; one try-block over four DB fetches rendered mid-failure as clean absence; a failed TOD check silently deleted the PDF's TOD section (DQ-36's omission twin).",
- "commit_hash": "335b6fcf",
+ "justification": "Adds a rendered provenance line to the PAID conveyancing PDF's DCP section and changes the brief's DCP as_at semantics on a served surface. Also writes to production (new dcp_plan_as_at table, additive effective_date_basis column, 23 populated rows). Wrong wording or a wrongly-attached date here is a false representation inside the legal defence layer (Layer 2), the class disclaimers don't cure.",
+ "commit_hash": "a6fba6ab",
  "files": [
-  "services/shadow_detector.py",
-  "services/conveyancing.py",
-  "services/flood_truth.py",
+  "migrations/063_dcp_plan_as_at.sql",
+  "scripts/conveyancing_db.py",
   "scripts/generate_conveyancing_report.py",
-  "frontend-nextjs/app/api/reports/shadow/generate/route.ts",
-  "frontend-nextjs/lib/pdf/shadow-report.tsx",
-  "frontend-nextjs/components/tools/ShadowTool.tsx",
-  "tests/test_shadow_detector.py",
-  "tests/test_typed_absence_fixes.py",
-  "tests/test_conveyancing_tod.py",
-  "tests/test_conveyancing_truth.py",
-  "tests/test_flood_truth.py"
+  "scripts/fetch_dcp_as_at_dates.py",
+  "scripts/extract_dcp_stated_dates.py",
+  "scripts/check_dcp_as_at_coverage.py",
+  "services/intelligence_brief.py",
+  "tests/test_dcp_as_at.py",
+  ".gitignore",
+  ".claude/DATA_QUALITY_TRACKER.md"
  ],
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_shadow_detector.py tests/test_typed_absence_fixes.py tests/test_conveyancing_tod.py tests/test_conveyancing_truth.py tests/test_flood_truth.py -q",
-  "passes_when": "an errored scenario carries status 'unavailable' with None measurements and _adg_compliant(errored noon) is None; a mid-failure in one DB fetch leaves the other three intact and typed; an expired cache entry is a miss and a cache-copied flood row keeps its ORIGINAL run_date; build_tod_uplift_lines(None,...) renders not_assessed; the free-tier confidence caps on live_query_failures",
-  "fails_when": "any of the four old behaviours returns: errored-noon \u2192 compliance pass (test_adg_compliant_errored_noon...), single-try fetch collapse (test_mid_failure_leaves_other_fetches_intact), run_date re-stamp (test_write_report_carries_original_run_date), or TOD silent omission (test_tod_lookup_failed_renders_not_assessed_never_vanishes) \u2014 each pin FAILS on the pre-change code",
-  "demonstrated_failing": "Each pin was written against the observed old behaviour cited in the absence census (docs/qa/absence-semantics-census-2026-08.md rows 19/20, 15/17, 1, 7): shadow_detector.py:264-269 served 0.0m/False from an error dict and :305-308 returned True on a missing noon ('can't assess \u2014 default to compliant', its own comment); conveyancing.py:927-930 had no age filter; flood_truth.py:1745 stamped date.today() on cached outputs; generate_conveyancing_report build_tod_uplift_lines returned render=False for tod=None. Three previously-green tests encoding the old doctrine were flipped with their reasons stated in-test.",
-  "mutation_evidence": "Revert _adg_compliant's None arms to True \u2192 4 tests fail. Merge the four try-blocks back into one \u2192 the mid-failure pin fails on dcp/heritage assertions. Drop run_date from _write_report \u2192 the params[5] assertion fails. Return render False for tod None \u2192 the fix-4 pin fails on three assertions. Re-order build_shadow_row's None check after the height branches \u2192 the no-percent-claim pin fails."
+  "command": "python -m pytest tests/test_dcp_as_at.py -q && python scripts/check_dcp_as_at_coverage.py",
+  "passes_when": "49 pins green: authority order portal>stated>observed holds with two refusals \u2014 a portal/stated CONFLICT renders no date, and observed_current exists only when EVERY active registry chapter was checked (oldest check date, MIN not MAX); a month-precision date renders without a day; a bare year label never parses to a date; an identity-mismatched portal plan attaches no date; an as-at lookup failure leaves the controls serving with as_at None; the brief's DCP DataFields carry the plan date or None, never date.today(); the extractor serves the LATEST effective statement and reads amendment tables as approved/in-force PAIRS. The coverage check reports dateless_claims (baseline 292 of 954, 10 LGAs, after the honesty-tightening) in observation mode; zero served claims is an inability to measure (exit 2), never a satisfied target. The as-at is a typed three-state: resolved / absent / unavailable \u2014 a failed lookup renders a visible could-not-be-retrieved disclosure, and the observed wording claims only the URL-check fact, never 'current version'.",
+  "fails_when": "Any pin regressing: swapping the authority order fails test_portal_wins_when_stated_absent/test_stated_beats_observed; silently picking a side of a portal/stated conflict fails test_conflicting_portal_and_stated_render_nothing; ignoring precision fails test_month_precision_never_renders_a_day; re-enabling label parsing fails test_bare_year_is_never_a_date; attaching a date across the Hornsby-class identity mismatch fails test_identity_mismatch_is_a_finding_not_a_pick; letting the as-at query raise through fails test_as_at_failure_does_not_kill_controls; restoring as_at=date.today() fails test_brief_dcp_fields_carry_no_date_when_none_defensible; first-statement-wins fails test_latest_effective_statement_wins; a page-wide amendment-table maximum fails test_amendment_table_ignores_approved_only_dates. collapsing failure into absence fails test_as_at_failure_does_not_kill_controls_and_is_disclosed (asserts the disclosure AND that conn.rollback was never called); a planName/planURL date conflict attaching fails test_name_url_date_conflict_refuses; 'current' reappearing in the observed wording fails test_observed_wording_claims_only_the_stored_fact; check_dcp_as_at_coverage exits 2 when it cannot measure, including on a zero-claim census.",
+  "demonstrated_failing": "The pre-change states these pins encode were observed live this session: the PDF DCP section rendered no date of any kind (generate_conveyancing_report.py:4814 pre-change); intelligence_brief.py:2776-2779 stamped as_at=date.today() on every DCP field; the first fetcher dry-run attached 2022-09-09 to leichhardt via a sole-result pick that the identity guard now refuses (portal lists only the Ashfield comprehensive plan for Inner West parcels); migration 040's parser manufactured 528 YYYY-01-01 dates from version labels (DQ-41).",
+  "mutation_evidence": "return None from _plan_as_at unconditionally -> the three authority-order pins fail. Drop the conflict refusal -> test_conflicting_portal_and_stated_render_nothing fails. Render day for month precision -> the never-renders-a-day pin fails. Drop the len(row)!=7 guard -> test_wrong_arity_row_is_none fails. Replace the wording with 'verified as at' -> test_language_ladder_no_banned_words fails. Make pick_dcp_result return dcp_results[0] -> the Sydney superset pin and the Hornsby identity pin both fail. Revert scan_statement to first-wins -> test_latest_effective_statement_wins fails. Revert scan_amendment_table to page-wide max -> test_amendment_table_ignores_approved_only_dates fails."
  },
  "pre_impl": {
-  "existing_data": "No DB writes. Read-path changes only: shadow scenario/verdict shaping, two cache read policies (conveyancing 24h via created_at, flood 90d via run_date \u2014 both columns verified to exist: conveyancing_cache.created_at written at :902-906, property_reports.run_date in _write_report's INSERT), one closure extracted to module level (_fetch_pdf_db_data, following the _nearby_da_count extraction precedent).",
-  "assumption_mismatch": "Pre-fix cached shadow rows lack the scenario 'status' key: every consumer treats absent status as computed (ShadowScenario.status optional; _adg_compliant checks == 'unavailable', so absent \u2260 unavailable). Older generate_pdf callers omit db_fetch_failed \u2192 None \u2192 {} \u2192 nothing reported failed (backward compatible).",
-  "new_vs_existing": "Verdict-changing only on previously-broken paths: errored/missing noon (was true, now None), failed TOD (was vanished section, now not-assessed section), expired caches (was served, now recomputed), mid-failure fetches (was clean absence, now typed). Computed paths keep identical outputs \u2014 the full pytest suite of pre-existing behaviour tests stayed green except the three old-doctrine tests deliberately flipped.",
-  "external_source_error": "Shadow model error \u2192 typed unavailable scenario + confidence low + ADG not-assessed. Both TOD layers failing \u2192 rendered not-assessed disclosure. DB connect failure \u2192 all four PDF fetches typed failed and listed in the coverage panel.",
-  "frontend_type": "adg_compliant widened to boolean|null in ShadowReportData (lib/pdf/shadow-report.tsx:60) and ShadowTool's outputs interface; ShadowScenario gains optional status + nullable measurement fields; generate route preserves null instead of Boolean-coercing. reports/shadow/[report_id]/page.tsx already rendered three-state ('N/A') and ShadowDetailDisplay already typed boolean|null \u2014 verified before change.",
-  "user_failure_mode": "After: a failed noon renders 'Not assessed' rows/badges (PDF risk row, shadow PDF finding, ShadowTool headline) \u2014 never 'ADG concern', never 'Meets test', never an objection paragraph. A failed TOD check renders a visible not-assessed section. A mid-failure PDF lists which checks could not be completed. An expired cache costs latency (full re-run), never correctness."
+  "existing_data": "dcp_setback_controls (1071 rows: effective_date 893 populated, all label-derived, no basis - measured before design); dcp_chapter_registry.url_last_checked (523/564 active); lot_search_index (3.13M rows, lga_name/former_council/geom, no propId); documents table precedent for amendment_date naming. Full backup dcp_setback_controls_backup_20260803_item3 (1071 rows asserted) before the ALTER.",
+  "assumption_mismatch": "Registry council slugs match dcp_setback_controls.lga for all geographic slugs (verified); nsw_statewide has no registry council so it can never get an observed date - it is in the dateless baseline by design, not accident. lot_search_index lga_name needed 5 explicit overrides (CANTERBURY-BANKSTOWN, SYDNEY, KU-RING-GAI, CITY OF PARRAMATTA, THE HILLS SHIRE) - verified against live values, coded as a dict.",
+  "new_vs_existing": "All schema changes additive: new table + one nullable column. Every pre-existing effective_date row keeps effective_date_basis NULL and is treated as unattributed - never rendered (DQ-41). Serve-path dict gains as_at/as_at_line keys; absent keys degrade to no line for any stale caller.",
+  "external_source_error": "Portal /dcp failure, no-propId, or lgaName echo mismatch -> row NOT written (source unavailable is never 'checked, none found'); serve-time as-at lookup failure -> controls still serve, as_at None, warning logged; check script exits 2 when it cannot measure.",
+  "frontend_type": "No frontend type change required: conveyancing JSON passes the dict through; the brief's DataField.as_at was already Optional[str] and provenance.ts already renders asAt only when present (skips undefined).",
+  "user_failure_mode": "Worst case on failure: the DCP section carries no as-at line (visible absence, counted 193-at-baseline by the observation check) - never a wrong date, never a manufactured precision, never the generation date dressed as currency."
  },
  "functions": [
   {
-   "name": "_fetch_pdf_db_data",
-   "file_line": "services/conveyancing.py:220",
-   "input": "db_url, coordinates, lot geometry WKT, parsed controls dict and the resolved DCP former-council slug",
-   "output": "(das, lep, dcp, heritage, failed) \u2014 four independent fetch results plus a per-fetch failed map consumed by generate_pdf's coverage panel and section renderers",
-   "if_none": "no db_url or connect failure \u2192 every applicable fetch reported failed; N/A fetches (no clause / no council) are NOT failed \u2014 three states, never two"
+   "name": "_plan_as_at",
+   "file_line": "scripts/conveyancing_db.py:203",
+   "input": "an open DB cursor plus the serving lga slug string from fetch_dcp_setbacks",
+   "output": "dict{date, precision, kind, basis} in authority order portal>stated>observed, or None to the serve-path dict",
+   "if_none": "no row / all-null / wrong-arity row -> None; caller renders no date line"
   },
   {
-   "name": "_adg_compliant",
-   "file_line": "services/shadow_detector.py:304",
-   "input": "the scenario list built by _build_scenario_list, each entry carrying a computed/unavailable status",
-   "output": "True/False verdict from a computed noon scenario, or None (not assessed) \u2014 never a verdict from absence",
-   "if_none": "missing noon, unavailable noon, or unknown overlap \u2192 None; every consumer renders a not-assessed state for it (verified per consumer, cited in the PR)"
+   "name": "format_as_at_line",
+   "file_line": "scripts/conveyancing_db.py:172",
+   "input": "the as_at dict produced by _plan_as_at, or None when nothing was defensible",
+   "output": "one basis-appropriate sentence string for every rendering surface (PDF, JSON, brief), or None",
+   "if_none": "None in -> None out; unknown basis or unparseable date -> None, never a guessed sentence"
   },
   {
-   "name": "build_tod_uplift_lines",
-   "file_line": "scripts/generate_conveyancing_report.py:3056",
-   "input": "fetch_tod_catchment result or None (both layers failed), capacity engine result, strata flag",
-   "output": "render/not_assessed/disclosure lines for PDF section 12 \u2014 a failed check now RENDERS as not-assessed",
-   "if_none": "tod None \u2192 render True + not_assessed + could-not-be-completed disclosure; held_line/scope None (call site now guards) \u2014 never a vanished section"
+   "name": "parse_dated_phrase",
+   "file_line": "scripts/fetch_dcp_as_at_dates.py:120",
+   "input": "the official planName string or URL-decoded planURL text from the portal /dcp response",
+   "output": "(iso_date, precision, kind, verbatim substring) parsed from explicit dated phrases only, back to fetch_one",
+   "if_none": "bare-year labels and invalid dates return None - the retired version-parser class stays dead"
+  },
+  {
+   "name": "pick_dcp_result",
+   "file_line": "scripts/fetch_dcp_as_at_dates.py:206",
+   "input": "the registry dcp_name identity list for the slug plus the portal dcpResults entry list",
+   "output": "(chosen_entry, None) or (None, failure_reason) - identity-anchored, exact token sets beat supersets, singleton-date rule for multi-volume plans",
+   "if_none": "empty results / identity mismatch / ambiguity -> (None, reason); nothing written"
+  },
+  {
+   "name": "scan_statement",
+   "file_line": "scripts/extract_dcp_stated_dates.py:94",
+   "input": "the absolute path plus relative name of one mapped local plan PDF in data/dcps",
+   "output": "a Stated record (iso date, day precision, kind, verbatim line with file and page) for the upsert",
+   "if_none": "pattern no longer matches -> SKIPPED and reported, never guessed"
+  },
+  {
+   "name": "_build_dcp_controls",
+   "file_line": "services/intelligence_brief.py:2725",
+   "input": "the fetch_dcp_setbacks result dict including the new plan-level as_at key, plus the lga slug",
+   "output": "DCPControls whose four DataField.as_at values carry the plan date string or None, never date.today()",
+   "if_none": "as_at absent -> None on all four fields; provenance UI shows no date (was: date.today())"
   }
  ],
  "values": [
   {
-   "value": "scenario['status']",
-   "read_at": "services/shadow_detector.py:330 (_adg_compliant), frontend ShadowTool/ShadowDetailDisplay (optional)",
-   "nullable": "absent on pre-fix cached rows \u2014 treated as computed everywhere (== 'unavailable' checks only)",
-   "guard_at": "services/shadow_detector.py:330",
-   "if_missing": "legacy rows behave exactly as before the fix"
+   "value": "as_at_line",
+   "read_at": "scripts/generate_conveyancing_report.py:4822",
+   "nullable": "yes",
+   "guard_at": "scripts/generate_conveyancing_report.py:4822 (dict .get gate)",
+   "if_missing": "no line renders - visible absence, counted by the observation check"
   },
   {
-   "value": "cached['run_date'] (flood cache hit)",
-   "read_at": "services/flood_truth.py cache-hit block",
-   "nullable": "yes (very old rows) \u2014 falls back to today with the fallback visible in code",
-   "guard_at": "flood_truth.py `_orig_run_date.isoformat() if _orig_run_date else ...`",
-   "if_missing": "response carries today's date only when no original date exists to preserve"
+   "value": "row from the as-at query",
+   "read_at": "scripts/conveyancing_db.py:329",
+   "nullable": "yes",
+   "guard_at": "scripts/conveyancing_db.py:236 (len(row) != 7 -> None) and :296-306 (nested try keeps controls serving)",
+   "if_missing": "as_at None; controls unaffected"
   }
  ],
  "queries": [
   {
-   "purpose": "flood cache read with max-age policy",
-   "file_line": "services/flood_truth.py:1727-1733",
-   "where_clause": "product='flood' AND address=%s AND run_date > CURRENT_DATE - INTERVAL '90 days'",
-   "if_zero": "no fresh row \u2192 full recompute (the existing slow path); staleness costs latency, never correctness",
-   "if_wrong": "poisoned rows still filtered by _first_valid_cached_row (#762, unchanged)"
+   "purpose": "serve-time as-at lookup",
+   "file_line": "scripts/conveyancing_db.py:221",
+   "where_clause": "registry: council = %s AND is_active = TRUE (MAX url_last_checked); LEFT JOIN dcp_plan_as_at ON lga = %s",
+   "if_zero": "obs-subquery row always exists; all-null -> as_at None, no line",
+   "if_wrong": "wrong-LGA row impossible via equality on the serving slug; wrong basis order pinned by tests"
   },
   {
-   "purpose": "pipeline cache read with 24h expiry, expiry typed distinct from miss",
-   "file_line": "services/conveyancing.py:1050-1060",
-   "where_clause": "report_id = %s with computed `expired` flag (created_at < NOW() - make_interval(hours=>24))",
-   "if_zero": "miss \u2192 PDF endpoint's existing full-pipeline fallback",
-   "if_wrong": "an expired entry logged as EXPIRED, returned as None \u2014 never served"
+   "purpose": "served-claim census in the check script",
+   "file_line": "scripts/check_dcp_as_at_coverage.py:52",
+   "where_clause": "is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE) - the same filters fetch_dcp_setbacks serves under",
+   "if_zero": "empty census -> 0 claims reported; exit still 0 (an honest empty)",
+   "if_wrong": "looser filters would overcount dateless claims (conservative direction)"
+  },
+  {
+   "purpose": "population upserts (fetcher + extractor)",
+   "file_line": "scripts/fetch_dcp_as_at_dates.py:473 / scripts/extract_dcp_stated_dates.py:259",
+   "where_clause": "INSERT ... ON CONFLICT (lga) DO UPDATE - single-row, keyed by slug",
+   "if_zero": "written count compared to predicted count; mismatch exits 2",
+   "if_wrong": "CHECK constraints refuse a date without precision/kind/evidence"
   }
  ],
  "break_it": [
   {
-   "scenario": "pybdshadow raises while computing the Jun 21 noon scenario for a lot",
-   "what_happens": "OLD: scenario served 0.0m/no-overlap, adg_compliant true \u2014 a crash became 'meets the ADG solar access test' on the free tool, the shadow PDF and the paid conveyancing PDF",
+   "scenario": "the serve-time as-at lookup query fails (dcp_plan_as_at dropped, registry timeout) during a paid PDF build",
+   "what_happens": "pre-guard: the whole DCP section would vanish from the paid PDF - a provenance add-on destroying the product claim",
    "mitigated": true,
-   "how": "typed unavailable scenario \u2192 _adg_compliant None \u2192 every consumer renders not-assessed; run confidence capped low",
-   "repro": "pytest -k errored_noon_is_not_assessed_never_a_pass"
+   "how": "scripts/conveyancing_db.py:325-336 - nested try; controls serve, as_at None",
+   "repro": "pytest tests/test_dcp_as_at.py::TestFetchDcpSetbacksAsAt::test_as_at_failure_does_not_kill_controls"
   },
   {
-   "scenario": "LEP-clause query raises mid-way through the PDF's DB fetch batch",
-   "what_happens": "OLD: DCP setbacks and heritage silently emptied too; PDF rendered 'not extracted for this LGA' coverage claims about checks that never ran",
+   "scenario": "month-precision date stored as the 1st renders as '1 March 2026'",
+   "what_happens": "manufactured day-level precision - the invented-Sydney-setbacks class inside the defence layer",
    "mitigated": true,
-   "how": "four independent try blocks + per-fetch failed map; coverage panel lists not-completed checks; DCP else-branch says could-not-be-retrieved",
-   "repro": "pytest -k mid_failure_leaves_other_fetches_intact"
+   "how": "scripts/conveyancing_db.py:149-169 - precision branches render only what the source stated",
+   "repro": "pytest tests/test_dcp_as_at.py::TestAsAtWording::test_month_precision_never_renders_a_day"
   },
   {
-   "scenario": "PDF requested days after the free-tier run (abandoned checkout resumed)",
-   "what_happens": "OLD: PDF assembled from the stale cache silently, no age bound at all",
+   "scenario": "portal record for a different plan attaches its date (live: Hornsby portal shows DCP 2013 amended 2019; we serve DCP 2024)",
+   "what_happens": "a true date about the WRONG plan rendered under our controls - worse than no date",
    "mitigated": true,
-   "how": "24h max age; expired = logged miss \u2192 full re-run",
-   "repro": "pytest -k expired_entry_is_a_miss"
+   "how": "scripts/fetch_dcp_as_at_dates.py:206-258 - registry-identity subset match; refused live for 5 LGAs (DQ-42)",
+   "repro": "pytest tests/test_dcp_as_at.py::TestPickDcpResult::test_identity_mismatch_is_a_finding_not_a_pick"
   },
   {
-   "scenario": "flood re-serve of a months-old cached analysis for a repeat address lookup",
-   "what_happens": "OLD: served AND re-written under a fresh report_id wearing today's run_date \u2014 a freshness lie on a hazard product",
+   "scenario": "a bare year inside a portal plan name parses into a YYYY-01-01 date",
+   "what_happens": "the retired version-parser resurrected through the portal path (DQ-41's origin)",
    "mitigated": true,
-   "how": "90-day max age + original run_date preserved in response (cache_hit flag added) and in the copied row",
-   "repro": "pytest -k write_report_carries_original_run_date"
+   "how": "scripts/fetch_dcp_as_at_dates.py:120-140 - explicit dated phrases only",
+   "repro": "pytest tests/test_dcp_as_at.py::TestPortalDateParsing::test_bare_year_is_never_a_date"
   },
   {
-   "scenario": "both TOD catchment layers down at PDF generation",
-   "what_happens": "OLD: section 12 vanished \u2014 indistinguishable from 'checked, not in a catchment' (DQ-36's silent-omission twin, on the paid channel)",
+   "scenario": "centroid resolves a parcel across the LGA boundary (live: an ashfield lot resolved to a CANADA BAY parcel on dry-run 1)",
+   "what_happens": "another LGA's plan record cached under the wrong slug by the population upsert and served on the wrong council's PDFs",
    "mitigated": true,
-   "how": "build_tod_uplift_lines renders not_assessed with an explicit could-not-be-completed disclosure; strata suppression unchanged and tested",
-   "repro": "pytest -k renders_not_assessed_never_vanishes"
+   "how": "scripts/fetch_dcp_as_at_dates.py:289-302 - /dcp lgaName echo check, retry next centroid, fail closed; the retry recovered ashfield on dry-run 2",
+   "repro": "observed live in dry-run 1 vs 2 output (session transcripts); guard is the containment check + continue"
   },
   {
-   "scenario": "free-tier badge claims high confidence while its own DA check failed",
-   "what_happens": "OLD: live_query_failures existed but no caller passed it \u2014 the badge ignored the report's own absence state",
+   "scenario": "the brief regresses to stamping every DCP DataField with date.today() again",
+   "what_happens": "query date presented as data currency in the provenance panel - freshness misrepresentation on a served surface",
    "mitigated": true,
-   "how": "run_conveyancing passes live_query_failures=1 on da_fetch_failed \u2192 cap to medium (2+ \u2192 low)",
-   "repro": "pytest -k one_failure_caps_high_to_medium"
+   "how": "services/intelligence_brief.py:2787-2801 - as_at flows only from the plan-level basis",
+   "repro": "pytest tests/test_dcp_as_at.py::TestBriefDcpAsAt::test_brief_dcp_fields_carry_no_date_when_none_defensible"
   },
   {
-   "scenario": "legacy cached shadow rows (no status key) start rendering as unavailable",
-   "what_happens": "historical reports would silently flip from their issued verdicts to not-assessed states",
+   "scenario": "wording drifts into banned assurance language such as 'verified as at' on the rendered line",
+   "what_happens": "overclaiming inside the defence layer - the campaign's own largest-liability finding",
    "mitigated": true,
-   "how": "absent status \u2260 'unavailable' at every check site (equality, not truthiness); TS type optional",
-   "repro": "pytest tests/test_shadow_detector.py (legacy-shaped fixtures carry no status and still verdict)"
+   "how": "scripts/conveyancing_db.py:172-192 single wording source + language-ladder pin",
+   "repro": "pytest tests/test_dcp_as_at.py::TestAsAtWording::test_language_ladder_no_banned_words"
+  },
+  {
+   "scenario": "the check script's served-claim census filters drift from what fetch_dcp_setbacks actually serves",
+   "what_happens": "the observation census counts the wrong claim set and the dateless baseline silently understates the exposure",
+   "mitigated": true,
+   "how": "scripts/check_dcp_as_at_coverage.py:36 imports the serve path's own _plan_as_at (basis logic cannot fork); the row filter mirrors conveyancing_db.py:365-370 and any loosening overcounts, the conservative direction",
+   "repro": "python scripts/check_dcp_as_at_coverage.py - claims_by_basis totals must sum to served_claims (954 at baseline)"
+  },
+  {
+   "scenario": "a population upsert writes a date missing its precision, kind or verbatim evidence",
+   "what_happens": "a naked date with no basis would enter the provenance table - exactly the effective_date defect (DQ-41) reborn in the new table",
+   "mitigated": true,
+   "how": "migrations/063_dcp_plan_as_at.sql CHECK constraints - (date IS NULL) = (precision IS NULL) = (kind IS NULL) and date requires evidence; the DB refuses the row",
+   "repro": "psql: INSERT INTO dcp_plan_as_at (lga, stated_date) VALUES ('test', '2020-01-01') -> check constraint violation"
+  },
+  {
+   "scenario": "a portal date attached under an older plan identity keeps serving after the registry identity changes",
+   "what_happens": "the Hornsby drift: a 2019 portal date stored before the council's 2024 plan was onboarded would keep printing under the new plan's controls",
+   "mitigated": true,
+   "how": "scripts/fetch_dcp_as_at_dates.py \u2014 checked-but-unattached results CLEAR the stored portal date transactionally (13 clears applied live); infrastructure failures never touch a row",
+   "repro": "fetcher --apply output: 'checked-but-unattached (portal date cleared): 13'; the unattached_reason is stored in portal_raw"
+  },
+  {
+   "scenario": "one freshly-checked registry chapter makes the whole plan claim 'observed current' on that date",
+   "what_happens": "a plan whose other chapters were last observed years earlier renders a today-ish observation date - overclaiming inside the defence layer",
+   "mitigated": true,
+   "how": "scripts/conveyancing_db.py:221-224 - observed exists only when COUNT(*)=COUNT(url_last_checked) over active chapters, and carries MIN not MAX; cumberland/liverpool/waverley honestly dropped to dateless",
+   "repro": "python scripts/check_dcp_as_at_coverage.py - observed_current claims fell 514->415 and dateless rose 193->292 when the rule tightened"
+  },
+  {
+   "scenario": "the as-at lookup fails and the purchaser cannot tell a failed lookup from a completed one that found no date",
+   "what_happens": "silent provenance omission on the paid channel - the failure/absence collapse the item-0 census exists to kill",
+   "mitigated": true,
+   "how": "scripts/conveyancing_db.py:325-336 + :465-477 - typed as_at_status resolved/absent/unavailable; 'unavailable' renders a visible could-not-be-retrieved disclosure",
+   "repro": "pytest tests/test_dcp_as_at.py::TestFetchDcpSetbacksAsAt::test_as_at_failure_does_not_kill_controls_and_is_disclosed"
+  },
+  {
+   "scenario": "planName carries an older amendment date while the planURL filename carries a newer one",
+   "what_happens": "a stale date attaches from first-hit-wins parsing and serves on every report for that LGA",
+   "mitigated": true,
+   "how": "scripts/fetch_dcp_as_at_dates.py:262-280 resolve_portal_dates - both sources parsed; a disagreement records checked-unattached and clears, never attaches",
+   "repro": "pytest tests/test_dcp_as_at.py::TestPortalDateParsing::test_name_url_date_conflict_refuses"
+  },
+  {
+   "scenario": "the optional as-at probe fails while the caller holds uncommitted writes on the same connection",
+   "what_happens": "a blanket conn.rollback() silently discards the caller's pending work while controls return normally",
+   "mitigated": true,
+   "how": "scripts/conveyancing_db.py:327-334 - SAVEPOINT/ROLLBACK TO SAVEPOINT around the probe only; the failure pin asserts conn.rollback was never called",
+   "repro": "pytest tests/test_dcp_as_at.py -k failure_does_not_kill -q"
+  },
+  {
+   "scenario": "the portal echoes NORTH SYDNEY for a boundary-misresolved parcel while SYDNEY is expected",
+   "what_happens": "substring containment would accept the wrong council and store its plan record under city_of_sydney",
+   "mitigated": true,
+   "how": "scripts/fetch_dcp_as_at_dates.py fetch_one - EXACT normalised equality; all 28 live echoes verified equal to expected_portal_lga on 2026-08-03, so no legitimate echo is rejected",
+   "repro": "code inspection + the stored portal_lga_name column in dcp_plan_as_at (28/28 exact matches)"
+  },
+  {
+   "scenario": "the brief silently shows undated DCP controls when the provenance lookup actually failed",
+   "what_happens": "failure collapses into absence on the brief surface even though the conveyancing dict carries the typed status",
+   "mitigated": true,
+   "how": "services/intelligence_brief.py:343-356 + :2787-2801 - DCPControls gains as_at_status/as_at_note; 'unavailable' carries the could-not-be-retrieved disclosure into the brief JSON",
+   "repro": "pytest tests/test_dcp_as_at.py::TestBriefDcpAsAt -q"
   }
  ],
  "post_merge": {
-  "db_reset": "No \u2014 no schema or data changes; two cache read policies only.",
-  "secrets": "No.",
-  "other_repo": "No.",
-  "manual_verify": "Optional: request a flood report for an address with an old cached row \u2014 response shows the original run_date and cache_hit true; block the shadow model and confirm the tool shows 'analysis incomplete', not a verdict."
- },
- "checks": {
-  "pytest": "3583 passed (23 new/changed), 25 skipped",
-  "jest": "76 suites / 990 tests passed",
-  "flipped_old_doctrine_tests": [
-   "test_adg_compliant_empty_scenarios (True\u2192None)",
-   "test_adg_compliant_no_noon_scenario (True\u2192None)",
-   "test_adg_compliant_null_overlaps (True\u2192None)",
-   "test_tod_lookup_failed (render False\u2192not-assessed render)"
-  ],
-  "pdf_confidence_evidence": "grep 'Confidence' over generate_conveyancing_report.py = 0 display hits \u2014 the paid PDF makes no confidence representation; the claim lives on the free-tier response, now wired to its own failure state"
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No - migration 063 already applied with backup; dcp_plan_as_at populated (18 rows); PDF print confirmed on a live Haberfield report (p4)"
  }
 }

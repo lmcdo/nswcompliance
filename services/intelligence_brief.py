@@ -347,6 +347,12 @@ class DCPControls(BaseModel):
     dcp_name: DataField[Optional[str]]
     dcp_url: DataField[Optional[str]]
     section_ref: DataField[Optional[str]]
+    # Plan-date provenance, typed (campaign item 3): 'resolved' (as_at set on
+    # the fields), 'absent' (checked, no defensible date), 'unavailable' (the
+    # lookup FAILED — as_at_note carries the disclosure so the failure is
+    # never mistakable for a completed lookup that found nothing).
+    as_at_status: Optional[str] = None
+    as_at_note: Optional[str] = None
 
 
 class ContributionPlan(BaseModel):
@@ -2772,11 +2778,24 @@ def _build_dcp_controls(
             source_ref=s.get("clause") or dcp_data.get("clause_ref"),
         ))
 
+    # Data currency, not query date: as_at previously stamped date.today() on
+    # every DCP field, presenting "we ran the query today" as "the data is
+    # current today". fetch_dcp_setbacks now supplies the plan-level date with
+    # a basis (portal record / plan's own statement / registry observation) —
+    # campaign item 3. No defensible date → as_at=None and the provenance UI
+    # shows no date, which is the honest state.
+    plan_as_at = (dcp_data.get("as_at") or {}).get("date")
+    as_at_status = dcp_data.get("as_at_status")
     return DCPControls(
-        controls=DataField(value=controls_list, confidence=extracted, source="plotdetect_dcp", as_at=today),
-        dcp_name=DataField(value=dcp_data.get("dcp_name"), confidence=extracted, source="plotdetect_dcp", as_at=today),
-        dcp_url=DataField(value=dcp_data.get("dcp_url"), confidence=extracted, source="plotdetect_dcp", as_at=today),
-        section_ref=DataField(value=dcp_data.get("section"), confidence=extracted, source="plotdetect_dcp", as_at=today),
+        controls=DataField(value=controls_list, confidence=extracted, source="plotdetect_dcp", as_at=plan_as_at),
+        dcp_name=DataField(value=dcp_data.get("dcp_name"), confidence=extracted, source="plotdetect_dcp", as_at=plan_as_at),
+        dcp_url=DataField(value=dcp_data.get("dcp_url"), confidence=extracted, source="plotdetect_dcp", as_at=plan_as_at),
+        section_ref=DataField(value=dcp_data.get("section"), confidence=extracted, source="plotdetect_dcp", as_at=plan_as_at),
+        as_at_status=as_at_status,
+        # Carry the disclosure only for a FAILED lookup — an undated brief
+        # must stay distinguishable from one whose provenance query broke.
+        as_at_note=(dcp_data.get("as_at_line")
+                    if as_at_status == "unavailable" else None),
     )
 
 

@@ -621,3 +621,8 @@ latent-scope-data/
 !scripts/repair_canada_bay_rear_setback.py
 !scripts/repair_missing_primary_controls.py
 !scripts/repair_authorized_held_rows.py
+
+# Output-grounding item 3 — per-source "as at" dates (dcp_plan_as_at)
+!scripts/fetch_dcp_as_at_dates.py
+!scripts/extract_dcp_stated_dates.py
+!scripts/check_dcp_as_at_coverage.py
