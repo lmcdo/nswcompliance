@@ -14,6 +14,7 @@ import {
   Image,
 } from '@react-pdf/renderer';
 import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { s2ImageryCurrency } from './imagery-currency';
 import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +58,9 @@ export interface ShadowReportData {
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
   construction_change_detected: boolean;
+  // Latest acquisition date (YYYY-MM-DD) among the Sentinel-2 scenes the
+  // change computation actually used; null when identity was not recorded.
+  s2_latest_acquisition?: string | null;
   adg_compliant: boolean | null;  // null = not assessed (noon scenario missing/errored)
   worst_case_scenario: string;
   confidence: string;
@@ -565,7 +569,10 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         {isPaid && (
           <DataCurrencyTable rows={[
             { source: 'NSW Planning Portal (lot boundary + height controls)', type: 'Live API query', currency: `Queried ${data.run_date}` },
-            { source: 'Element84 Sentinel-2 (construction change)', type: 'Live STAC query', currency: `Queried ${data.run_date}` },
+            // Acquisition date of the latest scene the computation actually
+            // used (campaign item 4) — the query date alone said nothing
+            // about how old the imagery was.
+            { source: 'Element84 Sentinel-2 (construction change)', type: 'Satellite imagery', currency: s2ImageryCurrency(data.s2_latest_acquisition, data.run_date) },
             { source: 'Shadow geometry (pvlib + pybdshadow)', type: 'Computed', currency: 'Analytical model' },
           ]} />
         )}

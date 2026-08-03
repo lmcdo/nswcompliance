@@ -24,6 +24,12 @@ os.environ.setdefault("AWS_NO_SIGN_REQUEST", "YES")
 os.environ.setdefault("GDAL_HTTP_UNSAFESSL", "YES")
 
 BSI_CHANGE_THRESHOLD = 0.12  # delta above this = construction activity likely
+DEFAULT_MAX_CLOUD = 20       # eo:cloud_cover ceiling for scene search
+
+# Algorithm revision for execution manifests (campaign item 4). Bump when the
+# BSI method/threshold/scene-selection changes — deploy identity is recorded
+# separately (execution_manifest.deploy_sha).
+ALGORITHM_VERSION = "s2-bsi-change-1.0"
 
 
 def _make_bbox(lat: float, lng: float, radius_m: float) -> list:
@@ -72,8 +78,11 @@ def _compute_bsi_scene(item, bbox: list) -> Optional[float]:
     return float(np.nanmean(bsi))
 
 
+# prior-art-checked: same function, default hoisted to the module constant so
+# the manifest reports the value actually in force — no new capability.
 def get_scenes(lat: float, lng: float, radius_m: float,
-               date_start: str, date_end: str, max_cloud: int = 20) -> list:
+               date_start: str, date_end: str,
+               max_cloud: int = DEFAULT_MAX_CLOUD) -> list:
     """Search Element84 for S2 L2A scenes, sorted newest first."""
     try:
         from pystac_client import Client
@@ -117,11 +126,46 @@ def compute_change_score(lat: float, lng: float, radius_m: float = 100,
     baseline = get_scenes(lat, lng, radius_m, baseline_start, baseline_end)
 
     def _median_bsi(scenes):
-        scores = [s for s in (_compute_bsi_scene(i, bbox) for i in scenes[:4]) if s is not None]
-        return float(np.median(scores)) if scores else None
+        """Median BSI over up to 4 scenes, plus the identity of every scene
+        actually consumed — derived from the pystac Items themselves at the
+        point of use (campaign item 4: a manifest is never a parallel
+        lookup). ``used`` marks the scenes whose BSI contributed to the
+        median; a scene attempted but unreadable is recorded with
+        used=False, so the manifest cannot claim inputs that were dropped."""
+        try:
+            from services.execution_manifest import stac_item_identity
+        except ImportError:
+            # Flat-import deploy mode (services/ on PYTHONPATH) — the same
+            # dual-path every service module uses.
+            from execution_manifest import stac_item_identity
 
-    r_bsi = _median_bsi(recent)
-    b_bsi = _median_bsi(baseline)
+        scores = []
+        consumed = []
+        for item in scenes[:4]:
+            score = _compute_bsi_scene(item, bbox)
+            ident = stac_item_identity(item)
+            ident["used"] = score is not None
+            consumed.append(ident)
+            if score is not None:
+                scores.append(score)
+        return (float(np.median(scores)) if scores else None), consumed
+
+    r_bsi, recent_used = _median_bsi(recent)
+    b_bsi, baseline_used = _median_bsi(baseline)
+
+    scene_identity = {
+        "algorithm_version": ALGORITHM_VERSION,
+        "collection": COLLECTION,
+        "recent_scenes": recent_used,
+        "baseline_scenes": baseline_used,
+        "query": {
+            "bbox_wgs84": [round(v, 6) for v in bbox],
+            "radius_m": radius_m,
+            "max_cloud_pct": DEFAULT_MAX_CLOUD,
+            "recent_window": f"{recent_start}/{recent_end}",
+            "baseline_window": f"{baseline_start}/{baseline_end}",
+        },
+    }
 
     if r_bsi is None or b_bsi is None:
         return {
@@ -129,6 +173,7 @@ def compute_change_score(lat: float, lng: float, radius_m: float = 100,
             "recent_scene_count": len(recent), "baseline_scene_count": len(baseline),
             "date_range": f"{baseline_start}/{recent_end}",
             "note": "Insufficient cloud-free scenes",
+            "scene_identity": scene_identity,
         }
 
     delta = round(r_bsi - b_bsi, 4)
@@ -140,4 +185,5 @@ def compute_change_score(lat: float, lng: float, radius_m: float = 100,
         "recent_scene_count": len(recent),
         "baseline_scene_count": len(baseline),
         "date_range": f"{baseline_start}/{recent_end}",
+        "scene_identity": scene_identity,
     }

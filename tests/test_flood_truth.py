@@ -350,11 +350,16 @@ def test_s1_gap_warning_without_ems_detected_false_mentions_ingest():
 # _build_data_sources
 # ---------------------------------------------------------------------------
 
-def test_data_sources_always_includes_epi_and_s1():
+def test_data_sources_epi_always_s1_only_with_result():
+    """FLIPPED 2026-08-03 (campaign item 4 / DQ-44): previously pinned the S1
+    source as unconditional, but no S1 query has ever run — a served source
+    claim with no query behind it. S1 appears only with a SAR result."""
     out = _outputs()
     sources = _build_data_sources(out)
     assert "NSW SEED EPI WFS" in sources
-    assert "Microsoft Planetary Computer S1 RTC" in sources
+    assert "Microsoft Planetary Computer S1 RTC" not in sources
+    with_sar = _outputs(sar_flood_detected=True)
+    assert "Microsoft Planetary Computer S1 RTC" in _build_data_sources(with_sar)
 
 
 def test_data_sources_includes_ems_when_available():

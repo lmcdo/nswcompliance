@@ -627,3 +627,6 @@ latent-scope-data/
 !scripts/extract_dcp_stated_dates.py
 !scripts/check_dcp_as_at_coverage.py
 !scripts/repair_dq41_null_label_derived_dates.py
+
+# Output-grounding item 4 — execution manifests + units/CRS checks
+!scripts/check_satellite_manifests.py

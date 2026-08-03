@@ -134,6 +134,14 @@ export async function POST(req: NextRequest) {
     construction_change_score: rawOutputs.construction_change_score != null
       ? Number(rawOutputs.construction_change_score) : null,
     construction_change_detected: Boolean(rawOutputs.construction_change_detected),
+    // Runtime-validated: only an ISO-date string may reach the PDF — a
+    // malformed persisted value must fall to the explicit not-recorded
+    // wording, never render as '[object Object]' provenance.
+    s2_latest_acquisition:
+      typeof rawOutputs.s2_latest_acquisition === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(rawOutputs.s2_latest_acquisition)
+        ? rawOutputs.s2_latest_acquisition
+        : null,
     // null = NOT ASSESSED (noon scenario missing/errored) — Boolean() coerced
     // it to false, which rendered a "Concern" verdict from a failed model run
     // (output-grounding fix 1, 2026-08-03).

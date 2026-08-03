@@ -57,6 +57,11 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 # Multi-prompt union brings expected improvement to ~9-10/11
 SAMGEO_VALIDATED = True
 
+# Algorithm revision for execution manifests (campaign item 4): tile fetch +
+# LangSAM multi-prompt detection + SAM quality filters + SEPP screen. Bump on
+# method change, not per deploy (deploy identity = manifest deploy_sha).
+ALGORITHM_VERSION = "granny-langsam-detect-1.0"
+
 # Prompts run in order; results unioned then deduplicated
 DETECTION_PROMPTS = [
     ("building", 0.25, 0.20),  # (prompt, box_threshold, text_threshold)
@@ -309,6 +314,9 @@ class GrannyFlatDetectResponse(BaseModel):
     detect_id: str          # UUID for subsequent /confirm call
     is_heritage: Optional[bool] = None  # auto-detected from spatial_overlays
     warnings: list[str] = []
+    # Campaign item 4: identity of the tile/detection inputs this run actually
+    # consumed; carried forward to the confirm write like tile_b64 is.
+    execution_manifest: Optional[dict] = None
 
 
 class GrannyFlatConfirmRequest(BaseModel):
@@ -492,11 +500,16 @@ def _detect_structures_samgeo(
 
     structures = []
     for s in raw_structures:
-        bbox = s.get("bbox_pixel")
-        if not bbox or len(bbox) != 4:
+        # DQ-45: this loop variable was named `bbox`, SHADOWING the tile-bbox
+        # dict parameter — the WGS84 conversions below then string-indexed a
+        # pixel LIST, so every detection that reached them raised TypeError
+        # and the whole run collapsed to detection_failed. The tile bbox
+        # (dict) and the structure's pixel bbox (list) are now distinct names.
+        bbox_px = s.get("bbox_pixel")
+        if not bbox_px or len(bbox_px) != 4:
             logger.warning(f"Skipping structure with missing/malformed bbox_pixel: {s}")
             continue
-        x1, y1, x2, y2 = bbox
+        x1, y1, x2, y2 = bbox_px
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
 
         if lot_shape_wgs84 is not None:
@@ -738,10 +751,35 @@ def detect_structures(req: GrannyFlatDetectRequest):
     """
     try:
         from services.nsw_imagery import fetch_tile_to_file
+        from services.execution_manifest import MANIFEST_KEY, build_manifest
+        from services.geometry_checks import check_point_nsw, check_rings_epsg3857
     except ImportError:
         from nsw_imagery import fetch_tile_to_file
+        from execution_manifest import MANIFEST_KEY, build_manifest
+        from geometry_checks import check_point_nsw, check_rings_epsg3857
+
+    # Units/CRS entry check (campaign item 4): typed 422, never a detection
+    # run over the wrong place from a swapped/projected coordinate.
+    coord_reason = check_point_nsw(req.lat, req.lng)
+    if coord_reason:
+        raise HTTPException(
+            422, f"Structure detection could not be determined: {coord_reason}")
 
     lot_geometry = req.lot_geometry or _fetch_lot_geometry(req.prop_id)
+    lot_geometry_provided = lot_geometry is not None
+    # Lot rings must actually be the EPSG:3857 metres the pipeline assumes —
+    # degree-scale rings convert into garbage silently. Implausible rings are
+    # DEMOTED to no-geometry (detection proceeds unclipped, recorded below).
+    lot_rings_reason = None
+    if lot_geometry is not None:
+        # EVERY non-null geometry is validated — a rings-less dict used to
+        # slip past and the manifest then claimed used_for_clipping=True for
+        # geometry no clip could use (Sol finding, 2026-08-03).
+        lot_rings_reason = check_rings_epsg3857(lot_geometry.get("rings"))
+        if lot_rings_reason:
+            logger.warning(f"Lot rings failed CRS plausibility — proceeding "
+                           f"without lot clipping: {lot_rings_reason}")
+            lot_geometry = None
     # #745 D3: prefer the caller's reconciled lot area (one figure per brief);
     # compute from geometry only when the caller has none.
     lot_area_m2 = req.lot_area_m2 if req.lot_area_m2 is not None else (
@@ -774,9 +812,13 @@ def detect_structures(req: GrannyFlatDetectRequest):
     safe_prop_id = "".join(c for c in req.prop_id if c.isalnum() or c in ("-", "_"))
     tile_path = f"/tmp/gf_{safe_prop_id}.png"
     try:
-        tile_path, licence, bbox = fetch_tile_to_file(
+        # 4th element (tile identity meta) is optional so older fakes/spikes
+        # returning 3-tuples keep working.
+        _tile_result = fetch_tile_to_file(
             req.lat, req.lng, output_path=tile_path, grid=3
         )
+        tile_path, licence, bbox = _tile_result[:3]
+        tile_meta = _tile_result[3] if len(_tile_result) > 3 else None
     except Exception as e:
         # Write error state to DB so the frontend poll resolves immediately
         if req.report_id:
@@ -940,6 +982,29 @@ def detect_structures(req: GrannyFlatDetectRequest):
         detect_id=detect_id,
         is_heritage=heritage_auto,
         warnings=detect_warnings,
+        # Built from the objects this run actually consumed: the tile fetch's
+        # own meta, the geometry state after the CRS demotion above, and the
+        # detection outcome (campaign item 4 — never a parallel lookup).
+        execution_manifest=build_manifest(
+            product="granny-flat",
+            algorithm_version=ALGORITHM_VERSION,
+            inputs={
+                "aerial_tile": tile_meta,
+                "tile_licence": licence,
+                "lot_geometry": {
+                    "provided": lot_geometry_provided,
+                    "used_for_clipping": lot_geometry is not None,
+                    "rejected_reason": lot_rings_reason,
+                },
+                "detection": {
+                    "failed": detection_failed,
+                    "structure_count": (None if detection_failed
+                                        else len(detected_structures)),
+                },
+            },
+            query_params={"lat": req.lat, "lng": req.lng, "grid": 3},
+            parcel_identity={"prop_id": req.prop_id},
+        ),
     )
 
     # When called via Trigger.dev (async path), write detect result to DB so
@@ -1199,18 +1264,23 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 )
 
         with conn.cursor() as cur:
-            # Carry tile_b64 forward from the detect outputs so the PDF can render
-            # the aerial image. The detect step stores it in outputs JSONB; the
-            # confirm step overwrites outputs, so we must read it before writing.
+            # prior-art-checked: extends this function's own existing
+            # tile_b64 carry-forward read with one more column — no new
+            # source. The manifest must describe the DETECT run's actual tile
+            # and detection; re-deriving it here would be the parallel-lookup
+            # anti-pattern (campaign item 4 cache rule, same as tile_b64).
             tile_b64: Optional[str] = None
+            detect_manifest = None
             if req.report_id:
                 cur.execute(
-                    "SELECT outputs->>'tile_b64' FROM granny_flat_reports WHERE id = %s",
+                    "SELECT outputs->>'tile_b64', outputs->'execution_manifest' "
+                    "FROM granny_flat_reports WHERE id = %s",
                     (req.report_id,),
                 )
                 row = cur.fetchone()
                 if row:
                     tile_b64 = row[0]  # None if key absent or value null
+                    detect_manifest = row[1]
 
             cur.execute(
                 """
@@ -1239,6 +1309,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "postcode": postcode,
                         "existing_secondary_dwelling": req.existing_secondary_dwelling,
                         "main_dwelling_area_m2": req.main_dwelling_area_m2,
+                        "execution_manifest": detect_manifest,
                     }),
                     psycopg2.extras.Json({
                         "granny_flat_buildable": granny_flat_buildable,

@@ -59,6 +59,10 @@ def northern_neighbour_proxy(lot_geojson: dict, offset_m: Optional[float] = None
 
 # (key, month, day, hour_utc, description, date_str, time_local, direction_deg)
 # direction_deg = direction shadow points (opposite of sun azimuth)
+# The fixed year every scenario models (solar positions repeat closely year to
+# year; the manifests record this so a report states WHICH year was modelled).
+SCENARIO_YEAR = 2025
+
 SHADOW_SCENARIOS = [
     ("jun21_9am",   6, 21, 23, "ADG worst case 9am Jun 21",  "2025-06-21", "09:00", 222.6),
     ("jun21_12pm",  6, 21,  2, "ADG worst case noon Jun 21", "2025-06-21", "12:00", 179.2),
@@ -94,7 +98,7 @@ def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: st
         raise ValueError(f"Unknown scenario: {scenario}")
     _, month, day, hour_utc, *_ = _SCENARIO_MAP[scenario]
 
-    target_year = 2025
+    target_year = SCENARIO_YEAR
     if hour_utc == 23 and month == 6 and day == 21:
         target_dt = datetime(target_year, 6, 20, 23, 0, 0, tzinfo=timezone.utc)
     else:

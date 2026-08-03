@@ -53,22 +53,33 @@ from pydantic import BaseModel
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
 
+# prior-art-checked: the added imports pull the NEW shared item-4 modules
+# (execution_manifest, geometry_checks) into this service's existing import
+# block — extending this file's own pipeline, not adding a parallel one.
 try:
     from services.shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
         shadow_on_lot_geojson, lot_depth_m,
-        SHADOW_SCENARIOS, northern_neighbour_proxy,
+        SHADOW_SCENARIOS, SCENARIO_YEAR, northern_neighbour_proxy,
     )
     from services.sentinel2 import compute_change_score
+    from services.execution_manifest import MANIFEST_KEY, build_manifest
+    from services.geometry_checks import (
+        check_point_nsw, check_polygon_wgs84, check_rings_epsg3857,
+    )
 except ImportError:
     from shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
         shadow_on_lot_geojson, lot_depth_m,
-        SHADOW_SCENARIOS, northern_neighbour_proxy,
+        SHADOW_SCENARIOS, SCENARIO_YEAR, northern_neighbour_proxy,
     )
     from sentinel2 import compute_change_score
+    from execution_manifest import MANIFEST_KEY, build_manifest
+    from geometry_checks import (
+        check_point_nsw, check_polygon_wgs84, check_rings_epsg3857,
+    )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
@@ -76,6 +87,10 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 DEFAULT_HEIGHT_M = 9.0
 LOT_API = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot"
 DATA_SOURCES = ["NSW Planning Portal API", "Element84 Sentinel-2 (free)", "pybdshadow"]
+
+# Algorithm revision for execution manifests (campaign item 4): the scenario
+# set + proxy model + ADG overlap rule. Bump on method change, not per deploy.
+ALGORITHM_VERSION = "shadow-adg-scenarios-1.0"
 
 
 class ShadowRequest(BaseModel):
@@ -368,6 +383,15 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confid
 @router.post("/shadow")
 def run_shadow(request: ShadowRequest):
     """Shadow Detector: 5 ADG scenarios + S2 construction change score."""
+    # Units/CRS entry check (campaign item 4): a swapped or projected
+    # coordinate reproduces identically on every recompute — this is the only
+    # defence. Failure is typed unavailable (422 with the reason), never a
+    # number computed from wrong-CRS input.
+    coord_reason = check_point_nsw(request.lat, request.lng)
+    if coord_reason:
+        raise HTTPException(
+            422, f"Shadow analysis could not be determined: {coord_reason}")
+
     # Audit trail: track lot geometry fetch
     ds_lot = DataSourceQuery("NSW Planning Portal lot API", LOT_API, {"propId": request.prop_id})
     lot_geometry = _fetch_lot_geometry(request.prop_id)
@@ -376,7 +400,28 @@ def run_shadow(request: ShadowRequest):
         raise HTTPException(422, f"Cannot fetch lot geometry for {request.prop_id}")
     ds_lot.record_response(lot_geometry, features_returned=1)
 
+    # _arcgis_to_geojson ASSUMES EPSG:3857 — verify the response actually
+    # says so before converting (it never checked; a CRS change upstream
+    # would silently produce garbage coordinates).
+    sr = (lot_geometry.get("spatialReference") or {})
+    lot_wkid = sr.get("latestWkid") or sr.get("wkid")
+    if lot_wkid is not None and lot_wkid not in (3857, 102100):
+        ds_lot.record_error(f"unexpected lot CRS wkid={lot_wkid}")
+        raise HTTPException(
+            422, f"Shadow analysis could not be determined: lot geometry "
+                 f"arrived in CRS wkid={lot_wkid}, expected Web Mercator")
+    rings_reason = check_rings_epsg3857(lot_geometry.get("rings"))
+    if rings_reason:
+        ds_lot.record_error(f"implausible lot rings: {rings_reason}")
+        raise HTTPException(
+            422, f"Shadow analysis could not be determined: {rings_reason}")
+
     lot_geojson = _arcgis_to_geojson(lot_geometry)
+    polygon_reason = check_polygon_wgs84(lot_geojson)
+    if polygon_reason:
+        raise HTTPException(
+            422, f"Shadow analysis could not be determined: converted lot "
+                 f"polygon failed plausibility — {polygon_reason}")
     if request.height_m:
         height_m = request.height_m
         height_source = "planning_portal"
@@ -461,6 +506,17 @@ def run_shadow(request: ShadowRequest):
         if _lga_conn:
             _lga_conn.close()
 
+    # Latest acquisition date among the S2 scenes that actually contributed —
+    # read from the identity the computation itself returned, never a
+    # parallel lookup (campaign item 4). None when S2 was unavailable.
+    _scene_identity = change.get("scene_identity")
+    s2_latest_acquisition = None
+    if _scene_identity:
+        used_dts = [s.get("datetime") for s in _scene_identity.get("recent_scenes", [])
+                    if s.get("used") and s.get("datetime")]
+        if used_dts:
+            s2_latest_acquisition = max(used_dts)[:10]
+
     outputs = {
         "height_m": height_m,
         "height_source": height_source,
@@ -473,6 +529,7 @@ def run_shadow(request: ShadowRequest):
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),
         "construction_change_note": change.get("note"),
+        "s2_latest_acquisition": s2_latest_acquisition,
         "adg_compliant": _adg_compliant(scenarios),
         "worst_case_scenario": _worst_case(scenarios),
     }
@@ -482,11 +539,33 @@ def run_shadow(request: ShadowRequest):
     if any(s.get("status") == "unavailable" for s in scenarios):
         confidence = "low"
 
+    # Execution manifest (campaign item 4): every identity below comes from
+    # the objects this run actually consumed — `change` is the dict the S2
+    # computation returned (scene ids/datetimes or None on timeout, recorded
+    # as such), lot_wkid is the CRS the lot API actually declared.
+    manifest = build_manifest(
+        product="shadow",
+        algorithm_version=ALGORITHM_VERSION,
+        inputs={
+            "sentinel2": _scene_identity,
+            "sentinel2_note": change.get("note"),
+            "lot_geometry": {"api": LOT_API, "prop_id": request.prop_id,
+                             "wkid": lot_wkid},
+            "height": {"value_m": height_m, "source": height_source,
+                       "lep_name": lep_name},
+            "scenario_year": SCENARIO_YEAR,
+        },
+        query_params={"lat": request.lat, "lng": request.lng,
+                      "s2_radius_m": 200},
+        parcel_identity={"prop_id": request.prop_id},
+    )
+
     try:
         _write_report(
             request.report_id, request.address, request.lat, request.lng,
             request.prop_id,
-            {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
+            {"prop_id": request.prop_id, "lat": request.lat,
+             "lng": request.lng, MANIFEST_KEY: manifest},
             outputs, confidence,
         )
     except Exception as e:
