@@ -119,6 +119,9 @@ def main() -> int:  # pragma: no cover - CLI entry point
                   f"Pass a fresh --backup-table. Aborting before any UPDATE.",
                   file=sys.stderr)
             return 2
+        # Backup spans the whole cohort with deliberately NO is_current scope
+        # — retired rows carry the same label-derived dates and are equally
+        # authorized (see the UPDATE below for the full rationale).
         cur.execute(
             f"CREATE TABLE {args.backup_table} AS "
             f"SELECT id, effective_date, dcp_version "

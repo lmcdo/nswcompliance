@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "One authorized data repair on production (DQ-41: null 528 label-derived Jan-1 effective_dates) plus its committed script and tracker close-out. No served rendering path changes - the cohort was already quarantined (basis NULL, never rendered) - so critical tier is not warranted, but a guarded prod UPDATE is above minor.",
- "commit_hash": "6db75270",
+ "commit_hash": "faf592dc",
  "files": [
   "scripts/repair_dq41_null_label_derived_dates.py",
   ".claude/DATA_QUALITY_TRACKER.md",
@@ -40,7 +40,7 @@
  "queries": [
   {
    "purpose": "guarded null of the authorized cohort",
-   "file_line": "scripts/repair_dq41_null_label_derived_dates.py:146",
+   "file_line": "scripts/repair_dq41_null_label_derived_dates.py:149",
    "where_clause": "t.id = b.id AND t.effective_date = b.effective_date AND t.effective_date_basis IS NULL (joined to the asserted 528-row backup)",
    "if_zero": "written 0 != 528 -> exit 2, not read as clean",
    "if_wrong": "a row changed between plan and apply fails the per-row guard and is skipped, surfacing as a count mismatch"
