@@ -1753,15 +1753,19 @@ def run_flood(req: FloodRequest):
             # keeping the cache's point — skipping a ~60s recompute on repeat
             # lookups. Older rows are recomputed, not served.
             # prior-art-checked: this module's own cache read gains the
-            # stored `inputs` column so the original execution manifest can
-            # ride the cache-copy like run_date does — no new source.
+            # stored `inputs` column (so the original execution manifest can
+            # ride the cache-copy like run_date) and a ~50m coordinate
+            # proximity bound — address text alone could hand parcel A's
+            # outputs to a same-address request that geocoded to parcel B
+            # (Sol finding, 2026-08-03). No new source.
             cur.execute(
                 "SELECT outputs, confidence, data_sources, run_date, inputs "
                 "FROM property_reports "
                 "WHERE product='flood' AND address=%s "
+                "  AND abs(lat - %s) < 0.0005 AND abs(lng - %s) < 0.0005 "
                 "  AND run_date > CURRENT_DATE - INTERVAL '90 days' "
                 "ORDER BY run_date DESC LIMIT 5",
-                (req.address,)
+                (req.address, req.lat, req.lng)
             )
             # #762 (prior-art-checked: same cache read hardened in place, no
             # new source): skip poisoned rows — another product's outputs
@@ -1780,7 +1784,15 @@ def run_flood(req: FloodRequest):
             _write_report(
                 req.report_id, req.address, req.lat, req.lng,
                 req.prop_id,
-                cached.get("inputs") or {"lat": req.lat, "lng": req.lng},
+                cached.get("inputs") or {
+                    "lat": req.lat, "lng": req.lng,
+                    # A pre-manifest row recorded no inputs — say so rather
+                    # than presenting the new request's coordinates as the
+                    # original computation's record (they are proximity-
+                    # bounded to ~50m by the cache SELECT).
+                    "inputs_provenance": "original inputs not recorded "
+                                         "(pre-manifest report)",
+                },
                 cached["outputs"] or {},
                 run_date=cached.get("run_date"),
             )

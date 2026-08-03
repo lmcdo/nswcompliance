@@ -174,7 +174,7 @@ class TerrainInterpretation(BaseModel):
     """Structured interpretation of terrain analysis for professional users."""
     findings: list[TerrainFinding]
     data_source: str = (
-        "Geoscience Australia 5m DEM (SRTM-derived, ±5m vertical accuracy)"
+        "Elevation model (provider not recorded for this run)"
     )
     methodology_note: str = (
         "Terrain metrics derived from whitebox-tools geomorphometric analysis. Landform, "
@@ -1004,10 +1004,13 @@ def _build_terrain_interpretation(terrain_dict: dict) -> Optional[TerrainInterpr
     # fallback served the raster (campaign item 4 census, DQ-46).
     provider = terrain_dict.get("dem_provider")
     if provider == "six_maps_elevation":
-        source = ("NSW SIX Maps Elevation service (photogrammetry-derived DEM; "
-                  "vertical accuracy varies by area)")
+        source = "NSW SIX Maps Elevation service (5m elevation model)"
     elif provider == "ga_wcs_5m":
-        source = "Geoscience Australia 5m DEM (SRTM-derived, ±5m vertical accuracy)"
+        # No lineage/accuracy parenthetical: the previous "(SRTM-derived,
+        # ±5m vertical accuracy)" asserted sensor lineage and an accuracy
+        # figure not derived from the returned dataset (Sol finding,
+        # 2026-08-03) — state only the provider and product scale.
+        source = "Geoscience Australia 5m DEM (GA elevation service)"
     else:
         source = "Elevation model (provider not recorded for this run)"
     return TerrainInterpretation(findings=findings, data_source=source)

@@ -771,7 +771,10 @@ def detect_structures(req: GrannyFlatDetectRequest):
     # degree-scale rings convert into garbage silently. Implausible rings are
     # DEMOTED to no-geometry (detection proceeds unclipped, recorded below).
     lot_rings_reason = None
-    if lot_geometry and "rings" in lot_geometry:
+    if lot_geometry is not None:
+        # EVERY non-null geometry is validated — a rings-less dict used to
+        # slip past and the manifest then claimed used_for_clipping=True for
+        # geometry no clip could use (Sol finding, 2026-08-03).
         lot_rings_reason = check_rings_epsg3857(lot_geometry.get("rings"))
         if lot_rings_reason:
             logger.warning(f"Lot rings failed CRS plausibility — proceeding "

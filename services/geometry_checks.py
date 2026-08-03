@@ -78,19 +78,29 @@ def check_polygon_wgs84(geojson: Optional[dict],
     ring = coords[0]
     if len(ring) < 4:
         return f"outer ring has {len(ring)} points — not a closed polygon"
+    import math
+
     lngs, lats = [], []
     for pt in ring:
         if not isinstance(pt, (list, tuple)) or len(pt) < 2:
             return f"malformed coordinate {pt!r}"
         lng, lat = pt[0], pt[1]  # GeoJSON axis order: [lng, lat]
         try:
-            lngs.append(float(lng))  # qa-ignore: TypeError arm below IS the None guard — a None coordinate returns a reason
-            lats.append(float(lat))  # qa-ignore: same guard
+            lng_f = float(lng)  # qa-ignore: TypeError arm below IS the None guard — a None coordinate returns a reason
+            lat_f = float(lat)  # qa-ignore: same guard
         except (TypeError, ValueError):
             return f"non-numeric coordinate {pt!r}"
-    reason = check_point_nsw(lats[0], lngs[0])
-    if reason:
-        return f"first vertex: {reason}"
+        # EVERY vertex must be finite and inside the envelope — a single
+        # trailing NaN or out-of-scope vertex corrupts the clip as surely as
+        # a leading one, and Python's min/max propagate NaN unpredictably
+        # (Sol finding, 2026-08-03).
+        if not (math.isfinite(lng_f) and math.isfinite(lat_f)):
+            return f"non-finite coordinate ({lng_f}, {lat_f})"
+        vertex_reason = check_point_nsw(lat_f, lng_f)
+        if vertex_reason:
+            return f"vertex ({lng_f}, {lat_f}): {vertex_reason}"
+        lngs.append(lng_f)
+        lats.append(lat_f)
     span_lng = max(lngs) - min(lngs)
     span_lat = max(lats) - min(lats)
     if span_lng == 0 or span_lat == 0:
