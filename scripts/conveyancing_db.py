@@ -152,6 +152,8 @@ def _format_as_at_date(iso_date: str, precision: str) -> Optional[str]:
     A month-precision date stored as the 1st must render "March 2026", never
     "1 March 2026" (precision-honesty rule).
     """
+    if not iso_date:
+        return None
     try:
         y, m, d = (int(p) for p in iso_date.split("-"))
         month = _MONTH_NAMES[m - 1]

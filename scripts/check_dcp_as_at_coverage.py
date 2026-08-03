@@ -89,7 +89,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
         "claims_by_basis": claims_by_basis,
         "lgas_by_basis": {k: sorted(v) for k, v in by_basis.items()},
         "dateless_claims": dateless_claims,
-        "dateless_lgas": sorted(by_basis.get("NONE", [])),
+        "dateless_lgas": sorted(by_basis.get("NONE") or []),
         "portal_vs_stated_disagreements": disagreements,
         "target": "dateless_claims == 0 (campaign item 3); NOT enforced — "
                   "observation mode until false-positive behaviour is known",

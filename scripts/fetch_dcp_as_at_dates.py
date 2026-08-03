@@ -162,8 +162,8 @@ def resolve_prop_id(lat: float, lng: float) -> Optional[int]:
             timeout=15,
         )
         feats = data.get("features") or []
-        ids = {f["attributes"].get("propid") for f in feats
-               if f.get("attributes", {}).get("propid")}
+        ids = {(f.get("attributes") or {}).get("propid") for f in feats
+               if (f.get("attributes") or {}).get("propid")}
         if len(ids) == 1:
             return int(ids.pop())
         return None  # 0 or ambiguous — try the next centroid

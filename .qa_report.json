@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a rendered provenance line to the PAID conveyancing PDF's DCP section and changes the brief's DCP as_at semantics on a served surface. Also writes to production (new dcp_plan_as_at table, additive effective_date_basis column, 23 populated rows). Wrong wording or a wrongly-attached date here is a false representation inside the legal defence layer (Layer 2), the class disclaimers don't cure.",
- "commit_hash": "7079619c",
+ "commit_hash": "c5d7e7c3",
  "files": [
   "migrations/063_dcp_plan_as_at.sql",
   "scripts/conveyancing_db.py",
@@ -32,14 +32,14 @@
  "functions": [
   {
    "name": "_plan_as_at",
-   "file_line": "scripts/conveyancing_db.py:195",
+   "file_line": "scripts/conveyancing_db.py:197",
    "input": "an open DB cursor plus the serving lga slug string from fetch_dcp_setbacks",
    "output": "dict{date, precision, kind, basis} in authority order portal>stated>observed, or None to the serve-path dict",
    "if_none": "no row / all-null / wrong-arity row -> None; caller renders no date line"
   },
   {
    "name": "format_as_at_line",
-   "file_line": "scripts/conveyancing_db.py:169",
+   "file_line": "scripts/conveyancing_db.py:171",
    "input": "the as_at dict produced by _plan_as_at, or None when nothing was defensible",
    "output": "one basis-appropriate sentence string for every rendering surface (PDF, JSON, brief), or None",
    "if_none": "None in -> None out; unknown basis or unparseable date -> None, never a guessed sentence"
@@ -83,16 +83,16 @@
   },
   {
    "value": "row from the as-at query",
-   "read_at": "scripts/conveyancing_db.py:300",
+   "read_at": "scripts/conveyancing_db.py:302",
    "nullable": "yes",
-   "guard_at": "scripts/conveyancing_db.py:222 (len(row) != 7 -> None) and :296-306 (nested try keeps controls serving)",
+   "guard_at": "scripts/conveyancing_db.py:218 (len(row) != 7 -> None) and :296-306 (nested try keeps controls serving)",
    "if_missing": "as_at None; controls unaffected"
   }
  ],
  "queries": [
   {
    "purpose": "serve-time as-at lookup",
-   "file_line": "scripts/conveyancing_db.py:204",
+   "file_line": "scripts/conveyancing_db.py:205",
    "where_clause": "registry: council = %s AND is_active = TRUE (MAX url_last_checked); LEFT JOIN dcp_plan_as_at ON lga = %s",
    "if_zero": "obs-subquery row always exists; all-null -> as_at None, no line",
    "if_wrong": "wrong-LGA row impossible via equality on the serving slug; wrong basis order pinned by tests"
@@ -117,14 +117,14 @@
    "scenario": "the serve-time as-at lookup query fails (dcp_plan_as_at dropped, registry timeout) during a paid PDF build",
    "what_happens": "pre-guard: the whole DCP section would vanish from the paid PDF - a provenance add-on destroying the product claim",
    "mitigated": true,
-   "how": "scripts/conveyancing_db.py:296-306 - nested try; controls serve, as_at None",
+   "how": "scripts/conveyancing_db.py:298-308 - nested try; controls serve, as_at None",
    "repro": "pytest tests/test_dcp_as_at.py::TestFetchDcpSetbacksAsAt::test_as_at_failure_does_not_kill_controls"
   },
   {
    "scenario": "month-precision date stored as the 1st renders as '1 March 2026'",
    "what_happens": "manufactured day-level precision - the invented-Sydney-setbacks class inside the defence layer",
    "mitigated": true,
-   "how": "scripts/conveyancing_db.py:149-166 - precision branches render only what the source stated",
+   "how": "scripts/conveyancing_db.py:149-168 - precision branches render only what the source stated",
    "repro": "pytest tests/test_dcp_as_at.py::TestAsAtWording::test_month_precision_never_renders_a_day"
   },
   {
@@ -159,14 +159,14 @@
    "scenario": "wording drifts into banned assurance language such as 'verified as at' on the rendered line",
    "what_happens": "overclaiming inside the defence layer - the campaign's own largest-liability finding",
    "mitigated": true,
-   "how": "scripts/conveyancing_db.py:169-192 single wording source + language-ladder pin",
+   "how": "scripts/conveyancing_db.py:171-192 single wording source + language-ladder pin",
    "repro": "pytest tests/test_dcp_as_at.py::TestAsAtWording::test_language_ladder_no_banned_words"
   },
   {
    "scenario": "the check script's served-claim census filters drift from what fetch_dcp_setbacks actually serves",
    "what_happens": "the observation census counts the wrong claim set and the dateless baseline silently understates the exposure",
    "mitigated": true,
-   "how": "scripts/check_dcp_as_at_coverage.py:36 imports the serve path's own _plan_as_at (basis logic cannot fork); the row filter mirrors conveyancing_db.py:333-338 and any loosening overcounts, the conservative direction",
+   "how": "scripts/check_dcp_as_at_coverage.py:36 imports the serve path's own _plan_as_at (basis logic cannot fork); the row filter mirrors conveyancing_db.py:335-340 and any loosening overcounts, the conservative direction",
    "repro": "python scripts/check_dcp_as_at_coverage.py - claims_by_basis totals must sum to served_claims (954 at baseline)"
   },
   {
