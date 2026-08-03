@@ -1,0 +1,24 @@
+# prior-art-checked: deliberate clean-room OSS extraction; standalone package must not import project code (see oss/prose-gate/EXTRACTION.md)
+# Financial promotion language that regulators in most jurisdictions
+# treat as misleading in consumer-facing material.
+description = "Return promises and risk-minimising language in financial copy"
+
+terms = [
+    "risk-free",
+    "risk free",
+    "no risk",
+    "zero risk",
+    "guaranteed returns",
+    "guaranteed return",
+    "guaranteed income",
+    "assured returns",
+    "capital protected",
+    "capital guaranteed",
+    "safe investment",
+    "sure thing",
+    "can't lose",
+    "cannot lose",
+    "outperform",
+    "outperforms",
+    "get rich",
+]

@@ -1,0 +1,39 @@
+# prior-art-checked: deliberate clean-room OSS extraction; standalone package must not import project code (see oss/prose-gate/EXTRACTION.md)
+# Professional assurance and guarantee language.
+#
+# Aimed at products that surface analysis of regulated subject matter
+# (property, planning, legal, engineering) where wording that implies a
+# professional opinion can create exposure — e.g. misleading-conduct
+# provisions in consumer law, or negligent misstatement at common law.
+description = "Words that imply professional assurance, endorsement or guarantee"
+
+terms = [
+    "safe",
+    "safely",
+    "feasible",
+    "compliant",
+    "should",
+    "recommend",
+    "recommends",
+    "recommended",
+    "suitable",
+    "adequate",
+    "sufficient",
+    "approved",
+    "guarantee",
+    "guarantees",
+    "guaranteed",
+    "certified",
+    "confirmed",
+    "verified",
+    "ensure",
+    "ensures",
+    "ensured",
+    "assure",
+    "assures",
+    "assured",
+    "accurate",
+    "definitive",
+    "comprehensive",
+    "reliable",
+]

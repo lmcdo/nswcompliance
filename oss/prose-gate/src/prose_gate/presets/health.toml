@@ -1,0 +1,20 @@
+# prior-art-checked: deliberate clean-room OSS extraction; standalone package must not import project code (see oss/prose-gate/EXTRACTION.md)
+# Therapeutic claims that health-product regulators restrict in
+# consumer-facing material.
+description = "Therapeutic and outcome claims in health copy"
+
+terms = [
+    "cure",
+    "cures",
+    "cured",
+    "clinically proven",
+    "medically proven",
+    "doctor recommended",
+    "prevents",
+    "treats",
+    "heals",
+    "guaranteed results",
+    "no side effects",
+    "miracle",
+    "breakthrough",
+]

@@ -1,0 +1,8 @@
+# prior-art-checked: deliberate clean-room OSS extraction; standalone package must not import project code (see oss/prose-gate/EXTRACTION.md)
+- id: prose-gate
+  name: prose-gate
+  description: Block risky assurance language in staged user-facing text
+  entry: prose-gate --staged
+  language: python
+  pass_filenames: false
+  always_run: true

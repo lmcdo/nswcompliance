@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prose-gate"
+version = "0.1.0"
+description = "Diff-aware linter that blocks risky assurance language from entering user-facing text"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Lawrence McDonell" }]
+requires-python = ">=3.11"
+keywords = ["linter", "compliance", "legal", "copy", "pre-commit", "ci"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/OWNER/prose-gate"
+
+[project.scripts]
+prose-gate = "prose_gate.cli:entry"
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+prose_gate = ["presets/*.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
