@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes served output on every satellite product: report data_sources (flood no longer claims an S1 source that never ran - DQ-44), PDF data-currency wording on three paid-tier reports, typed-absence entry behaviour on five endpoints, and the report envelopes gain execution manifests. Also fixes DQ-45, a P1 crash that collapsed granny-flat detection whenever a structure survived filtering.",
- "commit_hash": "91887523",
+ "commit_hash": "5659650b",
  "files": [
   "services/geometry_checks.py",
   "services/execution_manifest.py",

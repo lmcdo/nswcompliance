@@ -92,6 +92,20 @@ class TestPolygonChecks:
         assert check_polygon_wgs84(None) is not None
         assert check_polygon_wgs84({"type": "Point"}) is not None
 
+    def test_interior_ring_garbage_rejected(self):
+        """A hole carrying projected metres corrupts a clip as surely as the
+        outer ring — every ring is validated (Sol finding, 2026-08-03)."""
+        poly = self._lot()
+        poly["coordinates"].append([[334000.0, 6250000.0], [334010.0, 6250000.0],
+                                    [334010.0, 6250010.0], [334000.0, 6250000.0]])
+        reason = check_polygon_wgs84(poly)
+        assert reason and "ring 1" in reason
+
+    def test_trailing_nan_vertex_rejected(self):
+        poly = self._lot()
+        poly["coordinates"][0].insert(2, [float("nan"), SYD_LAT])
+        assert "non-finite" in check_polygon_wgs84(poly)
+
 
 class TestRingChecks:
     def test_mercator_rings_pass(self):

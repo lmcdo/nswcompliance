@@ -19,12 +19,18 @@ export function s2ImageryCurrency(
   return `Queried ${runDate}; acquisition dates not recorded for this run`;
 }
 
-/** Google Solar API row (solar report) — provider states a capture month. */
+/** Google Solar API row (solar report) — provider states a capture month.
+ * Only a calendar-valid YYYY-MM renders as a provenance claim; any other
+ * persisted value (bare year, out-of-range month, absence sentinel) falls to
+ * the explicit not-stated wording — malformed data must never become a
+ * factual capture claim. */
+const CAPTURE_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+
 export function solarImageryCurrency(
   imageryDate: string | null | undefined,
   runDate: string,
 ): string {
-  if (imageryDate && imageryDate !== 'unknown') {
+  if (imageryDate && CAPTURE_MONTH.test(imageryDate)) {
     return `Imagery captured ${imageryDate} (month stated by provider); queried ${runDate}`;
   }
   return `Queried ${runDate}; imagery capture date not stated by provider`;

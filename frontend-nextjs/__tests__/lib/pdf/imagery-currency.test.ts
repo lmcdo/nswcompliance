@@ -39,6 +39,15 @@ describe('solarImageryCurrency', () => {
     expect(line).toContain('not stated by provider');
     expect(line).not.toContain('Imagery captured');
   });
+
+  it.each(['2024', '2024-99', 'not available', '2024-6'])(
+    'never turns malformed value %p into a capture claim',
+    (bad) => {
+      const line = solarImageryCurrency(bad, '2026-08-03');
+      expect(line).toContain('not stated by provider');
+      expect(line).not.toContain('Imagery captured');
+    },
+  );
 });
 
 describe('sarImageryCurrency (flood, DQ-44)', () => {
