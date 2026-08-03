@@ -38,6 +38,9 @@ ALLOWED = {
 }
 ALLOWED_PREFIXES = ("__tests__/",)
 
+# The is_current = TRUE / needs_review guards live in conveyancing_db.
+# fetch_dcp_setbacks — the point of this check is that NO frontend file
+# queries the table (and therefore no frontend file needs those predicates).
 PATTERN = re.compile(r"FROM\s+dcp_setback_controls", re.I)
 # Comments legitimately NAME the table (provenance notes in lib/coverage.ts,
 # docstrings). The check is about what a file EXECUTES, so comments are

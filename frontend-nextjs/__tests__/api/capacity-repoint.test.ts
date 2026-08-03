@@ -22,6 +22,9 @@ const routeSrc = readFileSync(
 
 describe('capacity route table source', () => {
   it('runs NO inline SQL against dcp_setback_controls (proxy-only)', () => {
+    // The is_current = TRUE + needs_review guards live in the ONE
+    // implementation (conveyancing_db.fetch_dcp_setbacks) behind the proxy.
+
     const fromSetbackControls = routeSrc.match(/FROM dcp_setback_controls/g) || [];
     expect(fromSetbackControls.length).toBe(0);
     expect(routeSrc).toMatch(/from '@\/lib\/dcp-controls-client'/);

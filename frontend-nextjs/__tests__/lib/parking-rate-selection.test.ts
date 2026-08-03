@@ -106,6 +106,8 @@ describe('parking-rates route source', () => {
     // now live solely in conveyancing_db.fetch_dcp_setbacks behind
     // /pipeline/dcp-controls; this route filters car_parking rows and sorts
     // for presentation.
+    // (is_current = TRUE + needs_review guards live in fetch_dcp_setbacks
+    // behind the proxy — that is the point of the flip.)
     expect(src).not.toMatch(/FROM dcp_setback_controls/);
     expect(src).toMatch(/fetchDcpControls\(/);
     expect(src).toMatch(/semantic_type === 'car_parking'/);
