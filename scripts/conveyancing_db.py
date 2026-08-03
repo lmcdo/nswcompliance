@@ -198,17 +198,29 @@ def format_as_at_line(as_at: Optional[dict]) -> Optional[str]:
 def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
     """Plan-level as-at with basis, by the settled authority order:
     portal plan record > the document's own statement > registry observation.
-    Returns None when nothing defensible exists (a claim rendered with no date
-    is counted by scripts/check_dcp_as_at_coverage.py, never papered over).
-    Raises on DB errors — the caller's except turns that into 'source
-    unavailable' (no as-at), which is distinct from 'checked, none exists'.
+
+    Two deliberate refusals (Sol findings, 2026-08-03):
+      - A portal date that CONTRADICTS the document's own stated date is a
+        conflict, not a pick-one — no date renders until adjudicated (the
+        disagreement is surfaced by scripts/check_dcp_as_at_coverage.py).
+      - The observed fallback exists only when EVERY active registry chapter
+        for the council has been checked, and it carries the OLDEST check
+        date — MAX would let one freshly-checked chapter speak for a plan
+        whose other chapters were last observed years earlier.
+
+    Returns None when nothing defensible exists (a claim rendered with no
+    date is counted by the check script, never papered over). Raises on DB
+    errors — the caller's except turns that into 'source unavailable', which
+    is distinct from 'checked, none exists'.
     """
     cur.execute(
         """
         SELECT p.portal_date::text, p.portal_date_precision, p.portal_date_kind,
                p.stated_date::text, p.stated_date_precision, p.stated_date_kind,
                obs.observed::date::text
-          FROM (SELECT MAX(url_last_checked) AS observed
+          FROM (SELECT CASE WHEN COUNT(*) > 0
+                             AND COUNT(*) = COUNT(url_last_checked)
+                            THEN MIN(url_last_checked) END AS observed
                   FROM dcp_chapter_registry
                  WHERE council = %s AND is_active = TRUE) obs
           LEFT JOIN dcp_plan_as_at p ON p.lga = %s
@@ -219,6 +231,8 @@ def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
     if not row or len(row) != 7:
         return None
     (portal_d, portal_p, portal_k, stated_d, stated_p, stated_k, observed) = row
+    if portal_d and stated_d and portal_d != stated_d:
+        return None  # conflicting evidence — adjudicate, never auto-pick
     if portal_d:
         return {"date": portal_d, "precision": portal_p, "kind": portal_k,
                 "basis": "portal_plan_record"}

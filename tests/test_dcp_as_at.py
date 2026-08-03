@@ -107,15 +107,29 @@ def _cur(row):
 
 
 FULL = ("2022-09-09", "day", "amended",     # portal
-        "2020-09-08", "day", "effective",   # stated
+        "2020-09-08", "day", "effective",   # stated (conflicts with portal)
         "2026-08-01")                        # observed
+PORTAL_ONLY = ("2022-09-09", "day", "amended",
+               None, None, None, "2026-08-01")
 
 
 class TestPlanAsAtAuthorityOrder:
-    def test_portal_beats_stated(self):
-        got = _plan_as_at(_cur(FULL), "x")
+    def test_portal_wins_when_stated_absent(self):
+        got = _plan_as_at(_cur(PORTAL_ONLY), "x")
         assert got["basis"] == "portal_plan_record"
         assert got["date"] == "2022-09-09"
+
+    def test_conflicting_portal_and_stated_render_nothing(self):
+        """A portal date contradicting the document's own statement is a
+        conflict to adjudicate, never a pick-one — no date renders (the
+        check script surfaces the disagreement)."""
+        assert _plan_as_at(_cur(FULL), "x") is None
+
+    def test_matching_portal_and_stated_serve_portal_basis(self):
+        row = ("2022-09-09", "day", "amended",
+               "2022-09-09", "day", "effective", "2026-08-01")
+        got = _plan_as_at(_cur(row), "x")
+        assert got["basis"] == "portal_plan_record"
 
     def test_stated_beats_observed(self):
         row = (None, None, None) + FULL[3:]
@@ -154,7 +168,7 @@ class TestFetchDcpSetbacksAsAt:
     def test_as_at_line_present_when_lookup_resolves(self):
         cur = MagicMock()
         cur.fetchall.return_value = [_control_row()]
-        cur.fetchone.side_effect = [("https://example.gov.au/dcp",), FULL]
+        cur.fetchone.side_effect = [("https://example.gov.au/dcp",), PORTAL_ONLY]
         conn = MagicMock()
         conn.cursor.return_value = cur
         result = fetch_dcp_setbacks(conn, "waverley", "R2 Low Density")
@@ -281,6 +295,54 @@ class TestStatedPatterns:
         """'regulate effective and orderly development' must never parse."""
         line = "Development Control Plan 2023 combine to regulate effective and orderly development,"
         assert not any(p.search(line) for p, _ in _STATEMENTS)
+
+
+# ---------------------------------------------------------------------------
+# Extractor selection rules — real (generated) PDFs
+# ---------------------------------------------------------------------------
+
+def _make_pdf(path, pages):
+    import fitz
+
+    doc = fitz.open()
+    for text in pages:
+        page = doc.new_page()
+        page.insert_text((72, 72), text)
+    doc.save(str(path))
+    doc.close()
+
+
+class TestExtractorSelectionRules:
+    def test_latest_effective_statement_wins(self, tmp_path):
+        """A document stating its original commencement AND a later
+        amendment's effective date must serve the later one."""
+        from extract_dcp_stated_dates import scan_statement
+
+        pdf = tmp_path / "burwood-dcp.pdf"
+        _make_pdf(pdf, ["In Force 6 May 2022", "Effective: 5 March 2026"])
+        got = scan_statement(str(pdf), "burwood-dcp.pdf")
+        assert got.date_iso == "2026-03-05"
+
+    def test_amendment_table_ignores_approved_only_dates(self, tmp_path):
+        """An amendment approved but not yet in force (odd date count) breaks
+        the pairing assumption — skip, never take the page-wide maximum."""
+        from extract_dcp_stated_dates import scan_amendment_table
+
+        pdf = tmp_path / "parramatta-dcp-2023.pdf"
+        _make_pdf(pdf, ["LIST OF AMENDMENTS\n22/07/2024\n18/09/2024\n30/06/2026"])
+        assert scan_amendment_table(str(pdf), "parramatta-dcp-2023.pdf",
+                                    "parramatta") is None
+
+    def test_amendment_table_takes_latest_in_force_of_pairs(self, tmp_path):
+        from extract_dcp_stated_dates import scan_amendment_table
+
+        pdf = tmp_path / "parramatta-dcp-2023.pdf"
+        _make_pdf(pdf, ["LIST OF AMENDMENTS\n26/10/2021\n01/12/2023\n"
+                        "22/07/2024\n18/09/2024"])
+        got = scan_amendment_table(str(pdf), "parramatta-dcp-2023.pdf",
+                                   "parramatta")
+        assert got.date_iso == "2024-09-18"
+        assert got.kind == "amended"
 
 
 # ---------------------------------------------------------------------------

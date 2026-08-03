@@ -108,6 +108,12 @@ class PortalResult:
     evidence: Optional[str] = None
     raw: Optional[list] = None
     failure: Optional[str] = None
+    # True when the portal WAS reached and echo-verified but no entry could
+    # attach (identity mismatch / ambiguity). Distinct from infrastructure
+    # failure: this state CLEARS any previously stored portal date, because a
+    # date attached under an older identity must not keep serving (Sol
+    # finding, 2026-08-03 — the Hornsby drift scenario).
+    checked_unattached: bool = False
     notes: list[str] = field(default_factory=list)
 
 
@@ -300,6 +306,7 @@ def fetch_one(slug: str, centroids: list[tuple[float, float]],
     chosen, why_not = pick_dcp_result(registry_names, rec.get("dcpResults") or [])
     if chosen is None:
         res.failure = why_not
+        res.checked_unattached = True
         return res
     res.plan_name = chosen.get("planName")
     res.plan_url = chosen.get("planURL")
@@ -408,20 +415,39 @@ def main() -> int:  # pragma: no cover - CLI entry point
         print(f"  {slug:22s} propId={r.prop_id!s:9s} {status}")
         time.sleep(1.2)  # politeness between portal round-trips
 
+    # prior-art-checked: this is the same script's own upsert loop being
+    # extended with the clear-on-checked-unattached rule (Sol finding 1,
+    # 2026-08-03); no other module writes dcp_plan_as_at.
     ok = [r for r in results if not r.failure]
+    unattached = [r for r in results if r.failure and r.checked_unattached]
     dated = [r for r in ok if r.date_iso]
     print(f"\nportal records: {len(ok)}/{len(results)}; with explicit dated "
-          f"phrase: {len(dated)}; failures (not written): {len(results) - len(ok)}")
+          f"phrase: {len(dated)}; checked-but-unattached (portal date cleared): "
+          f"{len(unattached)}; infrastructure failures (untouched): "
+          f"{len(results) - len(ok) - len(unattached)}")
 
     if not args.apply:
-        print("\nDRY RUN — nothing written. Re-run with --apply to upsert "
-              f"{len(ok)} rows into dcp_plan_as_at.")
+        print(f"\nDRY RUN — nothing written. --apply would upsert {len(ok)} "
+              f"attached rows and clear the portal date on {len(unattached)} "
+              f"checked-but-unattached rows.")
         return 0
 
-    print(f"\npredicted writes: {len(ok)} upserts into dcp_plan_as_at "
-          f"(failures are skipped, never written)")
+    print(f"\npredicted writes: {len(ok)} attach-upserts + {len(unattached)} "
+          f"clear-upserts (infrastructure failures never touch a row)")
     written = 0
-    for r in ok:
+    # A checked-but-unattached result stores WHAT was checked and WHY nothing
+    # attached, and nulls any previously attached portal date — an old date
+    # must not keep serving under a changed plan identity.
+    for r in results:
+        if r.failure and not r.checked_unattached:
+            continue
+        raw_payload = None
+        if r.raw is not None:
+            payload = {"response": r.raw}
+            if r.checked_unattached:
+                payload["unattached_reason"] = r.failure
+            raw_payload = json.dumps(payload)
+        attach = not r.failure
         cur.execute(
             """
             INSERT INTO dcp_plan_as_at
@@ -443,19 +469,27 @@ def main() -> int:  # pragma: no cover - CLI entry point
                 portal_raw = EXCLUDED.portal_raw,
                 updated_at = now()
             """,
-            (r.slug, r.prop_id, r.lga_name, r.plan_name, r.plan_url,
-             r.date_iso, r.precision, r.kind, r.evidence,
-             json.dumps(r.raw) if r.raw else None),
+            (r.slug, r.prop_id, r.lga_name,
+             r.plan_name if attach else None,
+             r.plan_url if attach else None,
+             r.date_iso if attach else None,
+             r.precision if attach else None,
+             r.kind if attach else None,
+             r.evidence if attach else None,
+             raw_payload),
         )
         written += cur.rowcount
     conn.commit()
-    print(f"wrote {written} rows (predicted {len(ok)})")
+    predicted = len(ok) + len(unattached)
+    print(f"wrote {written} rows (predicted {predicted})")
 
-    cur.execute("SELECT COUNT(*), COUNT(portal_date) FROM dcp_plan_as_at")
-    total, with_date = cur.fetchone()
-    print(f"post-write verify: dcp_plan_as_at rows={total}, portal_date set={with_date}")
+    cur.execute("SELECT COUNT(*), COUNT(portal_date), COUNT(portal_checked_at) "
+                "FROM dcp_plan_as_at")
+    total, with_date, checked = cur.fetchone()
+    print(f"post-write verify: dcp_plan_as_at rows={total}, portal_date "
+          f"set={with_date}, portal_checked_at set={checked}")
     conn.close()
-    return 0 if written == len(ok) else 2
+    return 0 if written == predicted else 2
 
 
 if __name__ == "__main__":

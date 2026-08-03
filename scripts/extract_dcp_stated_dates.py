@@ -97,7 +97,7 @@ def scan_statement(path: str, rel: str) -> Optional[Stated]:
     slug = FILE_TO_SLUG[rel]
     doc = fitz.open(path)
     try:
-        best: Optional[Stated] = None
+        hits: list[Stated] = []
         for pno in range(min(MAX_SCAN_PAGES, len(doc))):
             for raw_line in doc[pno].get_text("text").splitlines():
                 line = " ".join(raw_line.split())
@@ -113,22 +113,29 @@ def scan_statement(path: str, rel: str) -> Optional[Stated]:
                             d = date(_to_year(int(g[2])), int(g[1]), int(g[0]))
                     except (ValueError, KeyError):
                         continue
-                    hit = Stated(slug, d.isoformat(), "day", kind,
-                                 f"{rel} p{pno + 1}: \"{line[:160]}\"")
-                    # 'effective' beats 'adopted'; the first statement of the
-                    # winning kind stands.
-                    if best is None or (best.kind == "adopted" and kind == "effective"):
-                        best = hit
-        return best
+                    hits.append(Stated(slug, d.isoformat(), "day", kind,
+                                       f"{rel} p{pno + 1}: \"{line[:160]}\""))
+        if not hits:
+            return None
+        # 'effective' beats 'adopted'; within the winning kind the LATEST
+        # date wins — a document stating both its original commencement and a
+        # later amendment's effective date must serve the later one (Sol
+        # finding 4, 2026-08-03; first-statement-wins kept the older date).
+        effective = [h for h in hits if h.kind == "effective"]
+        pool = effective or hits
+        return max(pool, key=lambda h: h.date_iso)
     finally:
         doc.close()
 
 
 def scan_amendment_table(path: str, rel: str, slug: str) -> Optional[Stated]:
-    """Parramatta: take the MAX dd/mm/yyyy on the LIST OF AMENDMENTS page.
-    On that layout every listed date is either 'Date Approved' or 'Date in
-    Force' and in-force follows approval, so the maximum is the latest stated
-    in-force date."""
+    """Parramatta: the LIST OF AMENDMENTS page lists, per amendment, a 'Date
+    Approved by Council' followed by a 'Date in Force'. Dates are therefore
+    consumed as ORDERED PAIRS and only the in-force member of each pair is a
+    candidate — a page-wide maximum could catch an approved-but-not-yet-in-
+    force date (Sol finding 5, 2026-08-03). An odd date count or a pair whose
+    in-force precedes its approval breaks the pairing assumption, and the
+    file is skipped visibly rather than guessed at."""
     import fitz
 
     doc = fitz.open(path)
@@ -146,10 +153,16 @@ def scan_amendment_table(path: str, rel: str, slug: str) -> Optional[Stated]:
                     continue
             if not found:
                 return None
-            latest, verbatim = max(found)
+            if len(found) % 2 != 0:
+                return None  # a dateless in-force cell — pairing broken
+            pairs = [(found[i], found[i + 1]) for i in range(0, len(found), 2)]
+            if any(approved[0] > in_force[0] for approved, in_force in pairs):
+                return None  # in-force before approval — not the layout we know
+            latest, verbatim = max(in_force for _approved, in_force in pairs)
             return Stated(slug, latest.isoformat(), "day", "amended",
                           f"{rel} p{pno + 1} LIST OF AMENDMENTS: latest Date in "
-                          f"Force {verbatim} of {len(found)} listed dates")
+                          f"Force {verbatim} of {len(pairs)} approved/in-force "
+                          f"pairs")
         return None
     finally:
         doc.close()
@@ -170,19 +183,26 @@ def main() -> int:  # pragma: no cover - CLI entry point
               f"a pass. Exiting 2.", file=sys.stderr)
         return 2
 
+    # Three outcomes per mapped file (Sol finding 6, 2026-08-03):
+    #   hit          -> upsert the stated date
+    #   file present, no statement -> the DOCUMENT changed: clear any stored
+    #                   stated date for the slug (checked, none found)
+    #   file missing -> a LOCAL checkout gap (data/dcps is git-ignored), says
+    #                   nothing about the document: report only, never clear
     results: list[Stated] = []
+    to_clear: list[tuple[str, str]] = []  # (slug, reason)
     skipped: list[str] = []
     for rel in sorted(FILE_TO_SLUG):
         path = os.path.join(dcp_dir, rel)
         if not os.path.isfile(path):
-            skipped.append(f"{rel}: file missing")
+            skipped.append(f"{rel}: file missing locally — not cleared")
             continue
         hit = scan_statement(path, rel)
         if hit:
             results.append(hit)
         else:
-            skipped.append(f"{rel}: mapped but no statement matched — file "
-                           f"changed since the 2026-08-03 survey?")
+            to_clear.append((FILE_TO_SLUG[rel],
+                             f"{rel}: present but no statement matched"))
 
     rel, slug = AMENDMENT_TABLE_FILE
     path = os.path.join(dcp_dir, rel)
@@ -191,19 +211,23 @@ def main() -> int:  # pragma: no cover - CLI entry point
         if hit:
             results.append(hit)
         else:
-            skipped.append(f"{rel}: LIST OF AMENDMENTS not found/undated")
+            to_clear.append((slug, f"{rel}: LIST OF AMENDMENTS not "
+                                   f"found/undated/unpaired"))
     else:
-        skipped.append(f"{rel}: file missing")
+        skipped.append(f"{rel}: file missing locally — not cleared")
 
     print(f"stated dates extracted: {len(results)}")
     for r in results:
         print(f"  {r.slug:18s} {r.date_iso} ({r.precision}, {r.kind})  <- {r.evidence}")
+    for slug_, reason in to_clear:
+        print(f"  CLEAR   {slug_}: {reason}")
     for s in skipped:
         print(f"  SKIPPED {s}")
 
     if not args.apply:
         print(f"\nDRY RUN — nothing written. --apply would upsert "
-              f"{len(results)} rows' stated_* columns.")
+              f"{len(results)} rows' stated_* columns and clear "
+              f"{len(to_clear)} stale stated rows.")
         return 0
 
     from dotenv import load_dotenv
@@ -218,11 +242,16 @@ def main() -> int:  # pragma: no cover - CLI entry point
     # pattern (repair_canada_bay_rear_setback.py) — DATABASE_URL + 30s timeout.
     import psycopg2
 
+    # prior-art-checked: this extends this script's own stated_* upsert loop
+    # with the stale-row clear rule (Sol finding 6, 2026-08-03); no other
+    # module writes the stated_* columns of dcp_plan_as_at.
     conn = psycopg2.connect(url)
     cur = conn.cursor()
     cur.execute("SET statement_timeout = '30000'")
-    print(f"\npredicted writes: {len(results)} upserts (stated_* columns only)")
+    print(f"\npredicted writes: {len(results)} upserts (stated_* columns only) "
+          f"+ up to {len(to_clear)} stale-row clears")
     written = 0
+    cleared = 0
     try:
         for r in results:
             cur.execute(
@@ -241,8 +270,23 @@ def main() -> int:  # pragma: no cover - CLI entry point
                 (r.slug, r.date_iso, r.precision, r.kind, r.evidence),
             )
             written += cur.rowcount
+        for slug_, reason in to_clear:
+            # UPDATE only: clearing is meaningful solely for a row that holds
+            # a stale stated date; a fresh all-NULL row would say nothing.
+            cur.execute(
+                """
+                UPDATE dcp_plan_as_at
+                   SET stated_date = NULL, stated_date_precision = NULL,
+                       stated_date_kind = NULL,
+                       stated_evidence = %s, updated_at = now()
+                 WHERE lga = %s AND stated_date IS NOT NULL
+                """,
+                (f"CLEARED {date.today().isoformat()}: {reason}", slug_),
+            )
+            cleared += cur.rowcount
         conn.commit()
-        print(f"wrote {written} rows (predicted {len(results)})")
+        print(f"wrote {written} rows (predicted {len(results)}); cleared "
+              f"{cleared} stale stated rows (of {len(to_clear)} candidates)")
         cur.execute("SELECT COUNT(*), COUNT(stated_date) FROM dcp_plan_as_at")
         total, with_stated = cur.fetchone()
         print(f"post-write verify: dcp_plan_as_at rows={total}, stated_date set={with_stated}")
