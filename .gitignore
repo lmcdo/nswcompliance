@@ -630,3 +630,6 @@ latent-scope-data/
 
 # Output-grounding item 4 — execution manifests + units/CRS checks
 !scripts/check_satellite_manifests.py
+
+# Output-grounding item 5 — TS direct-reader consolidation
+!scripts/check_ts_dcp_readers.py

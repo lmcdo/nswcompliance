@@ -28,11 +28,13 @@ from conveyancing_db import fetch_dcp_setbacks  # noqa: E402
 
 # Column order matches the SELECT in fetch_dcp_setbacks:
 # dev_type, control_type, value_min, value_max, unit, condition, source_text,
-# section_ref, applicability, needs_review
+# section_ref, applicability, needs_review, source_chapter_key, pdf_page,
+# dcp_version
 def row(section_ref, *, needs_review=False, condition="", applicability="general",
         control_type="front_setback", dev_type="dwelling_house", vmin=4.5):
     return (dev_type, control_type, vmin, None, "m", condition,
-            "Provide a front setback.", section_ref, applicability, needs_review)
+            "Provide a front setback.", section_ref, applicability, needs_review,
+            "part_3", 12, "v2022-current")
 
 
 def _conn(rows):

@@ -21,11 +21,16 @@ export async function GET() {
     // Join against lga_registry for display names.
     // Exclude nsw_statewide (SEPP/ADG, not a council DCP) and
     // sub-councils with a parent_lga (shown under parent, e.g. Inner West).
+    // Metadata reader (item 5): keeps direct SQL by design but carries the
+    // standard guard predicates — a council counts as covered only by rows
+    // the serving path would actually serve. Measured 2026-08-03: the clean
+    // predicate changes the count 28 -> 28 (every council has >=1 clean row).
     const result = await pool.query(
       `SELECT DISTINCT r.display_name
        FROM dcp_setback_controls c
        JOIN lga_registry r ON r.slug = c.lga
        WHERE c.is_current = TRUE
+         AND (c.needs_review IS NULL OR c.needs_review = FALSE)
          AND r.slug != 'nsw_statewide'
          AND r.parent_lga IS NULL
        ORDER BY r.display_name`,

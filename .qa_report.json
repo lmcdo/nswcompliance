@@ -1,209 +1,164 @@
 {
  "tier": "critical",
- "justification": "Changes served output on every satellite product: report data_sources (flood no longer claims an S1 source that never ran - DQ-44), PDF data-currency wording on three paid-tier reports, typed-absence entry behaviour on five endpoints, and the report envelopes gain execution manifests. Also fixes DQ-45, a P1 crash that collapsed granny-flat detection whenever a structure survived filtering.",
- "commit_hash": "5659650b",
+ "justification": "Consolidates every value-serving TS reader of dcp_setback_controls onto the ONE guarded implementation - served rows change on live free surfaces (35 flagged-but-numeric rows stop rendering as normal numbers on the assessment DCP tab and duplex-check card; 4 flagged secondary-dwelling rows stop shipping from canibuildit; capacity's arbitrary no-ORDER LIMIT 3 becomes all guarded rows in deterministic order with the zone filter newly applied). Serving-behaviour change on user-facing compliance surfaces = critical tier.",
+ "commit_hash": "2af3153f",
  "files": [
-  "services/geometry_checks.py",
-  "services/execution_manifest.py",
-  "services/sentinel2.py",
-  "services/shadow_detector.py",
-  "services/shadow_model.py",
-  "services/flood_truth.py",
-  "services/solar_yield.py",
-  "services/granny_flat.py",
-  "services/nsw_imagery.py",
-  "services/terrain_analysis.py",
-  "services/dem_service.py",
-  "services/threat_radar.py",
-  "frontend-nextjs/lib/pdf/imagery-currency.ts",
-  "frontend-nextjs/lib/pdf/shadow-report.tsx",
-  "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
-  "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
-  "frontend-nextjs/app/api/reports/shadow/generate/route.ts",
-  "scripts/check_satellite_manifests.py",
-  "tests/test_execution_manifests.py",
-  "tests/test_flood_compute.py",
-  "tests/test_flood_truth.py",
-  "tests/test_terrain_analysis.py",
-  "frontend-nextjs/__tests__/lib/pdf/imagery-currency.test.ts",
-  ".gitignore",
-  ".claude/DATA_QUALITY_TRACKER.md"
+  "services/dcp_controls_api.py",
+  "services/compliance_api_server.py",
+  "scripts/conveyancing_db.py",
+  "frontend-nextjs/lib/dcp-controls-client.ts",
+  "frontend-nextjs/lib/lga-slug.ts",
+  "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+  "frontend-nextjs/app/api/capacity/calculate/route.ts",
+  "frontend-nextjs/app/api/canibuildit/check/route.ts",
+  "frontend-nextjs/app/api/tod/parking-rates/route.ts",
+  "frontend-nextjs/app/api/dcp/coverage/route.ts",
+  "scripts/check_ts_dcp_readers.py",
+  "tests/test_dcp_controls_api.py",
+  "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
+  "frontend-nextjs/__tests__/api/capacity-repoint.test.ts",
+  "frontend-nextjs/__tests__/lib/parking-rate-selection.test.ts",
+  ".gitignore"
  ],
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_execution_manifests.py tests/test_flood_compute.py tests/test_flood_truth.py tests/test_terrain_analysis.py -q && cd frontend-nextjs && npx jest --testPathPatterns=imagery-currency && cd .. && python scripts/check_satellite_manifests.py",
-  "passes_when": "24 new pins green: scene identity survives the sentinel2 aggregation chokepoint with per-scene used flags; wrong-CRS input yields the TYPED unavailable state on shadow/flood (422 with reason) and terrain (error field), never a number; the granny-flat filter loop survives real detections with and without lot clipping (DQ-45); the flood cache copy passes the ORIGINAL inputs object through (manifest rides like run_date); flood's S1 source appears only with a SAR result (DQ-44 flips); terrain's data_source names the provider that actually served the DEM (DQ-46 flip); the imagery-currency wording pins hold in jest. The observation check reports reports_without_manifest (baseline 888 of 888 - all historical) and exits 2 on a zero-row census.",
-  "fails_when": "Any pin regressing: dropping the used-flag bookkeeping fails test_scene_identity_marks_unusable_scenes; removing an entry check fails that service's wrong-CRS pin (test_shadow/flood_wrong_crs_is_typed_422, test_terrain_wrong_crs_is_typed_error_response); reverting the DQ-45 rename fails test_detection_survives_filter_loop with the original TypeError; re-deriving cache inputs fails test_cache_copy_passes_original_inputs (asserts identity, `is`); restoring the unconditional S1 append fails three flipped flood pins; restoring the static GA DEM claim fails test_data_source_reflects_actual_provider; 'Most recent pass' reappearing fails the sarImageryCurrency jest pin. check_satellite_manifests exits 2 when it cannot measure.",
-  "demonstrated_failing": "The pre-change states are the census (2026-08-03, spot-verified): compute_change_score stripped all scene identity (sentinel2.py old 135-143); flood appended 'Microsoft Planetary Computer S1 RTC' unconditionally at old :1341 while sar_flood_detected was hard-nulled; the flood PDF rendered 'Most recent pass' from the always-null sar_analysis_date; solar wrote imagery_date to the envelope but the PDF never rendered it (interface field's sole occurrence); granny_flat's shadowed bbox raised TypeError at old :510/:571 (both sites confirmed by reading _pixel_area_to_m2's dict indexing); terrain asserted the GA source even on SIX Maps fallback. Old-doctrine tests pinning the S1 claim and the static GA claim were green pre-change and were flipped with in-test reasons.",
-  "mutation_evidence": "Reorder check_point_nsw's swap branch after the degree-range branch -> test_swapped_axis_order_named fails (caught live during development - the first implementation had exactly that bug). Return dcp-style bare dict from _median_bsi without consumed list -> both scene-identity pins fail. Make solar keep an invalid polygon -> the demotion means confidence 'high' would require lot_polygon non-null, pinned indirectly by check_polygon_wgs84 rejection tests. Swap MANIFEST_KEY out of the flood fresh-path inputs -> the cache test still passes but check_satellite_manifests would count every new flood report, the observation check's purpose.",
-  "sol_note": "Melbourne-in-envelope was caught by the test suite during development: NSW's bounding box genuinely contains northern Victoria, so the check adjudicates CRS-class errors only, never border lines - documented in test_outside_envelope_rejected."
+  "command": "python -m pytest tests/test_dcp_controls_api.py tests/test_conveyancing_clause_citation.py tests/test_conveyancing_dcp_needs_review.py tests/test_dcp_as_at.py -q && cd frontend-nextjs && npx jest --testPathPatterns=\"capacity-repoint|parking-rate-selection|dcp-structured-controls\" && cd .. && python scripts/check_ts_dcp_readers.py",
+  "passes_when": "The endpoint serves fetch_dcp_setbacks verbatim with three distinguishable states (rows / checked-none-with-reason / 503); the flipped source pins hold (ZERO `FROM dcp_setback_controls` in capacity and parking-rates routes, proxy imports present, universal_residential union in TS, zone passed through); structured-controls can never emit 'under_review' (flagged rows excluded at source); the observation check reports unexpected_inline_readers == [] (baseline met at ship: only the internal review routes + guarded coverage route + test files name the table in executable code).",
+  "fails_when": "Reintroducing inline SQL against dcp_setback_controls in any consolidated route fails its source pin AND appears in check_ts_dcp_readers' unexpected list; serving a needs_review row with a value fails test 'under_review can never be emitted'; collapsing the endpoint's source-failure into an empty success fails test_db_failure_is_503/test_none_result_is_checked_none; dropping the 13-column SELECT extension breaks the three conveyancing fixture suites (they pin the exact column order).",
+  "demonstrated_failing": "The pre-change states are the census (2026-08-03, three claims re-verified in code before design): capacity ran LIMIT 3 with no ORDER BY at :130/:150 (arbitrary rows served); structured-controls' branch order served a flagged row as 'numeric' whenever it had a value (:235-238) - 35 such rows measured live across 13 councils; canibuildit had no needs_review predicate at all (:397-404, 4 flagged SD rows served); three routes weakened is_current to NULL-passes (measured: zero NULL rows exist, so tightening changes nothing); the zone filter existed in NO TS reader. Old-architecture test pins (>=3 inline queries required) were green pre-change and flipped with in-test reasons.",
+  "mutation_evidence": "Make the endpoint return {} on failure -> test_db_failure_is_503 fails. Re-add `FROM dcp_setback_controls` to capacity -> its flipped pin fails and the observation check lists it. Swap the structured-controls branch order back (numeric wins) -> cannot recur: needs_review rows never arrive; the pin asserts statuses never contain under_review from clean rows. Drop registry_pdf_urls from fetch_dcp_setbacks -> the endpoint test's registry map assertion fails. Remove the singleton slug mapper adoption in canibuildit -> keying still tested via lib/lga-slug tests (same six renames verified before the swap)."
  },
  "pre_impl": {
-  "existing_data": "Census with file:line over all 9 satellite modules (agent-swept, 4 load-bearing claims spot-verified against code): identity available at computation time (pystac items carry id/datetime/cloud_cover), envelopes recorded none of it except solar's imagery_date, flood is the only run_date-preserving cache, no algorithm versions anywhere. property_reports 888 satellite rows + granny_flat_reports 87 measured live for the baseline.",
-  "assumption_mismatch": "Old cached flood rows have no manifest in inputs - the cache copy passes whatever the original row had (cached.get('inputs') or coords fallback at flood_truth.py:1783), never fabricates one. Old fakes/spike scripts returning 3-tuples from fetch_tile_to_file keep working (granny unpacks result[:3] and treats the 4th element as optional). Pydantic response models gained Optional fields only.",
-  "new_vs_existing": "All additive: new inputs.execution_manifest key, new Optional response fields, new columns nowhere (no schema migration - every write target already had JSON envelopes). Historical reports are counted by the observation check, never backfilled. Behaviour changes are confined to previously-wrong paths: the S1 source claim (DQ-44), the static GA DEM claim (DQ-46), the granny TypeError (DQ-45), and invalid-polygon clipping that silently served whole-building numbers as lot-clipped with high confidence.",
-  "external_source_error": "Portal lot API declaring an unexpected CRS wkid -> typed 422 (was: silent garbage conversion); S2 timeout -> manifest records scene_identity None with the note; Modal failure unchanged (three-state contract kept); DEM both-providers-down unchanged (RuntimeError -> 500).",
-  "frontend_type": "ShadowReportData gains optional s2_latest_acquisition (route maps it explicitly at shadow/generate/route.ts:137); solar's imagery_date was already declared and now renders; TerrainResponse/DCP models untouched. TSC baseline gate enforces.",
-  "user_failure_mode": "A units/CRS failure reads as the product's own unavailable form ('could not be determined: <reason>') - never a number for the wrong place. A missing manifest renders the explicit 'not recorded for this run' wording on the PDF currency row."
+  "existing_data": "Census of all 18 frontend files naming the table (agent-swept with verbatim snippets; 3 load-bearing claims re-verified by direct read). Blast radius measured live before design: is_current NULL rows = 0; 35 current+needs_review rows (all with numeric values, woollahra-heavy 16) served today by structured-controls; 4 flagged SD rows served by canibuildit; coverage count unchanged 28->28 under the clean predicate. Paid channel (conveyancing) has NO TS readers - it is already Python-side, so 'paid first' resolves to the most-served free surfaces.",
+  "assumption_mismatch": "canibuildit's inline slug map carried exactly the six renames lib/lga-slug.ts holds (verified line-by-line before the swap) - keying unchanged. The proxy returns ALL dev_types per LGA; routes filter client-side, which matches how the reference implementation's own consumers (conveyancing renderer) shape its output. Mock fixtures pinning the fetch_dcp_setbacks column order were updated to the 13-column shape in the same change.",
+  "new_vs_existing": "fetch_dcp_setbacks extension is additive (3 SELECT columns, 4 raw row fields, registry_pdf_urls key, savepoint-isolated PDF-map probe) - the paid conveyancing consumers ignore unknown dict keys, and all 3,665 Python tests stay green. Response contracts of the four routes are preserved field-for-field (structured-controls additively gains as_at/as_at_line). Served-row changes are confined to previously-wrong paths and are counted above.",
+  "external_source_error": "Proxy unreachable -> DcpControlsUnavailableError -> structured-controls returns visible 503; parking-rates records its tier as degraded with a user-facing reason (existing machinery); capacity fails the request as before (500 success:false); canibuildit keeps its non-blocking empty (field unrendered by the UI, census-verified). The endpoint returns 503 on DB failure and available:false with a reason for checked-none - never an empty success.",
+  "frontend_type": "DcpControlRow/DcpControlsResult typed in lib/dcp-controls-client.ts; route response interfaces unchanged (StructuredControl, ParkingControlRow reused). TSC baseline gate enforces.",
+  "user_failure_mode": "A consolidated route that cannot reach the guarded source fails VISIBLY (503/degraded-tier note/500), never with silently emptier data. Users on the assessment DCP tab stop seeing 35 under-review numbers presented as authoritative - visible absence of quarantined values is the fix working."
  },
  "functions": [
   {
-   "name": "check_point_nsw",
-   "file_line": "services/geometry_checks.py:35",
-   "input": "lat/lng as received at a pipeline entry, any type",
-   "output": "None when plausible for NSW WGS84, else a reason string naming the failure class (swap/metres/envelope)",
-   "if_none": "non-numeric input returns a reason, never raises - callers route reasons to typed absence"
+   "name": "dcp_controls",
+   "file_line": "services/dcp_controls_api.py:41",
+   "input": "lga slug + optional zone string, as query params from the TS client",
+   "output": "the guarded fetch_dcp_setbacks result flattened to rows + as-at + registry PDF map, or available:false with reason, or HTTP 503",
+   "if_none": "fetch returning None -> available:false with the honest dual-cause reason (no rows OR swallowed failure - a documented limitation of the shared implementation)"
   },
   {
-   "name": "check_rings_epsg3857",
-   "file_line": "services/geometry_checks.py:114",
-   "input": "ArcGIS-style rings expected to be Web Mercator metres from the lot API",
-   "output": "None when metre-scale and in-extent, else a reason (degree-scale rings named as WGS84-fed-as-3857)",
-   "if_none": "empty/malformed rings return a reason; granny demotes to unclipped, shadow refuses typed"
+   "name": "fetchDcpControls",
+   "file_line": "frontend-nextjs/lib/dcp-controls-client.ts:51",
+   "input": "lga slug + optional zone, from the four consolidated routes",
+   "output": "typed DcpControlsResult from PYTHON_API_URL/pipeline/dcp-controls with a 20s abort",
+   "if_none": "network/non-OK -> DcpControlsUnavailableError so every caller converts to ITS visible degraded shape - never an empty success"
   },
   {
-   "name": "build_manifest",
-   "file_line": "services/execution_manifest.py:46",
-   "input": "per-source identity dicts the service derived from its live objects, plus product/version frame",
-   "output": "the envelope manifest dict (schema, algorithm_version, deploy_sha, built_at, inputs, query_params, parcel_identity)",
-   "if_none": "pure function, no I/O by construction - it cannot be assembled from a parallel lookup"
-  },
-  {
-   "name": "_median_bsi",
-   "file_line": "services/sentinel2.py:128",
-   "input": "up to 4 pystac Items plus the query bbox, inside compute_change_score",
-   "output": "(median BSI or None, per-scene identity list with used flags) - identity read from the very objects computed over",
-   "if_none": "an unreadable scene is recorded used=False; all-unreadable yields (None, identities) and the insufficient-scenes note"
-  },
-  {
-   "name": "run_shadow",
-   "file_line": "services/shadow_detector.py:383",
-   "input": "ShadowRequest coordinates, the lot API's declared spatialReference, the converted polygon",
-   "output": "typed 422 on any implausibility; otherwise the envelope write carries inputs.execution_manifest and outputs.s2_latest_acquisition",
-   "if_none": "missing wkid is tolerated (legacy responses); a DECLARED unexpected wkid refuses"
-  },
-  {
-   "name": "fetch_dem_region_with_provider",
-   "file_line": "services/dem_service.py:220",
-   "input": "the same lat, lng and buffer_m arguments the legacy fetch_dem_region accepted",
-   "output": "(GeoTIFF bytes, 'ga_wcs_5m' | 'six_maps_elevation') so terrain can attribute the DEM it actually used",
-   "if_none": "both providers down raises RuntimeError exactly as the wrapped legacy function did"
+   "name": "fetch_dcp_setbacks",
+   "file_line": "scripts/conveyancing_db.py:253",
+   "input": "connection + lga slug + optional zone code (unchanged signature)",
+   "output": "existing dict + additive raw citation fields per row + registry_pdf_urls map (savepoint-isolated probe)",
+   "if_none": "unchanged: None on no rows or swallowed failure; PDF-map probe failure degrades to an empty map without poisoning the transaction"
   }
  ],
  "values": [
   {
-   "value": "cached['inputs'] on the flood cache-copy write",
-   "read_at": "services/flood_truth.py:1783",
+   "value": "proxy rows in each consolidated route",
+   "read_at": "frontend-nextjs/app/api/capacity/calculate/route.ts:121",
    "nullable": "yes",
-   "guard_at": "services/flood_truth.py:1783 (or-fallback to bare coords for pre-manifest rows)",
-   "if_missing": "old rows copy through with coords-only inputs - counted by the observation check, never fabricated"
+   "guard_at": "frontend-nextjs/app/api/capacity/calculate/route.ts:122-125 (available && rows checks before filtering)",
+   "if_missing": "empty slices -> the route's existing empty-state responses; unavailability throws to the route's visible failure path"
   },
   {
-   "value": "tile meta (4th tuple element) in granny detect",
-   "read_at": "services/granny_flat.py:826",
+   "value": "registry_pdf_urls[source_chapter_key]",
+   "read_at": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:200",
    "nullable": "yes",
-   "guard_at": "services/granny_flat.py:826-830 (len(result) > 3 else None - 3-tuple fakes keep working)",
-   "if_missing": "manifest records aerial_tile: null; detection unaffected"
-  },
-  {
-   "value": "s2_latest_acquisition on the shadow PDF row",
-   "read_at": "frontend-nextjs/lib/pdf/shadow-report.tsx:572",
-   "nullable": "yes",
-   "guard_at": "frontend-nextjs/lib/pdf/imagery-currency.ts:14 (falsy -> the explicit not-recorded wording)",
-   "if_missing": "the row says 'acquisition dates not recorded for this run' - absence is visible, never implied currency"
+   "guard_at": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:200-207 (null coalescing; anchor only when pdf_page present)",
+   "if_missing": "pdf_url null - the UI renders the citation without a link, as before"
   }
  ],
  "queries": [
   {
-   "purpose": "flood cache read gains the stored inputs column",
-   "file_line": "services/flood_truth.py:1760",
-   "where_clause": "product='flood' AND address=%s AND run_date > CURRENT_DATE - INTERVAL '90 days' (unchanged filters; one added SELECT column)",
-   "if_zero": "no cache hit -> fresh compute path with a fresh manifest",
-   "if_wrong": "poisoned-row skip (_first_valid_cached_row) unchanged"
+   "purpose": "the ONE guarded controls read (now also the proxy's source)",
+   "file_line": "scripts/conveyancing_db.py:286",
+   "where_clause": "lga = %s AND is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE), deterministic ORDER BY with id tiebreak",
+   "if_zero": "None -> endpoint available:false with reason",
+   "if_wrong": "per-row needs_review re-check + zone_specific condition filter remain; fixtures pin the column order"
   },
   {
-   "purpose": "manifest census over stored satellite reports",
-   "file_line": "scripts/check_satellite_manifests.py:44",
-   "where_clause": "product IN ('flood','shadow','solar-yield','bushfire') on property_reports + all of granny_flat_reports",
-   "if_zero": "zero rows = wrong database, exit 2 - never a satisfied target",
-   "if_wrong": "counting a product with no writer yet (bushfire) overstates the gap - the conservative direction, noted in output"
+   "purpose": "coverage metadata read (kept direct by design, guards adopted)",
+   "file_line": "frontend-nextjs/app/api/dcp/coverage/route.ts:29",
+   "where_clause": "c.is_current = TRUE AND (c.needs_review IS NULL OR c.needs_review = FALSE) + registry scoping",
+   "if_zero": "empty council list renders as before",
+   "if_wrong": "measured before shipping: clean predicate changes the count 28 -> 28"
   },
   {
-   "purpose": "granny confirm carry-forward gains the manifest column",
-   "file_line": "services/granny_flat.py:1310",
-   "where_clause": "granny_flat_reports WHERE id = %s (same row the tile_b64 carry already read)",
-   "if_zero": "no detect row -> manifest null in confirm inputs (honest absence)",
-   "if_wrong": "keyed by the caller's report_id exactly as tile_b64 was - same blast radius"
+   "purpose": "registry PDF-URL map for citation links",
+   "file_line": "scripts/conveyancing_db.py:332",
+   "where_clause": "council = %s AND is_active = TRUE AND r2_public_pdf_url IS NOT NULL",
+   "if_zero": "empty map - citations render without links",
+   "if_wrong": "per-council parameter makes cross-council contamination structurally impossible (the old TS JOIN needed a leak sentinel; the map does not)"
   }
  ],
  "break_it": [
   {
-   "scenario": "a swapped lat/lng pair (151.2, -33.87) reaches a satellite pipeline",
-   "what_happens": "pre-change: every product computed numbers for a point in the ocean off Japan-ish longitude-as-latitude - identically on every recompute, undetectable by re-running",
+   "scenario": "a needs_review row with a numeric value reaches the assessment DCP tab or duplex-check card",
+   "what_happens": "pre-change: served as a normal authoritative number (numeric won the branch) - 35 live rows measured; the quarantine was decorative",
    "mitigated": true,
-   "how": "services/geometry_checks.py:35-58 swap detection FIRST (the degree-range branch would misdiagnose it) + entry checks in all five services routing to typed absence",
-   "repro": "pytest tests/test_execution_manifests.py::TestPointChecks::test_swapped_axis_order_named tests/test_execution_manifests.py::TestEntryChecksTyped -q"
+   "how": "rows now come from fetch_dcp_setbacks which excludes flagged rows in SQL AND per-row; the route cannot emit under_review from clean rows (pinned)",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=dcp-structured-controls"
   },
   {
-   "scenario": "the lot API starts returning WGS84 or a different CRS while _arcgis_to_geojson still assumes Web Mercator",
-   "what_happens": "silent garbage polygon -> shadow scenarios computed against a lot a few metres wide at Null Island",
+   "scenario": "capacity serves an arbitrary 3 of N parking rows that changes between deploys",
+   "what_happens": "pre-change: LIMIT 3 with no ORDER BY - which rows a user saw was up to the planner",
    "mitigated": true,
-   "how": "services/shadow_detector.py:399-415 - declared-wkid check + metre-scale ring check + converted-polygon plausibility, each refusing typed",
-   "repro": "pytest tests/test_execution_manifests.py::TestRingChecks -q"
+   "how": "all guarded rows in the source's deterministic order (value/section/id tiebreaks added at scripts/conveyancing_db.py:298-299); the flipped pin forbids inline SQL returning",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=capacity-repoint"
   },
   {
-   "scenario": "a cached flood report is served with a freshly re-derived manifest",
-   "what_happens": "the manifest would claim inputs the cached numbers never came from - the exact undetectable-substitution defect manifests exist to kill",
+   "scenario": "the Python backend is down while a user opens the assessment DCP tab",
+   "what_happens": "risk introduced by proxying: a new failure mode where the old code hit the DB directly",
    "mitigated": true,
-   "how": "services/flood_truth.py:1777-1786 - the ORIGINAL inputs object rides the cache copy exactly like run_date (#873 precedent); pinned with an identity assertion",
-   "repro": "pytest tests/test_execution_manifests.py::TestFloodCacheCarriesManifest -q"
+   "how": "visible 503 with a retry message (never empty success); parking-rates degrades tier-by-tier with user-facing reasons; capacity fails the request visibly; the trade-off (one guard implementation over one fewer hop) is the item-5 doctrine, stated in the PR",
+   "repro": "pytest tests/test_dcp_controls_api.py::TestDcpControlsEndpoint::test_db_failure_is_503; jest 'source-unavailable is a visible 503'"
   },
   {
-   "scenario": "a scene is attempted but unreadable and the manifest still lists it as an input",
-   "what_happens": "the manifest would claim observations that never contributed - a false provenance record",
+   "scenario": "the slug-mapper swap silently changes how canibuildit keys its council lookups",
+   "what_happens": "a council's rows would vanish or belong to the wrong LGA on the granny-flat tool",
    "mitigated": true,
-   "how": "services/sentinel2.py:128-150 - per-scene used flags derived inside the computation loop itself",
-   "repro": "pytest tests/test_execution_manifests.py::TestSentinel2SceneIdentity::test_scene_identity_marks_unusable_scenes -q"
+   "how": "the inline map's six renames were verified identical to lib/lga-slug.ts line-by-line BEFORE the swap; toLgaSlug additionally null-guards empty input (the inline version could query lga = '')",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=lga-slug"
   },
   {
-   "scenario": "an invalid or implausible lot polygon reaches the solar clipping stage",
-   "what_happens": "pre-change: clipping silently skipped while confidence still said high-clipped-to-lot - whole-building panel counts served as lot numbers",
+   "scenario": "the fetch_dcp_setbacks SELECT extension breaks the paid conveyancing path",
+   "what_happens": "the 13-column unpack or new dict keys could disturb the PDF/brief consumers",
    "mitigated": true,
-   "how": "services/solar_yield.py:554-570 - implausible polygon DEMOTED to not-provided before use; confidence keys off the validated polygon; rejection recorded in the manifest",
-   "repro": "pytest tests/test_execution_manifests.py::TestPolygonChecks -q (rejection classes); confidence path pinned by the demotion wiring"
+   "how": "additive keys only; all three fixture suites updated to the exact column order and the full 3,665-test Python suite green incl. conveyancing forensic/citation/needs-review suites",
+   "repro": "python -m pytest tests/test_conveyancing_clause_citation.py tests/test_conveyancing_dcp_needs_review.py tests/test_dcp_as_at.py -q"
   },
   {
-   "scenario": "a detected structure survives the granny-flat quality filters and reaches area conversion",
-   "what_happens": "pre-change (DQ-45): TypeError from string-indexing the shadowed pixel-bbox list collapsed the whole run to detection_failed - the product could never return a successful clipped detection",
+   "scenario": "the PDF-map probe fails mid-transaction and takes the as-at probe down with it",
+   "what_happens": "a poisoned transaction would degrade every subsequent read in the shared function",
    "mitigated": true,
-   "how": "services/granny_flat.py:502-513 - bbox_px rename; tile bbox dict reaches _pixel_area_to_m2 and the WGS84 conversion again",
-   "repro": "pytest tests/test_execution_manifests.py::TestGrannyFilterLoopSurvives -q"
+   "how": "scripts/conveyancing_db.py:318-338 - savepoint-isolated like the as-at probe (the item-3 Sol doctrine applied to the new query)",
+   "repro": "mock-cursor suites exercise the probe failure path; fetch returns rows with an empty map"
   },
   {
-   "scenario": "the flood report keeps naming an S1 source no query ever hit",
-   "what_happens": "a named data source with no observation behind it, on a served report and its paid PDF (DQ-44) - the inverse of citing the wrong scene",
+   "scenario": "the observation check goes green while an inline reader hides in a comment-stripped edge",
+   "what_happens": "a false all-clear on the consolidation invariant while an inline reader still executes",
    "mitigated": true,
-   "how": "services/flood_truth.py:1354-1362 conditional append + PDF 'Not analysed in this report' + manifest sentinel1_sar.queried false; three old-doctrine tests flipped",
-   "repro": "pytest tests/test_flood_truth.py::test_data_sources_epi_always_s1_only_with_result -q"
+   "how": "the check strips comments (matching what files EXECUTE) and fails with exit 2 when it cannot find even the internal-review routes (a scan that finds nothing is a broken scan, DQ-30 lesson)",
+   "repro": "python scripts/check_ts_dcp_readers.py - baseline unexpected_inline_readers == []"
   },
   {
-   "scenario": "terrain serves SIX Maps photogrammetry data under the GA LiDAR accuracy claim",
-   "what_happens": "an accuracy representation (\u00b15m SRTM-derived) attributed to data from a different sensor family (DQ-46)",
+   "scenario": "the registry PDF-URL map probe fails and citation links silently vanish or mislink",
+   "what_happens": "controls would render without their page-anchored citation links, or a poisoned transaction would degrade every later read in the shared function",
    "mitigated": true,
-   "how": "services/dem_service.py:220-247 provider return + services/terrain_analysis.py data_source per actual provider",
-   "repro": "pytest tests/test_terrain_analysis.py::TestBuildTerrainInterpretation::test_data_source_reflects_actual_provider -q"
-  },
-  {
-   "scenario": "PDF wording drifts back to a bare query date implying imagery currency",
-   "what_happens": "the query date dressed as imagery currency - the satellite twin of the brief's as_at=today defect from item 3",
-   "mitigated": true,
-   "how": "frontend-nextjs/lib/pdf/imagery-currency.ts - single wording source consumed by all three PDFs, jest-pinned",
-   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=imagery-currency"
+   "how": "scripts/conveyancing_db.py:318-338 savepoint isolation (empty map on failure, transaction intact); the map is per-council by parameter so a mislink to another council's PDF is structurally impossible",
+   "repro": "pytest tests/test_dcp_controls_api.py (registry map assertion) + the mock-cursor suites exercising probe failure"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "No - no schema migration; baseline recorded live (888/888 historical reports without manifest); new reports gain manifests on deploy"
+  "manual_verify": "Railway deploys the new /pipeline/dcp-controls endpoint on merge (auto-deploy from GitHub); the four routes depend on it, so merge backend and frontend together (single squash does this)."
  }
 }
