@@ -619,3 +619,4 @@ latent-scope-data/
 !scripts/measure_control_type_mismatch.py
 !scripts/repair_canada_bay_rear_setback.py
 !scripts/repair_missing_primary_controls.py
+!scripts/repair_authorized_held_rows.py

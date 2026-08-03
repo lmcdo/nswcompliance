@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-03T12:00:00+10:00",
-  "target": "Sol-review hardening of the four controls repair/refile scripts: exact post-state guards (source_text/condition params), section_ref-keyed insert identity, camden evidentiary guard, refile pre-commit rowcount check",
-  "findings_summary": "same investigation as the close-out pass — all rows/columns already recon'd live this session; no new tables, no new query shapes beyond adding equality predicates on already-read columns"
+  "timestamp": "2026-08-03T13:00:00+10:00",
+  "target": "authorized repairs of the two held rows: fairfield 716 rear 6.0->0.9 per 5B.2.3.1(a), ryde 682 side 4.0->0.9-1.5 per s2.9.2(a)/(b); rule 2b quotes in the same write",
+  "findings_summary": "both rows recon'd live this session (pre-states known incl. needs_review=TRUE, condition NULL, 682 quote len 400); target clauses read verbatim from local PDFs this session; single-id guarded updates, no joins, no loops"
 }

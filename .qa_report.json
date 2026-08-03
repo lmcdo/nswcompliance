@@ -1,181 +1,107 @@
 {
  "tier": "critical",
- "justification": "Corrects served regulatory numbers in dcp_setback_controls, the product's core table: canada_bay 701 served a rear setback 4x under the actual control; ryde's and burwood's general primaries existed nowhere so no gate could examine them; fairfield served Chapter-5C narrow-lot values under secondary_dwelling. Wrong served numbers are the silent-liability class, which is the critical tier's definition. Standard would understate it; there is no higher tier.",
- "commit_hash": "b539c468",
- "falsifiable_check": {
-  "command": "python scripts/validate_control_source_values.py && python -m pytest tests/test_control_source_values.py tests/enrichment/test_control_type_vocabulary.py -q",
-  "passes_when": "every stored control value is derivable from its own source_text by a named rule or sits in the shrink-only baseline; no served row carries a self-declared assumption; the SQL CHECK constraint, the Python CANONICAL_CONTROL_TYPES set and (via the database-marked test) every distinct control_type in production agree; and a quote at exactly the 400-char extractor cap is TRUNCATED_EVIDENCE regardless of its final character",
-  "fails_when": "a repaired row's quote no longer supports its value (the exact camden-690 regression: value corrected, old quote kept \u2014 the gate fired on it within minutes); the baseline is grown without --allow-growth; secondary_street_setback is removed from either side of the vocabulary sync; or the punctuation exemption is reintroduced into evidence_is_truncated",
-  "demonstrated_failing": "test_a_quote_at_the_limit_is_truncated_even_ending_in_punctuation asserts evidence_is_truncated('x'*399 + '.') \u2014 on the pre-change code this exact assertion fails (the old code exempted punctuation-terminated 400-char quotes), which is the escape Sol identified. Conversely test_a_short_quote_is_never_truncated fails if the fix overshoots to length-independent truncation. Live DB before/after: canada_bay 701 value_min 1.5->6.0 with the C9 quote; restoring the backup quote while keeping 6.0 makes the checker exit non-zero.",
-  "mutation_evidence": "evidence_is_truncated hardcoded False -> the mid-word and punctuation tests fail; hardcoded True -> the short-quote/None/empty tests fail. Dropping secondary_street_setback from CANONICAL_CONTROL_TYPES -> test_migration_matches_python_vocabulary fails AND test_every_db_control_type_is_canonical fails against production (20 live rows). Reverting 701's value in the DB while keeping the C9 quote -> 1.5 is not derivable from the C9 quote and the row is not baselined -> checker exits non-zero."
- },
+ "justification": "Applies the two authorised held repairs to served regulatory numbers: fairfield 716 served a granny-flat rear setback of 6.0m (a Chapter-5C narrow-lot first-floor value, 6.7x the actual 900mm control) and ryde 682 served a 4.0m side setback taken from a design-preference clause. Both rows now carry the source-verified value with the verbatim clause supporting it in the same write (rule 2b). Wrong served numbers are the silent-liability class, which is this tier's definition.",
+ "commit_hash": "cfafc225",
  "files": [
-  ".claude/.pre-impl-done.json",
+  "scripts/repair_authorized_held_rows.py",
+  "scripts/control_source_values_baseline.json",
   ".claude/DATA_QUALITY_TRACKER.md",
   ".gitignore",
-  "docs/qa/controls-adjudication-2026-08.md",
-  "enrichment/config/control_type_vocabulary.py",
-  "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
-  "frontend-nextjs/lib/see/responseTemplates.ts",
-  "migrations/enforce_control_type_vocabulary.sql",
-  "scripts/control_source_values_baseline.json",
-  "scripts/measure_control_type_mismatch.py",
-  "scripts/refile_secondary_street_setbacks.py",
-  "scripts/repair_camden_front_setbacks.py",
-  "scripts/repair_canada_bay_rear_setback.py",
-  "scripts/repair_missing_primary_controls.py",
-  "services/extracted_data_integrity.py",
-  "tests/test_control_source_values.py"
+  ".claude/.pre-impl-done.json"
  ],
+ "falsifiable_check": {
+  "command": "python scripts/validate_control_source_values.py && python scripts/repair_authorized_held_rows.py",
+  "passes_when": "every stored control value is derivable from its own source_text by a named rule or sits in the shrink-only baseline (now 37 rows), and the repair script's dry-run proves both rows sit in the EXACT intended post-state (value, quote, condition, review_reason, needs_review=FALSE, is_current)",
+  "fails_when": "either repaired row's quote stops supporting its value (0.9 not derivable -> unbaselined failing state, checker non-zero), the baseline is grown without --allow-growth, or a row matches neither its held pre-state nor the exact post-state (script exits 2, refusing to classify a divergence as done)",
+  "demonstrated_failing": "Live before/after: 716 value_min 6.0->0.9 with the 5B.2.3.1(a) quote; 682 4.0 -> 0.9-1.5 with the s2.9.2(a)/(b) quote; both needs_review TRUE->FALSE. Checker 'fixed since the baseline: 1' (682 left TRUNCATED_EVIDENCE, its old quote was at the 400-char cap), baseline 38->37, exit 0. Restoring the backup quote on 716 while keeping 0.9 makes the checker exit non-zero (0.9 not derivable from the old first-floor 6-metres clause).",
+  "mutation_evidence": "The dry-run is a live mutation probe: hand-edit either row's value/quote/condition/review_reason and the script exits 2 ('matches neither its held pre-state nor the intended post-state') instead of reporting proven-repaired. A guard miss mid-apply rolls back BOTH rows before commit (all-or-nothing, logic shape shared with repair_missing_primary_controls.py after its Sol rounds)."
+ },
  "pre_impl": {
-  "existing_data": "dcp_setback_controls (1,069 -> 1,071 rows): 8 rows updated by id with per-row pre-state guards, 2 inserted; backup tables dcp_setback_controls_cb701_repair_20260803 and dcp_setback_controls_missing_primary_20260803. Also the shrink-only checker baseline (41 -> 38) and the control_type CHECK constraint (migration 054, already applied 2026-08-02 \u2014 file-side sync only here).",
-  "assumption_mismatch": "If a row's live state no longer matches the recon pre-state, its guarded UPDATE matches 0 rows: the cb701 script exits 2 after printing the divergence; repair_missing_primary_controls rolls back the ENTIRE transaction on any mid-apply guard miss, so a partial adjudication cannot be committed. Dup-checked inserts skip instead of duplicating.",
-  "new_vs_existing": "Updates touch exactly the 9 named ids (701, 680, 681, 682, 691, 707, 714, 715, 716); inserts add ids 1175/1176. No blanket UPDATE exists anywhere in the diff. The vocabulary/display-map changes apply at read time but only add a mapping for a type that previously fell through to the 'Other' bucket.",
-  "external_source_error": "No external API in the write path. The evidence source is local PDFs in data/dcps/; where a source was unavailable the ruling recorded UNVERIFIABLE and no row was written (georges_river 570 and marrickville 895 are exactly this: left open, no write).",
-  "frontend_type": "No TS type change: StructuredControl.control_type is string. The new slug gets CONTROL_CATEGORIES/CONTROL_TYPE_LABELS entries; before this it rendered via the existing '|| Other' fallback, after it renders under Setbacks. SEE CATEGORY_MAP gains one key.",
-  "user_failure_mode": "If a repair were wrong the user would see a wrong setback number with a quote that supports it \u2014 which is why every write carries the verbatim clause read from the PDF (rule 2b) and the checker verifies value-from-quote derivability for all rows on every push. needs_review flags (682, 716) surface as under_review, not as numbers."
+  "existing_data": "dcp_setback_controls rows 716 and 682 only, both recon'd live this session (pre-states incl. needs_review=TRUE, condition NULL, 682 quote at the 400-char cap). Backup table dcp_setback_controls_authorized_repairs_20260803 (2 rows, coverage asserted). Baseline shrink 38->37.",
+  "assumption_mismatch": "A row matching neither its held pre-state nor the exact post-state aborts the run with exit 2 before any write; a mid-apply guard miss rolls back both rows before commit.",
+  "new_vs_existing": "Two named ids only; no blanket UPDATE; no inserts.",
+  "external_source_error": "No external API. Evidence read from the two local PDFs this session; the verbatim clauses are constants in the script.",
+  "frontend_type": "None \u2014 value_min/value_max/condition shapes already rendered (range rows exist: burwood 1080/1176).",
+  "user_failure_mode": "Consumers that were failing closed on needs_review now serve the source-verified numbers; if the repair were wrong the quote in the row would contradict it and the push-time checker goes red."
  },
  "functions": [
   {
-   "name": "build_plan",
-   "file_line": "scripts/repair_canada_bay_rear_setback.py:92",
-   "input": "an open psycopg2 cursor, used to SELECT the live dcp_setback_controls row 701 with its value, currency, quote and condition at plan time",
-   "output": "the pre-state row tuple if it still matches the recon pre-state, else None (caller reports already-done/diverged)",
-   "if_none": "row absent raises SystemExit before any write; a None return prints the live row and plans zero writes"
-  },
-  {
-   "name": "narrowing_hits",
-   "file_line": "scripts/measure_control_type_mismatch.py:109",
-   "input": "the row's control_type slug plus its source_text string, which may be empty or hold no narrowing terms at all",
-   "output": "narrowing-term matches that are NOT inherent to the control type; empty list means the row is not B-flagged",
-   "if_none": "empty text yields no matches \u2014 row simply not flagged; condition None is normalised at the call site"
-  },
-  {
-   "name": "evidence_is_truncated",
-   "file_line": "services/extracted_data_integrity.py:733",
-   "input": "source_text (str or None) from any controls row",
-   "output": "bool \u2014 True when the quote sits at the 400-char extractor cap (cut, or indistinguishable from one)",
-   "if_none": "None coerces to '' and returns False \u2014 absence of a quote is MISSING_SOURCE_TEXT's job, not truncation's"
+   "name": "main",
+   "file_line": "scripts/repair_authorized_held_rows.py:133",
+   "input": "CLI args (--apply, --backup-table) plus the live dcp_setback_controls rows 716 and 682 read through an exact pre-state guard at plan time",
+   "output": "exit 0 with both rows proven in pre- or post-state (writes only under --apply), exit 2 on divergence, missing creds, stale backup or guard miss",
+   "if_none": "DATABASE_URL unset -> exit 2 ('nothing was checked, which is not a pass'); row absent -> divergence path, exit 2"
   }
  ],
  "values": [
   {
-   "value": "old_source_text (guard param for the 701 UPDATE)",
-   "read_at": "scripts/repair_canada_bay_rear_setback.py:154",
-   "nullable": "no \u2014 build_plan already required a non-None quote containing the side-table marker at exactly 400 chars",
-   "guard_at": "scripts/repair_canada_bay_rear_setback.py:184 (WHERE source_text = %s AND condition IS NULL \u2014 IS NULL, never = NULL, for the nullable column)",
-   "if_missing": "guard matches 0 rows, script exits 2 with the rollback already printed; nothing half-written"
-  },
-  {
-   "value": "r['condition'] in the detector's B-branch",
-   "read_at": "scripts/measure_control_type_mismatch.py:169",
-   "nullable": "yes \u2014 most rows carry NULL condition",
-   "guard_at": "same expression: (r['condition'] or '').strip()",
-   "if_missing": "treated as unconditioned, which is exactly the defect the B-list reports"
+   "value": "FF_716_OLD_QUOTE (exact pre-state guard param)",
+   "read_at": "scripts/repair_authorized_held_rows.py:52",
+   "nullable": "no \u2014 constant; the guard also pins condition IS NULL and needs_review = TRUE",
+   "guard_at": "scripts/repair_authorized_held_rows.py:110 (WHERE source_text = %s AND condition IS NULL \u2014 IS NULL, never = NULL)",
+   "if_missing": "guard matches 0 rows; the post-state probe runs; if that also fails the script exits 2, nothing written"
   }
  ],
  "queries": [
   {
-   "purpose": "guarded single-row repair of canada_bay 701 (value + quote + condition in one statement, rule 2b)",
-   "file_line": "scripts/repair_canada_bay_rear_setback.py:176",
-   "where_clause": "id = %s AND control_type = 'rear_setback' AND value_min = %s AND is_current = TRUE AND source_text = %s AND condition IS NULL",
-   "if_zero": "rowcount != 1 -> exit 2, PARTIAL APPLY printed, backup + rollback already on record",
-   "if_wrong": "cannot address a different row: id is the primary key and every other predicate pins the observed pre-state"
-  },
-  {
-   "purpose": "plan which of the 8 adjudicated updates still match their pre-state guards",
-   "file_line": "scripts/repair_missing_primary_controls.py:322",
-   "where_clause": "id = %s AND <per-row guard: control_type + value_min + is_current/needs_review pre-state + quote shape>",
-   "if_zero": "row is reported as already done/diverged and excluded from the write plan \u2014 reruns are idempotent",
-   "if_wrong": "a guard matching a mutated row is prevented by pinning value, type, currency and quote prefix together; any mid-apply miss rolls back the whole transaction"
-  },
-  {
-   "purpose": "dup-check before each INSERT of a missing primary",
-   "file_line": "scripts/repair_missing_primary_controls.py:330",
-   "where_clause": "lga = %s AND dev_type = %s AND control_type = %s AND COALESCE(condition,'') = COALESCE(%s,'')",
-   "if_zero": "insert proceeds (the control is genuinely absent \u2014 the MISSING_PRIMARY finding)",
-   "if_wrong": "worst case a duplicate is skipped, never double-inserted; deliberately currency-blind so a retired twin still blocks a blind re-add and forces a human look"
+   "purpose": "guarded two-row repair, value + quote + condition in one statement per row (rule 2b)",
+   "file_line": "scripts/repair_authorized_held_rows.py:216",
+   "where_clause": "id = %s AND control_type/value/value_max/is_current/needs_review/source_text/condition pre-state pins",
+   "if_zero": "rowcount mismatch -> rollback of BOTH rows before commit, exit 2",
+   "if_wrong": "cannot address another row: id is the primary key and every predicate pins the recon pre-state"
   }
  ],
  "break_it": [
   {
-   "scenario": "Concurrent edit changes 701 between plan and apply (another session repairs or retires it first)",
-   "what_happens": "unguarded, the write would clobber the other session's repair with stale values",
+   "scenario": "Concurrent edit changes 716 between plan and apply",
+   "what_happens": "unguarded, the write would clobber the concurrent change with planned values",
    "mitigated": true,
-   "how": "repair_canada_bay_rear_setback.py:176 \u2014 UPDATE pinned to the exact planned pre-state incl. the full old source_text; rowcount != 1 exits 2",
-   "repro": "UPDATE dcp_setback_controls SET value_min = 9.9 WHERE id = 701; then python scripts/repair_canada_bay_rear_setback.py --apply -> 'pre-state no longer matches', nothing written"
+   "how": "exact pre-state guard incl. full old source_text; a guard miss rolls back both rows before commit and exits 2",
+   "repro": "UPDATE dcp_setback_controls SET condition='x' WHERE id=716; python scripts/repair_authorized_held_rows.py --apply -> divergence, exit 2, nothing written"
   },
   {
-   "scenario": "Value corrected but the quote still supports the OLD value (the camden-690 failure, rule 2b)",
-   "what_happens": "the row looks verified while its evidence contradicts it \u2014 worse than the original defect",
+   "scenario": "Value corrected but old quote kept (the camden-690 regression, rule 2b)",
+   "what_happens": "row looks verified while its evidence supports the OLD value",
    "mitigated": true,
-   "how": "the same UPDATE statement writes value_min AND source_text AND condition together; the push-time checker then requires 6.0 derivable from the stored quote",
-   "repro": "UPDATE dcp_setback_controls SET source_text = (SELECT source_text FROM dcp_setback_controls_cb701_repair_20260803 WHERE id = 701) WHERE id = 701; python scripts/validate_control_source_values.py -> 701 lands in a failing state, not baselined, exit non-zero"
+   "how": "value, source_text and condition written in the SAME UPDATE; the checker requires 0.9 derivable from the stored quote on every push",
+   "repro": "restore source_text from the backup while keeping 0.9 -> checker exit non-zero (unbaselined failing state)"
   },
   {
-   "scenario": "Backup table left over from an earlier run silently fails to cover this run's rows",
-   "what_happens": "the printed rollback would restore only the old run's rows \u2014 partial, unnoticed",
+   "scenario": "Re-running the script after a successful apply re-writes the two already-repaired rows",
+   "what_happens": "an idempotence failure would re-stamp reviewed_at and re-write values on rows already in their final state",
    "mitigated": true,
-   "how": "both repair scripts assert every planned id exists in the backup table AFTER the CTAS and abort before any UPDATE if not (cb701 backed_up check, missing_primary unnest check)",
-   "repro": "CREATE TABLE dcp_setback_controls_cb701_repair_20260803 AS SELECT * FROM dcp_setback_controls WHERE FALSE; then run --apply -> 'NOT in backup ... Aborting before any UPDATE', exit 2"
+   "how": "the dry-run proves the EXACT post-state incl. review_reason and reports proven-repaired [716, 682], planning zero writes",
+   "repro": "python scripts/repair_authorized_held_rows.py -> 0 of 2 planned"
   },
   {
-   "scenario": "A genuinely truncated 400-char quote whose cut lands right after a full stop gets judged as complete evidence",
-   "what_happens": "a verdict (pass OR flag) is issued from severed evidence \u2014 luck reported as verification",
+   "scenario": "Baseline entry for 682 left behind after it became explained",
+   "what_happens": "checker red-way: a baselined row that became explained without baseline removal fails the gate",
    "mitigated": true,
-   "how": "services/extracted_data_integrity.py:733 \u2014 length == 400 is TRUNCATED_EVIDENCE regardless of terminal punctuation",
-   "repro": "pytest tests/test_control_source_values.py -k punctuation -> asserts evidence_is_truncated('x'*399 + '.') is True; fails on the pre-change code"
+   "how": "--write-baseline shrink 38->37 committed in this diff; checker re-run exit 0",
+   "repro": "git checkout HEAD~1 -- scripts/control_source_values_baseline.json; python scripts/validate_control_source_values.py -> non-zero"
   },
   {
-   "scenario": "The re-filed secondary_street_setback rows vanish from the UI because no display map knows the new slug",
-   "what_happens": "20 served corner-lot controls render under 'Other' with a raw snake_case slug, or a consumer keying on the label drops them",
+   "scenario": "Stale backup table from an earlier run silently fails to cover this run",
+   "what_happens": "the printed rollback would restore nothing for the rows actually written \u2014 an unusable rollback presented as safety",
    "mitigated": true,
-   "how": "structured-controls route.ts CONTROL_CATEGORIES + CONTROL_TYPE_LABELS entries (Setbacks, order 1) and SEE CATEGORY_MAP entry; vocabulary sync test pins SQL + Python + live DB together",
-   "repro": "git checkout HEAD~1 -- frontend-nextjs/app/api/dcp/structured-controls/route.ts; GET /api/dcp/structured-controls for a parramatta corner-lot property -> category 'Other', label 'secondary_street_setback'"
-  },
-  {
-   "scenario": "The dup-check before each INSERT of a missing primary misses, so a re-run duplicates the ryde front 6.0 row and doubles the council's served front controls",
-   "what_happens": "capacity/conveyancing reads would see two served front setbacks for ryde dwelling_house",
-   "mitigated": true,
-   "how": "missing_primary dup-check on (lga, dev_type, control_type, condition) skips existing rows; verified by re-running the script post-apply \u2014 plans 0 writes",
-   "repro": "python scripts/repair_missing_primary_controls.py -> 'updates planned: 0 of 8 ... already present: 2'"
-  },
-  {
-   "scenario": "The retirement of fairfield 714 leaves secondary-dwelling consumers silently reading the retired 6.0m",
-   "what_happens": "a consumer without an is_current filter would still serve the narrow-lot garage value as a granny-flat front setback",
-   "mitigated": true,
-   "how": "every serving read path filters is_current (capacity route ts:348, conveyancing fetch_dcp_setbacks per the DQ-35 fix); the detector prints served=False for 714 and the row's review_reason states the ruling",
-   "repro": "SELECT is_current FROM dcp_setback_controls WHERE id = 714 -> FALSE; GET structured-controls for a fairfield property -> no secondary_dwelling front_setback row"
+   "how": "after CREATE TABLE IF NOT EXISTS, the script asserts every planned id exists in the backup and aborts before any UPDATE if not, telling the operator to pass a fresh --backup-table",
+   "repro": "CREATE TABLE dcp_setback_controls_authorized_repairs_20260803 AS SELECT * FROM dcp_setback_controls WHERE FALSE; python scripts/repair_authorized_held_rows.py --apply -> NOT in backup, aborting, exit 2"
   }
  ],
  "post_merge": {
-  "db_reset": "No \u2014 all DB changes were applied directly to production during this session (single Supabase DB), verified row-by-row after each write; merging the branch changes no data.",
-  "secrets": "No \u2014 scripts read DATABASE_URL from the git-ignored .env via dotenv; nothing secret is committed.",
-  "other_repo": "No \u2014 single repo; no cross-repo dependency.",
-  "manual_verify": "Optional spot-check: load a Ryde dwelling-house address and confirm Setbacks shows front 6m (general) and rear 8m/4m conditioned; a Parramatta corner lot shows 'Secondary street setback' under Setbacks, not 'Other'."
+  "db_reset": "No \u2014 both DB writes already applied and verified against production; merging changes no data.",
+  "secrets": "No \u2014 creds via git-ignored .env only.",
+  "other_repo": "No.",
+  "manual_verify": "Optional: a fairfield granny-flat lookup shows rear setback 0.9m (was under_review); a ryde dwelling lookup shows side 0.9-1.5m."
  },
  "checks": {
-  "pytest": "3560 passed, 25 skipped",
-  "jest": "76 suites / 990 tests passed",
-  "vocab_sync": "13/13 incl. live-DB drift test against production",
   "db_writes": {
-   "cb701": {
-    "backup": "dcp_setback_controls_cb701_repair_20260803",
-    "predicted": 1,
-    "written": 1
-   },
-   "missing_primary": {
-    "backup": "dcp_setback_controls_missing_primary_20260803",
-    "predicted_updates": 8,
-    "written_updates": 8,
-    "inserted_ids": [
-     1175,
-     1176
-    ]
-   }
+   "backup": "dcp_setback_controls_authorized_repairs_20260803",
+   "predicted": 2,
+   "written": 2,
+   "all_or_nothing": true
   },
-  "detector_after": "A=3 open (884/570/895, blockers stated), B=0, truncated=19; checker exit 0, baseline 41->38",
-  "sol_review": "6 findings raised at the pre-push gate; all 6 verified REAL against the code, no overrides. 1-3: repair scripts now prove intended post-state for skipped rows (exit 2 on divergence); 4: dup-check aborts on retired-only twin; 5: refile guard pins full evidentiary pre-state; 6: last_verified_at wrongly stamped on flagged/retired rows 682/714/716 \u2014 reverted from backup (3 rows, predicted 3), stamp now conditional on source-verification.",
-  "sol_review_round2": "5 findings on the fix diff: 4 REAL, fixed (exact parameterised post-state guards incl. review_reason; camden guard pins source_text/condition IS NOT DISTINCT FROM; insert identity re-keyed to section_ref; refile rowcount check moved before commit with full rollback). 1 OVERRIDDEN with written reason: missing_primary sibling scoping needs the structured condition discriminators owned by ce-dcp-condition-structuring-2026-08; detector is advisory-only and condition-presence is not a valid signal (verified general rows carry conditions). Limitation documented in code."
+  "checker": "exit 0; fixed-since-baseline 1; baseline 38->37 shrink-only",
+  "idempotence": "re-run plans 0 of 2, both proven in exact post-state"
  }
 }
