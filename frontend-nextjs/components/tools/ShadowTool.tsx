@@ -547,8 +547,18 @@ function ShadowCard({ result }: { result: ShadowResult }) {
 
   // Worst-case shadow length
   if (worstScenario) {
-    // null when the worst-case scenario itself errored (typed absence, fix 1)
-    const len = worstScenario.shadow_length_m ?? 0;
+    // null when the worst-case scenario itself errored (typed absence, fix 1).
+    // Never coalesce to 0 — a zero-metre "measurement" from a failed
+    // computation is the exact collapse this fix removes (Sol round 1).
+    if (worstScenario.shadow_length_m == null) {
+      findings.push({
+        label: `Worst case — ${SCENARIO_LABELS[worstScenario.scenario] ?? worstScenario.scenario}`,
+        value: 'Not computed — this scenario could not be modelled',
+        detail: 'The shadow computation for this scenario did not complete, so no length or coverage figure is reported for it.',
+        severity: 'amber',
+      });
+    } else {
+    const len = worstScenario.shadow_length_m;
     const dir = bearingToCompass(worstScenario.shadow_direction_deg);
     const overlapPct = worstScenario.shadow_overlap_fraction != null
       ? Math.round(worstScenario.shadow_overlap_fraction * 100)
@@ -562,6 +572,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         : 'A relatively short shadow. The impact on your property would be limited to the area nearest the boundary.',
       severity: len > 20 ? 'red' : len > 10 ? 'amber' : 'green',
     });
+    }
   }
 
   // Building height used

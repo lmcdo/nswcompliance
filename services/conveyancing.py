@@ -991,8 +991,11 @@ def _load_pipeline_cache(report_id: str) -> Optional[dict]:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
+                # COALESCE(..., TRUE): a NULL created_at (legacy/imported row)
+                # must EXPIRE, not slip past the age bound as NULL-is-falsy
+                # freshness (Sol round 1 on this fix).
                 "SELECT pipeline_data, "
-                "       created_at < NOW() - make_interval(hours => %s) AS expired "
+                "       COALESCE(created_at < NOW() - make_interval(hours => %s), TRUE) AS expired "
                 "FROM conveyancing_cache WHERE report_id = %s",
                 (_PIPELINE_CACHE_MAX_AGE_HOURS, report_id),
             )
