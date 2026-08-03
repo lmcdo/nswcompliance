@@ -371,6 +371,7 @@ PRPs/
 docs/*
 !docs/screencasts/
 !docs/user-stories/
+!docs/portfolio/
 !docs/intelligence-brief/
 !docs/intelligence-brief/**
 !docs/*.md
