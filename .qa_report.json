@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Applies the two authorised held repairs to served regulatory numbers: fairfield 716 served a granny-flat rear setback of 6.0m (a Chapter-5C narrow-lot first-floor value, 6.7x the actual 900mm control) and ryde 682 served a 4.0m side setback taken from a design-preference clause. Both rows now carry the source-verified value with the verbatim clause supporting it in the same write (rule 2b). Wrong served numbers are the silent-liability class, which is this tier's definition.",
- "commit_hash": "4f9689c4",
+ "commit_hash": "cfafc225",
  "files": [
   "scripts/repair_authorized_held_rows.py",
   "scripts/control_source_values_baseline.json",

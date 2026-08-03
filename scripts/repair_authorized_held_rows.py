@@ -221,6 +221,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
             # last_verified_at IS set here: the stored content is verified
             # against source in this same pass (unlike the earlier flag-only
             # writes, which deliberately did not stamp it).
+            # Currency scope: {pre_guard} pins is_current (and needs_review)
+            # explicitly for each row — see PLAN.
             cur.execute(
                 f"""UPDATE dcp_setback_controls
                        SET {set_sql}, review_reason = %s, reviewed_at = NOW(),
