@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2026-08-01
-**Session:** DQ-30 zone-taxonomy-consolidation PR3 close-out; DQ-33 logged
+**Last Updated:** 2026-08-03
+**Session:** Output-grounding item 3 (as-at dates); DQ-41 and DQ-42 logged
 
 ---
 
@@ -11,6 +11,8 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-41: **528 of 893 `dcp_setback_controls.effective_date` values are `YYYY-01-01` manufactured from `dcp_version` labels** (migration 040's parser: `v2016-current` → 2016-01-01; `v2014-amended-feb-2026` → 2014-01-01, contradicting its own label; `v1.0-2026-03-12` batch stamps stored as regulatory dates). No row records a basis. NOT served: `effective_date_basis` (migration 063) is NULL on all 1,071 rows and the serve path renders only plan-level dates with a basis. Open decision: null the cohort or leave-and-ignore. | 🟠 Logged 2026-08-03, quarantined by basis column, data not repaired | P2 — not served, but poisoned for any future per-row use |
+| DQ-42: **NSW Planning Portal `/dcp` records are stale for 5+ served LGAs** — lists pre-merger plans for Canterbury-Bankstown (Bankstown 2015 / Canterbury 2012), Cumberland (Auburn/Holroyd) and Georges River (Hurstville/Kogarah); Canada Bay shows DCP 2017 vs the council's 2020 plan; Hornsby shows DCP 2013 (amended 2019) vs the 2024 plan; all Inner West parcels map only to the Ashfield comprehensive plan. Permanent evidence that the portal-first authority hierarchy REQUIRES the served-plan identity cross-check in `scripts/fetch_dcp_as_at_dates.py` — a portal date must never attach across an identity mismatch. | 🟠 Logged 2026-08-03 — guarded in code (identity match + fail-closed), portal upstream not fixable by us | P2 — guarded, permanent constraint |
 | DQ-40: **28 controls whose `control_type` contradicts their own quote — 26 SERVED.** A secondary-street setback (2–4m) served as the primary front setback (4.5–6m), across ≥10 councils. 24 of the 28 PASS the value checker: the number matches, the control is wrong. A class that check structurally cannot see. | 🟢 Fixed 2026-08-03 — 20 re-filed (migration 054), canada_bay 701 repaired 1.5→6.0, MISSING_PRIMARY set adjudicated against source (2 adds, 1 retire, 2 fail-closed flags); 3 rows remain open pending non-local sources / authorisation (see section below) | P1 (was) |
 | DQ-39: **25 of 986 stored control values are not derivable from their own quoted `source_text`.** Four Waverley deep-soil rows store 10%/15% against a quote that says 50%; three Cumberland setbacks store 4.0/5.5/8.0 m against a quote whose only figure is "Minimum 6m"; two rows store a number while their own quote says "needs PDF verification". Now gated for all 1,069 rows. | 🟠 Measured + gated 2026-08-02, data not fixed | P1 — the number IS the product |
 | DQ-36: Provisions PDF hardcoded "Transport Oriented Development: ✗ Not applicable — property not within 400m of metro station"; the component receives NO TOD data, so the claim was unconditional. Four further SEPPs asserted "✗ Not applicable" for a proposal the report never sees. | ✅ Fixed 2026-08-01 | P1 — false statement of site fact |

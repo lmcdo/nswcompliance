@@ -137,6 +137,97 @@ _LGA_SLUG_TO_DCP_NAME: dict[str, str] = {
 }
 
 
+# prior-art-checked: no existing as-at formatter or plan-date lookup exists
+# (dcp_plan_as_at is new in migration 063; repo grep for as_at rendering found
+# only the brief's DataField.as_at, which stamps the QUERY date, not the plan
+# date). This is the single shared wording source so every surface renders the
+# same basis-appropriate sentence.
+_MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
+                "August", "September", "October", "November", "December"]
+
+
+def _format_as_at_date(iso_date: str, precision: str) -> Optional[str]:
+    """Render an ISO date at ONLY the precision the source stated.
+
+    A month-precision date stored as the 1st must render "March 2026", never
+    "1 March 2026" (precision-honesty rule).
+    """
+    try:
+        y, m, d = (int(p) for p in iso_date.split("-"))
+        month = _MONTH_NAMES[m - 1]
+    except (ValueError, IndexError, AttributeError):
+        return None
+    if precision == "day":
+        return f"{d} {month} {y}"
+    if precision == "month":
+        return f"{month} {y}"
+    if precision == "year":
+        return str(y)
+    return None
+
+
+def format_as_at_line(as_at: Optional[dict]) -> Optional[str]:
+    """The one wording source for DCP as-at lines (language-ladder compliant:
+    'stated'/'observed', never 'verified'/'confirmed'/'current law')."""
+    if not as_at or not as_at.get("date"):
+        return None
+    shown = _format_as_at_date(as_at["date"], as_at.get("precision") or "day")
+    if not shown:
+        return None
+    basis = as_at.get("basis")
+    kind = as_at.get("kind")
+    if basis == "portal_plan_record":
+        where = "date stated in the NSW Planning Portal plan record"
+    elif basis == "stated_in_document":
+        where = "date stated in the plan document"
+    elif basis == "observed_current":
+        return (f"Observed as the current published version on {shown}; "
+                f"an in-force date is not available for this plan")
+    else:
+        return None
+    if kind == "amended":
+        return f"As amended {shown} ({where})"
+    if kind == "adopted":
+        return f"Adopted {shown} ({where})"
+    return f"In force from {shown} ({where})"
+
+
+def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
+    """Plan-level as-at with basis, by the settled authority order:
+    portal plan record > the document's own statement > registry observation.
+    Returns None when nothing defensible exists (a claim rendered with no date
+    is counted by scripts/check_dcp_as_at_coverage.py, never papered over).
+    Raises on DB errors — the caller's except turns that into 'source
+    unavailable' (no as-at), which is distinct from 'checked, none exists'.
+    """
+    cur.execute(
+        """
+        SELECT p.portal_date::text, p.portal_date_precision, p.portal_date_kind,
+               p.stated_date::text, p.stated_date_precision, p.stated_date_kind,
+               obs.observed::date::text
+          FROM (SELECT MAX(url_last_checked) AS observed
+                  FROM dcp_chapter_registry
+                 WHERE council = %s AND is_active = TRUE) obs
+          LEFT JOIN dcp_plan_as_at p ON p.lga = %s
+        """,
+        (lga_slug, lga_slug),
+    )
+    row = cur.fetchone()
+    if not row or len(row) != 7:
+        return None
+    (portal_d, portal_p, portal_k, stated_d, stated_p, stated_k, observed) = row
+    if portal_d:
+        return {"date": portal_d, "precision": portal_p, "kind": portal_k,
+                "basis": "portal_plan_record"}
+    if stated_d:
+        return {"date": stated_d, "precision": stated_p, "kind": stated_k,
+                "basis": "stated_in_document"}
+    if observed:
+        return {"date": observed, "precision": "day", "kind": None,
+                "basis": "observed_current"}
+    return None
+
+
 def fetch_dcp_setbacks(
     conn,
     lga_slug: Optional[str],
@@ -200,6 +291,20 @@ def fetch_dcp_setbacks(
             (lga_slug,),
         )
         reg = cur.fetchone()
+
+        # Plan-level "as at" (campaign item 3). A failure here must not take
+        # the controls down with it: the as-at is provenance FOR the controls,
+        # so it degrades to None ("source unavailable" — no date line renders)
+        # while the controls still serve.
+        try:
+            as_at = _plan_as_at(cur, lga_slug)
+        except Exception as e:
+            logger.warning("fetch_dcp_setbacks as-at lookup: %s", e)
+            as_at = None
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         cur.close()
     except Exception as e:
         logger.warning("fetch_dcp_setbacks: %s", e)
@@ -328,6 +433,12 @@ def fetch_dcp_setbacks(
         "sd_setbacks":      sd_setbacks,
         "is_da_path":       True,
         "dcp_url":          dcp_url,
+        # Three states: dict = date with basis; None = no defensible date
+        # (either none exists or the lookup failed — the check script counts
+        # both). The line is preformatted HERE so every surface words it
+        # identically.
+        "as_at":            as_at,
+        "as_at_line":       format_as_at_line(as_at),
     }
 
 

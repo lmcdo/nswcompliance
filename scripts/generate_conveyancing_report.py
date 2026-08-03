@@ -4814,6 +4814,13 @@ def generate_pdf(
             f"<b>{dcp_data['dcp_name']}</b> — {dcp_data['section']}",
             ss["body"]
         ))
+        # Per-source "as at" line (output-grounding item 3). Three states:
+        # a dated line with its basis; or nothing at all when no defensible
+        # date exists — an undated claim is visible-by-absence and counted by
+        # scripts/check_dcp_as_at_coverage.py, never papered over with the
+        # generation date.
+        if dcp_data.get("as_at_line"):
+            story.append(Paragraph(dcp_data["as_at_line"], ss["note"]))
         story.append(Paragraph(
             "Controls below apply to the DA (Development Application) pathway. "
             "If construction meets SEPP (Housing) 2021 CDC standards, complying development "

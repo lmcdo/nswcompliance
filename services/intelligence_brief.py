@@ -2772,11 +2772,18 @@ def _build_dcp_controls(
             source_ref=s.get("clause") or dcp_data.get("clause_ref"),
         ))
 
+    # Data currency, not query date: as_at previously stamped date.today() on
+    # every DCP field, presenting "we ran the query today" as "the data is
+    # current today". fetch_dcp_setbacks now supplies the plan-level date with
+    # a basis (portal record / plan's own statement / registry observation) —
+    # campaign item 3. No defensible date → as_at=None and the provenance UI
+    # shows no date, which is the honest state.
+    plan_as_at = (dcp_data.get("as_at") or {}).get("date")
     return DCPControls(
-        controls=DataField(value=controls_list, confidence=extracted, source="plotdetect_dcp", as_at=today),
-        dcp_name=DataField(value=dcp_data.get("dcp_name"), confidence=extracted, source="plotdetect_dcp", as_at=today),
-        dcp_url=DataField(value=dcp_data.get("dcp_url"), confidence=extracted, source="plotdetect_dcp", as_at=today),
-        section_ref=DataField(value=dcp_data.get("section"), confidence=extracted, source="plotdetect_dcp", as_at=today),
+        controls=DataField(value=controls_list, confidence=extracted, source="plotdetect_dcp", as_at=plan_as_at),
+        dcp_name=DataField(value=dcp_data.get("dcp_name"), confidence=extracted, source="plotdetect_dcp", as_at=plan_as_at),
+        dcp_url=DataField(value=dcp_data.get("dcp_url"), confidence=extracted, source="plotdetect_dcp", as_at=plan_as_at),
+        section_ref=DataField(value=dcp_data.get("section"), confidence=extracted, source="plotdetect_dcp", as_at=plan_as_at),
     )
 
 
