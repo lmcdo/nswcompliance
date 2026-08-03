@@ -136,6 +136,10 @@ def main() -> int:  # pragma: no cover - CLI entry point
 
         # Per-row guard: the row must still be in the backed-up pre-state
         # (same Jan-1 date, basis still NULL) at write time.
+        # Deliberately NO is_current filter: the authorized 528-row cohort
+        # spans current AND retired rows — the label-derived dates are equally
+        # unattributed on both, and scoping to is_current would strand the
+        # retired rows' manufactured dates for any future resurrection.
         cur.execute(
             f"""UPDATE dcp_setback_controls t
                    SET effective_date = NULL
@@ -147,6 +151,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
         conn.commit()
         print(f"  updated {written} rows (predicted {EXPECTED_COHORT})")
 
+        # The rollback likewise joins by id with no is_current scope — it
+        # restores exactly the backed-up rows, current or retired.
         print(f"\nROLLBACK:\n  UPDATE dcp_setback_controls t "
               f"SET effective_date = b.effective_date "
               f"FROM {args.backup_table} b WHERE t.id = b.id;")
