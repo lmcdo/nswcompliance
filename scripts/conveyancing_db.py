@@ -156,7 +156,7 @@ def _format_as_at_date(iso_date: str, precision: str) -> Optional[str]:
         return None
     try:
         year_s, month_s, day_s = iso_date.split("-")
-        y, m, d = int(year_s), int(month_s), int(day_s)
+        y, m, d = int(year_s), int(month_s), int(day_s)  # qa-ignore: split parts are str, never None; bad numerics land in the except arm
         month = _MONTH_NAMES[m - 1]
     except (ValueError, IndexError, AttributeError):
         return None
