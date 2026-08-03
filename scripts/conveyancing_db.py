@@ -278,11 +278,15 @@ def fetch_dcp_setbacks(
 
     try:
         cur = conn.cursor()
+        # prior-art-checked: same guarded query gains three additive columns
+        # (source_chapter_key, pdf_page, dcp_version) so the /pipeline/
+        # dcp-controls proxy can serve citation shaping data from THE single
+        # guarded implementation — item 5 consolidation, no second query path.
         cur.execute(
             """
             SELECT dev_type, control_type, value_min, value_max, unit,
                    condition, source_text, section_ref, applicability,
-                   needs_review
+                   needs_review, source_chapter_key, pdf_page, dcp_version
             FROM dcp_setback_controls
             WHERE lga = %s AND is_current = TRUE
               AND (needs_review IS NULL OR needs_review = FALSE)
@@ -295,7 +299,8 @@ def fetch_dcp_setbacks(
                     WHEN 'max_height'    THEN 3
                     ELSE 4
                 END,
-                value_min NULLS LAST
+                value_min NULLS LAST,
+                section_ref NULLS LAST, id
             """,
             (lga_slug,),
         )
@@ -313,6 +318,31 @@ def fetch_dcp_setbacks(
             (lga_slug,),
         )
         reg = cur.fetchone()
+
+        # Per-chapter PDF URLs so proxy consumers can build page-anchored
+        # citation links without their own registry SQL. Savepoint-isolated
+        # like the as-at probe: a failure degrades to an empty map without
+        # poisoning the transaction for the probe below.
+        registry_pdf_urls: dict = {}
+        try:
+            cur.execute("SAVEPOINT pdf_map_probe")
+            try:
+                cur.execute(
+                    """
+                    SELECT chapter_key, r2_public_pdf_url
+                    FROM dcp_chapter_registry
+                    WHERE council = %s AND is_active = TRUE
+                      AND r2_public_pdf_url IS NOT NULL
+                    """,
+                    (lga_slug,),
+                )
+                registry_pdf_urls = {k: u for k, u in (cur.fetchall() or []) if k}
+                cur.execute("RELEASE SAVEPOINT pdf_map_probe")
+            except Exception as e:
+                logger.warning("fetch_dcp_setbacks registry pdf map: %s", e)
+                cur.execute("ROLLBACK TO SAVEPOINT pdf_map_probe")
+        except Exception as e:
+            logger.warning("fetch_dcp_setbacks pdf-map savepoint: %s", e)
 
         # Plan-level "as at" (campaign item 3). A failure here must not take
         # the controls down with it — but it must also stay DISTINGUISHABLE
@@ -357,7 +387,9 @@ def fetch_dcp_setbacks(
     # Zone advisory: strip prefix digit from zone code (e.g. "R2" from "R2 Low Density")
     zone_prefix = (zone_code.strip().split()[0].upper() if zone_code and zone_code.strip() else "")
 
-    for dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability, needs_review in rows:
+    for (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
+         section_ref, applicability, needs_review, source_chapter_key,
+         pdf_page, dcp_version) in rows:
         # Fail-closed on currency (mirrors the web route /api/dcp/structured-controls):
         # a control flagged for human review after a DCP amendment must never render
         # as an authoritative number in the PDF. The SQL WHERE already excludes
@@ -406,6 +438,12 @@ def fetch_dcp_setbacks(
             "unit":         unit or "m",
             "clause":       section_ref or "",
             "notes":        condition or "",
+            # Raw citation fields for the /pipeline/dcp-controls proxy (item
+            # 5): TS consumers shape these; the guards stay HERE.
+            "source_text":  source_text,
+            "source_chapter_key": source_chapter_key,
+            "pdf_page":     pdf_page,
+            "dcp_version":  dcp_version,
         }
 
         is_sd = (
@@ -467,6 +505,7 @@ def fetch_dcp_setbacks(
         # could-not-be-retrieved disclosure, never mistakable for a completed
         # lookup). Lines are preformatted HERE so every surface words them
         # identically.
+        "registry_pdf_urls": registry_pdf_urls,
         "as_at":            as_at,
         "as_at_status":     as_at_status,
         "as_at_line":       (format_as_at_line(as_at)

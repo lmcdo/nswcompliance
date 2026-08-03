@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { CapacityCalculationSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
+import { fetchDcpControls, DcpControlRow } from '@/lib/dcp-controls-client';
 
 interface SetbackResult {
   type: 'numeric' | 'prevailing' | 'precinct_specific' | 'not_available' | 'mixed';
@@ -111,46 +112,30 @@ export async function POST(request: NextRequest) {
       maxGFAFromFSR = lotArea * maxFSR;
     }
 
-    // 3. Get setbacks
-    const setbacks = await getSetbacks(zone, formerCouncil, address, normalizedLGA, coordinates, developmentType);
+    // 3-5. DCP-derived slices — Item 5 consolidation: ONE call to the guarded
+    // implementation (/pipeline/dcp-controls; is_current strict, needs_review
+    // excluded, ZONE filter now applied via the zone param — previously
+    // omitted, and the old inline parking/landscaping queries returned an
+    // arbitrary LIMIT 3 with no ORDER BY. All guarded rows are now served in
+    // the source's deterministic order.)
+    const dcpProxy = await fetchDcpControls(formerCouncil, zone);
+    const dcpRows: DcpControlRow[] =
+      (dcpProxy.available && dcpProxy.rows ? dcpProxy.rows : []).filter(
+        (r) => r.dev_type === developmentType || r.dev_type === 'universal_residential',
+      );
 
-    // 4. Get parking requirements
-    // Repointed off frozen dcp_general_requirements (Inner-West-only snapshot,
-    // no live writer) onto the maintained dcp_setback_controls — the same table
-    // the conveyancing report + brief capacity engine use. Keyed by the
-    // former-council slug; needs_review-guarded (fail-closed), incl. universal rows.
-    const parkingQuery = `
-      SELECT source_text AS requirement_text, value_min AS value_numeric
-      FROM dcp_setback_controls
-      WHERE lga = $1
-        AND dev_type IN ($2, 'universal_residential')
-        AND control_type IN ('car_parking','bicycle_parking','driveway_width','driveway_gradient')
-        AND (is_current IS NULL OR is_current = TRUE)
-        AND (needs_review IS NULL OR needs_review = FALSE)
-      LIMIT 3
-    `;
+    const setbacks = await getSetbacks(
+      zone, formerCouncil, address, normalizedLGA, dcpRows, coordinates, developmentType,
+    );
 
-    const parkingResult = await pool.query(parkingQuery, [formerCouncil, developmentType]);
+    const PARKING_TYPES = new Set(
+      ['car_parking', 'bicycle_parking', 'driveway_width', 'driveway_gradient']);
+    const LANDSCAPING_TYPES = new Set(
+      ['landscaping_min', 'deep_soil_min', 'tree_canopy_min',
+       'communal_open_space_min', 'private_open_space']);
 
-    // 5. Get landscaping requirements
-    const landscapingQuery = `
-      SELECT
-        source_text AS requirement_text,
-        value_min AS value_numeric,
-        unit,
-        source_chapter_key AS part_name,
-        pdf_page,
-        NULL::text AS pdf_page_image_url
-      FROM dcp_setback_controls
-      WHERE lga = $1
-        AND dev_type IN ($2, 'universal_residential')
-        AND control_type IN ('landscaping_min','deep_soil_min','tree_canopy_min','communal_open_space_min','private_open_space')
-        AND (is_current IS NULL OR is_current = TRUE)
-        AND (needs_review IS NULL OR needs_review = FALSE)
-      LIMIT 3
-    `;
-
-    const landscapingResult = await pool.query(landscapingQuery, [formerCouncil, developmentType]);
+    const parkingRows = dcpRows.filter((r) => PARKING_TYPES.has(r.semantic_type));
+    const landscapingRows = dcpRows.filter((r) => LANDSCAPING_TYPES.has(r.semantic_type));
 
     // Calculate total buildable GFA
     let maxBuildableGFA = null;
@@ -181,17 +166,17 @@ export async function POST(request: NextRequest) {
         lotArea: lotArea
       },
       setbacks: setbacks,
-      parking: parkingResult.rows.map(row => ({
-        text: row.requirement_text,
-        spaces: row.value_numeric
+      parking: parkingRows.map(row => ({
+        text: row.source_text ?? row.requirement,
+        spaces: row.value_min
       })),
-      landscaping: landscapingResult.rows.map(row => ({
-        text: row.requirement_text,
-        value: row.value_numeric,
+      landscaping: landscapingRows.map(row => ({
+        text: row.source_text ?? row.requirement,
+        value: row.value_min,
         unit: row.unit,
-        partName: row.part_name,
+        partName: row.source_chapter_key,
         pdfPage: row.pdf_page,
-        pdfPageImageUrl: row.pdf_page_image_url
+        pdfPageImageUrl: null
       })),
       lepClauses: lepResult.rows.map(row => ({
         clause_number: row.clause_number,
@@ -218,6 +203,7 @@ async function getSetbacks(
   formerCouncil: string,
   address: string,
   lga: string,
+  dcpRows: DcpControlRow[],
   coordinates?: { lat: number; lng: number },
   devType: string = 'dwelling_house'
 ): Promise<SetbackResult> {
@@ -326,73 +312,61 @@ async function getSetbacks(
   // ========================================================================
   // STEP 2: Check general provisions (ZONE + COUNCIL SPECIFIC)
   // ========================================================================
-  // Repointed off frozen dcp_general_requirements onto the maintained
-  // dcp_setback_controls (front/side/rear/separation control types), keyed by
-  // former-council slug + dev type; needs_review-guarded, incl. universal rows.
-  // Column aliases preserve the result-building shape below (subcategory,
-  // requirement_text, value_numeric, value_min/max, unit, conditionals, part_name).
-  const generalQuery = `
-    SELECT
-      replace(control_type, '_setback', '') AS subcategory,
-      source_text AS requirement_text,
-      value_min AS value_numeric,
-      value_min,
-      value_max,
-      unit,
-      (condition IS NOT NULL) AS has_conditionals,
-      condition AS conditional_text,
-      source_chapter_key AS part_name
-    FROM dcp_setback_controls
-    WHERE lga = $1
-      AND dev_type IN ($2, 'universal_residential')
-      AND control_type IN ('front_setback','side_setback','rear_setback','separation_from_dwelling')
-      AND (is_current IS NULL OR is_current = TRUE)
-      AND (needs_review IS NULL OR needs_review = FALSE)
-    ORDER BY
-      CASE WHEN value_min IS NOT NULL THEN 1 ELSE 2 END,
-      control_type
-    LIMIT 15
-  `;
+  // Item 5 consolidation: these rows now come pre-guarded from the ONE
+  // implementation (/pipeline/dcp-controls) via the caller — is_current
+  // strict, needs_review excluded, zone filter applied, deterministic order.
+  // The old LIMIT 15 is gone: all guarded setback rows are served, numeric
+  // first (preserving the old values-before-guidance ordering).
+  const SETBACK_TYPES = new Set(
+    ['front_setback', 'side_setback', 'rear_setback', 'separation_from_dwelling']);
+  const generalRows = dcpRows
+    .filter((r) => SETBACK_TYPES.has(r.semantic_type))
+    .sort((a, b) => {
+      const numA = a.value_min != null ? 1 : 2;
+      const numB = b.value_min != null ? 1 : 2;
+      if (numA !== numB) return numA - numB;
+      return a.semantic_type.localeCompare(b.semantic_type);
+    });
 
-  const generalResult = await pool.query(generalQuery, [formerCouncil, devType]);
-
-  if (generalResult.rows.length > 0) {
+  if (generalRows.length > 0) {
     // Found general setbacks
     const setbacksByType: any = {
       type: 'mixed',  // Contains both numeric and guidance
-      source: `${formerCouncil} DCP ${generalResult.rows[0].part_name || 'General Controls'}`,
+      source: `${formerCouncil} DCP ${generalRows[0].source_chapter_key || 'General Controls'}`,
       values: [],
       guidance: []
     };
 
-    for (const row of generalResult.rows) {
-      const boundaryType = row.subcategory?.toLowerCase() ||
-                          (row.requirement_text.toLowerCase().includes('front') ? 'front' :
-                           row.requirement_text.toLowerCase().includes('side') ? 'side' :
-                           row.requirement_text.toLowerCase().includes('rear') ? 'rear' : 'other');
+    for (const row of generalRows) {
+      const rowText = row.source_text ?? row.requirement ?? '';
+      const boundaryType =
+        row.semantic_type.replace('_setback', '').toLowerCase() ||
+        (rowText.toLowerCase().includes('front') ? 'front' :
+         rowText.toLowerCase().includes('side') ? 'side' :
+         rowText.toLowerCase().includes('rear') ? 'rear' : 'other');
 
-      if (row.value_numeric) {
+      if (row.value_min) {
         // Numeric setback
         setbacksByType.values.push({
           boundary: boundaryType,
-          value: row.value_numeric,
+          value: row.value_min,
           unit: row.unit || 'm',
-          conditional: row.has_conditionals,
-          condition: row.conditional_text,
-          text: row.requirement_text
+          conditional: Boolean((row.notes ?? '').trim()),
+          condition: row.notes || null,
+          text: rowText
         });
-      } else if (row.value_min || row.value_max) {
-        // Range setback
+      } else if (row.value_max) {
+        // Range setback (value_min absent — show the bounded side)
         setbacksByType.values.push({
           boundary: boundaryType,
-          range: `${row.value_min || '?'}-${row.value_max || '?'}${row.unit || 'm'}`,
-          text: row.requirement_text
+          range: `?-${row.value_max}${row.unit || 'm'}`,
+          text: rowText
         });
       } else {
         // Text guidance only
         setbacksByType.guidance.push({
           boundary: boundaryType,
-          text: row.requirement_text
+          text: rowText
         });
       }
     }
