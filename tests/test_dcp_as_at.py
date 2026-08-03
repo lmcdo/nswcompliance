@@ -381,7 +381,8 @@ class TestExtractorSelectionRules:
         from extract_dcp_stated_dates import scan_amendment_table
 
         pdf = tmp_path / "parramatta-dcp-2023.pdf"
-        _make_pdf(pdf, ["LIST OF AMENDMENTS\n22/07/2024\n18/09/2024\n30/06/2026"])
+        _make_pdf(pdf, ["LIST OF AMENDMENTS\nDate Approved\nDate in Force\n"
+                        "22/07/2024\n18/09/2024\n30/06/2026"])
         assert scan_amendment_table(str(pdf), "parramatta-dcp-2023.pdf",
                                     "parramatta") is None
 
@@ -389,12 +390,20 @@ class TestExtractorSelectionRules:
         from extract_dcp_stated_dates import scan_amendment_table
 
         pdf = tmp_path / "parramatta-dcp-2023.pdf"
-        _make_pdf(pdf, ["LIST OF AMENDMENTS\n26/10/2021\n01/12/2023\n"
-                        "22/07/2024\n18/09/2024"])
+        _make_pdf(pdf, ["LIST OF AMENDMENTS\nDate Approved\nDate in Force\n"
+                        "26/10/2021\n01/12/2023\n22/07/2024\n18/09/2024"])
         got = scan_amendment_table(str(pdf), "parramatta-dcp-2023.pdf",
                                    "parramatta")
         assert got.date_iso == "2024-09-18"
         assert got.kind == "amended"
+
+    def test_amendment_table_without_both_headers_is_skipped(self, tmp_path):
+        from extract_dcp_stated_dates import scan_amendment_table
+
+        pdf = tmp_path / "parramatta-dcp-2023.pdf"
+        _make_pdf(pdf, ["LIST OF AMENDMENTS\n26/10/2021\n01/12/2023"])
+        assert scan_amendment_table(str(pdf), "parramatta-dcp-2023.pdf",
+                                    "parramatta") is None
 
 
 # ---------------------------------------------------------------------------

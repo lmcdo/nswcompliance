@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a rendered provenance line to the PAID conveyancing PDF's DCP section and changes the brief's DCP as_at semantics on a served surface. Also writes to production (new dcp_plan_as_at table, additive effective_date_basis column, 23 populated rows). Wrong wording or a wrongly-attached date here is a false representation inside the legal defence layer (Layer 2), the class disclaimers don't cure.",
- "commit_hash": "ca2dc6b4",
+ "commit_hash": "a6fba6ab",
  "files": [
   "migrations/063_dcp_plan_as_at.sql",
   "scripts/conveyancing_db.py",
@@ -67,7 +67,7 @@
   },
   {
    "name": "_build_dcp_controls",
-   "file_line": "services/intelligence_brief.py:2719",
+   "file_line": "services/intelligence_brief.py:2725",
    "input": "the fetch_dcp_setbacks result dict including the new plan-level as_at key, plus the lga slug",
    "output": "DCPControls whose four DataField.as_at values carry the plan date string or None, never date.today()",
    "if_none": "as_at absent -> None on all four fields; provenance UI shows no date (was: date.today())"
@@ -152,7 +152,7 @@
    "scenario": "the brief regresses to stamping every DCP DataField with date.today() again",
    "what_happens": "query date presented as data currency in the provenance panel - freshness misrepresentation on a served surface",
    "mitigated": true,
-   "how": "services/intelligence_brief.py:2781-2789 - as_at flows only from the plan-level basis",
+   "how": "services/intelligence_brief.py:2787-2801 - as_at flows only from the plan-level basis",
    "repro": "pytest tests/test_dcp_as_at.py::TestBriefDcpAsAt::test_brief_dcp_fields_carry_no_date_when_none_defensible"
   },
   {
@@ -210,6 +210,20 @@
    "mitigated": true,
    "how": "scripts/conveyancing_db.py:327-334 - SAVEPOINT/ROLLBACK TO SAVEPOINT around the probe only; the failure pin asserts conn.rollback was never called",
    "repro": "pytest tests/test_dcp_as_at.py -k failure_does_not_kill -q"
+  },
+  {
+   "scenario": "the portal echoes NORTH SYDNEY for a boundary-misresolved parcel while SYDNEY is expected",
+   "what_happens": "substring containment would accept the wrong council and store its plan record under city_of_sydney",
+   "mitigated": true,
+   "how": "scripts/fetch_dcp_as_at_dates.py fetch_one - EXACT normalised equality; all 28 live echoes verified equal to expected_portal_lga on 2026-08-03, so no legitimate echo is rejected",
+   "repro": "code inspection + the stored portal_lga_name column in dcp_plan_as_at (28/28 exact matches)"
+  },
+  {
+   "scenario": "the brief silently shows undated DCP controls when the provenance lookup actually failed",
+   "what_happens": "failure collapses into absence on the brief surface even though the conveyancing dict carries the typed status",
+   "mitigated": true,
+   "how": "services/intelligence_brief.py:343-356 + :2787-2801 - DCPControls gains as_at_status/as_at_note; 'unavailable' carries the could-not-be-retrieved disclosure into the brief JSON",
+   "repro": "pytest tests/test_dcp_as_at.py::TestBriefDcpAsAt -q"
   }
  ],
  "post_merge": {

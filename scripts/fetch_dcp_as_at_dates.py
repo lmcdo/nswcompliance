@@ -307,11 +307,13 @@ def fetch_one(slug: str, centroids: list[tuple[float, float]],
             continue
         got = data[0].get("lgaName")
         got_n, want_n = _norm(got or ""), _norm(expect)
-        # Containment, not equality: the portal may say 'CITY OF SYDNEY' where
-        # the cadastre index says 'SYDNEY'. A centroid can also land on a
-        # parcel just across the LGA boundary — that is a wrong PARCEL, not a
-        # wrong LGA, so the next centroid is tried rather than giving up.
-        if not got_n or (got_n not in want_n and want_n not in got_n):
+        # EXACT equality after normalisation — containment would let SYDNEY
+        # pass for a NORTH SYDNEY echo (Sol finding, 2026-08-03). All 28
+        # served slugs' portal echoes were captured live on 2026-08-03 and
+        # every one equals expected_portal_lga exactly, so no alias beyond
+        # the existing maps is needed. A mismatch means the centroid landed
+        # on a parcel across the LGA boundary — try the next centroid.
+        if not got_n or got_n != want_n:
             res.failure = (f"lgaName mismatch: portal says {got!r}, "
                            f"expected {expect!r}")
             time.sleep(1.0)

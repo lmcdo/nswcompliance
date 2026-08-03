@@ -142,8 +142,13 @@ def scan_amendment_table(path: str, rel: str, slug: str) -> Optional[Stated]:
     try:
         for pno in range(min(MAX_SCAN_PAGES, len(doc))):
             text = doc[pno].get_text("text")
-            if "LIST OF AMENDMENTS" not in text.upper():
+            up = text.upper()
+            if "LIST OF AMENDMENTS" not in up:
                 continue
+            # The pairing assumption only holds on the two-date-column layout
+            # — require BOTH column headers before trusting positional pairs.
+            if "DATE APPROVED" not in up or "DATE IN FORCE" not in up:
+                return None
             found: list[tuple[date, str]] = []
             for m in re.finditer(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b", text):
                 try:
@@ -158,6 +163,15 @@ def scan_amendment_table(path: str, rel: str, slug: str) -> Optional[Stated]:
             pairs = [(found[i], found[i + 1]) for i in range(0, len(found), 2)]
             if any(approved[0] > in_force[0] for approved, in_force in pairs):
                 return None  # in-force before approval — not the layout we know
+            in_force_dates = [in_force[0] for _approved, in_force in pairs]
+            if in_force_dates != sorted(in_force_dates) or \
+                    len(set(in_force_dates)) != len(in_force_dates):
+                # Amendments are numbered chronologically, so their in-force
+                # dates must strictly increase down the table; a stray date
+                # from a heading or footer breaks the ordering and the file
+                # is skipped visibly rather than guessed at (Sol finding,
+                # 2026-08-03).
+                return None
             latest, verbatim = max(in_force for _approved, in_force in pairs)
             return Stated(slug, latest.isoformat(), "day", "amended",
                           f"{rel} p{pno + 1} LIST OF AMENDMENTS: latest Date in "
