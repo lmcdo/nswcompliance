@@ -1942,17 +1942,23 @@ def test_db_contract_write_report_columns():
 
 
 def test_db_contract_cache_read_columns():
-    """Cache lookup SELECT must read outputs, confidence, data_sources — the 3 fields
-    that run_flood uses from the cached row."""
+    """Cache lookup SELECT must read outputs, confidence, data_sources AND
+    run_date — run_date is load-bearing since output-grounding fix 2: the
+    cached row's ORIGINAL run_date is served and re-written, never re-stamped
+    with today. The regex tolerates the quote-join of adjacent string
+    literals in the multi-line SQL."""
     from services import flood_truth
     src = inspect.getsource(flood_truth.run_flood)
-    match = re.search(r"SELECT\s+([\w\s,]+)\s+FROM\s+property_reports", src)
+    match = re.search(r"SELECT\s+([\w\s,\"]+?)FROM\s+property_reports", src)
     assert match, "run_flood must contain SELECT ... FROM property_reports"
-    columns = {c.strip() for c in match.group(1).split(",")}
-    required = {"outputs", "confidence", "data_sources"}
+    columns = {c.strip() for c in match.group(1).replace('"', " ").split(",")}
+    required = {"outputs", "confidence", "data_sources", "run_date"}
     assert required <= columns, (
         f"Cache query missing columns: {required - columns}"
     )
+    # The age policy is part of the read contract (fix 2): rows older than the
+    # max age are recomputed, not served.
+    assert "90 days" in src, "cache read must carry the 90-day max-age filter"
 
 
 def test_db_contract_normalise_roundtrip():

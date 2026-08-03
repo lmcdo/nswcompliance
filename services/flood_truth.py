@@ -1585,7 +1585,12 @@ def _first_valid_cached_row(rows):
     return None
 
 
-def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs):
+def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs,
+                  run_date=None):
+    """run_date: the date the analysis was actually COMPUTED. Defaults to today
+    for fresh runs; the cache-hit path passes the original row's run_date so a
+    stale result never wears today's date (output-grounding fix 2 — re-stamping
+    was a freshness lie)."""
     confidence   = _compute_confidence(internal_outputs)
     data_sources = _build_data_sources(internal_outputs)
     sql = """
@@ -1599,7 +1604,7 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_output
         conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(sql, (
-                report_id, address, lat, lng, prop_id, date.today(),
+                report_id, address, lat, lng, prop_id, run_date or date.today(),
                 psycopg2.extras.Json(inputs),
                 psycopg2.extras.Json(internal_outputs),
                 confidence,
@@ -1714,9 +1719,17 @@ def run_flood(req: FloodRequest):
     try:
         conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # Max age 90 days (output-grounding fix 2): flood inputs move on
+            # seasonal/quarterly cadences (EPI overlay refreshes, wet-season
+            # SAR batches, BOM history), so a quarter bounds staleness while
+            # keeping the cache's point — skipping a ~60s recompute on repeat
+            # lookups. Older rows are recomputed, not served.
             cur.execute(
-                "SELECT outputs, confidence, data_sources FROM property_reports "
-                "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 5",
+                "SELECT outputs, confidence, data_sources, run_date "
+                "FROM property_reports "
+                "WHERE product='flood' AND address=%s "
+                "  AND run_date > CURRENT_DATE - INTERVAL '90 days' "
+                "ORDER BY run_date DESC LIMIT 5",
                 (req.address,)
             )
             # #762 (prior-art-checked: same cache read hardened in place, no
@@ -1725,11 +1738,15 @@ def run_flood(req: FloodRequest):
             # the newest.
             cached = _first_valid_cached_row(cur.fetchall())
         if cached:
-            # Write a row for the new report_id so PDF generation can find it
+            # Write a row for the new report_id so PDF generation can find it.
+            # The ORIGINAL run_date is carried over — this row is a copy of an
+            # older computation, and stamping it with today would relabel a
+            # stale result as fresh (fix 2).
             _write_report(
                 req.report_id, req.address, req.lat, req.lng,
                 req.prop_id, {"lat": req.lat, "lng": req.lng},
                 cached["outputs"] or {},
+                run_date=cached.get("run_date"),
             )
             log_audit_trail(
                 report_id=req.report_id,
@@ -1740,9 +1757,15 @@ def run_flood(req: FloodRequest):
                 disclaimer_version=get_current_disclaimer_version("flood"),
                 intermediate_calculations={"cache_hit": True},
             )
+            _orig_run_date = cached.get("run_date")
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
-                "run_date": date.today().isoformat(),
+                # The date the analysis was COMPUTED, not the date it was
+                # re-served — a cached result wearing today's date was a
+                # freshness lie (output-grounding fix 2).
+                "run_date": (_orig_run_date.isoformat() if _orig_run_date
+                             else date.today().isoformat()),
+                "cache_hit": True,
                 "outputs": _normalise_outputs(cached["outputs"] or {}),
                 "confidence": cached["confidence"],
                 "data_sources": cached["data_sources"] or _DATA_SOURCES_BASE,

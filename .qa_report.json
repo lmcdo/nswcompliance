@@ -1,117 +1,157 @@
 {
  "tier": "critical",
- "justification": "THE HEADLINE IS THE OLD BEHAVIOUR: when the bushfire overlay was empty and the RFS live fallback RAISED, climate_risk_score served 'Bushfire Prone Land: No' at confidence 'high' \u2014 a verdict about data the check never received (the DQ-36 class) on a safety-adjacent claim, rendered verbatim as a badge in the climate tool (ClimateRiskResultCard.tsx:173,176). This diff fixes that path and makes every hazard confidence carry a named reason. It also ships the absence-semantics census (item 0, report only) and an observation-mode confidence lint (item 2, never blocks, not wired).",
- "commit_hash": "d85255e6",
+ "justification": "Four typed-absence fixes on served output, three on the PAID conveyancing channel. The headline defects being removed: a crashed shadow scenario served as shadow_length_m 0.0 and fed adg_compliant true (a crash became a compliance pass); a paid PDF could assemble from an arbitrarily old cached run \u2014 and flood re-stamped stale outputs with today's date; one try-block over four DB fetches rendered mid-failure as clean absence; a failed TOD check silently deleted the PDF's TOD section (DQ-36's omission twin).",
+ "commit_hash": "335b6fcf",
  "files": [
-  "services/climate_risk_score.py",
-  "tests/test_climate_risk_score.py",
-  "docs/qa/absence-semantics-census-2026-08.md",
-  "scripts/lint_hardcoded_confidence.py",
-  ".gitignore"
+  "services/shadow_detector.py",
+  "services/conveyancing.py",
+  "services/flood_truth.py",
+  "scripts/generate_conveyancing_report.py",
+  "frontend-nextjs/app/api/reports/shadow/generate/route.ts",
+  "frontend-nextjs/lib/pdf/shadow-report.tsx",
+  "frontend-nextjs/components/tools/ShadowTool.tsx",
+  "tests/test_shadow_detector.py",
+  "tests/test_typed_absence_fixes.py",
+  "tests/test_conveyancing_tod.py",
+  "tests/test_conveyancing_truth.py",
+  "tests/test_flood_truth.py"
  ],
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_climate_risk_score.py -q",
-  "passes_when": "every reachable normalizer path (15 enumerated across the failure matrix, incl. RFS raise / RFS clear / RFS prone / no-coords) attaches a non-empty confidence_reason; the RFS-failure path yields available=False, confidence 'low', detail 'could not be determined', and a reason naming the failure",
-  "fails_when": "any path emits a confidence without a named reason (the all-paths sweep asserts reason non-empty per path), or the fallback-failure path can again claim 'high' or serve detail 'Bushfire Prone Land: No'",
-  "demonstrated_failing": "TestConfidenceCarriesReason fails on the pre-change code two ways: confidence_reason did not exist (AttributeError/empty), and test_bushfire_rfs_failure_is_not_a_confident_no pins the exact old defect \u2014 patch(_query_rfs_bfpl, side_effect=RuntimeError) returned confidence='high', detail 'Bushfire Prone Land: No', available=True on the old branch `\"high\" if hits else (\"medium\" if present else \"high\")`.",
-  "mutation_evidence": "Revert the rfs_state 'failed' arm to confidence='high' -> test_bushfire_rfs_failure_is_not_a_confident_no fails on three separate assertions (confidence, available, detail). Blank any one normalizer's confidence_reason -> test_every_path_names_its_reason names the hazard. Drop confidence_reason from to_dict -> test_confidence_reason_serialised_in_to_dict KeyErrors."
+  "command": "python -m pytest tests/test_shadow_detector.py tests/test_typed_absence_fixes.py tests/test_conveyancing_tod.py tests/test_conveyancing_truth.py tests/test_flood_truth.py -q",
+  "passes_when": "an errored scenario carries status 'unavailable' with None measurements and _adg_compliant(errored noon) is None; a mid-failure in one DB fetch leaves the other three intact and typed; an expired cache entry is a miss and a cache-copied flood row keeps its ORIGINAL run_date; build_tod_uplift_lines(None,...) renders not_assessed; the free-tier confidence caps on live_query_failures",
+  "fails_when": "any of the four old behaviours returns: errored-noon \u2192 compliance pass (test_adg_compliant_errored_noon...), single-try fetch collapse (test_mid_failure_leaves_other_fetches_intact), run_date re-stamp (test_write_report_carries_original_run_date), or TOD silent omission (test_tod_lookup_failed_renders_not_assessed_never_vanishes) \u2014 each pin FAILS on the pre-change code",
+  "demonstrated_failing": "Each pin was written against the observed old behaviour cited in the absence census (docs/qa/absence-semantics-census-2026-08.md rows 19/20, 15/17, 1, 7): shadow_detector.py:264-269 served 0.0m/False from an error dict and :305-308 returned True on a missing noon ('can't assess \u2014 default to compliant', its own comment); conveyancing.py:927-930 had no age filter; flood_truth.py:1745 stamped date.today() on cached outputs; generate_conveyancing_report build_tod_uplift_lines returned render=False for tod=None. Three previously-green tests encoding the old doctrine were flipped with their reasons stated in-test.",
+  "mutation_evidence": "Revert _adg_compliant's None arms to True \u2192 4 tests fail. Merge the four try-blocks back into one \u2192 the mid-failure pin fails on dcp/heritage assertions. Drop run_date from _write_report \u2192 the params[5] assertion fails. Return render False for tod None \u2192 the fix-4 pin fails on three assertions. Re-order build_shadow_row's None check after the height branches \u2192 the no-percent-claim pin fails."
  },
  "pre_impl": {
-  "existing_data": "No DB writes. Code paths only: services/climate_risk_score.py normalizers; consumers verified before change \u2014 climate_risk_pipeline.py POST /climate-risk serves to_dict() to the free climate tool; intelligence_brief.py ingests via ClimateHazardOutput with extra='ignore' (brief seam safe, intelligence_brief.py:725-758).",
-  "assumption_mismatch": "If _query_rfs_bfpl changes shape, the 'clear' branch still only fires on an explicit non-prone result; any raise lands in 'failed' (fail closed). Composite already rescales around available=False (climate_risk_score.py:417-425, the heat precedent), so an unavailable bushfire cannot skew the score as silent 0-risk.",
-  "new_vs_existing": "Behaviour changes ONLY on the previously-broken paths (RFS failed / no coords): those now serve could-not-be-determined at low confidence and leave the composite denominator. Overlay-hit, live-prone and live-clear paths keep their prior confidence/present/raw values (existing 66-test file still green).",
-  "external_source_error": "RFS API raise -> rfs_state='failed' -> available=False + reason naming the failure. Previously swallowed into a confident 'No'.",
-  "frontend_type": "None required: card renders h.detail and h.confidence as strings (ClimateRiskResultCard.tsx:173,176); confidence_reason is additive JSON the card ignores. RESIDUAL (flagged, not fixed \u2014 claim-language boundary): the Present/'Not present' chip (:165-170) still reads 'Not present' for an undetermined hazard because the card does not read `available`; and confidence_reason is not yet rendered. Both belong to the typed-absence design phase.",
-  "user_failure_mode": "After: the failed state renders 'Bushfire Prone Land: could not be determined' + 'Confidence: low' \u2014 never blank, never 'No'. Verified against the card's render expressions cited above."
+  "existing_data": "No DB writes. Read-path changes only: shadow scenario/verdict shaping, two cache read policies (conveyancing 24h via created_at, flood 90d via run_date \u2014 both columns verified to exist: conveyancing_cache.created_at written at :902-906, property_reports.run_date in _write_report's INSERT), one closure extracted to module level (_fetch_pdf_db_data, following the _nearby_da_count extraction precedent).",
+  "assumption_mismatch": "Pre-fix cached shadow rows lack the scenario 'status' key: every consumer treats absent status as computed (ShadowScenario.status optional; _adg_compliant checks == 'unavailable', so absent \u2260 unavailable). Older generate_pdf callers omit db_fetch_failed \u2192 None \u2192 {} \u2192 nothing reported failed (backward compatible).",
+  "new_vs_existing": "Verdict-changing only on previously-broken paths: errored/missing noon (was true, now None), failed TOD (was vanished section, now not-assessed section), expired caches (was served, now recomputed), mid-failure fetches (was clean absence, now typed). Computed paths keep identical outputs \u2014 the full pytest suite of pre-existing behaviour tests stayed green except the three old-doctrine tests deliberately flipped.",
+  "external_source_error": "Shadow model error \u2192 typed unavailable scenario + confidence low + ADG not-assessed. Both TOD layers failing \u2192 rendered not-assessed disclosure. DB connect failure \u2192 all four PDF fetches typed failed and listed in the coverage panel.",
+  "frontend_type": "adg_compliant widened to boolean|null in ShadowReportData (lib/pdf/shadow-report.tsx:60) and ShadowTool's outputs interface; ShadowScenario gains optional status + nullable measurement fields; generate route preserves null instead of Boolean-coercing. reports/shadow/[report_id]/page.tsx already rendered three-state ('N/A') and ShadowDetailDisplay already typed boolean|null \u2014 verified before change.",
+  "user_failure_mode": "After: a failed noon renders 'Not assessed' rows/badges (PDF risk row, shadow PDF finding, ShadowTool headline) \u2014 never 'ADG concern', never 'Meets test', never an objection paragraph. A failed TOD check renders a visible not-assessed section. A mid-failure PDF lists which checks could not be completed. An expired cache costs latency (full re-run), never correctness."
  },
  "functions": [
   {
-   "name": "_normalize_bushfire",
-   "file_line": "services/climate_risk_score.py:238",
-   "input": "overlays dict from _query_spatial_overlays plus optional lat/lng used only for the RFS live fallback query",
-   "output": "HazardScore whose confidence/available/detail/reason are decided by the tracked rfs_state (not_needed | prone | clear | failed | skipped)",
-   "if_none": "empty overlays with no coords -> 'skipped' arm: available=False, low, reason says the check could not run \u2014 never a confident No"
+   "name": "_fetch_pdf_db_data",
+   "file_line": "services/conveyancing.py:220",
+   "input": "db_url, coordinates, lot geometry WKT, parsed controls dict and the resolved DCP former-council slug",
+   "output": "(das, lep, dcp, heritage, failed) \u2014 four independent fetch results plus a per-fetch failed map consumed by generate_pdf's coverage panel and section renderers",
+   "if_none": "no db_url or connect failure \u2192 every applicable fetch reported failed; N/A fetches (no clause / no council) are NOT failed \u2014 three states, never two"
   },
   {
-   "name": "scan",
-   "file_line": "scripts/lint_hardcoded_confidence.py:92",
-   "input": "repo tree under services/scripts/enrichment/src/frontend-nextjs, .py/.ts/.tsx files read best-effort",
-   "output": "finding dicts categorised prod/computed/test with file:line, literal, enclosing function",
-   "if_none": "unreadable files skipped silently by design (observation mode reports what it can read; exit 0 always)"
+   "name": "_adg_compliant",
+   "file_line": "services/shadow_detector.py:304",
+   "input": "the scenario list built by _build_scenario_list, each entry carrying a computed/unavailable status",
+   "output": "True/False verdict from a computed noon scenario, or None (not assessed) \u2014 never a verdict from absence",
+   "if_none": "missing noon, unavailable noon, or unknown overlap \u2192 None; every consumer renders a not-assessed state for it (verified per consumer, cited in the PR)"
+  },
+  {
+   "name": "build_tod_uplift_lines",
+   "file_line": "scripts/generate_conveyancing_report.py:3056",
+   "input": "fetch_tod_catchment result or None (both layers failed), capacity engine result, strata flag",
+   "output": "render/not_assessed/disclosure lines for PDF section 12 \u2014 a failed check now RENDERS as not-assessed",
+   "if_none": "tod None \u2192 render True + not_assessed + could-not-be-completed disclosure; held_line/scope None (call site now guards) \u2014 never a vanished section"
   }
  ],
  "values": [
   {
-   "value": "rfs_state",
-   "read_at": "services/climate_risk_score.py:257 (initialised), :258-276 (assigned per outcome)",
-   "nullable": "no \u2014 always one of five literals",
-   "guard_at": "the if/elif chain at :278-304 covers all five; the else arm is the fail-closed default",
-   "if_missing": "not possible (initialised before the branch); an unknown state falls into the fail-closed else arm"
+   "value": "scenario['status']",
+   "read_at": "services/shadow_detector.py:330 (_adg_compliant), frontend ShadowTool/ShadowDetailDisplay (optional)",
+   "nullable": "absent on pre-fix cached rows \u2014 treated as computed everywhere (== 'unavailable' checks only)",
+   "guard_at": "services/shadow_detector.py:330",
+   "if_missing": "legacy rows behave exactly as before the fix"
   },
   {
-   "value": "h.confidence_reason at the UI seam",
-   "read_at": "serialised in to_dict (services/climate_risk_score.py:141)",
-   "nullable": "dataclass default '' \u2014 the test sweep asserts non-empty on every reachable path",
-   "guard_at": "tests/test_climate_risk_score.py test_every_path_names_its_reason",
-   "if_missing": "card ignores the extra key (renders as before); the brief seam ignores it (extra='ignore')"
+   "value": "cached['run_date'] (flood cache hit)",
+   "read_at": "services/flood_truth.py cache-hit block",
+   "nullable": "yes (very old rows) \u2014 falls back to today with the fallback visible in code",
+   "guard_at": "flood_truth.py `_orig_run_date.isoformat() if _orig_run_date else ...`",
+   "if_missing": "response carries today's date only when no original date exists to preserve"
   }
  ],
  "queries": [
   {
-   "purpose": "hazard overlay point query (unchanged by this diff; listed because the normalizers consume it)",
-   "file_line": "services/climate_risk_score.py:196-210",
-   "where_clause": "layer_type = ANY(%s) AND ST_Intersects(geom, point) \u2014 no is_current column exists on spatial_overlays hazard layers",
-   "if_zero": "empty per-layer lists -> each normalizer's absent arm; bushfire now disambiguates via the RFS fallback outcome instead of claiming high",
-   "if_wrong": "wrong-layer rows would mis-score a hazard; out of scope here (no query change in this diff)"
+   "purpose": "flood cache read with max-age policy",
+   "file_line": "services/flood_truth.py:1727-1733",
+   "where_clause": "product='flood' AND address=%s AND run_date > CURRENT_DATE - INTERVAL '90 days'",
+   "if_zero": "no fresh row \u2192 full recompute (the existing slow path); staleness costs latency, never correctness",
+   "if_wrong": "poisoned rows still filtered by _first_valid_cached_row (#762, unchanged)"
+  },
+  {
+   "purpose": "pipeline cache read with 24h expiry, expiry typed distinct from miss",
+   "file_line": "services/conveyancing.py:1050-1060",
+   "where_clause": "report_id = %s with computed `expired` flag (created_at < NOW() - make_interval(hours=>24))",
+   "if_zero": "miss \u2192 PDF endpoint's existing full-pipeline fallback",
+   "if_wrong": "an expired entry logged as EXPIRED, returned as None \u2014 never served"
   }
  ],
  "break_it": [
   {
-   "scenario": "RFS API raises while the overlay is empty (the item-1 path itself)",
-   "what_happens": "OLD: 'Bushfire Prone Land: No' at 'high' \u2014 a confident safety-adjacent No from zero usable data, DQ-36 class",
+   "scenario": "pybdshadow raises while computing the Jun 21 noon scenario for a lot",
+   "what_happens": "OLD: scenario served 0.0m/no-overlap, adg_compliant true \u2014 a crash became 'meets the ADG solar access test' on the free tool, the shadow PDF and the paid conveyancing PDF",
    "mitigated": true,
-   "how": "services/climate_risk_score.py rfs_state='failed' arm -> available=False, low, 'could not be determined', reason names the failure; composite excludes the hazard",
-   "repro": "pytest tests/test_climate_risk_score.py -k rfs_failure_is_not_a_confident_no (patches _query_rfs_bfpl to raise)"
+   "how": "typed unavailable scenario \u2192 _adg_compliant None \u2192 every consumer renders not-assessed; run confidence capped low",
+   "repro": "pytest -k errored_noon_is_not_assessed_never_a_pass"
   },
   {
-   "scenario": "A future normalizer path is added without a reason string",
-   "what_happens": "a badge would ship with no stated basis \u2014 indistinguishable from a hardcoded one",
+   "scenario": "LEP-clause query raises mid-way through the PDF's DB fetch batch",
+   "what_happens": "OLD: DCP setbacks and heritage silently emptied too; PDF rendered 'not extracted for this LGA' coverage claims about checks that never ran",
    "mitigated": true,
-   "how": "test_every_path_names_its_reason sweeps the enumerated path matrix; the observation lint reports the literal site for the FP-rate record",
-   "repro": "blank any confidence_reason= argument -> the sweep fails naming the hazard"
+   "how": "four independent try blocks + per-fetch failed map; coverage panel lists not-completed checks; DCP else-branch says could-not-be-retrieved",
+   "repro": "pytest -k mid_failure_leaves_other_fetches_intact"
   },
   {
-   "scenario": "The composite silently counts an undetermined bushfire as zero risk",
-   "what_happens": "score understates risk while claiming full denominator coverage",
+   "scenario": "PDF requested days after the free-tier run (abandoned checkout resumed)",
+   "what_happens": "OLD: PDF assembled from the stale cache silently, no age bound at all",
    "mitigated": true,
-   "how": "available=False excludes the hazard and rescales (pre-existing mechanism :417-425, heat precedent); asserted via h.available in the pinned test",
-   "repro": "assert available flag in test_bushfire_rfs_failure_is_not_a_confident_no"
+   "how": "24h max age; expired = logged miss \u2192 full re-run",
+   "repro": "pytest -k expired_entry_is_a_miss"
   },
   {
-   "scenario": "The observation lint gets wired into a gate on raw counts",
-   "what_happens": "47 prod hits include ~13 type-annotation/docstring false positives \u2014 instant alarm fatigue, the exact \u00a77-finding-6 failure",
+   "scenario": "flood re-serve of a months-old cached analysis for a repeat address lookup",
+   "what_happens": "OLD: served AND re-written under a fresh report_id wearing today's run_date \u2014 a freshness lie on a hazard product",
    "mitigated": true,
-   "how": "script exits 0 unconditionally and its docstring bars wiring without an observed FP rate; this run's counts recorded in the PR as the first observation",
-   "repro": "python scripts/lint_hardcoded_confidence.py; echo $? -> 0 with 47 prod findings printed"
+   "how": "90-day max age + original run_date preserved in response (cache_hit flag added) and in the copied row",
+   "repro": "pytest -k write_report_carries_original_run_date"
   },
   {
-   "scenario": "UI renders blank or 'No' for the undetermined hazard",
-   "what_happens": "the fix would be invisible or mislabelled at the consumer (the DQ-31 lesson)",
+   "scenario": "both TOD catchment layers down at PDF generation",
+   "what_happens": "OLD: section 12 vanished \u2014 indistinguishable from 'checked, not in a catchment' (DQ-36's silent-omission twin, on the paid channel)",
    "mitigated": true,
-   "how": "card renders h.detail verbatim (ClimateRiskResultCard.tsx:173) which now carries 'could not be determined'; confidence badge :176 shows 'low'; chip residual explicitly flagged in pre_impl frontend_type, deferred to design phase",
-   "repro": "grep -n 'h.detail' frontend-nextjs/components/tools/ClimateRiskResultCard.tsx"
+   "how": "build_tod_uplift_lines renders not_assessed with an explicit could-not-be-completed disclosure; strata suppression unchanged and tested",
+   "repro": "pytest -k renders_not_assessed_never_vanishes"
+  },
+  {
+   "scenario": "free-tier badge claims high confidence while its own DA check failed",
+   "what_happens": "OLD: live_query_failures existed but no caller passed it \u2014 the badge ignored the report's own absence state",
+   "mitigated": true,
+   "how": "run_conveyancing passes live_query_failures=1 on da_fetch_failed \u2192 cap to medium (2+ \u2192 low)",
+   "repro": "pytest -k one_failure_caps_high_to_medium"
+  },
+  {
+   "scenario": "legacy cached shadow rows (no status key) start rendering as unavailable",
+   "what_happens": "historical reports would silently flip from their issued verdicts to not-assessed states",
+   "mitigated": true,
+   "how": "absent status \u2260 'unavailable' at every check site (equality, not truthiness); TS type optional",
+   "repro": "pytest tests/test_shadow_detector.py (legacy-shaped fixtures carry no status and still verdict)"
   }
  ],
  "post_merge": {
-  "db_reset": "No \u2014 no DB writes in this diff.",
-  "secrets": "No \u2014 no credentials touched.",
+  "db_reset": "No \u2014 no schema or data changes; two cache read policies only.",
+  "secrets": "No.",
   "other_repo": "No.",
-  "manual_verify": "Optional: run the climate tool on any address with the RFS endpoint blocked \u2014 the bushfire card should read 'could not be determined' at low confidence."
+  "manual_verify": "Optional: request a flood report for an address with an old cached row \u2014 response shows the original run_date and cache_hit true; block the shadow model and confirm the tool shows 'analysis incomplete', not a verdict."
  },
  "checks": {
-  "pytest": "3567 passed (7 new), 25 skipped",
-  "jest": "990 passed / 76 suites (worktree, junctioned node_modules)",
-  "census": "docs/qa/absence-semantics-census-2026-08.md \u2014 35 paths, 11 collapse-served-as-claim (3 paid: conveyancing _fetch_db_data partial-failure, _fetch_tod silent omission, pipeline cache with no age filter), 8 partial, 16 typed",
-  "lint_observation_run": "64 total literals; 47 prod (incl ~13 annotation/docstring FPs), 0 inside confidence-named fns, 17 test fixtures; NOT wired anywhere, exit 0 always"
+  "pytest": "3583 passed (23 new/changed), 25 skipped",
+  "jest": "76 suites / 990 tests passed",
+  "flipped_old_doctrine_tests": [
+   "test_adg_compliant_empty_scenarios (True\u2192None)",
+   "test_adg_compliant_no_noon_scenario (True\u2192None)",
+   "test_adg_compliant_null_overlaps (True\u2192None)",
+   "test_tod_lookup_failed (render False\u2192not-assessed render)"
+  ],
+  "pdf_confidence_evidence": "grep 'Confidence' over generate_conveyancing_report.py = 0 display hits \u2014 the paid PDF makes no confidence representation; the claim lives on the free-tier response, now wired to its own failure state"
  }
 }

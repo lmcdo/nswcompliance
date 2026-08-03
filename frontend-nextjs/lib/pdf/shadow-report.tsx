@@ -57,7 +57,7 @@ export interface ShadowReportData {
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
   construction_change_detected: boolean;
-  adg_compliant: boolean;
+  adg_compliant: boolean | null;  // null = not assessed (noon scenario missing/errored)
   worst_case_scenario: string;
   confidence: string;
   data_sources: string[];
@@ -248,6 +248,15 @@ function buildFindings(data: ShadowReportData): Finding[] {
       value: 'ADG — indicative only (non-residential zone)',
       detail: 'ADG solar access requirements apply to residential apartment buildings only. This property is in a non-residential zone, so the result is indicative.',
       severity: overlapCount === 0 ? 'green' : 'amber',
+    });
+  } else if (data.adg_compliant == null) {
+    // Not assessed — the model issued no verdict (output-grounding fix 1).
+    // Without this branch, null fell through to the "ADG concern" finding.
+    findings.push({
+      label: 'ADG Part 3F solar access test',
+      value: 'Not assessed — the noon scenario could not be computed',
+      detail: 'The shadow model could not compute the 21 June noon scenario for this lot, so the ADG solar access test was not run. No shadow verdict is made in this report.',
+      severity: 'amber',
     });
   } else if (data.adg_compliant) {
     findings.push({
@@ -489,8 +498,9 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           );
         })()}
 
-        {/* Objection-ready paragraph — paid, only when ADG concern */}
-        {isPaid && !data.adg_compliant && !isNonRes && (() => {
+        {/* Objection-ready paragraph — paid, only when ADG concern is a
+            VERDICT (=== false). null is not-assessed, not a concern (fix 1). */}
+        {isPaid && data.adg_compliant === false && !isNonRes && (() => {
           const worstSc = scenarios.find(sc => sc.scenario === data.worst_case_scenario);
           const worstPct = worstSc?.shadow_overlap_fraction != null
             ? Math.round(worstSc.shadow_overlap_fraction * 100) : null;
