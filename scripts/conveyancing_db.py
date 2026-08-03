@@ -250,10 +250,13 @@ def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
     return None
 
 
+# prior-art-checked: same function, additive kwarg only — the proxy endpoint
+# needs failure distinguishable from checked-none; no new capability.
 def fetch_dcp_setbacks(
     conn,
     lga_slug: Optional[str],
     zone_code: Optional[str] = None,
+    raise_on_error: bool = False,
 ) -> Optional[dict]:
     """Return DCP setback data from dcp_setback_controls.
 
@@ -371,6 +374,13 @@ def fetch_dcp_setbacks(
             conn.rollback()
         except Exception:
             pass
+        if raise_on_error:
+            # The /pipeline/dcp-controls proxy needs failure DISTINGUISHABLE
+            # from "checked, zero rows" — a swallowed failure served as
+            # available:false let every proxy consumer render an outage as a
+            # clean no-controls result (Sol finding, 2026-08-04). Legacy
+            # in-process callers keep the never-raises contract.
+            raise
         return None
 
     if not rows:
@@ -444,6 +454,7 @@ def fetch_dcp_setbacks(
             "source_chapter_key": source_chapter_key,
             "pdf_page":     pdf_page,
             "dcp_version":  dcp_version,
+            "applicability": applicability,
         }
 
         is_sd = (

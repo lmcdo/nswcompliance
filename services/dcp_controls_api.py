@@ -63,7 +63,11 @@ def dcp_controls(lga: str, zone: Optional[str] = None):
     conn = None
     try:
         conn = psycopg2.connect(db_url)
-        result = fetch_dcp_setbacks(conn, lga_slug, zone)
+        # prior-art-checked: same endpoint's own call gains raise_on_error —
+        # a swallowed query failure must surface as 503 here, never as
+        # available:false, or every proxy consumer renders an outage as a
+        # clean no-controls result (Sol, 2026-08-04). No new capability.
+        result = fetch_dcp_setbacks(conn, lga_slug, zone, raise_on_error=True)
     except Exception as e:
         logger.error("dcp-controls read failed for %s: %s", lga_slug, e)
         from fastapi import HTTPException
@@ -77,14 +81,12 @@ def dcp_controls(lga: str, zone: Optional[str] = None):
                 pass
 
     if result is None:
-        # fetch_dcp_setbacks returns None both for "no current rows" and for
-        # an internal query failure it swallowed — an honest limitation of
-        # the shared implementation, stated rather than hidden.
+        # With raise_on_error, None now means exactly one thing: the guarded
+        # query COMPLETED and found no current rows for this slug.
         return {
             "available": False,
             "lga": lga_slug,
-            "reason": "no current controls for this LGA (or the guarded "
-                      "read did not complete — see server logs)",
+            "reason": "no current controls for this LGA",
         }
 
     rows = list(result.get("setbacks") or []) + list(result.get("sd_setbacks") or [])

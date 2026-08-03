@@ -42,7 +42,7 @@ class TestDcpControlsEndpoint:
         _patch_connect(monkeypatch)
         monkeypatch.setattr(
             dcp_controls_api, "fetch_dcp_setbacks",
-            lambda conn, lga, zone: {
+            lambda conn, lga, zone, raise_on_error=False: {
                 "dcp_name": "Waverley DCP 2022", "dcp_url": "u",
                 "caveat": None, "clause_ref": "B2.1",
                 "zone_filter_applied": "R2",
@@ -62,7 +62,7 @@ class TestDcpControlsEndpoint:
     def test_none_result_is_checked_none(self, monkeypatch):
         _patch_connect(monkeypatch)
         monkeypatch.setattr(dcp_controls_api, "fetch_dcp_setbacks",
-                            lambda conn, lga, zone: None)
+                            lambda conn, lga, zone, raise_on_error=False: None)
         out = dcp_controls_api.dcp_controls("nowhere")
         assert out["available"] is False
         assert out["reason"]

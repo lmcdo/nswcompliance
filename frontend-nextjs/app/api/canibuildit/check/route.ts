@@ -383,6 +383,7 @@ export async function POST(req: NextRequest) {
     source_text: string | null;
     section_ref: string | null;
   }> = [];
+  let dcpSetbacksUnavailable = false;
   if (lgaName) {
     try {
       // Item 5 consolidation: rows come from the ONE guarded implementation
@@ -401,14 +402,18 @@ export async function POST(req: NextRequest) {
             value_max: r.value_max,
             unit: r.unit,
             condition: r.notes || null,
-            applicability: 'secondary_dwelling_specific',
+            // Passed through unchanged — fabricating a plausible value here
+            // would erase real qualifications (Sol, 2026-08-04).
+            applicability: r.applicability ?? 'unspecified',
             source_text: r.source_text,
             section_ref: r.clause || null,
           }));
       }
     } catch {
-      // dcp_setbacks stays [] — non-blocking (source unavailable ≠ none;
-      // the field is currently unrendered by the tool UI, census 2026-08-03)
+      // Typed absence: an unreachable source is NOT the same response as a
+      // completed zero-row lookup — the flag makes the difference visible
+      // to consumers (Sol, 2026-08-04) while keeping the check non-blocking.
+      dcpSetbacksUnavailable = true;
     }
   }
 
@@ -497,6 +502,9 @@ export async function POST(req: NextRequest) {
     sepp_ineligible_reason,
     checks,
     dcp_setbacks: dcpSetbacks,
+    // true when the guarded source could not be reached — distinguishes
+    // "no controls found" from "the lookup did not complete".
+    dcp_setbacks_unavailable: dcpSetbacksUnavailable,
     confirmation_required: false,
   };
 

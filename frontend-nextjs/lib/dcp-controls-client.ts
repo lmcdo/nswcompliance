@@ -25,6 +25,9 @@ export interface DcpControlRow {
   source_chapter_key: string | null;
   pdf_page: number | null;
   dcp_version: string | null;
+  // The row's stored applicability constraint, passed through unchanged —
+  // consumers must never fabricate a plausible value in its place.
+  applicability: string | null;
 }
 
 export interface DcpControlsResult {

@@ -322,8 +322,8 @@ async function getSetbacks(
   const generalRows = dcpRows
     .filter((r) => SETBACK_TYPES.has(r.semantic_type))
     .sort((a, b) => {
-      const numA = a.value_min != null ? 1 : 2;
-      const numB = b.value_min != null ? 1 : 2;
+      const numA = a.value_min != null || a.value_max != null ? 1 : 2;
+      const numB = b.value_min != null || b.value_max != null ? 1 : 2;
       if (numA !== numB) return numA - numB;
       return a.semantic_type.localeCompare(b.semantic_type);
     });
@@ -345,7 +345,9 @@ async function getSetbacks(
          rowText.toLowerCase().includes('side') ? 'side' :
          rowText.toLowerCase().includes('rear') ? 'rear' : 'other');
 
-      if (row.value_min) {
+      // != null, not truthiness: a permitted ZERO-metre setback is a valid
+      // numeric control, not absent guidance (Sol, 2026-08-04).
+      if (row.value_min != null) {
         // Numeric setback
         setbacksByType.values.push({
           boundary: boundaryType,
@@ -355,7 +357,7 @@ async function getSetbacks(
           condition: row.notes || null,
           text: rowText
         });
-      } else if (row.value_max) {
+      } else if (row.value_max != null) {
         // Range setback (value_min absent — show the bounded side)
         setbacksByType.values.push({
           boundary: boundaryType,

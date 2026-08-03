@@ -160,12 +160,24 @@ export async function GET(request: NextRequest) {
       lgaSlugs.map((slug) => fetchDcpControls(slug)),
     );
 
-    const allRows: DcpControlRow[] = results.flatMap((r) =>
-      r.available && r.rows ? r.rows : [],
-    );
-    const pdfUrls: Record<string, string> = Object.assign(
-      {},
-      ...results.map((r) => r.registry_pdf_urls || {}),
+    // Each row keeps its OWN result's PDF map and metadata — flattening the
+    // per-council maps by chapter_key alone could attach one former
+    // council's PDF (or dcp_name/as-at) to another's control when a future
+    // COUNCIL_TO_LGA expansion returns multiple slugs (Sol, 2026-08-04).
+    type SourcedRow = DcpControlRow & {
+      __pdfBase: string | null;
+      __source: (typeof results)[number];
+    };
+    const allRows: SourcedRow[] = results.flatMap((r) =>
+      r.available && r.rows
+        ? r.rows.map((row) => ({
+            ...row,
+            __pdfBase:
+              (row.source_chapter_key &&
+                r.registry_pdf_urls?.[row.source_chapter_key]) || null,
+            __source: r,
+          }))
+        : [],
     );
     const devRows = allRows.filter((r) => r.dev_type === devType);
 
@@ -195,9 +207,9 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Build PDF URL with page anchor if available
-      let pdfUrl: string | null =
-        (row.source_chapter_key && pdfUrls[row.source_chapter_key]) || null;
+      // Build PDF URL with page anchor if available — resolved from the
+      // row's OWN council's map at collection time (never cross-council).
+      let pdfUrl: string | null = row.__pdfBase;
       if (pdfUrl && row.pdf_page) {
         pdfUrl = `${pdfUrl}#page=${row.pdf_page}`;
       }
@@ -241,17 +253,19 @@ export async function GET(request: NextRequest) {
 
     const categories = Array.from(categoryMap.values()).sort((a, b) => a.order - b.order);
 
-    // DCP name: the guarded source's canonical name, else the longest
-    // dcp_version string (usually the formal name) — unchanged fallback.
+    // Metadata comes from the result(s) that actually CONTRIBUTED the served
+    // rows — never from a slug whose rows were all filtered out (Sol,
+    // 2026-08-04: the first-available slug could label another slug's rows).
+    const contributing = [...new Set(devRows.map((r) => r.__source))];
     const dcpName =
-      results.find((r) => r.available && r.dcp_name)?.dcp_name ||
+      contributing.find((r) => r.dcp_name)?.dcp_name ||
       devRows
         .map((r) => r.dcp_version)
         .filter((v): v is string => Boolean(v))
         .sort((a, b) => b.length - a.length)[0] ||
       null;
 
-    const asAt = results.find((r) => r.available && r.as_at_line);
+    const asAt = contributing.find((r) => r.as_at_line);
 
     return NextResponse.json({
       council,
