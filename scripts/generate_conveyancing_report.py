@@ -6005,7 +6005,8 @@ def main():
         if shadow_result:
             _adg_val = shadow_result.get("adg_compliant")
             adg = ("ADG not assessed" if _adg_val is None
-                   else "ADG concern" if _adg_val is False else "ADG compliant")
+                   else "ADG concern" if _adg_val is False
+                   else "ADG solar access test met")
             print(f"  {adg}  height: {shadow_result.get('height_m')} m ({shadow_result.get('height_source')})")
         else:
             print("  Shadow model unavailable — section omitted from PDF")

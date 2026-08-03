@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Four typed-absence fixes on served output, three on the PAID conveyancing channel. The headline defects being removed: a crashed shadow scenario served as shadow_length_m 0.0 and fed adg_compliant true (a crash became a compliance pass); a paid PDF could assemble from an arbitrarily old cached run \u2014 and flood re-stamped stale outputs with today's date; one try-block over four DB fetches rendered mid-failure as clean absence; a failed TOD check silently deleted the PDF's TOD section (DQ-36's omission twin).",
- "commit_hash": "b1437af1",
+ "commit_hash": "85c876f0",
  "files": [
   "services/shadow_detector.py",
   "services/conveyancing.py",
