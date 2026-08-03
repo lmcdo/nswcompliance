@@ -24,6 +24,7 @@ from services.climate_risk_score import (
     _normalize_bushfire,
     _normalize_coastal,
     _normalize_fire_history,
+    _normalize_landslide,
     _normalize_heat,
     _compute_interaction_bonus,
     _score_to_band,
@@ -32,6 +33,8 @@ from services.climate_risk_score import (
     WEIGHTS,
     INTERACTION_PAIRS,
 )
+
+_RFS = "services.climate_risk_score._query_rfs_bfpl"
 
 
 # ── _score_to_band ───────────────────────────────────────────────────────────
@@ -523,3 +526,103 @@ class TestUnavailableHazardExclusion:
         )
         d = result.to_dict()
         assert d["hazards"][0]["available"] is False
+
+
+# ── Output-grounding item 1: confidence must carry a named reason ────────────
+
+class TestConfidenceCarriesReason:
+    """A displayed confidence badge is a representation. Every reachable
+    normalizer path must attach a non-empty confidence_reason, and the bushfire
+    no-data path must never claim a confident "No".
+
+    The pre-2026-08-03 code emitted confidence="high" with detail "Bushfire
+    Prone Land: No" when the overlay was empty AND the RFS live fallback
+    RAISED — a verdict about data the check never received (the DQ-36 class),
+    on a safety-adjacent claim. These tests FAIL on that code:
+    confidence_reason did not exist, and the RFS-failure path returned "high".
+    """
+
+    LAT, LNG = -33.6, 150.7
+
+    def _all_path_hazards(self):
+        """One HazardScore per reachable path across the failure matrix."""
+        hazards = [
+            _normalize_flood({}),
+            _normalize_flood({"flood": [{"value": "FPA"}]}),
+            _normalize_coastal({}),
+            _normalize_coastal({"coastal_wetlands": [{}]}),
+            _normalize_landslide({}),
+            _normalize_landslide({"landslide": [{}]}),
+            _normalize_fire_history({}),
+            _normalize_fire_history({"fire_history": [{}]}),
+            _normalize_heat({}),                              # unavailable
+            _normalize_heat({"hot_days_delta_2090": 10.0}),   # available
+            _normalize_bushfire({"bushfire": [{}]}),          # overlay hit
+            _normalize_bushfire({}),                          # no coords → skipped
+        ]
+        with patch(_RFS, return_value={"is_bushfire_prone": True}):
+            hazards.append(_normalize_bushfire({}, lat=self.LAT, lng=self.LNG))
+        with patch(_RFS, return_value={"is_bushfire_prone": False}):
+            hazards.append(_normalize_bushfire({}, lat=self.LAT, lng=self.LNG))
+        with patch(_RFS, side_effect=RuntimeError("RFS down")):
+            hazards.append(_normalize_bushfire({}, lat=self.LAT, lng=self.LNG))
+        return hazards
+
+    def test_every_path_names_its_reason(self):
+        for h in self._all_path_hazards():
+            assert h.confidence in ("low", "medium", "high"), h.hazard
+            assert (h.confidence_reason or "").strip(), (
+                f"{h.hazard}: confidence {h.confidence!r} served without a "
+                f"named reason (detail={h.detail!r})"
+            )
+
+    def test_no_path_emits_high_without_reason(self):
+        offenders = [
+            h for h in self._all_path_hazards()
+            if h.confidence == "high" and not (h.confidence_reason or "").strip()
+        ]
+        assert offenders == [], [h.hazard for h in offenders]
+
+    def test_bushfire_rfs_failure_is_not_a_confident_no(self):
+        """THE item-1 path: overlay empty + fallback raises. Old code: "No" at
+        "high". New contract: unavailable, low, reason names the failure, and
+        the detail says could-not-be-determined — never "No"."""
+        with patch(_RFS, side_effect=RuntimeError("RFS down")):
+            h = _normalize_bushfire({}, lat=self.LAT, lng=self.LNG)
+        assert h.confidence != "high"
+        assert h.confidence == "low"
+        assert h.available is False          # excluded from composite denominator
+        assert h.present is False
+        assert h.raw_score == 0.0
+        assert "could not be determined" in h.detail
+        assert h.detail != "Bushfire Prone Land: No"
+        assert "failed" in h.confidence_reason
+
+    def test_bushfire_no_coords_is_unavailable_not_confident(self):
+        h = _normalize_bushfire({})
+        assert h.confidence == "low"
+        assert h.available is False
+        assert "could not run" in h.confidence_reason
+
+    def test_bushfire_live_clear_is_confident_with_agreement_reason(self):
+        with patch(_RFS, return_value={"is_bushfire_prone": False}):
+            h = _normalize_bushfire({}, lat=self.LAT, lng=self.LNG)
+        assert h.confidence == "high"
+        assert h.available is True
+        assert h.present is False
+        assert "agrees" in h.confidence_reason
+
+    def test_bushfire_live_prone_stays_medium(self):
+        with patch(_RFS, return_value={"is_bushfire_prone": True}):
+            h = _normalize_bushfire({}, lat=self.LAT, lng=self.LNG)
+        assert h.confidence == "medium"
+        assert h.present is True
+        assert h.raw_score == 1.0
+
+    def test_confidence_reason_serialised_in_to_dict(self):
+        result = ClimateRiskResult(
+            score=1, band="Low", lat=self.LAT, lng=self.LNG,
+            hazards=[_normalize_flood({})],
+        )
+        d = result.to_dict()
+        assert d["hazards"][0]["confidence_reason"].strip()

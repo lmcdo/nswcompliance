@@ -434,6 +434,7 @@ scripts/*
 # DQ-30 guards — the pre-commit hook invokes the lint; if it is not tracked,
 # every commit in a fresh clone fails on a missing file.
 !scripts/lint_hardcoded_zone_codes.py
+!scripts/lint_hardcoded_confidence.py
 !scripts/validate_zone_code_validity.py
 !scripts/backfill_invalid_zone_codes.py
 !scripts/requirements-monitor.txt

@@ -1,107 +1,117 @@
 {
  "tier": "critical",
- "justification": "Applies the two authorised held repairs to served regulatory numbers: fairfield 716 served a granny-flat rear setback of 6.0m (a Chapter-5C narrow-lot first-floor value, 6.7x the actual 900mm control) and ryde 682 served a 4.0m side setback taken from a design-preference clause. Both rows now carry the source-verified value with the verbatim clause supporting it in the same write (rule 2b). Wrong served numbers are the silent-liability class, which is this tier's definition.",
- "commit_hash": "cfafc225",
+ "justification": "THE HEADLINE IS THE OLD BEHAVIOUR: when the bushfire overlay was empty and the RFS live fallback RAISED, climate_risk_score served 'Bushfire Prone Land: No' at confidence 'high' \u2014 a verdict about data the check never received (the DQ-36 class) on a safety-adjacent claim, rendered verbatim as a badge in the climate tool (ClimateRiskResultCard.tsx:173,176). This diff fixes that path and makes every hazard confidence carry a named reason. It also ships the absence-semantics census (item 0, report only) and an observation-mode confidence lint (item 2, never blocks, not wired).",
+ "commit_hash": "d85255e6",
  "files": [
-  "scripts/repair_authorized_held_rows.py",
-  "scripts/control_source_values_baseline.json",
-  ".claude/DATA_QUALITY_TRACKER.md",
-  ".gitignore",
-  ".claude/.pre-impl-done.json"
+  "services/climate_risk_score.py",
+  "tests/test_climate_risk_score.py",
+  "docs/qa/absence-semantics-census-2026-08.md",
+  "scripts/lint_hardcoded_confidence.py",
+  ".gitignore"
  ],
  "falsifiable_check": {
-  "command": "python scripts/validate_control_source_values.py && python scripts/repair_authorized_held_rows.py",
-  "passes_when": "every stored control value is derivable from its own source_text by a named rule or sits in the shrink-only baseline (now 37 rows), and the repair script's dry-run proves both rows sit in the EXACT intended post-state (value, quote, condition, review_reason, needs_review=FALSE, is_current)",
-  "fails_when": "either repaired row's quote stops supporting its value (0.9 not derivable -> unbaselined failing state, checker non-zero), the baseline is grown without --allow-growth, or a row matches neither its held pre-state nor the exact post-state (script exits 2, refusing to classify a divergence as done)",
-  "demonstrated_failing": "Live before/after: 716 value_min 6.0->0.9 with the 5B.2.3.1(a) quote; 682 4.0 -> 0.9-1.5 with the s2.9.2(a)/(b) quote; both needs_review TRUE->FALSE. Checker 'fixed since the baseline: 1' (682 left TRUNCATED_EVIDENCE, its old quote was at the 400-char cap), baseline 38->37, exit 0. Restoring the backup quote on 716 while keeping 0.9 makes the checker exit non-zero (0.9 not derivable from the old first-floor 6-metres clause).",
-  "mutation_evidence": "The dry-run is a live mutation probe: hand-edit either row's value/quote/condition/review_reason and the script exits 2 ('matches neither its held pre-state nor the intended post-state') instead of reporting proven-repaired. A guard miss mid-apply rolls back BOTH rows before commit (all-or-nothing, logic shape shared with repair_missing_primary_controls.py after its Sol rounds)."
+  "command": "python -m pytest tests/test_climate_risk_score.py -q",
+  "passes_when": "every reachable normalizer path (15 enumerated across the failure matrix, incl. RFS raise / RFS clear / RFS prone / no-coords) attaches a non-empty confidence_reason; the RFS-failure path yields available=False, confidence 'low', detail 'could not be determined', and a reason naming the failure",
+  "fails_when": "any path emits a confidence without a named reason (the all-paths sweep asserts reason non-empty per path), or the fallback-failure path can again claim 'high' or serve detail 'Bushfire Prone Land: No'",
+  "demonstrated_failing": "TestConfidenceCarriesReason fails on the pre-change code two ways: confidence_reason did not exist (AttributeError/empty), and test_bushfire_rfs_failure_is_not_a_confident_no pins the exact old defect \u2014 patch(_query_rfs_bfpl, side_effect=RuntimeError) returned confidence='high', detail 'Bushfire Prone Land: No', available=True on the old branch `\"high\" if hits else (\"medium\" if present else \"high\")`.",
+  "mutation_evidence": "Revert the rfs_state 'failed' arm to confidence='high' -> test_bushfire_rfs_failure_is_not_a_confident_no fails on three separate assertions (confidence, available, detail). Blank any one normalizer's confidence_reason -> test_every_path_names_its_reason names the hazard. Drop confidence_reason from to_dict -> test_confidence_reason_serialised_in_to_dict KeyErrors."
  },
  "pre_impl": {
-  "existing_data": "dcp_setback_controls rows 716 and 682 only, both recon'd live this session (pre-states incl. needs_review=TRUE, condition NULL, 682 quote at the 400-char cap). Backup table dcp_setback_controls_authorized_repairs_20260803 (2 rows, coverage asserted). Baseline shrink 38->37.",
-  "assumption_mismatch": "A row matching neither its held pre-state nor the exact post-state aborts the run with exit 2 before any write; a mid-apply guard miss rolls back both rows before commit.",
-  "new_vs_existing": "Two named ids only; no blanket UPDATE; no inserts.",
-  "external_source_error": "No external API. Evidence read from the two local PDFs this session; the verbatim clauses are constants in the script.",
-  "frontend_type": "None \u2014 value_min/value_max/condition shapes already rendered (range rows exist: burwood 1080/1176).",
-  "user_failure_mode": "Consumers that were failing closed on needs_review now serve the source-verified numbers; if the repair were wrong the quote in the row would contradict it and the push-time checker goes red."
+  "existing_data": "No DB writes. Code paths only: services/climate_risk_score.py normalizers; consumers verified before change \u2014 climate_risk_pipeline.py POST /climate-risk serves to_dict() to the free climate tool; intelligence_brief.py ingests via ClimateHazardOutput with extra='ignore' (brief seam safe, intelligence_brief.py:725-758).",
+  "assumption_mismatch": "If _query_rfs_bfpl changes shape, the 'clear' branch still only fires on an explicit non-prone result; any raise lands in 'failed' (fail closed). Composite already rescales around available=False (climate_risk_score.py:417-425, the heat precedent), so an unavailable bushfire cannot skew the score as silent 0-risk.",
+  "new_vs_existing": "Behaviour changes ONLY on the previously-broken paths (RFS failed / no coords): those now serve could-not-be-determined at low confidence and leave the composite denominator. Overlay-hit, live-prone and live-clear paths keep their prior confidence/present/raw values (existing 66-test file still green).",
+  "external_source_error": "RFS API raise -> rfs_state='failed' -> available=False + reason naming the failure. Previously swallowed into a confident 'No'.",
+  "frontend_type": "None required: card renders h.detail and h.confidence as strings (ClimateRiskResultCard.tsx:173,176); confidence_reason is additive JSON the card ignores. RESIDUAL (flagged, not fixed \u2014 claim-language boundary): the Present/'Not present' chip (:165-170) still reads 'Not present' for an undetermined hazard because the card does not read `available`; and confidence_reason is not yet rendered. Both belong to the typed-absence design phase.",
+  "user_failure_mode": "After: the failed state renders 'Bushfire Prone Land: could not be determined' + 'Confidence: low' \u2014 never blank, never 'No'. Verified against the card's render expressions cited above."
  },
  "functions": [
   {
-   "name": "main",
-   "file_line": "scripts/repair_authorized_held_rows.py:133",
-   "input": "CLI args (--apply, --backup-table) plus the live dcp_setback_controls rows 716 and 682 read through an exact pre-state guard at plan time",
-   "output": "exit 0 with both rows proven in pre- or post-state (writes only under --apply), exit 2 on divergence, missing creds, stale backup or guard miss",
-   "if_none": "DATABASE_URL unset -> exit 2 ('nothing was checked, which is not a pass'); row absent -> divergence path, exit 2"
+   "name": "_normalize_bushfire",
+   "file_line": "services/climate_risk_score.py:238",
+   "input": "overlays dict from _query_spatial_overlays plus optional lat/lng used only for the RFS live fallback query",
+   "output": "HazardScore whose confidence/available/detail/reason are decided by the tracked rfs_state (not_needed | prone | clear | failed | skipped)",
+   "if_none": "empty overlays with no coords -> 'skipped' arm: available=False, low, reason says the check could not run \u2014 never a confident No"
+  },
+  {
+   "name": "scan",
+   "file_line": "scripts/lint_hardcoded_confidence.py:92",
+   "input": "repo tree under services/scripts/enrichment/src/frontend-nextjs, .py/.ts/.tsx files read best-effort",
+   "output": "finding dicts categorised prod/computed/test with file:line, literal, enclosing function",
+   "if_none": "unreadable files skipped silently by design (observation mode reports what it can read; exit 0 always)"
   }
  ],
  "values": [
   {
-   "value": "FF_716_OLD_QUOTE (exact pre-state guard param)",
-   "read_at": "scripts/repair_authorized_held_rows.py:52",
-   "nullable": "no \u2014 constant; the guard also pins condition IS NULL and needs_review = TRUE",
-   "guard_at": "scripts/repair_authorized_held_rows.py:110 (WHERE source_text = %s AND condition IS NULL \u2014 IS NULL, never = NULL)",
-   "if_missing": "guard matches 0 rows; the post-state probe runs; if that also fails the script exits 2, nothing written"
+   "value": "rfs_state",
+   "read_at": "services/climate_risk_score.py:257 (initialised), :258-276 (assigned per outcome)",
+   "nullable": "no \u2014 always one of five literals",
+   "guard_at": "the if/elif chain at :278-304 covers all five; the else arm is the fail-closed default",
+   "if_missing": "not possible (initialised before the branch); an unknown state falls into the fail-closed else arm"
+  },
+  {
+   "value": "h.confidence_reason at the UI seam",
+   "read_at": "serialised in to_dict (services/climate_risk_score.py:141)",
+   "nullable": "dataclass default '' \u2014 the test sweep asserts non-empty on every reachable path",
+   "guard_at": "tests/test_climate_risk_score.py test_every_path_names_its_reason",
+   "if_missing": "card ignores the extra key (renders as before); the brief seam ignores it (extra='ignore')"
   }
  ],
  "queries": [
   {
-   "purpose": "guarded two-row repair, value + quote + condition in one statement per row (rule 2b)",
-   "file_line": "scripts/repair_authorized_held_rows.py:216",
-   "where_clause": "id = %s AND control_type/value/value_max/is_current/needs_review/source_text/condition pre-state pins",
-   "if_zero": "rowcount mismatch -> rollback of BOTH rows before commit, exit 2",
-   "if_wrong": "cannot address another row: id is the primary key and every predicate pins the recon pre-state"
+   "purpose": "hazard overlay point query (unchanged by this diff; listed because the normalizers consume it)",
+   "file_line": "services/climate_risk_score.py:196-210",
+   "where_clause": "layer_type = ANY(%s) AND ST_Intersects(geom, point) \u2014 no is_current column exists on spatial_overlays hazard layers",
+   "if_zero": "empty per-layer lists -> each normalizer's absent arm; bushfire now disambiguates via the RFS fallback outcome instead of claiming high",
+   "if_wrong": "wrong-layer rows would mis-score a hazard; out of scope here (no query change in this diff)"
   }
  ],
  "break_it": [
   {
-   "scenario": "Concurrent edit changes 716 between plan and apply",
-   "what_happens": "unguarded, the write would clobber the concurrent change with planned values",
+   "scenario": "RFS API raises while the overlay is empty (the item-1 path itself)",
+   "what_happens": "OLD: 'Bushfire Prone Land: No' at 'high' \u2014 a confident safety-adjacent No from zero usable data, DQ-36 class",
    "mitigated": true,
-   "how": "exact pre-state guard incl. full old source_text; a guard miss rolls back both rows before commit and exits 2",
-   "repro": "UPDATE dcp_setback_controls SET condition='x' WHERE id=716; python scripts/repair_authorized_held_rows.py --apply -> divergence, exit 2, nothing written"
+   "how": "services/climate_risk_score.py rfs_state='failed' arm -> available=False, low, 'could not be determined', reason names the failure; composite excludes the hazard",
+   "repro": "pytest tests/test_climate_risk_score.py -k rfs_failure_is_not_a_confident_no (patches _query_rfs_bfpl to raise)"
   },
   {
-   "scenario": "Value corrected but old quote kept (the camden-690 regression, rule 2b)",
-   "what_happens": "row looks verified while its evidence supports the OLD value",
+   "scenario": "A future normalizer path is added without a reason string",
+   "what_happens": "a badge would ship with no stated basis \u2014 indistinguishable from a hardcoded one",
    "mitigated": true,
-   "how": "value, source_text and condition written in the SAME UPDATE; the checker requires 0.9 derivable from the stored quote on every push",
-   "repro": "restore source_text from the backup while keeping 0.9 -> checker exit non-zero (unbaselined failing state)"
+   "how": "test_every_path_names_its_reason sweeps the enumerated path matrix; the observation lint reports the literal site for the FP-rate record",
+   "repro": "blank any confidence_reason= argument -> the sweep fails naming the hazard"
   },
   {
-   "scenario": "Re-running the script after a successful apply re-writes the two already-repaired rows",
-   "what_happens": "an idempotence failure would re-stamp reviewed_at and re-write values on rows already in their final state",
+   "scenario": "The composite silently counts an undetermined bushfire as zero risk",
+   "what_happens": "score understates risk while claiming full denominator coverage",
    "mitigated": true,
-   "how": "the dry-run proves the EXACT post-state incl. review_reason and reports proven-repaired [716, 682], planning zero writes",
-   "repro": "python scripts/repair_authorized_held_rows.py -> 0 of 2 planned"
+   "how": "available=False excludes the hazard and rescales (pre-existing mechanism :417-425, heat precedent); asserted via h.available in the pinned test",
+   "repro": "assert available flag in test_bushfire_rfs_failure_is_not_a_confident_no"
   },
   {
-   "scenario": "Baseline entry for 682 left behind after it became explained",
-   "what_happens": "checker red-way: a baselined row that became explained without baseline removal fails the gate",
+   "scenario": "The observation lint gets wired into a gate on raw counts",
+   "what_happens": "47 prod hits include ~13 type-annotation/docstring false positives \u2014 instant alarm fatigue, the exact \u00a77-finding-6 failure",
    "mitigated": true,
-   "how": "--write-baseline shrink 38->37 committed in this diff; checker re-run exit 0",
-   "repro": "git checkout HEAD~1 -- scripts/control_source_values_baseline.json; python scripts/validate_control_source_values.py -> non-zero"
+   "how": "script exits 0 unconditionally and its docstring bars wiring without an observed FP rate; this run's counts recorded in the PR as the first observation",
+   "repro": "python scripts/lint_hardcoded_confidence.py; echo $? -> 0 with 47 prod findings printed"
   },
   {
-   "scenario": "Stale backup table from an earlier run silently fails to cover this run",
-   "what_happens": "the printed rollback would restore nothing for the rows actually written \u2014 an unusable rollback presented as safety",
+   "scenario": "UI renders blank or 'No' for the undetermined hazard",
+   "what_happens": "the fix would be invisible or mislabelled at the consumer (the DQ-31 lesson)",
    "mitigated": true,
-   "how": "after CREATE TABLE IF NOT EXISTS, the script asserts every planned id exists in the backup and aborts before any UPDATE if not, telling the operator to pass a fresh --backup-table",
-   "repro": "CREATE TABLE dcp_setback_controls_authorized_repairs_20260803 AS SELECT * FROM dcp_setback_controls WHERE FALSE; python scripts/repair_authorized_held_rows.py --apply -> NOT in backup, aborting, exit 2"
+   "how": "card renders h.detail verbatim (ClimateRiskResultCard.tsx:173) which now carries 'could not be determined'; confidence badge :176 shows 'low'; chip residual explicitly flagged in pre_impl frontend_type, deferred to design phase",
+   "repro": "grep -n 'h.detail' frontend-nextjs/components/tools/ClimateRiskResultCard.tsx"
   }
  ],
  "post_merge": {
-  "db_reset": "No \u2014 both DB writes already applied and verified against production; merging changes no data.",
-  "secrets": "No \u2014 creds via git-ignored .env only.",
+  "db_reset": "No \u2014 no DB writes in this diff.",
+  "secrets": "No \u2014 no credentials touched.",
   "other_repo": "No.",
-  "manual_verify": "Optional: a fairfield granny-flat lookup shows rear setback 0.9m (was under_review); a ryde dwelling lookup shows side 0.9-1.5m."
+  "manual_verify": "Optional: run the climate tool on any address with the RFS endpoint blocked \u2014 the bushfire card should read 'could not be determined' at low confidence."
  },
  "checks": {
-  "db_writes": {
-   "backup": "dcp_setback_controls_authorized_repairs_20260803",
-   "predicted": 2,
-   "written": 2,
-   "all_or_nothing": true
-  },
-  "checker": "exit 0; fixed-since-baseline 1; baseline 38->37 shrink-only",
-  "idempotence": "re-run plans 0 of 2, both proven in exact post-state"
+  "pytest": "3567 passed (7 new), 25 skipped",
+  "jest": "990 passed / 76 suites (worktree, junctioned node_modules)",
+  "census": "docs/qa/absence-semantics-census-2026-08.md \u2014 35 paths, 11 collapse-served-as-claim (3 paid: conveyancing _fetch_db_data partial-failure, _fetch_tod silent omission, pipeline cache with no age filter), 8 partial, 16 typed",
+  "lint_observation_run": "64 total literals; 47 prod (incl ~13 annotation/docstring FPs), 0 inside confidence-named fns, 17 test fixtures; NOT wired anywhere, exit 0 always"
  }
 }
