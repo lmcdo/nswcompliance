@@ -1,22 +1,23 @@
 {
  "tier": "minor",
- "justification": "Docs-only change: adds a business research document (Phase 0+1 market scan for the rules-engine playbook) under docs/. No code paths, no user-facing product surfaces, no database interaction, no build inputs touched. Zero .py/.ts/.tsx files in the diff vs origin/main.",
- "commit_hash": "fb807a3",
+ "justification": "Docs-only change: adds the Phase 2 deep-dive companion to the Phase 0+1 market scan under docs/. No code paths, no user-facing product surfaces, no database interaction, no build inputs touched. Zero .py/.ts/.tsx files in the diff vs origin/main.",
+ "commit_hash": "c3b7bcd",
  "files": [
-  "docs/rules-engine-market-scan-phase0-1.md"
+  "docs/rules-engine-market-scan-phase0-1.md",
+  "docs/rules-engine-market-scan-phase2.md"
  ],
  "break_it": [
   {
    "scenario": "A reader treats an [INFERENCE] or [UNVERIFIED] tagged claim in the market scan as verified fact and makes a domain-selection decision on it.",
-   "what_happens": "A go/no-go call could rest on an unconfirmed licence term or fee estimate (e.g. FWC MAPD API commercial terms, PBS API licence).",
+   "what_happens": "A go/no-go call could rest on an unconfirmed figure (e.g. fractional-DPO population estimate, FSANZ labelling-slice page counts, revenue scenarios which are all inference).",
    "mitigated": true,
-   "how": "Every unverified claim is tagged inline and consolidated in the report's Honesty Ledger (section 8), which lists exactly what could not be verified and how to verify it; the report also states it stops for owner review before any Phase 2 action."
+   "how": "Every unverified claim is tagged inline and consolidated in each report's Honesty Ledger; the Phase 2 verdict is explicitly conditioned on 5 buyer-conversation questions and carries flip criteria, so no build decision rests on untested claims."
   }
  ],
  "post_merge": {
-  "db_reset": "N/A - no database objects touched; markdown document only.",
-  "secrets": "N/A - no credentials, endpoints, or env vars referenced; the document contains only public URLs.",
+  "db_reset": "N/A - no database objects touched; markdown documents only.",
+  "secrets": "N/A - no credentials, endpoints, or env vars referenced; the documents contain only public URLs.",
   "other_repo": "N/A - single-repo change, no cross-repo dependencies.",
-  "manual_verify": "Open docs/rules-engine-market-scan-phase0-1.md on the branch and confirm it renders as GitHub markdown (tables in sections 2 and 3 are the only complex elements)."
+  "manual_verify": "Open docs/rules-engine-market-scan-phase2.md on the branch and confirm it renders as GitHub markdown (the deep-dive tables are the only complex elements)."
  }
 }
