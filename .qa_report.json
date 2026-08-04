@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Consolidates every value-serving TS reader of dcp_setback_controls onto the ONE guarded implementation - served rows change on live free surfaces (35 flagged-but-numeric rows stop rendering as normal numbers on the assessment DCP tab and duplex-check card; 4 flagged secondary-dwelling rows stop shipping from canibuildit; capacity's arbitrary no-ORDER LIMIT 3 becomes all guarded rows in deterministic order with the zone filter newly applied). Serving-behaviour change on user-facing compliance surfaces = critical tier.",
- "commit_hash": "2af3153f",
+ "commit_hash": "292b150",
  "files": [
   "services/dcp_controls_api.py",
   "services/compliance_api_server.py",
