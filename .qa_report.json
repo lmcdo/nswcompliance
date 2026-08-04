@@ -1,22 +1,22 @@
 {
  "tier": "minor",
- "justification": "Docs-only change: adds the NDIS deep-dive Modules 1-5 checkpoint (regulatory architecture, market structure, demand nature, buyer constraints, use-case inventory) under docs/. No code paths, no user-facing product surfaces, no database interaction, no build inputs touched. Zero .py/.ts/.tsx files in the diff vs origin/main.",
- "commit_hash": "eae968e",
+ "justification": "Docs-only change: adds the NDIS deep-dive Modules 6-11 final verdict (product design + red team, corpus feasibility, competition sweep, GTM + validation sprint, care-sector expansion, practitioner voice) under docs/. No code paths, no user-facing product surfaces, no database interaction, no build inputs touched. Zero .py/.ts/.tsx files in the diff vs origin/main.",
+ "commit_hash": "b859adf",
  "files": [
-  "docs/ndis-deep-dive-modules-1-5.md"
+  "docs/ndis-deep-dive-modules-6-11-final.md"
  ],
  "break_it": [
   {
-   "scenario": "Founder acts on an inferred figure or [UNVERIFIED-PRIMARY] tag as if it were verified (e.g. treats the inferred July 2027 cohort size or an F-number derived only from a commentator as ground truth for build scope).",
-   "what_happens": "Corpus scope or revenue math is misspecified; a build starts against instruments that turn out to differ from what a direct primary-source read would show.",
+   "scenario": "Founder treats an [INFERENCE] figure (e.g. inferred July 2027 cohort size, base-case revenue projection, per-user session-time thresholds) or a search-snippet-level practitioner quote as verbatim ground truth for a build or sales decision.",
+   "what_happens": "Revenue math or product-shape decisions rest on unconfirmed figures; kill criteria are triggered on the wrong evidence.",
    "mitigated": true,
-   "how": "Every inferred or unverified claim carries an inline tag ([INFERENCE], [UNVERIFIED], [UNVERIFIED-PRIMARY]); the Honesty Ledger at the end lists every gap and how to close it; the checkpoint explicitly stops for owner review before Modules 6-11 build/GTM/verdict decisions."
+   "how": "Every unverified claim carries an inline tag ([INFERENCE], [UNVERIFIED], [PARAPHRASE from snippet]); the Honesty Ledger enumerates every gap and how to close it; the verdict is explicitly conditional on the 5 buyer-conversation questions and carries three kill-switches with numeric triggers; owner is directed to re-run fetches from home network before locking any build."
   }
  ],
  "post_merge": {
   "db_reset": "N/A - no database objects touched; markdown document only.",
-  "secrets": "N/A - no credentials, endpoints, or env vars referenced; document contains only public URLs.",
+  "secrets": "N/A - no credentials, endpoints, or env vars referenced; the document contains only public URLs.",
   "other_repo": "N/A - single-repo change, no cross-repo dependencies.",
-  "manual_verify": "Open docs/ndis-deep-dive-modules-1-5.md on the branch and confirm it renders as GitHub markdown (the deep-dive tables are the only complex elements)."
+  "manual_verify": "Open docs/ndis-deep-dive-modules-6-11-final.md on the branch and confirm it renders as GitHub markdown (the deep-dive tables and pricing tables are the only complex elements)."
  }
 }
