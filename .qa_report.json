@@ -1,23 +1,22 @@
 {
  "tier": "minor",
- "justification": "Docs-only change: adds the Phase 2 deep-dive companion to the Phase 0+1 market scan under docs/. No code paths, no user-facing product surfaces, no database interaction, no build inputs touched. Zero .py/.ts/.tsx files in the diff vs origin/main.",
- "commit_hash": "c3b7bcd",
+ "justification": "Docs-only change: adds the NDIS deep-dive Modules 1-5 checkpoint (regulatory architecture, market structure, demand nature, buyer constraints, use-case inventory) under docs/. No code paths, no user-facing product surfaces, no database interaction, no build inputs touched. Zero .py/.ts/.tsx files in the diff vs origin/main.",
+ "commit_hash": "eae968e",
  "files": [
-  "docs/rules-engine-market-scan-phase0-1.md",
-  "docs/rules-engine-market-scan-phase2.md"
+  "docs/ndis-deep-dive-modules-1-5.md"
  ],
  "break_it": [
   {
-   "scenario": "A reader treats an [INFERENCE] or [UNVERIFIED] tagged claim in the market scan as verified fact and makes a domain-selection decision on it.",
-   "what_happens": "A go/no-go call could rest on an unconfirmed figure (e.g. fractional-DPO population estimate, FSANZ labelling-slice page counts, revenue scenarios which are all inference).",
+   "scenario": "Founder acts on an inferred figure or [UNVERIFIED-PRIMARY] tag as if it were verified (e.g. treats the inferred July 2027 cohort size or an F-number derived only from a commentator as ground truth for build scope).",
+   "what_happens": "Corpus scope or revenue math is misspecified; a build starts against instruments that turn out to differ from what a direct primary-source read would show.",
    "mitigated": true,
-   "how": "Every unverified claim is tagged inline and consolidated in each report's Honesty Ledger; the Phase 2 verdict is explicitly conditioned on 5 buyer-conversation questions and carries flip criteria, so no build decision rests on untested claims."
+   "how": "Every inferred or unverified claim carries an inline tag ([INFERENCE], [UNVERIFIED], [UNVERIFIED-PRIMARY]); the Honesty Ledger at the end lists every gap and how to close it; the checkpoint explicitly stops for owner review before Modules 6-11 build/GTM/verdict decisions."
   }
  ],
  "post_merge": {
-  "db_reset": "N/A - no database objects touched; markdown documents only.",
-  "secrets": "N/A - no credentials, endpoints, or env vars referenced; the documents contain only public URLs.",
+  "db_reset": "N/A - no database objects touched; markdown document only.",
+  "secrets": "N/A - no credentials, endpoints, or env vars referenced; document contains only public URLs.",
   "other_repo": "N/A - single-repo change, no cross-repo dependencies.",
-  "manual_verify": "Open docs/rules-engine-market-scan-phase2.md on the branch and confirm it renders as GitHub markdown (the deep-dive tables are the only complex elements)."
+  "manual_verify": "Open docs/ndis-deep-dive-modules-1-5.md on the branch and confirm it renders as GitHub markdown (the deep-dive tables are the only complex elements)."
  }
 }
