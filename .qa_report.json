@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Docs-only change: adds a business research document (Phase 0+1 market scan for the rules-engine playbook) under docs/. No code paths, no user-facing product surfaces, no database interaction, no build inputs touched. Zero .py/.ts/.tsx files in the diff vs origin/main.",
- "commit_hash": "26d5cda",
+ "commit_hash": "fb807a3",
  "files": [
   "docs/rules-engine-market-scan-phase0-1.md"
  ],
