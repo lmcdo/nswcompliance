@@ -61,7 +61,9 @@ def main():
 
     # --- 5. SEE intake auto-answered constraints ---
     intake_path = os.path.join(project, "frontend-nextjs", "lib", "see", "intake.ts")
-    auto_unique = count_pattern(intake_path, r"Auto-answered from")
+    # Count only field doc comments (/** ... Auto-answered from ... */),
+    # not the plain // section comment lower in the file.
+    auto_unique = count_pattern(intake_path, r"/\*\*[^*]*Auto-answered from")
 
     # --- Output thin index ---
     print("CAPABILITY INDEX (auto-generated at session start):")

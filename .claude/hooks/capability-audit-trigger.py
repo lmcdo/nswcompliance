@@ -128,10 +128,12 @@ def scan_see_intake(project: str) -> list[str]:
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
-        # Keys are unquoted TS identifiers (`bushfire_prone:`) or quoted strings.
+        # Each auto-answered field carries an "Auto-answered from" doc comment
+        # (same marker session-capability-index.py counts). Capture the field
+        # name that follows the comment close.
         return list(set(re.findall(
-            r'\b([a-z_]*(?:subsidence|contaminated|drinking|bushfire|flood|heritage|anef)[a-z_]*)["\']?\s*\??:',
-            content,
+            r"Auto-answered from.*?\*/\s*([a-z_]+)\s*\??:",
+            content, re.DOTALL,
         )))
     except FileNotFoundError:
         return []
