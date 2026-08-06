@@ -783,6 +783,26 @@ def _get_weekly_rent(postcode: Optional[str]) -> Optional[float]:
 _NON_STRUCTURE_ANSWERS = {"part_of_main", "rejected"}
 
 
+def _structure_identity(detected_structures: list) -> list[tuple]:
+    """(identity, structure) for each detected structure.
+
+    Identity is the stored `index` when present, otherwise the array position
+    — which is exactly the fallback GrannyFlatBriefCard uses when a row
+    predates the field. Keying on `s.get("index")` alone made every answer
+    look unknown against a row of None identities: the answers were then all
+    dropped and the note fired, while the submitted count sailed on. Verified
+    2026-08-06 that all 33 production rows with structures carry `index`, so
+    this is a guard against a shape we do not currently hold, not a repair.
+    """
+    out = []
+    for pos, s in enumerate(detected_structures):
+        if not isinstance(s, dict):
+            continue
+        ident = s.get("index")
+        out.append((pos if ident is None else ident, s))
+    return out
+
+
 def _storable_answers(
     structure_types: Optional[list],
     detected_structures: Optional[list],
@@ -799,7 +819,7 @@ def _storable_answers(
         return None
     if not isinstance(detected_structures, list) or not detected_structures:
         return [s.model_dump() for s in structure_types]
-    known = {s.get("index") for s in detected_structures if isinstance(s, dict)}
+    known = {ident for ident, _ in _structure_identity(detected_structures)}
     return [s.model_dump() for s in structure_types if s.index in known]
 
 
@@ -865,9 +885,7 @@ def _resolve_count_source(
     # store an answer for a structure that does not exist — silently, as
     # human-labelled calibration data with no referent.
     if have_row and structure_types:
-        all_indexes = {
-            s.get("index") for s in detected_structures if isinstance(s, dict)
-        }
+        all_indexes = {ident for ident, _ in _structure_identity(detected_structures)}
         answered = {s.index for s in structure_types}
         unknown = answered - all_indexes
         if unknown:
@@ -899,8 +917,8 @@ def _resolve_count_source(
         )
 
     expected = {
-        s.get("index") for s in detected_structures
-        if isinstance(s, dict) and not s.get("is_main_dwelling")
+        ident for ident, st in _structure_identity(detected_structures)
+        if not st.get("is_main_dwelling")
     }
     if not expected:
         # The detector found no secondary structure, so there was nothing for

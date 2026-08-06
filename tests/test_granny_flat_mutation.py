@@ -1388,6 +1388,31 @@ class TestConfirmAndCalculate:
         assert inputs["confirmed_count_source"] == "machine_default"
         assert "nothing to classify" in inputs["confirmed_count_source_note"]
 
+    def test_structures_without_an_index_fall_back_to_array_position(self, monkeypatch):
+        """Sol round-10: a detect row whose structures predate the index field.
+
+        Keying on s.get('index') alone made every answer look unknown against
+        a row of None identities — all answers dropped, note fired, and the
+        submitted count sailed on. The brief card already falls back to array
+        position; the server now agrees with it.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"is_main_dwelling": True},    # no 'index' key
+            {"is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            existing_secondary_dwelling=False,
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "secondary_detections_classified"
+        assert inputs["structure_types"] == [{"index": 1, "answer": "garage"}]
+        assert resp.confidence == "high"
+
     def test_unknown_index_is_flagged_under_any_provenance(self, monkeypatch):
         """Sol round-6: an answer with no referent must never be stored quietly.
 
