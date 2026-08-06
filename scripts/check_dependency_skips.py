@@ -21,21 +21,36 @@ into a skip, and a skip is green. A test that cannot run is not a passing test,
 and the only thing separating the loud version of this failure from the silent
 one is whether the missing import happens to sit inside a `pytest.importorskip`.
 
-This makes the silent version countable. tests/conftest.py writes every
-dependency-driven skip to .pytest-skips.json; this script compares the count
-against dependency-skip-baseline.json and fails when it rises. The existing 23
-are baselined, not blessed: the baseline may only shrink, and shrinking it is
-how the coverage gets recovered.
+This makes the silent version countable. tests/conftest.py writes EVERY skip to
+.pytest-skips.json; this script compares it against dependency-skip-baseline.json
+on three axes, because each one alone has a way through:
 
-Deliberately NOT counted: env-gated skips ("set RUN_LIVE_GEMINI=1"), which are
-a choice rather than a missing dependency. Folding those in would make the
-number measure intent instead of coverage.
+  * per-dependency counts, exactly — totals alone cancel out (shapely 13 -> 14
+    against icontract 5 -> 4 leaves every total unchanged while coverage is
+    lost);
+  * the classified count, exactly in BOTH directions — a baseline left loose
+    after a recovery lets the recovery be undone later without tripping
+    anything;
+  * the TOTAL skip count — classification is a regex over a free-text reason,
+    so a skip phrased `skipif(boto3 is None, reason="requires boto3")` matches
+    nothing; enforcement must not depend on recognising the wording.
+
+The existing 23 are baselined, not blessed. Shrinking the baseline is how the
+coverage gets recovered, and it has to be done deliberately, in review.
+
+Deliberately NOT counted as a dependency skip: env-gated skips ("set
+RUN_LIVE_GEMINI=1"), which are a choice rather than a missing dependency —
+though they are still inside the enforced TOTAL, so they cannot grow unnoticed
+either. Folding them into the dependency number would make it measure intent
+instead of coverage.
 
 Exit codes:
-    0  count <= baseline (and prints the current census)
-    1  count > baseline, or a new dependency appeared
-    2  the skip report is missing — treated as a failure, never as a pass,
-       because "no report" and "no skips" must not look the same
+    0  every axis matches the baseline
+    1  a per-dependency count moved, the classified count moved, or the total moved
+    2  the skip report is missing, or the baseline is missing without --init —
+       neither may be read as a pass, because "no report" and "no skips" must
+       not look the same, and a gate must never generate its own baseline from
+       the run it is judging
 """
 
 import json
@@ -74,7 +89,18 @@ def main() -> int:
             by_dep.setdefault(dep, []).append(s["test"])
 
     if not BASELINE.exists():
-        print(f"DEPENDENCY-SKIP RATCHET: no baseline — writing {BASELINE.name} at {count}")
+        # A missing baseline must NOT self-heal. Writing one from the current
+        # run and passing would mean deleting the file is a way to bless
+        # whatever is skipping today — the gate would certify its own input.
+        # Generating it is an explicit, reviewable act: --init.
+        if "--init" not in sys.argv:
+            print(f"DEPENDENCY-SKIP RATCHET: FAILED — {BASELINE.name} is missing.")
+            print("  Refusing to generate one from this run and pass: that would")
+            print("  bless whatever happens to be skipping right now.")
+            print("  If this is genuinely the first run, re-run with --init and")
+            print("  commit the baseline so a human has seen the numbers.")
+            return 2
+        print(f"DEPENDENCY-SKIP RATCHET: --init — writing {BASELINE.name} at {count}")
         BASELINE.write_text(json.dumps(
             {"total_skipped": total, "count": count,
              "dependencies": {k: len(v) for k, v in sorted(by_dep.items())}},
@@ -93,16 +119,33 @@ def main() -> int:
         mark = "" if was == len(by_dep[dep]) else f"  <- was {was if was is not None else 'NEW'}"
         print(f"  {dep:<28} {len(by_dep[dep]):>3}{mark}")
 
-    new_deps = sorted(set(by_dep) - set(known))
-    if new_deps:
+    # PER-DEPENDENCY, not just the totals. Totals alone cancel: one new test
+    # skipping for shapely (13 -> 14) against one icontract test recovered
+    # (5 -> 4) leaves count 23 and total 25 unchanged, no new dependency name,
+    # and newly lost coverage sailing through green.
+    drifted = sorted(set(by_dep) | set(known))
+    problems = []
+    for dep in drifted:
+        now = len(by_dep.get(dep, []))
+        was = known.get(dep)
+        if was is None:
+            problems.append((dep, "NEW", now, by_dep.get(dep, [])))
+        elif now != was:
+            problems.append((dep, was, now, by_dep.get(dep, [])))
+
+    if problems:
         print()
-        print("DEPENDENCY-SKIP RATCHET: FAILED — a NEW dependency is now skipping tests:")
-        for dep in new_deps:
-            for t in by_dep[dep]:
-                print(f"  {dep}: {t}")
-        print("  Install it in requirements-test.txt so the tests run, or, if it")
-        print("  genuinely cannot be a CI dependency, say why here and raise the")
-        print("  baseline in the same commit — deliberately, in review.")
+        print("DEPENDENCY-SKIP RATCHET: FAILED — per-dependency counts moved:")
+        for dep, was, now, tests in problems:
+            print(f"  {dep}: {was} -> {now}")
+            if was == "NEW" or (isinstance(was, int) and now > was):
+                for t in tests[:5]:
+                    print(f"      {t}")
+        print("  If a count ROSE: install it in requirements-test.txt so the tests")
+        print("  run, or, if it genuinely cannot be a CI dependency, say why and")
+        print("  raise the baseline in the same commit — deliberately, in review.")
+        print("  If a count FELL: good — lock it in by lowering the baseline now,")
+        print("  or the recovery can be undone later without tripping anything.")
         return 1
 
     # EXACT match, both directions. A ratchet left loose is not a ratchet: if

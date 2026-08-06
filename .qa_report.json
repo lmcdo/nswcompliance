@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Repairs CI rather than served output: adds the missing PyMuPDF test dependency, removes pytest fail-fast, scopes the QA-report job to pull requests (it is structurally unpassable on main), and adds a red-main alarm plus a dependency-skip ratchet. No product code, no DB writes, no user-facing text. Standard rather than minor because it changes what the gates verify and therefore what a green tick means.",
- "commit_hash": "2f5c47b5",
+ "commit_hash": "cb2cd855",
  "files": [
   "requirements-test.txt",
   ".github/workflows/gates.yml",
@@ -16,7 +16,7 @@
   "passes_when": "The whole suite runs to completion under CI's exact import surface with 0 failures (3665 passed), the four TestExtractorSelectionRules tests among them; the dependency-skip census reports 23 against a baseline of 23; and no job in gates.yml can be red-by-construction on main.",
   "fails_when": "Any test fails under the SIMULATED CI import surface — that is the real condition, because the whole outage was a module present locally and absent in CI, and a plain local run cannot see it (this machine has PyMuPDF installed, which is why 3698 tests passed here on 08-06 while main had already been red for three days). The ratchet goes red if the skip count rises, if a new dependency starts skipping tests, or if .pytest-skips.json is absent — a missing census is failure, never zero.",
   "demonstrated_failing": "All four states reproduced red before the fix. (1) With the CI import blocker and no PyMuPDF the suite reports exactly 4 failures, all ModuleNotFoundError: No module named 'fitz'. (2) The real CI log for run 30856789737 shows the identical failure and '1 failed, 1405 passed, 1 skipped, 19 deselected' — 1,405 of 3,665 tests ran, ~2,260 did not. (3) The ratchet was fed a doctored census three ways: new dependency -> exit 1, rising count on a known dependency -> exit 1, missing report -> exit 2, unchanged -> exit 0. (4) gh run list --workflow gates.yml --branch main returns five consecutive failures dated 2026-08-03, confirming the outage independently of the report of it.",
-  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again.",
+  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again. Sol round 3: compare only the totals -> the offsetting shapely/icontract trade passes again; restore the auto-write on a missing baseline -> deleting the file passes with an inflated baseline.",
   "self_comparison_note": "This does not re-run the code and check it agrees with itself. The import surface is derived from requirements-test.txt through pip's own resolver (48 packages), not from whatever happens to be installed here, and the outcome is cross-checked against the actual GitHub Actions log rather than a local re-execution."
  },
  "pre_impl": {
@@ -41,7 +41,7 @@
   },
   {
    "name": "main",
-   "file_line": "scripts/check_dependency_skips.py:50",
+   "file_line": "scripts/check_dependency_skips.py:65",
    "input": "the .pytest-skips.json census and the committed dependency-skip-baseline.json",
    "output": "a printed census grouped by dependency, and exit 0, 1 or 2",
    "if_none": "a missing census exits 2 — 'no report' and 'no skips' must not look the same, which is the failure mode being fixed"
@@ -149,6 +149,20 @@
    "mitigated": true,
    "how": "Sol finding, verified real and fixed: conftest now records EVERY skip, and the baseline pins the total (25) as well as the classified subset (23). An unrecognised skip trips the total ratchet and is printed by name and reason, so classification is a diagnostic aid rather than the thing enforcement depends on.",
    "repro": "append a skip with dependency=None to .pytest-skips.json and run the script — exits 1 and names the test"
+  },
+  {
+   "scenario": "offsetting drift — one new test skips for shapely (13->14) while one icontract test is recovered (5->4)",
+   "what_happens": "the classified count stays 23, the total stays 25, no dependency name is new, and newly lost coverage passes green — the ratchet cancels itself out",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed: per-dependency counts are compared exactly, so either half of that trade trips the gate on its own. Totals are now the third axis rather than the only one.",
+   "repro": "reassign one icontract skip to shapely in .pytest-skips.json and run the script — exits 1 naming both movements"
+  },
+  {
+   "scenario": "dependency-skip-baseline.json is deleted or absent while extra tests are skipping",
+   "what_happens": "the script wrote a fresh baseline from the run it was judging and exited 0 — deleting the file becomes a way to bless whatever is broken today, and the gate certifies its own input",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed: a missing baseline exits 2 unless --init is passed explicitly, so generating one is a deliberate, reviewable act rather than a side effect of a red run.",
+   "repro": "mv dependency-skip-baseline.json away and run the script — exits 2"
   }
  ],
  "post_merge": {
