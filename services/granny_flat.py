@@ -49,7 +49,7 @@ from typing import Literal, Optional
 import psycopg2
 import psycopg2.extras
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, StrictInt, model_validator
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
@@ -348,7 +348,9 @@ class StructureConfirmation(BaseModel):
     row's `detected_structures` — so no row anywhere held a structure and a
     judgement about it together.
     """
-    index: int
+    # StrictInt, not int: pydantic coerces `true` to 1, which would silently
+    # attach an answer to structure 1 and could move the cl 53(1) verdict.
+    index: StrictInt
     answer: StructureAnswer
 
 

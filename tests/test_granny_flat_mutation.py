@@ -1629,6 +1629,16 @@ class TestConfirmAndCalculate:
         # sit in the column a calibration consumer reads as human labels.
         assert inputs["structure_types"] == []
 
+    def test_a_boolean_index_is_rejected_not_coerced(self):
+        """Sol round-16: pydantic turns True into 1 unless told otherwise.
+
+        {"index": true, "answer": "existing_gf"} would have attached that
+        answer to structure 1 and could move the cl 53(1) verdict.
+        """
+        import pydantic
+        with pytest.raises(pydantic.ValidationError):
+            _make_confirm_req(structure_types=[{"index": True, "answer": "existing_gf"}])
+
     def test_duplicate_indexes_rejected_under_every_provenance(self):
         """Sol round-4: two answers for one structure are ambiguous regardless."""
         import pydantic
