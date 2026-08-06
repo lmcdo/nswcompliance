@@ -1388,6 +1388,55 @@ class TestConfirmAndCalculate:
         assert inputs["confirmed_count_source"] == "machine_default"
         assert "nothing to classify" in inputs["confirmed_count_source_note"]
 
+    def test_eligibility_gate_uses_the_detected_count_not_the_submitted_one(self, monkeypatch):
+        """Sol round-11 (DQ-51 closed): the SEPP cl 53(1) gate keyed on caller input.
+
+        Three structures detected and both secondaries classified as garages,
+        but the request submits 1 — which used to clear the >=3 multi-structure
+        block and return a buildable result.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 1, "answer": "garage"},
+                             {"index": 2, "answer": "garage"}],
+        ))
+        assert resp.granny_flat_buildable is False
+        assert any("MULTIPLE_SECONDARY_STRUCTURES" in w for w in resp.warnings), resp.warnings
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_structure_count"] == 3
+        assert inputs["confirmed_structure_count_submitted"] == 1
+
+    def test_an_existing_granny_flat_answer_outranks_the_request_flag(self, monkeypatch):
+        """Sol round-11: the answer is the specific evidence for cl 53(1).
+
+        A report could record 'existing_gf' for a structure and still compute
+        eligibility as though the lot had none.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            existing_secondary_dwelling=False,      # contradicted by the answer
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "existing_gf"}],
+        ))
+        assert resp.granny_flat_buildable is False
+        inputs = _stored_inputs(conn)
+        assert inputs["existing_secondary_dwelling"] is True
+        assert inputs["existing_secondary_dwelling_submitted"] is False
+
     def test_structures_without_an_index_fall_back_to_array_position(self, monkeypatch):
         """Sol round-10: a detect row whose structures predate the index field.
 

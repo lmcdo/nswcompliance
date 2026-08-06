@@ -823,6 +823,59 @@ def _storable_answers(
     return [s.model_dump() for s in structure_types if s.index in known]
 
 
+def _effective_structure_count(
+    structure_types: Optional[list],
+    detected_structures: Optional[list],
+    submitted_count: int,
+) -> int:
+    """The structure count the eligibility gate should use.
+
+    When the detect run's structures and per-structure answers are both
+    available they settle it between them: every detected structure, less the
+    ones answered 'part_of_main' or 'rejected'. The caller's figure is used
+    only when there is nothing better to go on. Before this the SEPP cl 53(1)
+    multi-structure block keyed on whatever number the request supplied.
+    """
+    if not isinstance(detected_structures, list) or not detected_structures:
+        return submitted_count
+    if not structure_types:
+        return submitted_count
+    not_separate = sum(
+        1 for s in structure_types if s.answer in _NON_STRUCTURE_ANSWERS
+    )
+    detected_total = sum(1 for s in detected_structures if isinstance(s, dict))
+    return max(0, detected_total - not_separate)
+
+
+def _fetch_detect_row(conn, req) -> tuple:
+    """(tile_b64, execution_manifest, detected_structures) for this confirm's detect run.
+
+    Scoped to the detect run AND the parcel AND its coordinates: detect_id,
+    report_id and prop_id are all caller-supplied, so any one of them alone
+    could pair one property's evidence with another's address. The ~50m bound
+    matches the flood cache read. Returns (None, None, None) when no row
+    resolves — absent evidence, which downstream treats as its own state.
+    """
+    cols = ("SELECT outputs->>'tile_b64', outputs->'execution_manifest', "
+            "       outputs->'detected_structures' FROM granny_flat_reports ")
+    coord = " AND abs(lat - %s) < 0.0005 AND abs(lng - %s) < 0.0005 "
+    row = None
+    with conn.cursor() as cur:
+        if req.report_id:
+            cur.execute(
+                cols + "WHERE id = %s AND prop_id = %s "
+                       "AND outputs->>'detect_id' = %s" + coord,
+                (req.report_id, req.prop_id, req.detect_id, req.lat, req.lng))
+            row = cur.fetchone()
+        if row is None and req.detect_id:
+            cur.execute(
+                cols + "WHERE outputs->>'detect_id' = %s AND prop_id = %s" + coord
+                     + "ORDER BY created_at DESC LIMIT 1",
+                (req.detect_id, req.prop_id, req.lat, req.lng))
+            row = cur.fetchone()
+    return (row[0], row[1], row[2]) if row else (None, None, None)
+
+
 def _count_mismatch_note(
     structure_types: Optional[list],
     detected_structures: list,
@@ -1382,10 +1435,20 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # Load SEPP standards from DB — no fallback (#817): the buildable verdict,
     # floor-area cap, and cost figures all derive from these standards, so an
     # unavailable config fails the request instead of rendering hardcoded figures.
+    # The DETECT row rides along on this connection rather than opening
+    # another. It has to be read HERE, before the eligibility gate below,
+    # because the gate keys on the structure count: reading it later meant the
+    # count driving a served verdict was whatever the caller sent, while the
+    # provenance machinery downstream could only complain about it afterwards.
+    tile_b64: Optional[str] = None
+    detect_manifest = None
+    detected_structures_carry = None
     _confirm_conn = None
     try:
         _confirm_conn = _get_conn()
         sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards(_confirm_conn)
+        tile_b64, detect_manifest, detected_structures_carry = _fetch_detect_row(
+            _confirm_conn, req)
     except Exception:
         sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards()
     finally:
@@ -1393,6 +1456,58 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             _confirm_conn.close()
     if sepp_min_lot is None or sepp_max_gf is None:
         raise HTTPException(status_code=503, detail=_SEPP_UNAVAILABLE_DETAIL)
+
+    count_source, provenance_note = _resolve_count_source(
+        req.confirmed_count_source,
+        req.structure_types,
+        detected_structures_carry,
+        submitted_count=req.confirmed_structure_count,
+    )
+
+    # The detector's count comes from the DETECT ROW when we have it.
+    # `req.samgeo_structure_count` is echoed back by the client
+    # (page.tsx -> route.ts -> here), so comparing the submitted count against
+    # it was comparing two caller-supplied numbers. Census finding, closed.
+    if isinstance(detected_structures_carry, list):
+        machine_count = len(detected_structures_carry)
+    else:
+        machine_count = req.samgeo_structure_count
+
+    # The count the SEPP gate actually uses. When the detect row and the
+    # answers are both present they determine it between them; the submitted
+    # figure is only trusted when there is nothing better. Previously a
+    # request could submit any number and clear the cl 53(1) block with it.
+    effective_count = _effective_structure_count(
+        req.structure_types, detected_structures_carry,
+        req.confirmed_structure_count)
+
+    if provenance_note:
+        warnings.append(
+            "Structure count not treated as reviewed: "
+            + provenance_note.replace("claimed secondary_detections_classified, but ", "")
+            + ". The structure count in this report has not been "
+              "checked against the aerial image."
+        )
+    if effective_count != req.confirmed_structure_count:
+        warnings.append(
+            f"Structure count taken from the aerial detection and your answers "
+            f"({effective_count}), not the {req.confirmed_structure_count} submitted "
+            "with the request."
+        )
+
+    # An answer naming an existing granny flat outranks a request field saying
+    # there is none: the answer is the specific evidence, and SEPP cl 53(1) is
+    # the clause it bears on. Trusting the boolean meant a report could record
+    # 'existing_gf' for a structure and still compute eligibility as if the lot
+    # had none.
+    existing_secondary_dwelling = req.existing_secondary_dwelling
+    if any(s.answer == "existing_gf" for s in (req.structure_types or [])):
+        if existing_secondary_dwelling is not True:
+            warnings.append(
+                "One of the structures was identified as an existing secondary "
+                "dwelling, so the lot is assessed on that basis."
+            )
+        existing_secondary_dwelling = True
 
     granny_flat_buildable = True
     max_floor_area_m2 = sepp_max_gf
@@ -1472,7 +1587,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         )
 
     # SEPP Housing 2021 cl 53(1): only one secondary dwelling per lot.
-    if req.existing_secondary_dwelling is True:
+    if existing_secondary_dwelling is True:
         granny_flat_buildable = False
         warnings.append(
             "A secondary dwelling already exists on this lot. SEPP Housing 2021 (cl 53(1)) "
@@ -1485,8 +1600,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # already a secondary dwelling is high. Block and require human verification.
     if (
         granny_flat_buildable
-        and req.confirmed_structure_count >= 3  # 1 main + 2 secondary = 3 total
-        and req.existing_secondary_dwelling is None
+        and effective_count >= 3  # 1 main + 2 secondary = 3 total
+        and existing_secondary_dwelling is None
     ):
         granny_flat_buildable = False
         warnings.append(
@@ -1528,8 +1643,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # If they said True, we've already blocked buildability.
     # If they said False, no ambiguity. Only warn when None (not asked / not answered).
     if (
-        req.confirmed_structure_count == 2  # exactly 1 secondary structure — ambiguous but not blocked
-        and req.existing_secondary_dwelling is None
+        effective_count == 2  # exactly 1 secondary structure — ambiguous but not blocked
+        and existing_secondary_dwelling is None
     ):
         warnings.append(
             "Existing outbuilding detected. Granny flat approval depends on whether "
@@ -1559,111 +1674,16 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 )
 
         with conn.cursor() as cur:
-            # prior-art-checked: extends this function's own existing
-            # tile_b64 carry-forward read with one more column — no new
-            # source. The manifest must describe the DETECT run's actual tile
-            # and detection; re-deriving it here would be the parallel-lookup
-            # anti-pattern (campaign item 4 cache rule, same as tile_b64).
-            #
-            # prior-art-checked: reuse not viable because this IS the existing
-            # implementation — the same SELECT in the same function gains one
-            # more column from the same row. No new source, no new query, no
-            # new module.
-            #
-            # `detected_structures` joins this read for the same reason
-            # tile_b64 did: the INSERT below is ON CONFLICT (id) DO UPDATE
-            # against the DETECT row, so without carrying it forward the
-            # confirm write DELETES the machine's per-structure evidence.
-            # Measured 2026-08-06: 0 of 87 rows held
-            # `outputs.detected_structures` and
-            # `inputs.confirmed_structure_count` together — every confirmation
-            # had already destroyed the thing it was a confirmation OF.
-            # The lookup key: `id = req.report_id` could almost never resolve.
-            # Measured live 2026-08-06: `id` NEVER equals the detect run's
-            # `detect_id` (0 of 87 rows), and neither frontend sends
-            # `report_id` on confirm — the Next route mints a fresh UUID — so
-            # this read missed nearly every time. Evidence: of 16 confirm rows,
-            # 0 carried an execution_manifest and 1 carried a tile. The
-            # carry-forward was decorative. `detect_id` is the key both clients
-            # DO send (60 present, 60 distinct, all UUID-shaped), so fall back
-            # to it. Seq Scan, 23ms at 87 rows; revisit an index past ~50k.
-            # Both lookups are scoped to the SUBMITTED PARCEL. detect_id is
-            # caller-supplied, so an unscoped global match would let one
-            # request pull another property's tile, manifest and structures
-            # into a report describing a different address. prop_id is
-            # populated on every detect row (60/60, verified 2026-08-06).
-            tile_b64: Optional[str] = None
-            detect_manifest = None
-            detected_structures_carry = None
-            # …and to the coordinates as well as the parcel id, the same
-            # ~50m proximity bound the flood cache read carries. prop_id and
-            # detect_id are both caller-supplied, so a request can pair a
-            # valid detection for one property with the address and
-            # coordinates of another; without this the older run's tile and
-            # structures would ride into a report labelled as somewhere else.
-            _CARRY_COLS = ("SELECT outputs->>'tile_b64', outputs->'execution_manifest', "
-                           "       outputs->'detected_structures' "
-                           "FROM granny_flat_reports ")
-            _COORD_BOUND = " AND abs(lat - %s) < 0.0005 AND abs(lng - %s) < 0.0005 "
-            # The report_id branch is also bound to detect_id: a caller can
-            # hold a report_id from an EARLIER detection on the same parcel,
-            # and matching on it alone would return that older run's tile,
-            # manifest and structures — then store them beside the current
-            # detect_id, and evaluate the review against the wrong run.
-            row = None
-            if req.report_id:
-                cur.execute(
-                    _CARRY_COLS + "WHERE id = %s AND prop_id = %s "
-                                  "AND outputs->>'detect_id' = %s" + _COORD_BOUND,
-                    (req.report_id, req.prop_id, req.detect_id, req.lat, req.lng))
-                row = cur.fetchone()
-            if row is None and req.detect_id:
-                cur.execute(
-                    _CARRY_COLS + "WHERE outputs->>'detect_id' = %s AND prop_id = %s"
-                                  + _COORD_BOUND +
-                                  "ORDER BY created_at DESC LIMIT 1",
-                    (req.detect_id, req.prop_id, req.lat, req.lng),
-                )
-                row = cur.fetchone()
-            if row:
-                tile_b64 = row[0]  # None if key absent or value null
-                detect_manifest = row[1]
-                detected_structures_carry = row[2]
-
-            # Provenance is resolved HERE, against the detect row, not taken
-            # from the caller's flag — 'secondary_detections_classified' is what buys "high",
-            # so it must rest on evidence rather than on an assertion.
-            count_source, provenance_note = _resolve_count_source(
-                req.confirmed_count_source,
-                req.structure_types,
-                detected_structures_carry,
-                submitted_count=req.confirmed_structure_count,
-            )
-
-            # The detector's count comes from the DETECT ROW when we have it.
-            # `req.samgeo_structure_count` is echoed back by the client
-            # (page.tsx -> route.ts -> here), so comparing the submitted count
-            # against it was comparing two caller-supplied numbers. Census
-            # finding, closed here now that the row is being read anyway.
-            if isinstance(detected_structures_carry, list):
-                machine_count = len(detected_structures_carry)
-            else:
-                machine_count = req.samgeo_structure_count
-
-            # A downgrade is surfaced, not just recorded — a reader should see
-            # that the review did not hold together, not only a quieter
-            # confidence badge.
-            if provenance_note:
-                warnings.append(
-                    "Structure count not treated as reviewed: "
-                    + provenance_note.replace("claimed secondary_detections_classified, but ", "")
-                    + ". The structure count in this report has not been "
-                      "checked against the aerial image."
-                )
-
+            # prior-art-checked: reuse not viable because this IS the
+            # existing implementation, relocated. The detect-row read now
+            # happens on the SEPP-standards connection higher up, because
+            # the eligibility gate needs the count it produces; nothing
+            # here re-queries it. tile_b64, detect_manifest,
+            # detected_structures_carry, count_source, provenance_note,
+            # machine_count and effective_count are all already resolved.
             confidence, confidence_reason = _compute_confidence(
                 validated=SAMGEO_VALIDATED,
-                confirmed_count=req.confirmed_structure_count,
+                confirmed_count=effective_count,
                 samgeo_count=machine_count,
                 rent_available=weekly_rent is not None,
                 count_source=count_source,
@@ -1679,7 +1699,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             cap_reasons = []
             if lot_area_m2 is None:
                 cap_reasons.append("Lot area could not be verified — eligibility is unconfirmed.")
-            if req.existing_secondary_dwelling is None and req.confirmed_structure_count >= 2:
+            if existing_secondary_dwelling is None and effective_count >= 2:
                 cap_reasons.append(
                     "Eligibility is capped because the status of one or more existing secondary "
                     "structures on this lot could not be confirmed. NSW planning rules only allow one "
@@ -1711,7 +1731,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                     date.today().isoformat(),
                     psycopg2.extras.Json({
                         "lot_area_m2": lot_area_m2,
-                        "confirmed_structure_count": req.confirmed_structure_count,
+                        "confirmed_structure_count": effective_count,
+                        "confirmed_structure_count_submitted": req.confirmed_structure_count,
                         # Whether a human touched that count, as a FIELD — a
                         # comment cannot be queried, and the 16 historical
                         # rows are indistinguishable from human-confirmed
@@ -1738,7 +1759,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "detect_id": req.detect_id,
                         "samgeo_structure_count": req.samgeo_structure_count,
                         "postcode": postcode,
-                        "existing_secondary_dwelling": req.existing_secondary_dwelling,
+                        "existing_secondary_dwelling": existing_secondary_dwelling,
+                        "existing_secondary_dwelling_submitted": req.existing_secondary_dwelling,
                         "main_dwelling_area_m2": req.main_dwelling_area_m2,
                         "execution_manifest": detect_manifest,
                     }),
@@ -1794,7 +1816,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             # SAM returned 99 structures because a request said so.
             "structure_count": machine_count,
             "structure_count_client_echo": req.samgeo_structure_count,
-            "count_used_in_report": req.confirmed_structure_count,
+            "count_used_in_report": effective_count,
             "count_source": count_source,
         },
         features_returned=machine_count,
@@ -1852,7 +1874,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "lng": req.lng,
             "prop_id": req.prop_id,
             "lot_area_m2": lot_area_m2,
-            "confirmed_structure_count": req.confirmed_structure_count,
+            "confirmed_structure_count": effective_count,
             "confirmed_count_source": count_source,
             # The audit trail keeps what the caller SENT, including any
             # referent-less answers the stored column drops — the record of
@@ -1866,7 +1888,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "detect_id": req.detect_id,
             "samgeo_structure_count": req.samgeo_structure_count,
             "postcode": postcode,
-            "existing_secondary_dwelling": req.existing_secondary_dwelling,
+            "existing_secondary_dwelling": existing_secondary_dwelling,
         },
         data_sources=audit_data_sources,
         output_summary=outputs_for_audit,
@@ -1874,7 +1896,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         intermediate_calculations={
             "lot_area_m2": lot_area_m2,
             "max_buildable_m2": max_floor_area_m2,
-            "structure_count": req.confirmed_structure_count,
+            "structure_count": effective_count,
             "eligible": granny_flat_buildable,
             "is_heritage": is_heritage,
             "residual_area_m2": (
