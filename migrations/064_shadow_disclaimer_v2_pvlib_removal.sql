@@ -15,6 +15,12 @@
 -- constant (`services/shadow_model.SHADOW_SCENARIOS`), not a per-report
 -- calculation. v1 did not say so.
 --
+-- And v1's limitation (5) said scenarios are modelled "for Jun 21 and Sep 21
+-- only" while SHADOW_SCENARIOS has modelled 21 December since it was written
+-- (`dec21_12pm`) and the PDF names all three dates. The list below is taken
+-- from SHADOW_SCENARIOS rather than copied forward: 21 Jun at 9am/noon/3pm,
+-- 21 Sep at noon, 21 Dec at noon.
+--
 -- Nothing else in the shadow disclaimer changes, and no claim is upgraded —
 -- v2 says strictly less about our method than v1 did.
 --
@@ -37,7 +43,7 @@ INSERT INTO disclaimer_versions
 VALUES
 ('shadow', 'shadow-v2',
  'This report provides an indicative shadow analysis based on modelled building heights and modelled sun position. It is not a formal shadow study, ADG compliance assessment, or planning advice. The ADG solar access test result is based on modelled scenarios and may differ from a professional shadow analysis using measured building dimensions.',
- 'Limitations: (1) Building heights are estimated from LEP height controls or spatial data — actual building heights may differ. (2) Shadow calculations assume flat terrain — sloping sites will produce different shadow patterns. (3) The pybdshadow model uses simplified building geometry (extruded footprints) — actual shadow patterns depend on roof form, setbacks, and architectural detail. (4) Construction change detection via Sentinel-2 spectral analysis operates at 10m resolution and is heuristic. (5) ADG solar access scenarios are modelled for Jun 21 and Sep 21 only — other times of year are not assessed. (6) The compass direction reported for each scenario is a fixed value stored per scenario, not recalculated for the subject address, and has not been checked against published ephemeris.',
+ 'Limitations: (1) Building heights are estimated from LEP height controls or spatial data — actual building heights may differ. (2) Shadow calculations assume flat terrain — sloping sites will produce different shadow patterns. (3) The pybdshadow model uses simplified building geometry (extruded footprints) — actual shadow patterns depend on roof form, setbacks, and architectural detail. (4) Construction change detection via Sentinel-2 spectral analysis operates at 10m resolution and is heuristic. (5) Five scenarios are modelled and no others: 21 June at 9am, noon and 3pm, 21 September at noon, and 21 December at noon — other dates and times of year are not assessed. (6) The compass direction reported for each scenario is a fixed value stored per scenario, not recalculated for the subject address, and has not been checked against published ephemeris.',
  'pybdshadow shadow casting (open source) — sun position is derived by pybdshadow from the modelled date and time. Element84 Earth Search Sentinel-2 L2A imagery (ESA Copernicus). NSW Planning Portal LEP height controls.');
 
 UPDATE disclaimer_versions

@@ -759,6 +759,60 @@ def _get_weekly_rent(postcode: Optional[str]) -> Optional[float]:
     return entry.get("median_weekly_rent_1br_aud") if entry else None
 
 
+def _resolve_count_source(
+    claimed: Optional[str],
+    structure_types: Optional[list],
+    detected_structures: Optional[list],
+) -> tuple[str, Optional[str]]:
+    """Decide the count provenance from evidence, not from the caller's word.
+
+    Returns (resolved_source, downgrade_note).
+
+    'user_reviewed' is the only value that can buy "high" confidence, so it
+    cannot be a flag a caller sets. It stands only when the submitted answers
+    actually reconcile with what the DETECT run recorded:
+      * every non-main structure the detector found has an answer, and
+      * no answer names an index that run never produced.
+
+    Anything else is 'machine_default'. That includes the case where the
+    detect row could not be re-read: absent evidence is its own outcome and
+    never a pass, so a review we cannot check is a review we do not credit.
+    A downgrade is recorded rather than silent — the note is stored alongside
+    the claim so a row can be audited later.
+    """
+    if claimed != "user_reviewed":
+        return (claimed or "unrecorded"), None
+
+    if not isinstance(detected_structures, list) or not detected_structures:
+        return "machine_default", (
+            "claimed user_reviewed, but the detect run's structures could not be "
+            "re-read, so the review could not be checked against them"
+        )
+
+    all_indexes = {
+        s.get("index") for s in detected_structures if isinstance(s, dict)
+    }
+    expected = {
+        s.get("index") for s in detected_structures
+        if isinstance(s, dict) and not s.get("is_main_dwelling")
+    }
+    answered = {s.index for s in (structure_types or [])}
+
+    unknown = answered - all_indexes
+    if unknown:
+        return "machine_default", (
+            f"claimed user_reviewed, but answers reference structure indexes the "
+            f"detect run never produced: {sorted(str(i) for i in unknown)}"
+        )
+    missing = expected - answered
+    if missing:
+        return "machine_default", (
+            f"claimed user_reviewed, but {len(missing)} of {len(expected)} detected "
+            "secondary structures have no answer"
+        )
+    return "user_reviewed", None
+
+
 def _compute_confidence(
     validated: bool,
     confirmed_count: int,
@@ -1323,30 +1377,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "the existing structure is already an ancillary dwelling — verify with council."
         )
 
-    confidence, confidence_reason = _compute_confidence(
-        validated=SAMGEO_VALIDATED,
-        confirmed_count=req.confirmed_structure_count,
-        samgeo_count=req.samgeo_structure_count,
-        rent_available=weekly_rent is not None,
-        count_source=req.confirmed_count_source or "unrecorded",
-    )
-
-    # Cap confidence to medium when key eligibility inputs are unknown.
-    # Both conditions are checked independently against "high" (not sequentially)
-    # so that both warnings are surfaced even if both apply.
-    cap_reasons = []
-    if lot_area_m2 is None:
-        cap_reasons.append("Lot area could not be verified — eligibility is unconfirmed.")
-    if req.existing_secondary_dwelling is None and req.confirmed_structure_count >= 2:
-        cap_reasons.append(
-            "Eligibility is capped because the status of one or more existing secondary "
-            "structures on this lot could not be confirmed. NSW planning rules only allow one "
-            "secondary dwelling per lot."
-        )
-    if cap_reasons and confidence == "high":
-        confidence = "medium"
-        confidence_reason += " " + " ".join(cap_reasons)
-
+    # Confidence is computed further down, once the DETECT row has been re-read
+    # — the count provenance is resolved against that row rather than taken
+    # from the caller. See _resolve_count_source.
     report_id = req.report_id or str(uuid.uuid4())
 
     # --- LGA lookup + DCP secondary dwelling setbacks ---
@@ -1395,6 +1428,11 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             # carry-forward was decorative. `detect_id` is the key both clients
             # DO send (60 present, 60 distinct, all UUID-shaped), so fall back
             # to it. Seq Scan, 23ms at 87 rows; revisit an index past ~50k.
+            # Both lookups are scoped to the SUBMITTED PARCEL. detect_id is
+            # caller-supplied, so an unscoped global match would let one
+            # request pull another property's tile, manifest and structures
+            # into a report describing a different address. prop_id is
+            # populated on every detect row (60/60, verified 2026-08-06).
             tile_b64: Optional[str] = None
             detect_manifest = None
             detected_structures_carry = None
@@ -1403,19 +1441,53 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                            "FROM granny_flat_reports ")
             row = None
             if req.report_id:
-                cur.execute(_CARRY_COLS + "WHERE id = %s", (req.report_id,))
+                cur.execute(_CARRY_COLS + "WHERE id = %s AND prop_id = %s",
+                            (req.report_id, req.prop_id))
                 row = cur.fetchone()
             if row is None and req.detect_id:
                 cur.execute(
-                    _CARRY_COLS + "WHERE outputs->>'detect_id' = %s "
+                    _CARRY_COLS + "WHERE outputs->>'detect_id' = %s AND prop_id = %s "
                                   "ORDER BY created_at DESC LIMIT 1",
-                    (req.detect_id,),
+                    (req.detect_id, req.prop_id),
                 )
                 row = cur.fetchone()
             if row:
                 tile_b64 = row[0]  # None if key absent or value null
                 detect_manifest = row[1]
                 detected_structures_carry = row[2]
+
+            # Provenance is resolved HERE, against the detect row, not taken
+            # from the caller's flag — 'user_reviewed' is what buys "high",
+            # so it must rest on evidence rather than on an assertion.
+            count_source, provenance_note = _resolve_count_source(
+                req.confirmed_count_source,
+                req.structure_types,
+                detected_structures_carry,
+            )
+
+            confidence, confidence_reason = _compute_confidence(
+                validated=SAMGEO_VALIDATED,
+                confirmed_count=req.confirmed_structure_count,
+                samgeo_count=req.samgeo_structure_count,
+                rent_available=weekly_rent is not None,
+                count_source=count_source,
+            )
+
+            # Cap confidence to medium when key eligibility inputs are unknown.
+            # Both conditions are checked independently against "high" (not
+            # sequentially) so that both warnings are surfaced even if both apply.
+            cap_reasons = []
+            if lot_area_m2 is None:
+                cap_reasons.append("Lot area could not be verified — eligibility is unconfirmed.")
+            if req.existing_secondary_dwelling is None and req.confirmed_structure_count >= 2:
+                cap_reasons.append(
+                    "Eligibility is capped because the status of one or more existing secondary "
+                    "structures on this lot could not be confirmed. NSW planning rules only allow one "
+                    "secondary dwelling per lot."
+                )
+            if cap_reasons and confidence == "high":
+                confidence = "medium"
+                confidence_reason += " " + " ".join(cap_reasons)
 
             cur.execute(
                 """
@@ -1443,8 +1515,14 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         # Whether a human touched that count, as a FIELD — a
                         # comment cannot be queried, and the 16 historical
                         # rows are indistinguishable from human-confirmed
-                        # precisely because nothing recorded this.
-                        "confirmed_count_source": req.confirmed_count_source or "unrecorded",
+                        # precisely because nothing recorded this. This is the
+                        # RESOLVED value (checked against the detect row), not
+                        # the caller's claim; the claim and the reason for any
+                        # downgrade are kept beside it so the decision is
+                        # auditable rather than silent.
+                        "confirmed_count_source": count_source,
+                        "confirmed_count_source_claimed": req.confirmed_count_source,
+                        "confirmed_count_source_note": provenance_note,
                         # The per-structure answers, bound to the structure
                         # index they refer to. Previously browser-local and
                         # discarded.
@@ -1509,7 +1587,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         {
             "structure_count": req.samgeo_structure_count,
             "count_used_in_report": req.confirmed_structure_count,
-            "count_source": req.confirmed_count_source or "unrecorded",
+            "count_source": count_source,
         },
         features_returned=req.samgeo_structure_count,
     )
@@ -1567,7 +1645,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "prop_id": req.prop_id,
             "lot_area_m2": lot_area_m2,
             "confirmed_structure_count": req.confirmed_structure_count,
-            "confirmed_count_source": req.confirmed_count_source or "unrecorded",
+            "confirmed_count_source": count_source,
             "structure_types": (
                 [s.model_dump() for s in req.structure_types]
                 if req.structure_types is not None else None

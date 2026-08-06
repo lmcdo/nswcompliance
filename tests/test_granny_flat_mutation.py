@@ -1281,7 +1281,13 @@ class TestConfirmAndCalculate:
 
     def test_confidence_high_when_all_good(self, monkeypatch):
         """FLIPPED 2026-08-06 (Lane 1, item 3): needs confirmed_count_source."""
-        _stub_confirm_all(monkeypatch, rental_data=500.0)
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        # The detect row the review is checked against — without it the
+        # provenance is downgraded, which is the point of _resolve_count_source.
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
         req = _make_confirm_req(
             confirmed_structure_count=1, samgeo_structure_count=1,
             confirmed_count_source="user_reviewed",
@@ -1312,6 +1318,78 @@ class TestConfirmAndCalculate:
                 structure_types=[{"index": 1, "answer": "garage"},
                                  {"index": 1, "answer": "rejected"}],
             )
+
+    def test_user_reviewed_is_downgraded_when_answers_name_unknown_structures(self, monkeypatch):
+        """Sol finding 1: the caller's provenance flag is not trusted.
+
+        An answer for a structure the detect run never produced cannot be a
+        review of that run, so it must not buy 'high'.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1, samgeo_structure_count=1,
+            confirmed_count_source="user_reviewed",
+            structure_types=[{"index": 99, "answer": "garage"}],
+        ))
+        assert resp.confidence == "medium"
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert inputs["confirmed_count_source_claimed"] == "user_reviewed"
+        assert "never produced" in inputs["confirmed_count_source_note"]
+
+    def test_user_reviewed_is_downgraded_when_a_structure_has_no_answer(self, monkeypatch):
+        """Partial coverage is not a review of the count."""
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_count_source="user_reviewed",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "no answer" in inputs["confirmed_count_source_note"]
+
+    def test_user_reviewed_is_downgraded_when_the_detect_row_is_missing(self, monkeypatch):
+        """A review we cannot check is a review we do not credit.
+
+        Three states: absent evidence is its own outcome, never a pass.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = None
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_count_source="user_reviewed",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "could not be re-read" in inputs["confirmed_count_source_note"]
+
+    def test_carry_forward_is_scoped_to_the_submitted_parcel(self, monkeypatch):
+        """Sol finding 2: detect_id is caller-supplied, so it cannot match globally.
+
+        Unscoped, a request could quote another report's detect UUID and pull
+        that property's tile, manifest and structures into a report describing
+        a different address.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        gf.confirm_and_calculate(_make_confirm_req())
+        carry = [(sql, p) for sql, p in conn._cursor.executed
+                 if "detect_id" in sql and "SELECT" in sql.upper()]
+        assert carry, "the detect_id carry-forward lookup must run"
+        sql, params = carry[-1]
+        assert "prop_id = %s" in sql
+        assert "12345" in [str(x) for x in params]
 
     def test_carry_forward_finds_the_detect_row_by_detect_id(self, monkeypatch):
         """Sol finding 2: the carry-forward could almost never resolve.
@@ -1349,6 +1427,11 @@ class TestConfirmAndCalculate:
         """
         conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
         _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
         req = _make_confirm_req(
             confirmed_structure_count=2,
             samgeo_structure_count=3,
