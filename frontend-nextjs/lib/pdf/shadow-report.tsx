@@ -249,10 +249,19 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 // Build findings
 // ---------------------------------------------------------------------------
 
-function buildFindings(data: ShadowReportData): Finding[] {
+// Exported for direct unit testing — the generate-route test mocks the whole
+// document, so the findings wording is otherwise unreachable by tests.
+export function buildFindings(data: ShadowReportData): Finding[] {
   const findings: Finding[] = [];
   const scenarios = data.scenarios ?? [];
   const overlapCount = scenarios.filter(sc => sc.overlaps_subject_lot).length;
+  // A scenario the model could not compute must never be silently absorbed
+  // into an all-clear aggregate (Sol pre-push round): overlapCount counts only
+  // computed overlaps, so with one scenario unavailable, "no shadow overlap
+  // across any test scenario" would claim 5 results from 4. Legacy stored rows
+  // predate the status field; its absence means the row was computed.
+  const unavailableCount = scenarios.filter(sc => sc.status === 'unavailable').length;
+  const computedCount = scenarios.length - unavailableCount;
   const isNonRes = data.zone != null &&
     NON_RESIDENTIAL_PREFIXES.some(p => data.zone!.toUpperCase().startsWith(p));
 
@@ -276,16 +285,18 @@ function buildFindings(data: ShadowReportData): Finding[] {
   } else if (data.adg_compliant) {
     findings.push({
       label: 'ADG Part 3F solar access test',
-      value: overlapCount === 0 ? 'Meets ADG solar access test — no shadow overlap' : `Meets ADG solar access test — ${overlapCount} of 5 scenarios with shadow`,
+      value: overlapCount === 0
+        ? `Meets ADG solar access test — no shadow overlap${unavailableCount > 0 ? ` in the ${computedCount} computed scenarios` : ''}`
+        : `Meets ADG solar access test — ${overlapCount} of ${unavailableCount > 0 ? `${computedCount} computed` : '5'} scenarios with shadow`,
       detail: overlapCount === 0
-        ? 'The model shows no significant shadow impact on this property from a maximum-height building modelled immediately north of the lot, across any test scenario. The ADG solar access test is met based on this model.'
+        ? `The model shows no significant shadow impact on this property from a maximum-height building modelled immediately north of the lot, across ${unavailableCount > 0 ? `the ${computedCount} scenarios that could be computed. ${unavailableCount} of the 5 scenarios could not be assessed (marked in the scenario table) and no claim is made about ${unavailableCount === 1 ? 'it' : 'them'}` : 'any test scenario'}. The ADG solar access test is met based on this model.`
         : 'Some shadow impact is expected but the ADG 2-hour solar access requirement (9am–3pm on 21 June) is still met. This is typical for urban lots and unlikely to be grounds for objection.',
-      severity: overlapCount === 0 ? 'green' : 'amber',
+      severity: overlapCount === 0 ? (unavailableCount > 0 ? 'amber' : 'green') : 'amber',
     });
   } else {
     findings.push({
       label: 'ADG Part 3F solar access test',
-      value: `ADG concern — ${overlapCount} of 5 scenarios with significant shadow`,
+      value: `ADG concern — ${overlapCount} of ${unavailableCount > 0 ? `${computedCount} computed` : '5'} scenarios with significant shadow`,
       detail: 'A maximum-height building modelled immediately north of this lot may not meet the ADG 2-hour solar access requirement on 21 June. If a DA is lodged, you can lodge a formal objection during the notification period.',
       severity: 'red',
     });
@@ -327,9 +338,13 @@ function buildFindings(data: ShadowReportData): Finding[] {
   } else if (overlapCount === 0) {
     findings.push({
       label: 'Shadow analysis — 5 ADG test scenarios',
-      value: 'No shadow overlap detected',
-      detail: 'A maximum-height building modelled immediately north of this lot would not cast shadow onto the property in any of the 5 test scenarios.',
-      severity: 'green',
+      value: unavailableCount > 0
+        ? `No shadow overlap in the ${computedCount} computed scenarios`
+        : 'No shadow overlap detected',
+      detail: unavailableCount > 0
+        ? `A maximum-height building modelled immediately north of this lot would not cast shadow onto the property in any of the ${computedCount} scenarios that could be computed. ${unavailableCount} of the 5 scenarios could not be assessed (marked in the scenario table), so this is not a result across all 5.`
+        : 'A maximum-height building modelled immediately north of this lot would not cast shadow onto the property in any of the 5 test scenarios.',
+      severity: unavailableCount > 0 ? 'amber' : 'green',
     });
   }
 
@@ -438,7 +453,12 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                       {isWorstCase ? ' ★' : ''}
                     </Text>
                     <Text style={s.colReach}>
-                      {sc.shadow_length_m != null && sc.shadow_length_m > 0
+                      {/* An unavailable scenario must be visibly distinct from a
+                          computed zero-length shadow — a bare em dash reads as
+                          "no shadow", which is a claim the run did not make. */}
+                      {sc.status === 'unavailable'
+                        ? 'not assessed'
+                        : sc.shadow_length_m != null && sc.shadow_length_m > 0
                         ? `${sc.shadow_length_m.toFixed(0)} m` : '—'}
                     </Text>
                     <Text style={s.colDir}>

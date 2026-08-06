@@ -354,13 +354,44 @@ def _build_scenario_list(
         # An impossible number is UNAVAILABLE, not a measurement: the same
         # typed-absence rule the errored branch above already applies.
         ceiling_m = None
+        ceiling_failure = None
         if height_m is not None:
             try:
                 alt_deg, _ = sun_position(
                     scenario.instant_utc(), lot_centroid_lat, lot_centroid_lng)
                 ceiling_m = max_shadow_length_m(height_m, alt_deg)
             except Exception as e:
-                logger.warning("reach ceiling unavailable for %s: %s", key, e)
+                # FAIL CLOSED (Sol pre-push round). A swallowed exception here
+                # silently disabled the guard: the 1,779 m reach this check
+                # exists to block would have been served as status='computed'
+                # whenever sun_position raised. An unvalidatable reach is
+                # UNAVAILABLE, exactly like an unavailable polygon. Distinct
+                # from max_shadow_length_m returning None (altitude <= 0):
+                # there no finite ceiling physically exists and the skip is
+                # legitimate; here we simply do not know it.
+                ceiling_failure = str(e)[:120]
+
+        if ceiling_failure is not None:
+            logger.warning(
+                "reach ceiling could not be computed for %s: %s — reporting "
+                "unavailable", key, ceiling_failure)
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": (
+                    f"shadow reach could not be validated against the physical "
+                    f"ceiling ({ceiling_failure})"),
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
 
         if reach_m is not None and ceiling_m is not None and reach_m > ceiling_m * REACH_CEILING_TOLERANCE:
             logger.warning(
@@ -477,6 +508,27 @@ def run_shadow(request: ShadowRequest):
     if coord_reason:
         raise HTTPException(
             422, f"Shadow analysis could not be determined: {coord_reason}")
+
+    # Civil-time supportability. Every scenario wall-clock label is resolved
+    # in Australia/Sydney (services/solar_position.py NSW_TZ), but Lord Howe
+    # Island keeps its own IANA zone (Australia/Lord_Howe: +10:30 outside
+    # daylight saving), so a winter scenario there would be modelled 30
+    # minutes early while displaying the Sydney label. Refusing east of
+    # longitude 154.0 states a geographic fact, not an approximated civil
+    # boundary: the NSW mainland ends at Cape Byron (153.64 E), so the only
+    # land the accepted envelope admits past 154.0 is the Lord Howe group.
+    # (The far-west Broken Hill zone has no such clean line — towns on both
+    # civil times sit in the same longitude band — so it stays a documented
+    # limitation in solar_position.py.) Exposure of this refusal, measured
+    # 2026-08-07: 0 of 538 stored shadow reports lie east of 154.0
+    # (easternmost 153.61).
+    if request.lng > 154.0:
+        raise HTTPException(
+            422, "Shadow analysis could not be determined: this location is "
+                 "in the Lord Howe Island region, which keeps a different "
+                 "civil time from the rest of NSW. Shadow scenarios are "
+                 "modelled in NSW mainland time only, so this address is "
+                 "refused rather than modelled with mislabelled times.")
 
     # Audit trail: track lot geometry fetch
     ds_lot = DataSourceQuery("NSW Planning Portal lot API", LOT_API, {"propId": request.prop_id})

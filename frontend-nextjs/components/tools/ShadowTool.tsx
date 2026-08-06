@@ -317,12 +317,17 @@ function ShadowLockedPreviewCard({
 }) {
   const o = result.outputs;
   const overlapCount = o.scenarios.filter(s => s.overlaps_subject_lot).length;
+  // Unavailable scenarios must not be silently absorbed into an all-clear
+  // aggregate (Sol pre-push round); absence of status = legacy computed row.
+  const lockedUnavailable = o.scenarios.filter(s => s.status === 'unavailable').length;
+  const lockedComputed = o.scenarios.length - lockedUnavailable;
+  const lockedDenominator = lockedUnavailable > 0 ? `${lockedComputed} computed` : '5';
 
   // Find worst-case overlap fraction for blurred preview
   const worstScenario = o.scenarios.find(s => s.scenario === o.worst_case_scenario);
   const worstOverlapPct = worstScenario?.shadow_overlap_fraction != null
     ? `${Math.round(worstScenario.shadow_overlap_fraction * 100)}% of lot`
-    : `${overlapCount} of 5 scenarios`;
+    : `${overlapCount} of ${lockedDenominator} scenarios`;
 
   // Sort scenarios in standard order for consistent display
   const sortedScenarios = [...o.scenarios].sort(
@@ -334,9 +339,11 @@ function ShadowLockedPreviewCard({
   const alarmHeadline = o.adg_compliant == null
     ? 'Shadow analysis incomplete — the ADG solar access test could not be run for this lot'
     : o.adg_compliant === false
-    ? `ADG concern — shadow impact on ${overlapCount} of 5 test scenarios`
+    ? `ADG concern — shadow impact on ${overlapCount} of ${lockedDenominator} test scenarios`
     : overlapCount > 0
-    ? `Shadow impact on ${overlapCount} of 5 scenarios — get the diagrams for your records`
+    ? `Shadow impact on ${overlapCount} of ${lockedDenominator} scenarios — get the diagrams for your records`
+    : lockedUnavailable > 0
+    ? `No shadow concern in the ${lockedComputed} computed scenarios — ${lockedUnavailable} of 5 could not be assessed`
     : 'No shadow concern detected — save the full analysis for your records';
 
   const alarmDetail = o.adg_compliant == null
@@ -482,6 +489,10 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   }, [activeScenario, scenarios]);
 
   const overlapCount = scenarios.filter(s => s.overlaps_subject_lot).length;
+  // Same rule as the PDF findings: a scenario the model could not compute is
+  // excluded from every aggregate claim, and its exclusion is stated.
+  const unavailableCount = scenarios.filter(s => s.status === 'unavailable').length;
+  const computedCount = scenarios.length - unavailableCount;
   const worstScenario = scenarios.find(s => s.scenario === o.worst_case_scenario);
 
   const isNonResidential =
@@ -537,14 +548,18 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   if (overlapCount === 0) {
     findings.push({
       label: 'Shadow overlap analysis (5 ADG scenarios)',
-      value: 'No shadow reaches your lot',
-      detail: 'Across all 5 test scenarios (winter solstice morning, midday, afternoon + equinox + summer), a maximum-height building to the north would not cast shadow onto your property.',
-      severity: 'green',
+      value: unavailableCount > 0
+        ? `No shadow reaches your lot in the ${computedCount} computed scenarios`
+        : 'No shadow reaches your lot',
+      detail: unavailableCount > 0
+        ? `Across the ${computedCount} test scenarios that could be computed, a maximum-height building to the north would not cast shadow onto your property. ${unavailableCount} of the 5 scenarios could not be assessed, so this is not a result across all 5.`
+        : 'Across all 5 test scenarios (winter solstice morning, midday, afternoon + equinox + summer), a maximum-height building to the north would not cast shadow onto your property.',
+      severity: unavailableCount > 0 ? 'amber' : 'green',
     });
   } else {
     findings.push({
       label: 'Shadow overlap analysis (5 ADG scenarios)',
-      value: `Shadow overlaps your lot in ${overlapCount} of 5 scenarios`,
+      value: `Shadow overlaps your lot in ${overlapCount} of ${unavailableCount > 0 ? `${computedCount} computed` : '5'} scenarios`,
       detail: overlapCount >= 3
         ? 'Shadow reaches your property in the majority of test scenarios. This would affect winter sunlight, garden usability, and potentially solar panel output.'
         : 'Shadow reaches your property in some test scenarios. The map below shows the worst case.',

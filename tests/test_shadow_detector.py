@@ -291,3 +291,106 @@ def test_build_scenario_list_computed_scenario_is_typed_computed(monkeypatch):
     assert result[0]["status"] == "computed"
     assert result[0]["shadow_length_m"] == 14.0
     assert sd._adg_compliant(result) is True
+
+
+# ---------------------------------------------------------------------------
+# Reach-ceiling guard — fail closed (Sol pre-push round, 2026-08-07)
+# ---------------------------------------------------------------------------
+
+def test_build_scenario_list_ceiling_failure_fails_closed(monkeypatch):
+    """An exception in the reach-ceiling computation used to be caught and
+    ignored, silently disabling the physical-plausibility guard — the 1,779 m
+    reach the guard exists to block would then be served as status='computed'.
+    With a known height, a reach that cannot be validated is UNAVAILABLE.
+    FAILS on the pre-fix code (it served the unvalidated reach as computed)."""
+    import services.shadow_detector as sd
+
+    STUB_SCENARIOS = [
+        Scenario("jun21_12pm", 6, 21, 12, 0, "ADG noon Jun 21"),
+    ]
+    monkeypatch.setattr(sd, "SHADOW_SCENARIOS", STUB_SCENARIOS)
+    # The implausible reach the ceiling guard exists to catch:
+    monkeypatch.setattr(sd, "shadow_reach_m", lambda *a, **kw: 1779.5)
+    monkeypatch.setattr(sd, "shadow_overlap_fraction", lambda *a, **kw: 0.9)
+    monkeypatch.setattr(sd, "overlaps_lot", lambda *a, **kw: True)
+    monkeypatch.setattr(sd, "shadow_on_lot_geojson", lambda *a, **kw: None)
+
+    def _raise(*a, **kw):
+        raise RuntimeError("suncalc is not installed")
+    monkeypatch.setattr(sd, "sun_position", _raise)
+
+    shadow_map = {"jun21_12pm": {"type": "FeatureCollection", "features": []}}
+    lot = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+
+    result = sd._build_scenario_list(shadow_map, lot, 151.21, -33.87, height_m=9.0)
+    assert result[0]["status"] == "unavailable"
+    assert result[0]["shadow_length_m"] is None
+    assert result[0]["overlaps_subject_lot"] is None
+    assert "could not be validated" in result[0]["error_note"]
+    # The chain must end NOT-ASSESSED, never a verdict from an unvalidated run:
+    assert sd._adg_compliant(result) is None
+
+
+def test_build_scenario_list_no_height_does_not_fail_closed(monkeypatch):
+    """Without a known height there is no ceiling to validate against, so the
+    fail-closed branch must not fire — pinned so it cannot over-reach."""
+    import services.shadow_detector as sd
+
+    STUB_SCENARIOS = [
+        Scenario("jun21_12pm", 6, 21, 12, 0, "ADG noon Jun 21"),
+    ]
+    monkeypatch.setattr(sd, "SHADOW_SCENARIOS", STUB_SCENARIOS)
+    monkeypatch.setattr(sd, "shadow_reach_m", lambda *a, **kw: 14.0)
+    monkeypatch.setattr(sd, "shadow_overlap_fraction", lambda *a, **kw: 0.1)
+    monkeypatch.setattr(sd, "overlaps_lot", lambda *a, **kw: False)
+    monkeypatch.setattr(sd, "shadow_on_lot_geojson", lambda *a, **kw: None)
+
+    def _raise(*a, **kw):
+        raise RuntimeError("suncalc is not installed")
+    monkeypatch.setattr(sd, "sun_position", _raise)
+
+    shadow_map = {"jun21_12pm": {"type": "FeatureCollection", "features": []}}
+    lot = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+
+    result = sd._build_scenario_list(shadow_map, lot, 151.21, -33.87, height_m=None)
+    assert result[0]["status"] == "computed"
+    assert result[0]["shadow_length_m"] == 14.0
+
+
+# ---------------------------------------------------------------------------
+# Lord Howe civil-time refusal (Sol pre-push round, 2026-08-07)
+# ---------------------------------------------------------------------------
+
+def test_lord_howe_longitude_is_refused_not_mislabelled():
+    """Lord Howe Island keeps Australia/Lord_Howe (+10:30 outside daylight
+    saving), so a winter scenario there would be modelled 30 minutes early
+    under the Sydney wall-clock label. The route refuses east of 154.0 E — a
+    geographic fact (the NSW mainland ends at Cape Byron, 153.64 E; only the
+    Lord Howe group lies beyond), not an approximated civil-time boundary.
+    Measured exposure 2026-08-07: 0 of 538 stored reports east of 154.0.
+    FAILS on the pre-fix code (the request proceeded to the lot fetch)."""
+    from fastapi import HTTPException
+    import services.shadow_detector as sd
+
+    req = sd.ShadowRequest(
+        address="Lord Howe Island NSW 2898", prop_id="0",
+        lat=-31.55, lng=159.08, report_id="test")
+    with pytest.raises(HTTPException) as exc:
+        sd.run_shadow(req)
+    assert exc.value.status_code == 422
+    assert "Lord Howe" in str(exc.value.detail)
+
+
+def test_mainland_longitude_is_not_refused_by_the_lord_howe_gate(monkeypatch):
+    """Sydney must sail past the civil-time gate and fail later (stubbed lot
+    fetch) — proves the refusal does not over-reach onto the mainland."""
+    from fastapi import HTTPException
+    import services.shadow_detector as sd
+
+    monkeypatch.setattr(sd, "_fetch_lot_geometry", lambda *a, **kw: None)
+    req = sd.ShadowRequest(
+        address="Sydney NSW", prop_id="0",
+        lat=-33.87, lng=151.21, report_id="test")
+    with pytest.raises(HTTPException) as exc:
+        sd.run_shadow(req)
+    assert "Lord Howe" not in str(exc.value.detail)
