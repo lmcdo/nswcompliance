@@ -233,6 +233,37 @@ describe('confirm success', () => {
     });
   });
 
+  it('transmits the per-structure decisions and the count provenance', async () => {
+    // Lane 1 item 4: the deselect used to collapse into a bare count and the
+    // per-structure judgement was discarded. This pins that it survives the
+    // wire, bound to the structure index it was made about, and that the
+    // count is labelled as human-reviewed rather than inferred downstream.
+    const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+
+    fireEvent.click(screen.getByRole('button', { name: /Shed/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
+    await flush();
+
+    expect(confirmBodies[0].confirmed_count_source).toBe('user_reviewed');
+    expect(confirmBodies[0].structure_types).toEqual([
+      { index: 0, answer: 'kept' },      // main dwelling left in
+      { index: 1, answer: 'rejected' },  // shed deselected
+    ]);
+  });
+
+  it('never labels a structure with a type the brief card does not ask for', async () => {
+    // The card only asks keep-or-reject. Emitting 'garage'/'part_of_main'
+    // here would invent a classification the person never gave.
+    const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
+    await flush();
+
+    const answers = (confirmBodies[0].structure_types as { answer: string }[]).map(s => s.answer);
+    expect(new Set(answers)).toEqual(new Set(['kept']));
+  });
+
   it('renders "Not available" for null money fields — never a zero', async () => {
     await renderThroughDetect(DETECT_OK, {
       body: {

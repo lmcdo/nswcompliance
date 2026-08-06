@@ -27,6 +27,10 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 // Detected structure row from the granny-flat detection service.
 export interface DetectedStructureRow {
+  // services.granny_flat.DetectedStructure.index — the identity a
+  // per-structure answer is stored against. Optional here because rows
+  // written before the field was surfaced do not carry it.
+  index?: number;
   matched_prompt?: string;
   area_m2?: number | null;
   is_main_dwelling?: boolean;
@@ -220,6 +224,22 @@ export function GrannyFlatBriefCard({ address, active, lotAreaM2 }: { address?: 
     const selectedCount = structures.length > 0
       ? structures.filter((_, i) => !deselected[i]).length
       : (detect.count ?? 0);
+    // A deselect is a human saying "that is not a separate building" — the
+    // judgement, bound to the structure it was made about. It used to
+    // collapse into a bare count and the per-structure decision was lost.
+    // `index` mirrors detected_structures[].index so the answer joins back to
+    // the bbox the person was looking at; fall back to array position for the
+    // (older) rows that carry no index field.
+    // 'kept', not a building type: this card only asks keep-or-reject, so
+    // recording a type here would invent a classification nobody gave.
+    const structureTypesPayload = structures.map((s, i) => ({
+      index: typeof s.index === 'number' ? s.index : i,
+      answer: deselected[i] ? 'rejected' : 'kept',
+    }));
+    // Only claim a human reviewed the count when this surface actually let
+    // them: the selection list is only rendered when there are structures to
+    // select against.
+    const countSource = structures.length > 0 ? 'user_reviewed' : 'machine_default';
     setConfirm({ kind: 'submitting' });
     try {
       const res = await fetch('/api/satellite/granny-flat', {
@@ -230,6 +250,8 @@ export function GrannyFlatBriefCard({ address, active, lotAreaM2 }: { address?: 
           action: 'confirm',
           detect_id: detect.detectId,
           confirmed_structure_count: selectedCount,
+          confirmed_count_source: countSource,
+          structure_types: structureTypesPayload,
           samgeo_structure_count: detect.samgeoCount ?? null,
           postcode: address.match(/\b(\d{4})\b/)?.[1] || null,
           existing_secondary_dwelling: existingGf,

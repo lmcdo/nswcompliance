@@ -710,10 +710,22 @@ class TestComputeConfidenceMutation:
         assert conf == "low"
         assert "pre-validation" in reason.lower()
 
-    def test_high_requires_all_three(self):
-        """Must be validated + counts agree + rent available."""
-        conf, _ = _compute_confidence(True, 2, 2, True)
+    def test_high_requires_all_four(self):
+        """Must be validated + a human reviewed the count + counts agree + rent.
+
+        FLIPPED 2026-08-06 (calibration Lane 1, item 3): the fourth condition
+        is new. Count equality alone used to earn "high", but the count was
+        seeded from the detector and the UI never let anyone change it, so
+        equality measured nothing.
+        """
+        conf, _ = _compute_confidence(True, 2, 2, True, count_source="user_reviewed")
         assert conf == "high"
+
+    def test_high_needs_human_reviewed_count(self):
+        """Mutation killer: dropping the count_source check must fail here."""
+        assert _compute_confidence(True, 2, 2, True, count_source="unrecorded")[0] == "medium"
+        assert _compute_confidence(True, 2, 2, True, count_source="machine_default")[0] == "medium"
+        assert _compute_confidence(True, 2, 2, True)[0] == "medium"
 
     def test_counts_disagree_gives_medium(self):
         conf, reason = _compute_confidence(True, 2, 3, True)
@@ -753,22 +765,36 @@ class TestComputeConfidenceMutation:
         assert "structures" in reason
 
     def test_high_reason_mentions_bond_data(self):
-        _, reason = _compute_confidence(True, 1, 1, True)
+        _, reason = _compute_confidence(True, 1, 1, True, count_source="user_reviewed")
         assert "bond" in reason.lower()
 
-    def test_medium_confirmed_1_was(self):
-        """1 confirmed → 'was', not 'were'."""
-        _, reason = _compute_confidence(True, 1, 3, True)
-        assert "was" in reason
+    def test_reason_never_claims_a_person_acted_when_none_did(self):
+        """The item-3 pin: no unreviewed reason string may imply human input.
 
-    def test_medium_confirmed_2_were(self):
-        """2 confirmed → 'were', not 'was'."""
-        _, reason = _compute_confidence(True, 2, 3, True)
-        assert "were" in reason
+        The strings this replaces read "AI detected 1 structure, you confirmed
+        1 — counts agree" on reports where the user could not change the
+        count. Nine of the sixteen stored rows carry that sentence.
+        """
+        for confirmed, machine in ((1, 1), (2, 2), (1, 0), (2, 3)):
+            for source in ("unrecorded", "machine_default"):
+                _, reason = _compute_confidence(
+                    True, confirmed, machine, True, count_source=source
+                )
+                low = reason.lower()
+                assert "you confirmed" not in low, (confirmed, machine, source)
+                assert "your review" not in low, (confirmed, machine, source)
+                assert "no person reviewed this count" in low, (confirmed, machine, source)
+
+    def test_medium_disagreement_names_both_counts(self):
+        """Human recorded a different number from the detector — both appear."""
+        _, reason = _compute_confidence(True, 1, 3, True, count_source="user_reviewed")
+        assert "3" in reason and "1" in reason
+        assert "your review recorded" in reason.lower()
 
     def test_zero_counts_agree_high(self):
-        conf, _ = _compute_confidence(True, 0, 0, True)
-        assert conf == "high"
+        """FLIPPED 2026-08-06 (Lane 1, item 3) — needs a human reviewer now."""
+        assert _compute_confidence(True, 0, 0, True, count_source="user_reviewed")[0] == "high"
+        assert _compute_confidence(True, 0, 0, True)[0] == "medium"
 
 
 # ---------------------------------------------------------------------------
@@ -1114,6 +1140,30 @@ def _stub_confirm_all(monkeypatch, heritage_auto=None, sepp_standards=None,
     return conn
 
 
+def _capture_json(monkeypatch):
+    """Make psycopg2.extras.Json a pass-through so the persisted dicts are readable.
+
+    conftest_mocks stubs psycopg2 with MagicMock, and MagicMock returns the
+    SAME object for every call — so the two Json(...) payloads in the confirm
+    INSERT are indistinguishable without this.
+    """
+    monkeypatch.setattr(gf.psycopg2.extras, "Json", lambda d: d)
+
+
+def _stored_inputs(conn):
+    """The `inputs` jsonb dict the confirm write actually persisted."""
+    rows = [p for sql, p in conn._cursor.executed
+            if p and "granny_flat_reports" in sql and "INSERT" in sql.upper()]
+    assert rows, (
+        "confirm must write a granny_flat_reports row; captured SQL: "
+        + repr([" ".join(s.split())[:60] for s, _ in conn._cursor.executed])
+    )
+    matches = [d for d in rows[-1]
+               if isinstance(d, dict) and "confirmed_structure_count" in d]
+    assert matches, "no inputs payload found in the INSERT params"
+    return matches[0]
+
+
 def _make_confirm_req(**overrides):
     defaults = dict(
         detect_id="test-detect-id",
@@ -1230,10 +1280,61 @@ class TestConfirmAndCalculate:
         assert resp.assumed_build_cost_aud is None
 
     def test_confidence_high_when_all_good(self, monkeypatch):
+        """FLIPPED 2026-08-06 (Lane 1, item 3): needs confirmed_count_source."""
+        _stub_confirm_all(monkeypatch, rental_data=500.0)
+        req = _make_confirm_req(
+            confirmed_structure_count=1, samgeo_structure_count=1,
+            confirmed_count_source="user_reviewed",
+        )
+        resp = gf.confirm_and_calculate(req)
+        assert resp.confidence == "high"
+
+    def test_confirm_persists_count_provenance_join_key_and_answers(self, monkeypatch):
+        """Lane 1 items 3+4: the label data must reach the row, not the wire only.
+
+        Before this, `detect_id` was accepted and dropped, the four-option
+        per-structure answers never left the browser, and nothing recorded
+        whether a person had touched the count — which is why the 16 stored
+        confirm rows cannot be told apart from machine echoes.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        req = _make_confirm_req(
+            confirmed_structure_count=2,
+            samgeo_structure_count=3,
+            confirmed_count_source="user_reviewed",
+            structure_types=[
+                {"index": 1, "answer": "part_of_main"},
+                {"index": 2, "answer": "garage"},
+            ],
+        )
+        gf.confirm_and_calculate(req)
+
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "user_reviewed"
+        assert inputs["detect_id"] == "test-detect-id"
+        assert inputs["structure_types"] == [
+            {"index": 1, "answer": "part_of_main"},
+            {"index": 2, "answer": "garage"},
+        ]
+
+    def test_confirm_records_unrecorded_when_caller_is_silent(self, monkeypatch):
+        """Absent provenance is stored as its own state, never as a human check."""
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        gf.confirm_and_calculate(_make_confirm_req())
+
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "unrecorded"
+        assert inputs["structure_types"] is None
+
+    def test_confidence_not_high_when_count_provenance_absent(self, monkeypatch):
+        """End-to-end pin: an old-shape caller (no provenance) cannot reach high."""
         _stub_confirm_all(monkeypatch, rental_data=500.0)
         req = _make_confirm_req(confirmed_structure_count=1, samgeo_structure_count=1)
         resp = gf.confirm_and_calculate(req)
-        assert resp.confidence == "high"
+        assert resp.confidence == "medium"
+        assert "no person reviewed this count" in resp.confidence_reason.lower()
 
     def test_confidence_capped_when_lot_area_none(self, monkeypatch):
         """High confidence → capped to medium when lot_area unknown."""

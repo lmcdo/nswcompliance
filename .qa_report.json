@@ -1,164 +1,183 @@
 {
  "tier": "critical",
- "justification": "Consolidates every value-serving TS reader of dcp_setback_controls onto the ONE guarded implementation - served rows change on live free surfaces (35 flagged-but-numeric rows stop rendering as normal numbers on the assessment DCP tab and duplex-check card; 4 flagged secondary-dwelling rows stop shipping from canibuildit; capacity's arbitrary no-ORDER LIMIT 3 becomes all guarded rows in deterministic order with the zone filter newly applied). Serving-behaviour change on user-facing compliance surfaces = critical tier.",
- "commit_hash": "2af3153f",
+ "justification": "Changes what served surfaces claim about our own methods, and changes a served confidence value. The paid shadow PDF and the public /how-it-works page stop naming pvlib (zero import sites anywhere in the repo) as our solar-position method. Granny-flat reports stop treating detector-vs-detector count equality as corroboration: 'high' now requires a human-reviewed count, which moves 8 of 16 historical-shape reports from high to medium and adds the amber confidence finding to their PDF. New keys are written into granny_flat_reports.inputs and the confirm write stops deleting the detect row's detected_structures. Served claim + served value + production write shape = critical.",
  "files": [
-  "services/dcp_controls_api.py",
-  "services/compliance_api_server.py",
-  "scripts/conveyancing_db.py",
-  "frontend-nextjs/lib/dcp-controls-client.ts",
-  "frontend-nextjs/lib/lga-slug.ts",
-  "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
-  "frontend-nextjs/app/api/capacity/calculate/route.ts",
-  "frontend-nextjs/app/api/canibuildit/check/route.ts",
-  "frontend-nextjs/app/api/tod/parking-rates/route.ts",
-  "frontend-nextjs/app/api/dcp/coverage/route.ts",
-  "scripts/check_ts_dcp_readers.py",
-  "tests/test_dcp_controls_api.py",
-  "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
-  "frontend-nextjs/__tests__/api/capacity-repoint.test.ts",
-  "frontend-nextjs/__tests__/lib/parking-rate-selection.test.ts",
-  ".gitignore"
+  "services/shadow_model.py",
+  "services/shadow_detector.py",
+  "services/flood_truth.py",
+  "services/granny_flat.py",
+  "frontend-nextjs/lib/pdf/shadow-report.tsx",
+  "frontend-nextjs/app/how-it-works/page.tsx",
+  "frontend-nextjs/app/reports/granny-flat/page.tsx",
+  "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx",
+  "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+  "migrations/064_shadow_disclaimer_v2_pvlib_removal.sql",
+  "migrations/042b_seed_disclaimer_versions.sql",
+  "tests/test_granny_flat_logic.py",
+  "tests/test_granny_flat_mutation.py",
+  "tests/test_satellite_forensic.py",
+  "frontend-nextjs/__tests__/app/granny-flat-confirm-wiring.test.tsx",
+  "frontend-nextjs/__tests__/components/reports/GrannyFlatBriefCard.test.tsx",
+  "frontend-nextjs/__tests__/api/reports/shadow-generate.test.ts",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  "services/CLAUDE.md",
+  "docs/qa/shadow_validation.md"
  ],
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_dcp_controls_api.py tests/test_conveyancing_clause_citation.py tests/test_conveyancing_dcp_needs_review.py tests/test_dcp_as_at.py -q && cd frontend-nextjs && npx jest --testPathPatterns=\"capacity-repoint|parking-rate-selection|dcp-structured-controls\" && cd .. && python scripts/check_ts_dcp_readers.py",
-  "passes_when": "The endpoint serves fetch_dcp_setbacks verbatim with three distinguishable states (rows / checked-none-with-reason / 503); the flipped source pins hold (ZERO `FROM dcp_setback_controls` in capacity and parking-rates routes, proxy imports present, universal_residential union in TS, zone passed through); structured-controls can never emit 'under_review' (flagged rows excluded at source); the observation check reports unexpected_inline_readers == [] (baseline met at ship: only the internal review routes + guarded coverage route + test files name the table in executable code).",
-  "fails_when": "Reintroducing inline SQL against dcp_setback_controls in any consolidated route fails its source pin AND appears in check_ts_dcp_readers' unexpected list; serving a needs_review row with a value fails test 'under_review can never be emitted'; collapsing the endpoint's source-failure into an empty success fails test_db_failure_is_503/test_none_result_is_checked_none; dropping the 13-column SELECT extension breaks the three conveyancing fixture suites (they pin the exact column order).",
-  "demonstrated_failing": "The pre-change states are the census (2026-08-03, three claims re-verified in code before design): capacity ran LIMIT 3 with no ORDER BY at :130/:150 (arbitrary rows served); structured-controls' branch order served a flagged row as 'numeric' whenever it had a value (:235-238) - 35 such rows measured live across 13 councils; canibuildit had no needs_review predicate at all (:397-404, 4 flagged SD rows served); three routes weakened is_current to NULL-passes (measured: zero NULL rows exist, so tightening changes nothing); the zone filter existed in NO TS reader. Old-architecture test pins (>=3 inline queries required) were green pre-change and flipped with in-test reasons.",
-  "mutation_evidence": "Make the endpoint return {} on failure -> test_db_failure_is_503 fails. Re-add `FROM dcp_setback_controls` to capacity -> its flipped pin fails and the observation check lists it. Swap the structured-controls branch order back (numeric wins) -> cannot recur: needs_review rows never arrive; the pin asserts statuses never contain under_review from clean rows. Drop registry_pdf_urls from fetch_dcp_setbacks -> the endpoint test's registry map assertion fails. Remove the singleton slug mapper adoption in canibuildit -> keying still tested via lib/lga-slug tests (same six renames verified before the swap)."
+  "command": "git grep -nE \"^\\\\s*(import|from)\\\\s+pvlib\" -- . ; git grep -n pvlib -- frontend-nextjs/lib/pdf frontend-nextjs/app/how-it-works services/shadow_detector.py ; git grep -n \"PC_CATALOG|S1_COLLECTION\" -- services/ ; python -m pytest tests/test_granny_flat_logic.py tests/test_granny_flat_mutation.py -q ; cd frontend-nextjs && npx jest --testPathPattern=\"granny-flat-confirm-wiring|GrannyFlatBriefCard\"",
+  "passes_when": "pvlib has no import site anywhere (grep 1 empty); no served shadow surface and no audit-trail source string names pvlib (grep 2 empty); the deleted SAR endpoint constants have no remaining definition (grep 3 empty); granny-flat confidence reaches 'high' only when confirmed_count_source is 'user_reviewed'; ConfirmationPanel invokes onCountChange with the answer-adjusted count and lifts the per-structure answers to its caller.",
+  "fails_when": "Grep 1 returning a hit would mean pvlib IS imported and the reworded copy is itself the false claim. Grep 2 returning a hit means a served surface still names a library the code never runs. Grep 3 returning a hit means a SAR constant survived the deletion. test_high_needs_human_reviewed_count goes red the moment the count_source condition is dropped and detector self-agreement can buy 'high' again. The ConfirmationPanel wiring tests go red if onCountChange stops being called, which is the original defect returning. Each of these compares the code against something outside itself - the import graph, the rendered strings, the caller's observed behaviour - never against its own recomputed output.",
+  "demonstrated_failing": "Every claim was measured against origin/main 0c41c09d and production before any edit, and two pre-change states were reproduced red. (1) Applying the new count_source condition to the existing test suite turned 10 tests red on first run - test_high_requires_all_three, test_zero_counts_agree_high, test_confidence_high_when_all_good and 7 others were all asserting that count equality alone earns 'high'. Those failures ARE the old doctrine being exercised; each was flipped with an in-test reason rather than deleted. (2) Production measurement of the defect: SELECT over granny_flat_reports returns 16 rows with confirmed_structure_count, 15 with both counts, 13 agree / 2 disagree / 1 machine-NULL, 0 with any provenance field, and 0 of 87 rows holding detected_structures and a confirmed count together. Both 'disagreements' are confirmed=1 / machine=0, which only the frontend ': 1' fallback produces - a brief-card deselect can only yield confirmed <= machine - so the human-signal count is 0, not the 2 the census recorded. (3) grep on origin/main showed pvlib named in the PDF at shadow-report.tsx:576/583, /how-it-works:74, the audit-trail source string shadow_detector.py:479 and 381 report_audit_trail rows, with zero import sites; and PC_CATALOG/S1_COLLECTION/FLOOD_RATIO each appearing exactly once, at their own definition.",
+  "mutation_evidence": "Delete the `human_checked` term from _compute_confidence's high branch -> test_high_needs_human_reviewed_count and test_compute_confidence_agreement_without_human_is_not_high fail. Default count_source to 'user_reviewed' instead of 'unrecorded' -> test_compute_confidence_default_count_source_is_not_high and test_confirm_records_unrecorded_when_caller_is_silent fail. Drop the onCountChange call from handleStructureType -> three ConfirmationPanel tests fail (the exact regression that shipped originally). Stop persisting structure_types/detect_id/confirmed_count_source -> test_confirm_persists_count_provenance_join_key_and_answers fails. Remove the detected_structures carry-forward -> nothing in Python fails, so the guard is the post_merge SQL check below rather than a unit test; recorded as a known gap. Re-emit 'garage' for kept brief-card structures -> the never-labels-a-type-it-does-not-ask-for test fails. Restore 'pvlib' to the PDF methodology string -> grep 2 in the command goes non-empty.",
+  "self_comparison_note": "None of these re-run the code and check it agrees with itself. The pvlib checks read the import graph, which is the authority on whether a library is used. The confidence checks assert against fixed expected values chosen from the semantics, not from the function's current output. The production measurements compare two independently-produced numbers (detector count vs submitted count) and then explain the difference from the frontend source, rather than accepting equality as evidence - which is precisely the trap this change removes."
  },
  "pre_impl": {
-  "existing_data": "Census of all 18 frontend files naming the table (agent-swept with verbatim snippets; 3 load-bearing claims re-verified by direct read). Blast radius measured live before design: is_current NULL rows = 0; 35 current+needs_review rows (all with numeric values, woollahra-heavy 16) served today by structured-controls; 4 flagged SD rows served by canibuildit; coverage count unchanged 28->28 under the clean predicate. Paid channel (conveyancing) has NO TS readers - it is already Python-side, so 'paid first' resolves to the most-served free surfaces.",
-  "assumption_mismatch": "canibuildit's inline slug map carried exactly the six renames lib/lga-slug.ts holds (verified line-by-line before the swap) - keying unchanged. The proxy returns ALL dev_types per LGA; routes filter client-side, which matches how the reference implementation's own consumers (conveyancing renderer) shape its output. Mock fixtures pinning the fetch_dcp_setbacks column order were updated to the 13-column shape in the same change.",
-  "new_vs_existing": "fetch_dcp_setbacks extension is additive (3 SELECT columns, 4 raw row fields, registry_pdf_urls key, savepoint-isolated PDF-map probe) - the paid conveyancing consumers ignore unknown dict keys, and all 3,665 Python tests stay green. Response contracts of the four routes are preserved field-for-field (structured-controls additively gains as_at/as_at_line). Served-row changes are confined to previously-wrong paths and are counted above.",
-  "external_source_error": "Proxy unreachable -> DcpControlsUnavailableError -> structured-controls returns visible 503; parking-rates records its tier as degraded with a user-facing reason (existing machinery); capacity fails the request as before (500 success:false); canibuildit keeps its non-blocking empty (field unrendered by the UI, census-verified). The endpoint returns 503 on DB failure and available:false with a reason for checked-none - never an empty success.",
-  "frontend_type": "DcpControlRow/DcpControlsResult typed in lib/dcp-controls-client.ts; route response interfaces unchanged (StructuredControl, ParkingControlRow reused). TSC baseline gate enforces.",
-  "user_failure_mode": "A consolidated route that cannot reach the guarded source fails VISIBLY (503/degraded-tier note/500), never with silently emptier data. Users on the assessment DCP tab stop seeing 35 under-review numbers presented as authoritative - visible absence of quarantined values is the fix working."
+  "existing_data": "Read-only production census 2026-08-06 before any edit. granny_flat_reports: 87 rows (2026-04-08 to 2026-07-26), 16 with confirmed_structure_count, 15 with both counts, 13 agree / 2 disagree / 1 machine-NULL, 0 with a provenance field, 0 holding detected_structures and a confirmed count together, 8 high / 8 medium. disclaimer_versions: exactly one live shadow row (id=4, shadow-v1) whose source_attributions opens with pvlib. report_audit_trail: 381 rows naming pvlib. property_reports flood: 148 rows, 0 with null or empty data_sources, but 143 still naming Microsoft Planetary Computer S1 RTC (131 inside the 90-day cache window, newest 2026-08-03).",
+  "assumption_mismatch": "Three inherited claims were wrong and are corrected in the plan docs. (a) The census said 2 rows carry genuine human disagreement; 0 do - both are the ': 1' fallback. (b) It cited the SAR constants at flood_truth.py:100-101/115; on origin/main they sit at :109-110/129, so the stale working tree would have produced wrong citations. (c) It described pvlib as cited on three surfaces; there are more, including 381 audit rows and a QA doc that actively prescribed the false wording as a fix. Additionally, disclaimer_versions.source_attributions is never rendered to a user - audit_trail.py:187 selects only the version column - so migration 064 corrects the evidentiary record, not a page, and the PR says so rather than claiming a user-visible fix.",
+  "new_vs_existing": "No new module, table, endpoint or data source. granny_flat_reports.inputs/outputs are jsonb, so the four new keys need no schema migration. The detected_structures carry-forward extends the SELECT that already fetched tile_b64 and execution_manifest from the same row by the same id - one more column on an existing query, marked prior-art-checked at the site. Migration 064 follows the lifecycle already documented in migrations/042b and docs/qa/INDEX.md. ConfirmationPanel was exported for test only; its props gained two entries and its local state moved up one level.",
+  "external_source_error": "pybdshadow is the dependency the corrected wording now names, and it is NOT installed in this environment - so the replacement copy deliberately asserts nothing about its internals. The old docstring claim that pybdshadow 'uses suncalc-py' was dropped rather than restated, because nothing in this repo substantiates it. The new wording claims only what the call site proves: bdshadow_sunlight receives a footprint, a height and a UTC instant and returns the shadow polygon. If the Python API is unreachable the granny-flat confirm route already returns a visible 502; the new fields are optional at every layer so an older client still succeeds, recorded as 'unrecorded'.",
+  "frontend_type": "structure_types crosses three boundaries. Browser sends {index: number, answer: string}[]. The Next route rejects a non-array, more than 40 entries, a non-integer or out-of-range index, or an answer outside the six literals - HTTP 400, never coercion. Pydantic re-validates against the same Literal set, so a divergence is a 422 rather than a silent drop; both lists include 'kept' and must stay in sync. confirmed_count_source is a three-value union on both sides and an unknown string is rejected rather than defaulted, because defaulting it to 'user_reviewed' would manufacture the exact claim the field exists to make falsifiable. DetectedStructureRow gained an optional index because older brief-card rows may lack it; the payload falls back to array position there. tsc --noEmit passes with 0 errors.",
+  "user_failure_mode": "A user marking a detection 'Part of main house' on a 3-structure lot now drops the count to 2, which lifts the MULTIPLE_SECONDARY_STRUCTURES block gating CDC eligibility. That is intended - the block exists because we do not know what the structures are, so it should respond when the user tells us, and leaving it unresponsive is the unwired safeguard this item is about - but it means an answer that previously moved nothing now moves a served verdict. Mitigations: the block only lifts on an explicit per-structure answer; the answer is persisted against the structure index so the decision is auditable after the fact; and a line above the questions states which count will be used and whether it came from the person or the detector. The opposite failure - a report claiming human validation that never happened - is the one being removed, and it was live on 8 reports."
  },
  "functions": [
   {
-   "name": "dcp_controls",
-   "file_line": "services/dcp_controls_api.py:41",
-   "input": "lga slug + optional zone string, as query params from the TS client",
-   "output": "the guarded fetch_dcp_setbacks result flattened to rows + as-at + registry PDF map, or available:false with reason, or HTTP 503",
-   "if_none": "fetch returning None -> available:false with the honest dual-cause reason (no rows OR swallowed failure - a documented limitation of the shared implementation)"
+   "name": "_compute_confidence",
+   "file_line": "services/granny_flat.py:740",
+   "input": "validated flag, confirmed_count, samgeo_count, rent_available, and now count_source (three-state provenance)",
+   "output": "(confidence, reason); 'high' only when a person reviewed the count AND it matches the detector AND rent data exists",
+   "if_none": "count_source absent defaults to 'unrecorded', which cannot reach 'high' - absence is its own state, never folded into 'a human checked'"
   },
   {
-   "name": "fetchDcpControls",
-   "file_line": "frontend-nextjs/lib/dcp-controls-client.ts:51",
-   "input": "lga slug + optional zone, from the four consolidated routes",
-   "output": "typed DcpControlsResult from PYTHON_API_URL/pipeline/dcp-controls with a 20s abort",
-   "if_none": "network/non-OK -> DcpControlsUnavailableError so every caller converts to ITS visible degraded shape - never an empty success"
+   "name": "confirm_and_calculate",
+   "file_line": "services/granny_flat.py:1126",
+   "input": "GrannyFlatConfirmRequest, which now also carries the confirmed_count_source provenance value and the per-structure structure_types answers",
+   "output": "same response contract; the persisted inputs gain confirmed_count_source, structure_types and detect_id, and outputs gain the carried-forward detected_structures",
+   "if_none": "structure_types None is stored as null (not an empty list, which would read as 'asked and answered nothing'); detect row absent means detected_structures carries forward as null"
   },
   {
-   "name": "fetch_dcp_setbacks",
-   "file_line": "scripts/conveyancing_db.py:253",
-   "input": "connection + lga slug + optional zone code (unchanged signature)",
-   "output": "existing dict + additive raw citation fields per row + registry_pdf_urls map (savepoint-isolated probe)",
-   "if_none": "unchanged: None on no rows or swallowed failure; PDF-map probe failure degrades to an empty map without poisoning the transaction"
+   "name": "ConfirmationPanel.handleStructureType",
+   "file_line": "frontend-nextjs/app/reports/granny-flat/page.tsx:1007",
+   "input": "structure index + one of the four answers",
+   "output": "lifts the answer to the page AND invokes onCountChange with detected count minus the detections marked part_of_main",
+   "if_none": "no answers given means onCountChange is never called and the count stays the detector's figure, which the page then transmits as 'machine_default'"
+  },
+  {
+   "name": "runConfirm",
+   "file_line": "frontend-nextjs/app/reports/granny-flat/page.tsx:351",
+   "input": "detect result, the already-adjusted count, the per-structure answers",
+   "output": "confirm POST carrying confirmed_count_source and structure_types; derives provenance only, never re-adjusts the count",
+   "if_none": "fewer answers than secondary structures yields 'machine_default' - a partial pass is not a review"
   }
  ],
  "values": [
   {
-   "value": "proxy rows in each consolidated route",
-   "read_at": "frontend-nextjs/app/api/capacity/calculate/route.ts:121",
+   "value": "confirmed_count_source",
+   "read_at": "services/granny_flat.py:1255",
    "nullable": "yes",
-   "guard_at": "frontend-nextjs/app/api/capacity/calculate/route.ts:122-125 (available && rows checks before filtering)",
-   "if_missing": "empty slices -> the route's existing empty-state responses; unavailability throws to the route's visible failure path"
+   "guard_at": "services/granny_flat.py:1259 (`req.confirmed_count_source or \"unrecorded\"`) and route.ts COUNT_SOURCES membership check returning 400",
+   "if_missing": "'unrecorded' - confidence capped at medium and the reason says no person reviewed the count"
   },
   {
-   "value": "registry_pdf_urls[source_chapter_key]",
-   "read_at": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:200",
+   "value": "structure_types",
+   "read_at": "services/granny_flat.py:1305",
    "nullable": "yes",
-   "guard_at": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:200-207 (null coalescing; anchor only when pdf_page present)",
-   "if_missing": "pdf_url null - the UI renders the citation without a link, as before"
+   "guard_at": "route.ts array/shape/answer-literal validation returning 400; Pydantic Literal re-validation",
+   "if_missing": "stored as null, distinguishable from an empty list"
+  },
+  {
+   "value": "detected_structures carried into the confirm row",
+   "read_at": "services/granny_flat.py:1287",
+   "nullable": "yes",
+   "guard_at": "initialised to None and only set when the detect row is found by report_id",
+   "if_missing": "null - the confirm row records answers without their referent, the pre-change state for all 87 rows"
   }
  ],
  "queries": [
   {
-   "purpose": "the ONE guarded controls read (now also the proxy's source)",
-   "file_line": "scripts/conveyancing_db.py:286",
-   "where_clause": "lga = %s AND is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE), deterministic ORDER BY with id tiebreak",
-   "if_zero": "None -> endpoint available:false with reason",
-   "if_wrong": "per-row needs_review re-check + zone_specific condition filter remain; fixtures pin the column order"
+   "purpose": "carry the detect run's tile, manifest AND per-structure evidence into the confirm row",
+   "file_line": "services/granny_flat.py:1276",
+   "where_clause": "id = %s (unchanged; one additional selected column, outputs->'detected_structures')",
+   "if_zero": "row absent -> all three carry-forwards stay None, same as before for tile_b64",
+   "if_wrong": "without this the ON CONFLICT DO UPDATE below overwrites the detect row and deletes the structures the stored answers refer to - measured as 0 of 87 rows holding both"
   },
   {
-   "purpose": "coverage metadata read (kept direct by design, guards adopted)",
-   "file_line": "frontend-nextjs/app/api/dcp/coverage/route.ts:29",
-   "where_clause": "c.is_current = TRUE AND (c.needs_review IS NULL OR c.needs_review = FALSE) + registry scoping",
-   "if_zero": "empty council list renders as before",
-   "if_wrong": "measured before shipping: clean predicate changes the count 28 -> 28"
+   "purpose": "persist the confirm result",
+   "file_line": "services/granny_flat.py:1298",
+   "where_clause": "INSERT ... ON CONFLICT (id) DO UPDATE (unchanged); three keys added to the inputs jsonb, one to outputs",
+   "if_zero": "n/a",
+   "if_wrong": "a row claiming confirmed_count_source='user_reviewed' with a null structure_types is detectable by the post_merge query and would indicate a caller asserting provenance it did not collect"
   },
   {
-   "purpose": "registry PDF-URL map for citation links",
-   "file_line": "scripts/conveyancing_db.py:332",
-   "where_clause": "council = %s AND is_active = TRUE AND r2_public_pdf_url IS NOT NULL",
-   "if_zero": "empty map - citations render without links",
-   "if_wrong": "per-council parameter makes cross-council contamination structurally impossible (the old TS JOIN needed a leak sentinel; the map does not)"
+   "purpose": "supersede the shadow disclaimer that names pvlib",
+   "file_line": "migrations/064_shadow_disclaimer_v2_pvlib_removal.sql:44",
+   "where_clause": "pipeline_name='shadow' AND version='shadow-v1' AND superseded_at IS NULL",
+   "if_zero": "the trailing DO block raises unless exactly one live shadow version remains, so a no-op UPDATE aborts the transaction rather than leaving zero live rows",
+   "if_wrong": "two live versions would make get_current_disclaimer_version nondeterministic; the same post-condition catches that case"
   }
  ],
  "break_it": [
   {
-   "scenario": "a needs_review row with a numeric value reaches the assessment DCP tab or duplex-check card",
-   "what_happens": "pre-change: served as a normal authoritative number (numeric won the branch) - 35 live rows measured; the quarantine was decorative",
+   "scenario": "a caller posts a confirm with no confirmed_count_source and the backend reads the absence as 'the user reviewed it'",
+   "what_happens": "the machine echo is relabelled human validation again, this time through the default rather than the logic",
    "mitigated": true,
-   "how": "rows now come from fetch_dcp_setbacks which excludes flagged rows in SQL AND per-row; the route cannot emit under_review from clean rows (pinned)",
-   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=dcp-structured-controls"
+   "how": "absent maps to 'unrecorded', a distinct third state that cannot satisfy the human_checked condition",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k 'unrecorded_when_caller or provenance_absent' -q"
   },
   {
-   "scenario": "capacity serves an arbitrary 3 of N parking rows that changes between deploys",
-   "what_happens": "pre-change: LIMIT 3 with no ORDER BY - which rows a user saw was up to the planner",
-   "mitigated": true,
-   "how": "all guarded rows in the source's deterministic order (value/section/id tiebreaks added at scripts/conveyancing_db.py:298-299); the flipped pin forbids inline SQL returning",
-   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=capacity-repoint"
+   "scenario": "someone posts confirmed_count_source='user_reviewed' directly to the API with nobody having answered anything",
+   "what_happens": "the provenance field becomes a self-assertion and is worth nothing",
+   "mitigated": false,
+   "how": "NOT mitigated and not mitigable server-side - the server cannot observe a click. What exists instead: both frontends only emit 'user_reviewed' when every secondary structure has an answer, and structure_types is written alongside, so a row claiming user_reviewed with a null structure_types is detectable. Recorded as a known limit rather than papered over.",
+   "repro": "SELECT count(*) FROM granny_flat_reports WHERE inputs->>'confirmed_count_source'='user_reviewed' AND inputs->'structure_types' IS NULL -- expect 0 while only these two surfaces call confirm"
   },
   {
-   "scenario": "the Python backend is down while a user opens the assessment DCP tab",
-   "what_happens": "risk introduced by proxying: a new failure mode where the old code hit the DB directly",
+   "scenario": "the brief card records a building type for structures the user merely left selected",
+   "what_happens": "a classification nobody gave is stored as a human label and later mistaken for training data - manufacturing the false provenance this change exists to remove",
    "mitigated": true,
-   "how": "visible 503 with a retry message (never empty success); parking-rates degrades tier-by-tier with user-facing reasons; capacity fails the request visibly; the trade-off (one guard implementation over one fewer hop) is the item-5 doctrine, stated in the PR",
-   "repro": "pytest tests/test_dcp_controls_api.py::TestDcpControlsEndpoint::test_db_failure_is_503; jest 'source-unavailable is a visible 503'"
+   "how": "that card only asks keep-or-reject, so it emits 'kept', which carries no type; the Literal documents why",
+   "repro": "cd frontend-nextjs && npx jest --testPathPattern=GrannyFlatBriefCard -t 'never labels a structure with a type'"
   },
   {
-   "scenario": "the slug-mapper swap silently changes how canibuildit keys its council lookups",
-   "what_happens": "a council's rows would vanish or belong to the wrong LGA on the granny-flat tool",
+   "scenario": "the count is reduced twice - once in handleStructureType and again in runConfirm",
+   "what_happens": "a 3-structure lot with one part_of_main answer submits 1 instead of 2, understating the count and wrongly clearing the multi-structure eligibility gate",
    "mitigated": true,
-   "how": "the inline map's six renames were verified identical to lib/lga-slug.ts line-by-line BEFORE the swap; toLgaSlug additionally null-guards empty input (the inline version could query lga = '')",
-   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=lga-slug"
+   "how": "this was present in the first draft and removed; runConfirm now derives provenance only and forwards the already-adjusted count, with a comment at the site saying so",
+   "repro": "cd frontend-nextjs && npx jest --testPathPattern=granny-flat-confirm-wiring (asserts onCountChange receives exactly 2 for part_of_main and 3 for garage, from 3 detected)"
   },
   {
-   "scenario": "the fetch_dcp_setbacks SELECT extension breaks the paid conveyancing path",
-   "what_happens": "the 13-column unpack or new dict keys could disturb the PDF/brief consumers",
+   "scenario": "the confirm write overwrites the detect row and destroys detected_structures, so a stored answer points at nothing",
+   "what_happens": "structure_types survives but its referent does not - index 1 has no bbox, area or prompt to join back to, and the labels are useless for the calibration they were captured for",
    "mitigated": true,
-   "how": "additive keys only; all three fixture suites updated to the exact column order and the full 3,665-test Python suite green incl. conveyancing forensic/citation/needs-review suites",
-   "repro": "python -m pytest tests/test_conveyancing_clause_citation.py tests/test_conveyancing_dcp_needs_review.py tests/test_dcp_as_at.py -q"
+   "how": "detected_structures is carried forward through the same SELECT that already carried tile_b64; this is the state all 87 existing rows are in",
+   "repro": "SELECT count(*) FROM granny_flat_reports WHERE inputs ? 'structure_types' AND NOT (outputs ? 'detected_structures') -- must stay 0 for rows written after this change"
   },
   {
-   "scenario": "the PDF-map probe fails mid-transaction and takes the as-at probe down with it",
-   "what_happens": "a poisoned transaction would degrade every subsequent read in the shared function",
+   "scenario": "migration 064 runs twice, or runs while another shadow version is already live",
+   "what_happens": "two rows with superseded_at IS NULL, and get_current_disclaimer_version returns whichever sorts first - a nondeterministic disclaimer version stamped onto audit rows",
    "mitigated": true,
-   "how": "scripts/conveyancing_db.py:318-338 - savepoint-isolated like the as-at probe (the item-3 Sol doctrine applied to the new query)",
-   "repro": "mock-cursor suites exercise the probe failure path; fetch returns rows with an empty map"
+   "how": "wrapped in BEGIN/COMMIT with a trailing DO block that raises unless exactly one live shadow version remains, so a second run aborts",
+   "repro": "run the migration twice against a scratch copy; the second must abort with 'expected exactly 1 live version'"
   },
   {
-   "scenario": "the observation check goes green while an inline reader hides in a comment-stripped edge",
-   "what_happens": "a false all-clear on the consolidation invariant while an inline reader still executes",
-   "mitigated": true,
-   "how": "the check strips comments (matching what files EXECUTE) and fails with exit 2 when it cannot find even the internal-review routes (a scan that finds nothing is a broken scan, DQ-30 lesson)",
-   "repro": "python scripts/check_ts_dcp_readers.py - baseline unexpected_inline_readers == []"
+   "scenario": "a cached flood report is served and still names Microsoft Planetary Computer S1 RTC",
+   "what_happens": "the false source claim DQ-44 removed from new reports keeps being served from stored rows on every cache hit",
+   "mitigated": false,
+   "how": "NOT fixed here and deliberately out of scope - it is a production data repair and Lane 1 separates measurement from writes. Measured and logged as DQ-50: 143 rows carry the string, 131 inside the 90-day cache window, newest 2026-08-03. The _DATA_SOURCES_BASE fallback at flood_truth.py:133 used at :1819 also still hardcodes it, though 0 rows can currently reach that branch.",
+   "repro": "SELECT count(*) FROM property_reports WHERE product='flood' AND run_date > CURRENT_DATE - INTERVAL '90 days' AND EXISTS (SELECT 1 FROM unnest(data_sources) s WHERE s ILIKE '%Planetary Computer%') -- currently 131, target 0"
   },
   {
-   "scenario": "the registry PDF-URL map probe fails and citation links silently vanish or mislink",
-   "what_happens": "controls would render without their page-anchored citation links, or a poisoned transaction would degrade every later read in the shared function",
+   "scenario": "the reworded shadow methodology understates what the product does and a reader assumes the direction shown was computed for their address",
+   "what_happens": "the pvlib lie is replaced by a quieter one - the compass bearing is a stored per-scenario constant, not a per-report calculation",
    "mitigated": true,
-   "how": "scripts/conveyancing_db.py:318-338 savepoint isolation (empty map on failure, transaction intact); the map is per-council by parameter so a mislink to another council's PDF is structurally impossible",
-   "repro": "pytest tests/test_dcp_controls_api.py (registry map assertion) + the mock-cursor suites exercising probe failure"
+   "how": "the PDF methodology paragraph and the new disclaimer limitation (6) both state that the compass direction is a fixed stored value not recalculated for the address, and shadow_model's docstring records that the constants are unverified against published ephemeris with SH-1 named as the check that would substantiate them",
+   "repro": "read the Methodology paragraph in a generated shadow PDF and confirm both the pybdshadow attribution and the fixed-direction sentence are present"
   }
  ],
  "post_merge": {
-  "db_reset": "No",
-  "secrets": "No",
-  "other_repo": "No",
-  "manual_verify": "Railway deploys the new /pipeline/dcp-controls endpoint on merge (auto-deploy from GitHub); the four routes depend on it, so merge backend and frontend together (single squash does this)."
- }
+  "db_reset": "No reset. One migration must be applied to production: migrations/064_shadow_disclaimer_v2_pvlib_removal.sql. Expected before: 1 shadow row (id=4, shadow-v1, superseded_at IS NULL). Expected after: 2 shadow rows, exactly one live, version 'shadow-v2'. Until it runs, new shadow reports keep recording version 'shadow-v1', whose stored attributions still name pvlib. Not user-visible either way - source_attributions is never rendered; audit_trail.py:187 selects only the version column.",
+  "secrets": "No new secrets or environment variables.",
+  "other_repo": "No. Trigger.dev reaches the confirm path only through the Next route, whose contract is additive - both new fields are optional at every layer, so an un-updated caller still succeeds and is recorded as 'unrecorded'.",
+  "manual_verify": "1) Open a granny-flat report on a lot with at least one secondary structure; confirm the line above the questions reads \"the detector's own figure\" before answering and \"based on your answers below\" after every structure is answered, and that the number drops when a structure is marked 'Part of main house'. 2) Complete the confirm and check the row: SELECT inputs->>'confirmed_count_source', inputs->'structure_types', inputs->>'detect_id', (outputs ? 'detected_structures') FROM granny_flat_reports ORDER BY created_at DESC LIMIT 1 -- expect 'user_reviewed', a non-null array, the detect UUID, true. 3) Generate a shadow PDF; the Methodology paragraph and the data-currency row must name pybdshadow and not pvlib. 4) Load /how-it-works and confirm the Shadow Analysis source list no longer says pvlib. 5) Apply migration 064 and re-query disclaimer_versions for exactly one live shadow-v2 row."
+ },
+ "commit_hash": "0c41c09d"
 }

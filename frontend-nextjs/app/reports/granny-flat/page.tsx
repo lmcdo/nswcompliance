@@ -124,6 +124,10 @@ function GrannyFlatPageInner() {
   const [emailSubmitted, setEmailSubmitted] = useState(false);      // confirming-state resume-link capture
   const [reportEmailCaptured, setReportEmailCaptured] = useState(false); // post-result CTA capture
   const [existingSecondaryDwelling, setExistingSecondaryDwelling] = useState<boolean | null>(null);
+  // Per-structure answers. These used to live inside ConfirmationPanel and were
+  // thrown away when it unmounted — the answer a person gave about each
+  // building never reached the server. Lifted here so runConfirm can send them.
+  const [structureTypes, setStructureTypes] = useState<Record<number, StructureTypeAnswer>>({});
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
   const [selectedLng, setSelectedLng] = useState<number | null>(null);
 
@@ -180,6 +184,7 @@ function GrannyFlatPageInner() {
         const d = json.data;
         setDetectResult(d);
         setConfirmedCount(d.samgeo_validated && d.detected_structures?.length > 0 ? d.detected_structures.length : 1);
+        setStructureTypes({});
         setState('confirming');
         return;
       }
@@ -319,8 +324,12 @@ function GrannyFlatPageInner() {
           if (detectData.samgeo_validated && detectData.detected_structures?.length > 0) {
             setConfirmedCount(detectData.detected_structures.length);
           } else {
+            // Fallback default when detection found nothing. NOT a human
+            // figure — both historical "user disagreed with the detector"
+            // rows in the DB were this line, not a person.
             setConfirmedCount(1);
           }
+          setStructureTypes({});   // answers belong to the detect run they were given for
           setState('confirming');
           return;
         }
@@ -339,13 +348,38 @@ function GrannyFlatPageInner() {
     }
   };
 
-  const runConfirm = useCallback(async (detect: DetectResult, count: number, existingGF: boolean | null, pc: string, notifEmail: string) => {
+  const runConfirm = useCallback(async (
+    detect: DetectResult,
+    count: number,
+    existingGF: boolean | null,
+    pc: string,
+    notifEmail: string,
+    answers: Record<number, StructureTypeAnswer> = {},
+  ) => {
     setState('detecting'); // reuse spinner
     setFinalResult(null);
     setErrorMsg('');
+
+    // Provenance of the count, as a transmitted field rather than an
+    // assumption at the far end. A count is only "reviewed" when a person
+    // answered for EVERY secondary structure they were shown; a partial pass
+    // leaves it as the detector's own figure.
+    //
+    // `count` arrives already adjusted — ConfirmationPanel.handleStructureType
+    // is what moves it. Do not subtract again here.
+    const secondary = detect.detected_structures.filter((s) => !s.is_main_dwelling);
+    const allAnswered = secondary.length > 0 && secondary.every((s) => s.index in answers);
+    const countSource = allAnswered ? 'user_reviewed' : 'machine_default';
+    const structureTypesPayload = secondary
+      .filter((s) => s.index in answers)
+      .map((s) => ({ index: s.index, answer: answers[s.index] }));
+
     posthog?.capture('granny_flat_confirm', {
       address: detect.address,
       confirmed_count: count,
+      detected_count: detect.samgeo_structure_count,
+      count_source: countSource,
+      structures_answered: structureTypesPayload.length,
     });
 
     try {
@@ -357,6 +391,8 @@ function GrannyFlatPageInner() {
           action: 'confirm',
           detect_id: detect.detect_id,
           confirmed_structure_count: count,
+          confirmed_count_source: countSource,
+          structure_types: structureTypesPayload,
           samgeo_structure_count: detect.samgeo_structure_count,
           postcode: pc || detect.address.match(/\b(\d{4})\b/)?.[1] || null,
           existing_secondary_dwelling: existingGF,
@@ -386,7 +422,7 @@ function GrannyFlatPageInner() {
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detectResult) return;
-    await runConfirm(detectResult, confirmedCount, existingSecondaryDwelling, postcode, email);
+    await runConfirm(detectResult, confirmedCount, existingSecondaryDwelling, postcode, email, structureTypes);
   };
 
 
@@ -565,10 +601,12 @@ function GrannyFlatPageInner() {
             inputAddress={inputAddress}
             confirmedCount={confirmedCount}
             onCountChange={setConfirmedCount}
+            structureTypes={structureTypes}
+            onStructureTypesChange={setStructureTypes}
             existingSecondaryDwelling={existingSecondaryDwelling}
             onExistingSecondaryDwellingChange={setExistingSecondaryDwelling}
             onConfirm={handleConfirm}
-            onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); }}
+            onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); setStructureTypes({}); }}
           />
           {!emailSubmitted ? (
             <form
@@ -933,11 +971,16 @@ function getPositionLabel(bbox_pixel: number[], tileHeight: number | undefined):
   return 'mid-lot';
 }
 
-function ConfirmationPanel({
+// Exported for test only. The regression this guards is specific: onCountChange
+// was a prop this component accepted and never called, so the "user-confirmed"
+// structure count could only repeat the detector for the tool's whole life.
+export function ConfirmationPanel({
   detectResult,
   inputAddress,
   confirmedCount,
   onCountChange,
+  structureTypes,
+  onStructureTypesChange,
   existingSecondaryDwelling,
   onExistingSecondaryDwellingChange,
   onConfirm,
@@ -947,30 +990,45 @@ function ConfirmationPanel({
   inputAddress: string;
   confirmedCount: number;
   onCountChange: (n: number) => void;
+  structureTypes: Record<number, StructureTypeAnswer>;
+  onStructureTypesChange: (v: Record<number, StructureTypeAnswer>) => void;
   existingSecondaryDwelling: boolean | null;
   onExistingSecondaryDwellingChange: (v: boolean | null) => void;
   onConfirm: (e: React.FormEvent) => void;
   onBack: () => void;
 }) {
-  const [structureTypes, setStructureTypes] = useState<Record<number, StructureTypeAnswer>>({});
+  // structureTypes is owned by the page, not this component. It was local
+  // state until 2026-08-06, which meant every answer a person gave about a
+  // building was discarded when this panel unmounted.
 
   const secondaryStructures = detectResult.detected_structures.filter(s => !s.is_main_dwelling);
   const usePerStructureQuestions = detectResult.samgeo_validated && secondaryStructures.length > 0;
 
   const handleStructureType = (idx: number, type: StructureTypeAnswer) => {
-    setStructureTypes(prev => {
-      const next = { ...prev, [idx]: type };
-      const values = Object.values(next);
-      if (values.some(t => t === 'existing_gf')) {
-        onExistingSecondaryDwellingChange(true);
-      } else if (secondaryStructures.every(s => s.index in next)) {
-        // All answered — false if no GF, null if any unsure
-        const anyUnsure = values.some(t => t === 'unsure');
-        onExistingSecondaryDwellingChange(anyUnsure ? null : false);
-      }
-      return next;
-    });
+    const next = { ...structureTypes, [idx]: type };
+    const values = Object.values(next);
+    if (values.some(t => t === 'existing_gf')) {
+      onExistingSecondaryDwellingChange(true);
+    } else if (secondaryStructures.every(s => s.index in next)) {
+      // All answered — false if no GF, null if any unsure
+      const anyUnsure = values.some(t => t === 'unsure');
+      onExistingSecondaryDwellingChange(anyUnsure ? null : false);
+    }
+    onStructureTypesChange(next);
+    // The count control, finally connected. `onCountChange` was passed to this
+    // component from the day it was written and never called, so the
+    // "user-confirmed structure count" could only ever repeat the detector's
+    // own figure. A detection marked "part of the main dwelling" is not a
+    // separate building, so it comes out of the count.
+    const notSeparate = secondaryStructures.filter(
+      s => next[s.index] === 'part_of_main',
+    ).length;
+    onCountChange(Math.max(0, detectResult.detected_structures.length - notSeparate));
   };
+
+  const answeredCount = secondaryStructures.filter(s => s.index in structureTypes).length;
+  const allSecondaryAnswered = secondaryStructures.length > 0 &&
+    answeredCount === secondaryStructures.length;
 
   const canonical = detectResult.address;
   const showCanonical = canonical && canonical.toLowerCase() !== inputAddress.toLowerCase();
@@ -1025,6 +1083,17 @@ function ConfirmationPanel({
                   <p className="text-sm font-medium text-gray-700 mb-2">
                     AI detected {valid.length} structure{valid.length !== 1 ? 's' : ''} on lot
                   </p>
+                  {/* The count that will actually be submitted, and whether a
+                      person has stood behind it. Before this, the figure sent
+                      as "confirmed" was always the detector's own and nothing
+                      on screen said so. */}
+                  {usePerStructureQuestions && (
+                    <p className={`text-xs mb-2 ${allSecondaryAnswered ? 'text-teal-700' : 'text-gray-400'}`}>
+                      {allSecondaryAnswered
+                        ? `Count used for this check: ${confirmedCount} — based on your answers below.`
+                        : `Count used for this check: ${confirmedCount} — the detector's own figure. Answer for each structure below and it will reflect your review (${answeredCount} of ${secondaryStructures.length} answered).`}
+                    </p>
+                  )}
                   <div className="space-y-1.5">
                     {valid.map((s) => (
                       <div key={s.index} className="flex items-start gap-2 text-xs text-gray-600">
@@ -1159,7 +1228,17 @@ function ConfirmationPanel({
               })}
               <p className="text-xs text-gray-400">
                 Eligibility depends on the accuracy of your structure classifications. If you selected the wrong type,{' '}
-                <button type="button" onClick={() => { setStructureTypes({}); onExistingSecondaryDwellingChange(null); }} className="underline hover:no-underline">reset answers</button>.
+                <button
+                  type="button"
+                  onClick={() => {
+                    onStructureTypesChange({});
+                    onExistingSecondaryDwellingChange(null);
+                    // Back to the detector's own figure, and back to
+                    // machine_default provenance with it.
+                    onCountChange(detectResult.detected_structures.length);
+                  }}
+                  className="underline hover:no-underline"
+                >reset answers</button>.
               </p>
             </div>
           ) : (

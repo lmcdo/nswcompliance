@@ -1,15 +1,24 @@
 """
-Shadow modelling -- geometric pybdshadow + pvlib solar position.
+Shadow modelling -- geometric shadow casting via pybdshadow.
 
 5 ADG-standard scenarios for any lot+height combination.
 
-VERIFIED 2026-04-06 via pvlib: shadows extend SOUTHWARD for Sydney June 21.
-  9am:  sun at NE 42.6° → shadow SW 222.6°
-  noon: sun at N  359.2° → shadow S  179.2°
-  3pm:  sun at NW 316.3° → shadow SE 136.3°
-Sep/Dec direction_deg values are approximate (pvlib not yet run for those dates).
-pybdshadow uses suncalc-py which computes correct solar position for Southern Hemisphere.
-No special Southern Hemisphere handling needed.
+METHOD, as the code actually runs it: `model_shadow` passes the building
+footprint, its height and a UTC instant to `pybdshadow.bdshadow_sunlight`,
+which derives the sun position itself and returns the shadow polygon. This
+module imports no solar-position library of its own -- pvlib is not imported
+anywhere in the repo (`git grep -E "^\\s*(import|from)\\s+pvlib"` -> no hits).
+
+`direction_deg` below is NOT computed at run time. It is a stored constant
+per scenario, served to the frontend and PDF as `shadow_direction_deg`.
+Recorded provenance is a manual 2026-04-06 run (sun at NE 42.6 deg 9am,
+N 359.2 deg noon, NW 316.3 deg 3pm -> shadow bearings 222.6 / 179.2 / 136.3)
+whose output was never committed, and the Sep/Dec values were noted at the
+time as approximations. So the constants are UNVERIFIED against published
+ephemeris, and the "shadows fall southward in Sydney" direction claim has no
+committed artefact behind it -- see the services/CLAUDE.md shadow caveat.
+Check SH-1 in ~/.claude/plans/ce-calibration-execution-plan-2026-08.md is the
+ephemeris fixture that would substantiate both.
 """
 import json
 import logging
@@ -58,7 +67,9 @@ def northern_neighbour_proxy(lot_geojson: dict, offset_m: Optional[float] = None
         return lot_geojson
 
 # (key, month, day, hour_utc, description, date_str, time_local, direction_deg)
-# direction_deg = direction shadow points (opposite of sun azimuth)
+# direction_deg = direction shadow points (opposite of sun azimuth), STORED as
+# a constant -- not recomputed per report. See the module docstring for its
+# provenance and the fact that it is unverified against published ephemeris.
 # The fixed year every scenario models (solar positions repeat closely year to
 # year; the manifests record this so a report states WHICH year was modelled).
 SCENARIO_YEAR = 2025

@@ -39,18 +39,49 @@ def test_compute_confidence_low_when_not_validated():
 
 
 def test_compute_confidence_high_when_validated_counts_agree_and_rent_available():
+    """FLIPPED 2026-08-06 (calibration Lane 1, item 3).
+
+    This test used to omit count_source and assert "high" on count equality
+    alone. That was the 0%-drift trap: the count was seeded from the detector
+    and the UI could not edit it, so equality was the detector agreeing with
+    itself. "high" now requires count_source='user_reviewed'.
+    """
     conf, reason = _compute_confidence(
-        validated=True, confirmed_count=3, samgeo_count=3, rent_available=True
+        validated=True, confirmed_count=3, samgeo_count=3, rent_available=True,
+        count_source="user_reviewed",
     )
     assert conf == "high"
     assert "3" in reason
     assert "structures" in reason.lower()
 
 
+def test_compute_confidence_agreement_without_human_is_not_high():
+    """The self-agreement case, pinned: same numbers, no human, never 'high'."""
+    for source in ("unrecorded", "machine_default"):
+        conf, reason = _compute_confidence(
+            validated=True, confirmed_count=3, samgeo_count=3, rent_available=True,
+            count_source=source,
+        )
+        assert conf == "medium", source
+        assert "No person reviewed this count" in reason, source
+
+
+def test_compute_confidence_default_count_source_is_not_high():
+    """A caller that says nothing about provenance must not earn 'high'.
+
+    Three states: absent is its own state, never folded into 'a human checked'.
+    """
+    conf, _ = _compute_confidence(
+        validated=True, confirmed_count=3, samgeo_count=3, rent_available=True
+    )
+    assert conf == "medium"
+
+
 def test_compute_confidence_high_single_structure():
     """Plural check: 1 structure should say 'structure' not 'structures'."""
     conf, reason = _compute_confidence(
-        validated=True, confirmed_count=1, samgeo_count=1, rent_available=True
+        validated=True, confirmed_count=1, samgeo_count=1, rent_available=True,
+        count_source="user_reviewed",
     )
     assert conf == "high"
     # singular
@@ -92,11 +123,22 @@ def test_compute_confidence_medium_when_samgeo_count_none():
 
 
 def test_compute_confidence_zero_counts_agree():
-    """confirmed=0, samgeo=0 — edge case but should be high if rent available."""
+    """confirmed=0, samgeo=0 — high only when a person reviewed it.
+
+    FLIPPED 2026-08-06 (Lane 1, item 3): previously asserted "high" without
+    count_source. An empty lot the detector reported and nobody looked at is
+    not a higher-confidence result than any other unreviewed count.
+    """
     conf, _ = _compute_confidence(
-        validated=True, confirmed_count=0, samgeo_count=0, rent_available=True
+        validated=True, confirmed_count=0, samgeo_count=0, rent_available=True,
+        count_source="user_reviewed",
     )
     assert conf == "high"
+
+    conf_unchecked, _ = _compute_confidence(
+        validated=True, confirmed_count=0, samgeo_count=0, rent_available=True
+    )
+    assert conf_unchecked == "medium"
 
 
 # ---------------------------------------------------------------------------

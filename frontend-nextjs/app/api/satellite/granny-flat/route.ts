@@ -188,6 +188,13 @@ export async function POST(request: NextRequest) {
     report_id?: string;
     existing_secondary_dwelling?: boolean | null;
     main_dwelling_area_m2?: number | null;
+    // How confirmed_structure_count came to hold its value. Three states —
+    // an absent value is 'unrecorded' downstream, never treated as a human
+    // check. See services/granny_flat.CountSource.
+    confirmed_count_source?: 'user_reviewed' | 'machine_default' | 'unrecorded';
+    // Per-structure human answers, bound to detected_structures[].index.
+    // Previously computed in the browser and discarded.
+    structure_types?: { index: number; answer: string }[];
   };
   try {
     body = await request.json();
@@ -412,7 +419,7 @@ export async function POST(request: NextRequest) {
   // CONFIRM — direct call (<30s)
   // -------------------------------------------------------------------------
   if (action === 'confirm') {
-    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id, existing_secondary_dwelling, main_dwelling_area_m2, notification_email } = body;
+    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id, existing_secondary_dwelling, main_dwelling_area_m2, notification_email, confirmed_count_source, structure_types } = body;
 
     if (!detect_id) {
       return NextResponse.json({ error: 'detect_id is required for confirm action' }, { status: 400 });
@@ -440,6 +447,38 @@ export async function POST(request: NextRequest) {
         { error: 'existing_secondary_dwelling must be boolean or null' },
         { status: 400 },
       );
+    }
+
+    // Reject a bad provenance value rather than coercing it. Silently
+    // defaulting an unknown string to 'user_reviewed' would manufacture the
+    // exact claim this field exists to make falsifiable.
+    const COUNT_SOURCES = ['user_reviewed', 'machine_default', 'unrecorded'] as const;
+    if (confirmed_count_source !== undefined &&
+        !COUNT_SOURCES.includes(confirmed_count_source)) {
+      return NextResponse.json(
+        { error: `confirmed_count_source must be one of ${COUNT_SOURCES.join(', ')}` },
+        { status: 400 },
+      );
+    }
+
+    const STRUCTURE_ANSWERS = ['part_of_main', 'garage', 'existing_gf', 'unsure', 'rejected', 'kept'];
+    if (structure_types !== undefined) {
+      if (!Array.isArray(structure_types) || structure_types.length > 40) {
+        return NextResponse.json(
+          { error: 'structure_types must be an array of at most 40 entries' },
+          { status: 400 },
+        );
+      }
+      const bad = structure_types.find(
+        (s) => !s || !Number.isInteger(s.index) || s.index < 0 || s.index > 100 ||
+               !STRUCTURE_ANSWERS.includes(s.answer),
+      );
+      if (bad) {
+        return NextResponse.json(
+          { error: `structure_types entries must be {index: int, answer: one of ${STRUCTURE_ANSWERS.join('|')}}` },
+          { status: 400 },
+        );
+      }
     }
 
     // #745 D3 / #752: a caller-supplied reconciled lot_area_m2 (the brief's
@@ -474,6 +513,8 @@ export async function POST(request: NextRequest) {
           lng,
           lot_area_m2,
           confirmed_structure_count,
+          confirmed_count_source: confirmed_count_source ?? 'unrecorded',
+          structure_types: structure_types ?? null,
           samgeo_structure_count: samgeo_structure_count ?? null,
           postcode: postcode ?? null,
           report_id: report_id ?? crypto.randomUUID(),

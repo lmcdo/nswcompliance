@@ -18,9 +18,14 @@ Detection approach (3 improvements over baseline):
      bins, paths. 15 m² = roughly a large carport. Configurable constant.
 
 Confidence logic:
-  "high"   — SAMGEO_VALIDATED + user confirmed same count as detection + rent data present
-  "medium" — SAMGEO_VALIDATED + user adjusted count, OR rent data missing
+  "high"   — SAMGEO_VALIDATED + a PERSON reviewed the count and agreed with the
+             detector (inputs.confirmed_count_source = 'user_reviewed') + rent
+             data present
+  "medium" — anything else that ran, including the detector agreeing with itself
   "low"    — SAMGEO_VALIDATED = False (pre-spike)
+  Before 2026-08-06 "high" needed only count equality, and the count was seeded
+  from the detector and not editable — so "high" was self-agreement. See
+  _compute_confidence for the measurement.
 
 SEPP Housing 2021 rules applied (sourced from housing_sepp_standards table):
   - Min lot area: from DB only — no fallback (#817); unavailable → 503
@@ -36,7 +41,7 @@ import os
 import re
 import uuid
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 import psycopg2
 import psycopg2.extras
@@ -319,6 +324,40 @@ class GrannyFlatDetectResponse(BaseModel):
     execution_manifest: Optional[dict] = None
 
 
+# What a human said about ONE detected structure.
+#   part_of_main / garage / existing_gf / unsure — the standalone tool's
+#     four-option per-structure question.
+#   rejected / kept — the brief card, which only asks keep-or-reject. 'kept'
+#     deliberately carries NO building type: that card never asks, and
+#     recording one would invent a classification nobody gave.
+StructureAnswer = Literal[
+    "part_of_main", "garage", "existing_gf", "unsure", "rejected", "kept",
+]
+
+
+class StructureConfirmation(BaseModel):
+    """A human answer bound to the structure it refers to.
+
+    `index` is the detect response's `detected_structures[].index`, so the
+    answer can be joined back to the bbox/area the person was actually
+    looking at. Before this existed the four-option answers were computed in
+    the browser and discarded, and the confirm write overwrote the detect
+    row's `detected_structures` — so no row anywhere held a structure and a
+    judgement about it together.
+    """
+    index: int
+    answer: StructureAnswer
+
+
+# How `confirmed_structure_count` came to hold the value it holds. THREE
+# states, and the absent case is its own state — a caller that says nothing
+# is 'unrecorded', never silently counted as a human confirmation. Every
+# granny-flat row written before 2026-08-06 is retrospectively 'unrecorded':
+# the standalone tool passed `onCountChange` to a component that never called
+# it, so the count could only ever echo the detector.
+CountSource = Literal["user_reviewed", "machine_default", "unrecorded"]
+
+
 class GrannyFlatConfirmRequest(BaseModel):
     detect_id: str
     address: str
@@ -326,7 +365,9 @@ class GrannyFlatConfirmRequest(BaseModel):
     lat: float
     lng: float
     lot_area_m2: Optional[float]
-    confirmed_structure_count: int      # user-confirmed count
+    confirmed_structure_count: int      # count as submitted — see confirmed_count_source
+    confirmed_count_source: Optional[CountSource] = None
+    structure_types: Optional[list[StructureConfirmation]] = None
     samgeo_structure_count: Optional[int] = None  # echoed from detect response
     postcode: Optional[str] = None
     report_id: Optional[str] = None     # pre-allocated by Next.js
@@ -701,14 +742,33 @@ def _compute_confidence(
     confirmed_count: int,
     samgeo_count: Optional[int],
     rent_available: bool,
+    count_source: str = "unrecorded",
 ) -> tuple[str, str]:
     """
     Returns (confidence, reason) tuple.
 
-    high:   AI and user agree on structure count AND rent data present.
-            "AI detected N structures on this lot."
-    medium: AI and user disagree on count, OR rent data missing.
+    high:   a PERSON reviewed the count and agreed with the detector, AND rent
+            data is present.
+    medium: anything else that ran — including the detector agreeing with
+            itself, which is what "counts agree" meant before 2026-08-06.
     low:    samgeo not validated (pre-spike).
+
+    `count_source` is the three-state provenance of `confirmed_count`
+    (`CountSource`). It exists because agreement between the detector and a
+    number seeded FROM the detector is not evidence about the world.
+
+    Until 2026-08-06 the standalone tool passed `onCountChange` to a component
+    that never invoked it, so `confirmed_structure_count` could only ever echo
+    `samgeo_structure_count`. The served reason nonetheless read
+    "AI detected 1 structure, you confirmed 1 — counts agree", and that
+    self-agreement promoted the report to "high". Measured on the 16 rows
+    carrying both counts: 13 "agreed", and every one of those agreements was
+    the echo. The 2 apparent disagreements were both confirmed=1 / detected=0
+    — the frontend's fallback default when detection found nothing, also not a
+    human. Zero of 16 carried a human judgement about the count.
+
+    So: `unrecorded` and `machine_default` can no longer reach "high", and no
+    reason string may say a person confirmed anything unless one did.
     """
     if not validated:
         return (
@@ -718,21 +778,38 @@ def _compute_confidence(
         )
 
     counts_agree = (samgeo_count is not None and confirmed_count == samgeo_count)
+    human_checked = (count_source == "user_reviewed")
+    plural = 's' if samgeo_count != 1 else ''
 
-    if counts_agree and rent_available:
+    if human_checked and counts_agree and rent_available:
         return (
             "high",
-            f"AI detected {samgeo_count} structure{'s' if samgeo_count != 1 else ''} on this lot. "
+            f"Aerial detection found {samgeo_count} structure{plural} on this lot and "
+            "your review agreed with that count. "
             "Rent estimate sourced from NSW Fair Trading bond data."
         )
 
-    if not counts_agree and samgeo_count is not None:
+    if samgeo_count is None:
+        reason = "Structure count entered manually (aerial detection not available). "
+    elif not human_checked:
+        # The honest description of the old "counts agree" case.
         reason = (
-            f"AI detected {samgeo_count} structure{'s' if samgeo_count != 1 else ''} "
-            f"but {confirmed_count} {'was' if confirmed_count == 1 else 'were'} confirmed. "
+            f"Aerial detection found {samgeo_count} structure{plural} on this lot. "
+            f"The report used {confirmed_count}. "
+            "No person reviewed this count, so it has not been checked against "
+            "the aerial image. "
+        )
+    elif counts_agree:
+        # Human agreed, but rent data is the missing piece.
+        reason = (
+            f"Aerial detection found {samgeo_count} structure{plural} and your review "
+            "agreed with that count. "
         )
     else:
-        reason = "Structure count entered manually (aerial detection not available). "
+        reason = (
+            f"Aerial detection found {samgeo_count} structure{plural} "
+            f"but your review recorded {confirmed_count}. "
+        )
 
     if not rent_available:
         reason += "Rent estimate unavailable for this postcode."
@@ -1226,6 +1303,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         confirmed_count=req.confirmed_structure_count,
         samgeo_count=req.samgeo_structure_count,
         rent_available=weekly_rent is not None,
+        count_source=req.confirmed_count_source or "unrecorded",
     )
 
     # Cap confidence to medium when key eligibility inputs are unknown.
@@ -1269,11 +1347,27 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             # source. The manifest must describe the DETECT run's actual tile
             # and detection; re-deriving it here would be the parallel-lookup
             # anti-pattern (campaign item 4 cache rule, same as tile_b64).
+            #
+            # prior-art-checked: reuse not viable because this IS the existing
+            # implementation — the same SELECT in the same function gains one
+            # more column from the same row. No new source, no new query, no
+            # new module.
+            #
+            # `detected_structures` joins this read for the same reason
+            # tile_b64 did: the INSERT below is ON CONFLICT (id) DO UPDATE
+            # against the DETECT row, so without carrying it forward the
+            # confirm write DELETES the machine's per-structure evidence.
+            # Measured 2026-08-06: 0 of 87 rows held
+            # `outputs.detected_structures` and
+            # `inputs.confirmed_structure_count` together — every confirmation
+            # had already destroyed the thing it was a confirmation OF.
             tile_b64: Optional[str] = None
             detect_manifest = None
+            detected_structures_carry = None
             if req.report_id:
                 cur.execute(
-                    "SELECT outputs->>'tile_b64', outputs->'execution_manifest' "
+                    "SELECT outputs->>'tile_b64', outputs->'execution_manifest', "
+                    "       outputs->'detected_structures' "
                     "FROM granny_flat_reports WHERE id = %s",
                     (req.report_id,),
                 )
@@ -1281,6 +1375,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 if row:
                     tile_b64 = row[0]  # None if key absent or value null
                     detect_manifest = row[1]
+                    detected_structures_carry = row[2]
 
             cur.execute(
                 """
@@ -1305,6 +1400,21 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                     psycopg2.extras.Json({
                         "lot_area_m2": lot_area_m2,
                         "confirmed_structure_count": req.confirmed_structure_count,
+                        # Whether a human touched that count, as a FIELD — a
+                        # comment cannot be queried, and the 16 historical
+                        # rows are indistinguishable from human-confirmed
+                        # precisely because nothing recorded this.
+                        "confirmed_count_source": req.confirmed_count_source or "unrecorded",
+                        # The per-structure answers, bound to the structure
+                        # index they refer to. Previously browser-local and
+                        # discarded.
+                        "structure_types": (
+                            [s.model_dump() for s in req.structure_types]
+                            if req.structure_types is not None else None
+                        ),
+                        # The join key back to the detect run. Accepted by this
+                        # endpoint since it existed, never stored until now.
+                        "detect_id": req.detect_id,
                         "samgeo_structure_count": req.samgeo_structure_count,
                         "postcode": postcode,
                         "existing_secondary_dwelling": req.existing_secondary_dwelling,
@@ -1323,6 +1433,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "warnings": warnings,
                         "data_sources": data_sources,
                         "tile_b64": tile_b64,
+                        # Carried forward so the confirmation above keeps its
+                        # referent — see the SELECT note.
+                        "detected_structures": detected_structures_carry,
                         "lga_name": lga_info["lga_name"],
                         "lga_slug": lga_info["lga_slug"],
                         "dcp_sd_setbacks": dcp_sd_data["sd_setbacks"] if dcp_sd_data else None,
@@ -1349,9 +1462,16 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         os.environ.get("MODAL_STRUCTURES_URL", "modal:detect-structures"),
         {"lat": req.lat, "lng": req.lng, "prop_id": req.prop_id},
     )
+    # Record what SAM returned, not what the report ended up using. Logging the
+    # confirmed count here attributed the human/echoed figure to the detector
+    # and made the audit trail unable to tell them apart.
     ds_samgeo.record_response(
-        {"structure_count": req.confirmed_structure_count},
-        features_returned=req.confirmed_structure_count,
+        {
+            "structure_count": req.samgeo_structure_count,
+            "count_used_in_report": req.confirmed_structure_count,
+            "count_source": req.confirmed_count_source or "unrecorded",
+        },
+        features_returned=req.samgeo_structure_count,
     )
 
     ds_aerial = DataSourceQuery(
@@ -1407,6 +1527,12 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "prop_id": req.prop_id,
             "lot_area_m2": lot_area_m2,
             "confirmed_structure_count": req.confirmed_structure_count,
+            "confirmed_count_source": req.confirmed_count_source or "unrecorded",
+            "structure_types": (
+                [s.model_dump() for s in req.structure_types]
+                if req.structure_types is not None else None
+            ),
+            "detect_id": req.detect_id,
             "samgeo_structure_count": req.samgeo_structure_count,
             "postcode": postcode,
             "existing_secondary_dwelling": req.existing_secondary_dwelling,
