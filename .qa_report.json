@@ -1,143 +1,54 @@
 {
-  "tier": "critical",
-  "justification": "Changes the served wording on every granny-flat surface including the paid PDF, and changes what 20 existing production reports say when re-pulled. The high/medium/low grade stops being rendered and is replaced by five typed states describing what actually happened to the structure list. A wrong state here tells a buyer their lot was checked when nothing was checked against anything — a silent wrong result on a paid channel, not a cosmetic edit.",
+  "tier": "standard",
+  "commit_hash": "c5abba10",
+  "justification": "Removes a customer-facing feature from the granny-flat ineligible result: the 'Eligible properties nearby' block, its API route and its tests. Standard rather than critical because removal is the safe direction — no claim is added, no stored data changes, and no code path can now serve a wrong result from it. It is not minor: it deletes a served surface and a public endpoint.",
   "files": [
-    "services/granny_flat.py",
-    "frontend-nextjs/lib/granny-flat-review-state.ts",
-    "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
     "frontend-nextjs/app/reports/granny-flat/page.tsx",
-    "frontend-nextjs/app/reports/granny-flat/[report_id]/page.tsx",
-    "frontend-nextjs/app/api/reports/granny-flat/generate/route.ts",
-    "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx",
-    "frontend-nextjs/components/reports/SharedReportPage.tsx",
-    "frontend-nextjs/__tests__/lib/granny-flat-review-state.test.ts",
-    "frontend-nextjs/__tests__/components/reports/GrannyFlatBriefCard.test.tsx",
-    "tests/test_granny_flat_logic.py",
-    "tests/test_granny_flat_mutation.py",
-    "scripts/measure_granny_confidence_states.py",
-    ".gitignore"
+    "frontend-nextjs/app/api/reports/granny-flat/nearby/route.ts",
+    "frontend-nextjs/__tests__/api/reports/granny-flat-nearby.test.ts"
   ],
   "falsifiable_check": {
-    "claim": "The five review states are distinguishable from stored evidence, and no state is invented that the data cannot support.",
-    "fails_when": "Any two of the five states resolve from the same stored field combination, or any state can only be produced by a field the row does not carry. Concretely: if samgeo_structure_count=NULL and samgeo_structure_count=0 resolved to the same state, the check fails — a failed scan would be reported as an empty lot.",
-    "how_checked": "scripts/measure_granny_confidence_states.py section 5 counts each evidence combination across all 87 rows; sections 2-4 print the per-row fields. tests/test_granny_flat_logic.py::test_review_state_unknown_count_is_never_read_as_zero and ::test_review_state_empty_detection_is_inconclusive_not_a_clear_lot pin the two that would collapse.",
-    "result": "PASSED. NULL -> not_assessed (5 completed rows, 19 of 60 detect rows), 0 -> scan_inconclusive (2 completed rows). Distinct states, distinct served text, asserted by test_review_state_every_state_has_distinct_served_text.",
-    "known_limit": "8 of 60 historical detect rows (13%) carry samgeo=0/NULL with no failure warning and cannot be separated into 'empty lot' vs 'total miss' retrospectively. Rows written by current code CAN be separated, because detection_failed forces the count to None. The 8 legacy rows resolve to scan_inconclusive/not_assessed, which are the honest readings for an unseparable case.",
-    "command": "python scripts/measure_granny_confidence_states.py   (sections 5 and 8), then python -m pytest tests/test_granny_flat_logic.py -q   and   cd frontend-nextjs && npx jest __tests__/lib/granny-flat-review-state.test.ts"
+    "claim": "Nothing still references the removed endpoint or component, and no other feature depended on them.",
+    "fails_when": "Any remaining source file references /api/reports/granny-flat/nearby, NearbyEligible, or NearbyResult; or tsc/jest regress.",
+    "how_checked": "grep for 'granny-flat/nearby', 'NearbyEligible', 'NearbyResult' and 'selectedLat|selectedLng' across frontend-nextjs; npx tsc --noEmit; npx jest.",
+    "command": "grep -rn 'granny-flat/nearby\\|NearbyEligible\\|electedLat' frontend-nextjs --include=*.ts --include=*.tsx | grep -v node_modules   &&   cd frontend-nextjs && npx tsc --noEmit && npx jest",
+    "result": "PASSED. 0 references remain. tsc 0 errors. jest 78 suites / 1025 tests pass (down 10 = the deleted route's own tests). The similarly-named nearby_secondary_dwelling_count in GrannyFlatTool.tsx is a DA-approval count from a different pipeline and is deliberately untouched."
   },
   "pre_impl": {
-    "existing_data": "granny_flat_reports holds 87 rows: 60 pending_confirm, 11 high, 9 medium, 7 NULL. Zero rows carry inputs.confirmed_count_source, so no post-#878 confirm has ever run. The counts live in inputs, not outputs — reading them from outputs returns NULL for every row and would have rendered every legacy report as Not assessed. property_reports holds 0 rows with product='granny-flat', so the [report_id] surface is currently unreachable for this product.",
-    "assumption_mismatch": "The plan doc said 8 of 16 confirm rows are high; the live count is 11 high of 20 completed. The census also implied samgeo_structure_count lives in outputs; it lives in inputs. Both corrected by direct query before any code was written. If a future reader assumes outputs holds the counts, the legacy derivation silently degrades to Not assessed for all 20 rows.",
-    "new_vs_existing": "_review_state is new; _compute_confidence is unchanged and still writes the confidence column, because that column is also the job state machine (NULL -> pending_confirm -> high|medium|low|error) read by the GET poll, and /api/reports/granny-flat/nearby filters comparables on confidence='high'. Repurposing the column would have been a data migration and would have silently emptied nearby.",
-    "external_source_error": "No external source is called by this change. The upstream detector (MODAL_STRUCTURES_URL) failing is precisely what not_assessed exists to represent: granny_flat.py sets detection_failed=True and forces samgeo_structure_count to None, never 0. 19 of 60 stored detect rows are in that state and all resolve to not_assessed.",
-    "frontend_type": "review_state/label/detail are REQUIRED on the Python response model and optional on the TS types, because stored rows written before this change have none of them. resolveGrannyReviewState accepts null/undefined rows and unknown state strings without throwing, and never renders an unrecognised token — it falls through to derivation. Verified by tests 'survives a null row without throwing' and 'ignores an unrecognised stored state rather than rendering it raw'.",
-    "user_failure_mode": "The failure that matters is not an error page. It is a customer reading 'Scan only — no secondary structures found' on a lot where the scan never ran, and concluding their lot is clear. That is why a missing count resolves to not_assessed rather than to a nothing-found state, and why zero-structures-at-all is called inconclusive rather than clear."
+    "existing_data": "The endpoint filtered granny_flat_reports on confidence='high' AND granny_flat_buildable=true. That is 11 rows, spread over 9 postcodes, with one address (12 Selby Place Blacktown) stored three times so it would have listed the same property up to three times. Measured 2026-08-06: only 3 of 87 stored addresses have any such row within the 1km radius, so the block returned empty for 97% of addresses.",
+    "assumption_mismatch": "A mid-review grep suggested selectedLat/selectedLng were never set, which would have made the block unreachable dead code. That was wrong — the grep under-reported; setSelectedLat(lat) is called at page.tsx:462 on address selection, so the block did render. Re-verified against origin/main before acting; the removal is justified on purpose and liability, not on it being dead.",
+    "new_vs_existing": "Pure deletion. The component, its route and its test file are removed; selectedLat/selectedLng state became write-only as a result of the deletion and is removed with it, per the cleanup rule. No replacement is added — the ineligible result now goes straight from the notify-me block to the cross-sell cards."
   },
-  "functions": [
-    {
-      "name": "_review_state",
-      "file_line": "services/granny_flat.py:1133",
-      "input": "validated flag, resolved count_source, the detect run's structure list or None, the machine count or None, and whether the detect row could not be re-read",
-      "output": "a tuple of the typed state string, its served label, and its served detail sentence, all drawn from one text map",
-      "if_none": "when both the structure list and the machine count are absent it returns not_assessed, never a nothing-found state, because an absent count means unknown and never zero"
-    },
-    {
-      "name": "_compute_confidence",
-      "file_line": "services/granny_flat.py:1203",
-      "input": "same arguments as before this change, unchanged, still including the resolved count source and answers given",
-      "output": "the internal high, medium or low grade plus its reason string, now stored but no longer rendered on any served surface",
-      "if_none": "unchanged behaviour: a missing samgeo count still yields the manual-entry reason string and the medium grade"
-    }
-  ],
-  "values": [
-    {
-      "value": "outputs.review_state / review_state_label / review_state_detail written by the confirm endpoint",
-      "read_at": "frontend-nextjs/app/api/reports/granny-flat/generate/route.ts DB path, and the GET poll passthrough in app/api/satellite/granny-flat/route.ts",
-      "if_missing": "absent on every row written before this change, so resolveGrannyReviewState derives the state from inputs.samgeo_structure_count and outputs.detected_structures instead and flags the result as derived"
-    },
-    {
-      "value": "inputs.samgeo_structure_count — a TOTAL that includes the principal dwelling",
-      "read_at": "verified against all 60 stored detect rows by scripts/measure_granny_confidence_states.py section 3",
-      "if_missing": "null means the scan failed and the state resolves to not_assessed; it is never read as zero structures"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "count how many stored rows each candidate state would claim, and print the before/after for every existing report",
-      "file_line": "scripts/measure_granny_confidence_states.py:52",
-      "where_clause": "confidence IN ('high','medium','low') for completed rows; confidence='pending_confirm' for detect runs; both scoped to granny_flat_reports, read-only session"
-    }
-  ],
+  "functions": "N/A — deletion only, no new or changed functions.",
+  "values": "N/A — no values are read or written by this change.",
+  "queries": "N/A — the only query in the change is the one being deleted.",
   "break_it": [
     {
-      "scenario": "The structure scan fails upstream, so the row stores samgeo_structure_count = NULL, and the reader treats a missing number as zero structures.",
-      "what_happens": "The report would say 'no secondary structures found' about a lot nobody looked at, and a buyer would read a failed scan as a clear lot. 19 of the 60 stored detect runs are in exactly this state, so this is the majority failure path, not an edge case.",
+      "scenario": "Another surface still calls /api/reports/granny-flat/nearby after the route file is deleted, so a live page starts issuing requests that now 404.",
+      "what_happens": "The calling page would silently render an empty section forever, because the original component swallowed fetch errors with a bare catch and a graceful empty state — the failure would be invisible rather than loud.",
       "mitigated": true,
-      "how": "Both readers branch on null before any numeric comparison and return not_assessed. Pinned by test_review_state_unknown_count_is_never_read_as_zero (Python) and 'reads a missing count as unknown, NEVER as zero structures' (Jest), and by the non-numeric case returning not_assessed rather than coercing to 0.",
-      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_unknown_count_is_never_read_as_zero -q  — or SQL: SELECT id FROM granny_flat_reports WHERE confidence='pending_confirm' AND outputs->>'samgeo_structure_count' IS NULL;  (returns the 3 detection_failed rows plus the MODAL-unavailable ones)"
+      "how": "Grepped the whole frontend for 'granny-flat/nearby' after deletion: zero references. The only caller was the component removed in the same commit.",
+      "repro": "grep -rn 'granny-flat/nearby' frontend-nextjs --include=*.ts --include=*.tsx | grep -v node_modules   (expect no output)"
     },
     {
-      "scenario": "A caller posts confirmed_count_source='secondary_detections_classified' while the detect row cannot be re-read, hoping to buy the reviewed state on its own say-so.",
-      "what_happens": "The report would claim a person checked every detected structure when nothing could be checked against anything, which is the represented-safeguard-that-does-not-exist failure the whole calibration lane exists to remove.",
+      "scenario": "The deletion catches the unrelated nearby_secondary_dwelling_count feature in GrannyFlatTool.tsx, which shares the word 'nearby'.",
+      "what_happens": "A genuine, separately-sourced count of nearby secondary dwelling APPROVALS from DA data would vanish from the tool, removing real information rather than the manufactured comparables.",
       "mitigated": true,
-      "how": "_review_state tests detect_row_unavailable BEFORE the count_source branch and returns not_assessed, so the claimed provenance never reaches the reviewed test. Pinned by test_review_state_unresolvable_detect_row_beats_a_claimed_review. _resolve_count_source independently downgrades the same claim to machine_default.",
-      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_unresolvable_detect_row_beats_a_claimed_review -q  — or POST /pipeline/granny-flat/confirm with confirmed_count_source=secondary_detections_classified and a detect_id that matches no row, then read outputs.review_state"
+      "how": "Each of the four other files matching 'nearby' was opened and classified before deleting anything: two are navigation copy about nearby councils, and GrannyFlatTool's nearby_secondary_dwelling_count is DA-approval data from a different pipeline. All four are untouched and their tests still pass.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/tools/GrannyFlatTool-paywall.test.tsx"
     },
     {
-      "scenario": "The detector returns an empty result on a lot that has a house, and that is rendered as a finding about the lot rather than about the scan.",
-      "what_happens": "A customer would be told no structures were found and infer the lot is clear, when the true reading is that the scan could not see their home. 24 of 60 detect runs returned zero structures of any kind, so this is common.",
+      "scenario": "selectedLat/selectedLng are left in place after their only reader is deleted, or are removed too aggressively and break address selection.",
+      "what_happens": "Left in, they are write-only state that a later reader could resurrect and re-point at a removed feature. Removed carelessly, the onSelect handler at page.tsx:462 loses sibling setters in the same arrow body and address selection stops recording the address or postcode.",
       "mitigated": true,
-      "how": "Zero-of-any-kind is a separate state, scan_inconclusive, whose served text says the scan more likely could not read the image than that the lot is empty, and to treat the count as unknown. It is deliberately NOT merged with scan_only_none_found (main dwelling present, nothing beside it). Pinned by test_review_state_empty_detection_is_inconclusive_not_a_clear_lot.",
-      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_empty_detection_is_inconclusive_not_a_clear_lot -q  — or SQL: SELECT count(*) FROM granny_flat_reports WHERE confidence='pending_confirm' AND outputs->>'samgeo_structure_count'='0';  (returns 24)"
-    },
-    {
-      "scenario": "A legacy row stores samgeo_structure_count = 1 and the reader treats that number as a count of SECONDARY structures.",
-      "what_happens": "Every ordinary single-house lot would be reported as already carrying a secondary structure. Because SEPP cl 53(1) blocks a second secondary dwelling, that misreading also pushes toward a wrong eligibility narrative on the same page.",
-      "mitigated": true,
-      "how": "The count is a total including the principal dwelling, verified against all 60 detect rows where samgeo=3 decomposes to 1 main plus 2 secondary and samgeo=1 is the house alone. Both readers map 1 to scan_only_none_found and only 2 or more to scan_only_found. Pinned by test_review_state_legacy_row_counts_are_totals_not_secondary_counts and the matching Jest test.",
-      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_legacy_row_counts_are_totals_not_secondary_counts -q  — or cd frontend-nextjs && npx jest -t \"treats the count as a TOTAL including the principal dwelling\""
-    },
-    {
-      "scenario": "The Python wording and the duplicated TypeScript wording drift apart, so the page and the PDF describe the same row differently.",
-      "what_happens": "One surface would keep asserting something the backend had already retired — the DQ-50 shape, where stored or duplicated text outlives the code that produced it. A reader comparing the web result to the PDF would get two different accounts of what was checked.",
-      "mitigated": true,
-      "how": "test_review_state_text_matches_typescript parses the TS TEXT map and asserts label and detail equality for every state. Verified to actually fail by mutating a TS label and observing the failure, then restoring. The stored label/detail are also preferred over the module text when re-rendering an old row, so a report reads as it did when generated.",
-      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_text_matches_typescript -q  after editing any label in frontend-nextjs/lib/granny-flat-review-state.ts — the test fails with a py/ts diff (verified by mutating \"Reviewed by you\" and restoring)"
-    },
-    {
-      "scenario": "A pre-2026-08-06 row is rendered with its stored confidence_reason next to the new state, so 'you confirmed 2 — counts agree' appears under 'Scan only — structures found, not reviewed'.",
-      "what_happens": "The report would contradict itself in consecutive lines, and the stored sentence asserts a human confirmation that could not have happened, because the count was seeded from the detector and the control that would change it was never wired. 18 of 20 completed rows carry that phrasing and 15 say 'counts agree'.",
-      "mitigated": true,
-      "how": "Every surface renders the stored reason only when the state was NOT derived, i.e. only for rows written by the current code whose reason string is the honest post-#878 text. Applied in page.tsx, GrannyFlatBriefCard.tsx and the PDF findings builder.",
-      "repro": "SQL: SELECT count(*) FROM granny_flat_reports WHERE confidence IN ('high','medium','low') AND outputs->>'confidence_reason' ILIKE '%counts agree%';  (returns 15) then POST /api/reports/granny-flat/generate with one of those report_ids and confirm no \"counts agree\" text appears in the PDF findings"
-    },
-    {
-      "scenario": "SAMGEO_VALIDATED is flipped to False, which skips the whole detection block so detection_failed stays False and the structure list stays empty.",
-      "what_happens": "The row would look identical to a scan that ran and found nothing, so 'did not run' would be served as 'found nothing' — the same substitution this change removes, reintroduced by a one-line constant edit.",
-      "mitigated": true,
-      "how": "_review_state tests the validated flag first and returns not_assessed regardless of the empty list. Latent today because the constant is True and all 60 rows carry samgeo_validated=true, but pinned by test_review_state_detection_disabled_is_not_assessed so flipping it cannot ship silently.",
-      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_detection_disabled_is_not_assessed -q  — or set SAMGEO_VALIDATED=False in services/granny_flat.py and re-run the granny suites"
-    },
-    {
-      "scenario": "A malformed machine count (False, -1, or a float) reaches the state function, and Python's `<= 0` comparison accepts it because False and negatives both satisfy that test.",
-      "what_happens": "The backend would store scan_inconclusive — a claim that the scan ran and returned no structures — from a field that is simply broken, and the TypeScript reader would call the same evidence not_assessed, so the page and the PDF would describe one row two different ways.",
-      "mitigated": true,
-      "how": "_review_state now requires a non-bool int that is >= 0 before any count-based state, mirroring strictCount() in the TypeScript module. Anything else is not_assessed. Pinned by test_review_state_malformed_count_is_unknown_not_a_finding across False, True, -1, -5, 2.5, '2', '', None, [] and {}.",
-      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_malformed_count_is_unknown_not_a_finding -q  — or call _review_state(True, 'unrecorded', None, False) and observe the returned state"
-    },
-    {
-      "scenario": "The detect row read succeeds but matches no row (expired, superseded, or a mismatched detect_id/prop_id/coordinate triple), so the carried structure list is None while no exception was raised.",
-      "what_happens": "The state would be decided from req.samgeo_structure_count — a number the REQUESTER supplied and echoed back — so the report would describe what the scan found using a figure the scan never produced. The confirm endpoint already warns on this case, so the warning and the state would disagree on the same row.",
-      "mitigated": true,
-      "how": "The call site passes detect_row_unavailable as (detect_row_unavailable or not isinstance(detected_structures_carry, list)) — the exact condition the existing warning is raised on — so an unmatched row resolves to not_assessed. Pinned by test_confirm_treats_an_unmatched_detect_row_as_not_assessed.",
-      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_confirm_treats_an_unmatched_detect_row_as_not_assessed -q  — or POST /pipeline/granny-flat/confirm with a detect_id that matches no row plus samgeo_structure_count=2, then read outputs.review_state"
+      "how": "Removed by exact-string replacement of only the selectedLat/selectedLng fragments, leaving setAddress/setPostcode and the other reset setters in the same handlers intact. Verified by 0 remaining references, tsc 0 errors, and the full jest suite passing.",
+      "repro": "grep -n 'electedLat\\|electedLng' frontend-nextjs/app/reports/granny-flat/page.tsx   (expect no output), then npx tsc --noEmit"
     }
   ],
   "post_merge": {
-    "db_reset": "None. This change performs no writes to existing rows and no migration. The 20 completed reports are re-described at render time by deriving from fields they already carry; their stored columns are untouched.",
-    "secrets": "None added or changed. The measurement script reads credentials from the repo-root .env and pins a read-only session; it refuses to run rather than falling back to localhost defaults.",
-    "other_repo": "None. No Trigger.dev task, no plotdetect-agents change. The confirm response gains three fields and the frontend passes them through unchanged.",
-    "manual_verify": "Re-pull one existing paid PDF and confirm it now states 'Structure detection — what was checked' with a state rather than an 'Assessment confidence level' block, and that no 'counts agree' sentence appears on it. Then run scripts/measure_granny_confidence_states.py section 8 and confirm the before/after distribution still reads 8 / 5 / 5 / 2 with zero reviewed."
-  },
-  "commit_hash": "e60a6f58"
+    "db_reset": "None. No migration and no writes. The 11 rows the endpoint used to select are untouched and keep their stored values.",
+    "secrets": "None added, changed or removed by this change.",
+    "other_repo": "None. The endpoint had no external caller; it was fetched only from the page in this repo.",
+    "manual_verify": "Load a granny-flat result for an ineligible address and confirm the 'Eligible properties nearby' teal block no longer appears, and that the notify-me block and cross-sell cards still render in order."
+  }
 }
