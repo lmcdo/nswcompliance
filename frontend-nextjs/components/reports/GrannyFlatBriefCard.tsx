@@ -230,16 +230,24 @@ export function GrannyFlatBriefCard({ address, active, lotAreaM2 }: { address?: 
     // `index` mirrors detected_structures[].index so the answer joins back to
     // the bbox the person was looking at; fall back to array position for the
     // (older) rows that carry no index field.
+    //
+    // Only structures the person actually TOUCHED are reported. Everything
+    // arrives pre-selected, so emitting an answer for an untouched structure
+    // would turn "did not interact" into "kept" — manufacturing the human
+    // judgement this whole change exists to stop manufacturing.
     // 'kept', not a building type: this card only asks keep-or-reject, so
     // recording a type here would invent a classification nobody gave.
-    const structureTypesPayload = structures.map((s, i) => ({
-      index: typeof s.index === 'number' ? s.index : i,
-      answer: deselected[i] ? 'rejected' : 'kept',
-    }));
-    // Only claim a human reviewed the count when this surface actually let
-    // them: the selection list is only rendered when there are structures to
-    // select against.
-    const countSource = structures.length > 0 ? 'user_reviewed' : 'machine_default';
+    const structureTypesPayload = structures
+      .map((s, i) => ({ s, i }))
+      .filter(({ i }) => i in deselected)
+      .map(({ s, i }) => ({
+        index: typeof s.index === 'number' ? s.index : i,
+        answer: deselected[i] ? 'rejected' : 'kept',
+      }));
+    // …and the count is only "reviewed" once every structure has been touched.
+    // Clicking Calculate with the defaults untouched is silence, not review.
+    const allTouched = structures.length > 0 && structures.every((_, i) => i in deselected);
+    const countSource = allTouched ? 'user_reviewed' : 'machine_default';
     setConfirm({ kind: 'submitting' });
     try {
       const res = await fetch('/api/satellite/granny-flat', {

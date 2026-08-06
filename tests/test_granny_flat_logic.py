@@ -63,7 +63,7 @@ def test_compute_confidence_agreement_without_human_is_not_high():
             count_source=source,
         )
         assert conf == "medium", source
-        assert "No person reviewed this count" in reason, source
+        assert "not reviewed structure by structure" in reason, source
 
 
 def test_compute_confidence_default_count_source_is_not_high():

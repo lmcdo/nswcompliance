@@ -479,6 +479,25 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+      const indexes = structure_types.map((s) => s.index);
+      if (new Set(indexes).size !== indexes.length) {
+        return NextResponse.json(
+          { error: 'structure_types contains duplicate index values' },
+          { status: 400 },
+        );
+      }
+    }
+
+    // A claim of human review with no recorded answers behind it is the same
+    // unfalsifiable assertion this field exists to remove — refuse it here as
+    // well as in the Python model, so neither entry point can create a row
+    // whose own fields contradict each other.
+    if (confirmed_count_source === 'user_reviewed' &&
+        (!structure_types || structure_types.length === 0)) {
+      return NextResponse.json(
+        { error: "confirmed_count_source='user_reviewed' requires a non-empty structure_types" },
+        { status: 400 },
+      );
     }
 
     // #745 D3 / #752: a caller-supplied reconciled lot_area_m2 (the brief's

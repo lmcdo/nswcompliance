@@ -245,17 +245,52 @@ describe('confirm success', () => {
     fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
     await flush();
 
-    expect(confirmBodies[0].confirmed_count_source).toBe('user_reviewed');
+    // Only the structure the user actually touched is reported…
     expect(confirmBodies[0].structure_types).toEqual([
-      { index: 0, answer: 'kept' },      // main dwelling left in
       { index: 1, answer: 'rejected' },  // shed deselected
     ]);
+    // …and the count is not claimed as reviewed, because the main dwelling
+    // was never touched (Sol finding 1: everything arrives pre-selected, so
+    // an untouched default is silence, not a judgement).
+    expect(confirmBodies[0].confirmed_count_source).toBe('machine_default');
+  });
+
+  it('claims a reviewed count only once every structure has been touched', async () => {
+    const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+
+    fireEvent.click(screen.getByRole('button', { name: /House/ }));  // deselect
+    fireEvent.click(screen.getByRole('button', { name: /House/ }));  // and back — still touched
+    fireEvent.click(screen.getByRole('button', { name: /Shed/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
+    await flush();
+
+    expect(confirmBodies[0].confirmed_count_source).toBe('user_reviewed');
+    expect(confirmBodies[0].structure_types).toEqual([
+      { index: 0, answer: 'kept' },
+      { index: 1, answer: 'rejected' },
+    ]);
+  });
+
+  it('sends no answers and no review claim when the user touches nothing', async () => {
+    // Clicking Calculate on untouched defaults must not become two human
+    // "kept" judgements — that is manufacturing the label.
+    const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
+    await flush();
+
+    expect(confirmBodies[0].structure_types).toEqual([]);
+    expect(confirmBodies[0].confirmed_count_source).toBe('machine_default');
   });
 
   it('never labels a structure with a type the brief card does not ask for', async () => {
     // The card only asks keep-or-reject. Emitting 'garage'/'part_of_main'
     // here would invent a classification the person never gave.
     const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+    // Deselect and re-select: touched, and left in the count.
+    fireEvent.click(screen.getByRole('button', { name: /House/ }));
+    fireEvent.click(screen.getByRole('button', { name: /House/ }));
     fireEvent.click(screen.getByRole('button', { name: 'No' }));
     fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
     await flush();

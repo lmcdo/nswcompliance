@@ -783,7 +783,7 @@ class TestComputeConfidenceMutation:
                 low = reason.lower()
                 assert "you confirmed" not in low, (confirmed, machine, source)
                 assert "your review" not in low, (confirmed, machine, source)
-                assert "no person reviewed this count" in low, (confirmed, machine, source)
+                assert "not reviewed structure by structure" in low, (confirmed, machine, source)
 
     def test_medium_disagreement_names_both_counts(self):
         """Human recorded a different number from the detector — both appear."""
@@ -1285,9 +1285,59 @@ class TestConfirmAndCalculate:
         req = _make_confirm_req(
             confirmed_structure_count=1, samgeo_structure_count=1,
             confirmed_count_source="user_reviewed",
+            structure_types=[{"index": 1, "answer": "garage"}],
         )
         resp = gf.confirm_and_calculate(req)
         assert resp.confidence == "high"
+
+    def test_user_reviewed_without_answers_is_rejected(self, monkeypatch):
+        """Sol finding 3: a review claim with nothing recorded behind it.
+
+        Without this the provenance field is a self-assertion — a caller could
+        buy 'high' confidence by naming it, which is the unfalsifiable claim
+        the field exists to remove.
+        """
+        import pydantic
+        with pytest.raises(pydantic.ValidationError):
+            _make_confirm_req(confirmed_count_source="user_reviewed")
+        with pytest.raises(pydantic.ValidationError):
+            _make_confirm_req(confirmed_count_source="user_reviewed", structure_types=[])
+
+    def test_duplicate_structure_indexes_are_rejected(self):
+        """Two answers for the same structure make the answer set ambiguous."""
+        import pydantic
+        with pytest.raises(pydantic.ValidationError):
+            _make_confirm_req(
+                confirmed_count_source="user_reviewed",
+                structure_types=[{"index": 1, "answer": "garage"},
+                                 {"index": 1, "answer": "rejected"}],
+            )
+
+    def test_carry_forward_finds_the_detect_row_by_detect_id(self, monkeypatch):
+        """Sol finding 2: the carry-forward could almost never resolve.
+
+        `id` never equals `detect_id` (0 of 87 production rows) and neither
+        frontend sends report_id on confirm — the Next route mints a fresh
+        UUID — so `WHERE id = req.report_id` missed nearly every time. Measured
+        consequence: of 16 confirm rows, 0 carried an execution_manifest and 1
+        carried a tile. Without this fallback the new structure answers would
+        be stored with their referent already deleted.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = ("tile-b64", {"algorithm_version": "x"},
+                                  [{"index": 1, "area_m2": 30}])
+        gf.confirm_and_calculate(_make_confirm_req(report_id=None))
+
+        lookups = [sql for sql, _ in conn._cursor.executed if "detect_id" in sql]
+        assert lookups, "confirm must fall back to the detect_id lookup when report_id is absent"
+
+        rows = [p for sql, p in conn._cursor.executed
+                if p and "granny_flat_reports" in sql and "INSERT" in sql.upper()]
+        outputs = [d for d in rows[-1]
+                   if isinstance(d, dict) and "granny_flat_buildable" in d][0]
+        assert outputs["detected_structures"] == [{"index": 1, "area_m2": 30}]
+        assert outputs["tile_b64"] == "tile-b64"
 
     def test_confirm_persists_count_provenance_join_key_and_answers(self, monkeypatch):
         """Lane 1 items 3+4: the label data must reach the row, not the wire only.
@@ -1334,7 +1384,7 @@ class TestConfirmAndCalculate:
         req = _make_confirm_req(confirmed_structure_count=1, samgeo_structure_count=1)
         resp = gf.confirm_and_calculate(req)
         assert resp.confidence == "medium"
-        assert "no person reviewed this count" in resp.confidence_reason.lower()
+        assert "not reviewed structure by structure" in resp.confidence_reason.lower()
 
     def test_confidence_capped_when_lot_area_none(self, monkeypatch):
         """High confidence → capped to medium when lot_area unknown."""

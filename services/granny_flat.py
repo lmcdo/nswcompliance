@@ -46,7 +46,7 @@ from typing import Literal, Optional
 import psycopg2
 import psycopg2.extras
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
@@ -374,6 +374,28 @@ class GrannyFlatConfirmRequest(BaseModel):
     is_heritage: Optional[bool] = None  # from NSW Planning Portal via Next.js
     existing_secondary_dwelling: Optional[bool] = None  # user self-report: is there already a granny flat on this lot?
     main_dwelling_area_m2: Optional[float] = None  # SAM-detected footprint of principal dwelling (is_main_dwelling=True)
+
+
+    @model_validator(mode="after")
+    def _reviewed_requires_answers(self):
+        """'user_reviewed' is only meaningful with the answers behind it.
+
+        Without this a caller could assert the provenance and buy "high"
+        confidence with nothing recorded — the same unfalsifiable claim in a
+        new place. The server still cannot observe a click, but it can refuse
+        a row whose own fields contradict each other, and it can refuse
+        duplicate indexes that would make the answer set ambiguous.
+        """
+        if self.confirmed_count_source == "user_reviewed":
+            if not self.structure_types:
+                raise ValueError(
+                    "confirmed_count_source='user_reviewed' requires a non-empty "
+                    "structure_types — a review with no recorded answers is not a review"
+                )
+            seen = [s.index for s in self.structure_types]
+            if len(seen) != len(set(seen)):
+                raise ValueError("structure_types contains duplicate index values")
+        return self
 
 
 class GrannyFlatConfirmResponse(BaseModel):
@@ -792,12 +814,15 @@ def _compute_confidence(
     if samgeo_count is None:
         reason = "Structure count entered manually (aerial detection not available). "
     elif not human_checked:
-        # The honest description of the old "counts agree" case.
+        # The honest description of the old "counts agree" case. Worded to hold
+        # for BOTH shapes of not-reviewed: nobody touched the structures at all,
+        # and somebody touched some but not all of them. Asserting "no person
+        # reviewed this" in the partial case would be its own small inaccuracy.
         reason = (
             f"Aerial detection found {samgeo_count} structure{plural} on this lot. "
             f"The report used {confirmed_count}. "
-            "No person reviewed this count, so it has not been checked against "
-            "the aerial image. "
+            "This count was not reviewed structure by structure, so it has not "
+            "been checked against the aerial image. "
         )
     elif counts_agree:
         # Human agreed, but rent data is the missing piece.
@@ -1361,21 +1386,36 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             # `outputs.detected_structures` and
             # `inputs.confirmed_structure_count` together — every confirmation
             # had already destroyed the thing it was a confirmation OF.
+            # The lookup key: `id = req.report_id` could almost never resolve.
+            # Measured live 2026-08-06: `id` NEVER equals the detect run's
+            # `detect_id` (0 of 87 rows), and neither frontend sends
+            # `report_id` on confirm — the Next route mints a fresh UUID — so
+            # this read missed nearly every time. Evidence: of 16 confirm rows,
+            # 0 carried an execution_manifest and 1 carried a tile. The
+            # carry-forward was decorative. `detect_id` is the key both clients
+            # DO send (60 present, 60 distinct, all UUID-shaped), so fall back
+            # to it. Seq Scan, 23ms at 87 rows; revisit an index past ~50k.
             tile_b64: Optional[str] = None
             detect_manifest = None
             detected_structures_carry = None
+            _CARRY_COLS = ("SELECT outputs->>'tile_b64', outputs->'execution_manifest', "
+                           "       outputs->'detected_structures' "
+                           "FROM granny_flat_reports ")
+            row = None
             if req.report_id:
+                cur.execute(_CARRY_COLS + "WHERE id = %s", (req.report_id,))
+                row = cur.fetchone()
+            if row is None and req.detect_id:
                 cur.execute(
-                    "SELECT outputs->>'tile_b64', outputs->'execution_manifest', "
-                    "       outputs->'detected_structures' "
-                    "FROM granny_flat_reports WHERE id = %s",
-                    (req.report_id,),
+                    _CARRY_COLS + "WHERE outputs->>'detect_id' = %s "
+                                  "ORDER BY created_at DESC LIMIT 1",
+                    (req.detect_id,),
                 )
                 row = cur.fetchone()
-                if row:
-                    tile_b64 = row[0]  # None if key absent or value null
-                    detect_manifest = row[1]
-                    detected_structures_carry = row[2]
+            if row:
+                tile_b64 = row[0]  # None if key absent or value null
+                detect_manifest = row[1]
+                detected_structures_carry = row[2]
 
             cur.execute(
                 """

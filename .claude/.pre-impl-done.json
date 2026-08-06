@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-03T18:00:00+10:00",
-  "target": "typed-absence four named paths: shadow errored-scenario/ADG three-state, cache max-age + run_date preservation, _fetch_db_data split, TOD not-assessed render",
-  "findings_summary": "all four paths and their consumers read this session with file:line (shadow: detector + PDF rows 2260/4420/5915 + generate route 137 + ShadowTool 324/364; caches: conveyancing 916-940 created_at exists, flood 1716-1751 run_date column exists; db_data: 539-578 + renderer params; tod: 662-675 + PDF tod= param); no schema changes, no DB writes"
+  "timestamp": "2026-08-06T21:40:00+10:00",
+  "target": "Lane 1 Sol-finding fixes: (a) reword the granny-flat machine_default confidence reason to hold for partial review, (b) find the detect row by outputs->>'detect_id' when the report_id lookup misses, (c) reject confirmed_count_source='user_reviewed' without a non-empty structure_types",
+  "findings_summary": "granny_flat_reports read live 2026-08-06: outputs->>'detect_id' present on 60 rows, 60 distinct, 0 non-UUID-shaped, and id NEVER equals detect_id (0 of 87) — so the existing `WHERE id = req.report_id` carry-forward cannot resolve for either frontend (matches measured 0/16 manifests and 1/16 tiles on confirm rows). All 60 detect rows carry outputs.detected_structures, 47 a non-null tile_b64, 0 an execution_manifest, all at confidence='pending_confirm'. EXPLAIN ANALYZE on the detect_id lookup: Seq Scan, 87 rows, 23ms — no index needed at this volume, revisit past ~50k rows. No loop, no entity mapping, no numeric parsing; detect_id compared as text."
 }
