@@ -1,164 +1,146 @@
 {
- "tier": "critical",
- "justification": "Consolidates every value-serving TS reader of dcp_setback_controls onto the ONE guarded implementation - served rows change on live free surfaces (35 flagged-but-numeric rows stop rendering as normal numbers on the assessment DCP tab and duplex-check card; 4 flagged secondary-dwelling rows stop shipping from canibuildit; capacity's arbitrary no-ORDER LIMIT 3 becomes all guarded rows in deterministic order with the zone filter newly applied). Serving-behaviour change on user-facing compliance surfaces = critical tier.",
- "commit_hash": "2af3153f",
+ "tier": "standard",
+ "justification": "Repairs CI rather than served output: adds the missing PyMuPDF test dependency, removes pytest fail-fast, scopes the QA-report job to pull requests (it is structurally unpassable on main), and adds a red-main alarm plus a dependency-skip ratchet. No product code, no DB writes, no user-facing text. Standard rather than minor because it changes what the gates verify and therefore what a green tick means.",
+ "commit_hash": "c62e5a80",
  "files": [
-  "services/dcp_controls_api.py",
-  "services/compliance_api_server.py",
-  "scripts/conveyancing_db.py",
-  "frontend-nextjs/lib/dcp-controls-client.ts",
-  "frontend-nextjs/lib/lga-slug.ts",
-  "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
-  "frontend-nextjs/app/api/capacity/calculate/route.ts",
-  "frontend-nextjs/app/api/canibuildit/check/route.ts",
-  "frontend-nextjs/app/api/tod/parking-rates/route.ts",
-  "frontend-nextjs/app/api/dcp/coverage/route.ts",
-  "scripts/check_ts_dcp_readers.py",
-  "tests/test_dcp_controls_api.py",
-  "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
-  "frontend-nextjs/__tests__/api/capacity-repoint.test.ts",
-  "frontend-nextjs/__tests__/lib/parking-rate-selection.test.ts",
+  "requirements-test.txt",
+  ".github/workflows/gates.yml",
+  ".github/workflows/main-red-alarm.yml",
+  "scripts/check_dependency_skips.py",
+  "dependency-skip-baseline.json",
+  "tests/conftest.py",
   ".gitignore"
  ],
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_dcp_controls_api.py tests/test_conveyancing_clause_citation.py tests/test_conveyancing_dcp_needs_review.py tests/test_dcp_as_at.py -q && cd frontend-nextjs && npx jest --testPathPatterns=\"capacity-repoint|parking-rate-selection|dcp-structured-controls\" && cd .. && python scripts/check_ts_dcp_readers.py",
-  "passes_when": "The endpoint serves fetch_dcp_setbacks verbatim with three distinguishable states (rows / checked-none-with-reason / 503); the flipped source pins hold (ZERO `FROM dcp_setback_controls` in capacity and parking-rates routes, proxy imports present, universal_residential union in TS, zone passed through); structured-controls can never emit 'under_review' (flagged rows excluded at source); the observation check reports unexpected_inline_readers == [] (baseline met at ship: only the internal review routes + guarded coverage route + test files name the table in executable code).",
-  "fails_when": "Reintroducing inline SQL against dcp_setback_controls in any consolidated route fails its source pin AND appears in check_ts_dcp_readers' unexpected list; serving a needs_review row with a value fails test 'under_review can never be emitted'; collapsing the endpoint's source-failure into an empty success fails test_db_failure_is_503/test_none_result_is_checked_none; dropping the 13-column SELECT extension breaks the three conveyancing fixture suites (they pin the exact column order).",
-  "demonstrated_failing": "The pre-change states are the census (2026-08-03, three claims re-verified in code before design): capacity ran LIMIT 3 with no ORDER BY at :130/:150 (arbitrary rows served); structured-controls' branch order served a flagged row as 'numeric' whenever it had a value (:235-238) - 35 such rows measured live across 13 councils; canibuildit had no needs_review predicate at all (:397-404, 4 flagged SD rows served); three routes weakened is_current to NULL-passes (measured: zero NULL rows exist, so tightening changes nothing); the zone filter existed in NO TS reader. Old-architecture test pins (>=3 inline queries required) were green pre-change and flipped with in-test reasons.",
-  "mutation_evidence": "Make the endpoint return {} on failure -> test_db_failure_is_503 fails. Re-add `FROM dcp_setback_controls` to capacity -> its flipped pin fails and the observation check lists it. Swap the structured-controls branch order back (numeric wins) -> cannot recur: needs_review rows never arrive; the pin asserts statuses never contain under_review from clean rows. Drop registry_pdf_urls from fetch_dcp_setbacks -> the endpoint test's registry map assertion fails. Remove the singleton slug mapper adoption in canibuildit -> keying still tested via lib/lga-slug tests (same six renames verified before the swap)."
+  "command": "python -m pytest tests/ -q --tb=short -p ci_sim  (import blocker denying every module absent from the requirements-test.txt closure) ; python scripts/check_dependency_skips.py ; gh run view 30856789737 --log-failed",
+  "passes_when": "The whole suite runs to completion under CI's exact import surface with 0 failures (3665 passed), the four TestExtractorSelectionRules tests among them; the dependency-skip census reports 23 against a baseline of 23; and no job in gates.yml can be red-by-construction on main.",
+  "fails_when": "Any test fails under the SIMULATED CI import surface — that is the real condition, because the whole outage was a module present locally and absent in CI, and a plain local run cannot see it (this machine has PyMuPDF installed, which is why 3698 tests passed here on 08-06 while main had already been red for three days). The ratchet goes red if the skip count rises, if a new dependency starts skipping tests, or if .pytest-skips.json is absent — a missing census is failure, never zero.",
+  "demonstrated_failing": "All four states reproduced red before the fix. (1) With the CI import blocker and no PyMuPDF the suite reports exactly 4 failures, all ModuleNotFoundError: No module named 'fitz'. (2) The real CI log for run 30856789737 shows the identical failure and '1 failed, 1405 passed, 1 skipped, 19 deselected' — 1,405 of 3,665 tests ran, ~2,260 did not. (3) The ratchet was fed a doctored census three ways: new dependency -> exit 1, rising count on a known dependency -> exit 1, missing report -> exit 2, unchanged -> exit 0. (4) gh run list --workflow gates.yml --branch main returns five consecutive failures dated 2026-08-03, confirming the outage independently of the report of it.",
+  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green.",
+  "self_comparison_note": "This does not re-run the code and check it agrees with itself. The import surface is derived from requirements-test.txt through pip's own resolver (48 packages), not from whatever happens to be installed here, and the outcome is cross-checked against the actual GitHub Actions log rather than a local re-execution."
  },
  "pre_impl": {
-  "existing_data": "Census of all 18 frontend files naming the table (agent-swept with verbatim snippets; 3 load-bearing claims re-verified by direct read). Blast radius measured live before design: is_current NULL rows = 0; 35 current+needs_review rows (all with numeric values, woollahra-heavy 16) served today by structured-controls; 4 flagged SD rows served by canibuildit; coverage count unchanged 28->28 under the clean predicate. Paid channel (conveyancing) has NO TS readers - it is already Python-side, so 'paid first' resolves to the most-served free surfaces.",
-  "assumption_mismatch": "canibuildit's inline slug map carried exactly the six renames lib/lga-slug.ts holds (verified line-by-line before the swap) - keying unchanged. The proxy returns ALL dev_types per LGA; routes filter client-side, which matches how the reference implementation's own consumers (conveyancing renderer) shape its output. Mock fixtures pinning the fetch_dcp_setbacks column order were updated to the 13-column shape in the same change.",
-  "new_vs_existing": "fetch_dcp_setbacks extension is additive (3 SELECT columns, 4 raw row fields, registry_pdf_urls key, savepoint-isolated PDF-map probe) - the paid conveyancing consumers ignore unknown dict keys, and all 3,665 Python tests stay green. Response contracts of the four routes are preserved field-for-field (structured-controls additively gains as_at/as_at_line). Served-row changes are confined to previously-wrong paths and are counted above.",
-  "external_source_error": "Proxy unreachable -> DcpControlsUnavailableError -> structured-controls returns visible 503; parking-rates records its tier as degraded with a user-facing reason (existing machinery); capacity fails the request as before (500 success:false); canibuildit keeps its non-blocking empty (field unrendered by the UI, census-verified). The endpoint returns 503 on DB failure and available:false with a reason for checked-none - never an empty success.",
-  "frontend_type": "DcpControlRow/DcpControlsResult typed in lib/dcp-controls-client.ts; route response interfaces unchanged (StructuredControl, ParkingControlRow reused). TSC baseline gate enforces.",
-  "user_failure_mode": "A consolidated route that cannot reach the guarded source fails VISIBLY (503/degraded-tier note/500), never with silently emptier data. Users on the assessment DCP tab stop seeing 35 under-review numbers presented as authoritative - visible absence of quarantined values is the fix working."
+  "existing_data": "gh run list shows gates failing on main on 0c41c09d, 8b9b0ea7, 03bc720a, 2b7dcd97 and 412a3788, all 2026-08-03. The latest run's jobs: Python tests FAILED, QA report + liability FAILED, Jest / Duplication / Schema contract passed. Its log gives the exact cause (fitz at tests/test_dcp_as_at.py:358) and the exact damage. The CI import surface was resolved with pip install --dry-run --ignore-installed --report against requirements-test.txt: 48 packages, no PyMuPDF, no shapely, no matplotlib, no icontract, no requests.",
+  "assumption_mismatch": "Two premises in the brief needed correcting. (a) '~1,800 tests haven't executed' — the log says 1,405 ran of 3,665, so ~2,260 did not. (b) The fitz failure was not the only thing holding main red: qa-and-liability was failing independently on a squash-merge hash mismatch, so fixing PyMuPDF alone would have left main red and the new alarm firing on day one. Also: PyMuPDF CAN be a CI dependency, so the brief's fallback clause does not apply to it — pymupdf-1.28.0-cp310-abi3-manylinux_2_28_x86_64.whl is an abi3 wheel covering CI's Python 3.12 with no system libraries, and requirements.txt:120 already pins the same version.",
+  "new_vs_existing": "The ratchet deliberately mirrors the repo's existing idiom (scripts/check_test_baselines.py, brief_field_coverage_ratchet.py, jscpd, schema_contract_baseline.json): a committed baseline that may only shrink. It could not extend either of those, because both ratchet numbers that a skipped test still contributes to — skips are exactly what they cannot see. The alarm workflow is new; nothing in .github/ watched main's own health, and the only prior signal was a red X addressed to nobody."
  },
  "functions": [
   {
-   "name": "dcp_controls",
-   "file_line": "services/dcp_controls_api.py:41",
-   "input": "lga slug + optional zone string, as query params from the TS client",
-   "output": "the guarded fetch_dcp_setbacks result flattened to rows + as-at + registry PDF map, or available:false with reason, or HTTP 503",
-   "if_none": "fetch returning None -> available:false with the honest dual-cause reason (no rows OR swallowed failure - a documented limitation of the shared implementation)"
+   "name": "pytest_terminal_summary",
+   "file_line": "tests/conftest.py:209",
+   "input": "pytest's terminal reporter after the run, i.e. every skip report the session produced",
+   "output": "writes .pytest-skips.json and prints a 'TESTS THAT DID NOT RUN' section grouped by the missing module",
+   "if_none": "no dependency skips -> the file records count 0 and no section prints; the ratchet then compares 0 against the baseline"
   },
   {
-   "name": "fetchDcpControls",
-   "file_line": "frontend-nextjs/lib/dcp-controls-client.ts:51",
-   "input": "lga slug + optional zone, from the four consolidated routes",
-   "output": "typed DcpControlsResult from PYTHON_API_URL/pipeline/dcp-controls with a 20s abort",
-   "if_none": "network/non-OK -> DcpControlsUnavailableError so every caller converts to ITS visible degraded shape - never an empty success"
+   "name": "_dependency_from_skip_reason",
+   "file_line": "tests/conftest.py:194",
+   "input": "a single skip reason string from a skip report",
+   "output": "the module name the skip blames, or None when the skip is about something else entirely",
+   "if_none": "env-gated skips such as 'set RUN_LIVE_GEMINI=1' return None deliberately — counting a deliberate opt-out would make the ratchet measure intent instead of coverage"
   },
   {
-   "name": "fetch_dcp_setbacks",
-   "file_line": "scripts/conveyancing_db.py:253",
-   "input": "connection + lga slug + optional zone code (unchanged signature)",
-   "output": "existing dict + additive raw citation fields per row + registry_pdf_urls map (savepoint-isolated probe)",
-   "if_none": "unchanged: None on no rows or swallowed failure; PDF-map probe failure degrades to an empty map without poisoning the transaction"
+   "name": "main",
+   "file_line": "scripts/check_dependency_skips.py:50",
+   "input": "the .pytest-skips.json census and the committed dependency-skip-baseline.json",
+   "output": "a printed census grouped by dependency, and exit 0, 1 or 2",
+   "if_none": "a missing census exits 2 — 'no report' and 'no skips' must not look the same, which is the failure mode being fixed"
   }
  ],
  "values": [
   {
-   "value": "proxy rows in each consolidated route",
-   "read_at": "frontend-nextjs/app/api/capacity/calculate/route.ts:121",
+   "value": "dependency-skip count",
+   "read_at": "scripts/check_dependency_skips.py:56",
    "nullable": "yes",
-   "guard_at": "frontend-nextjs/app/api/capacity/calculate/route.ts:122-125 (available && rows checks before filtering)",
-   "if_missing": "empty slices -> the route's existing empty-state responses; unavailability throws to the route's visible failure path"
+   "guard_at": "scripts/check_dependency_skips.py:51-56 (missing report exits 2)",
+   "if_missing": "treated as failure, never as zero"
   },
   {
-   "value": "registry_pdf_urls[source_chapter_key]",
-   "read_at": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:200",
+   "value": "latest gates conclusion on main",
+   "read_at": ".github/workflows/main-red-alarm.yml, step 'Assess main'",
    "nullable": "yes",
-   "guard_at": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:200-207 (null coalescing; anchor only when pdf_page present)",
-   "if_missing": "pdf_url null - the UI renders the citation without a link, as before"
+   "guard_at": "the empty-RUN_JSON branch in the same step",
+   "if_missing": "state=broken — no completed run is unknown, and unknown about a gate is not health"
+  },
+  {
+   "value": "age of the latest successful run",
+   "read_at": ".github/workflows/main-red-alarm.yml, AGE_H",
+   "nullable": "no",
+   "guard_at": "the AGE_H > 50 branch",
+   "if_missing": "n/a — a green run older than 50h is itself treated as broken, so a workflow that quietly stopped firing cannot read as healthy"
   }
  ],
  "queries": [
   {
-   "purpose": "the ONE guarded controls read (now also the proxy's source)",
-   "file_line": "scripts/conveyancing_db.py:286",
-   "where_clause": "lga = %s AND is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE), deterministic ORDER BY with id tiebreak",
-   "if_zero": "None -> endpoint available:false with reason",
-   "if_wrong": "per-row needs_review re-check + zone_specific condition filter remain; fixtures pin the column order"
+   "purpose": "find the newest completed gates run on main",
+   "file_line": ".github/workflows/main-red-alarm.yml (gh run list --workflow gates.yml --branch main)",
+   "where_clause": "--status completed --limit 1, branch main",
+   "if_zero": "state=broken, noting the workflow may be disabled or may never have run",
+   "if_wrong": "a stale-but-green run older than 50h also trips the alarm, so the two ways of being unverified are both covered"
   },
   {
-   "purpose": "coverage metadata read (kept direct by design, guards adopted)",
-   "file_line": "frontend-nextjs/app/api/dcp/coverage/route.ts:29",
-   "where_clause": "c.is_current = TRUE AND (c.needs_review IS NULL OR c.needs_review = FALSE) + registry scoping",
-   "if_zero": "empty council list renders as before",
-   "if_wrong": "measured before shipping: clean predicate changes the count 28 -> 28"
-  },
-  {
-   "purpose": "registry PDF-URL map for citation links",
-   "file_line": "scripts/conveyancing_db.py:332",
-   "where_clause": "council = %s AND is_active = TRUE AND r2_public_pdf_url IS NOT NULL",
-   "if_zero": "empty map - citations render without links",
-   "if_wrong": "per-council parameter makes cross-council contamination structurally impossible (the old TS JOIN needed a leak sentinel; the map does not)"
+   "purpose": "find an already-open alarm issue so a long outage is one thing, not seventy-two",
+   "file_line": ".github/workflows/main-red-alarm.yml (gh issue list --search in:title)",
+   "where_clause": "state open, exact title match in jq",
+   "if_zero": "create the issue",
+   "if_wrong": "a title-only match could in principle collide with a human-filed issue of the same name; the consequence is a comment on that issue rather than a duplicate, which is the safe direction"
   }
  ],
  "break_it": [
   {
-   "scenario": "a needs_review row with a numeric value reaches the assessment DCP tab or duplex-check card",
-   "what_happens": "pre-change: served as a normal authoritative number (numeric won the branch) - 35 live rows measured; the quarantine was decorative",
+   "scenario": "a dependency goes missing again and the test using it sits inside pytest.importorskip rather than importing directly",
+   "what_happens": "the test skips instead of failing, CI stays green, and the coverage disappears with no signal — the silent half of this same outage, and how 23 tests came to never run anywhere",
    "mitigated": true,
-   "how": "rows now come from fetch_dcp_setbacks which excludes flagged rows in SQL AND per-row; the route cannot emit under_review from clean rows (pinned)",
-   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=dcp-structured-controls"
+   "how": "the conftest census counts dependency skips and the ratchet fails on any increase or any new dependency name",
+   "repro": "append a fabricated skip to .pytest-skips.json and run python scripts/check_dependency_skips.py — exits 1"
   },
   {
-   "scenario": "capacity serves an arbitrary 3 of N parking rows that changes between deploys",
-   "what_happens": "pre-change: LIMIT 3 with no ORDER BY - which rows a user saw was up to the planner",
+   "scenario": "main breaks and nobody looks at the Actions tab",
+   "what_happens": "exactly what happened: three days red, ~2,260 tests unexecuted, every merge landing on an unverified base",
    "mitigated": true,
-   "how": "all guarded rows in the source's deterministic order (value/section/id tiebreaks added at scripts/conveyancing_db.py:298-299); the flipped pin forbids inline SQL returning",
-   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=capacity-repoint"
+   "how": "main-red-alarm opens a GitHub issue within minutes of a failed gates run on main and closes it when main goes green; the job also fails, so the alarm is visible in the Actions list too",
+   "repro": "workflow_dispatch the alarm while main is red — it files the issue, which it would do today"
   },
   {
-   "scenario": "the Python backend is down while a user opens the assessment DCP tab",
-   "what_happens": "risk introduced by proxying: a new failure mode where the old code hit the DB directly",
+   "scenario": "the newest completed gates run on main cannot be found, or is green but stale — the gates workflow stopped running at all (disabled, quota exhausted, trigger edited away)",
+   "what_happens": "no failure event is ever emitted, an event-driven alarm stays silent, and absence looks identical to health",
    "mitigated": true,
-   "how": "visible 503 with a retry message (never empty success); parking-rates degrades tier-by-tier with user-facing reasons; capacity fails the request visibly; the trade-off (one guard implementation over one fewer hop) is the item-5 doctrine, stated in the PR",
-   "repro": "pytest tests/test_dcp_controls_api.py::TestDcpControlsEndpoint::test_db_failure_is_503; jest 'source-unavailable is a visible 503'"
+   "how": "the daily scheduled sweep asserts a recent AND successful run, treating both 'no completed run' and 'succeeded but >50h ago' as broken",
+   "repro": "read the Assess main step: the empty-RUN_JSON and AGE_H>50 branches both set state=broken"
   },
   {
-   "scenario": "the slug-mapper swap silently changes how canibuildit keys its council lookups",
-   "what_happens": "a council's rows would vanish or belong to the wrong LGA on the granny-flat tool",
+   "scenario": "the alarm becomes the noise that gets ignored",
+   "what_happens": "a fresh issue per failed run trains people to filter it — the same learned blindness in a new place",
    "mitigated": true,
-   "how": "the inline map's six renames were verified identical to lib/lga-slug.ts line-by-line BEFORE the swap; toLgaSlug additionally null-guards empty input (the inline version could query lga = '')",
-   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=lga-slug"
+   "how": "one issue reused by title: later failures comment on it rather than duplicating, and a green run closes it",
+   "repro": "the Raise step searches for the open issue and comments when it finds one"
   },
   {
-   "scenario": "the fetch_dcp_setbacks SELECT extension breaks the paid conveyancing path",
-   "what_happens": "the 13-column unpack or new dict keys could disturb the PDF/brief consumers",
+   "scenario": "PyMuPDF is installed but the four tests do not really exercise anything",
+   "what_happens": "the dependency lands, CI goes green, and the fix is cosmetic",
    "mitigated": true,
-   "how": "additive keys only; all three fixture suites updated to the exact column order and the full 3,665-test Python suite green incl. conveyancing forensic/citation/needs-review suites",
-   "repro": "python -m pytest tests/test_conveyancing_clause_citation.py tests/test_conveyancing_dcp_needs_review.py tests/test_dcp_as_at.py -q"
+   "how": "the four tests generate real PDFs and assert extracted dates (2026-03-05, 2024-09-18 and two None cases), and the module under test opens those PDFs with fitz at scripts/extract_dcp_stated_dates.py:95,139 — the real extraction path, not a stub",
+   "repro": "python -m pytest tests/test_dcp_as_at.py -k TestExtractorSelectionRules -q"
   },
   {
-   "scenario": "the PDF-map probe fails mid-transaction and takes the as-at probe down with it",
-   "what_happens": "a poisoned transaction would degrade every subsequent read in the shared function",
+   "scenario": "removing -x makes CI meaningfully slower",
+   "what_happens": "a real cost is traded for the diagnostic gain and nobody checks whether it was worth it",
    "mitigated": true,
-   "how": "scripts/conveyancing_db.py:318-338 - savepoint-isolated like the as-at probe (the item-3 Sol doctrine applied to the new query)",
-   "repro": "mock-cursor suites exercise the probe failure path; fetch returns rows with an empty map"
+   "how": "measured: the full suite runs in ~12s locally and ~10s in the last CI log, inside a job dominated by setup and pip install. The saving -x bought was negligible; the information it destroyed was three days of it.",
+   "repro": "the timing line on any run: '3665 passed ... in 12.62s'"
   },
   {
-   "scenario": "the observation check goes green while an inline reader hides in a comment-stripped edge",
-   "what_happens": "a false all-clear on the consolidation invariant while an inline reader still executes",
+   "scenario": "the qa-and-liability job is skipped on main and something real stops being checked",
+   "what_happens": "a genuine gate is quietly narrowed under cover of a CI repair",
    "mitigated": true,
-   "how": "the check strips comments (matching what files EXECUTE) and fails with exit 2 when it cannot find even the internal-review routes (a scan that finds nothing is a broken scan, DQ-30 lesson)",
-   "repro": "python scripts/check_ts_dcp_readers.py - baseline unexpected_inline_readers == []"
-  },
-  {
-   "scenario": "the registry PDF-URL map probe fails and citation links silently vanish or mislink",
-   "what_happens": "controls would render without their page-anchored citation links, or a poisoned transaction would degrade every later read in the shared function",
-   "mitigated": true,
-   "how": "scripts/conveyancing_db.py:318-338 savepoint isolation (empty map on failure, transaction intact); the map is per-council by parameter so a mislink to another council's PDF is structurally impossible",
-   "repro": "pytest tests/test_dcp_controls_api.py (registry map assertion) + the mock-cursor suites exercising probe failure"
+   "how": "nothing is lost: the QA report binds to the PR's commits, and the liability scan diffs against merge-base, which on main is HEAD — an empty diff. Both questions are answerable only before the merge and both still run there. On main the job now reads 'skipped' instead of a red that could never be anything else.",
+   "repro": "the job's if: condition plus scripts/qa_gate.py:1285-1302, which requires the report hash to be among the branch's last 5 commits"
   }
  ],
  "post_merge": {
-  "db_reset": "No",
-  "secrets": "No",
-  "other_repo": "No",
-  "manual_verify": "Railway deploys the new /pipeline/dcp-controls endpoint on merge (auto-deploy from GitHub); the four routes depend on it, so merge backend and frontend together (single squash does this)."
+  "db_reset": "No. No migration and no DB access added.",
+  "secrets": "None added. The alarm uses the automatic GITHUB_TOKEN with issues:write and actions:read.",
+  "other_repo": "No.",
+  "manual_verify": "1) After merge, watch the gates run on main and confirm every job is green or deliberately skipped: gh run watch $(gh run list --workflow gates.yml --branch main --limit 1 --json databaseId -q '.[0].databaseId'). 2) Confirm the pytest job now reports ~3,665 tests rather than 1,405, and that the 'TESTS THAT DID NOT RUN' section shows 23. 3) Confirm the alarm closes any issue it opened once main is green. 4) The alarm cannot be fully exercised until main is green at least once — while main is red it is expected to file the issue and fail, which is correct behaviour rather than a regression."
  }
 }

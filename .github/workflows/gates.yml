@@ -18,13 +18,17 @@
 #                                       overlap an open PR. Useful before pushing,
 #                                       meaningless after.
 #   1.  pytest                          python-tests
+#   1a. dependency-skip ratchet         python-tests  (new 2026-08-06 — the
+#                                       counter-measure to the three-day red
+#                                       main; see scripts/check_dependency_skips.py)
 #   1b. mutation-count baselines        python-tests
 #   1c. brief field-coverage ratchet    python-tests
 #   1d. schema contract                 schema-contract
 #   1e. controls provenance             schema-contract (shares its live DB access)
 #   2.  jest                            frontend-tests
-#   3.  qa_gate                         qa-and-liability
-#   4.  liability language scan         qa-and-liability
+#   3.  qa_gate                         qa-and-liability  (PR only — see the job)
+#   4.  liability language scan         qa-and-liability  (PR only; on main its
+#                                       merge-base diff is empty anyway)
 #   5.  mutmut (opt-in, MUTMUT=1)       DROPPED. Already opt-in and non-blocking
 #                                       locally, and needs a WSL venv. Worth
 #                                       revisiting: the last measured kill rate was
@@ -59,8 +63,22 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements-test.txt
+      # No -x. It was there until 2026-08-06, and it is why a single missing
+      # dependency (PyMuPDF, absent from requirements-test.txt) hid the state
+      # of ~1,800 tests for three days: pytest stopped at the first failure,
+      # so the run reported one broken test and said nothing about the rest.
+      # Fail-fast saves runner minutes and costs diagnostic information at
+      # exactly the moment it is most needed. The whole suite runs in ~30s.
       - name: pytest
-        run: python -m pytest tests/ -x -q --tb=short
+        run: python -m pytest tests/ -q --tb=short
+      # A skipped test is not a passing test. tests/conftest.py writes every
+      # dependency-driven skip to .pytest-skips.json; this ratchets the count
+      # so the silent version of the same failure cannot grow unnoticed.
+      # `if: always()` because this is most informative precisely when pytest
+      # has just failed.
+      - name: Tests that did not run (dependency-skip ratchet)
+        if: always()
+        run: python scripts/check_dependency_skips.py
       - name: Mutation-count baselines (counts never drop)
         run: |
           if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
@@ -95,8 +113,25 @@ jobs:
         working-directory: frontend-nextjs
 
   # pre-push [3/4] + [4/4]
+  #
+  # PULL REQUESTS ONLY, and not by preference — on main this job could never
+  # pass. qa_gate.py binds .qa_report.json to one of the branch's last 5
+  # commits (scripts/qa_gate.py:1285-1302), which a SQUASH merge necessarily
+  # destroys: the squash commit is a new hash and the branch's commits never
+  # enter main's history, so the report hash is guaranteed absent. Every push
+  # to main failed on "Commit hash mismatch" — a second, independent reason
+  # main was red from 2026-08-03, underneath the PyMuPDF one and invisible
+  # while it was being blamed for everything.
+  #
+  # A gate that can only ever be red teaches people that red means nothing.
+  # That is the same disease as the outage this commit is fixing, so the job
+  # runs where its question is answerable — before the merge — and SKIPS on
+  # main. Skipped reads as "not checked" in the UI, which is true; green would
+  # read as "checked and fine", which would not be. Same reasoning as the
+  # schema-contract job below.
   qa-and-liability:
     name: QA report + liability language
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
