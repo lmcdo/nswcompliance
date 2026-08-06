@@ -31,7 +31,7 @@ export const shadowConfig: ProductLandingConfig = {
     {
       icon: Building2,
       title: "Maximum-Height Building Envelope",
-      description: "Shadow is cast from a building at the tallest height mapped at your location, modelled as a rectangle immediately north of your boundary. It is a worst case, not a survey: the neighbouring parcel's real shape, position and height control are not looked up.",
+      description: "Shadow is cast from a building at the tallest height mapped at your location, modelled as a rectangle immediately north of your boundary. It is a hypothetical screening scenario, not a survey and not an upper bound: the neighbouring parcel's real shape, position and height control are not looked up, and its own control may allow more shadow than this model shows.",
     },
     {
       icon: Map,
