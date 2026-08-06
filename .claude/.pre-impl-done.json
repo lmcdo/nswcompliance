@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "reason": "Two-line fix inside scripts/check_dependency_skips.py: read total_skipped from the baseline alongside count. No DB access anywhere in this script — it reads two local JSON files written by the test run. Same commit as the change that introduced the field.",
-  "timestamp": "2026-08-06T23:10:00+10:00"
+  "status": "passed",
+  "timestamp": "2026-08-06T21:40:00+10:00",
+  "target": "Lane 1 Sol-finding fixes: (a) reword the granny-flat machine_default confidence reason to hold for partial review, (b) find the detect row by outputs->>'detect_id' when the report_id lookup misses, (c) reject confirmed_count_source='secondary_detections_classified' without a non-empty structure_types",
+  "findings_summary": "granny_flat_reports read live 2026-08-06: outputs->>'detect_id' present on 60 rows, 60 distinct, 0 non-UUID-shaped, and id NEVER equals detect_id (0 of 87) — so the existing `WHERE id = req.report_id` carry-forward cannot resolve for either frontend (matches measured 0/16 manifests and 1/16 tiles on confirm rows). All 60 detect rows carry outputs.detected_structures, 47 a non-null tile_b64, 0 an execution_manifest, all at confidence='pending_confirm'. EXPLAIN ANALYZE on the detect_id lookup: Seq Scan, 87 rows, 23ms — no index needed at this volume, revisit past ~50k rows. No loop, no entity mapping, no numeric parsing; detect_id compared as text."
 }

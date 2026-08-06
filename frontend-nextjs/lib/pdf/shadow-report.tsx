@@ -573,14 +573,14 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             // used (campaign item 4) — the query date alone said nothing
             // about how old the imagery was.
             { source: 'Element84 Sentinel-2 (construction change)', type: 'Satellite imagery', currency: s2ImageryCurrency(data.s2_latest_acquisition, data.run_date) },
-            { source: 'Shadow geometry (pvlib + pybdshadow)', type: 'Computed', currency: 'Analytical model' },
+            { source: 'Shadow geometry (pybdshadow)', type: 'Computed', currency: 'Analytical model' },
           ]} />
         )}
 
         {/* Methodology — compact */}
         <Text style={s.sectionTitle}>Methodology</Text>
         <Text style={s.bodyText}>
-          Shadow geometry computed using pvlib Solar Position Algorithm and pybdshadow shadow casting for ADG test dates (21 Jun, 21 Sep, 21 Dec). Building height from applicable LEP. Northern neighbour footprint approximated from lot boundary offset. Construction activity detected via Sentinel-2 Bare Soil Index (BSI) change.
+          Shadow geometry computed using the pybdshadow shadow-casting model, which derives sun position from the modelled date and time, for ADG test dates (21 Jun, 21 Sep, 21 Dec). The compass direction shown for each scenario is a fixed value stored per scenario, not recalculated for this address. Building height from applicable LEP. Northern neighbour footprint approximated from lot boundary offset. Construction activity detected via Sentinel-2 Bare Soil Index (BSI) change.
         </Text>
 
         <Text style={[s.sectionTitle, { marginTop: 4 }]}>Disclaimer</Text>

@@ -1,223 +1,442 @@
 {
- "tier": "standard",
- "justification": "Repairs CI rather than served output: adds the missing PyMuPDF test dependency, removes pytest fail-fast, scopes the QA-report job to pull requests (it is structurally unpassable on main), and adds a red-main alarm plus a dependency-skip ratchet. No product code, no DB writes, no user-facing text. Standard rather than minor because it changes what the gates verify and therefore what a green tick means.",
- "commit_hash": "c4261af1",
+ "tier": "critical",
+ "justification": "Changes what served surfaces claim about our own methods, and changes a served confidence value. The paid shadow PDF and the public /how-it-works page stop naming pvlib (zero import sites anywhere in the repo) as our solar-position method. Granny-flat reports stop treating detector-vs-detector count equality as corroboration: 'high' now requires a human-reviewed count, which moves 8 of 16 historical-shape reports from high to medium and adds the amber confidence finding to their PDF. New keys are written into granny_flat_reports.inputs and the confirm write stops deleting the detect row's detected_structures. Served claim + served value + production write shape = critical.",
  "files": [
-  "requirements-test.txt",
-  ".github/workflows/gates.yml",
-  ".github/workflows/main-red-alarm.yml",
-  "scripts/check_dependency_skips.py",
-  "dependency-skip-baseline.json",
-  "tests/conftest.py",
-  ".gitignore"
+  "services/shadow_model.py",
+  "services/shadow_detector.py",
+  "services/flood_truth.py",
+  "services/granny_flat.py",
+  "frontend-nextjs/lib/pdf/shadow-report.tsx",
+  "frontend-nextjs/app/how-it-works/page.tsx",
+  "frontend-nextjs/app/reports/granny-flat/page.tsx",
+  "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx",
+  "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+  "migrations/064_shadow_disclaimer_v2_pvlib_removal.sql",
+  "migrations/042b_seed_disclaimer_versions.sql",
+  "tests/test_granny_flat_logic.py",
+  "tests/test_granny_flat_mutation.py",
+  "tests/test_satellite_forensic.py",
+  "frontend-nextjs/__tests__/app/granny-flat-confirm-wiring.test.tsx",
+  "frontend-nextjs/__tests__/components/reports/GrannyFlatBriefCard.test.tsx",
+  "frontend-nextjs/__tests__/api/reports/shadow-generate.test.ts",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  "services/CLAUDE.md",
+  "docs/qa/shadow_validation.md"
  ],
  "falsifiable_check": {
-  "command": "python -m pytest tests/ -q --tb=short -p ci_sim  (import blocker denying every module absent from the requirements-test.txt closure) ; python scripts/check_dependency_skips.py ; gh run view 30856789737 --log-failed",
-  "passes_when": "The whole suite runs to completion under CI's exact import surface with 0 failures (3665 passed), the four TestExtractorSelectionRules tests among them; the dependency-skip census reports 23 against a baseline of 23; and no job in gates.yml can be red-by-construction on main.",
-  "fails_when": "Any test fails under the SIMULATED CI import surface — that is the real condition, because the whole outage was a module present locally and absent in CI, and a plain local run cannot see it (this machine has PyMuPDF installed, which is why 3698 tests passed here on 08-06 while main had already been red for three days). The ratchet goes red if the skip count rises, if a new dependency starts skipping tests, or if .pytest-skips.json is absent — a missing census is failure, never zero.",
-  "demonstrated_failing": "All four states reproduced red before the fix. (1) With the CI import blocker and no PyMuPDF the suite reports exactly 4 failures, all ModuleNotFoundError: No module named 'fitz'. (2) The real CI log for run 30856789737 shows the identical failure and '1 failed, 1405 passed, 1 skipped, 19 deselected' — 1,405 of 3,665 tests ran, ~2,260 did not. (3) The ratchet was fed a doctored census three ways: new dependency -> exit 1, rising count on a known dependency -> exit 1, missing report -> exit 2, unchanged -> exit 0. (4) gh run list --workflow gates.yml --branch main returns five consecutive failures dated 2026-08-03, confirming the outage independently of the report of it.",
-  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again. Sol round 3: compare only the totals -> the offsetting shapely/icontract trade passes again; restore the auto-write on a missing baseline -> deleting the file passes with an inflated baseline. Sol round 4: gate the whole qa-and-liability job on pull_request -> a direct main push is unscanned; treat a missing total_skipped as 'no opinion' -> the unrecognised-skip axis switches off silently; swallow the census write error -> the ratchet reads the previous run's numbers. Sol round 5: use HEAD^ as the main-push scan base -> an earlier commit in a multi-commit push goes unscanned; restore the >50h clock rule -> the alarm cries wolf every Monday. Sol round 6: drop the negative-age branch -> a future-dated commit grants an unbounded grace period and main sits unverified while the sweep reports ok.",
-  "self_comparison_note": "This does not re-run the code and check it agrees with itself. The import surface is derived from requirements-test.txt through pip's own resolver (48 packages), not from whatever happens to be installed here, and the outcome is cross-checked against the actual GitHub Actions log rather than a local re-execution."
+  "command": "git grep -nE \"^\\\\s*(import|from)\\\\s+pvlib\" -- . ; git grep -n pvlib -- frontend-nextjs/lib/pdf frontend-nextjs/app/how-it-works services/shadow_detector.py ; git grep -n \"PC_CATALOG|S1_COLLECTION\" -- services/ ; python -m pytest tests/test_granny_flat_logic.py tests/test_granny_flat_mutation.py -q ; cd frontend-nextjs && npx jest --testPathPattern=\"granny-flat-confirm-wiring|GrannyFlatBriefCard\"",
+  "passes_when": "pvlib has no import site anywhere (grep 1 empty); no served shadow surface and no audit-trail source string names pvlib (grep 2 empty); the deleted SAR endpoint constants have no remaining definition (grep 3 empty); granny-flat confidence reaches 'high' only when confirmed_count_source is 'secondary_detections_classified'; ConfirmationPanel invokes onCountChange with the answer-adjusted count and lifts the per-structure answers to its caller.",
+  "fails_when": "Grep 1 returning a hit would mean pvlib IS imported and the reworded copy is itself the false claim. Grep 2 returning a hit means a served surface still names a library the code never runs. Grep 3 returning a hit means a SAR constant survived the deletion. test_high_needs_human_reviewed_count goes red the moment the count_source condition is dropped and detector self-agreement can buy 'high' again. The ConfirmationPanel wiring tests go red if onCountChange stops being called, which is the original defect returning. Each of these compares the code against something outside itself - the import graph, the rendered strings, the caller's observed behaviour - never against its own recomputed output.",
+  "demonstrated_failing": "Every claim was measured against origin/main 0c41c09d and production before any edit, and two pre-change states were reproduced red. (1) Applying the new count_source condition to the existing test suite turned 10 tests red on first run - test_high_requires_all_three, test_zero_counts_agree_high, test_confidence_high_when_all_good and 7 others were all asserting that count equality alone earns 'high'. Those failures ARE the old doctrine being exercised; each was flipped with an in-test reason rather than deleted. (2) Production measurement of the defect: SELECT over granny_flat_reports returns 16 rows with confirmed_structure_count, 15 with both counts, 13 agree / 2 disagree / 1 machine-NULL, 0 with any provenance field, and 0 of 87 rows holding detected_structures and a confirmed count together. Both 'disagreements' are confirmed=1 / machine=0, which only the frontend ': 1' fallback produces - a brief-card deselect can only yield confirmed <= machine - so the human-signal count is 0, not the 2 the census recorded. (3) grep on origin/main showed pvlib named in the PDF at shadow-report.tsx:576/583, /how-it-works:74, the audit-trail source string shadow_detector.py:479 and 381 report_audit_trail rows, with zero import sites; and PC_CATALOG/S1_COLLECTION/FLOOD_RATIO each appearing exactly once, at their own definition.",
+  "mutation_evidence": "Delete the `human_checked` term from _compute_confidence's high branch -> test_high_needs_human_reviewed_count and test_compute_confidence_agreement_without_human_is_not_high fail. Default count_source to 'secondary_detections_classified' instead of 'unrecorded' -> test_compute_confidence_default_count_source_is_not_high and test_confirm_records_unrecorded_when_caller_is_silent fail. Drop the onCountChange call from handleStructureType -> three ConfirmationPanel tests fail (the exact regression that shipped originally). Stop persisting structure_types/detect_id/confirmed_count_source -> test_confirm_persists_count_provenance_join_key_and_answers fails. Remove the detected_structures carry-forward -> nothing in Python fails, so the guard is the post_merge SQL check below rather than a unit test; recorded as a known gap. Re-emit 'garage' for kept brief-card structures -> the never-labels-a-type-it-does-not-ask-for test fails. Restore 'pvlib' to the PDF methodology string -> grep 2 in the command goes non-empty. Sol review added three more: drop the deselected-touch filter in the brief card -> 'sends no answers and no review claim when the user touches nothing' fails; remove the detect_id fallback lookup -> test_carry_forward_finds_the_detect_row_by_detect_id fails; delete the model_validator -> test_secondary_detections_classified_without_answers_is_rejected fails. The carry-forward gap noted above as 'no unit test' is now closed by that second test. Sol round 2 added three more: trust the caller's count_source flag instead of resolving it -> the three 'downgraded_when' tests fail; drop `AND prop_id = %s` from the carry-forward -> test_carry_forward_is_scoped_to_the_submitted_parcel fails; restore v1's Jun/Sep-only limitation text -> the disclaimer contradicts SHADOW_SCENARIOS again. Sol round 3 added three more: drop the implied-count check -> test_secondary_detections_classified_is_downgraded_when_the_count_contradicts_the_answers fails; revert to req.samgeo_structure_count as the comparator -> test_machine_count_comes_from_the_detect_row_not_the_client_echo fails; remove the else branch in handleStructureType -> the 'retracts the existing-granny-flat answer' test fails. Sol round 4 added three more: restrict the implied-count check back to the secondary_detections_classified branch -> test_count_contradicting_its_answers_is_flagged_under_any_provenance fails; drop `outputs->>'detect_id' = %s` from the report_id lookup -> test_report_id_lookup_is_bound_to_the_same_detect_run fails; move the duplicate-index check back inside the secondary_detections_classified branch -> test_duplicate_indexes_rejected_under_every_provenance fails. Sol round 5: rename 'secondary_detections_classified' back to 'user_reviewed' and the CountSource comment's own reasoning contradicts the name — the label would again assert a verified total that no surface can produce. Sol round 6: log req.samgeo_structure_count as the SAM response again -> the audit record reports a client-supplied number as the detector's; move the unknown-index check back inside the claim branch -> test_unknown_index_is_flagged_under_any_provenance fails; rename back to detections_classified -> the name again claims coverage of a principal dwelling nobody classified. Sol round 7: drop the coordinate bound from the carry-forward -> test_carry_forward_is_scoped_to_the_submitted_parcel fails; remove the partial-answer branch -> test_partial_answers_are_not_described_as_unchecked fails. Sol round 8: remove the empty-expected refusal -> test_claim_is_refused_when_there_was_nothing_to_classify fails and a lot with no secondary structure earns the classification claim again. Sol round 9: persist req.structure_types unfiltered -> the referent-less answer reappears in inputs.structure_types and the unknown-index test fails; drop the answers_consistent flag -> test_reason_never_says_the_count_reflects_answers_it_contradicts fails. Sol round 10: key identity on s.get('index') alone -> test_structures_without_an_index_fall_back_to_array_position fails. Sol round 11: revert the gate to req.confirmed_structure_count -> test_eligibility_gate_uses_the_detected_count_not_the_submitted_one fails; drop the existing_gf override -> test_an_existing_granny_flat_answer_outranks_the_request_flag fails. Sol round 12: count unknown-index answers in _effective_structure_count -> test_an_unknown_index_answer_cannot_reduce_the_effective_count fails; fold the detect-row read back into the SEPP except -> test_a_failed_detect_row_read_is_surfaced_not_swallowed fails. Sol round 13: warn only on the exception -> test_an_unmatched_detect_row_is_surfaced_like_a_failed_one fails; count discarded answers in answers_given -> test_discarded_answers_do_not_inflate_the_classified_count fails; require the main dwelling to be touched -> the brief card's provenance assertion fails. Sol round 14: return submitted_count when answers are absent -> test_no_answers_falls_back_to_the_detector_not_the_caller fails. Sol round 15: gate on effective_count >= 3 instead of the secondary count -> test_rejecting_the_main_dwelling_does_not_unblock_two_secondaries fails; read req.structure_types unfiltered in the existing_gf override -> test_an_unknown_index_cannot_force_the_existing_granny_flat_flag fails. Sol round 16: revert index to plain int -> test_a_boolean_index_is_rejected_not_coerced fails. Sol post-merge: return the answers unfiltered when the detect row is missing -> test_answers_with_no_detect_row_are_kept_out_of_the_calibration_column fails.",
+  "self_comparison_note": "None of these re-run the code and check it agrees with itself. The pvlib checks read the import graph, which is the authority on whether a library is used. The confidence checks assert against fixed expected values chosen from the semantics, not from the function's current output. The production measurements compare two independently-produced numbers (detector count vs submitted count) and then explain the difference from the frontend source, rather than accepting equality as evidence - which is precisely the trap this change removes."
  },
  "pre_impl": {
-  "existing_data": "gh run list shows gates failing on main on 0c41c09d, 8b9b0ea7, 03bc720a, 2b7dcd97 and 412a3788, all 2026-08-03. The latest run's jobs: Python tests FAILED, QA report + liability FAILED, Jest / Duplication / Schema contract passed. Its log gives the exact cause (fitz at tests/test_dcp_as_at.py:358) and the exact damage. The CI import surface was resolved with pip install --dry-run --ignore-installed --report against requirements-test.txt: 48 packages, no PyMuPDF, no shapely, no matplotlib, no icontract, no requests.",
-  "assumption_mismatch": "Two premises in the brief needed correcting. (a) '~1,800 tests haven't executed' — the log says 1,405 ran of 3,665, so ~2,260 did not. (b) The fitz failure was not the only thing holding main red: qa-and-liability was failing independently on a squash-merge hash mismatch, so fixing PyMuPDF alone would have left main red and the new alarm firing on day one. Also: PyMuPDF CAN be a CI dependency, so the brief's fallback clause does not apply to it — pymupdf-1.28.0-cp310-abi3-manylinux_2_28_x86_64.whl is an abi3 wheel covering CI's Python 3.12 with no system libraries, and requirements.txt:120 already pins the same version.",
-  "new_vs_existing": "The ratchet deliberately mirrors the repo's existing idiom (scripts/check_test_baselines.py, brief_field_coverage_ratchet.py, jscpd, schema_contract_baseline.json): a committed baseline that may only shrink. It could not extend either of those, because both ratchet numbers that a skipped test still contributes to — skips are exactly what they cannot see. The alarm workflow is new; nothing in .github/ watched main's own health, and the only prior signal was a red X addressed to nobody."
+  "existing_data": "Read-only production census 2026-08-06 before any edit. granny_flat_reports: 87 rows (2026-04-08 to 2026-07-26), 16 with confirmed_structure_count, 15 with both counts, 13 agree / 2 disagree / 1 machine-NULL, 0 with a provenance field, 0 holding detected_structures and a confirmed count together, 8 high / 8 medium. disclaimer_versions: exactly one live shadow row (id=4, shadow-v1) whose source_attributions opens with pvlib. report_audit_trail: 381 rows naming pvlib. property_reports flood: 148 rows, 0 with null or empty data_sources, but 143 still naming Microsoft Planetary Computer S1 RTC (131 inside the 90-day cache window, newest 2026-08-03).",
+  "assumption_mismatch": "Three inherited claims were wrong and are corrected in the plan docs. (a) The census said 2 rows carry genuine human disagreement; 0 do - both are the ': 1' fallback. (b) It cited the SAR constants at flood_truth.py:100-101/115; on origin/main they sit at :109-110/129, so the stale working tree would have produced wrong citations. (c) It described pvlib as cited on three surfaces; there are more, including 381 audit rows and a QA doc that actively prescribed the false wording as a fix. Additionally, disclaimer_versions.source_attributions is never rendered to a user - audit_trail.py:187 selects only the version column - so migration 064 corrects the evidentiary record, not a page, and the PR says so rather than claiming a user-visible fix.",
+  "new_vs_existing": "No new module, table, endpoint or data source. granny_flat_reports.inputs/outputs are jsonb, so the four new keys need no schema migration. The detected_structures carry-forward extends the SELECT that already fetched tile_b64 and execution_manifest from the same row by the same id - one more column on an existing query, marked prior-art-checked at the site. Migration 064 follows the lifecycle already documented in migrations/042b and docs/qa/INDEX.md. ConfirmationPanel was exported for test only; its props gained two entries and its local state moved up one level.",
+  "external_source_error": "pybdshadow is the dependency the corrected wording now names, and it is NOT installed in this environment - so the replacement copy deliberately asserts nothing about its internals. The old docstring claim that pybdshadow 'uses suncalc-py' was dropped rather than restated, because nothing in this repo substantiates it. The new wording claims only what the call site proves: bdshadow_sunlight receives a footprint, a height and a UTC instant and returns the shadow polygon. If the Python API is unreachable the granny-flat confirm route already returns a visible 502; the new fields are optional at every layer so an older client still succeeds, recorded as 'unrecorded'.",
+  "frontend_type": "structure_types crosses three boundaries. Browser sends {index: number, answer: string}[]. The Next route rejects a non-array, more than 40 entries, a non-integer or out-of-range index, or an answer outside the six literals - HTTP 400, never coercion. Pydantic re-validates against the same Literal set, so a divergence is a 422 rather than a silent drop; both lists include 'kept' and must stay in sync. confirmed_count_source is a three-value union on both sides and an unknown string is rejected rather than defaulted, because defaulting it to 'secondary_detections_classified' would manufacture the exact claim the field exists to make falsifiable. DetectedStructureRow gained an optional index because older brief-card rows may lack it; the payload falls back to array position there. tsc --noEmit passes with 0 errors.",
+  "user_failure_mode": "A user marking a detection 'Part of main house' on a 3-structure lot now drops the count to 2, which lifts the MULTIPLE_SECONDARY_STRUCTURES block gating CDC eligibility. That is intended - the block exists because we do not know what the structures are, so it should respond when the user tells us, and leaving it unresponsive is the unwired safeguard this item is about - but it means an answer that previously moved nothing now moves a served verdict. Mitigations: the block only lifts on an explicit per-structure answer; the answer is persisted against the structure index so the decision is auditable after the fact; and a line above the questions states which count will be used and whether it came from the person or the detector. The opposite failure - a report claiming human validation that never happened - is the one being removed, and it was live on 8 reports. Sol round 2 surfaced a failure mode I had created rather than inherited: making the detect_id lookup live turned a previously-dead unscoped query into a cross-property leak. It is now scoped to the submitted prop_id and fails closed."
  },
  "functions": [
   {
-   "name": "pytest_terminal_summary",
-   "file_line": "tests/conftest.py:224",
-   "input": "pytest's terminal reporter after the run, i.e. every skip report the session produced",
-   "output": "writes .pytest-skips.json and prints a 'TESTS THAT DID NOT RUN' section grouped by the missing module",
-   "if_none": "no dependency skips -> the file records count 0 and no section prints; the ratchet then compares 0 against the baseline"
+   "name": "_compute_confidence",
+   "file_line": "services/granny_flat.py:1037",
+   "input": "validated flag, confirmed_count, samgeo_count, rent_available, and now count_source (three-state provenance)",
+   "output": "(confidence, reason); 'high' only when a person reviewed the count AND it matches the detector AND rent data exists",
+   "if_none": "count_source absent defaults to 'unrecorded', which cannot reach 'high' - absence is its own state, never folded into 'a human checked'"
   },
   {
-   "name": "_dependency_from_skip_reason",
-   "file_line": "tests/conftest.py:194",
-   "input": "a single skip reason string from a skip report",
-   "output": "the module name the skip blames, or None when the skip is about something else entirely",
-   "if_none": "env-gated skips such as 'set RUN_LIVE_GEMINI=1' return None deliberately — counting a deliberate opt-out would make the ratchet measure intent instead of coverage"
+   "name": "confirm_and_calculate",
+   "file_line": "services/granny_flat.py:1450",
+   "input": "GrannyFlatConfirmRequest, which now also carries the confirmed_count_source provenance value and the per-structure structure_types answers",
+   "output": "same response contract; the persisted inputs gain confirmed_count_source, structure_types and detect_id, and outputs gain the carried-forward detected_structures",
+   "if_none": "structure_types None is stored as null (not an empty list, which would read as 'asked and answered nothing'); detect row absent means detected_structures carries forward as null"
   },
   {
-   "name": "main",
-   "file_line": "scripts/check_dependency_skips.py:65",
-   "input": "the .pytest-skips.json census and the committed dependency-skip-baseline.json",
-   "output": "a printed census grouped by dependency, and exit 0, 1 or 2",
-   "if_none": "a missing census exits 2 — 'no report' and 'no skips' must not look the same, which is the failure mode being fixed"
+   "name": "ConfirmationPanel.handleStructureType",
+   "file_line": "frontend-nextjs/app/reports/granny-flat/page.tsx:1007",
+   "input": "structure index + one of the four answers",
+   "output": "lifts the answer to the page AND invokes onCountChange with detected count minus the detections marked part_of_main",
+   "if_none": "no answers given means onCountChange is never called and the count stays the detector's figure, which the page then transmits as 'machine_default'"
+  },
+  {
+   "name": "runConfirm",
+   "file_line": "frontend-nextjs/app/reports/granny-flat/page.tsx:351",
+   "input": "detect result, the already-adjusted count, the per-structure answers",
+   "output": "confirm POST carrying confirmed_count_source and structure_types; derives provenance only, never re-adjusts the count",
+   "if_none": "fewer answers than secondary structures yields 'machine_default' - a partial pass is not a review"
+  },
+  {
+   "name": "_resolve_count_source",
+   "file_line": "services/granny_flat.py:942",
+   "input": "the caller's claimed provenance value, the submitted per-structure answers, and the detect run's own detected_structures list",
+   "output": "(resolved_source, downgrade_note) - 'secondary_detections_classified' survives only when the answers cover every non-main detected structure with no unknown index",
+   "if_none": "detect row missing or empty -> 'machine_default' with a recorded note; a review that cannot be checked is not credited"
   }
  ],
  "values": [
   {
-   "value": "dependency-skip count",
-   "read_at": "scripts/check_dependency_skips.py:56",
+   "value": "confirmed_count_source",
+   "read_at": "services/granny_flat.py:1255",
    "nullable": "yes",
-   "guard_at": "scripts/check_dependency_skips.py:51-56 (missing report exits 2)",
-   "if_missing": "treated as failure, never as zero"
+   "guard_at": "services/granny_flat.py:1259 (`req.confirmed_count_source or \"unrecorded\"`) and route.ts COUNT_SOURCES membership check returning 400",
+   "if_missing": "'unrecorded' - confidence capped at medium and the reason says no person reviewed the count"
   },
   {
-   "value": "latest gates conclusion on main",
-   "read_at": ".github/workflows/main-red-alarm.yml, step 'Assess main'",
+   "value": "structure_types",
+   "read_at": "services/granny_flat.py:1305",
    "nullable": "yes",
-   "guard_at": "the empty-RUN_JSON branch in the same step",
-   "if_missing": "state=broken — no completed run is unknown, and unknown about a gate is not health"
+   "guard_at": "route.ts array/shape/answer-literal validation returning 400; Pydantic Literal re-validation",
+   "if_missing": "stored as null, distinguishable from an empty list"
   },
   {
-   "value": "age of the latest successful run",
-   "read_at": ".github/workflows/main-red-alarm.yml, AGE_H",
-   "nullable": "no",
-   "guard_at": "the AGE_H > 50 branch",
-   "if_missing": "n/a — a green run older than 50h is itself treated as broken, so a workflow that quietly stopped firing cannot read as healthy"
+   "value": "detected_structures carried into the confirm row",
+   "read_at": "services/granny_flat.py:1287",
+   "nullable": "yes",
+   "guard_at": "initialised to None and only set when the detect row is found by report_id",
+   "if_missing": "null - the confirm row records answers without their referent, the pre-change state for all 87 rows"
   }
  ],
  "queries": [
   {
-   "purpose": "find the newest completed gates run on main",
-   "file_line": ".github/workflows/main-red-alarm.yml (gh run list --workflow gates.yml --branch main)",
-   "where_clause": "--status completed --limit 1, branch main",
-   "if_zero": "state=broken, noting the workflow may be disabled or may never have run",
-   "if_wrong": "a stale-but-green run older than 50h also trips the alarm, so the two ways of being unverified are both covered"
+   "purpose": "carry the detect run's tile, manifest AND per-structure evidence into the confirm row",
+   "file_line": "services/granny_flat.py:1276",
+   "where_clause": "id = %s (unchanged; one additional selected column, outputs->'detected_structures')",
+   "if_zero": "row absent -> all three carry-forwards stay None, same as before for tile_b64",
+   "if_wrong": "without this the ON CONFLICT DO UPDATE below overwrites the detect row and deletes the structures the stored answers refer to - measured as 0 of 87 rows holding both"
   },
   {
-   "purpose": "find an already-open alarm issue so a long outage is one thing, not seventy-two",
-   "file_line": ".github/workflows/main-red-alarm.yml (gh issue list --search in:title)",
-   "where_clause": "state open, exact title match in jq",
-   "if_zero": "create the issue",
-   "if_wrong": "a title-only match could in principle collide with a human-filed issue of the same name; the consequence is a comment on that issue rather than a duplicate, which is the safe direction"
+   "purpose": "persist the confirm result",
+   "file_line": "services/granny_flat.py:1298",
+   "where_clause": "INSERT ... ON CONFLICT (id) DO UPDATE (unchanged); three keys added to the inputs jsonb, one to outputs",
+   "if_zero": "n/a",
+   "if_wrong": "a row claiming confirmed_count_source='secondary_detections_classified' with a null structure_types is detectable by the post_merge query and would indicate a caller asserting provenance it did not collect"
+  },
+  {
+   "purpose": "supersede the shadow disclaimer that names pvlib",
+   "file_line": "migrations/064_shadow_disclaimer_v2_pvlib_removal.sql:44",
+   "where_clause": "pipeline_name='shadow' AND version='shadow-v1' AND superseded_at IS NULL",
+   "if_zero": "the trailing DO block raises unless exactly one live shadow version remains, so a no-op UPDATE aborts the transaction rather than leaving zero live rows",
+   "if_wrong": "two live versions would make get_current_disclaimer_version nondeterministic; the same post-condition catches that case"
+  },
+  {
+   "purpose": "read the detect run's tile, manifest and structures before the eligibility gate",
+   "file_line": "services/granny_flat.py:890",
+   "where_clause": "detect_id AND prop_id AND a ~50m coordinate bound; the report_id branch additionally requires the same detect_id",
+   "if_zero": "(None, None, None) — no carry-forward, provenance downgraded, submitted count used with a warning",
+   "if_wrong": "an unscoped match would pair one property's evidence with another's address; all three scopes are caller-supplied, which is why all three are required together"
   }
  ],
  "break_it": [
   {
-   "scenario": "a dependency goes missing again and the test using it sits inside pytest.importorskip rather than importing directly",
-   "what_happens": "the test skips instead of failing, CI stays green, and the coverage disappears with no signal — the silent half of this same outage, and how 23 tests came to never run anywhere",
+   "scenario": "a caller posts a confirm with no confirmed_count_source and the backend reads the absence as 'the user reviewed it'",
+   "what_happens": "the machine echo is relabelled human validation again, this time through the default rather than the logic",
    "mitigated": true,
-   "how": "the conftest census counts dependency skips and the ratchet fails on any increase or any new dependency name",
-   "repro": "append a fabricated skip to .pytest-skips.json and run python scripts/check_dependency_skips.py — exits 1"
+   "how": "absent maps to 'unrecorded', a distinct third state that cannot satisfy the human_checked condition",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k 'unrecorded_when_caller or provenance_absent' -q"
   },
   {
-   "scenario": "main breaks and nobody looks at the Actions tab",
-   "what_happens": "exactly what happened: three days red, ~2,260 tests unexecuted, every merge landing on an unverified base",
-   "mitigated": true,
-   "how": "main-red-alarm opens a GitHub issue within minutes of a failed gates run on main and closes it when main goes green; the job also fails, so the alarm is visible in the Actions list too",
-   "repro": "workflow_dispatch the alarm while main is red — it files the issue, which it would do today"
+   "scenario": "someone posts confirmed_count_source='secondary_detections_classified' directly to the API with nobody having answered anything",
+   "what_happens": "the provenance field becomes a self-assertion and is worth nothing",
+   "mitigated": false,
+   "how": "NOT mitigated and not mitigable server-side - the server cannot observe a click. What exists instead: both frontends only emit 'secondary_detections_classified' when every secondary structure has an answer, and structure_types is written alongside, so a row claiming secondary_detections_classified with a null structure_types is detectable. Recorded as a known limit rather than papered over.",
+   "repro": "SELECT count(*) FROM granny_flat_reports WHERE inputs->>'confirmed_count_source'='secondary_detections_classified' AND inputs->'structure_types' IS NULL -- expect 0 while only these two surfaces call confirm"
   },
   {
-   "scenario": "the newest completed gates run on main cannot be found, or is green but stale — the gates workflow stopped running at all (disabled, quota exhausted, trigger edited away)",
-   "what_happens": "no failure event is ever emitted, so an event-driven alarm stays silent and absence looks identical to health",
+   "scenario": "the brief card records a building type for structures the user merely left selected",
+   "what_happens": "a classification nobody gave is stored as a human label and later mistaken for training data - manufacturing the false provenance this change exists to remove",
    "mitigated": true,
-   "how": "the daily sweep treats 'no completed run at all' as broken, and treats main's current HEAD having no successful run as broken once that HEAD is more than 3h old. It does NOT alarm on elapsed time alone: a green run on the current HEAD is healthy at any age, so an unchanged main over a weekend stays silent (corrected in round 5 — the original 50h clock rule would have cried wolf every Monday).",
-   "repro": "read the Assess main step: the empty-RUN_JSON and AGE_H>50 branches both set state=broken"
+   "how": "that card only asks keep-or-reject, so it emits 'kept', which carries no type; the Literal documents why",
+   "repro": "cd frontend-nextjs && npx jest --testPathPattern=GrannyFlatBriefCard -t 'never labels a structure with a type'"
   },
   {
-   "scenario": "the alarm becomes the noise that gets ignored",
-   "what_happens": "a fresh issue per failed run trains people to filter it — the same learned blindness in a new place",
+   "scenario": "the count is reduced twice - once in handleStructureType and again in runConfirm",
+   "what_happens": "a 3-structure lot with one part_of_main answer submits 1 instead of 2, understating the count and wrongly clearing the multi-structure eligibility gate",
    "mitigated": true,
-   "how": "one issue reused by title: later failures comment on it rather than duplicating, and a green run closes it",
-   "repro": "the Raise step searches for the open issue and comments when it finds one"
+   "how": "this was present in the first draft and removed; runConfirm now derives provenance only and forwards the already-adjusted count, with a comment at the site saying so",
+   "repro": "cd frontend-nextjs && npx jest --testPathPattern=granny-flat-confirm-wiring (asserts onCountChange receives exactly 2 for part_of_main and 3 for garage, from 3 detected)"
   },
   {
-   "scenario": "PyMuPDF is installed but the four tests do not really exercise anything",
-   "what_happens": "the dependency lands, CI goes green, and the fix is cosmetic",
+   "scenario": "the confirm write overwrites the detect row and destroys detected_structures, so a stored answer points at nothing",
+   "what_happens": "structure_types survives but its referent does not - index 1 has no bbox, area or prompt to join back to, and the labels are useless for the calibration they were captured for",
    "mitigated": true,
-   "how": "the four tests generate real PDFs and assert extracted dates (2026-03-05, 2024-09-18 and two None cases), and the module under test opens those PDFs with fitz at scripts/extract_dcp_stated_dates.py:95,139 — the real extraction path, not a stub",
-   "repro": "python -m pytest tests/test_dcp_as_at.py -k TestExtractorSelectionRules -q"
+   "how": "detected_structures is carried forward through the same SELECT that already carried tile_b64; this is the state all 87 existing rows are in",
+   "repro": "SELECT count(*) FROM granny_flat_reports WHERE inputs ? 'structure_types' AND NOT (outputs ? 'detected_structures') -- must stay 0 for rows written after this change"
   },
   {
-   "scenario": "removing -x makes CI meaningfully slower",
-   "what_happens": "a real cost is traded for the diagnostic gain and nobody checks whether it was worth it",
+   "scenario": "migration 064 runs twice, or runs while another shadow version is already live",
+   "what_happens": "two rows with superseded_at IS NULL, and get_current_disclaimer_version returns whichever sorts first - a nondeterministic disclaimer version stamped onto audit rows",
    "mitigated": true,
-   "how": "measured: the full suite runs in ~12s locally and ~10s in the last CI log, inside a job dominated by setup and pip install. The saving -x bought was negligible; the information it destroyed was three days of it.",
-   "repro": "the timing line on any run: '3665 passed ... in 12.62s'"
+   "how": "wrapped in BEGIN/COMMIT with a trailing DO block that raises unless exactly one live shadow version remains, so a second run aborts",
+   "repro": "run the migration twice against a scratch copy; the second must abort with 'expected exactly 1 live version'"
   },
   {
-   "scenario": "the qa-and-liability job is skipped on main and something real stops being checked",
-   "what_happens": "a genuine gate is quietly narrowed under cover of a CI repair",
-   "mitigated": true,
-   "how": "nothing is lost: the QA report binds to the PR's commits, and the liability scan diffs against merge-base, which on main is HEAD — an empty diff. Both questions are answerable only before the merge and both still run there. On main the job now reads 'skipped' instead of a red that could never be anything else.",
-   "repro": "the job's if: condition plus scripts/qa_gate.py:1285-1302, which requires the report hash to be among the branch's last 5 commits"
+   "scenario": "a cached flood report is served and still names Microsoft Planetary Computer S1 RTC",
+   "what_happens": "the false source claim DQ-44 removed from new reports keeps being served from stored rows on every cache hit",
+   "mitigated": false,
+   "how": "NOT fixed here and deliberately out of scope - it is a production data repair and Lane 1 separates measurement from writes. Measured and logged as DQ-50: 143 rows carry the string, 131 inside the 90-day cache window, newest 2026-08-03. The _DATA_SOURCES_BASE fallback at flood_truth.py:133 used at :1819 also still hardcodes it, though 0 rows can currently reach that branch.",
+   "repro": "SELECT count(*) FROM property_reports WHERE product='flood' AND run_date > CURRENT_DATE - INTERVAL '90 days' AND EXISTS (SELECT 1 FROM unnest(data_sources) s WHERE s ILIKE '%Planetary Computer%') -- currently 131, target 0"
   },
   {
-   "scenario": "a dependency is installed, skips fall 23 -> 18, the baseline is left loose, and a later change removes the dependency again",
-   "what_happens": "both runs pass the ratchet, so five recovered tests stop running a second time — silently, which is the exact disease",
+   "scenario": "the reworded shadow methodology understates what the product does and a reader assumes the direction shown was computed for their address",
+   "what_happens": "the pvlib lie is replaced by a quieter one - the compass bearing is a stored per-scenario constant, not a per-report calculation",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: the ratchet matches EXACTLY, both directions. An improvement fails the build until the baseline is tightened in the same commit, where a reviewer sees it. A ratchet left loose is not a ratchet.",
-   "repro": "remove the shapely entries from .pytest-skips.json without touching the baseline and run scripts/check_dependency_skips.py — exits 1"
+   "how": "the PDF methodology paragraph and the new disclaimer limitation (6) both state that the compass direction is a fixed stored value not recalculated for the address, and shadow_model's docstring records that the constants are unverified against published ephemeris with SH-1 named as the check that would substantiate them",
+   "repro": "read the Methodology paragraph in a generated shadow PDF and confirm both the pybdshadow attribution and the fixed-direction sentence are present"
   },
   {
-   "scenario": "a test is skipped with a reason no pattern recognises, e.g. skipif(boto3 is None, reason='requires boto3')",
-   "what_happens": "the classifier matches nothing, the dependency census records no new skip, CI stays green and the coverage is lost — the same hole one rephrasing away",
+   "scenario": "the brief card treats untouched pre-selected structures as human 'kept' answers and claims secondary_detections_classified",
+   "what_happens": "clicking Calculate on the defaults stores two manufactured human judgements and can buy 'high' confidence with no per-structure review — the same defect being fixed, reintroduced on the other surface",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: conftest now records EVERY skip, and the baseline pins the total (25) as well as the classified subset (23). An unrecognised skip trips the total ratchet and is printed by name and reason, so classification is a diagnostic aid rather than the thing enforcement depends on.",
-   "repro": "append a skip with dependency=None to .pytest-skips.json and run the script — exits 1 and names the test"
+   "how": "Sol finding 1, verified real and fixed: only structures present in the `deselected` map (i.e. actually clicked) are reported, and secondary_detections_classified requires every structure touched. Untouched means no answer emitted and machine_default.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPattern=GrannyFlatBriefCard -t 'sends no answers and no review claim when the user touches nothing'"
   },
   {
-   "scenario": "offsetting drift — one new test skips for shapely (13->14) while one icontract test is recovered (5->4)",
-   "what_happens": "the classified count stays 23, the total stays 25, no dependency name is new, and newly lost coverage passes green — the ratchet cancels itself out",
+   "scenario": "the detected_structures carry-forward silently never resolves, so answers are stored with their referent already deleted",
+   "what_happens": "the mitigation for the evidence-deletion defect is decorative — exactly the unfalsifiable claim this lane exists to remove, and it would have shipped inside the fix for that class",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: per-dependency counts are compared exactly, so either half of that trade trips the gate on its own. Totals are now the third axis rather than the only one.",
-   "repro": "reassign one icontract skip to shapely in .pytest-skips.json and run the script — exits 1 naming both movements"
+   "how": "Sol finding 2, verified real against production: `id` never equals `detect_id` (0 of 87 rows) and neither frontend sends report_id on confirm, so the old `WHERE id = req.report_id` read missed — evidenced by 0 of 16 confirm rows carrying a manifest and 1 carrying a tile. A fallback lookup on outputs->>'detect_id' (60 present, 60 distinct, all UUID-shaped) now resolves it, which also repairs the pre-existing tile_b64 and execution_manifest carry-forwards.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k carry_forward_finds -q"
   },
   {
-   "scenario": "dependency-skip-baseline.json is deleted or absent while extra tests are skipping",
-   "what_happens": "the script wrote a fresh baseline from the run it was judging and exited 0 — deleting the file becomes a way to bless whatever is broken today, and the gate certifies its own input",
+   "scenario": "a caller asserts confirmed_count_source='secondary_detections_classified' with no structure_types, or with duplicate indexes",
+   "what_happens": "the provenance field becomes a self-assertion that buys 'high' confidence, or the answer set is ambiguous about which structure was judged",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: a missing baseline exits 2 unless --init is passed explicitly, so generating one is a deliberate, reviewable act rather than a side effect of a red run.",
-   "repro": "mv dependency-skip-baseline.json away and run the script — exits 2"
+   "how": "Sol finding 3, accepted: both the Next route (400) and a Pydantic model_validator (422) refuse the combination, so neither entry point can create a row whose own fields contradict each other. The residual limit stands and is unchanged — the server still cannot observe a click, only refuse an inconsistent claim.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k 'secondary_detections_classified_without or duplicate_structure' -q"
   },
   {
-   "scenario": "a change is pushed directly to main containing prohibited liability wording",
-   "what_happens": "scoping the whole qa-and-liability job to pull requests — my first attempt at the squash-merge fix — meant an admin push or any write-access automation landed on main with nothing scanning it. I introduced this while fixing something else.",
+   "scenario": "a caller sets confirmed_count_source='secondary_detections_classified' with answers naming structure indexes the detect run never produced, or covering only some of the detected secondary structures",
+   "what_happens": "the provenance flag is a self-assertion that buys 'high' confidence, and the stored answers poison the very label set this change exists to start accruing",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: only the QA-REPORT step is PR-gated. The liability scan runs on both events, diffing merge-base on a PR and HEAD^..HEAD on a main push, which is exactly the change that landed.",
-   "repro": "the step-level if: in gates.yml — the scan has none"
+   "how": "Sol round-2 finding 1, verified real and fixed: provenance is now RESOLVED server-side in _resolve_count_source against the detect row's own detected_structures - every non-main structure must have an answer and no answer may name an unknown index. Anything else is machine_default. The claim and the downgrade reason are stored beside the resolved value so the decision is auditable, not silent.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k 'downgraded_when' -q"
   },
   {
-   "scenario": "total_skipped is removed from the baseline or set to null",
-   "what_happens": "total_limit became None, the comparison was skipped, and the one axis that catches an unrecognised skip reason switched itself off silently",
+   "scenario": "a confirm request quotes another report's detect_id together with a different address and prop_id",
+   "what_happens": "that other property's aerial tile, execution manifest and detected structures are carried into a report describing the submitted address - a cross-property data leak that my own detect_id fallback introduced by making a previously-dead lookup live",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: a missing total_skipped exits 2 and says so. Absent is not 'no opinion'.",
-   "repro": "delete total_skipped from dependency-skip-baseline.json and run the script — exits 2"
+   "how": "Sol round-2 finding 2, verified real and fixed: both carry-forward lookups are scoped `AND prop_id = %s` against the submitted parcel. prop_id is populated on 60/60 detect rows. A mismatch loses the carry-forward and downgrades provenance rather than serving another parcel's evidence - fail-closed.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k carry_forward_is_scoped -q"
   },
   {
-   "scenario": "the pytest run dies before the summary hook fires — a collection error, a cancelled job — or the census cannot be written",
-   "what_happens": "the previous run's .pytest-skips.json stays on disk and the ratchet judges this run against stale numbers — and passes",
+   "scenario": "the shadow-v2 disclaimer says scenarios are modelled for 21 June and 21 September only while the PDF and SHADOW_SCENARIOS include 21 December",
+   "what_happens": "a report containing December results carries a disclaimer telling the reader December was not assessed - a contradictory evidentiary record, created by the very migration meant to make that record accurate",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed two ways: pytest_sessionstart deletes any existing census before the run, and a failed write removes the file rather than swallowing the error. The ratchet then exits 2 ('report not found'), which is honest. Verified as a side effect: a PARTIAL run now writes a partial census that fails the ratchet (exit 1) rather than certifying a subset as the whole suite.",
-   "repro": "python -m pytest tests/test_dcp_as_at.py -q then scripts/check_dependency_skips.py — exits 1, not 0"
+   "how": "Sol round-2 finding 3, verified real and fixed: limitation (5) now lists the five modelled instants taken from SHADOW_SCENARIOS (21 Jun 9am/noon/3pm, 21 Sep noon, 21 Dec noon) instead of copying v1's stale wording forward.",
+   "repro": "diff the limitation (5) text in migrations/064 against services/shadow_model.SHADOW_SCENARIOS - the dates must match"
   },
   {
-   "scenario": "an admin pushes several commits to main at once and the prohibited wording is in an earlier one, not the tip",
-   "what_happens": "HEAD^..HEAD scans only the last commit of the push, so wording introduced in any earlier commit of the same push is never examined",
+   "scenario": "genuine per-structure answers are paired with a count they do not support (answers imply 2, request submits 3)",
+   "what_happens": "index coverage alone granted 'secondary_detections_classified', so a stale or crafted request could buy 'high' confidence for a count the review does not license",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: the base is github.event.before, which is the ref as it stood before the whole push, falling back to HEAD^ only when `before` is the all-zero SHA or is unreachable.",
-   "repro": "read the else-branch of the Liability language scan step in gates.yml"
+   "how": "Sol round-3 finding 1, verified real and fixed: _resolve_count_source now also requires the submitted count to equal what the answers imply (all detected structures less those answered part_of_main or rejected). A mismatch downgrades to machine_default AND appends a visible warning to the report — a reader sees the review did not hold together, not just a quieter badge.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k count_contradicts -q"
   },
   {
-   "scenario": "main is green on Friday, nothing is pushed over the weekend, and the Monday sweep fires anyway",
-   "what_happens": "the clock-based staleness rule (>50h) opens a red-main issue for a main that is verified and unchanged — a false alarm every Monday, which is precisely how the next real alarm gets ignored. I wrote this one in.",
+   "scenario": "the detector's count used in the confidence comparison is the one the client echoed back",
+   "what_happens": "the submitted count is compared against another caller-supplied number, so the comparison establishes nothing about the detector — the census flagged samgeo_structure_count as client-echoed and it was still the comparator",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: staleness is now about COVERAGE, not elapsed time. A successful run whose headSha equals main's current HEAD is green at any age; the alarm fires when HEAD has no completed run and is more than 3h old, which is the state that actually means 'nothing checked this'.",
-   "repro": "read the SHA = HEAD_SHA branch in the Assess main step"
+   "how": "the detect row is now being read anyway, so len(detected_structures) is used as the machine count when available, falling back to the echoed value only when the row cannot be found.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k machine_count_comes_from -q"
   },
   {
-   "scenario": "a census file from an earlier run survives into this one and happens to match the baseline",
-   "what_happens": "the ratchet reads numbers this run did not produce and exits 0",
+   "scenario": "a structure is marked 'Existing granny flat' and then changed to another type while other structures are unanswered",
+   "what_happens": "existingSecondaryDwelling stays stuck at true, so the request asserts an existing granny flat that no current answer says is there — and SEPP cl 53(1) then serves an ineligible verdict off a retracted answer",
    "mitigated": true,
-   "how": "three layers now: pytest_sessionstart removes it, a failed write removes it, and the CI step rm -f's it before pytest so a file that cannot be removed fails the step visibly instead of being absorbed. Residual, stated: if all three removals fail AND the stale counts match exactly, it would still pass — contrived enough to record rather than engineer around.",
-   "repro": "the rm -f in the pytest step, plus pytest_sessionstart in tests/conftest.py"
+   "how": "Sol round-3 finding 2, verified real and fixed: handleStructureType gains an else branch returning the flag to null when no answer says existing_gf and not every structure has been answered.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPattern=granny-flat-confirm-wiring -t 'retracts the existing-granny-flat answer'"
   },
   {
-   "scenario": "a commit with a committer date in the future is pushed to main while gates is disabled",
-   "what_happens": "HEAD_AGE_H goes negative, the in-flight grace period never expires, and the sweep reports ok while main's head is unverified for days",
+   "scenario": "eligibility still uses the caller-submitted confirmed_structure_count even when the answers imply a different number",
+   "what_happens": "a request submitting a lower count than its answers imply could slip under the >=3 MULTIPLE_SECONDARY_STRUCTURES gate; the provenance downgrade and warning fire, but granny_flat_buildable was already computed from the submitted figure",
    "mitigated": true,
-   "how": "Sol finding, verified real and fixed: a negative age is treated as broken outright. A committer date is author-supplied, so it may buy a grace period only when it plainly falls inside the in-flight window; anything else fails closed.",
-   "repro": "read the HEAD_AGE_H -lt 0 branch in the Assess main step"
+   "how": "FIXED in Sol round 11, closing DQ-51. The detect row is now read on the SEPP-standards connection BEFORE the eligibility gate — no extra connection — and _effective_structure_count derives the gate's count from the detected structures less those answered part_of_main or rejected. The submitted figure is used only when there is no detect row or no answers, is retained as confirmed_structure_count_submitted, and any divergence is served as a warning. The earlier round's 'out of scope' reasoning was a structural excuse; the restructure turned out to be a relocation, not a rewrite.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k eligibility_gate_uses_the_detected -q"
+  },
+  {
+   "scenario": "a caller holds a report_id from an EARLIER detection on the same parcel and pairs it with the current detect_id",
+   "what_happens": "the report_id branch matched first and returned the older run's tile, manifest and structures; the review was then evaluated against the wrong run and the row stored the current detect_id beside the older run's evidence",
+   "mitigated": true,
+   "how": "Sol round-4 finding 2, verified real and fixed: the report_id lookup is now bound to `outputs->>'detect_id' = %s` as well as prop_id, so both branches can only resolve the run the request names. A stale report_id falls through to the detect_id branch instead of winning.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k report_id_lookup_is_bound -q"
+  },
+  {
+   "scenario": "two conflicting answers for the same structure index are stored under machine_default or unrecorded",
+   "what_happens": "the database holds two different labels for one detected structure and the label set is ambiguous — the Next route refused this, a direct Python caller did not",
+   "mitigated": true,
+   "how": "Sol round-4 finding 3, verified real and fixed: the duplicate-index, index-range and list-length checks now apply to any non-null structure_types regardless of the provenance claimed, matching what the route already enforced.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k duplicate_indexes_rejected_under_every -q"
+  },
+  {
+   "scenario": "a person classifies every DETECTED structure and that is labelled as having reviewed the count, while the detector silently missed one",
+   "what_happens": "neither surface lets anyone report a building the scan did not find, so 'user_reviewed' would have claimed the total was checked when only the detections were — detector self-agreement earning high confidence through the back door",
+   "mitigated": true,
+   "how": "Sol round-5 finding, accepted: the value is renamed to 'secondary_detections_classified', which is exactly what it records, and both the 'high' reason string and the on-screen line now state that a structure the scan did not find is outside the check. What the rename does NOT do is remove the underlying limit — detection recall is unmeasured until GF-1 runs, so whether this state should earn 'high' at all is a product decision flagged for the calibration plan, not taken here.",
+   "repro": "grep -n \"secondary_detections_classified\" services/granny_flat.py — the Literal comment records why it is not called user_reviewed"
+  },
+  {
+   "scenario": "the audit trail records the client-echoed samgeo_structure_count as SAM's own response",
+   "what_happens": "a request claiming 99 detections makes the evidentiary record say SAM returned 99, with features_returned=99 — the exact class of false attribution this branch exists to remove, sitting inside the defence layer",
+   "mitigated": true,
+   "how": "Sol round-6 finding 1, verified real and fixed: the SAM DataSourceQuery now records machine_count read back from the detect row, and keeps the request's number beside it labelled structure_count_client_echo rather than passing it off as the detector's.",
+   "repro": "grep -n 'structure_count_client_echo' services/granny_flat.py"
+  },
+  {
+   "scenario": "'detections_classified' is claimed when only the SECONDARY structures were answered",
+   "what_happens": "the standalone tool never asks about the detector-designated principal dwelling, so the value and the served reason both claimed every detection had been classified when one never was",
+   "mitigated": true,
+   "how": "Sol round-6 finding 2, verified real and fixed: the value is now secondary_detections_classified, matching the coverage rule that has always only required the non-main structures, and both reason strings say 'each secondary structure among them' and name the principal dwelling as detector-identified and outside the check.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k secondary_detections_classified -q"
+  },
+  {
+   "scenario": "an answer naming a structure index the detect run never produced is stored under machine_default or unrecorded",
+   "what_happens": "a label with no referent is persisted as calibration data, silently — the unknown-index check ran only when the classification claim was made, and a matching implied count meant nothing else fired either",
+   "mitigated": true,
+   "how": "Sol round-6 finding 3, verified real and fixed: the unknown-index and implied-count checks now run whenever a detect row and any answers are both present, before any branch on provenance. Only the coverage check remains claim-specific.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k unknown_index_is_flagged -q"
+  },
+  {
+   "scenario": "a valid (detect_id, prop_id) pair from one property is submitted with another property's address and coordinates",
+   "what_happens": "the first property's tile, manifest and detected structures are carried into a report labelled as the second, and can produce confidence from the wrong parcel's evidence",
+   "mitigated": true,
+   "how": "Sol round-7 finding 1, verified real and fixed: both carry-forward lookups now also apply the ~50m coordinate bound the flood cache read already uses (abs(lat-%s) < 0.0005 AND abs(lng-%s) < 0.0005). A mismatch loses the carry-forward and downgrades provenance rather than serving another parcel's evidence.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k carry_forward_is_scoped -q"
+  },
+  {
+   "scenario": "a person classifies some structures, the count moves because of it, and the report says the count has not been checked against the aerial image",
+   "what_happens": "the reverse of overclaiming, but still inaccurate — their answers already moved the number the report used",
+   "mitigated": true,
+   "how": "Sol round-7 finding 2, verified real and fixed: a partial-answer branch states how many structures were classified, that the count reflects them, and that the remainder were not — instead of asserting the total was unchecked.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k partial_answers_are_not_described -q"
+  },
+  {
+   "scenario": "a lot where the detector found only a principal dwelling claims secondary_detections_classified",
+   "what_happens": "the coverage set is empty, so the check passed vacuously and the claim was granted for a classification that could not have happened — letting a single-dwelling lot reach 'high' on a review of nothing",
+   "mitigated": true,
+   "how": "Sol round-8 finding, verified real and fixed: an empty expected-set is now an explicit refusal with its own note, not a silent pass. Practical consequence, stated: single-dwelling lots can no longer reach 'high', which is correct — there is nothing on such a lot for a person to check.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k nothing_to_classify -q"
+  },
+  {
+   "scenario": "an answer naming a structure index the detect run never produced is persisted into inputs.structure_types",
+   "what_happens": "the provenance note flags it, but the label still sits in the column a calibration consumer reads — a human classification pointing at nothing, indistinguishable from a valid one",
+   "mitigated": true,
+   "how": "Sol round-9 finding 1, verified real and fixed: _storable_answers keeps only answers whose index the detect run produced. When the detect row is unavailable nothing is dropped, because unknown is not invalid. The audit trail keeps both what was submitted and what was stored, so the record of the request is not quietly tidier than the request.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k unknown_index_is_flagged -q"
+  },
+  {
+   "scenario": "the reason says 'The report used 3, reflecting the 2 structure(s) you classified'",
+   "what_happens": "the sentence refutes itself — the count is being described as reflecting answers that the same report has just warned it contradicts",
+   "mitigated": true,
+   "how": "Sol round-9 fixed the wording; Sol round-12 removed the possibility. Since the endpoint derives the reported count from the detected structures and the answers, a count that contradicts its own answers can no longer reach the reason at all — the submitted/derived divergence has its own warning. The branch and its flag were deleted rather than left as unreachable code that still described a state the system cannot be in.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k reflects_answers_it_contradicts -q"
+  },
+  {
+   "scenario": "a detect row whose structures predate the `index` field is compared against answers keyed by array position",
+   "what_happens": "every identity reads as None, so all answers look unknown — they are dropped, the note fires, and the submitted count carries on unchecked into the eligibility gate with no retained evidence for it",
+   "mitigated": true,
+   "how": "Sol round-10 finding, verified real and fixed: _structure_identity falls back to array position when a structure carries no index, which is exactly what GrannyFlatBriefCard already does client-side. Measured first — all 33 production rows with structures carry index, so this guards a shape we do not currently hold rather than repairing live data.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k without_an_index_fall_back -q"
+  },
+  {
+   "scenario": "an answer identifies a structure as an existing granny flat while the request says existing_secondary_dwelling=false",
+   "what_happens": "the backend trusted the boolean, so a report could record 'existing_gf' for a structure and still compute eligibility as though the lot had none — a buildable result contradicted by its own stored evidence",
+   "mitigated": true,
+   "how": "Sol round-11 finding 2, verified real and fixed: an 'existing_gf' answer forces the flag true, which is the conservative direction and the one SEPP cl 53(1) turns on. The submitted value is retained as existing_secondary_dwelling_submitted and the override is served as a warning.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k outranks_the_request_flag -q"
+  },
+  {
+   "scenario": "an answer naming a structure index the detect run never produced reduces the effective count",
+   "what_happens": "{index: 99, answer: 'rejected'} excludes nothing real, but it was counted — pulling a three-structure lot to two and clearing the cl 53(1) block on the strength of a structure that does not exist. Introduced by my own round-11 change.",
+   "mitigated": true,
+   "how": "Sol round-12 finding 1: only answers whose index matches a detected structure may move the count.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k unknown_index_answer_cannot_reduce -q"
+  },
+  {
+   "scenario": "a transient SQL error while reading the detect row",
+   "what_happens": "the read shared the SEPP fallback's `except`, so the failure became a silent None: the count fell back to the caller's figure with nothing said, quietly restoring exactly the behaviour this branch removes",
+   "mitigated": true,
+   "how": "Sol round-12 finding 2: the detect-row read has its own try, logs the failure, and appends a served warning saying the count could not be checked and the submitted figure was used.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k failed_detect_row_read_is_surfaced -q"
+  },
+  {
+   "scenario": "the detect row simply does not match — expired, superseded, or a mismatched detect_id/prop_id/coordinate triple",
+   "what_happens": "no row comes back, the count falls back to the caller's figure, and nothing is said: the cl 53(1) block is cleared in silence. The previous round warned on the EXCEPTION, not on the outcome, so an unmatched row slipped through.",
+   "mitigated": true,
+   "how": "Sol round-13 finding 1: the warning now fires whenever detected_structures is not a list, whatever the reason.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k unmatched_detect_row_is_surfaced -q"
+  },
+  {
+   "scenario": "the reason counts answers that were discarded as referent-less",
+   "what_happens": "the report says its count reflects 'the 1 structure(s) you classified' while that answer has been dropped from storage — naming a classification that exists nowhere",
+   "mitigated": true,
+   "how": "Sol round-13 finding 3: answers_given counts only the answers that survived _storable_answers.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k discarded_answers_do_not_inflate -q"
+  },
+  {
+   "scenario": "the brief card demands the principal dwelling be touched before recording the classification",
+   "what_happens": "a genuine review is under-credited — one shed properly classified was stored as machine_default and capped, because the preselected main dwelling had not been clicked. The client was stricter than the backend rule it feeds.",
+   "mitigated": true,
+   "how": "Sol round-13 finding 4: allTouched is computed over non-main structures, matching _resolve_count_source and the value's documented meaning.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPattern=GrannyFlatBriefCard -t 'transmits the per-structure decisions'"
+  },
+  {
+   "scenario": "a caller submits property A's valid detect_id, prop_id and coordinates together with property B's address string",
+   "what_happens": "A's tile, manifest and structures are carried into a row whose address column reads B",
+   "mitigated": false,
+   "how": "NOT fixed — overridden with reason. `address` is a caller-supplied display label throughout this endpoint and has never been validated against prop_id; the evidence carried forward always belongs to the prop_id and coordinates the row itself records, so identity and evidence stay consistent while only the label can differ. No live frontend flow produces it: both surfaces derive address, prop_id and coordinates from the same property lookup. Fixing it means resolving the address from prop_id server-side, which is an endpoint-wide input-validation change rather than a Lane 1 item.",
+   "repro": "SELECT count(*) FROM granny_flat_reports r WHERE EXISTS (SELECT 1 FROM granny_flat_reports d WHERE d.outputs->>'detect_id' = r.inputs->>'detect_id' AND d.address <> r.address) -- rows whose confirm address differs from their detect address"
+  },
+  {
+   "scenario": "the detect row is available but no per-structure answers were sent, and the caller submits a lower count",
+   "what_happens": "_effective_structure_count returned the caller's figure, so a request submitting 1 against a three-structure run skipped the cl 53(1) block and could serve buildable",
+   "mitigated": true,
+   "how": "Sol round-14, the last gap in the count chain: with the detect run in hand and nothing classified, there is no basis for departing from what the detector found, so the detected total is used. The caller's figure now only survives when there is no detect row at all — and that case carries its own warning.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k no_answers_falls_back_to_the_detector -q"
+  },
+  {
+   "scenario": "the user rejects the detector-designated principal dwelling while two secondary structures remain",
+   "what_happens": "the total drops from 3 to 2, so the >=3 MULTIPLE_SECONDARY_STRUCTURES block does not fire even though both secondary candidates are still present — a buildable result on a lot cl 53(1) should hold",
+   "mitigated": true,
+   "how": "Sol round-15 finding 2: the block was phrased as 'total >= 3' on the assumption that a total always contains one principal dwelling. Once answers can remove structures that arithmetic stops describing the rule, so _effective_secondary_count counts the surviving secondaries directly and the gate tests >= 2. Without a detect row it falls back to the total-based test, which is all that is knowable.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k rejecting_the_main_dwelling -q"
+  },
+  {
+   "scenario": "the cl 53(1) eligibility override acts on a discarded answer",
+   "what_happens": "storage drops a referent-less 'existing_gf' label and provenance flags it, yet the override still flipped the lot to ineligible — a served verdict resting on evidence the same request had already thrown away",
+   "mitigated": true,
+   "how": "Sol round-15 finding 1: the override now reads the same filtered answer set that gets stored, so only an answer about a real detected structure can move the flag.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k unknown_index_cannot_force -q"
+  },
+  {
+   "scenario": "a JSON body sends a boolean where a structure index belongs",
+   "what_happens": "pydantic coerces true to 1, attaching an 'existing_gf' answer to structure 1 and potentially moving the cl 53(1) verdict from a value that was never an index",
+   "mitigated": true,
+   "how": "Sol round-16 finding 3: the field is StrictInt, so a boolean is a 422 rather than a silent 1.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k boolean_index_is_rejected -q"
+  },
+  {
+   "scenario": "the detect row cannot be resolved and the SEPP gate therefore runs on the caller's count",
+   "what_happens": "an expired or mismatched detect_id means nothing can verify the count, yet a buildable verdict is still served off it — with a warning attached",
+   "mitigated": false,
+   "how": "NOT fixed — overridden against an explicit Lane 1 boundary ('No new blocking gates'). The honest alternative is to refuse the screening outright when the count cannot be verified, which is the pattern flood already uses (FloodRefusedResponse / minimum-viable-screening). That is a new blocking gate and a product decision, so it is flagged rather than taken. What IS in place: the fallback is warned about on the served report, the provenance is recorded as unverifiable, and confidence cannot reach high. Recommend this as the first item if the boundary is lifted.",
+   "repro": "SELECT count(*) FROM granny_flat_reports WHERE outputs->'warnings' @> '[\\\"The structure detection for this address could not be re-read\\\"]'::jsonb -- rows served on an unverified count"
+  },
+  {
+   "scenario": "per-structure answers are stored when no detect row resolved, so nothing can be joined to them",
+   "what_happens": "a calibration consumer reading inputs.structure_types sees plausible human classifications that point at no building — unusable label data wearing the shape of usable label data, which is the defect this lane exists to stop producing",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed: with no detect row, structure_types is stored empty and the submitted answers go to structure_types_unjoinable instead. The person's input is not thrown away; it is just kept out of the column calibration reads.",
+   "repro": "python -m pytest tests/test_granny_flat_mutation.py -k kept_out_of_the_calibration_column -q"
   }
  ],
  "post_merge": {
-  "db_reset": "No. No migration and no DB access added.",
-  "secrets": "None added. The alarm uses the automatic GITHUB_TOKEN with issues:write and actions:read.",
-  "other_repo": "No.",
-  "manual_verify": "1) After merge, watch the gates run on main and confirm every job is green or deliberately skipped: gh run watch $(gh run list --workflow gates.yml --branch main --limit 1 --json databaseId -q '.[0].databaseId'). 2) Confirm the pytest job now reports ~3,665 tests rather than 1,405, and that the 'TESTS THAT DID NOT RUN' section shows 23. 3) Confirm the alarm closes any issue it opened once main is green. 4) The alarm cannot be fully exercised until main is green at least once — while main is red it is expected to file the issue and fail, which is correct behaviour rather than a regression."
- }
+  "db_reset": "No reset. One migration must be applied to production: migrations/064_shadow_disclaimer_v2_pvlib_removal.sql. Expected before: 1 shadow row (id=4, shadow-v1, superseded_at IS NULL). Expected after: 2 shadow rows, exactly one live, version 'shadow-v2'. Until it runs, new shadow reports keep recording version 'shadow-v1', whose stored attributions still name pvlib. Not user-visible either way - source_attributions is never rendered; audit_trail.py:187 selects only the version column.",
+  "secrets": "No new secrets or environment variables.",
+  "other_repo": "No. Trigger.dev reaches the confirm path only through the Next route, whose contract is additive - both new fields are optional at every layer, so an un-updated caller still succeeds and is recorded as 'unrecorded'.",
+  "manual_verify": "1) Open a granny-flat report on a lot with at least one secondary structure; confirm the line above the questions reads \"the detector's own figure\" before answering and \"based on your answers below\" after every structure is answered, and that the number drops when a structure is marked 'Part of main house'. 2) Complete the confirm and check the row: SELECT inputs->>'confirmed_count_source', inputs->'structure_types', inputs->>'detect_id', (outputs ? 'detected_structures') FROM granny_flat_reports ORDER BY created_at DESC LIMIT 1 -- expect 'secondary_detections_classified', a non-null array, the detect UUID, true. 3) Generate a shadow PDF; the Methodology paragraph and the data-currency row must name pybdshadow and not pvlib. 4) Load /how-it-works and confirm the Shadow Analysis source list no longer says pvlib. 5) Apply migration 064 and re-query disclaimer_versions for exactly one live shadow-v2 row."
+ },
+ "commit_hash": "a66a5a95"
 }

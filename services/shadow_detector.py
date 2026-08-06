@@ -4,8 +4,11 @@ POST /pipeline/shadow
   Input:  { address, prop_id, lat, lng, report_id }
   Output: ShadowResult matching frontend ShadowResult interface
 
-VERIFIED 2026-04-06: shadows extend SOUTHWARD for Sydney (pvlib confirmed).
-pybdshadow computes Southern Hemisphere solar position correctly.
+Shadow polygons come from pybdshadow, which derives sun position internally
+from the modelled UTC instant. No solar-position library is imported here.
+The "shadows extend SOUTHWARD for Sydney" direction claim is NOT closed by a
+committed test -- see the services/shadow_model docstring and the
+services/CLAUDE.md shadow caveat.
 
 Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
 {
@@ -474,9 +477,11 @@ def run_shadow(request: ShadowRequest):
     # are not reflected here, keeping the model conservative.
     north_proxy = northern_neighbour_proxy(lot_geojson)
 
-    # Audit trail: track pybdshadow + pvlib shadow modelling
+    # Audit trail: track the shadow model actually invoked. pvlib was named
+    # here for 381 audit rows while never being imported anywhere in the repo
+    # (Lane 1 / D1) — pybdshadow derives sun position itself.
     ds_shadow = DataSourceQuery(
-        "pybdshadow shadow casting + pvlib solar position",
+        "pybdshadow shadow casting",
         "local:model_all_scenarios",
         {"height_m": height_m, "scenarios": len(SHADOW_SCENARIOS)},
     )

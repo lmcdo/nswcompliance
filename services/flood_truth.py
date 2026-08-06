@@ -106,8 +106,16 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 # Canonical signal enum — used by icontract postconditions AND Hypothesis invariants.
 _VALID_FLOOD_SIGNALS = {"none", "low", "moderate", "elevated", "unavailable"}
 
-PC_CATALOG = "https://planetarycomputer.microsoft.com/api/stac/v1"
-S1_COLLECTION = "sentinel-1-rtc"
+# Sentinel-1 SAR is NOT implemented here. The Planetary Computer STAC catalogue
+# address, the `sentinel-1-rtc` collection id and the VH change-detection
+# threshold (FLOOD_RATIO = 1.25) used to sit in this file with ZERO call sites —
+# no pystac_client/planetary_computer import, no query, no consumer. They were
+# deleted 2026-08-06 (calibration Lane 1, decision D2) because a named
+# threshold and endpoint that nothing executes reads as a shipped detector.
+# The honest state is recorded where it is actually served: the on-demand path
+# nulls every sar_* field and the execution manifest records
+# sentinel1_sar.queried = False. When Phase 3B is built, take the constants from
+# that build's own design — not from a stub that was never run.
 # ArcGIS REST API — Layer 0 is broken server-side (returns 400 for all queries).
 # Layer 1 ("Flood Planning") works but covers only ~11 LGAs that have uploaded polygon data.
 # Addresses in uncovered LGAs return 0 features → epi_flood_class: "none" (correct, not an error).
@@ -126,7 +134,6 @@ DEA_WCS_BASE = "https://ows.dea.ga.gov.au/wcs"
 DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"   # multi-year composite, 1987–present, no time param required
 _DATA_SOURCE_DEA = "DEA Water Observations (WOfS, Landsat 1987–present)"
 
-FLOOD_RATIO = 1.25
 S1B_GAP_START = date(2021, 12, 23)
 S1B_GAP_END   = date(2025, 3, 4)
 
