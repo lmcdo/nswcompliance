@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Repairs CI rather than served output: adds the missing PyMuPDF test dependency, removes pytest fail-fast, scopes the QA-report job to pull requests (it is structurally unpassable on main), and adds a red-main alarm plus a dependency-skip ratchet. No product code, no DB writes, no user-facing text. Standard rather than minor because it changes what the gates verify and therefore what a green tick means.",
- "commit_hash": "cb2cd855",
+ "commit_hash": "f804951b",
  "files": [
   "requirements-test.txt",
   ".github/workflows/gates.yml",
@@ -16,7 +16,7 @@
   "passes_when": "The whole suite runs to completion under CI's exact import surface with 0 failures (3665 passed), the four TestExtractorSelectionRules tests among them; the dependency-skip census reports 23 against a baseline of 23; and no job in gates.yml can be red-by-construction on main.",
   "fails_when": "Any test fails under the SIMULATED CI import surface — that is the real condition, because the whole outage was a module present locally and absent in CI, and a plain local run cannot see it (this machine has PyMuPDF installed, which is why 3698 tests passed here on 08-06 while main had already been red for three days). The ratchet goes red if the skip count rises, if a new dependency starts skipping tests, or if .pytest-skips.json is absent — a missing census is failure, never zero.",
   "demonstrated_failing": "All four states reproduced red before the fix. (1) With the CI import blocker and no PyMuPDF the suite reports exactly 4 failures, all ModuleNotFoundError: No module named 'fitz'. (2) The real CI log for run 30856789737 shows the identical failure and '1 failed, 1405 passed, 1 skipped, 19 deselected' — 1,405 of 3,665 tests ran, ~2,260 did not. (3) The ratchet was fed a doctored census three ways: new dependency -> exit 1, rising count on a known dependency -> exit 1, missing report -> exit 2, unchanged -> exit 0. (4) gh run list --workflow gates.yml --branch main returns five consecutive failures dated 2026-08-03, confirming the outage independently of the report of it.",
-  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again. Sol round 3: compare only the totals -> the offsetting shapely/icontract trade passes again; restore the auto-write on a missing baseline -> deleting the file passes with an inflated baseline.",
+  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again. Sol round 3: compare only the totals -> the offsetting shapely/icontract trade passes again; restore the auto-write on a missing baseline -> deleting the file passes with an inflated baseline. Sol round 4: gate the whole qa-and-liability job on pull_request -> a direct main push is unscanned; treat a missing total_skipped as 'no opinion' -> the unrecognised-skip axis switches off silently; swallow the census write error -> the ratchet reads the previous run's numbers.",
   "self_comparison_note": "This does not re-run the code and check it agrees with itself. The import surface is derived from requirements-test.txt through pip's own resolver (48 packages), not from whatever happens to be installed here, and the outcome is cross-checked against the actual GitHub Actions log rather than a local re-execution."
  },
  "pre_impl": {
@@ -27,7 +27,7 @@
  "functions": [
   {
    "name": "pytest_terminal_summary",
-   "file_line": "tests/conftest.py:209",
+   "file_line": "tests/conftest.py:224",
    "input": "pytest's terminal reporter after the run, i.e. every skip report the session produced",
    "output": "writes .pytest-skips.json and prints a 'TESTS THAT DID NOT RUN' section grouped by the missing module",
    "if_none": "no dependency skips -> the file records count 0 and no section prints; the ratchet then compares 0 against the baseline"
@@ -163,6 +163,27 @@
    "mitigated": true,
    "how": "Sol finding, verified real and fixed: a missing baseline exits 2 unless --init is passed explicitly, so generating one is a deliberate, reviewable act rather than a side effect of a red run.",
    "repro": "mv dependency-skip-baseline.json away and run the script — exits 2"
+  },
+  {
+   "scenario": "a change is pushed directly to main containing prohibited liability wording",
+   "what_happens": "scoping the whole qa-and-liability job to pull requests — my first attempt at the squash-merge fix — meant an admin push or any write-access automation landed on main with nothing scanning it. I introduced this while fixing something else.",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed: only the QA-REPORT step is PR-gated. The liability scan runs on both events, diffing merge-base on a PR and HEAD^..HEAD on a main push, which is exactly the change that landed.",
+   "repro": "the step-level if: in gates.yml — the scan has none"
+  },
+  {
+   "scenario": "total_skipped is removed from the baseline or set to null",
+   "what_happens": "total_limit became None, the comparison was skipped, and the one axis that catches an unrecognised skip reason switched itself off silently",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed: a missing total_skipped exits 2 and says so. Absent is not 'no opinion'.",
+   "repro": "delete total_skipped from dependency-skip-baseline.json and run the script — exits 2"
+  },
+  {
+   "scenario": "the pytest run dies before the summary hook fires — a collection error, a cancelled job — or the census cannot be written",
+   "what_happens": "the previous run's .pytest-skips.json stays on disk and the ratchet judges this run against stale numbers — and passes",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed two ways: pytest_sessionstart deletes any existing census before the run, and a failed write removes the file rather than swallowing the error. The ratchet then exits 2 ('report not found'), which is honest. Verified as a side effect: a PARTIAL run now writes a partial census that fails the ratchet (exit 1) rather than certifying a subset as the whole suite.",
+   "repro": "python -m pytest tests/test_dcp_as_at.py -q then scripts/check_dependency_skips.py — exits 1, not 0"
   }
  ],
  "post_merge": {

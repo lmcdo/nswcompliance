@@ -26,9 +26,10 @@
 #   1d. schema contract                 schema-contract
 #   1e. controls provenance             schema-contract (shares its live DB access)
 #   2.  jest                            frontend-tests
-#   3.  qa_gate                         qa-and-liability  (PR only — see the job)
-#   4.  liability language scan         qa-and-liability  (PR only; on main its
-#                                       merge-base diff is empty anyway)
+#   3.  qa_gate                         qa-and-liability, PR-only step (see job)
+#   4.  liability language scan         qa-and-liability, BOTH events — on main
+#                                       it diffs HEAD^..HEAD, so a direct push
+#                                       is still scanned
 #   5.  mutmut (opt-in, MUTMUT=1)       DROPPED. Already opt-in and non-blocking
 #                                       locally, and needs a WSL venv. Worth
 #                                       revisiting: the last measured kill rate was
@@ -114,24 +115,24 @@ jobs:
 
   # pre-push [3/4] + [4/4]
   #
-  # PULL REQUESTS ONLY, and not by preference — on main this job could never
-  # pass. qa_gate.py binds .qa_report.json to one of the branch's last 5
-  # commits (scripts/qa_gate.py:1285-1302), which a SQUASH merge necessarily
-  # destroys: the squash commit is a new hash and the branch's commits never
-  # enter main's history, so the report hash is guaranteed absent. Every push
-  # to main failed on "Commit hash mismatch" — a second, independent reason
-  # main was red from 2026-08-03, underneath the PyMuPDF one and invisible
-  # while it was being blamed for everything.
+  # The job runs on both events; the QA-REPORT STEP is the PR-only part, and
+  # not by preference — on main it could never pass. qa_gate.py binds
+  # .qa_report.json to one of the branch's last 5 commits
+  # (scripts/qa_gate.py:1285-1302), which a SQUASH merge necessarily destroys:
+  # the squash commit is a new hash and the branch's commits never enter
+  # main's history, so the report hash is guaranteed absent. Every push to
+  # main failed on "Commit hash mismatch" — a second, independent reason main
+  # was red from 2026-08-03, underneath the PyMuPDF one and invisible while
+  # that was being blamed for everything.
   #
-  # A gate that can only ever be red teaches people that red means nothing.
-  # That is the same disease as the outage this commit is fixing, so the job
-  # runs where its question is answerable — before the merge — and SKIPS on
-  # main. Skipped reads as "not checked" in the UI, which is true; green would
-  # read as "checked and fine", which would not be. Same reasoning as the
-  # schema-contract job below.
+  # A gate that can only ever be red teaches people that red means nothing —
+  # the same disease as the outage this commit fixes. So that ONE step runs
+  # where its question is answerable and is skipped on main, while the
+  # liability scan keeps running on both. Scoping the whole job to pull
+  # requests (the first attempt here) would have let a direct push to main
+  # land prohibited wording with nothing scanning it.
   qa-and-liability:
     name: QA report + liability language
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -142,7 +143,10 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements-test.txt
+      # PR only — see the note above the job. The liability scan below still
+      # runs on main; only THIS check is unanswerable after a squash merge.
       - name: QA report validation
+        if: github.event_name == 'pull_request'
         run: |
           if [ ! -f .qa_report.json ]; then
             echo "::warning::.qa_report.json absent — QA gate NOT enforced on this ref"
@@ -155,9 +159,19 @@ jobs:
           else
             python scripts/qa_gate.py .qa_report.json
           fi
+      # Runs on BOTH events. Scoping the whole job to pull requests would have
+      # meant a direct push to main — an admin, or any automation with write
+      # access — landing prohibited wording with nothing scanning it. On a PR
+      # the base is the merge-base; on a main push it is the previous commit,
+      # which is exactly the change that just landed.
       - name: Liability language scan
         run: |
-          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          else
+            BASE=$(git rev-parse HEAD^ 2>/dev/null || echo HEAD)
+          fi
+          echo "Scanning against base: $BASE"
           python scripts/liability_language_check.py --diff-base "$BASE"
 
   # pre-push [6] — copy-paste ratchet. Threshold 8% lives in .jscpd.json

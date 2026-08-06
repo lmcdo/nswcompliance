@@ -170,7 +170,17 @@ def main() -> int:
     # skipif(boto3 is None, reason="requires boto3") matches no pattern here,
     # so counting only the recognised ones would leave the same hole one
     # rephrasing away.
-    if total_limit is not None and total != total_limit:
+    if total_limit is None:
+        # Absent or null is not "no opinion" — it would silently disable the
+        # one axis that catches a skip reason no regex recognises. The baseline
+        # must state it.
+        print()
+        print(f"SKIP-TOTAL RATCHET: FAILED — {BASELINE.name} has no "
+              f'"total_skipped". Add it (currently {total}); a missing key '
+              "would switch this check off without saying so.")
+        return 2
+
+    if total != total_limit:
         print()
         print(f"SKIP-TOTAL RATCHET: FAILED — {total} skipped test(s) against a "
               f"baseline of {total_limit}.")

@@ -206,6 +206,21 @@ def _dependency_from_skip_reason(reason: str):
     return None
 
 
+def pytest_sessionstart(session):
+    """Delete last run's census before this one starts.
+
+    Belt to the terminal_summary braces: if this run dies before the summary
+    hook fires — a collection error, a crash, a killed job — a stale
+    .pytest-skips.json would otherwise still be sitting there for the ratchet
+    to read as though it described this run. Gone at the start means the
+    ratchet exits 2 rather than passing on last week's numbers.
+    """
+    try:
+        (Path(session.config.rootdir) / ".pytest-skips.json").unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     # EVERY skip is recorded, not only the ones a regex recognises. Classifying
     # first and counting second would leave the obvious hole: a skip whose
@@ -234,8 +249,18 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             "count": len(found),
             "skips": sorted(all_skips, key=lambda s: s["test"]),
         }, indent=1), encoding="utf-8")
-    except OSError:
-        pass
+    except OSError as exc:
+        # Do NOT swallow. A failed write leaves the PREVIOUS run's census on
+        # disk, and the ratchet would then judge this run against stale
+        # numbers and pass. Removing the file makes the ratchet exit 2
+        # ("report not found") instead, which is the honest outcome.
+        terminalreporter.write_line(
+            f"WARNING: could not write {out.name} ({exc}); removing any stale "
+            "copy so the ratchet cannot read it as this run's result.", red=True)
+        try:
+            out.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     if not found:
         return
