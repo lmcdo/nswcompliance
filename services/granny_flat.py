@@ -838,8 +838,13 @@ def _effective_structure_count(
     """
     if not isinstance(detected_structures, list) or not detected_structures:
         return submitted_count
+    detected_total = sum(1 for s in detected_structures if isinstance(s, dict))
     if not structure_types:
-        return submitted_count
+        # We have the detect run but nobody classified anything, so there is no
+        # basis for departing from what the detector found. Returning the
+        # caller's figure here let a request submit 1 against a three-structure
+        # run and skip the cl 53(1) block entirely.
+        return detected_total
     # Only answers that name a real detected structure may move the count. An
     # answer for an index the detect run never produced excludes nothing, and
     # counting it would let {index: 99, answer: 'rejected'} reduce the total
@@ -850,8 +855,34 @@ def _effective_structure_count(
         1 for s in structure_types
         if s.index in known and s.answer in _NON_STRUCTURE_ANSWERS
     )
-    detected_total = sum(1 for s in detected_structures if isinstance(s, dict))
     return max(0, detected_total - not_separate)
+
+
+def _effective_secondary_count(
+    structure_types: Optional[list],
+    detected_structures: Optional[list],
+) -> Optional[int]:
+    """How many SECONDARY structures survive the answers, or None if unknowable.
+
+    SEPP cl 53(1) is about secondary dwellings, and the block downstream was
+    phrased as "total >= 3" on the assumption that a total always includes one
+    principal dwelling. Answers can now remove structures, including the
+    detector-designated main one, at which point that arithmetic stops
+    describing the rule. Counting the secondaries directly says what is meant
+    and cannot be shifted by a judgement about the principal dwelling.
+    Returns None when there is no detect row — then the caller falls back to
+    the total-based test, because nothing here can tell main from secondary.
+    """
+    if not isinstance(detected_structures, list) or not detected_structures:
+        return None
+    excluded = {
+        s.index for s in (structure_types or [])
+        if s.answer in _NON_STRUCTURE_ANSWERS
+    }
+    return sum(
+        1 for ident, st in _structure_identity(detected_structures)
+        if not st.get("is_main_dwelling") and ident not in excluded
+    )
 
 
 def _fetch_detect_row(conn, req) -> tuple:
@@ -1508,6 +1539,10 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     effective_count = _effective_structure_count(
         req.structure_types, detected_structures_carry,
         req.confirmed_structure_count)
+    # None when there is no detect row — the gates below then fall back to the
+    # total-based test, which is all that is knowable without one.
+    effective_secondary = _effective_secondary_count(
+        req.structure_types, detected_structures_carry)
 
     if provenance_note:
         warnings.append(
@@ -1529,7 +1564,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # 'existing_gf' for a structure and still compute eligibility as if the lot
     # had none.
     existing_secondary_dwelling = req.existing_secondary_dwelling
-    if any(s.answer == "existing_gf" for s in (req.structure_types or [])):
+    _kept_answers = _storable_answers(req.structure_types, detected_structures_carry) or []
+    if any(a.get("answer") == "existing_gf" for a in _kept_answers):
         if existing_secondary_dwelling is not True:
             warnings.append(
                 "One of the structures was identified as an existing secondary "
@@ -1628,7 +1664,11 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # already a secondary dwelling is high. Block and require human verification.
     if (
         granny_flat_buildable
-        and effective_count >= 3  # 1 main + 2 secondary = 3 total
+        # Two or more secondary structures. Counted directly when the detect
+        # row tells us which are secondary; otherwise inferred from the total
+        # on the old "1 main + 2 secondary = 3" assumption.
+        and (effective_secondary >= 2 if effective_secondary is not None
+             else effective_count >= 3)
         and existing_secondary_dwelling is None
     ):
         granny_flat_buildable = False
@@ -1671,7 +1711,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # If they said True, we've already blocked buildability.
     # If they said False, no ambiguity. Only warn when None (not asked / not answered).
     if (
-        effective_count == 2  # exactly 1 secondary structure — ambiguous but not blocked
+        # Exactly one secondary structure — ambiguous but not blocked.
+        (effective_secondary == 1 if effective_secondary is not None
+         else effective_count == 2)
         and existing_secondary_dwelling is None
     ):
         warnings.append(
@@ -1728,7 +1770,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             cap_reasons = []
             if lot_area_m2 is None:
                 cap_reasons.append("Lot area could not be verified — eligibility is unconfirmed.")
-            if existing_secondary_dwelling is None and effective_count >= 2:
+            if existing_secondary_dwelling is None and (
+                    effective_secondary >= 1 if effective_secondary is not None
+                    else effective_count >= 2):
                 cap_reasons.append(
                     "Eligibility is capped because the status of one or more existing secondary "
                     "structures on this lot could not be confirmed. NSW planning rules only allow one "

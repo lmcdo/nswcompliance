@@ -1437,6 +1437,70 @@ class TestConfirmAndCalculate:
         assert _stored_inputs(conn)["confirmed_structure_count"] == 3
         assert resp.granny_flat_buildable is False
 
+    def test_rejecting_the_main_dwelling_does_not_unblock_two_secondaries(self, monkeypatch):
+        """Sol round-15: the >=3 gate assumed the total included a principal dwelling.
+
+        Deselecting the main dwelling took a three-structure lot to two, so
+        the block did not fire even though both secondary candidates were
+        still there. Counting the secondaries directly says what cl 53(1)
+        actually means.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            structure_types=[{"index": 0, "answer": "rejected"},
+                             {"index": 1, "answer": "garage"},
+                             {"index": 2, "answer": "garage"}],
+        ))
+        assert resp.granny_flat_buildable is False
+        assert any("MULTIPLE_SECONDARY_STRUCTURES" in w for w in resp.warnings), resp.warnings
+
+    def test_an_unknown_index_cannot_force_the_existing_granny_flat_flag(self, monkeypatch):
+        """Sol round-15: the override read answers that storage had discarded.
+
+        {index: 99, answer: 'existing_gf'} names no detected structure, so it
+        must not flip the lot to ineligible under cl 53(1).
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            existing_secondary_dwelling=False,
+            structure_types=[{"index": 99, "answer": "existing_gf"}],
+        ))
+        assert _stored_inputs(conn)["existing_secondary_dwelling"] is False
+
+    def test_no_answers_falls_back_to_the_detector_not_the_caller(self, monkeypatch):
+        """Sol round-14: the last gap in the count chain.
+
+        With the detect run in hand and nobody having classified anything,
+        there is no basis for departing from what the detector found —
+        returning the caller's figure let a request submit 1 against a
+        three-structure run and skip the cl 53(1) block entirely.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1, structure_types=None))
+        assert _stored_inputs(conn)["confirmed_structure_count"] == 3
+        assert resp.granny_flat_buildable is False
+        assert any("MULTIPLE_SECONDARY_STRUCTURES" in w for w in resp.warnings), resp.warnings
+
     def test_an_unmatched_detect_row_is_surfaced_like_a_failed_one(self, monkeypatch):
         """Sol round-13: warning on the exception, not on the outcome.
 
