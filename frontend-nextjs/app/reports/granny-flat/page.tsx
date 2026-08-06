@@ -135,8 +135,6 @@ function GrannyFlatPageInner() {
   // thrown away when it unmounted — the answer a person gave about each
   // building never reached the server. Lifted here so runConfirm can send them.
   const [structureTypes, setStructureTypes] = useState<Record<number, StructureTypeAnswer>>({});
-  const [selectedLat, setSelectedLat] = useState<number | null>(null);
-  const [selectedLng, setSelectedLng] = useState<number | null>(null);
 
   // Named step progress — driven by elapsed time during detect phase only
   const DETECT_STEPS = [
@@ -459,7 +457,7 @@ function GrannyFlatPageInner() {
             <AddressAutocomplete
               value={address}
               onChange={setAddress}
-              onSelect={(addr, lat, lng, pc) => { setAddress(addr); setSelectedLat(lat); setSelectedLng(lng); if (pc) setPostcode(pc); }}
+              onSelect={(addr, lat, lng, pc) => { setAddress(addr); if (pc) setPostcode(pc); }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               disabled={isRunning}
             />
@@ -541,7 +539,7 @@ function GrannyFlatPageInner() {
               <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
               <button
                 type="button"
-                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); setReportEmailCaptured(false); setSelectedLat(null); setSelectedLng(null); }}
+                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); setReportEmailCaptured(false); }}
                 className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
               >
                 Search another address
@@ -587,9 +585,16 @@ function GrannyFlatPageInner() {
             )}
           </div>
         </div>
-        {selectedLat !== null && selectedLng !== null && (
-          <NearbyEligible lat={selectedLat} lng={selectedLng} />
-        )}
+        {/* "Eligible properties nearby" removed 2026-08-06. It rendered only
+            on the INELIGIBLE result: a customer just told their lot fails was
+            shown named third-party addresses with a weekly rent figure each,
+            called "DA precedents". None had been through a DA, the rent was a
+            postcode median presented per-address, and the eligibility claim
+            was about someone else's land. No purpose survived: the reasons a
+            lot fails (area, heritage, flood, zone) are facts about that lot,
+            which a neighbour passing cannot change. See
+            ~/.claude/plans/ce-conveyancer-brief-consolidation-2026-07.md §6 —
+            named properties with money attached imply a valuation (ACL s18). */}
         <CrossSellCards buildable={false} address={inputAddress} />
         </>
       )}
@@ -650,7 +655,7 @@ function GrannyFlatPageInner() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
 
           {/* Satellite image + structure bounding boxes */}
           {detectResult ? (
@@ -675,7 +680,7 @@ function GrannyFlatPageInner() {
           {/* Check another address — shown immediately after result, before other content */}
           <div className="text-center">
             <button
-              onClick={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
             >
               Check another address
@@ -1331,58 +1336,6 @@ export function ConfirmationPanel({
         </form>
           );
         })()}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// NearbyEligible — shows nearby properties with confirmed granny flat eligibility
-// Only shown on ineligible result. Fetches from /api/reports/granny-flat/nearby.
-// Graceful empty state — zero results = renders nothing.
-// ---------------------------------------------------------------------------
-
-interface NearbyResult {
-  address: string;
-  run_date: string | null;
-  max_floor_area_m2: number | null;
-  estimated_weekly_rent_aud: number | null;
-}
-
-function NearbyEligible({ lat, lng }: { lat: number; lng: number }) {
-  const [results, setResults] = useState<NearbyResult[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/reports/granny-flat/nearby?lat=${lat}&lng=${lng}`)
-      .then((r) => r.json())
-      .then((d) => { setResults(d.results ?? []); setLoaded(true); })
-      .catch(() => setLoaded(true)); // silent failure
-  }, [lat, lng]);
-
-  if (!loaded || results.length === 0) return null;
-
-  return (
-    <div className="rounded-xl border border-teal-100 bg-teal-50 p-5">
-      <h3 className="font-semibold text-teal-900 mb-1 text-sm">
-        Eligible properties nearby
-      </h3>
-      <p className="text-xs text-teal-700 mb-4">
-        These nearby properties passed the automated eligibility screening — use as reference or DA precedents.
-      </p>
-      <div className="space-y-2">
-        {results.map((r) => (
-          <a
-            key={r.address}
-            href={`/reports/granny-flat?address=${encodeURIComponent(r.address)}`}
-            className="flex items-center justify-between gap-4 rounded-lg bg-white border border-teal-100 px-4 py-3 hover:border-teal-300 transition-colors"
-          >
-            <span className="text-sm text-gray-800 truncate">{r.address}</span>
-            <span className="shrink-0 text-xs text-teal-600 font-medium">
-              {r.estimated_weekly_rent_aud ? `~$${r.estimated_weekly_rent_aud}/wk` : `${r.max_floor_area_m2 ?? '?'} m²`}
-            </span>
-          </a>
-        ))}
       </div>
     </div>
   );
