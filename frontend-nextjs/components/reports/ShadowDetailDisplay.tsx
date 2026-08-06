@@ -122,22 +122,37 @@ export function ShadowDisplay({ data }: { data: ShadowData }) {
           </table>
         </div>
       )}
-      {surfaceChangeState(data) === 'not_assessed' ? (
-        // The check produced no reading — a note (timeout, cloud cover), a null
-        // score, or the legacy no-data 0.0. Say so; never a false "no change".
-        <div className="text-[11px] text-slate-400 leading-snug">
-          Surface-change check: not assessed
-          {data.construction_change_note ? ` — ${data.construction_change_note}` : ' — no usable satellite reading'}
-        </div>
-      ) : data.construction_change_detected === true ? (
-        <div className="text-slate-700">
-          Recent satellite passes show bare-soil increase across the 400m x 400m area centred on this property. The reading averages that whole area and cannot identify which lot changed.
-        </div>
-      ) : data.construction_change_detected === false ? (
-        <div className="text-slate-500">
-          No bare-soil increase across the 400m x 400m area centred on this property, against a 12-month baseline. Works on a single lot are too small to register.
-        </div>
-      ) : null}
+      {/* Branch on the classified state ONLY. Re-reading the raw nullable
+          construction_change_detected here meant a valid 'none_detected'
+          (real score, null flag) matched neither ===true nor ===false and
+          rendered nothing at all — a completed check vanishing from the card. */}
+      {(() => {
+        const changeState = surfaceChangeState(data);
+        if (changeState === 'not_assessed') {
+          return (
+            <div className="text-[11px] text-slate-400 leading-snug">
+              Surface-change check: not assessed
+              {data.construction_change_note ? ` — ${data.construction_change_note}` : ' — no usable satellite reading'}
+            </div>
+          );
+        }
+        if (changeState === 'detected') {
+          return (
+            <div className="text-slate-700">
+              Recent satellite passes show a bare-soil increase across the 400m x 400m area centred on this property. The reading averages that whole area and cannot identify which lot changed.
+            </div>
+          );
+        }
+        // 'none_detected' means the score did not cross the detection
+        // threshold — NOT that the index was unchanged. A score of 0.031 is a
+        // real measured increase; calling that "no increase" states something
+        // the number contradicts.
+        return (
+          <div className="text-slate-500">
+            No threshold-level bare-soil increase across the 400m x 400m area centred on this property, against a 12-month baseline. A change confined to one lot is too small to move an area-wide average.
+          </div>
+        );
+      })()}
       {data.temporal_caveat && <div className="text-[11px] text-slate-400 leading-snug mt-1">{data.temporal_caveat}</div>}
     </div>
   );

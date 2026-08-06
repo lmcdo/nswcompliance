@@ -169,7 +169,15 @@ def compute_change_score(lat: float, lng: float, radius_m: float = 100,
 
     if r_bsi is None or b_bsi is None:
         return {
-            "change_score": 0.0, "construction_detected": False,
+            # None, not 0.0. A hard-coded zero on the no-data path is
+            # INDISTINGUISHABLE from a measured delta that rounds to zero, and
+            # 292 stored shadow reports carry exactly that ambiguity — written
+            # before this branch set a note, they look like a measurement of
+            # "no change" and were rendered as one. Typed absence at the source
+            # means no consumer has to guess (frontend-nextjs/lib/
+            # shadow-surface-change.ts keeps an exact-zero rule only for those
+            # legacy rows).
+            "change_score": None, "construction_detected": False,
             "recent_scene_count": len(recent), "baseline_scene_count": len(baseline),
             "date_range": f"{baseline_start}/{recent_end}",
             "note": "Insufficient cloud-free scenes",

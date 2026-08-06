@@ -617,7 +617,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   } else if (changeState === 'detected') {
     findings.push({
       label: 'Sentinel-2 bare-soil index change',
-      value: 'Ground-surface change detected within 200m of this property',
+      value: 'Bare-soil increase detected across the surrounding area',
       detail: 'Satellite imagery shows bare ground across the surrounding 400m x 400m area that was not there 12 months ago — consistent with clearing, excavation or earthworks somewhere in that area. The reading averages the whole area, so it cannot tell you which lot changed or in which direction. Search your council\'s DA tracker for applications near this address.',
       severity: 'amber',
     });

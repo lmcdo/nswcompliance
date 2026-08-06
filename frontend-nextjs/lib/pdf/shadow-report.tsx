@@ -356,11 +356,11 @@ function buildFindings(data: ShadowReportData): Finding[] {
     findings.push({
       label: `Sentinel-2 bare-soil index change${data.construction_change_score != null ? ` · score ${data.construction_change_score.toFixed(3)}` : ''}`,
       value: changeState === 'detected'
-        ? 'Ground-surface change detected within 200 m of this property'
-        : 'No ground-surface change detected within 200 m of this property',
+        ? 'Bare-soil increase detected across the surrounding area'
+        : 'No threshold-level bare-soil increase across the surrounding area',
       detail: changeState === 'detected'
-        ? `Satellite imagery shows bare-soil signal across the ${SURFACE_CHANGE_AREA_NOTE} that was not present 12 months ago — consistent with clearing, excavation or earthworks somewhere in that area. The measurement covers the whole area at once and cannot identify which lot changed, or in which direction it lies. Search the ePlanning Portal for applications near this address.`
-        : `Across the ${SURFACE_CHANGE_AREA_NOTE}, recent imagery shows no bare-soil increase against the 12-month baseline. This is an area-wide average: works on a single lot are too small to register.`,
+        ? `Satellite imagery shows a bare-soil signal across the ${SURFACE_CHANGE_AREA_NOTE} that was not present 12 months ago — consistent with clearing, excavation or earthworks somewhere in that area. The measurement covers the whole area at once and cannot identify which lot changed, or in which direction it lies. Search the ePlanning Portal for applications near this address.`
+        : `Across the ${SURFACE_CHANGE_AREA_NOTE}, the bare-soil index has not risen above the detection threshold against the 12-month baseline. A reading below the threshold is not a reading of zero change: this is an area-wide average, and a change confined to one lot is too small to move it.`,
       severity: changeState === 'detected' ? 'amber' : 'green',
     });
   }
@@ -550,10 +550,10 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                 Objection-ready paragraph
               </Text>
               <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.6, fontStyle: 'italic' }}>
-                {`"A building erected to the maximum permissible height of ${data.height_m}m under the ${data.lep_name ?? 'applicable LEP'} on the lot immediately north of ${data.address} would result in ${worstPct != null ? `${worstPct}%` : 'significant'} shadow coverage of that property at ${worstLabel}. This exceeds the solar access threshold set out in the Apartment Design Guide (2015) Part 3F, which requires a minimum of 2 hours of direct sunlight to living areas between 9am and 3pm on 21 June. I ask that the shadow impact of the proposed development be assessed against that requirement under Section 4.15(1)(a)(iii) of the Environmental Planning and Assessment Act 1979."`}
+                {`"Screening modelling I have obtained for ${data.address} indicates that a rectangular building envelope of ${data.height_m}m — the maximum height mapped at my own property under the ${data.lep_name ?? 'applicable LEP'}, positioned immediately north of my boundary — would place ${worstPct != null ? `${worstPct}%` : 'a significant proportion'} of my property in shadow at ${worstLabel}. The Apartment Design Guide (2015) Part 3F requires a minimum of 2 hours of direct sunlight to living areas between 9am and 3pm on 21 June. On that basis I ask that the shadow impact of the proposed development, as designed, be assessed against that requirement under Section 4.15(1)(a)(iii) of the Environmental Planning and Assessment Act 1979."`}
               </Text>
               <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
-                Copy this into your council DA objection submission during the notification period. The percentage above comes from a maximum-envelope model, not from the lodged application&apos;s drawings — do not present it as the proposed building&apos;s own shadow figure.
+                Copy this into your council DA objection submission during the notification period. It is deliberately worded as screening modelling of a generic envelope, because that is what it is: the figure comes from a rectangle offset from your own boundary using your own height control, not from the lodged application&apos;s drawings and not from the neighbouring lot&apos;s own control. Presenting it as the proposed building&apos;s shadow figure would misstate it to the council.
               </Text>
             </View>
           );

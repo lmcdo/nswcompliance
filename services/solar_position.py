@@ -61,12 +61,27 @@ from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
-# NSW civil time. The Standard Time Act 1987 (NSW) sets UTC+10 for the WHOLE
-# state, with daylight saving added by proclamation, so this zone is correct
-# state-wide as a matter of law. Broken Hill customarily keeps South Australian
-# time (`Australia/Broken_Hill`, UTC+9:30); that is a local convention, not the
-# legislated zone, and no served report has ever been west of longitude 144.95
-# (measured over all 538 stored shadow reports, 2026-08-07).
+# The civil timezone every scenario's wall-clock label is resolved in.
+#
+# KNOWN LIMITATION, stated rather than assumed. IANA defines a SECOND zone for
+# far-western NSW — `Australia/Broken_Hill`, UTC+9:30/+10:30 — which runs 30
+# minutes behind Sydney. For a property in that region we therefore model
+# 11:30 local while the report says 12:00: the same class of defect as the
+# December daylight-saving bug this module was written to remove, one sixtieth
+# the size.
+#
+# It is not fixed here, deliberately. Choosing the right zone needs the actual
+# zone boundary, and drawing an approximate one from longitude would be
+# inventing a real-world boundary — the thing the data-integrity rule forbids
+# outright. Resolving it properly needs either a tz-boundary dataset or the
+# LGA lookup this service already performs, and that is a scoped change with a
+# ruling attached, not a silent guess.
+#
+# MEASURED EXPOSURE, 2026-08-07, all 538 stored shadow reports: ZERO fall west
+# of longitude 143.0; the westernmost served property is at 144.95. So the
+# limitation is real, currently unexercised, and pinned by
+# tests/test_shadow_calibration.py::test_far_west_nsw_timezone_limitation_is_known
+# so it cannot be forgotten if coverage moves west.
 NSW_TZ = ZoneInfo("Australia/Sydney")
 
 # Above this solar altitude the azimuth is ill-conditioned: near the zenith a

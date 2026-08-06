@@ -324,6 +324,33 @@ def test_noon_sun_is_north_and_shadow_falls_south(scenario_key, place, lat, lng)
         f"not fall southward")
 
 
+def test_far_west_nsw_timezone_limitation_is_known():
+    """Far-western NSW keeps `Australia/Broken_Hill` (UTC+9:30), 30 minutes behind
+    Sydney, so a property there is modelled at 11:30 local while the report says
+    12:00. This test does not assert the defect away — it PINS its size and the
+    fact that we resolve every coordinate in the Sydney zone, so the limitation
+    stays visible and quantified instead of being rediscovered later.
+
+    Not fixed here because picking the right zone requires the real boundary,
+    and approximating one from longitude would be inventing a real-world
+    boundary. Exposure measured 2026-08-07: 0 of 538 stored reports fall west of
+    longitude 143.0 (westernmost served property 144.95)."""
+    far_west = ZoneInfo("Australia/Broken_Hill")
+    for month, day in ((6, 21), (12, 21)):
+        sydney_instant = datetime(SCENARIO_YEAR, month, day, 12, 0, tzinfo=NSW_TZ)
+        far_west_instant = datetime(SCENARIO_YEAR, month, day, 12, 0, tzinfo=far_west)
+        offset_minutes = (far_west_instant - sydney_instant).total_seconds() / 60
+        assert offset_minutes == 30, (
+            f"the far-west NSW zone is no longer 30 minutes behind Sydney on "
+            f"{day}/{month} (now {offset_minutes:+.0f} min) — the documented size "
+            f"of this limitation has changed and services/solar_position.py needs "
+            f"updating")
+
+    # And confirm we really do resolve everything in the Sydney zone, so this
+    # test is describing the code as it stands rather than an intention.
+    assert str(NSW_TZ) == "Australia/Sydney"
+
+
 def test_nsw_envelope_stays_south_of_the_tropic():
     """The structural reason the assertion above holds. If the served envelope
     ever moved north of -23.44, the noon sun could sit south of the zenith and

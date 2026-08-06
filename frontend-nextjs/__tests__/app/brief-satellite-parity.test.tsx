@@ -121,7 +121,7 @@ describe('ShadowDisplay — full scenario table + confidence caveats', () => {
     render(<ShadowDisplay data={KINCUMBER_SHADOW} />);
     expect(screen.getByText(/not assessed/)).toBeInTheDocument();
     expect(screen.getByText(/Sentinel-2 timeout/)).toBeInTheDocument();
-    expect(screen.queryByText(/No bare-soil increase/)).toBeNull();
+    expect(screen.queryByText(/No threshold-level bare-soil increase/)).toBeNull();
   });
 
   it('states the clear reading only when a real score came back', () => {
@@ -131,7 +131,11 @@ describe('ShadowDisplay — full scenario table + confidence caveats', () => {
     render(<ShadowDisplay data={{
       ...KINCUMBER_SHADOW, construction_change_note: null, construction_change_score: 0.031,
     }} />);
-    expect(screen.getByText(/No bare-soil increase/)).toBeInTheDocument();
+    // "threshold-level" is load-bearing: 0.031 IS a measured increase, just
+    // below the detection threshold, so a categorical "No bare-soil increase"
+    // would state something the number contradicts.
+    expect(screen.getByText(/No threshold-level bare-soil increase/)).toBeInTheDocument();
+    expect(screen.queryByText(/No bare-soil increase across/)).toBeNull();
   });
 
   it('does NOT claim a clear reading from the legacy no-data score of exactly 0.0', () => {
@@ -145,7 +149,7 @@ describe('ShadowDisplay — full scenario table + confidence caveats', () => {
       ...KINCUMBER_SHADOW, construction_change_note: null, construction_change_score: 0.0,
     }} />);
     expect(screen.getByText(/not assessed/)).toBeInTheDocument();
-    expect(screen.queryByText(/No bare-soil increase/)).toBeNull();
+    expect(screen.queryByText(/No threshold-level bare-soil increase/)).toBeNull();
   });
 
   it('never attributes surface change to a named neighbouring lot', () => {
