@@ -1,0 +1,2207 @@
+National Disability Insurance Scheme (Practice
+Standards—Worker Screening) Rules 2018
+made under the
+
+National Disability Insurance Scheme Act 2013
+
+
+
+
+Compilation No. 4
+
+Compilation date:                          31 July 2021
+
+Includes amendments up to:                 F2021L01050
+
+Registered:                                12 August 2021
+
+
+
+
+Prepared by the Office of Parliamentary Counsel, Canberra
+
+
+
+
+                         Authorised Version F2021C00788 registered 12/08/2021
+About this compilation
+This compilation
+This is a compilation of the National Disability Insurance Scheme (Practice Standards—
+Worker Screening) Rules 2018 that shows the text of the law as amended and in force on 31
+July 2021 (the compilation date).
+The notes at the end of this compilation (the endnotes) include information about amending
+laws and the amendment history of provisions of the compiled law.
+Uncommenced amendments
+The effect of uncommenced amendments is not shown in the text of the compiled law. Any
+uncommenced amendments affecting the law are accessible on the Legislation Register
+(www.legislation.gov.au). The details of amendments made up to, but not commenced at, the
+compilation date are underlined in the endnotes. For more information on any uncommenced
+amendments, see the series page on the Legislation Register for the compiled law.
+Application, saving and transitional provisions for provisions and amendments
+If the operation of a provision or amendment of the compiled law is affected by an
+application, saving or transitional provision that is not included in this compilation, details are
+included in the endnotes.
+Editorial changes
+For more information about any editorial changes made in this compilation, see the endnotes.
+Modifications
+If the compiled law is modified by another law, the compiled law operates as modified but the
+modification does not amend the text of the law. Accordingly, this compilation does not show
+the text of the compiled law as modified. For more information on any modifications, see the
+series page on the Legislation Register for the compiled law.
+Self-repealing provisions
+If a provision of the compiled law has been repealed in accordance with a provision of the
+law, details are included in the endnotes.
+
+
+
+
+                           Authorised Version F2021C00788 registered 12/08/2021
+Contents
+Part 1—Preliminary                                                                                                                                              2
+                     1         Name ........................................................................................................................... 2
+                     3         Authority ..................................................................................................................... 2
+                     4         Application ................................................................................................................. 2
+                     5         Definitions .................................................................................................................. 2
+                     5A        Definition of appropriate contract.............................................................................. 5
+                     6         Definitions relating to more than incidental contact ................................................... 7
+                     7         Commissioner must publish lists ................................................................................ 7
+
+Part 2—NDIS Practice Standards relating to worker screening                                                                                                    8
+      Division 1—Purpose of this Part                                                                                                                     8
+                     8         Purpose of this Part ..................................................................................................... 8
+      Division 2—Applicable standards and assessment process                                                                   9
+                     9         Applicable standards, requirements and assessment processes ................................... 9
+                     10        Assessment by certification meets requirement to be assessed by verification ........... 9
+      Division 3—Risk assessment and management                                                                                                    10
+                     11        Identification of risk assessed roles ............................................................................10
+                     12        Risk management plan ...............................................................................................10
+      Division 4—Worker screening clearance                                                                                                           11
+                     13        Risk assessed roles restricted to workers or personnel with clearance .......................11
+                     14        Exceptions in relation to clearance.............................................................................11
+                     14A       Circumstances in which exception does not apply in “no card, no start”
+                               participating jurisdictions ...........................................................................................12
+                     15        When a person is in the process of obtaining a clearance ..........................................13
+
+Part 3—Record keeping requirements for worker screening                                                                                                 15
+                     16        Purpose of this Part ....................................................................................................15
+                     17        Kinds of records which must be kept—records about risk assessed roles ..................15
+                     18        Kinds of records which must be kept – records about workers ..................................15
+                     19        Kinds of records which must be kept—personnel ......................................................17
+                     20        The form in which records must be kept ....................................................................17
+                     21        The period for which records must be kept ................................................................17
+
+Part 4—NDIS Practice Standards relating to transitional and special
+       arrangements for worker screening                                                                                                                     18
+                     22        Purpose of this Part ....................................................................................................18
+                     23        Application - special arrangements New South Wales ..............................................18
+                     24        Application - special arrangements South Australia ..................................................20
+                     25        Application—special arrangements for Victoria ........................................................22
+                     26        Application—special arrangements for Queensland ..................................................24
+                     27        Application—special arrangements for Tasmania .....................................................27
+                     28        Application—special arrangements for ACT .............................................................28
+                     29        Application—special arrangements for Northern Territory .......................................30
+                     29A       Application—special arrangements for Western Australia ........................................32
+                     29B       Application—special arrangement for residential aged care providers ......................35
+                     30        Notice that NDIS worker screening unit is operational in a participating
+                               jurisdiction .................................................................................................................37
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules                                                            i
+                                                                     2018
+
+Compilation No. 4                        Compilation date: 31/07/2021                                                             Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+Endnotes                                                                                                             38
+      Endnote 1—About the endnotes                                                                                   38
+      Endnote 2—Abbreviation key                                                                                     39
+      Endnote 3—Legislation history                                                                                  40
+      Endnote 4—Amendment history                                                                                    41
+
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules                   ii
+                                                         2018
+
+Compilation No. 4                     Compilation date: 31/07/2021                                 Registered: 12/08/2021
+
+
+                                  Authorised Version F2021C00788 registered 12/08/2021
+Preamble
+                The National Disability Insurance Scheme (NDIS) represents a fundamental
+                change to how supports for people with disability are funded and delivered
+                across Australia. The NDIS is designed to produce major benefits for people with
+                disability, their families and the broader community.
+                The NDIS Quality and Safeguards Commission is responsible for a range of
+                functions under the National Quality and Safeguarding Framework aimed at
+                protecting and preventing harm to people with disability in the NDIS market.
+                The NDIS Commission will build the capability of participants in the NDIS and
+                NDIS providers to uphold the rights of people with disability and realise the
+                benefits of the NDIS. The legislation underpinning the NDIS is intended to
+                support participants to be informed purchasers and consumers of NDIS supports
+                and services and to live free from abuse, neglect, violence and exploitation.
+                These rules set out requirements relating to worker screening. They are an
+                important element of the NDIS practice standards that seek to minimise the risk
+                of harm to people with disability from the people who work closely with them.
+                While the primary responsibility for recruiting appropriate staff and providing a
+                safe environment for people with disability rests with employers, a worker
+                screening outcome is one source of information that can support employers in
+                fulfilling this responsibility. The national policy for NDIS worker screening will
+                be brought into effect through relevant Commonwealth, State and Territory
+                legislation and policy. The NDIS Commissioner is responsible for working with
+                all Australian Governments to develop and oversee the broad policy design for a
+                nationally consistent approach to NDIS worker screening.
+                Worker screening is only one of a range of strategies that operate together to
+                reduce risk of harm to people with disability. Providers must also implement
+                additional policies, procedures and practices that assist in identifying and
+                minimising risk of harm to people with disability. This includes promoting
+                positive organisational cultures that do not tolerate abuse, neglect or exploitation;
+                ensuring quality recruitment, selection and screening; and maintaining a focus on
+                education and training.
+
+
+
+
+                     National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           1
+
+Compilation No. 4                           Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                   Preliminary Part 1
+
+                                                                                                            Section 1
+
+
+
+Part 1—Preliminary
+
+1 Name
+                This instrument is the National Disability Insurance Scheme (Practice
+                Standards—Worker Screening) Rules 2018.
+
+3 Authority
+                This instrument is made under the National Disability Insurance Scheme Act
+                2013.
+
+4 Application
+          (1) The NDIS Practice Standards for worker screening set out in Parts 2 and 4 apply
+              to:
+                (a) a person or entity who is applying to become a registered NDIS provider;
+                    and
+                (b) all registered NDIS providers in participating jurisdictions (see section 9).
+          (2) Part 3 (which sets out record keeping requirements in relation to worker
+              screening) applies to all registered NDIS providers.
+          (3) Part 4 (which provides for transitional and special arrangements) applies in
+              relation to certain providers in a participating jurisdiction if the circumstances set
+              out in Part 4 apply (see sections 14 and 14A and Part 4).
+
+5 Definitions
+                Note:         A number of expressions used in this instrument are defined in section 9 of the
+                              National Disability Insurance Scheme Act 2013, including the following:
+                              (b) key personnel;
+                              (c) NDIS Practice Standards;
+                              (ca) NDIS worker screening check;
+                              (cb) NDIS worker screening law;
+                              (d) participant;
+                              (e) participating jurisdiction;
+                              (f) registered NDIS provider;
+                              (g) reportable incident.
+
+                In this instrument:
+                acceptable NSW check has the meaning given by subsections 23(5), (6) and (7).
+                acceptable SA check has the meaning given by subsections 24(6), (6A) and (6B).
+                acceptable WA check has the meaning given by subsections 29A(5) and (6).
+                Act means the National Disability Insurance Scheme Act 2013.
+
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           2
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                                                                               Preliminary Part 1
+
+                                                                                                        Section 5
+
+
+                aged care provider check has the meaning given by subsections 29B(5) and (6).
+                Agreement means the Intergovernmental Agreement on Nationally Consistent
+                Worker Screening for the National Disability Insurance Scheme made by the
+                Commonwealth, the States, the Australian Capital Territory and the Northern
+                Territory, commencing from 1 July 2018.
+                applicant means a person or entity who has made an application for registration
+                under section 73C of the Act.
+                appropriate contract has the meaning given by section 5A.
+                certification has the meaning given in section 5 of the National Disability
+                Insurance Scheme (Provider Registration and Practice Standards) Rules 2018.
+                clearance means a decision made under the NDIS worker screening law of a
+                participating jurisdiction:
+                (a) in response to an application for an NDIS worker screening check;
+                (b) having the effect that the person who made the application is cleared to work
+                    with people with disability in a risk assessed role;
+                (c) irrespective of whether the making of the decision is described as an
+                    assessment, clearance, approval or otherwise;
+                being a decision which is current and operative.
+                closed, in relation to an NDIS worker screening check, means closed to further
+                consideration at the instigation of an NDIS worker screening unit, including as a
+                result of the failure of the worker or personnel to whom the check relates to
+                progress the application.
+                exclusion means a decision under the NDIS worker screening law of a
+                participating jurisdiction:
+               (a) in response to an application for an NDIS worker screening check;
+               (b) having the effect that the person who made the application is excluded from
+                   working with people with disability in a risk assessed role;
+               (c) irrespective of whether the making of the decision is described as a negative
+                   assessment, refusal to grant a clearance, refusal to approve or otherwise.
+                interim bar means an interim decision made under the NDIS worker screening
+                law of a participating jurisdiction, being a decision made:
+                (a) after the person has made an application for an NDIS worker screening
+                    check to the NDIS worker screening unit in that participating jurisdiction;
+                    and
+                (b) before a decision has been made to issue an exclusion or a clearance in
+                    response to that application;
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           3
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                   Preliminary Part 1
+
+                                                                                                            Section 5
+
+
+                having the effect that the person is barred from working with people with
+                disability in a risk assessed role while the application is determined.
+                Note 1:       An interim bar is used where records are identified which indicate that an applicant
+                              may pose a risk to people with disability. An interim bar is used to prevent that
+                              applicant from working with people with disability until a final decision is made. An
+                              interim bar stays in place until the NDIS worker screening unit removes it, or the
+                              application is finalised – see clause 53 of the Agreement.
+
+                Note 2:       Under the national policy for NDIS worker screening, it is intended that internal review
+                              of interim bar decisions will be available, where the bar is not resolved (either by the
+                              bar being lifted, or a final decision being made on the application) within the period
+                              specified in the participating jurisdiction’s NDIS worker screening law – see clause 53
+                              of the Agreement.
+
+                more than incidental contact has the meaning given by section 6 of this
+                instrument.
+                national policy for NDIS worker screening means the policy contained in the
+                Agreement, as amended from time to time.
+                Note:         The Agreement is available on the Commission’s website.
+
+                NDIS worker screening unit means the person or body which is responsible for
+                conducting NDIS worker screening checks for a State or Territory under its
+                NDIS worker screening law.
+                personnel means individuals:
+                 (a) who are not workers or registered NDIS providers; but
+                 (b) whose services are made available by a personnel provider to perform
+                     work:
+                       (i) at a registered NDIS provider’s premises; or
+                      (ii) as part of the provision of supports or services to any person with a
+                           disability, by, or on behalf of, a registered NDIS provider.
+                personnel provider means a person or entity that makes the services of personnel
+                available to perform work for, or on behalf of, a registered NDIS provider.
+                process of obtaining a clearance: see section 15.
+                rapport means a relationship or understanding, being more than merely polite
+                and functional.
+                risk assessed role means:
+                    (a) a key personnel role of a person or an entity;
+                    (b) a role for which the normal duties include the direct delivery of specified
+                        supports or specified services to a person with disability; or
+                    (c) a role for which the normal duties are likely to require more than
+                        incidental contact with a person with disability.
+                Note:         For what constitutes “more than incidental contact” see section 6.
+
+                specified service means a service that is included in the list (as in force or
+                existing from time to time) published by the Commissioner pursuant to section 7.
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           4
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                   Preliminary Part 1
+
+                                                                                                          Section 5A
+
+
+                Note:         Pursuant to subsection 209(2) of the Act, this instrument may make provision for or in
+                              relation to a matter by applying, adopting or incorporating any matter contained in an
+                              instrument or other writing as in force or existing from time to time.
+
+                specified support means a support that is included in the list (as in force or
+                existing from time to time) published by the Commissioner pursuant to section 7
+                of this instrument.
+                Note:         Pursuant to subsection 209(2) of the Act, this instrument may make provision for or in
+                              relation to a matter by applying, adopting or incorporating any matter contained in an
+                              instrument or other writing as in force or existing from time to time.
+
+                suspension means a decision under the NDIS worker screening law of a
+                participating jurisdiction to suspend the operation of a clearance.
+                transitional arrangements in relation to a participating jurisdiction means the
+                measures which apply in that participating jurisdiction in accordance with
+                sections 14 and 14A and Part 4 of this instrument.
+                Note:         Section 121 of the Agreement provides for transition to full implementation to occur on
+                              a basis which ensures the safety of people with disability and a smooth transition for
+                              workers and providers, and with respect to the operational capacity of NDIS worker
+                              screening units.
+
+                verification means an assessment by an approved quality auditor of an applicant,
+                or of a registered NDIS provider, against an applicable standard by conducting a
+                desk audit of the applicant or provider, including reviewing the applicant’s or
+                provider’s relevant documentation, in relation to the standard.
+                withdrawn, in relation to an application for an NDIS worker screening check,
+                means withdrawn by the person who made the application, subject to any
+                restrictions on withdrawal imposed by the relevant participating jurisdiction.
+                Note:         Section 55 of the Agreement addresses the kinds of restrictions on withdrawal which
+                              have been flagged by participating jurisdictions.
+
+                work has the same meaning as in section 85ZZGM of the Crimes Act 1914.
+                worker means any of the following:
+                 (a) an individual employed or otherwise engaged by a registered NDIS
+                     provider;
+                 (b) each of the key personnel of a registered NDIS provider;
+                 (c) a partner of a partnership that is a registered NDIS provider;
+                 (d) an individual who is a registered NDIS provider.
+
+5A Definition of appropriate contract
+          (1) An appropriate contract is a legally binding arrangement that:
+               (a) is between a registered NDIS provider and a personnel provider in relation
+                   to an individual or individuals who will be personnel; and
+               (b) imposes the obligations set out in subsection (2) on the personnel provider.
+          (2) The obligations are as follows:
+
+
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           5
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                 Preliminary Part 1
+
+                                                                                                         Section 5A
+
+
+                    (a) the personnel provider must only make available the services of an
+                        individual to engage in a risk assessed role with the registered NDIS
+                        provider if:
+                          (i) the individual has a clearance or is subject to an exception under
+                              Division 4 of Part 2; and
+                         (ii) the personnel provider discloses to the registered NDIS provider
+                              before the individual is engaged in that role all information relating to
+                              the individual’s clearance or the exception the individual is subject to
+                              under that Division; and
+                        (iii) the personnel provider continues to disclose to the registered NDIS
+                              provider all information relating to the individual’s clearance or the
+                              exception the individual is subject to during the period the individual
+                              is engaged in that role;
+                    (b) the personnel provider must comply with any reasonable request from the
+                        registered NDIS provider:
+                          (i) for information relating to whether an individual made available by
+                              the personnel provider has a clearance, or is subject to an exception
+                              under Division 4 of Part 2; and
+                         (ii) for assistance to investigate any complaint made to the registered
+                              NDIS provider about the conduct of, or any reportable incident
+                              involving, an individual made available by the personnel provider;
+                              and
+                        (iii) for information relating to whether and how the personnel provider is
+                              complying with its obligations under the appropriate contract;
+                    (c) the personnel provider must impose the obligations referred to in
+                        paragraphs (a) and (b) on any other party with whom the personnel
+                        provider enters into an arrangement, which involves or allows for the
+                        provision of services by the individual to the registered NDIS provider.
+          (3) For the purposes of subparagraph (2)(a)(ii), without limiting that subparagraph,
+              information relating to the individual’s clearance includes information about the
+              following:
+                (a) the clearance and the day the clearance expires or ceases to be in force;
+                (b) any applications made for an NDIS worker screening check in relation to
+                    the individual;
+                (c) any interim bar, suspension or exclusion the individual has been, or is,
+                    subject to;
+                (d) the refusal or closure of an application for worker screening clearance;
+                (e) the revocation (however described in the NDIS worker screening law of the
+                    relevant participating jurisdiction) of a clearance.
+          (4) If a registered NDIS provider and a personnel provider enter into a legally
+              binding arrangement before 1 February 2021, the arrangement is also an
+              appropriate contract if it imposes the obligations required by subsection 13(4) of
+              this instrument as in force immediately before the commencement of the
+              National Disability Insurance Scheme (Practice Standards—Worker Screening)
+              Amendment (Miscellaneous Measures) Rules 2020.
+
+
+
+                       National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           6
+
+Compilation No. 4                             Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                  Authorised Version F2021C00788 registered 12/08/2021
+                                                  NDIS Practice Standards relating to worker screening Part 2
+                                                                               Purpose of this Part Division 1
+                                                                                                            Section 6
+
+
+6 Definitions relating to more than incidental contact
+          (1) For the purposes of this instrument:
+                contact includes physical contact, face-to-face contact, oral communication,
+                written communication and electronic communication.
+          (2) Without limiting what may constitute more than incidental contact, the normal
+              duties of a role are likely to require more than incidental contact with a person
+              with a disability if those duties include:
+                    (a) physically touching a person with disability; or
+                    (b) building a rapport with a person with disability as an integral and ordinary
+                        part of the performance of those duties; or
+                Example 1:      The role of a worker involves the delivery of mobility equipment to the homes of
+                              people with disability. As a standard part of that role, he provides training and
+                              instructions to the customer about how to use the equipment safely and makes
+                              adjustments to the equipment to make it suitable for the customer. This role is likely to
+                              require more than incidental contact. This is because there is ‘contact’ with a person
+                              with disability, and the ordinary content of that contact (testing the person’s needs and
+                              preferences with them, talking about and responding to the nature of their disability)
+                              means that there is a level openness and trust required on the part of the person with
+                              disability which would routinely involve the worker building a level of rapport with
+                              them.
+                Example 2: An accountant works for a business that supplies custom prosthetics to people with a
+                           disability, and performs only “back office” duties. The accountant has coincidental
+                           contact with people with disability many work days, when moving through public areas
+                           of the business, at which time the accountant nods and says hello to the customers. The
+                           accountant’s role does not involve more than incidental contact with people with
+                           disability. This is because the duties of the role do not require the accountant to have
+                           more than polite, functional contact with people with disability, or get to know them in
+                           any way.
+
+                    (c) having contact with multiple people with disability:
+                                (i)        as part of the direct delivery of a specialist disability support
+                                           or service; or
+                                (ii)       in a specialist disability accommodation setting.
+
+7 Commissioner must publish lists
+                The Commissioner must publish the list of specified supports and services as
+                soon as practicable after it is made or amended.
+
+
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           7
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                                  NDIS Practice Standards relating to worker screening Part 2
+                                                                               Purpose of this Part Division 1
+                                                                                                             Section 8
+
+
+Part 2—NDIS Practice Standards relating to worker
+       screening
+Division 1—Purpose of this Part
+
+8 Purpose of this Part
+          (1) This Part is made for the purposes of subsection 73T(1) of the Act.
+                Note:         The NDIS Practice Standards in this instrument are in addition to those contained in the
+                              National Disability Insurance Scheme (Provider Registration and Practice Standards)
+                              Rules 2018.
+
+          (2) It specifies the standards concerning the screening of individuals who engage in
+              risk assessed roles in the provision of supports or services by registered NDIS
+              providers.
+                Note 1:       Applicants must be assessed by an approved quality auditor as meeting the applicable
+                              standards and other requirements prescribed by the NDIS Practice Standards in order to
+                              be registered as a registered NDIS provider (see paragraph 73E(1)(c) of the Act).
+                Note 2:       Non-compliance with the NDIS Practice Standards by a registered NDIS provider
+                              constitutes a breach of a condition of registration (see paragraph 73F(2)(c) and
+                              section 73J of the Act).
+                Note 3:       Part 4 of this instrument contains transitional and special arrangements that apply
+                              instead of, or as well as, some of the rules in this Part in certain circumstances: see
+                              sections 14 and 14A.
+
+
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           8
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                              NDIS Practice Standards relating to worker screening Part 2
+                                                 Applicable standards and assessment process Division 2
+                                                                                                        Section 9
+
+
+
+Division 2—Applicable standards and assessment process
+
+9 Applicable standards, requirements and assessment processes
+          (1) To be registered to provide any class of support, an applicant must be assessed
+              by an approved quality auditor, by verification, as meeting the standards and
+              requirements specified in this Part (and Part 4 (if applicable)) as if any reference
+              in those Parts to “registered NDIS provider” were a reference to “applicant”.
+          (2) To remain registered to provide any class of support, a registered NDIS provider
+              must continue to comply with the standards specified in this Part (and Part 4 (if
+              applicable)).
+
+10 Assessment by certification meets requirement to be assessed by verification
+                For the purposes of this Part, if compliance with an applicable standard must be
+                assessed using verification, the requirement is met if compliance with the
+                standard is assessed using certification.
+
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           9
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+                                                  NDIS Practice Standards relating to worker screening Part 2
+                                                                Risk assessment and management Division 3
+                                                                                                           Section 11
+
+
+
+Division 3—Risk assessment and management
+
+11 Identification of risk assessed roles
+                A registered NDIS provider must:
+                 (a) assess all roles that will be undertaken with the registered NDIS provider in
+                     relation to the provision of supports or services to any person with
+                     disability by the following persons:
+                       (i) workers;
+                      (ii) personnel; and
+                 (b) identify each role assessed under paragraph (a) that is a risk assessed role.
+                Note:         A registered NDIS provider who is an individual is a worker: see the definition of
+                              worker in section 5.
+
+
+12 Risk management plan
+          (1) A registered NDIS provider must develop and maintain a written risk
+              management plan for protecting people with disability while any workers or
+              personnel are:
+               (a) engaged in a risk assessed role with the registered NDIS provider; and
+               (b) in the process of obtaining a clearance.
+                Note:         A registered NDIS provider who is an individual is a worker: see the definition of
+                              worker in section 5.
+
+          (2) The risk management plan must:
+               (a) identify and describe each risk to a person with disability for whom the
+                    registered NDIS provider provides supports or services; and
+               (b) explain how each risk will be managed.
+          (3) A registered NDIS provider must review the risk management plan if:
+               (a) the Commissioner requires the registered NDIS provider to do so; or
+               (b) there is a reportable incident involving a worker or any personnel.
+          (4) A registered NDIS provider must implement the risk management plan, unless
+              otherwise agreed by the Commissioner.
+
+
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          10
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                              NDIS Practice Standards relating to worker screening Part 2
+                                                                  Worker screening clearance Division 4
+                                                                                                       Section 13
+
+
+
+Division 4—Worker screening clearance
+
+13 Risk assessed roles restricted to workers or personnel with clearance
+                Subject to the exceptions contained in this Division, a registered NDIS provider
+                that provides supports or services to a person with disability in a participating
+                jurisdiction:
+                  (a) must only allow a worker to engage in a risk assessed role, if the worker
+                      has a clearance; and
+                  (b) must only allow an individual who is personnel to engage in a risk assessed
+                      role, if the registered NDIS provider has:
+                        (i) identified to the relevant personnel provider each risk assessed role
+                            that the individual will engage in; and
+                       (ii) entered into an appropriate contract with the personnel provider for
+                            the individual; and
+                      (iii) taken reasonable steps to satisfy itself that the individual has a
+                            clearance; and
+                  (c) if the registered NDIS provider is an individual—must only engage in a
+                      risk assessed role if the registered NDIS provider has a clearance.
+
+14 Exceptions in relation to clearance
+          (1) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                (a) all of the following apply:
+                       (i) the person is in the process of obtaining a clearance;
+                      (ii) the person is appropriately supervised by a person with a clearance;
+                     (iii) the registered NDIS provider is implementing a risk management plan
+                           developed and maintained in accordance with Division 3;
+                     (iv) the law of the participating jurisdiction in which the person provides
+                           supports or services to a person with disability allows the person to
+                           engage in a risk assessed role while that person is in the process of
+                           obtaining a clearance; or
+                (b) all of the following apply:
+                       (i) the registered NDIS provider is complying with the transitional
+                           arrangements set out in Part 4 that apply in relation to the person in
+                           the participating jurisdiction in which supports or services are
+                           provided to a person with disability;
+                      (ii) the person has not been issued with an interim bar that is in force and
+                           is not subject to an exclusion in relation to an application for an NDIS
+                           worker screening check;
+                     (iii) the person is not subject to a suspension that is in force in relation to a
+                           clearance and has not had a clearance cancelled; or
+                (c) the person is:
+
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          11
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+                                              NDIS Practice Standards relating to worker screening Part 2
+                                                                  Worker screening clearance Division 4
+                                                                                                    Section 14A
+
+
+                       (i) a secondary school student on a formal work experience placement
+                           with the registered NDIS provider; and
+                      (ii) directly supervised by a worker of the provider who has a clearance.
+          (2) A registered NDIS provider who is an individual may engage in a risk assessed
+              role when the registered NDIS provider does not have a clearance at a time
+              when:
+                (a) all of the following apply:
+                      (i) the registered NDIS provider is in the process of obtaining a
+                          clearance;
+                     (ii) the registered NDIS provider is appropriately supervised by a person
+                          with a clearance;
+                    (iii) the registered NDIS provider is implementing a risk management plan
+                          developed and maintained in accordance with Division 3;
+                    (iv) the law of the participating jurisdiction in which the person provides
+                          services to a person with disability allows the registered NDIS
+                          provider to engage in a risk assessed role while the registered NDIS
+                          provider is in the process of obtaining a clearance; or
+                (b) all of the following apply:
+                      (i) the registered NDIS provider is complying with the transitional
+                          arrangements set out in Part 4 that apply in relation to the person in
+                          the participating jurisdiction in which supports or services are
+                          provided to a person with disability;
+                     (ii) the registered NDIS provider has not been issued with an interim bar
+                          that is in force and is not subject to an exclusion in relation to an
+                          application for an NDIS worker screening check;
+                    (iii) the registered NDIS provider is not subject to a suspension that is in
+                          force in relation to a clearance and has not had a clearance cancelled.
+
+14A Circumstances in which exception does not apply in “no card, no start”
+         participating jurisdictions
+          (1) Paragraphs 14(1)(a) and 14(2)(a) do not apply to a person if:
+               (a) the person has submitted an application for a clearance to an NDIS worker
+                   screening unit; and
+               (b) the law of the participating jurisdiction in which the application is
+                   submitted prohibits a person from engaging in a risk assessed role while
+                   the person is in the process of obtaining a clearance; and
+               (c) the person does not have an acceptable check that applies in that
+                   participating jurisdiction; and
+               (d) a decision has not been made on the application.
+          (2) For the purposes of paragraph (1)(c), a person has an acceptable check that
+              applies in a participating jurisdiction if:
+               (a) if the person is providing services to a participant in New South Wales—the
+                   person has an acceptable NSW check or an acceptable aged care provider
+                   check; or
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          12
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+                                                  NDIS Practice Standards relating to worker screening Part 2
+                                                                      Worker screening clearance Division 4
+                                                                                                           Section 15
+
+
+               (b) if the person is providing services to a participant in South Australia—the
+                   person has an acceptable SA check or an acceptable aged care provider check;
+                   or
+               (c) if the person is providing services to a participant in Victoria—the person is
+                   allowed to engage in a risk assessed role because of subsection 25(3) or an
+                   acceptable aged care check; or
+               (d) if the person is providing services to a participant in Queensland—the person
+                   is allowed to engage in a risk assessed role because of subsection 26(3) or an
+                   acceptable aged care check; or
+               (e) if the person is providing services to a participant in Tasmania—the person is
+                   allowed to engage in a risk assessed role because of subsection 27(3) or an
+                   acceptable aged care check; or
+               (f) if the person is providing services to a participant in the Australian Capital
+                   Territory—the person is allowed to engage in a risk assessed role because of
+                   subsection 28(3) or an acceptable aged care check; or
+               (g) if the person is providing services to a participant in the Northern Territory—
+                   the person is allowed to engage in a risk assessed role because of
+                   subsection 29(3) or an acceptable aged care check; or
+               (h) if the person is providing services to a participant in Western Australia—the
+                   person has an acceptable WA check or an acceptable aged care check.
+
+15 When a person is in the process of obtaining a clearance
+          (1) Subject to subsection (2), a person is in the process of obtaining a clearance
+              during the period starting on the day on which the person submits a complete
+              application for a clearance to the relevant NDIS worker screening unit, and
+              ending on the day on which a clearance or exclusion is made.
+          (2) A person is not in the process of obtaining a clearance:
+               (a) if the person has applied for an NDIS worker screening check on at least one
+                   prior occasion, and on the most recent prior occasion the person was subject
+                   to an exclusion;
+               (b) if the person has had a clearance on at least one prior occasion, and on the
+                   most recent prior occasion the clearance was revoked;
+                Note:         The NDIS worker screening law of a participating jurisdiction may refer to a
+                              revocation using a different term. It may be referred to, for example, as an exclusion,
+                              because it has the effect of excluding a person from working with people with
+                              disability.
+
+               (c) on any day after the application for an NDIS worker screening check is
+                   withdrawn by the person;
+               (d) on any day after the application for an NDIS worker screening check is
+                   closed;
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           13
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                                  NDIS Practice Standards relating to worker screening Part 2
+                                                                      Worker screening clearance Division 4
+                                                                                                           Section 15
+
+
+               (e) on any day when an interim bar is in force in relation to the person;
+               (f) at any time the person is not being supervised in accordance with the
+                   requirements of section 14 of this instrument, as applicable; or
+               (g) at any time a risk management plan required under this instrument is not
+                   being implemented.
+          (3) For the purpose of this section, a person has submitted a complete application to
+              the relevant NDIS worker screening unit if:
+               (a) that unit has issued a notice in writing to the person confirming that the
+                   application has been made; and
+               (aa) a registered NDIS provider has confirmed to that unit that:
+                        (i) the person is, or intends to be, a worker; or
+                       (ii) if the registered NDIS provider is an individual—the person is the
+                            registered NDIS provider; and
+               (b) if the person is a worker - the registered NDIS provider with whom the
+                   person engages in a risk assessed role has seen that notice; and
+               (c) if the person is a worker - the registered NDIS provider has made a record of
+                   the worker screening application number on that notice as required by
+                   section 18.
+                Note:         Section 2B of the Acts Interpretation Act 1901 provides that “writing” includes any
+                              mode of representing or reproducing words, figures, drawing or symbols in a visible
+                              form. As a result, electronic communications, such as an email or an SMS message, are
+                              capable of constituting a notice in writing.
+
+          (4) For the purposes of paragraph 15(3)(aa), confirmation must be given in
+              accordance with any applicable requirements of the NDIS worker screening law
+              of the participating jurisdiction in which the application has been submitted.
+
+
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          14
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                                     Record keeping requirements for worker screening Part 3
+
+                                                                                                           Section 16
+
+
+
+Part 3—Record keeping requirements for worker screening
+
+16 Purpose of this Part
+          (1) This Part is made for the purposes of section 73Q of the Act.
+          (2) It prescribes requirements in relation to records that a registered NDIS provider
+              must keep in relation to the screening of individuals who engage in risk assessed
+              roles with registered NDIS providers.
+                Note:         Compliance with section 73Q and this Part is a condition of registration (see
+                              paragraph 73F(2)(d) of the Act), breach of which is a civil penalty provision (see
+                              section 73J of the Act).
+
+
+17 Kinds of records which must be kept—records about risk assessed roles
+          (1) A registered NDIS provider must keep a written list of all roles with the
+              registered NDIS provider which are risk assessed roles that are engaged in by a
+              person.
+                Note:         Each risk assessed role with the registered NDIS provider must be included in the
+                              record, irrespective of whether the person who engages in the role is a worker, is
+                              personnel or is a registered NDIS provider who is an individual.
+
+          (2) A registered NDIS provider must update the written list of roles which are risk
+              assessed roles:
+               (a) if a new risk assessed role is identified or an existing role is reclassified as a
+                   risk assessed role following a review;
+               (b) within 20 business days of the new risk assessed role being identified, or the
+                   existing role being reclassified, as the case may be.
+          (3) A list created or maintained for the purposes of this section must include:
+              (a) the title or other organisational identifier for the role;
+              (b) which paragraph or paragraphs of the definition of risk assessed role applies to
+                  the role;
+              (c) a description of the role;
+              (d) the date on which the role was assessed as being a risk assessed role;
+              (e) the name and title of the person who assessed the role as being a risk assessed
+                  role.
+
+18 Kinds of records which must be kept – records about workers
+          (1) A registered NDIS provider must keep a written list of:
+               (a) each worker who engages in a risk assessed role; and
+               (b) the information mentioned in subsection (3) in relation to each worker.
+
+
+                        National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          15
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                   Authorised Version F2021C00788 registered 12/08/2021
+                                                  Record keeping requirements for worker screening Part 3
+
+                                                                                                       Section 19
+
+
+          (2) The registered NDIS provider must keep the written list up-to-date.
+          (3) For the purposes of paragraph (1)(b), the written list must include the following
+              information:
+                (a) the worker’s full name, date of birth and address;
+                (b) the risk assessed role or roles in which the worker engages;
+                (c) if a registered NDIS provider may allow the worker to engage in a risk
+                    assessed role without a clearance:
+                      (i) the exception under section 14 that applies in relation to the worker;
+                          and
+                     (ii) the start and end date of the period in which the exception under
+                          section 14 applies; and
+                    (iii) if the exception under section 14 requires the worker to be
+                          supervised—the name of the person who supervises the worker during
+                          this period;
+                (d) if a registered NDIS provider may only allow the worker to engage in a
+                    risk assessed role with a clearance:
+                      (i) the worker’s NDIS worker screening check application number; and
+                     (ii) the worker’s NDIS worker screening check number; and
+                    (iii) the worker’s NDIS worker screening check outcome and any expiry
+                          date for that outcome; and
+                    (iv) whether the worker’s clearance is subject to a decision to suspend or
+                          revoke a clearance, or any other decision which has the effect that the
+                          registered NDIS provider may not allow the worker to engage in a
+                          risk assessed role; and
+                     (v) the nature of any decision mentioned in subparagraph (iv).
+          (4) A registered NDIS provider must keep a copy of any record relating to:
+               (a) an interim bar;
+               (b) a suspension;
+               (c) an exclusion; or
+               (d) action taken by the provider in relation to paragraph (a), (b) or (c);
+                    in relation to any worker.
+          (5) A registered NDIS provider must keep a copy of any record relating to:
+               (a) allegations of any misconduct against any worker with an NDIS worker
+                   screening check clearance; and
+               (b) action taken, including any investigation, in response to paragraph (a).
+
+
+
+
+                     National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          16
+
+Compilation No. 4                           Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                Authorised Version F2021C00788 registered 12/08/2021
+                                                 Record keeping requirements for worker screening Part 3
+
+                                                                                                       Section 19
+
+
+19 Kinds of records which must be kept—personnel
+     A registered NDIS provider must keep a copy of:
+             (a) any appropriate contract;
+             (b) any record relating to the administration of the appropriate contract, including
+                 the enforcement of any obligation mentioned in subsection 5A(2);
+             (c) any record of information provided to the NDIS provider about an individual
+                 who is personnel pursuant to the appropriate contract;
+             (d) any record relating to its performance of subparagraph 13(b)(iii);
+             (e) any record about an allegation of any misconduct against any individual who is
+                 personnel with an NDIS worker screening check clearance.
+
+20 The form in which records must be kept
+                A registered NDIS provider must keep the list required by subsection 18(1) in a
+                form which would allow an auditor to determine which workers were engaged in
+                risk assessed roles with the provider on any given day in the seven years prior to
+                the day the auditor examines the list.
+
+21 The period for which records must be kept
+                A record subject to this Part must be kept for 7 years from the date the record is
+                made.
+
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          17
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 22
+
+
+
+Part 4—NDIS Practice Standards relating to transitional
+       and special arrangements for worker screening
+22 Purpose of this Part
+          (1) This Part is made for the purposes of subsection 73T(1) of the Act and
+              sections 14 and 14A of this instrument.
+          (2) It specifies the standards concerning the screening of workers and personnel
+              when transitional arrangements apply in relation to a participating jurisdiction.
+          (3) It also gives effect to the staged implementation of the national policy for NDIS
+              worker screening, described in Part 12 (Transfer) of the Agreement.
+
+23 Application - special arrangements New South Wales
+          (1) This section applies to a person or entity that has applied to be, or is, registered as
+              a registered NDIS provider to deliver any class of support or service to a
+              participant residing in New South Wales.
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering services or supports in New South Wales if that provider
+              complies with this section.
+          Transitional arrangements
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) the person has an acceptable NSW check at that time; and
+               (c) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (11) has not come into effect.
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                (a) at that time, the person is:
+                       (i) a secondary school student on a formal work experience placement
+                           with the registered NDIS provider; and
+                      (ii) directly supervised by a person who has an acceptable NSW check at
+                           that time; and
+                (b) a notice (if any) issued to the provider by the Commissioner pursuant to
+                     subsection (11) has not yet come into effect.
+          (5) A person has an acceptable NSW check at a time if:
+               (a) at that time, the person is not engaging in child-related work in the risk
+                   assessed role; and
+               (b) a criminal record check in relation to the person was obtained:
+                     (i) no more than 4 years before that time; and
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          18
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                          Section 23
+
+
+                         (ii) on or before 30 June 2018; and
+                    (c) that criminal record check showed that the person had no conviction for a
+                        prescribed criminal offence; and
+                    (d) the person has not subsequently been subject to a criminal record check
+                        that showed that the person had a conviction for a prescribed criminal
+                        offence.
+          (6) A person has an acceptable NSW check at a time if:
+               (a) at that time, the person is not engaging in child-related work in the risk
+                   assessed role; and
+               (b) a criminal record check in relation to the person was obtained:
+                     (i) no more than 2 years before that time; and
+                    (ii) during the transition period; and
+               (c) that criminal record check showed that the person had no conviction for a
+                   prescribed criminal offence; and
+               (d) the person has not subsequently been subject to a criminal record check
+                   that showed that the person had a conviction for a prescribed criminal
+                   offence.
+          (7) A person has an acceptable NSW check at a time if:
+               (a) at that time, the person is engaging in child-related work in the risk
+                   assessed role; and
+               (b) at that time, a working with children check clearance (within the meaning
+                   of the Child Protection (Working With Children) Act 2012 (NSW) as in
+                   force from time to time) issued to the person is in force; and
+               (c) that clearance was issued to the person on a day that is no later than the last
+                   day of the transition period.
+          (9) The transition time for a person is the later of:
+               (a) 1 February 2021; or
+               (b) the expiry of an acceptable NSW check which applied to that person on
+                   1 February 2021.
+          (10) An acceptable NSW check expires at the end of the last day that it meets the
+               requirements of paragraph (6)(b), (7)(b) or (8)(c), as applicable.
+               Notice
+          (11) The Commissioner may give a written notice to a registered NDIS provider that
+               paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+               specified in the notice (which must be at least 14 days after the notice is given).
+
+                Definitions
+         (12) In this section:
+                child-related work has the same meaning as in the Child Protection (Working
+                With Children) Act 2012 (NSW) as in force from time to time.
+
+
+                       National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          19
+
+Compilation No. 4                             Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                  Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 24
+
+
+                criminal record check means a check of the same kind as that required for the
+                purposes of section 32 of the Disability Inclusion Act 2014 (NSW) as in force
+                from time to time.
+                prescribed criminal offence has the same meaning as in the Disability Inclusion
+                Act 2014 (NSW) as in force from time to time.
+                transition period means the period:
+                  (a) starting on 1 July 2018; and
+                  (b) ending on the earlier of:
+                        (i) 31 January 2021; and
+                       (ii) the day notice is given under section 30 that the NDIS worker
+                            screening unit is operational in New South Wales.
+
+24 Application - special arrangements South Australia
+          (1) This section applies to a person or entity that has applied to be, or is, registered as
+              a registered NDIS provider to deliver any class of support or service to a
+              participant residing in South Australia.
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering services or supports in South Australia if that provider complies
+              with this section.
+
+                Transitional arrangements
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) the person has an acceptable SA check; and
+               (b) it is before the transition time for the person; and
+               (c) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (9) has not come into effect.
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if the person is:
+               (a) a secondary school student on a formal work experience placement with the
+                   registered NDIS provider; and
+               (b) directly supervised by a person who meets the requirements of (3)(a) and (b);
+                   and
+               (c) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (9) has not yet come into effect.
+
+                Acceptable SA checks—recognition of South Australian checks
+          (6) A person has an acceptable SA check if:
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          20
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 24
+
+
+               (a) the risk assessed role does not involve the person engaging in child-related
+                   work; and
+               (b) before or during the transition period, or within 2 months after the end of the
+                   transition period:
+                        (i) the person has been subject to an assessment (within the meaning of
+                            section 5B of the Disability Services Act 1993 (SA) as in force from
+                            time to time); and
+                       (ii) an authorised screening unit has made a finding, in relation to that
+                            assessment, to the effect that the person is cleared for disability
+                            services employment; and
+               (c) an authorised screening unit has not subsequently made a contrary finding in
+                   relation to another assessment the person has been subject to under that Act;
+                   and
+               (d) it is not more than 3 years since the finding referred to in subparagraph (b)(ii).
+        (6A) A person has an acceptable SA check if:
+               (a) before or during the transition period:
+                       (i) the person has been subject to an assessment (within the meaning of
+                           section 8B of the Children’s Protection Act 1993 (SA) as in force
+                           immediately before it was repealed or section 8 of the Children’s
+                           Protection Law Reform (Transitional Arrangements and Related
+                           Amendments) Act 2017 (SA) as in force from time to time); and
+                      (ii) an authorised screening unit has made a finding, in relation to that
+                           assessment, to the effect that the person is cleared for child-related
+                           employment; and
+               (b) an authorised screening unit has not:
+                       (i) made a finding under an Act mentioned in subparagraph (a)(i) to the
+                           effect that the person is not cleared for child-related employment; or
+                      (ii) made a finding under the Disability Services Act 1993 (SA), as in
+                           force from time to time, to the effect that the person is not cleared for
+                           disability services employment; and
+               (c) the person is not a prohibited person; and
+               (d) it is not more than 3 years since the finding referred to in subparagraph (a)(ii).
+        (6B) A person has an acceptable SA check if:
+               (a) during the transition period:
+                       (i) the person has been subject to a working with children check
+                           conducted by the central assessment unit in accordance with the Child
+                           Safety (Prohibited Persons) Act 2016 (SA) as in force from time to
+                           time; and
+                      (ii) the central assessment unit has determined under that Act that the
+                           person is not prohibited from working with children; and
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          21
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                         Section 25
+
+
+               (b) an authorised screening unit has not made a finding under the Disability
+                   Services Act 1993 (SA), as in force from time to time, to the effect that the
+                   person is not cleared for disability services employment; and
+               (c) the person is not a prohibited person; and
+               (d) it is not more than 5 years since the determination referred to in
+                   subparagraph (a)(ii).
+
+                 Transition time
+          (7) The transition time for a person is the later of:
+                     (a) 1 February 2021; or
+                     (b) the expiry of an acceptable SA check which applied to that person on
+                         1 February 2021.
+          (8) An acceptable SA check expires at the end of the last day that it meets the
+              requirements of paragraph (6)(d), (6A)(d) or (6B)(d), as applicable.
+                 Notice
+          (9) The Commissioner may give a written notice to a registered NDIS provider that
+              paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+              specified in the notice (which must be at least 14 days after the notice is given).
+
+                 Definitions
+          (10)       In this section:
+                 child-related work has the same meaning as in section 6 of the Child Safety
+                 (Prohibited Persons) Act 2016 (SA) as in force from time to time.
+                 prohibited person has the same meaning as in section 15 of the Child Safety
+                 (Prohibited Persons) Act 2016 (SA) as in force from time to time.
+                 transition period means the period:
+                 (a) starting on 1 July 2018; and
+                 (b) ending on the earlier of:
+                          (i) 31 January 2021; and
+                          (ii) the day notice is given under section 30 that the NDIS worker
+                               screening unit is operational in South Australia.
+
+25 Application—special arrangements for Victoria
+          (1) This section applies to a person or entity that has applied to be, or is, registered as
+              a registered NDIS provider to deliver any class of support or service to a
+              participant residing in Victoria.
+
+
+
+                      National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          22
+
+Compilation No. 4                            Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                 Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                        Section 25
+
+
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering services or supports in Victoria if that provider complies with
+              this section.
+               Special arrangements during the transition period
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                    (a) it is during the transition period; and
+                    (b) the provider is compliant with the safety screening requirements in
+                        relation to the person in accordance with the safety screening policy
+                        issued by the Victorian Department of Health and Human Services and as
+                        in force from time to time; and
+                    (c) the person’s safety screening is current in accordance with the
+                        requirements; and
+                    (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                        subsection (7) has not come into effect.
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                    (a) it is during the transition period; and
+                    (b) the person is a secondary school student on a formal work experience
+                        placement with the provider; and
+                    (c) the person is directly supervised by a person who meets the requirements
+                        of paragraphs (3)(b) and (c); and
+                    (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                        subsection (7) has not yet come into effect.
+               Special arrangements after the end of the transition period
+          (5) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                    (a) it is after the end of the transition period; and
+                    (b) before the end of the transition period, the provider was compliant with
+                        the safety screening requirements in relation to the person in accordance
+                        with the safety screening policy issued by the Victorian Department of
+                        Health and Human Services and as in force from time to time; and
+                    (c) the person’s safety screening is current in accordance with the
+                        requirements; and
+                    (d) any of the following apply:
+
+
+
+
+                     National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          23
+
+Compilation No. 4                           Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                        Section 26
+
+
+                        (i) the person has a current working with children check (within the
+                            meaning of the Working with Children Act 2005 (Vic.) as in force
+                            from time to time) that was issued to the person before the end of the
+                            transition period;
+                        (ii) less than 12 months have elapsed since the end of the transition
+                             period;
+                        (iii) 12 months or more have elapsed since the end of the transition period
+                              and the person is in the process of obtaining a clearance; and
+                    (e) a notice (if any) issued to the provider by the Commissioner pursuant to
+                        subsection (7) has not come into effect.
+          (6) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                    (a) it is after the end of the transition period; and
+                    (b) the person is a secondary school student on a formal work experience
+                        placement with the provider; and
+                    (c) the person is directly supervised by a person who meets the requirements
+                        of paragraphs (5)(b), (c) and (d); and
+                    (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                        subsection (7) has not yet come into effect.
+               Notice
+          (7) The Commissioner may give a written notice to a registered NDIS provider that
+              paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+              specified in the notice (which must be at least 14 days after the notice is given).
+               Meaning of transition period
+          (8) In this section:
+                transition period means the period:
+               (a) starting on 1 July 2019; and
+               (b) ending on the earlier of:
+                        (i) 31 January 2021; and
+                        (ii) the day notice is given under section 30 that the NDIS worker
+                             screening unit is operational in Victoria.
+
+26 Application—special arrangements for Queensland
+          (1) This section applies to a person or entity that has applied to be, or is, registered as
+              a registered NDIS provider to deliver any class of support or service to a
+              participant residing in Queensland.
+
+
+                     National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          24
+
+Compilation No. 4                           Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 26
+
+
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering services or supports in Queensland if that provider complies with
+              this section.
+               Special arrangements during the transition period
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is during the transition period; and
+               (b) any of the following apply:
+                       (i) the person meets the requirements specified in the Disability Services
+                           Act 2006 (Qld), as in force from time to time, in relation to screening
+                           of persons engaged to provide services to people with disability;
+                       (ii) the person meets the requirements specified in the Working with
+                            Children (Risk Management and Screening) Act 2000 (Qld), as in
+                            force from time to time, in relation to screening for regulated
+                            employment or regulated businesses;
+                       (iii) the person engages in the risk assessed role in the person’s capacity as
+                             a registered health practitioner (within the meaning of the Health
+                             Practitioner Regulation National Law 2009 (Qld) as in force from
+                             time to time) and the person has a certificate of registration (within
+                             the meaning of that Act); and
+               (c) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (7) has not come into effect.
+               Special arrangements after the transition period
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is after the end of the transition period; and
+               (b) immediately before the end of the transition period:
+                       (i) the person satisfied paragraph (3)(b); or
+                       (ii) the person has made a valid application to seek to meet a requirement
+                            mentioned in subparagraph (3)(b)(i) or (ii) and that application has
+                            not been decided; and
+               (c) it is before the transition time for the person; and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (7) has not yet come into effect.
+          (5) For the purposes of paragraph (4)(c), the transition time for a person is the later
+              of the following:
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          25
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 26
+
+
+               (a) if the person meets subparagraph (4)(b)(i)—the day the relevant notice or
+                   certificate that the person held immediately before the end of the transition
+                   period expires;
+               (b) if the person meets subparagraph (4)(b)(ii)—the earlier of the following:
+                        (i) if the person is granted a notice in relation to the valid application
+                            mentioned in that subparagraph—the day that notice expires;
+                        (ii) if the person is not granted a notice in relation to that valid
+                             application—the day the person was notified of the decision not to
+                             grant the notice.
+          (6) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is after the end of the transition period; and
+               (b) the person is a secondary school student on a formal work experience
+                   placement with the provider; and
+               (c) the person is directly supervised by a person who meets the requirements of
+                   paragraphs (4)(b) and (c); and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (7) has not yet come into effect.
+               Notice
+          (7) The Commissioner may give a written notice to a registered NDIS provider that
+              paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+              specified in the notice (which must be at least 14 days after the notice is given).
+               Meaning of transition period
+          (8) In this section:
+                regulated business has the meaning given by the Working with Children (Risk
+                Management and Screening) Act 2000 (Qld) as in force from time to time.
+                regulated employment has the meaning given by the Working with Children
+                (Risk Management and Screening) Act 2000 (Qld) as in force from time to time.
+                transition period means the period:
+               (a) starting on 1 July 2019; and
+               (b) ending on the earlier of:
+                        (i) 31 January 2021; and
+                        (ii) the day notice is given under section 30 that the NDIS worker
+                             screening unit is operational in Queensland.
+
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          26
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 27
+
+
+27 Application—special arrangements for Tasmania
+          (1) This section applies to a person or entity that has applied to be, or is, registered as
+              a registered NDIS provider to deliver any class of support or service to a
+              participant residing in Tasmania.
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering services or supports in Tasmania if that provider complies with
+              this section.
+               Special arrangements during the transition period
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is during the transition period; and
+               (b) the person is registered to engage in a regulated activity under the
+                   Registration to Work with Vulnerable People Act 2013 (Tas.), as in force
+                   from time to time; and
+               (c) the registration is in terms that allow the person to engage in the role
+                   concerned; and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is during the transition period; and
+               (b) the person is a secondary school student on a formal work experience
+                   placement with the provider; and
+               (c) the person is directly supervised by a person who meets the requirements of
+                   paragraphs (3)(b) and (c); and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+               Special arrangements after the transition period
+          (5) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is after the end of the transition period; and
+               (b) immediately before the end of the transition period, the person met the
+                   requirements of paragraphs (3)(b) and (c); and
+               (c) it is before the transition time for the person; and
+
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          27
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                      Section 28
+
+
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+          (6) For the purposes of paragraph (5)(c), the transition time for a person is the earlier
+              of:
+               (a) 3 years after the person was registered to engage in a regulated activity under
+                   the Registration to Work with Vulnerable People Act 2013 (Tas.), as in force
+                   from time to time; and
+               (b) the expiry of the registration that the person held immediately before the end
+                   of the transition period.
+          (7) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is after the end of the transition period; and
+               (b) the person is a secondary school student on a formal work experience
+                   placement with the provider; and
+               (c) the person is directly supervised by a person who meets the requirements of
+                   paragraphs (5)(b) and (c); and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+               Notice
+          (8) The Commissioner may give a written notice to a registered NDIS provider that
+              paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+              specified in the notice (which must be at least 14 days after the notice is given).
+               Meaning of transition period
+          (9) In this section:
+                transition period means the period:
+               (a) starting on 1 July 2019; and
+               (b) ending on the earlier of:
+                        (i) 31 January 2021; and
+                        (ii) the day notice is given under section 30 that the NDIS worker
+                             screening unit is operational in Tasmania.
+
+28 Application—special arrangements for ACT
+          (1) This section applies to a person or entity that has applied to be, or is, registered as
+              a registered NDIS provider to deliver any class of support or service to a
+              participant residing in the Australian Capital Territory.
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          28
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 28
+
+
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering services or supports in the Australian Capital Territory if that
+              provider complies with this section.
+               Special arrangements during the transition period
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is during the transition period; and
+               (b) the person is registered to engage in a regulated activity under the Working
+                   with Vulnerable People (Background Checking) Act 2011 (ACT), as in force
+                   from time to time; and
+               (c) the registration is in terms that allow the person to engage in the role
+                   concerned; and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is during the transition period; and
+               (b) the person is a secondary school student on a formal work experience
+                   placement with the provider; and
+               (c) the person is directly supervised by a person who meets the requirements of
+                   paragraphs (3)(b) and (c); and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+               Special arrangements after the transition period
+          (5) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is after the end of the transition period; and
+               (b) immediately before the end of the transition period, the person met the
+                   requirements of paragraphs (3)(b) and (c); and
+               (c) it is before the transition time for the person; and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+          (6) For the purposes of paragraph (5)(c), the transition time for a person is the earlier
+              of:
+
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          29
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                      Section 29
+
+
+               (a) 3 years after the person is registered under the Working with Vulnerable
+                   People (Background Checking) Act 2011 (ACT), as in force from time to
+                   time; and
+               (b) the expiry of the registration that the person held immediately before the end
+                   of the transition period.
+          (7) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is after the end of the transition period; and
+               (b) the person is a secondary school student on a formal work experience
+                   placement with the provider; and
+               (c) the person is directly supervised by a person who meets the requirements of
+                   paragraphs (5)(b) and (c); and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+               Notice
+          (8) The Commissioner may give a written notice to a registered NDIS provider that
+              paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+              specified in the notice (which must be at least 14 days after the notice is given).
+               Meaning of transition period
+          (9) In this section:
+                transition period means the period:
+               (a) starting on 1 July 2019; and
+               (b) ending on the earlier of:
+                        (i) 31 January 2021; and
+                        (ii) the day notice is given under section 30 that the NDIS worker
+                             screening unit is operational in the Australian Capital Territory.
+
+29 Application—special arrangements for Northern Territory
+          (1) This section applies to a person or entity that has applied to be, or is, registered as
+              a registered NDIS provider to deliver any class of support or service to a
+              participant residing in the Northern Territory.
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering services or supports in the Northern Territory if that provider
+              complies with this section.
+               Special arrangements during the transition period
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          30
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 29
+
+
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is during the transition period; and
+               (b) the person has a clearance notice granted under the Care and Protection of
+                   Children Act 2007 (NT) (as in force from time to time) that is in force; and
+               (c) the clearance notice is in terms that allow the person to engage in the role
+                   concerned; and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is during the transition period; and
+               (b) the person is a secondary school student on a formal work experience
+                   placement with the provider; and
+               (c) the person is directly supervised by a person who meets the requirements of
+                   paragraphs (3)(b) and (c); and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+               Special arrangements after the transition period
+          (5) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+               (a) it is after the end of the transition period; and
+               (b) immediately before the end of the transition period, the person met the
+                   requirements of paragraphs (3)(b) and (c); and
+               (c) it is before the transition time for the person; and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+          (6) For the purposes of paragraph (5)(c), the transition time for a person is the earlier
+              of:
+               (a) 2 years after the person was given a clearance notice under the Care and
+                   Protection of Children Act 2007 (NT), as in force from time to time; and
+               (b) the expiry of the clearance notice that the person held immediately before the
+                   end of the transition period.
+          (7) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          31
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                    Section 29A
+
+
+               (a) it is after the end of the transition period; and
+               (b) the person is a secondary school student on a formal work experience
+                   placement with the provider; and
+               (c) the person is directly supervised by a person who meets the requirements of
+                   paragraphs (5)(b) and (c); and
+               (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                   subsection (8) has not yet come into effect.
+               Notice
+          (8) The Commissioner may give a written notice to a registered NDIS provider that
+              paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+              specified in the notice (which must be at least 14 days after the notice is given).
+               Meaning of transition period
+          (9) In this section:
+                transition period means the period:
+               (a) starting on 1 July 2019; and
+               (b) ending on the earlier of:
+                      (i) 30 June 2021; and
+                        (ii) the day notice is given under section 30 that the NDIS worker
+                             screening unit is operational in the Northern Territory.
+
+29A Application—special arrangements for Western Australia
+          (1) This section applies to a person or entity that has applied to be, or is, registered
+              as a registered NDIS provider to deliver any class of support or service to a
+              participant residing in Western Australia.
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering services or supports in Western Australia if that registered NDIS
+              provider complies with this section.
+
+                Transitional arrangements
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                (a) the person has an acceptable WA check at that time; and
+                (b) a notice (if any) issued to the registered NDIS provider by the
+                     Commissioner pursuant to subsection (7) has not yet come into effect.
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                (a) at that time, the person is a secondary school student on a formal work
+                     experience placement with the registered NDIS provider; and
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          32
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 29A
+
+
+                    (b) the person is directly supervised by a person who has an acceptable WA
+                        check at that time; and
+                    (c) a notice (if any) issued to the provider by the Commissioner pursuant to
+                        subsection (7) has not yet come into effect.
+          (5) A person has an acceptable WA check at a time (the relevant time) before
+              1 February 2023, if:
+                (a) at the relevant time, the person is engaged by the registered NDIS provider;
+                    and
+                (b) the person had been engaged by the registered NDIS provider on a day (the
+                    engagement day) before 1 December 2020 and has been continuously
+                    engaged with that provider since the engagement day; and
+                (c) a national police check in relation to the person had been obtained from a
+                    checking agency no more than 3 years before both:
+                      (i) the relevant time; and
+                     (ii) 1 February 2021; and
+                (d) the national police check showed that the person had no conviction for a
+                    relevant offence; and
+                (e) at the relevant time, the registered NDIS provider is not aware of the
+                    person being subsequently convicted of a relevant offence; and
+                (f) if the risk assessed role involves the person engaging in child-related
+                    work—on a day that is no later than the last day of the transition period:
+                      (i) the person had been issued with an assessment notice, or a further
+                          assessment notice, and at the relevant time that assessment notice is in
+                          effect and has not expired or been cancelled; or
+                     (ii) the person had made an application for an assessment notice, or a
+                          further assessment notice, and at the relevant time the person has been
+                          issued with an assessment notice in relation to that application and
+                          that assessment notice is in effect and has not expired or been
+                          cancelled; or
+                    (iii) the person had made an application for an assessment notice, or a
+                          further assessment notice, and at the relevant time that application has
+                          not been decided or withdrawn and the person has not been issued
+                          with an interim negative notice in relation to that application.
+          (6) A person has an acceptable WA check at a time (the relevant time) before
+              1 February 2023, if:
+                (a) at the relevant time, the person is engaged by the registered NDIS provider;
+                    and
+                (b) the person had begun the engagement with the registered NDIS provider on
+                    or after 1 December 2020 and before 1 February 2021; and
+                (c) a national police check in relation to the person had been obtained from a
+                    checking agency no more than 12 months before both:
+                      (i) the relevant time; and
+                     (ii) the day the person began that engagement; and
+                (d) the national police check showed that the person had no conviction for a
+                    relevant offence; and
+
+
+                       National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          33
+
+Compilation No. 4                             Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                  Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                       Section 29A
+
+
+                    (e) at the relevant time, the registered NDIS provider is not aware of the
+                        person being subsequently convicted of a relevant offence; and
+                    (f) if the risk assessed role involves the person engaging in child-related
+                        work—on a day that is no later than the last day of the transition period:
+                          (i) the person had been issued with an assessment notice, or a further
+                              assessment notice, and at the relevant time that assessment notice is in
+                              effect and has not expired or been cancelled; or
+                         (ii) the person had made an application for an assessment notice, or a
+                              further assessment notice, and at the relevant time the person has been
+                              issued with an assessment notice in relation to that application and
+                              that assessment notice is in effect and has not expired or been
+                              cancelled; or
+                        (iii) the person had made an application for an assessment notice, or a
+                              further assessment notice, and at the relevant time that application has
+                              not been decided or withdrawn and the person has not been issued
+                              with an interim negative notice in relation to that application.
+
+                Notice
+          (7) The Commissioner may give a written notice to a registered NDIS provider that
+              paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+              specified in the notice (which must be at least 14 days after the notice is given).
+
+                Definitions
+          (8) In this section:
+                assessment notice has the same meaning as in the Working with Children
+                (Criminal Record Checking) Act 2004 (WA), as in force from time to time.
+                checking agency means a State or Territory police service, or an agency
+                accredited by the Australian Criminal Intelligence Commission in relation to the
+                provision of a national police check.
+                child-related work has the same meaning as in the Working with Children
+                (Criminal Record Checking) Act 2004 (WA), as in force from time to time.
+                further assessment notice has the same meaning as in the Working with Children
+                (Criminal Record Checking) Act 2004 (WA), as in force from time to time.
+                interim negative notice has the same meaning as in the Working with Children
+                (Criminal Record Checking) Act 2004 (WA), as in force from time to time.
+                relevant offence: an offence committed by a person is a relevant offence if:
+                  (a) the person was at least 18 years old when the offence was committed; and
+                  (b) the offence involved, or related to, any of the following:
+                        (i) an offence under section 192 of the Children and Community Services
+                            Act 2004 (WA), as in force from time to time;
+                       (ii) an offence under section 181, 186, 187, 279 or 283,
+                            subsection 306(4), section 320 or 322, subsection 329(2), (3), (4), (5)
+
+
+                       National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          34
+
+Compilation No. 4                             Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                  Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                    Section 29B
+
+
+                           or (6) or section 330 of The Criminal Code (WA), as in force from
+                           time to time;
+                     (iii) an offence under section 16, 17 or 18 of the Prostitution Act 2000
+                           (WA), as in force from time to time;
+                     (iv) an offence under a law of another participating jurisdiction that is
+                           equivalent to an offence mentioned in subparagraph (i), (ii) or (iii);
+                      (v) a class 1 offence or a class 2 offence within the meaning given by the
+                           National Disability Insurance Scheme (Worker Screening) Act 2020
+                           (WA), as in force from time to time.
+                transition period means the period:
+                  (a) starting on 1 December 2020; and
+                  (b) ending on the earlier of:
+                        (i) 31 January 2023; and
+                       (ii) the day notice is given under section 30 that the NDIS worker
+                            screening unit is operational in Western Australia.
+
+29B Application—special arrangement for residential aged care providers
+          (1) This section applies to a person or entity on a day if, on that day:
+               (a) the person or entity is an approved provider (within the meaning of the
+                    Aged Care Quality and Safety Commission Act 2018); and
+               (b) the person or entity is providing residential care (within the meaning of the
+                    Aged Care Act 1997) to a participant; and
+               (c) the participant is a resident of the person or entity’s residential facility; and
+               (d) the person or entity is a registered NDIS provider; and
+               (e) the person or entity is providing supports or services to the participant in a
+                    participating jurisdiction.
+          (2) A registered NDIS provider is complying with the transitional arrangements
+              when delivering supports or services in a participating jurisdiction if that
+              provider complies with this section.
+
+                Transitional arrangements
+          (3) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if:
+                (a) the registered NDIS provider is an approved provider (within the meaning
+                     of the Aged Care Quality and Safety Commission Act 2018); and
+                (b) the person is:
+                       (i) a staff member of the approved provider; or
+                      (ii) a volunteer for the approved provider; or
+                     (iii) one of the approved provider’s key personnel (within the meaning of
+                           the Aged Care Quality and Safety Commission Act 2018); and
+                (c) the person has an acceptable aged care provider check; and
+                (d) a notice (if any) issued to the provider by the Commissioner pursuant to
+                     subsection (7) has not come into effect.
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          35
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                    Section 29B
+
+
+          (4) A registered NDIS provider may allow a person to engage in a risk assessed role
+              at a time when the person does not have a clearance if the person is:
+                (a) a secondary school student on a formal work experience placement with
+                     the registered NDIS provider; and
+                (b) directly supervised by a person who meets the requirements of
+                     paragraphs (3)(b) and (c); and
+                (c) a notice (if any) issued to the provider by the Commissioner pursuant to
+                     subsection (7) has not yet come into effect.
+
+                Acceptable aged care provider checks—recognition of checks under the
+                Accountability Principles 2014
+          (5) A person has an acceptable aged care provider check if:
+               (a) the person is either:
+                     (i) a staff member of the approved provider; or
+                    (ii) a volunteer for the approved provider; and
+               (b) the requirements under Part 6 of the Accountability Principles 2014 have
+                   been complied with in relation to the person, including the requirement that
+                   the person has been issued with a police certificate (within the meaning of
+                   those Principles) within the last 3 years; and
+               (c) the police certificate is issued before 1 February 2021.
+          (6) A person has an acceptable aged care provider check if:
+               (a) the person is one of the approved provider’s key personnel (within the
+                   meaning of the Aged Care Quality and Safety Commission Act 2018); and
+               (b) the person is not covered by subsection (5); and
+               (c) the requirements under Part 7A of the Accountability Principles 2014 have
+                   been complied with in relation to the person, including the requirement that
+                   the provider has obtained a police certificate (within the meaning of those
+                   Principles) for the person; and
+               (d) the police certificate is issued before 1 February 2021.
+
+                Notice
+          (7) The Commissioner may give a written notice to a registered NDIS provider that
+              paragraph 14(1)(b) or (2)(b) no longer applies to the provider from the day
+              specified in the notice (which must be at least 14 days after the notice is given).
+
+                Concurrent operation
+          (8) To avoid doubt, this section is intended to operate concurrently with sections 23
+              to 29A.
+
+                Definitions
+          (9) In this section:
+                staff member, of an approved provider, has the same meaning as in the
+                Accountability Principles 2014.
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          36
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+ NDIS Practice Standards relating to transitional and special arrangements for worker screening Part 4
+
+                                                                                                        Section 30
+
+
+                volunteer, for an approved provider, has the same meaning as in the
+                Accountability Principles 2014.
+
+                Sunset
+         (10) This section ceases to have effect at the end of 1 February 2024.
+
+30 Notice that NDIS worker screening unit is operational in a participating
+           jurisdiction
+                The Minister may, by notifiable instrument, give notice that the NDIS worker
+                screening unit for a State or Territory is operational in that State or Territory,
+                with the agreement of that State or Territory.
+
+
+
+
+                     National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          37
+
+Compilation No. 4                           Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                            Endnotes
+
+
+                                                                            Endnote 1—About the endnotes
+
+
+Endnotes
+Endnote 1—About the endnotes
+The endnotes provide information about this compilation and the compiled law.
+The following endnotes are included in every compilation:
+Endnote 1—About the endnotes
+Endnote 2—Abbreviation key
+Endnote 3—Legislation history
+Endnote 4—Amendment history
+Abbreviation key—Endnote 2
+The abbreviation key sets out abbreviations that may be used in the endnotes.
+Legislation history and amendment history—Endnotes 3 and 4
+Amending laws are annotated in the legislation history and amendment history.
+The legislation history in endnote 3 provides information about each law that has amended (or
+will amend) the compiled law. The information includes commencement details for amending
+laws and details of any application, saving or transitional provisions that are not included in
+this compilation.
+The amendment history in endnote 4 provides information about amendments at the provision
+(generally section or equivalent) level. It also includes information about any provision of the
+compiled law that has been repealed in accordance with a provision of the law.
+Editorial changes
+The Legislation Act 2003 authorises First Parliamentary Counsel to make editorial and
+presentational changes to a compiled law in preparing a compilation of the law for
+registration. The changes must not change the effect of the law. Editorial changes take effect
+from the compilation registration date.
+If the compilation includes editorial changes, the endnotes include a brief outline of the
+changes in general terms. Full details of any changes can be obtained from the Office of
+Parliamentary Counsel.
+Misdescribed amendments
+A misdescribed amendment is an amendment that does not accurately describe the
+amendment to be made. If, despite the misdescription, the amendment can be given effect as
+intended, the amendment is incorporated into the compiled law and the abbreviation “(md)”
+added to the details of the amendment included in the amendment history.
+If a misdescribed amendment cannot be given effect as intended, the abbreviation “(md not
+incorp)” is added to the details of the amendment included in the amendment history.
+
+
+
+
+                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          38
+
+Compilation No. 4                          Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                               Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                              Endnotes
+
+
+                                                                                 Endnote 2—Abbreviation key
+
+
+Endnote 2—Abbreviation key
+
+ad = added or inserted                                            o = order(s)
+am = amended                                                      Ord = Ordinance
+amdt = amendment                                                  orig = original
+c = clause(s)                                                     par = paragraph(s)/subparagraph(s)
+C[x] = Compilation No. x                                             /sub-subparagraph(s)
+Ch = Chapter(s)                                                   pres = present
+def = definition(s)                                               prev = previous
+Dict = Dictionary                                                 (prev…) = previously
+disallowed = disallowed by Parliament                             Pt = Part(s)
+Div = Division(s)                                                 r = regulation(s)/rule(s)
+ed = editorial change                                             reloc = relocated
+exp = expires/expired or ceases/ceased to have                    renum = renumbered
+   effect                                                         rep = repealed
+F = Federal Register of Legislation                               rs = repealed and substituted
+gaz = gazette                                                     s = section(s)/subsection(s)
+LA = Legislation Act 2003                                         Sch = Schedule(s)
+LIA = Legislative Instruments Act 2003                            Sdiv = Subdivision(s)
+(md) = misdescribed amendment can be given                        SLI = Select Legislative Instrument
+  effect                                                          SR = Statutory Rules
+(md not incorp) = misdescribed amendment                          Sub-Ch = Sub-Chapter(s)
+  cannot be given effect                                          SubPt = Subpart(s)
+mod = modified/modification                                       underlining = whole or part not
+No. = Number(s)                                                      commenced or to be commenced
+
+
+
+
+                      National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          39
+
+Compilation No. 4                            Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                 Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                               Endnotes
+
+
+                                                                                  Endnote 3—Legislation history
+
+
+Endnote 3—Legislation history
+
+Name                            Registration                     Commencement                   Application, saving and
+                                                                                                transitional provisions
+
+National Disability Insurance   26 June 2018 (F2018L00887)       1 July 2018 (s 2(1) item 1)
+Scheme (Practice
+Standards—Worker
+Screening) Rules 2018
+National Disability Insurance   28 June 2019 (F2019L00937)       1 July 2019 (s 2(1) item 1)    —
+Scheme (Practice
+Standards—Worker
+Screening) Amendment
+Rules 2019
+National Disability Insurance   29 June 2020 (F2020L00839)       30 June 2020 (s 2(1)           —
+Scheme (Practice                                                 item 1)
+Standards—Worker
+Screening) Amendment
+Rules 2020
+National Disability Insurance   30 Nov 2020 (F2020L01508)        1 Dec 2020 (s 2(1) item 1)     —
+Scheme (Practice
+Standards—Worker
+Screening) Amendment
+(Miscellaneous Measures)
+Rules 2020
+National Disability Insurance   30 Nov 2020 (F2020L01512)        Sch 1 (items 3–7): 1 Dec       —
+Scheme Legislation                                               2020 (s 2(1) item 1)
+Amendment (Transitioning
+Aged Care Providers) Rules
+2020
+National Disability Insurance   30 July 2021 (F2021L01050)       31 July 2021 (s 2(1) item 1)   —
+Scheme (Practice
+Standards—Worker
+Screening) Amendment
+(Transitional and Special
+Arrangements—Victoria)
+Rules 2021
+
+
+
+
+                       National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018           40
+
+Compilation No. 4                              Compilation date: 31/07/2021                         Registered: 12/08/2021
+
+
+                                  Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                                             Endnotes
+
+
+                                                                                                     Endnote 4—Amendment history
+
+
+Endnote 4—Amendment history
+
+Provision affected                                          How affected
+
+Part 1
+s 2 ..................................................      rep LA s 48D
+s 4 ..................................................      am F2020L01508
+s 5 ..................................................      am F2020L00839; F2020L01508; F2020L01512
+s 5A ...............................................        ad F2020L01508
+Part 2
+Part 2 heading ................................             rs F2020L01508
+Division 1
+Division 1 ......................................           rs F2020L01508
+s 8 ..................................................      rs F2020L01508
+Division 2
+Division 2 heading.........................                 rs F2020L01508
+s 9 ..................................................      rs F2020L01508
+Division 3
+Division 3 ......................................           rs F2020L01508
+s 11 ................................................       rs F2020L01508
+s 12 ................................................       rs F2020L01508
+Division 4
+Division 4 heading.........................                 rs F2020L01508
+s 13 ................................................       am F2020L00839
+                                                            rs F2020L01508
+s 14 ................................................       rs F2020L01508
+s 14A .............................................         ad F2019L00937
+                                                            am F2020L00839; F2020L01508; F2020L01512
+s 15 ................................................       am F2019L00937; F2020L00839; F2020L01508
+Part 3
+s 16 ................................................       rs F2020L01508
+s 17 ................................................       am F2020L01508
+s 18 ................................................       am F2020L00839; F2020L01508
+s 19 ................................................       am F2020L01508
+Part 4
+Part 4 heading ................................             am F2020L00839
+                                                            rs F2020L01508
+s 22 ................................................       rs F2020L01508
+s 23 ................................................       am F2019L00937; F2020L00839; F2020L01508
+s 24 ................................................       am F2019L00937; F2020L00839; F2020L01508
+s 25 ................................................       ad F2019L00937
+
+
+
+
+                                     National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          41
+
+Compilation No. 4                                                    Compilation date: 31/07/2021                Registered: 12/08/2021
+
+
+                                                         Authorised Version F2021C00788 registered 12/08/2021
+                                                                                                                            Endnotes
+
+
+                                                                                                    Endnote 4—Amendment history
+
+Provision affected                                         How affected
+
+                                                           am F2020L00839; F2020L01508; F2021L01050
+s 26 ................................................      ad F2019L00937
+                                                           am F2020L00839; F2020L01508
+s 27 ................................................      ad F2019L00937
+                                                           am F2020L00839; F2020L01508
+s 28 ................................................      ad F2019L00937
+                                                           am F2020L00839; F2020L01508
+s 29 ................................................      ad F2019L00937
+                                                           am F2020L00839; F2020L01508
+s 29A .............................................        ad F2020L01508
+s 29B .............................................        ad F2020L01512
+                                                           exp end of 1 Feb 2024 (s 29B(10))
+s 30 ................................................      ad F2019L00937
+                                                           am F2020L01508
+
+
+
+
+                                    National Disability Insurance Scheme (Practice Standards—Worker Screening) Rules 2018          42
+
+Compilation No. 4                                                   Compilation date: 31/07/2021                Registered: 12/08/2021
+
+
+                                                        Authorised Version F2021C00788 registered 12/08/2021
+
