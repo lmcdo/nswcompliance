@@ -139,5 +139,5 @@
     "other_repo": "None. No Trigger.dev task, no plotdetect-agents change. The confirm response gains three fields and the frontend passes them through unchanged.",
     "manual_verify": "Re-pull one existing paid PDF and confirm it now states 'Structure detection — what was checked' with a state rather than an 'Assessment confidence level' block, and that no 'counts agree' sentence appears on it. Then run scripts/measure_granny_confidence_states.py section 8 and confirm the before/after distribution still reads 8 / 5 / 5 / 2 with zero reviewed."
   },
-  "commit_hash": "e37e3ae2"
+  "commit_hash": "e60a6f58"
 }
