@@ -1437,6 +1437,40 @@ class TestConfirmAndCalculate:
         assert _stored_inputs(conn)["confirmed_structure_count"] == 3
         assert resp.granny_flat_buildable is False
 
+    def test_an_unmatched_detect_row_is_surfaced_like_a_failed_one(self, monkeypatch):
+        """Sol round-13: warning on the exception, not on the outcome.
+
+        An expired or mismatched detect_id/prop_id/coordinate triple returns
+        no row at all — just as blind as a failed read — and the count then
+        fell back to the caller's figure in silence, clearing cl 53(1).
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        conn._cursor._fetchone = None          # nothing matched
+        resp = gf.confirm_and_calculate(_make_confirm_req(confirmed_structure_count=1))
+        assert any("could not be re-read" in w for w in resp.warnings), resp.warnings
+
+    def test_discarded_answers_do_not_inflate_the_classified_count(self, monkeypatch):
+        """Sol round-13: the reason counted answers that were thrown away.
+
+        A referent-less answer is dropped from storage, so saying the count
+        reflects "the 1 structure(s) you classified" names a classification
+        that no longer exists anywhere.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=3,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 99, "answer": "garage"}],
+        ))
+        assert "you classified" not in resp.confidence_reason.lower()
+        assert _stored_inputs(conn)["structure_types"] == []
+
     def test_a_failed_detect_row_read_is_surfaced_not_swallowed(self, monkeypatch):
         """Sol round-12: a transient SQL error must not restore the old behaviour.
 

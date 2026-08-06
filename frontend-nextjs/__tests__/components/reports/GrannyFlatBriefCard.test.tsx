@@ -249,13 +249,13 @@ describe('confirm success', () => {
     expect(confirmBodies[0].structure_types).toEqual([
       { index: 1, answer: 'rejected' },  // shed deselected
     ]);
-    // …and the count is not claimed as reviewed, because the main dwelling
-    // was never touched (Sol finding 1: everything arrives pre-selected, so
-    // an untouched default is silence, not a judgement).
-    expect(confirmBodies[0].confirmed_count_source).toBe('machine_default');
+    // …and every SECONDARY structure has been touched, which is the whole
+    // coverage rule — the detector designates the principal dwelling and the
+    // backend's check ignores it (Sol round 13).
+    expect(confirmBodies[0].confirmed_count_source).toBe('secondary_detections_classified');
   });
 
-  it('claims a reviewed count only once every structure has been touched', async () => {
+  it('claims a classified count only once every secondary structure has been touched', async () => {
     const { confirmBodies } = await renderThroughDetect(DETECT_OK);
 
     fireEvent.click(screen.getByRole('button', { name: /House/ }));  // deselect

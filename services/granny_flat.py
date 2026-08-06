@@ -1471,7 +1471,12 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 _confirm_conn.close()
             except Exception:
                 pass
-    if detect_row_unavailable:
+    # A row that simply did not match (expired, superseded, or a mismatched
+    # detect_id/prop_id/coordinate triple) is just as blind as a failed read:
+    # the count falls back to the caller's figure either way. Warn on the
+    # OUTCOME, not on the exception, or an unmatched row clears the cl 53(1)
+    # block in silence.
+    if detect_row_unavailable or not isinstance(detected_structures_carry, list):
         warnings.append(
             "The structure detection for this address could not be re-read, so "
             "the structure count could not be checked against it. The count "
@@ -1710,7 +1715,11 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 samgeo_count=machine_count,
                 rent_available=weekly_rent is not None,
                 count_source=count_source,
-                answers_given=len(req.structure_types or []),
+                # Only answers that were KEPT — a discarded
+                # referent-less answer must not make the report say
+                # the count reflects a structure nobody classified.
+                answers_given=len(_storable_answers(
+                    req.structure_types, detected_structures_carry) or []),
             )
 
             # Cap confidence to medium when key eligibility inputs are unknown.

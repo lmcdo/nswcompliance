@@ -249,7 +249,16 @@ export function GrannyFlatBriefCard({ address, active, lotAreaM2 }: { address?: 
     // not a judgement. The value is named for what this card can observe:
     // the person went through the detections. It cannot cover a building the
     // scan missed, because there is nothing here to click for one.
-    const allTouched = structures.length > 0 && structures.every((_, i) => i in deselected);
+    // Only the SECONDARY structures need touching — the detector designates
+    // the principal dwelling and the backend's coverage rule ignores it.
+    // Requiring it too under-credited a genuine review: a lot with one shed,
+    // properly classified, was recorded as machine_default because the
+    // preselected main dwelling had not been clicked.
+    const secondaryIdx = structures
+      .map((s, i) => ({ s, i }))
+      .filter(({ s }) => !s.is_main_dwelling)
+      .map(({ i }) => i);
+    const allTouched = secondaryIdx.length > 0 && secondaryIdx.every((i) => i in deselected);
     const countSource = allTouched ? 'secondary_detections_classified' : 'machine_default';
     setConfirm({ kind: 'submitting' });
     try {
