@@ -768,6 +768,24 @@ class TestComputeConfidenceMutation:
         _, reason = _compute_confidence(True, 1, 1, True, count_source="secondary_detections_classified")
         assert "bond" in reason.lower()
 
+    def test_partial_answers_are_not_described_as_unchecked(self):
+        """Sol round-7: their answers already moved the count.
+
+        Saying the total "has not been checked against the aerial image" when
+        the person classified some structures understates what they did — the
+        inverse of the overclaiming this branch removes, but still inaccurate.
+        """
+        _, reason = _compute_confidence(
+            True, 2, 3, True, count_source="machine_default", answers_given=1)
+        low = reason.lower()
+        assert "only partly been checked" in low
+        assert "was not reviewed structure by structure" not in low
+
+    def test_zero_answers_is_still_described_as_unchecked(self):
+        _, reason = _compute_confidence(
+            True, 3, 3, True, count_source="machine_default", answers_given=0)
+        assert "not reviewed structure by structure" in reason.lower()
+
     def test_reason_never_claims_a_person_acted_when_none_did(self):
         """The item-3 pin: no unreviewed reason string may imply human input.
 
@@ -1519,6 +1537,11 @@ class TestConfirmAndCalculate:
         sql, params = carry[-1]
         assert "prop_id = %s" in sql
         assert "12345" in [str(x) for x in params]
+        # Sol round-7: prop_id and detect_id are BOTH caller-supplied, so the
+        # coordinates bound it too — otherwise a valid pair for one property
+        # could be sent with another property's address.
+        assert "abs(lat - %s)" in sql and "abs(lng - %s)" in sql
+        assert SYD_LAT in params and SYD_LNG in params
 
     def test_carry_forward_finds_the_detect_row_by_detect_id(self, monkeypatch):
         """Sol finding 2: the carry-forward could almost never resolve.

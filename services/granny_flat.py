@@ -898,6 +898,7 @@ def _compute_confidence(
     samgeo_count: Optional[int],
     rent_available: bool,
     count_source: str = "unrecorded",
+    answers_given: Optional[int] = None,
 ) -> tuple[str, str]:
     """
     Returns (confidence, reason) tuple.
@@ -937,6 +938,10 @@ def _compute_confidence(
     counts_agree = (samgeo_count is not None and confirmed_count == samgeo_count)
     human_checked = (count_source == "secondary_detections_classified")
     plural = 's' if samgeo_count != 1 else ''
+    # Some answers were given, just not enough to license the claim. Saying
+    # nothing was checked would understate what the person actually did — and
+    # on this path their answers have already MOVED the count.
+    partly_answered = answers_given is not None and answers_given > 0
 
     if human_checked and counts_agree and rent_available:
         return (
@@ -951,11 +956,20 @@ def _compute_confidence(
 
     if samgeo_count is None:
         reason = "Structure count entered manually (aerial detection not available). "
+    elif not human_checked and partly_answered:
+        # Some structures were classified and the count reflects those answers,
+        # but not every detected secondary structure was covered. Saying it was
+        # not checked at all would understate what the person did.
+        reason = (
+            f"Aerial detection found {samgeo_count} structure{plural} on this lot. "
+            f"The report used {confirmed_count}, reflecting the {answers_given} "
+            "structure(s) you classified. "
+            "The rest were not classified, so the total has only partly been "
+            "checked against the aerial image. "
+        )
     elif not human_checked:
-        # The honest description of the old "counts agree" case. Worded to hold
-        # for BOTH shapes of not-reviewed: nobody touched the structures at all,
-        # and somebody touched some but not all of them. Asserting "no person
-        # reviewed this" in the partial case would be its own small inaccuracy.
+        # Nobody touched anything — the honest description of the old
+        # "counts agree" case.
         reason = (
             f"Aerial detection found {samgeo_count} structure{plural} on this lot. "
             f"The report used {confirmed_count}. "
@@ -1520,9 +1534,16 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             tile_b64: Optional[str] = None
             detect_manifest = None
             detected_structures_carry = None
+            # …and to the coordinates as well as the parcel id, the same
+            # ~50m proximity bound the flood cache read carries. prop_id and
+            # detect_id are both caller-supplied, so a request can pair a
+            # valid detection for one property with the address and
+            # coordinates of another; without this the older run's tile and
+            # structures would ride into a report labelled as somewhere else.
             _CARRY_COLS = ("SELECT outputs->>'tile_b64', outputs->'execution_manifest', "
                            "       outputs->'detected_structures' "
                            "FROM granny_flat_reports ")
+            _COORD_BOUND = " AND abs(lat - %s) < 0.0005 AND abs(lng - %s) < 0.0005 "
             # The report_id branch is also bound to detect_id: a caller can
             # hold a report_id from an EARLIER detection on the same parcel,
             # and matching on it alone would return that older run's tile,
@@ -1532,14 +1553,15 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             if req.report_id:
                 cur.execute(
                     _CARRY_COLS + "WHERE id = %s AND prop_id = %s "
-                                  "AND outputs->>'detect_id' = %s",
-                    (req.report_id, req.prop_id, req.detect_id))
+                                  "AND outputs->>'detect_id' = %s" + _COORD_BOUND,
+                    (req.report_id, req.prop_id, req.detect_id, req.lat, req.lng))
                 row = cur.fetchone()
             if row is None and req.detect_id:
                 cur.execute(
-                    _CARRY_COLS + "WHERE outputs->>'detect_id' = %s AND prop_id = %s "
+                    _CARRY_COLS + "WHERE outputs->>'detect_id' = %s AND prop_id = %s"
+                                  + _COORD_BOUND +
                                   "ORDER BY created_at DESC LIMIT 1",
-                    (req.detect_id, req.prop_id),
+                    (req.detect_id, req.prop_id, req.lat, req.lng),
                 )
                 row = cur.fetchone()
             if row:
@@ -1584,6 +1606,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 samgeo_count=machine_count,
                 rent_available=weekly_rent is not None,
                 count_source=count_source,
+                answers_given=len(req.structure_types or []),
             )
 
             # Cap confidence to medium when key eligibility inputs are unknown.
