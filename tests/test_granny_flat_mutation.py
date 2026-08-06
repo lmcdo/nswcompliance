@@ -1408,6 +1408,18 @@ class TestConfirmAndCalculate:
         ))
         inputs = _stored_inputs(conn)
         assert "never produced" in inputs["confirmed_count_source_note"]
+        # Sol round-9: the note is not enough — a referent-less answer must not
+        # sit in the column a calibration consumer reads as human labels.
+        assert inputs["structure_types"] == []
+
+    def test_reason_never_says_the_count_reflects_answers_it_contradicts(self):
+        """Sol round-9: 'used 3, reflecting the 2 you classified' is self-refuting."""
+        _, reason = _compute_confidence(
+            True, 3, 3, True, count_source="machine_default",
+            answers_given=2, answers_consistent=False)
+        low = reason.lower()
+        assert "does not follow from the" in low
+        assert "reflecting the" not in low
 
     def test_duplicate_indexes_rejected_under_every_provenance(self):
         """Sol round-4: two answers for one structure are ambiguous regardless."""

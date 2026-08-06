@@ -783,6 +783,26 @@ def _get_weekly_rent(postcode: Optional[str]) -> Optional[float]:
 _NON_STRUCTURE_ANSWERS = {"part_of_main", "rejected"}
 
 
+def _storable_answers(
+    structure_types: Optional[list],
+    detected_structures: Optional[list],
+) -> Optional[list]:
+    """The answers worth persisting: those that name a real detected structure.
+
+    An answer whose index the detect run never produced points at nothing. It
+    is still recorded in the provenance note, but it must not sit in
+    `inputs.structure_types`, where a calibration consumer would read it as a
+    human label with a referent. When the detect row is unavailable we cannot
+    tell, so nothing is dropped — three states, and "unknown" is not "invalid".
+    """
+    if structure_types is None:
+        return None
+    if not isinstance(detected_structures, list) or not detected_structures:
+        return [s.model_dump() for s in structure_types]
+    known = {s.get("index") for s in detected_structures if isinstance(s, dict)}
+    return [s.model_dump() for s in structure_types if s.index in known]
+
+
 def _count_mismatch_note(
     structure_types: Optional[list],
     detected_structures: list,
@@ -910,6 +930,7 @@ def _compute_confidence(
     rent_available: bool,
     count_source: str = "unrecorded",
     answers_given: Optional[int] = None,
+    answers_consistent: bool = True,
 ) -> tuple[str, str]:
     """
     Returns (confidence, reason) tuple.
@@ -952,7 +973,11 @@ def _compute_confidence(
     # Some answers were given, just not enough to license the claim. Saying
     # nothing was checked would understate what the person actually did — and
     # on this path their answers have already MOVED the count.
-    partly_answered = answers_given is not None and answers_given > 0
+    # `answers_consistent` is False when the submitted count does not follow
+    # from those answers, in which case the count does NOT reflect them and
+    # saying it does would be its own false statement.
+    some_answers = answers_given is not None and answers_given > 0
+    partly_answered = some_answers and answers_consistent
 
     if human_checked and counts_agree and rent_available:
         return (
@@ -967,6 +992,13 @@ def _compute_confidence(
 
     if samgeo_count is None:
         reason = "Structure count entered manually (aerial detection not available). "
+    elif not human_checked and some_answers and not answers_consistent:
+        reason = (
+            f"Aerial detection found {samgeo_count} structure{plural} on this lot. "
+            f"The report used {confirmed_count}, which does not follow from the "
+            f"{answers_given} structure(s) classified — so the count has not been "
+            "checked against the aerial image. "
+        )
     elif not human_checked and partly_answered:
         # Some structures were classified and the count reflects those answers,
         # but not every detected secondary structure was covered. Saying it was
@@ -1618,6 +1650,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 rent_available=weekly_rent is not None,
                 count_source=count_source,
                 answers_given=len(req.structure_types or []),
+                # A note means the answers and the count disagree, so the
+                # count cannot be described as reflecting them.
+                answers_consistent=provenance_note is None,
             )
 
             # Cap confidence to medium when key eligibility inputs are unknown.
@@ -1673,10 +1708,13 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         # The per-structure answers, bound to the structure
                         # index they refer to. Previously browser-local and
                         # discarded.
-                        "structure_types": (
-                            [s.model_dump() for s in req.structure_types]
-                            if req.structure_types is not None else None
-                        ),
+                        # Only answers with a referent are stored. An index
+                        # the detect run never produced is a label pointing at
+                        # nothing, and a calibration consumer reading this
+                        # column would have no way to tell — the note above
+                        # records that some were dropped.
+                        "structure_types": _storable_answers(
+                            req.structure_types, detected_structures_carry),
                         # The join key back to the detect run. Accepted by this
                         # endpoint since it existed, never stored until now.
                         "detect_id": req.detect_id,
@@ -1798,10 +1836,15 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "lot_area_m2": lot_area_m2,
             "confirmed_structure_count": req.confirmed_structure_count,
             "confirmed_count_source": count_source,
-            "structure_types": (
+            # The audit trail keeps what the caller SENT, including any
+            # referent-less answers the stored column drops — the record of
+            # the request should not be quietly tidier than the request was.
+            "structure_types_submitted": (
                 [s.model_dump() for s in req.structure_types]
                 if req.structure_types is not None else None
             ),
+            "structure_types_stored": _storable_answers(
+                req.structure_types, detected_structures_carry),
             "detect_id": req.detect_id,
             "samgeo_structure_count": req.samgeo_structure_count,
             "postcode": postcode,
