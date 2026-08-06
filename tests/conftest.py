@@ -161,3 +161,114 @@ def cur():
     yield cursor
     cursor.close()
     conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Dependency-skip census — the counter-measure to a gate going quiet
+# ---------------------------------------------------------------------------
+#
+# ORIGIN: 2026-08-06. main was red from 08-03 because four tests in
+# test_dcp_as_at.py needed PyMuPDF, which requirements-test.txt did not
+# install. `pytest -x` stopped at the first, so ~1,800 tests did not execute
+# for three days and nobody noticed. Auditing the rest turned up a second,
+# quieter version of the same thing: 23 tests that never run ANYWHERE because
+# a missing import turns them into a skip, and a skip is silent.
+#
+# A test that cannot run is not a passing test. This hook makes that
+# countable: every dependency-driven skip is written to .pytest-skips.json and
+# printed as its own terminal section, and scripts/check_dependency_skips.py
+# ratchets the count so a new one cannot appear without failing the build.
+# The existing 23 are baselined, not blessed — the baseline only shrinks.
+
+import re as _re
+
+_DEP_SKIP_PATTERNS = [
+    _re.compile(r"could not import '([\w.]+)'"),          # pytest.importorskip
+    _re.compile(r"No module named '([\w.]+)'"),
+    _re.compile(r"^([\w.]+) not installed"),
+    _re.compile(r"needs real ([\w .+]+)"),
+    _re.compile(r"([\w.]+) (?:postconditions )?not active"),
+]
+
+
+def _dependency_from_skip_reason(reason: str):
+    """The module a skip blames, or None if the skip is about something else.
+
+    Deliberately narrow: an env-gated skip ("set RUN_LIVE_GEMINI=1") is a
+    choice, not a missing dependency, and must not be swept into the same
+    number — otherwise the ratchet measures intent instead of coverage.
+    """
+    text = (reason or "").strip()
+    for pat in _DEP_SKIP_PATTERNS:
+        m = pat.search(text)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
+def pytest_sessionstart(session):
+    """Delete last run's census before this one starts.
+
+    Belt to the terminal_summary braces: if this run dies before the summary
+    hook fires — a collection error, a crash, a killed job — a stale
+    .pytest-skips.json would otherwise still be sitting there for the ratchet
+    to read as though it described this run. Gone at the start means the
+    ratchet exits 2 rather than passing on last week's numbers.
+    """
+    try:
+        (Path(session.config.rootdir) / ".pytest-skips.json").unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    # EVERY skip is recorded, not only the ones a regex recognises. Classifying
+    # first and counting second would leave the obvious hole: a skip whose
+    # reason happens to be phrased differently — pytest.mark.skipif(boto3 is
+    # None, reason="requires boto3") — matches nothing, gets counted nowhere,
+    # and disappears exactly like the tests this exists to catch. The total is
+    # what the ratchet enforces; the dependency breakdown is for diagnosis.
+    skipped = terminalreporter.stats.get("skipped", [])
+    all_skips = []
+    for rep in skipped:
+        reason = ""
+        if isinstance(getattr(rep, "longrepr", None), tuple) and len(rep.longrepr) == 3:
+            reason = rep.longrepr[2]
+        reason = _re.sub(r"^Skipped: ", "", str(reason))
+        all_skips.append({
+            "test": rep.nodeid,
+            "dependency": _dependency_from_skip_reason(reason),
+            "reason": reason,
+        })
+
+    found = [s for s in all_skips if s["dependency"]]
+    out = Path(config.rootdir) / ".pytest-skips.json"
+    try:
+        out.write_text(json.dumps({
+            "total": len(all_skips),
+            "count": len(found),
+            "skips": sorted(all_skips, key=lambda s: s["test"]),
+        }, indent=1), encoding="utf-8")
+    except OSError as exc:
+        # Do NOT swallow. A failed write leaves the PREVIOUS run's census on
+        # disk, and the ratchet would then judge this run against stale
+        # numbers and pass. Removing the file makes the ratchet exit 2
+        # ("report not found") instead, which is the honest outcome.
+        terminalreporter.write_line(
+            f"WARNING: could not write {out.name} ({exc}); removing any stale "
+            "copy so the ratchet cannot read it as this run's result.", red=True)
+        try:
+            out.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    if not found:
+        return
+    by_dep = {}
+    for s in found:
+        by_dep.setdefault(s["dependency"], []).append(s["test"])
+    terminalreporter.write_sep("=", "TESTS THAT DID NOT RUN (missing dependency)", yellow=True)
+    for dep in sorted(by_dep):
+        terminalreporter.write_line(f"  {dep:<28} {len(by_dep[dep])} test(s)")
+    terminalreporter.write_line(
+        f"  {len(found)} test(s) skipped for a missing import — these are NOT passing tests.")
