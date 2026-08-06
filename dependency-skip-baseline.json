@@ -3,13 +3,12 @@
  "_recovering_these": {
   "shapely": "In requirements.txt (2.1.2) but not requirements-test.txt. Ships manylinux wheels; most likely genuinely installable, so these 13 are the cheapest to win back.",
   "numpy + matplotlib + PIL": "matplotlib is the missing one (numpy and pillow are already in the CI closure). requirements.txt pins 3.11.0.",
-  "icontract": "Declared in NO runtime requirements file — only scripts/requirements-maintenance.txt. services/flood_truth.py carries a _FakeIcontract no-op fallback, so its postconditions are inert in CI, locally AND in the deployed service. These 5 tests assert those postconditions fire, so they have never once run. Worth its own decision: either make icontract a real dependency of the service that advertises contracts, or stop advertising them."
+  "icontract (RECOVERED 2026-08-07)": "Was 5. Now 0 — icontract is pinned in services/requirements.txt (what the container installs) and requirements-test.txt, so the four flood postconditions are live in production for the first time and the fifth (_compute_flood_signal) exists at all for the first time. The tests now FAIL rather than skip when the library is present and a decorator is missing."
  },
  "_total_note": "total_skipped covers EVERY skip, including the 2 deliberate env-gated ones (live Gemini smoke) and any skip whose reason no pattern recognises. Enforced exactly, both directions, so a rephrased skip reason cannot slip past the dependency classifier.",
- "total_skipped": 25,
- "count": 23,
+ "total_skipped": 20,
+ "count": 18,
  "dependencies": {
-  "icontract": 5,
   "numpy + matplotlib + PIL": 5,
   "shapely": 13
  }
