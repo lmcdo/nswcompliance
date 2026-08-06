@@ -1,123 +1,143 @@
 {
- "tier": "standard",
- "justification": "Switches four already-written runtime postconditions from no-ops to live on the served flood path, adds a fifth that was never there, and makes the tests guarding them able to fail. Changes runtime behaviour in production (a violated contract raises instead of returning a bad value) but adds no feature, no DB access and no user-facing text. Standard rather than critical because the contracts assert properties the code already satisfies — verified by running the whole suite with them enforcing.",
- "commit_hash": "b0a70a9a",
- "files": [
-  "services/requirements.txt",
-  "requirements-test.txt",
-  "services/flood_truth.py",
-  "tests/test_flood_truth.py",
-  "dependency-skip-baseline.json"
- ],
- "falsifiable_check": {
-  "command": "pip install icontract && python -m pytest tests/ -q --tb=short ; python -m pytest tests/test_flood_truth.py -q -k icontract ; python scripts/check_dependency_skips.py",
-  "passes_when": "The whole suite runs with contracts ENFORCING and reports 0 failures (3704 passed), all five icontract tests pass rather than skip, and the skip ratchet matches its lowered baseline of 18.",
-  "fails_when": "Any icontract.ViolationError during the suite — that would mean a contract is stricter than the code it guards, and turning it on would convert working flood reports into 500s. That is the real risk of this change and the reason the check is 'run everything with them on' rather than 'run the five contract tests'. The ratchet fails if the baseline is not lowered to lock the recovered coverage in.",
-  "demonstrated_failing": "Four states reproduced. (1) Before: all five tests SKIP in every environment — icontract was declared only in scripts/requirements-maintenance.txt, so the _FakeIcontract no-ops ran in production, CI and local alike. (2) Installing icontract on the pre-change tree makes 4 of 5 pass and 1 still skip, which is how _compute_flood_signal was found to have no decorator at all — confirmed absent in both commits that ever touched it (9977134d, e35a7641). (3) After the change, deleting the new decorator makes the test FAIL with 'icontract IS installed, so the @icontract.ensure decorator has been removed or was never added' — previously the identical state produced a silent skip. (4) The skip census drops 23 to 18 and the ratchet refuses to pass until the baseline is lowered.",
-  "mutation_evidence": "Remove the @icontract.ensure on _compute_flood_signal -> test_icontract_signal_contract_active fails (verified, then restored). Revert _check_postcondition to skipping on a missing __postconditions__ -> decorator removal becomes invisible again. Drop icontract from services/requirements.txt -> the container installs without it and every contract silently reverts to a no-op, the state this change ends. Leave the baseline at 23 -> the ratchet fails, so the recovery cannot be quietly undone later.",
-  "self_comparison_note": "Not a self-comparison: the contracts are asserted by installing the real library and observing __postconditions__ on the actual function objects, and the safety evidence is the entire suite executing with those contracts enforcing rather than a re-run of the same code path against itself."
- },
- "pre_impl": {
-  "existing_data": "No DB access. Investigated 2026-08-06 with no changes made: icontract appears in scripts/requirements-maintenance.txt only. Dockerfile.python:26-27 copies and installs services/requirements.txt, which did not list it, so the deployed container has always run the _FakeIcontract fallback. requirements.txt and requirements-test.txt did not list it either. Four @icontract.ensure decorators exist in services/flood_truth.py; a fifth function named by the tests had none.",
-  "assumption_mismatch": "The test helper's own docstring claimed 'In CI (GitHub Actions), icontract is installed cleanly and these tests run.' That was false, and it is why the skip went unexamined. Also corrected: this looked at first like five inert contracts, but it is four inert contracts plus one that never existed — a different defect that the shared skip concealed. Mitigating fact found during the investigation and worth stating plainly: Hypothesis DOES run (it is in requirements-test.txt) and its four property tests already assert the signal enum, the gap-reason shape and the source-count bounds, so this was a missing runtime guard on top of live test-time coverage, not an unguarded surface.",
-  "new_vs_existing": "Nothing new is authored. The four contracts were already written and correct; this declares the library where it is actually installed so they execute. The fifth decorator reuses _VALID_FLOOD_SIGNALS, the module constant already shared by the _normalise_outputs contract and the Hypothesis enum test, so the three cannot drift apart."
- },
- "functions": [
-  {
-   "name": "_compute_flood_signal",
-   "file_line": "services/flood_truth.py:1219",
-   "input": "the internal outputs dict assembled from the nine flood sources",
-   "output": "one of none/low/moderate/elevated/unavailable, now guarded by a postcondition it never had",
-   "if_none": "returns 'unavailable' explicitly when the EPI query failed — that is a valid enum member, not an absence"
+  "tier": "critical",
+  "justification": "Changes the served wording on every granny-flat surface including the paid PDF, and changes what 20 existing production reports say when re-pulled. The high/medium/low grade stops being rendered and is replaced by five typed states describing what actually happened to the structure list. A wrong state here tells a buyer their lot was checked when nothing was checked against anything — a silent wrong result on a paid channel, not a cosmetic edit.",
+  "files": [
+    "services/granny_flat.py",
+    "frontend-nextjs/lib/granny-flat-review-state.ts",
+    "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
+    "frontend-nextjs/app/reports/granny-flat/[report_id]/page.tsx",
+    "frontend-nextjs/app/api/reports/granny-flat/generate/route.ts",
+    "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx",
+    "frontend-nextjs/components/reports/SharedReportPage.tsx",
+    "frontend-nextjs/__tests__/lib/granny-flat-review-state.test.ts",
+    "frontend-nextjs/__tests__/components/reports/GrannyFlatBriefCard.test.tsx",
+    "tests/test_granny_flat_logic.py",
+    "tests/test_granny_flat_mutation.py",
+    "scripts/measure_granny_confidence_states.py",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "claim": "The five review states are distinguishable from stored evidence, and no state is invented that the data cannot support.",
+    "fails_when": "Any two of the five states resolve from the same stored field combination, or any state can only be produced by a field the row does not carry. Concretely: if samgeo_structure_count=NULL and samgeo_structure_count=0 resolved to the same state, the check fails — a failed scan would be reported as an empty lot.",
+    "how_checked": "scripts/measure_granny_confidence_states.py section 5 counts each evidence combination across all 87 rows; sections 2-4 print the per-row fields. tests/test_granny_flat_logic.py::test_review_state_unknown_count_is_never_read_as_zero and ::test_review_state_empty_detection_is_inconclusive_not_a_clear_lot pin the two that would collapse.",
+    "result": "PASSED. NULL -> not_assessed (5 completed rows, 19 of 60 detect rows), 0 -> scan_inconclusive (2 completed rows). Distinct states, distinct served text, asserted by test_review_state_every_state_has_distinct_served_text.",
+    "known_limit": "8 of 60 historical detect rows (13%) carry samgeo=0/NULL with no failure warning and cannot be separated into 'empty lot' vs 'total miss' retrospectively. Rows written by current code CAN be separated, because detection_failed forces the count to None. The 8 legacy rows resolve to scan_inconclusive/not_assessed, which are the honest readings for an unseparable case.",
+    "command": "python scripts/measure_granny_confidence_states.py   (sections 5 and 8), then python -m pytest tests/test_granny_flat_logic.py -q   and   cd frontend-nextjs && npx jest __tests__/lib/granny-flat-review-state.test.ts"
   },
-  {
-   "name": "_compute_confidence",
-   "file_line": "services/flood_truth.py:1294",
-   "input": "the same internal outputs dict, after the signal is computed",
-   "output": "low/medium/high, with its contract now live rather than a no-op",
-   "if_none": "cannot return None — the branches are exhaustive and end at 'low'"
+  "pre_impl": {
+    "existing_data": "granny_flat_reports holds 87 rows: 60 pending_confirm, 11 high, 9 medium, 7 NULL. Zero rows carry inputs.confirmed_count_source, so no post-#878 confirm has ever run. The counts live in inputs, not outputs — reading them from outputs returns NULL for every row and would have rendered every legacy report as Not assessed. property_reports holds 0 rows with product='granny-flat', so the [report_id] surface is currently unreachable for this product.",
+    "assumption_mismatch": "The plan doc said 8 of 16 confirm rows are high; the live count is 11 high of 20 completed. The census also implied samgeo_structure_count lives in outputs; it lives in inputs. Both corrected by direct query before any code was written. If a future reader assumes outputs holds the counts, the legacy derivation silently degrades to Not assessed for all 20 rows.",
+    "new_vs_existing": "_review_state is new; _compute_confidence is unchanged and still writes the confidence column, because that column is also the job state machine (NULL -> pending_confirm -> high|medium|low|error) read by the GET poll, and /api/reports/granny-flat/nearby filters comparables on confidence='high'. Repurposing the column would have been a data migration and would have silently emptied nearby.",
+    "external_source_error": "No external source is called by this change. The upstream detector (MODAL_STRUCTURES_URL) failing is precisely what not_assessed exists to represent: granny_flat.py sets detection_failed=True and forces samgeo_structure_count to None, never 0. 19 of 60 stored detect rows are in that state and all resolve to not_assessed.",
+    "frontend_type": "review_state/label/detail are REQUIRED on the Python response model and optional on the TS types, because stored rows written before this change have none of them. resolveGrannyReviewState accepts null/undefined rows and unknown state strings without throwing, and never renders an unrecognised token — it falls through to derivation. Verified by tests 'survives a null row without throwing' and 'ignores an unrecognised stored state rather than rendering it raw'.",
+    "user_failure_mode": "The failure that matters is not an error page. It is a customer reading 'Scan only — no secondary structures found' on a lot where the scan never ran, and concluding their lot is clear. That is why a missing count resolves to not_assessed rather than to a nothing-found state, and why zero-structures-at-all is called inconclusive rather than clear."
   },
-  {
-   "name": "_check_postcondition",
-   "file_line": "tests/test_flood_truth.py:2059",
-   "input": "a function object and its name, from each of the five contract tests",
-   "output": "passes when a postcondition is attached, FAILS when icontract is present and it is not, skips only when the library is genuinely absent",
-   "if_none": "a missing library is the one case that still skips, and scripts/check_dependency_skips.py counts that so it cannot hide"
-  }
- ],
- "values": [
-  {
-   "value": "flood_signal",
-   "read_at": "services/flood_truth.py:1219",
-   "nullable": "no",
-   "guard_at": "the new @icontract.ensure against _VALID_FLOOD_SIGNALS",
-   "if_missing": "an unrecognised string now raises at the boundary instead of reaching the badge renderer, where it showed as blank"
+  "functions": [
+    {
+      "name": "_review_state",
+      "file_line": "services/granny_flat.py:1133",
+      "input": "validated flag, resolved count_source, the detect run's structure list or None, the machine count or None, and whether the detect row could not be re-read",
+      "output": "a tuple of the typed state string, its served label, and its served detail sentence, all drawn from one text map",
+      "if_none": "when both the structure list and the machine count are absent it returns not_assessed, never a nothing-found state, because an absent count means unknown and never zero"
+    },
+    {
+      "name": "_compute_confidence",
+      "file_line": "services/granny_flat.py:1203",
+      "input": "same arguments as before this change, unchanged, still including the resolved count source and answers given",
+      "output": "the internal high, medium or low grade plus its reason string, now stored but no longer rendered on any served surface",
+      "if_none": "unchanged behaviour: a missing samgeo count still yields the manual-entry reason string and the medium grade"
+    }
+  ],
+  "values": [
+    {
+      "value": "outputs.review_state / review_state_label / review_state_detail written by the confirm endpoint",
+      "read_at": "frontend-nextjs/app/api/reports/granny-flat/generate/route.ts DB path, and the GET poll passthrough in app/api/satellite/granny-flat/route.ts",
+      "if_missing": "absent on every row written before this change, so resolveGrannyReviewState derives the state from inputs.samgeo_structure_count and outputs.detected_structures instead and flags the result as derived"
+    },
+    {
+      "value": "inputs.samgeo_structure_count — a TOTAL that includes the principal dwelling",
+      "read_at": "verified against all 60 stored detect rows by scripts/measure_granny_confidence_states.py section 3",
+      "if_missing": "null means the scan failed and the state resolves to not_assessed; it is never read as zero structures"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "count how many stored rows each candidate state would claim, and print the before/after for every existing report",
+      "file_line": "scripts/measure_granny_confidence_states.py:52",
+      "where_clause": "confidence IN ('high','medium','low') for completed rows; confidence='pending_confirm' for detect runs; both scoped to granny_flat_reports, read-only session"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The structure scan fails upstream, so the row stores samgeo_structure_count = NULL, and the reader treats a missing number as zero structures.",
+      "what_happens": "The report would say 'no secondary structures found' about a lot nobody looked at, and a buyer would read a failed scan as a clear lot. 19 of the 60 stored detect runs are in exactly this state, so this is the majority failure path, not an edge case.",
+      "mitigated": true,
+      "how": "Both readers branch on null before any numeric comparison and return not_assessed. Pinned by test_review_state_unknown_count_is_never_read_as_zero (Python) and 'reads a missing count as unknown, NEVER as zero structures' (Jest), and by the non-numeric case returning not_assessed rather than coercing to 0.",
+      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_unknown_count_is_never_read_as_zero -q  — or SQL: SELECT id FROM granny_flat_reports WHERE confidence='pending_confirm' AND outputs->>'samgeo_structure_count' IS NULL;  (returns the 3 detection_failed rows plus the MODAL-unavailable ones)"
+    },
+    {
+      "scenario": "A caller posts confirmed_count_source='secondary_detections_classified' while the detect row cannot be re-read, hoping to buy the reviewed state on its own say-so.",
+      "what_happens": "The report would claim a person checked every detected structure when nothing could be checked against anything, which is the represented-safeguard-that-does-not-exist failure the whole calibration lane exists to remove.",
+      "mitigated": true,
+      "how": "_review_state tests detect_row_unavailable BEFORE the count_source branch and returns not_assessed, so the claimed provenance never reaches the reviewed test. Pinned by test_review_state_unresolvable_detect_row_beats_a_claimed_review. _resolve_count_source independently downgrades the same claim to machine_default.",
+      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_unresolvable_detect_row_beats_a_claimed_review -q  — or POST /pipeline/granny-flat/confirm with confirmed_count_source=secondary_detections_classified and a detect_id that matches no row, then read outputs.review_state"
+    },
+    {
+      "scenario": "The detector returns an empty result on a lot that has a house, and that is rendered as a finding about the lot rather than about the scan.",
+      "what_happens": "A customer would be told no structures were found and infer the lot is clear, when the true reading is that the scan could not see their home. 24 of 60 detect runs returned zero structures of any kind, so this is common.",
+      "mitigated": true,
+      "how": "Zero-of-any-kind is a separate state, scan_inconclusive, whose served text says the scan more likely could not read the image than that the lot is empty, and to treat the count as unknown. It is deliberately NOT merged with scan_only_none_found (main dwelling present, nothing beside it). Pinned by test_review_state_empty_detection_is_inconclusive_not_a_clear_lot.",
+      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_empty_detection_is_inconclusive_not_a_clear_lot -q  — or SQL: SELECT count(*) FROM granny_flat_reports WHERE confidence='pending_confirm' AND outputs->>'samgeo_structure_count'='0';  (returns 24)"
+    },
+    {
+      "scenario": "A legacy row stores samgeo_structure_count = 1 and the reader treats that number as a count of SECONDARY structures.",
+      "what_happens": "Every ordinary single-house lot would be reported as already carrying a secondary structure. Because SEPP cl 53(1) blocks a second secondary dwelling, that misreading also pushes toward a wrong eligibility narrative on the same page.",
+      "mitigated": true,
+      "how": "The count is a total including the principal dwelling, verified against all 60 detect rows where samgeo=3 decomposes to 1 main plus 2 secondary and samgeo=1 is the house alone. Both readers map 1 to scan_only_none_found and only 2 or more to scan_only_found. Pinned by test_review_state_legacy_row_counts_are_totals_not_secondary_counts and the matching Jest test.",
+      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_legacy_row_counts_are_totals_not_secondary_counts -q  — or cd frontend-nextjs && npx jest -t \"treats the count as a TOTAL including the principal dwelling\""
+    },
+    {
+      "scenario": "The Python wording and the duplicated TypeScript wording drift apart, so the page and the PDF describe the same row differently.",
+      "what_happens": "One surface would keep asserting something the backend had already retired — the DQ-50 shape, where stored or duplicated text outlives the code that produced it. A reader comparing the web result to the PDF would get two different accounts of what was checked.",
+      "mitigated": true,
+      "how": "test_review_state_text_matches_typescript parses the TS TEXT map and asserts label and detail equality for every state. Verified to actually fail by mutating a TS label and observing the failure, then restoring. The stored label/detail are also preferred over the module text when re-rendering an old row, so a report reads as it did when generated.",
+      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_text_matches_typescript -q  after editing any label in frontend-nextjs/lib/granny-flat-review-state.ts — the test fails with a py/ts diff (verified by mutating \"Reviewed by you\" and restoring)"
+    },
+    {
+      "scenario": "A pre-2026-08-06 row is rendered with its stored confidence_reason next to the new state, so 'you confirmed 2 — counts agree' appears under 'Scan only — structures found, not reviewed'.",
+      "what_happens": "The report would contradict itself in consecutive lines, and the stored sentence asserts a human confirmation that could not have happened, because the count was seeded from the detector and the control that would change it was never wired. 18 of 20 completed rows carry that phrasing and 15 say 'counts agree'.",
+      "mitigated": true,
+      "how": "Every surface renders the stored reason only when the state was NOT derived, i.e. only for rows written by the current code whose reason string is the honest post-#878 text. Applied in page.tsx, GrannyFlatBriefCard.tsx and the PDF findings builder.",
+      "repro": "SQL: SELECT count(*) FROM granny_flat_reports WHERE confidence IN ('high','medium','low') AND outputs->>'confidence_reason' ILIKE '%counts agree%';  (returns 15) then POST /api/reports/granny-flat/generate with one of those report_ids and confirm no \"counts agree\" text appears in the PDF findings"
+    },
+    {
+      "scenario": "SAMGEO_VALIDATED is flipped to False, which skips the whole detection block so detection_failed stays False and the structure list stays empty.",
+      "what_happens": "The row would look identical to a scan that ran and found nothing, so 'did not run' would be served as 'found nothing' — the same substitution this change removes, reintroduced by a one-line constant edit.",
+      "mitigated": true,
+      "how": "_review_state tests the validated flag first and returns not_assessed regardless of the empty list. Latent today because the constant is True and all 60 rows carry samgeo_validated=true, but pinned by test_review_state_detection_disabled_is_not_assessed so flipping it cannot ship silently.",
+      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_detection_disabled_is_not_assessed -q  — or set SAMGEO_VALIDATED=False in services/granny_flat.py and re-run the granny suites"
+    },
+    {
+      "scenario": "A malformed machine count (False, -1, or a float) reaches the state function, and Python's `<= 0` comparison accepts it because False and negatives both satisfy that test.",
+      "what_happens": "The backend would store scan_inconclusive — a claim that the scan ran and returned no structures — from a field that is simply broken, and the TypeScript reader would call the same evidence not_assessed, so the page and the PDF would describe one row two different ways.",
+      "mitigated": true,
+      "how": "_review_state now requires a non-bool int that is >= 0 before any count-based state, mirroring strictCount() in the TypeScript module. Anything else is not_assessed. Pinned by test_review_state_malformed_count_is_unknown_not_a_finding across False, True, -1, -5, 2.5, '2', '', None, [] and {}.",
+      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_review_state_malformed_count_is_unknown_not_a_finding -q  — or call _review_state(True, 'unrecorded', None, False) and observe the returned state"
+    },
+    {
+      "scenario": "The detect row read succeeds but matches no row (expired, superseded, or a mismatched detect_id/prop_id/coordinate triple), so the carried structure list is None while no exception was raised.",
+      "what_happens": "The state would be decided from req.samgeo_structure_count — a number the REQUESTER supplied and echoed back — so the report would describe what the scan found using a figure the scan never produced. The confirm endpoint already warns on this case, so the warning and the state would disagree on the same row.",
+      "mitigated": true,
+      "how": "The call site passes detect_row_unavailable as (detect_row_unavailable or not isinstance(detected_structures_carry, list)) — the exact condition the existing warning is raised on — so an unmatched row resolves to not_assessed. Pinned by test_confirm_treats_an_unmatched_detect_row_as_not_assessed.",
+      "repro": "python -m pytest tests/test_granny_flat_logic.py::test_confirm_treats_an_unmatched_detect_row_as_not_assessed -q  — or POST /pipeline/granny-flat/confirm with a detect_id that matches no row plus samgeo_structure_count=2, then read outputs.review_state"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. This change performs no writes to existing rows and no migration. The 20 completed reports are re-described at render time by deriving from fields they already carry; their stored columns are untouched.",
+    "secrets": "None added or changed. The measurement script reads credentials from the repo-root .env and pins a read-only session; it refuses to run rather than falling back to localhost defaults.",
+    "other_repo": "None. No Trigger.dev task, no plotdetect-agents change. The confirm response gains three fields and the frontend passes them through unchanged.",
+    "manual_verify": "Re-pull one existing paid PDF and confirm it now states 'Structure detection — what was checked' with a state rather than an 'Assessment confidence level' block, and that no 'counts agree' sentence appears on it. Then run scripts/measure_granny_confidence_states.py section 8 and confirm the before/after distribution still reads 8 / 5 / 5 / 2 with zero reviewed."
   },
-  {
-   "value": "confidence",
-   "read_at": "services/flood_truth.py:1294",
-   "nullable": "no",
-   "guard_at": "@icontract.ensure result in low/medium/high",
-   "if_missing": "raises rather than rendering a broken badge on the report and PDF"
-  },
-  {
-   "value": "available source count",
-   "read_at": "services/flood_truth.py:1412",
-   "nullable": "no",
-   "guard_at": "@icontract.ensure 0 <= result <= 9",
-   "if_missing": "an out-of-range count would corrupt the refuse-to-serve threshold; it now raises instead"
-  }
- ],
- "queries": [
-  {
-   "purpose": "none — this change performs no database access at all",
-   "file_line": "services/flood_truth.py:1219",
-   "where_clause": "n/a",
-   "if_zero": "n/a",
-   "if_wrong": "n/a: the contracts are pure-function postconditions evaluated on values already in memory, so there is no query to get wrong"
-  }
- ],
- "break_it": [
-  {
-   "scenario": "a contract is stricter than the code it guards, so a real flood report starts raising",
-   "what_happens": "working reports become 500s — the one way this change could make things worse rather than better",
-   "mitigated": true,
-   "how": "the entire suite was run with contracts ENFORCING: 3704 passed, zero ViolationError, including the four Hypothesis property tests that drive randomised inputs through the newly decorated function. The contracts assert properties the code already satisfies.",
-   "repro": "pip install icontract && python -m pytest tests/ -q"
-  },
-  {
-   "scenario": "someone deletes a decorator later, or adds a return branch with a string not in the enum",
-   "what_happens": "before this change the guarding test skipped silently, so removal was undetectable — the mutant each test claims to kill was the one mutant it could not see",
-   "mitigated": true,
-   "how": "with icontract installed a missing postcondition is now an assertion failure naming the function; only a genuinely absent library skips",
-   "repro": "delete the @icontract.ensure above _compute_flood_signal and run pytest -k icontract_signal — fails (verified, then restored)"
-  },
-  {
-   "scenario": "icontract is dropped from services/requirements.txt in a future dependency tidy-up",
-   "what_happens": "the container silently reverts to _FakeIcontract and all five contracts become no-ops again, with nothing red",
-   "mitigated": true,
-   "how": "the five tests then skip, and the dependency-skip ratchet sees icontract reappear as a NEW dependency against a baseline that no longer lists it, so the build fails",
-   "repro": "uninstall icontract and run python scripts/check_dependency_skips.py — exits 1"
-  },
-  {
-   "scenario": "a violation fires in production and the caller sees a 500 instead of a report",
-   "what_happens": "an error rather than a report — worse for that one request than a slightly wrong badge would have been",
-   "mitigated": false,
-   "how": "accepted deliberately, and it is the point of the change: a wrong flood signal on a compliance report is the liability, a 500 is an inconvenience, and the project's own rule already ranks silent wrong data as the worse outcome. Not caught and downgraded to a soft response, because swallowing a violation would recreate exactly the silent-bad-value behaviour being removed.",
-   "repro": "n/a — no input in the suite triggers a violation; this is the accepted consequence if one ever does"
-  },
-  {
-   "scenario": "the recovered coverage is quietly lost again by leaving the baseline loose at 23",
-   "what_happens": "skips drift back up and nothing objects, exactly as they did for the whole life of these tests",
-   "mitigated": true,
-   "how": "the baseline is lowered to 18 in this same commit, and the ratchet matches exactly in both directions",
-   "repro": "python scripts/check_dependency_skips.py — exits 0 only at 18"
-  }
- ],
- "post_merge": {
-  "db_reset": "No. No migration and no DB access.",
-  "secrets": "None.",
-  "other_repo": "No. The Railway container rebuilds from Dockerfile.python and picks up services/requirements.txt on deploy.",
-  "manual_verify": "1) After deploy, generate one flood report and confirm it still renders — that is the live proof no contract misfires on real data. 2) Confirm CI shows the dependency-skip census at 18 rather than 23. 3) Check the build log for the icontract wheel, or run python -c 'import icontract' in the deployed container, to confirm the contracts are actually live rather than silently falling back."
- }
+  "commit_hash": "e60a6f58"
 }

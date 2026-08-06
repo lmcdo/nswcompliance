@@ -17,7 +17,18 @@ Detection approach (3 improvements over baseline):
   3. Area filter: drop anything < MIN_STRUCTURE_AREA_M2 (15 m²) — removes pergolas,
      bins, paths. 15 m² = roughly a large carport. Configurable constant.
 
-Confidence logic:
+Review state (what SERVED SURFACES show since 2026-08-06) — see ReviewState:
+  Reports say what happened to the structure list, not how good they are.
+  reviewed / scan_only_found / scan_only_none_found / scan_inconclusive /
+  not_assessed. A scan that found nothing has been checked against nothing,
+  so it is an unverified result, not a middling one — grading it "medium"
+  was the defect (user ruling 2026-08-06).
+
+`confidence` (high/medium/low) is now INTERNAL. It is still computed, still
+stored, and still the job state machine for the column
+(NULL -> pending_confirm -> high|medium|low|error), and
+/api/reports/granny-flat/nearby still filters comparables on 'high'. It is no
+longer rendered on any served surface. Its logic:
   "high"   — SAMGEO_VALIDATED + a PERSON classified every detected structure
              (inputs.confirmed_count_source = 'secondary_detections_classified'), the
              resulting total matches the detector, + rent data present.
@@ -25,7 +36,8 @@ Confidence logic:
              surface lets anyone report a structure the detector MISSED, and
              detection recall is unmeasured until check GF-1 runs.
   "medium" — anything else that ran, including the detector agreeing with itself
-  "low"    — SAMGEO_VALIDATED = False (pre-spike)
+  "low"    — SAMGEO_VALIDATED = False (pre-spike); unreachable while the
+             module constant is True — 0 rows of 87 carry it.
   Before 2026-08-06 "high" needed only count equality, and the count was seeded
   from the detector and not editable — so "high" was self-agreement. See
   _compute_confidence for the measurement.
@@ -428,8 +440,17 @@ class GrannyFlatConfirmResponse(BaseModel):
     estimated_weekly_rent_aud: Optional[float]
     rental_yield_annual_pct: Optional[float]
     assumed_build_cost_aud: Optional[float]
+    # `confidence` stays on the wire because the stored column is also the
+    # job state machine (NULL -> pending_confirm -> high/medium/low|error) and
+    # /api/reports/granny-flat/nearby still filters on it. It is no longer
+    # RENDERED anywhere: served surfaces show review_state_* instead.
     confidence: str
     confidence_reason: str              # human-readable explanation shown in UI
+    # What actually happened to the structure list — replaces the grade on
+    # every served surface. See ReviewState.
+    review_state: str
+    review_state_label: str
+    review_state_detail: str
     data_sources: list[str]
     warnings: list[str]
 
@@ -1037,6 +1058,146 @@ def _resolve_count_source(
             f"{len(expected)} detected secondary structures have no answer"
         )
     return "secondary_detections_classified", None
+
+
+# What actually happened to the structure list on this report. NOT a grade.
+#
+# The high/medium/low ladder it replaces on served surfaces graded every lot
+# that was not human-reviewed as "medium", which reads as a middling amount of
+# confidence. A lot whose scan found nothing has been checked against nothing:
+# that is an unverified result, not a middling one. User ruling 2026-08-06:
+# "if there is no dwelling found that is also not medium confidence."
+#
+# Every state below is decided by evidence stored on the row, and each is
+# distinguishable from the others in production data (measured 2026-08-06,
+# scripts/measure_granny_confidence_states.py over all 87 rows). No state is
+# invented that the data cannot support.
+ReviewState = Literal[
+    "reviewed",             # a person classified every DETECTED secondary structure
+    "scan_only_found",      # scan ran, >=1 secondary structure, nobody classified them
+    "scan_only_none_found", # scan ran, principal dwelling only, no secondary structure
+    "scan_inconclusive",    # scan ran and returned NO structures at all
+    "not_assessed",         # scan did not run, failed, or its record could not be re-read
+]
+
+# Wording is the served surface. Two rules hold across all five:
+#   1. No state claims the list is COMPLETE. A person can only classify what
+#      the scan showed them; a missed structure could not be classified at all,
+#      and detection recall has never been measured (check GF-1, still unrun).
+#   2. Absence is never phrased as a clear result. "Nothing found" carries the
+#      reason it might be wrong, in the same sentence a customer reads.
+_REVIEW_STATE_TEXT: dict[str, tuple[str, str]] = {
+    "reviewed": (
+        "Reviewed by you",
+        # NO claim that the totals agree. `reviewed` is licensed by answer
+        # COVERAGE, not by count equality: answering 'part_of_main' or
+        # 'rejected' for a detected structure legitimately moves the total
+        # away from the detector's own count, and that row still earns
+        # `reviewed`. The old wording asserted "your answers give the same
+        # total" on every reviewed report, which is false in exactly that
+        # case (Sol finding, 2026-08-06). What was actually done — every
+        # detected structure was classified — is true in both.
+        "You classified each structure the scan found on this lot. This "
+        "covers only structures the scan detected — one it missed could not "
+        "be classified, and detection accuracy has never been measured.",
+    ),
+    "scan_only_found": (
+        "Scan only — structures found, not reviewed",
+        "The scan found structures on this lot. Nobody has classified what "
+        "they are, so the count in this report has not been checked against "
+        "the aerial image. Detection accuracy has never been measured.",
+    ),
+    "scan_only_none_found": (
+        "Scan only — no secondary structures found",
+        "The scan found the principal dwelling and no other structures. "
+        "Nothing has been checked against the aerial image. Small, shaded or "
+        "tree-covered structures can be missed, and detection accuracy has "
+        "never been measured.",
+    ),
+    "scan_inconclusive": (
+        "Scan inconclusive — no structures found",
+        "The scan returned no structures at all on this lot, not even a "
+        "principal dwelling. That more likely means the scan could not read "
+        "this image than that the lot is empty. Treat the structure count on "
+        "this report as unknown.",
+    ),
+    "not_assessed": (
+        "Not assessed",
+        "The structure scan did not run, or its result could not be read back. "
+        "The structure count on this report has not been checked against the "
+        "aerial image, and the number of buildings on this lot is unknown.",
+    ),
+}
+
+
+def _review_state(
+    validated: bool,
+    count_source: str,
+    detected_structures: Optional[list],
+    machine_count: Optional[int],
+    detect_row_unavailable: bool = False,
+) -> tuple[str, str, str]:
+    """What happened to this report's structure list. Returns (state, label, detail).
+
+    Decided from evidence, in this order, because each earlier condition makes
+    the later ones unknowable rather than false:
+
+      1. detection disabled, failed, or its record could not be re-read
+         -> `not_assessed`. A count we cannot check is not a weak result, it is
+         no result. This is the same rule `_resolve_count_source` applies to
+         provenance: absent evidence is its own outcome and never a pass.
+      2. a person classified every detected secondary structure -> `reviewed`.
+         Only `_resolve_count_source` can license this; it is never taken from
+         a caller's word.
+      3. otherwise the detector's own output decides, and the empty case is
+         SPLIT. Zero structures of any kind is not the same finding as a
+         principal dwelling with nothing beside it: every lot this product
+         runs on has a house, so a scan that found no house did not find an
+         empty lot — it failed to see. Collapsing the two would tell someone
+         their lot is clear on the strength of a scan that could not see their
+         home, which is the defect this whole change exists to remove.
+    """
+    if not validated or detect_row_unavailable:
+        state = "not_assessed"
+    elif detected_structures is None and machine_count is None:
+        # Detection failed: `samgeo_structure_count` is None, never 0, by the
+        # three-state contract at the detect endpoint (#745 D4).
+        state = "not_assessed"
+    elif count_source == "secondary_detections_classified":
+        state = "reviewed"
+    elif isinstance(detected_structures, list):
+        # The detect run marks exactly one structure (the largest) as the main
+        # dwelling, and only when it found any at all.
+        secondary = [
+            s for s in detected_structures
+            if not (s.get("is_main_dwelling") if isinstance(s, dict)
+                    else getattr(s, "is_main_dwelling", False))
+        ]
+        if not detected_structures:
+            state = "scan_inconclusive"
+        elif secondary:
+            state = "scan_only_found"
+        else:
+            state = "scan_only_none_found"
+    # A bare count, with no structure list behind it. Strictly validated:
+    # `False <= 0` is True in Python and `-1 <= 0` is True, so a malformed
+    # value would otherwise be served as "the scan ran and returned no
+    # structures" — a claim about the lot manufactured from a broken field.
+    # Mirrors strictCount() in lib/granny-flat-review-state.ts so the two
+    # implementations cannot disagree about the same row.
+    elif not isinstance(machine_count, int) or isinstance(machine_count, bool) \
+            or machine_count < 0:
+        state = "not_assessed"
+    elif machine_count == 0:
+        state = "scan_inconclusive"
+    elif machine_count == 1:
+        # One structure detected is the principal dwelling — nothing secondary.
+        state = "scan_only_none_found"
+    else:
+        state = "scan_only_found"
+
+    label, detail = _REVIEW_STATE_TEXT[state]
+    return state, label, detail
 
 
 def _compute_confidence(
@@ -1789,6 +1950,28 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 confidence = "medium"
                 confidence_reason += " " + " ".join(cap_reasons)
 
+            # What happened to the structure list, as opposed to how good the
+            # report is. Deliberately NOT affected by cap_reasons above: an
+            # unknown lot area or an unconfirmed existing-dwelling status says
+            # nothing about whether a person classified the structures, and
+            # folding them together is what made one word carry two meanings.
+            review_state, review_state_label, review_state_detail = _review_state(
+                validated=SAMGEO_VALIDATED,
+                count_source=count_source,
+                detected_structures=detected_structures_carry,
+                machine_count=machine_count,
+                # A row that simply did not match is as blind as a failed
+                # read — the SAME condition the warning above is raised on.
+                # Passing only the exception flag left the unmatched case
+                # deciding the state from `req.samgeo_structure_count`, which
+                # is the caller's own echoed number: the report would have
+                # described a scan using a figure supplied by the requester.
+                detect_row_unavailable=(
+                    detect_row_unavailable
+                    or not isinstance(detected_structures_carry, list)
+                ),
+            )
+
             cur.execute(
                 """
                 INSERT INTO granny_flat_reports
@@ -1862,6 +2045,14 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "is_heritage": is_heritage,
                         "confidence": confidence,
                         "confidence_reason": confidence_reason,
+                        # Stored so a re-pulled PDF renders the state the run
+                        # actually produced, rather than re-deriving it from
+                        # whatever fields happen to survive. Rows written
+                        # before 2026-08-06 have no such key and are derived
+                        # by the reader — see lib/granny-flat-review-state.ts.
+                        "review_state": review_state,
+                        "review_state_label": review_state_label,
+                        "review_state_detail": review_state_detail,
                         "warnings": warnings,
                         "data_sources": data_sources,
                         "tile_b64": tile_b64,
@@ -2007,6 +2198,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         assumed_build_cost_aud=assumed_build_cost,
         confidence=confidence,
         confidence_reason=confidence_reason,
+        review_state=review_state,
+        review_state_label=review_state_label,
+        review_state_detail=review_state_detail,
         data_sources=data_sources,
         warnings=warnings,
     )

@@ -79,6 +79,15 @@ export async function POST(req: NextRequest) {
       assumed_build_cost_aud: raw.assumed_build_cost_aud != null ? Number(raw.assumed_build_cost_aud) : null,
       confidence: String(raw.confidence ?? 'low'),
       confidence_reason: String(raw.confidence_reason ?? ''),
+      // Carried so the PDF states what was checked. Absent here = the caller
+      // supplied a legacy shape, and the reader derives the state instead.
+      review_state: (raw.review_state as string | null) ?? null,
+      review_state_label: (raw.review_state_label as string | null) ?? null,
+      review_state_detail: (raw.review_state_detail as string | null) ?? null,
+      samgeo_structure_count: raw.samgeo_structure_count != null
+        ? Number(raw.samgeo_structure_count) : null,
+      detected_structures: Array.isArray(raw.detected_structures)
+        ? (raw.detected_structures as unknown[]) : null,
       warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
       data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
       lot_polygon: (raw.lot_polygon as GrannyFlatReportData['lot_polygon']) ?? null,
@@ -126,6 +135,26 @@ export async function POST(req: NextRequest) {
       assumed_build_cost_aud: (outputs.assumed_build_cost_aud as number | null) ?? null,
       confidence: (outputs.confidence as string) ?? row.confidence ?? 'low',
       confidence_reason: (outputs.confidence_reason as string) ?? '',
+      // Written by the confirm endpoint since 2026-08-06. Rows older than
+      // that have none of these three, and the reader derives the state from
+      // the counts below — which is why they are carried too.
+      review_state: (outputs.review_state as string | null) ?? null,
+      review_state_label: (outputs.review_state_label as string | null) ?? null,
+      review_state_detail: (outputs.review_state_detail as string | null) ?? null,
+      // The counts live in `inputs`, not `outputs` — verified against all 87
+      // rows on 2026-08-06. Reading them from outputs yields null every time
+      // and would silently render every legacy report as "Not assessed".
+      samgeo_structure_count: (inputs.samgeo_structure_count as number | null) ?? null,
+      // Flattened here, so BOTH columns must be checked — the resolver's own
+      // inputs fallback cannot help once the two objects have been merged
+      // into one. The structure array is stronger evidence than the count
+      // (only it carries is_main_dwelling), so dropping it would downgrade a
+      // row that still had what it needed.
+      detected_structures: Array.isArray(outputs.detected_structures)
+        ? (outputs.detected_structures as unknown[])
+        : Array.isArray(inputs.detected_structures)
+          ? (inputs.detected_structures as unknown[])
+          : null,
       warnings: (outputs.warnings as string[]) ?? [],
       data_sources: (outputs.data_sources as string[]) ?? [],
       lot_polygon: (outputs.lot_polygon as GrannyFlatReportData['lot_polygon']) ?? null,
