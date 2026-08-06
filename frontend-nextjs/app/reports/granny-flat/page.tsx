@@ -1085,7 +1085,7 @@ export function ConfirmationPanel({
                   </p>
                   {/* The count that will actually be submitted, and whether a
                       person has stood behind it. Before this, the figure sent
-                      as "confirmed" was always the detector's own and nothing
+                      to the server was always the detector's own and nothing
                       on screen said so. */}
                   {usePerStructureQuestions && (
                     <p className={`text-xs mb-2 ${allSecondaryAnswered ? 'text-teal-700' : 'text-gray-400'}`}>

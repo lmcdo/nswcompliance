@@ -179,5 +179,5 @@
   "other_repo": "No. Trigger.dev reaches the confirm path only through the Next route, whose contract is additive - both new fields are optional at every layer, so an un-updated caller still succeeds and is recorded as 'unrecorded'.",
   "manual_verify": "1) Open a granny-flat report on a lot with at least one secondary structure; confirm the line above the questions reads \"the detector's own figure\" before answering and \"based on your answers below\" after every structure is answered, and that the number drops when a structure is marked 'Part of main house'. 2) Complete the confirm and check the row: SELECT inputs->>'confirmed_count_source', inputs->'structure_types', inputs->>'detect_id', (outputs ? 'detected_structures') FROM granny_flat_reports ORDER BY created_at DESC LIMIT 1 -- expect 'user_reviewed', a non-null array, the detect UUID, true. 3) Generate a shadow PDF; the Methodology paragraph and the data-currency row must name pybdshadow and not pvlib. 4) Load /how-it-works and confirm the Shadow Analysis source list no longer says pvlib. 5) Apply migration 064 and re-query disclaimer_versions for exactly one live shadow-v2 row."
  },
- "commit_hash": "0c41c09d"
+ "commit_hash": "b9fb3e62"
 }
