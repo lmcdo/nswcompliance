@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "c5abba10",
+  "commit_hash": "af38c3ac",
   "justification": "Removes a customer-facing feature from the granny-flat ineligible result: the 'Eligible properties nearby' block, its API route and its tests. Standard rather than critical because removal is the safe direction — no claim is added, no stored data changes, and no code path can now serve a wrong result from it. It is not minor: it deletes a served surface and a public endpoint.",
   "files": [
     "frontend-nextjs/app/reports/granny-flat/page.tsx",
