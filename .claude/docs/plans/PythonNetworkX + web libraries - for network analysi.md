@@ -30,7 +30,7 @@ Compliance Filtering:
 
 LEP/DCP violations: Nodes = properties; edges = shared consultants/owners. Spot patterns like repeated SEPP65 non-compliance in high-heritage zones.
 
-Pattern Book validation: Link properties to GA NSW-approved designs; detect deviations causing CC/OC delays (your Docubuild workflow).
+Pattern Book validation: Link properties to GA NSW-approved designs; detect deviations causing CC/OC delays (certifier CC/OC workflow).
 
 Risk scoring: Centrality metrics flag "influencers" (e.g., planners dominating Ku-ring-gai interwar areas).
 
@@ -82,7 +82,7 @@ NSW Planning Portal CSV (applicant, planner, address)
 + LRS ownership chains (Lot/DP → Company) 
 + Heritage Inventory KML 
 → Gephi/NetworkX → 3D Maps JS overlay
-Your Advantage: Cross-reference against Docubuild compliance APIs—developers bypassing Pattern Book via planner relationships become instantly visible. Export clusters as KML for client presentations showing "known landbankers" hitting heritage-heavy LGAs.
+Your Advantage: Cross-reference against certifier-platform compliance APIs—developers bypassing Pattern Book via planner relationships become instantly visible. Export clusters as KML for client presentations showing "known landbankers" hitting heritage-heavy LGAs.
 
 who is this for. council probably kows already? y or n. what are actual useful uses for developers, planners, architects
 No, councils don't know—they drown in tabular DA data without network views exposing hidden developer-planner relationships across LGAs.
@@ -112,7 +112,7 @@ Heritage adaptation: Cluster analysis shows which styles pass Inner West DCP (Vi
 
 Collaborative edge: Betweenness reveals key structural engineers who smooth CC/OC handovers.
 
-Value prop: Your Docubuild API + ePlanning Spatial Viewer feeds → Gephi/NetworkX → 3D Maps KML = instant "landbanking radar" councils can't match. Developers pay for early warning on $10M+ sites; planners pay to win 20% more DAs.
+Value prop: A certifier-platform API + ePlanning Spatial Viewer feeds → Gephi/NetworkX → 3D Maps KML = instant "landbanking radar" councils can't match. Developers pay for early warning on $10M+ sites; planners pay to win 20% more DAs.
 
 that would put me in oppostiion between council and professionals wouldnt it?
 No, it positions you as the trusted neutral analyst both sides need.
@@ -128,7 +128,7 @@ Council View: "Network flags risky applicants before lodgement"
 Developer View: "Shows which consultants win in Woollahra heritage zones"
 Positioning: "PlotDetect reveals market intelligence invisible to tabular ePlanning—councils catch risks early, developers target winnable sites." Sell to Tier 1 developers ($5k/site intel) while offering councils bulk licensing ($50k/yr dashboards).
 
-Your edge: Docubuild API + NSW Planning Portal → Gephi → 3D Maps JS = compliance tool councils secretly crave but can't build. Neutral data broker, not adversary.
+Your edge: certifier-platform API + NSW Planning Portal → Gephi → 3D Maps JS = compliance tool councils secretly crave but can't build. Neutral data broker, not adversary.
 
 
 what is ontology provenace ffs. 2. what do eg fb, whatsapp, corporate, govt use for network analysis if gephi not good enough, others too expensive presumably

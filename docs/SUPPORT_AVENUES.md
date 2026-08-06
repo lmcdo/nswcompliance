@@ -156,9 +156,7 @@ Profiles and outreach templates in `memory/scout-validate-outreach.md`.
 
 **PIA NSW 2026 State Conference** — Planning Institute of Australia NSW chapter annual conference. Town planning consultants and council planners are the target user for Verify. Speaking slot or exhibiting puts the product directly in front of the right people. Watch planning.org.au/nsw/content/state-conference for 2026 dates. Apply for a speaking slot proactively — conference committees accept pitches months in advance.
 
-**Leigh Caprile / DocuBuild warm path** — Caprile (DocuBuild) reviewed Verify independently and was "very impressed." He offered introductions. This is a warm path into the construction compliance and certifier network — the same buyer profile that funds DocuBuild. Follow up directly: ask specifically who he would introduce you to and in what context. A warm intro from a peer operator carries more weight than cold outreach to the same person.
-
-**buy.nsw supplier panel** — Register PlotDetect as an approved NSW government supplier. This is how vendors like DocuBuild build institutional credibility and get onto council procurement shortlists. Register under "software / data services / planning tools." No incorporation required to register; ACN preferred but ABN accepted at initial registration stage. Once on the panel, government agencies (councils, DPE) can procure directly without a full tender. https://buy.nsw.gov.au/supplier
+**buy.nsw supplier panel** — Register PlotDetect as an approved NSW government supplier. This is how compliance-platform vendors build institutional credibility and get onto council procurement shortlists. Register under "software / data services / planning tools." No incorporation required to register; ACN preferred but ABN accepted at initial registration stage. Once on the panel, government agencies (councils, DPE) can procure directly without a full tender. https://buy.nsw.gov.au/supplier
 
 Every grant application and partnership conversation is 10x stronger with documented user feedback.
 
@@ -186,10 +184,9 @@ Incorporate as Pty Ltd before MVP Ventures Round 3 (est. June/July 2026). Cost: 
 
 **This week**
 1. Register for REINSW WIRE 2026 — 28 April, Shangri-La Sydney. 19 days away. Register now.
-2. Follow up with Leigh Caprile — ask specifically who he would introduce you to and in what context. Warm path, don't let it go cold.
-3. Assess NEIS eligibility — if burning savings with no income, this is immediate income (~$760/fortnight for 39 weeks).
-4. Apply to Stone & Chalk membership + Tech Central co-working — ongoing, no deadline.
-5. Check Founder Institute ANZ current cohort dates — fi.co/apply/sydney.
+2. Assess NEIS eligibility — if burning savings with no income, this is immediate income (~$760/fortnight for 39 weeks).
+3. Apply to Stone & Chalk membership + Tech Central co-working — ongoing, no deadline.
+4. Check Founder Institute ANZ current cohort dates — fi.co/apply/sydney.
 
 **This month (April)**
 6. Email daai@planning.nsw.gov.au — ask about next AI Solutions Panel tender timeline.
