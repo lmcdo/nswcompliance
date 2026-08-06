@@ -1,0 +1,1518 @@
+National Disability Insurance Scheme
+(Restrictive Practices and Behaviour
+Support) Rules 2018
+
+made under the
+
+National Disability Insurance Scheme Act 2013
+
+Compilation No. 1           1 December 2020
+                            F2020L01512
+Compilation date:           14 December 2020
+Includes amendments up to:
+Registered:
+
+Prepared by the Office of Parliamentary Counsel, Canberra
+
+                                Authorised Version F2020C01087 registered 14/12/2020
+About this compilation
+
+This compilation
+This is a compilation of the National Disability Insurance Scheme (Restrictive
+Practices and Behaviour Support) Rules 2018 that shows the text of the law as
+amended and in force on 1 December 2020 (the compilation date).
+The notes at the end of this compilation (the endnotes) include information
+about amending laws and the amendment history of provisions of the compiled
+law.
+Uncommenced amendments
+The effect of uncommenced amendments is not shown in the text of the
+compiled law. Any uncommenced amendments affecting the law are accessible
+on the Legislation Register (www.legislation.gov.au). The details of
+amendments made up to, but not commenced at, the compilation date are
+underlined in the endnotes. For more information on any uncommenced
+amendments, see the series page on the Legislation Register for the compiled
+law.
+Application, saving and transitional provisions for provisions and
+amendments
+If the operation of a provision or amendment of the compiled law is affected by
+an application, saving or transitional provision that is not included in this
+compilation, details are included in the endnotes.
+Editorial changes
+For more information about any editorial changes made in this compilation, see
+the endnotes.
+Modifications
+If the compiled law is modified by another law, the compiled law operates as
+modified but the modification does not amend the text of the law. Accordingly,
+this compilation does not show the text of the compiled law as modified. For
+more information on any modifications, see the series page on the Legislation
+Register for the compiled law.
+Self-repealing provisions
+If a provision of the compiled law has been repealed in accordance with a
+provision of the law, details are included in the endnotes.
+
+                                Authorised Version F2020C01087 registered 14/12/2020
+Contents
+
+Preamble                                                                                                1
+
+Part 1--Preliminary                                                                                     2
+
+                   1   Name........................................................................................................................... 2
+
+                   3   Authority..................................................................................................................... 2
+
+                   4   Application ................................................................................................................. 2
+
+                   5   Definitions .................................................................................................................. 2
+
+                   6   Rules apply only to specified kinds of restrictive practices ........................................ 3
+
+Part 2--Conditions of registration and regulated restrictive practices                                  4
+
+                   7A Simplified outline of this part ..................................................................................... 4
+
+Division 1--Introduction                                                                                4
+
+                   7   Purpose of this Part ..................................................................................................... 4
+
+Division 2--Conditions of registration                                                                  5
+
+                   8   Use of a restrictive practice in a State or Territory prohibited .................................... 5
+
+                   9   Use of a regulated restrictive practice in a State or Territory with an
+
+                       authorisation process................................................................................................... 5
+
+                   10  Use of a regulated restrictive practice in accordance with a behaviour support
+
+                       plan ............................................................................................................................. 5
+
+                   11  Use of a regulated restrictive practice in accordance with State or Territory
+
+                       authorisation but not a behaviour support plan ........................................................... 6
+
+                   12  Use of a regulated restrictive practice other than in accordance with behaviour
+
+                       support plan or State or Territory authorisation .......................................................... 6
+
+                   13  Use of a regulated restrictive practice when not covered by a behaviour
+
+                       support plan and State or Territory authorisation not required.................................... 7
+
+                   14  Reporting requirements............................................................................................... 8
+
+                   15  Record keeping ........................................................................................................... 8
+
+Part 3--Conditions of registration relating to the provision of specialist
+
+behaviour support services                                                                              10
+
+                   16A Simplified outline of this part ....................................................................................10
+
+Division 1--Introduction                                                                                10
+
+                   16  Purpose of this Part ....................................................................................................10
+
+Division 2--Conditions of registration                                                                  11
+
+                   17  Requirement to use an NDIS behaviour support practitioner.....................................11
+
+                   18  Who can develop behaviour support plans containing a regulated restrictive
+
+                       practice .......................................................................................................................11
+
+                   19  Period within which behaviour support plan containing a regulated restrictive
+
+                       practice must be developed ........................................................................................11
+
+                   20  How behaviour support plans containing a regulated restrictive practice must
+
+                       be developed ..............................................................................................................11
+
+                   21  Contents of behaviour support plan containing a regulated restrictive practice .........12
+
+                   22  Review of comprehensive behaviour support plans containing a regulated
+
+                       restrictive practice ......................................................................................................13
+
+                   23  Form of behaviour support plan containing a regulated restrictive practice...............13
+
+                   24  Behaviour support plan containing a regulated restrictive practice must be
+
+                       lodged with the Commissioner...................................................................................13
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                             i
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1      Compilation date: 01/12/2020
+
+                       Authorised Version F2020C01087 registered 14/12/2020
+Part 4--Special arrangements                                                                       15
+
+    Division 1--Preliminary                                                                        15
+
+                   25A Simplified outline of this Part ....................................................................................15
+
+                   25  Purpose of this Part ....................................................................................................15
+
+    Division 2--Special arrangements for transitioned providers                                    16
+
+                   26  Use of regulated restrictive practice with a behaviour support plan and in
+
+                       accordance with an authorisation process ..................................................................16
+
+                   27  Use of regulated restrictive practice in accordance with an authorisation
+
+                       process but not a behaviour support plan ...................................................................17
+
+                   28  Use of regulated restrictive practice where no authorisation process or
+
+                       behaviour support plan...............................................................................................18
+
+                   29  Specialist behaviour support service providers ..........................................................19
+
+    Division 3--Special arrangements for transitioned residential aged care
+
+                       providers                                                                   20
+
+                   30  Use of regulated restrictive practice where either no authorisation or
+
+                       behaviour support plan...............................................................................................20
+
+Endnotes                                                                                           22
+
+    Endnote 1--About the endnotes                                                                  22
+
+    Endnote 2--Abbreviation key                                                                    23
+
+    Endnote 3--Legislation history                                                                 24
+
+    Endnote 4--Amendment history                                                                   25
+
+ii                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                                  Support) Rules 2018
+
+Compilation No. 1                 Compilation date: 01/12/2020                                Registered: 14/12/2020
+
+                       Authorised Version F2020C01087 registered 14/12/2020
+Preamble
+
+   (1)The National Disability Insurance Scheme (NDIS) represents a fundamental change to
+       how supports for persons with disability are funded and delivered across Australia.
+       The NDIS has potential to produce major benefits for persons with disability, their
+       families and the broader community.
+
+   (2)The NDIS Quality and Safeguards Commission is responsible for a range of functions
+       under the National Quality and Safeguarding Framework aimed at protecting and
+       preventing harm to persons with disability in the NDIS market. The Commission will
+       build the capability of NDIS participants and providers to uphold the rights of persons
+       with disability and realise the benefits of the NDIS. The rules are intended to support
+       participants to be informed purchasers and consumers of NDIS supports and services
+       and to live free from abuse, neglect, violence and exploitation.
+
+   (3)The Commissioner of the NDIS Quality and Safeguards Commission will provide
+       leadership in relation to behaviour support, and in the reduction and elimination of the
+       use of regulated restrictive practices by NDIS providers.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                            1
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 1 Preliminary
+
+Section 1
+
+Part 1--Preliminary
+
+1 Name
+
+               This instrument is the National Disability Insurance Scheme (Restrictive
+               Practices and Behaviour Support) Rules 2018.
+
+3 Authority
+
+               This instrument is made under the National Disability Insurance Scheme Act
+               2013.
+
+4 Application
+
+           This instrument applies in a host jurisdiction that is a participating jurisdiction,
+           subject to the transitional arrangements in Part 4 of this instrument.
+
+           Note:          Obligations in this instrument do not affect any obligation a person has under a law
+
+           of a State or Territory to the extent that such a law is capable of operating concurrently with the
+
+           obligations created under the National Disability Insurance Scheme Act 2013 (NDIS Act), see
+
+           section 207 of the NDIS Act.
+
+5 Definitions             A number of expressions used in this instrument are defined in section 9 of the Act,
+                          including the following:
+                   Note:  (a) Commission;
+                          (b) Commissioner;
+                          (c) NDIS provider;
+                          (d) NDIS Practice Standards;
+                          (e) participant;
+                          (f) registered NDIS provider;
+                          (g) reportable incident.
+
+           In this instrument:
+
+           Act means the National Disability Insurance Scheme Act 2013.
+
+           behaviour support plan means:
+             (a) a comprehensive behaviour support plan; or
+            (b) an interim behaviour support plan.
+
+           NDIS behaviour support practitioner means a person the Commissioner
+           considers is suitable to undertake behaviour support assessments (including
+           functional behavioural assessments) and to develop behaviour support plans that
+           may contain the use of restrictive practices.
+
+           functional behavioural assessment means the process for determining and
+           understanding the function or purpose behind a person's behaviour, and may
+           involve the collection of data, observations, and information to develop an
+
+2                  National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                                Support) Rules 2018
+
+Compilation No. 1         Compilation date: 01/12/2020                                        Registered: 14/12/2020
+
+                          Authorised Version F2020C01087 registered 14/12/2020
+                                                                                              Preliminary Part 1
+
+                                                                               Section 6
+
+understanding of the relationship of events and circumstances that trigger and
+maintain the behaviour.
+
+regulated restrictive practice: see section 6.
+
+specialist behaviour support provider means a registered NDIS provider whose
+registration includes the provision of specialist behaviour support services.
+
+transitioned RAC provider has the same meaning as in the National Disability
+Insurance Scheme (Quality and Safeguards Commission and Other Measures)
+Transitional Rules 2018.
+
+6 Rules apply only to specified kinds of restrictive practices
+
+A restrictive practice is a regulated restrictive practice if it is or involves any of
+the following:
+
+  (a) seclusion, which is the sole confinement of a person with disability in a
+       room or a physical space at any hour of the day or night where voluntary
+       exit is prevented, or not facilitated, or it is implied that voluntary exit is not
+       permitted;
+
+ (b) chemical restraint, which is the use of medication or chemical substance
+       for the primary purpose of influencing a person's behaviour. It does not
+       include the use of medication prescribed by a medical practitioner for the
+       treatment of, or to enable treatment of, a diagnosed mental disorder, a
+       physical illness or a physical condition;
+
+  (c) mechanical restraint, which is the use of a device to prevent, restrict, or
+       subdue a person's movement for the primary purpose of influencing a
+       person's behaviour but does not include the use of devices for therapeutic
+       or non-behavioural purposes;
+
+ (d) physical restraint, which is the use or action of physical force to prevent,
+       restrict or subdue movement of a person's body, or part of their body, for
+       the primary purpose of influencing their behaviour. Physical restraint does
+       not include the use of a hands-on technique in a reflexive way to guide or
+       redirect a person away from potential harm/injury, consistent with what
+       could reasonably be considered the exercise of care towards a person.
+
+  (e) environmental restraint, which restrict a person's free access to all parts of
+       their environment, including items or activities.
+
+Note:              For the definition of restrictive practice, see section 9 of the Act. Only regulated
+                   restrictive practices are covered by this instrument.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                            3
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 2 Conditions of registration and regulated restrictive practices
+Division 1 Introduction
+
+Section 7A
+
+Part 2--Conditions of registration and regulated restrictive
+          practices
+
+7A Simplified outline of this part
+
+   This part sets out the conditions of registration that apply to all registered NDIS
+   providers who use restrictive practices in the course of delivering NDIS supports.
+
+   These conditions include requiring the use of restrictive practices to:
+
+       · not occur where the relevant State and Territory prohibits such use;
+       · be undertaken in accordance with State and Territory authorisation
+
+              processes and a behaviour support plan;
+       · be recorded by the provider and reported to the Commissioner so that
+
+              the Commissioner can effectively monitor the use of regulated
+              restrictive practices in the NDIS.
+
+Division 1--Introduction
+
+7 Purpose of this Part
+
+   (1) This Part is made for the purpose of section 73H of the Act.
+
+   (2) It sets out conditions relating to the use of regulated restrictive practices that
+        apply to all registered NDIS providers.
+
+   Note 1: A registered NDIS provider may be liable to a civil penalty if the provider breaches a
+                 condition to which the provider's registration is subject (see section 73J of the Act).
+
+   Note 2:         The conditions in this Part are in addition to those set out in the Act (see
+                   subsection 73F(2) of the Act), those imposed by the Commissioner under
+                   subsection 73G(1) of the Act and those imposed under the National Disability
+                   Insurances Scheme (Provider Registration and Practice Standards) Rules 2018.
+
+   Note 3: Part 4 of this instrument contains special rules that apply instead of, or as well as, some
+                 of the rules in this Part in certain circumstances.
+
+   Note 4:         In some cases, using a regulated restrictive practice in the circumstances covered by
+                   this Part is a reportable incident (see subsection 73ZK(4) of the Act and section 16 of
+                   the National Disability Insurance Scheme (Incident Management and Reportable
+                   Incidents) Rules 2018).
+
+4                  National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                          Support) Rules 2018
+
+Compilation No. 1       Compilation date: 01/12/2020                                          Registered: 14/12/2020
+
+                        Authorised Version F2020C01087 registered 14/12/2020
+                   Conditions of registration and regulated restrictive practices Part 2
+                                                       Conditions of registration Division 2
+
+                                                                            Section 8
+
+Division 2--Conditions of registration
+
+8 Use of a restrictive practice in a State or Territory prohibited
+
+          (1) This section applies if:
+                 (a) a State or Territory prohibits the use of a restrictive practice; and
+                 (b) a registered NDIS provider provides supports or services to a person with
+                      disability in the State or Territory.
+
+          (2) The registration of the registered NDIS provider is subject to the condition that
+               the provider must not use the restrictive practice in relation to the person with
+               disability.
+
+9 Use of a regulated restrictive practice in a State or Territory with an
+              authorisation process
+
+(1) This section applies if:
+
+       (a) a State or Territory has an authorisation process (however described) in
+            relation to the use of a regulated restrictive practice; and
+
+       (b) a registered NDIS provider provides supports or services to a person with
+            disability in the State or Territory.
+
+Note:              An authorisation process may, for example, be a process under relevant State or
+                   Territory legislation or policy or involve obtaining informed consent from a person
+                   and/or their guardian, approval from a guardianship board or administrative tribunal or
+                   approval from an authorised State or Territory officer.
+
+(2) The registration of the registered NDIS provider is subject to the following
+     conditions:
+
+       (a) the use (other than a single emergency use) of the regulated restrictive
+            practice in relation to the person with disability must be authorised in
+            accordance with the authorisation process;
+
+       (b) the provider must lodge with the Commissioner evidence that the use is so
+            authorised as soon as reasonably practicable after the use of the practice in
+            relation to the person.
+
+10 Use of a regulated restrictive practice in accordance with a behaviour
+              support plan
+
+          (1) This section applies if:
+                 (a) a registered NDIS provider provides supports or services to a person with
+                      disability in accordance with a behaviour support plan; and
+                 (b) the behaviour support plan includes the use of a regulated restrictive
+                      practice.
+
+          (2) The registration of the registered NDIS provider is subject to the following
+               conditions:
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                            5
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 2 Conditions of registration and regulated restrictive practices
+Division 2 Conditions of registration
+
+Section 11
+
+                   (a) the regulated restrictive practice must be used only in accordance with the
+                        behaviour support plan;
+
+                   (b) the provider must notify a specialist behaviour support provider if there has
+                        been a change in circumstances that requires the behaviour support plan to
+                        be reviewed.
+
+   (3) The registration of the registered NDIS provider is also subject to the condition
+        that the provider agrees to demonstrate compliance with subsection (2) if
+        required to do so by the Commissioner.
+
+            Note:  Part 7.4 of the Criminal Code provides offences in relation to false or misleading
+                   statements, information and documents.
+
+11 Use of a regulated restrictive practice in accordance with State or Territory
+              authorisation but not a behaviour support plan
+
+   (1) This section applies if:
+
+          (a) a registered NDIS provider uses a regulated restrictive practice in relation
+               to a person with disability (the first use); and
+
+          (b) an authorisation (however described) is required by the State or Territory in
+               which the use occurs; and
+
+          (c) the use of the restrictive practice is authorised in accordance with the
+               authorisation process; and
+
+          (d) the use is not in accordance with a behaviour support plan for the person
+               with disability; and
+
+          (e) the use (the ongoing use) of the regulated restrictive practice in relation to
+               the person with disability will, or is likely to, continue.
+
+   (2) The registration of the registered NDIS provider is subject to the condition that
+        the provider must:
+
+          (a) take all reasonable steps to facilitate the development of an interim
+               behaviour support plan for the person with disability by a specialist
+               behaviour support provider that covers the use of the practice within 1
+               month after the first use of the regulated restrictive practice; and
+
+          (b) take all reasonable steps to facilitate the development of a comprehensive
+               behaviour support plan for the person with disability by a specialist
+               behaviour support provider that covers the use of the practice within 6
+               months after the first use of the regulated restrictive practice.
+
+   (3) The registration of the registered NDIS provider is also subject to the condition
+        that the provider agrees to demonstrate compliance with subsection (2) if
+        required to do so by the Commissioner.
+
+            Note:  Part 7.4 of the Criminal Code provides offences in relation to false or misleading
+                   statements, information and documents.
+
+12 Use of a regulated restrictive practice other than in accordance with
+              behaviour support plan or State or Territory authorisation
+
+          (1) This section applies if:
+
+6                  National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                   Support) Rules 2018
+
+Compilation No. 1  Compilation date: 01/12/2020                                               Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+                   Conditions of registration and regulated restrictive practices Part 2
+                                                       Conditions of registration Division 2
+
+                                                                                              Section 13
+
+                   (a) a registered NDIS provider uses a regulated restrictive practice in relation
+                        to a person with disability (the first use); and
+
+                   (b) the use is not in accordance with a behaviour support plan for the person
+                        with disability; and
+
+                   (c) an authorisation (however described) is required by the State or Territory in
+                        which the use occurs; and
+
+                   (d) the use of the restrictive practice is not authorised in accordance with the
+                        authorisation process; and
+
+                   (e) the use (the ongoing use) of the regulated restrictive practice in relation to
+                        the person with disability will, or is likely to, continue.
+
+(2) The registration of the registered NDIS provider is subject to the condition that
+     the provider must:
+
+       (a) obtain authorisation (however described) for the ongoing use of the
+            regulated restrictive practice from the relevant State or Territory as soon as
+            reasonably practicable; and
+
+       (b) lodge evidence of that authorisation with the Commissioner as soon as
+            reasonably practicable after it is received; and
+
+       (c) take all reasonable steps to facilitate the development of an interim
+            behaviour support plan for the person with disability by a specialist
+            behaviour support provider that covers the use of the practice within 1
+            month after the first use of the regulated restrictive practice; and
+
+       (d) take all reasonable steps to facilitate the development of a comprehensive
+            behaviour support plan for the person with disability by a specialist
+            behaviour support provider that covers the use of the practice within 6
+            months after the first use of the regulated restrictive practice.
+
+(3) The registration of the registered NDIS provider is also subject to the condition
+     that the provider agrees to demonstrate compliance with subsection (2) if
+     required to do so by the Commissioner.
+
+Note:              Part 7.4 of the Criminal Code provides offences in relation to false or misleading
+                   statements, information and documents.
+
+13 Use of a regulated restrictive practice when not covered by a behaviour
+              support plan and State or Territory authorisation not required
+
+          (1) This section applies if:
+                 (a) a registered NDIS provider uses a regulated restrictive practice in relation
+                      to a person with disability (the first use); and
+                 (b) the use is not in accordance with a behaviour support plan for the person
+                      with disability; and
+                 (c) an authorisation (however described) is not required by the State or
+                      Territory in which the use occurs; and
+                 (d) the use of the regulated restrictive practice in relation to the person with
+                      disability will, or is likely to, continue.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                            7
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 2 Conditions of registration and regulated restrictive practices
+Division 2 Conditions of registration
+
+Section 14
+
+   (2) The registration of the registered NDIS provider is subject to the condition that
+        the provider will:
+
+          (a) take all reasonable steps to facilitate the development of an interim
+               behaviour support plan for the person with disability by a specialist
+               behaviour support provider that covers the use of the practice within 1
+               month after the first use of the regulated restrictive practice;
+
+          (b) take all reasonable steps to facilitate the development of a comprehensive
+               behaviour support plan for the person with disability by a specialist
+               behaviour support provider that covers the use of the practice within 6
+               months after the first use of the regulated restrictive practice.
+
+   (3) The registration of the registered NDIS provider is also subject to the condition
+        that the provider agrees to demonstrate compliance with subsection (2) if
+        required to do so by the Commissioner.
+
+            Note:  Part 7.4 of the Criminal Code provides offences in relation to false or misleading
+                   statements, information and documents.
+
+14 Reporting requirements
+
+   (1) The registration of a registered NDIS provider is subject to the following
+        conditions:
+
+          (a) subject to paragraph (b)--the provider must give monthly reports to the
+               Commissioner regarding the use of regulated restrictive practices by the
+               provider;
+
+          (b) if a registered NDIS provider obtains a short term approval from a State or
+               Territory for the use of a regulated restrictive practice--the provider must
+               report to the Commissioner on the use of the regulated restrictive practice
+               every 2 weeks while the approval is in force.
+
+            Note:  If the use of the regulated restrictive practice is also a reportable incident, it must also
+                   be reported in accordance with Part 3 of the National Disability Insurance Scheme
+                   (Incident Management and Reportable Incidents) Rules 2018.
+
+   (2) A report under this section must:
+          (a) be in the form approved by the Commissioner; and
+          (b) include any information, and be accompanied by any documents, required
+               by the Commissioner.
+
+   (3) The Commissioner must approve a form for the purposes of this section.
+
+15 Record keeping
+
+          (1) The registration of a registered NDIS provider is subject to the condition that the
+               registered NDIS provider must keep written information relating to the use by
+               the provider of regulated restrictive practices in relation to persons with
+               disability.
+
+          (2) Without limiting subsection (1), the following information must be kept:
+                 (a) a description of the use of the regulated restrictive practice, including:
+
+8                  National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                           Support) Rules 2018
+
+Compilation No. 1  Compilation date: 01/12/2020                                               Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+                                Conditions of registration and regulated restrictive practices Part 2
+                                                                     Conditions of registration Division 2
+
+                                                                                  Section 15
+
+             (i) the impact on to the person with disability or another person;
+             (ii) any injury to the person with disability or another person;
+             (iii) whether the use of the restrictive practice was a reportable incident;
+
+                  and
+            (iv) why the regulated restrictive practice was used;
+       (b) a description of the behaviour of the person with disability that lead to the
+            use of the regulated restrictive practice;
+       (c) the time, date and place at which the use of the regulated restrictive
+            practice started and ended;
+       (d) the names and contact details of the persons involved in the use of the
+            regulated restrictive practice;
+       (e) the names and contact details of any witnesses to the use of the regulated
+            restrictive practice;
+       (f) the actions taken in response to the use of the regulated restrictive practice;
+       (g) what other less restrictive options were considered or used before using the
+            regulated restrictive practice;
+       (h) the actions taken leading up to the use of the regulated restrictive practice,
+            including any strategies used to prevent the need for the use of the practice.
+
+(3) A record made for the purpose of this section must be kept for seven years from
+     the day the record is made.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                            9
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 3 Conditions of registration relating to the provision of specialist behaviour support services
+Division 1 Introduction
+
+Section 16A
+
+Part 3--Conditions of registration relating to the provision
+          of specialist behaviour support services
+
+16A Simplified outline of this part
+
+    This part sets out the conditions of registration that apply to specialist behaviour
+    support providers, including that specialist behaviour support services are to be
+    provided, and plans are to be developed by NDIS behaviour support
+    practitioners.
+
+    This part also sets out minimum requirements for behaviour support plans and
+    imposes obligations on providers to review and prepare plans, and then lodge
+    behaviour support plans that contain a regulated restrictive practice with the
+    Commissioner, to enable monitoring of the use of such practices in the NDIS.
+
+Division 1--Introduction
+
+16 Purpose of this Part
+
+    (1) This Part is made for the purposes of section 73H of the Act.
+
+    (2) It sets out the conditions that apply to specialist behaviour support providers.
+
+    Note 1: A registered NDIS provider may be liable to a civil penalty if the provider breaches a
+                  condition to which the provider's registration is subject (see section 73J of the Act).
+
+    Note 2:        The conditions in this Part are in addition to those set out in the Act (see
+                   subsection 73F(2) of the Act), those imposed by the Commissioner under
+                   subsection 73G(1) of the Act and those imposed under the National Disability
+                   Insurance Scheme (Provider Registration and Practice Standards) Rules 2018.
+
+    Note 3: Part 4 of this instrument contains special rules that apply instead of, or as well as, some
+                  of the rules in this Part in certain circumstances.
+
+10                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                          Support) Rules 2018
+
+Compilation No. 1        Compilation date: 01/12/2020                                         Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+      Conditions of registration relating to the provision of specialist behaviour support services Part 3
+                                                                                Conditions of registration Division 2
+
+                                                                                            Section 17
+
+Division 2--Conditions of registration
+
+17 Requirement to use an NDIS behaviour support practitioner
+
+               The registration of a specialist behaviour support provider is subject to the
+               condition that the specialist behaviour support services are provided by an NDIS
+               behaviour support practitioner.
+
+18 Who can develop behaviour support plans containing a regulated restrictive
+              practice
+
+               The registration of a specialist behaviour support provider is subject to the
+               condition that a behaviour support plan for a person with disability that contains
+               a regulated restrictive practice must be developed by:
+
+                 (a) an NDIS behaviour support practitioner engaged by the provider; or
+                 (b) if the provider is an NDIS behaviour support practitioner--that person.
+
+19 Period within which behaviour support plan containing a regulated
+              restrictive practice must be developed
+
+          (1) Subsection (2) applies if:
+                 (a) a regulated restrictive practice is used in relation to a person with
+                      disability; and
+                 (b) as a result of that use, the specialist behaviour support provider is engaged
+                      to develop a behaviour support plan for the person with disability.
+
+          (2) The registration of the specialist behaviour support provider is subject to the
+               condition that the provider must develop:
+                 (a) an interim behaviour support plan that includes provision for the use of the
+                      regulated restrictive practice within 1 month after being engaged to
+                      develop the plan; and
+                 (b) a comprehensive behaviour support plan that includes provision for the use
+                      of the regulated restrictive practice within 6 months after being engaged to
+                      develop the plan.
+
+20 How behaviour support plans containing a regulated restrictive practice must
+              be developed
+
+          (1) The registration of a specialist behaviour support provider is subject to the
+               conditions in this section in relation to behaviour support plans developed by the
+               provider.
+
+          (2) A behaviour support plan for a person with disability that contains a regulated
+               restrictive practice must be developed in accordance with any authorisation
+               process (however described) in the State or Territory in which the regulated
+               restrictive practice is, or is proposed to be, used.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                           11
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 3 Conditions of registration relating to the provision of specialist behaviour support services
+Division 2 Conditions of registration
+
+Section 21
+
+          (3) In developing and reviewing a behaviour support plan for a person with
+               disability, the specialist behaviour support provider must take all reasonable
+               steps to:
+                 (a) reduce and eliminate the need for the use of regulated restrictive practices
+                      in relation to the person with disability; and
+                 (b) take into account any previous behaviour support assessments and other
+                      assessments; and
+                 (c) make changes within the environment of the person with disability that
+                      may reduce or remove the need for the use of regulated restrictive
+                      practices; and
+                 (d) consult with the person with disability; and
+                 (e) consult with the person with disability's family, carers, guardian or other
+                      relevant person; and
+                 (f) consult with the registered NDIS provider who may use the regulated
+                      restrictive practice and other relevant specialists.
+
+          (4) When consulting in accordance with paragraph (3)(d) or (e), the specialist
+               behaviour support provider must provide details of the intention to include a
+               regulated restrictive practice in the behaviour support plan, in an appropriately
+               accessible format, to:
+                 (a) the person with disability subject to the plan; and
+                 (b) the person with disability's family, carers, guardian or other relevant
+                      person.
+
+          (5) In developing a comprehensive behaviour support plan for a person with
+               disability, the specialist behaviour support provider must undertake a behaviour
+               support assessment, including a functional behavioural assessment of, the person
+               with disability.
+
+21 Contents of behaviour support plan containing a regulated restrictive
+              practice
+
+          (1) This section applies if a specialist behaviour support provider develops or
+               reviews a behaviour support plan for a person with disability that contains the
+               use of a regulated restrictive practice.
+
+          (2) The registration of the specialist behaviour support provider is subject to the
+               condition that the plan must include strategies that are evidence-based,
+               person-centred and proactive and that address the person with disability's needs
+               and the functions of the behaviour.
+
+          (3) The registration of the specialist behaviour support provider is also subject to the
+               condition that the regulated restrictive practice must:
+                 (a) be clearly identified in the behaviour support plan; and
+                 (b) if the State or Territory in which the regulated restrictive practice is to be
+                      used has an authorisation process (however described) in relation to that
+                      practice--be authorised in accordance with that process; and
+
+12                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                   Support) Rules 2018
+
+Compilation No. 1  Compilation date: 01/12/2020                                               Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Conditions of registration relating to the provision of specialist behaviour support services Part 3
+                                                                         Conditions of registration Division 2
+
+                                                                                  Section 22
+
+       (c) be used only as a last resort in response to risk of harm to the person with
+            disability or others, and after the provider has explored and applied
+            evidence-based, person-centred and proactive strategies; and
+
+       (d) be the least restrictive response possible in the circumstances to ensure the
+            safety of the person or others; and
+
+       (e) reduce the risk of harm to the person with disability or others; and
+       (f) be in proportion to the potential negative consequence or risk of harm; and
+       (g) be used for the shortest possible time to ensure the safety of the person
+
+            with disability or others.
+
+(4) The registration of the specialist behaviour support provider is also subject to the
+     condition that the person with disability to whom the behaviour support plan
+     applies must be given opportunities to participate in community activities and
+     develop new skills that have the potential to reduce or eliminate the need for
+     regulated restrictive practices in the future.
+
+22 Review of comprehensive behaviour support plans containing a regulated
+              restrictive practice
+
+               The registration of a specialist behaviour support provider is subject to the
+               condition that a comprehensive behaviour support plan developed by the
+               provider that contains a regulated restrictive practice must be reviewed by an
+               NDIS behaviour support practitioner:
+
+                 (a) if there is a change in circumstances which requires the plan to be
+                      amended--as soon as practicable after the change occurs; or
+
+                 (b) in any event--at least every 12 months while the plan is in force.
+
+23 Form of behaviour support plan containing a regulated restrictive practice
+
+          (1) The registration of a specialist behaviour support provider is subject to the
+               condition that any behaviour support plan prepared by or on behalf of the
+               provider that contains a regulated restrictive practice must:
+                 (a) be in the form approved by the Commissioner; and
+                 (b) include any information, and be accompanied by any documents, required
+                      by the Commissioner.
+
+          (2) The Commissioner must approve a form for the purposes of this section.
+
+24 Behaviour support plan containing a regulated restrictive practice must be
+              lodged with the Commissioner
+
+(1) The registration of a specialist behaviour support provider is subject to the
+     condition that a behaviour support plan for a person with disability that contains
+     a regulated restrictive practice, including a reviewed plan, must be lodged with
+     the Commissioner as soon as practicable after it is developed.
+
+Note:              See section 19 for the period within which behaviour support plans must be developed
+                   and section 22 for when plans must be reviewed.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                           13
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 3 Conditions of registration relating to the provision of specialist behaviour support services
+Division 2 Conditions of registration
+
+Section 24
+
+          (2) To avoid doubt, a behaviour support plan that contains a regulated restrictive
+               practice must be lodged with the Commissioner, regardless of whether State or
+               Territory authorisation (however described) is required to be obtained, or has
+               been obtained, for the use of the practice in the relevant State or Territory.
+
+          (3) A behaviour support plan that is required to be lodged under this section must be
+               lodged in the manner required by the Commissioner.
+
+14                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                   Support) Rules 2018
+
+Compilation No. 1  Compilation date: 01/12/2020                                               Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+                                                                                          Special arrangements Part 4
+                                                                                                 Preliminary Division 1
+
+                                                                                         Section 25A
+
+Part 4--Special arrangements
+
+Division 1--Preliminary
+
+25A Simplified outline of this Part
+
+               This part sets out the special arrangements for a registered NDIS provider.
+               This part takes priority over certain specified provisions of these rules for
+               providers as set out in this part. These arrangements are necessary for the orderly
+               transition of providers into the jurisdiction of the NDIS Quality and Safeguards
+               Commission, by having regard to existing use of restrictive practices and existing
+               plans addressing the use of restrictive practices.
+
+25 Purpose of this Part
+               This Part is made for the purpose of section 73H of the Act.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                           15
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 4 Special arrangements
+Division 2 Special arrangements for transitioned providers
+
+Section 26
+
+Division 2--Special arrangements for transitioned providers
+
+26 Use of regulated restrictive practice with a behaviour support plan and in
+              accordance with an authorisation process
+
+    (1) This section applies to a person or entity if:
+
+           (a) at a particular time (the transition time):
+
+                 (i) the person or entity is a registered NDIS provider for a participant;
+                      and
+
+                 (ii) the supports are provided under a behaviour support plan (the existing
+                      plan) that contains a regulated restrictive practice; and
+
+                (iii) the behaviour support plan controls the use of the regulated restrictive
+                      practice and contains alternative behaviour support strategies; and
+
+                (iv) the host jurisdiction in which the supports are provided has an
+                      authorisation process (however described) in relation to the use of the
+                      regulated restrictive practice; and
+
+                 (v) the use of the regulated restrictive practice is authorised in accordance
+                      with the authorisation process; and
+
+           (b) at the transition time, the host jurisdiction in which the participant lives
+                becomes a participating jurisdiction.
+
+    Note 1: For the meaning of host jurisdiction and participating jurisdiction, see sections 10 and
+                  10A of the Act.
+
+    Note 2:        Any provider approved as a registered provider of supports in a participating
+                   jurisdiction will automatically transition to be a registered NDIS provider in
+                   accordance with the National Disability Insurance Scheme (Quality and Safeguards
+                   Commission and Other Measures) Transitional Rules 2018.
+
+    (2) The person or entity is not required to comply with sections 9 to 15 of this
+         instrument in relation to the person with disability and the use of the regulated
+         restrictive practice during the period:
+           (a) starting at the start of the transition time; and
+           (b) ending at the earliest of the following:
+                 (i) if the provider does not comply with subsection (3) within the period
+                      required by paragraph (4)(b)--the end of that period;
+                 (ii) if the existing plan is reviewed for any reason, including as directed
+                      by the Commissioner--the day the review of the plan is completed;
+                (iii) if the Commissioner gives a written notice to the provider that this
+                      subsection no longer applies to the provider--the day specified in the
+                      notice (which must be at least 14 days after the notice is given);
+                (iv) the end of 12 months after the transition time.
+
+    (3) The person or entity must notify the Commissioner of the existence of the
+         behaviour support plan, including the regulated restrictive practices that it
+         contains and the expiry date of the plan.
+
+16                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                   Support) Rules 2018
+
+Compilation No. 1  Compilation date: 01/12/2020                                               Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+                                                       Special arrangements Part 4
+                   Special arrangements for transitioned providers Division 2
+
+                                                                                  Section 27
+
+(4) A notification under subsection (3):
+       (a) must be given in the form approved by the Commissioner; and
+       (b) must be given within 3 months after the start of the transition time, or such
+            longer period as the Commissioner allows.
+
+(5) The registration of the person or entity as a registered NDIS provider is subject
+     to the following conditions:
+       (a) the provider must comply with subsection (3);
+       (b) if requested by the Commissioner--the person or entity must provide a
+            copy of the behaviour support plan to the Commissioner within the period
+            requested by the Commissioner.
+
+27 Use of regulated restrictive practice in accordance with an authorisation
+              process but not a behaviour support plan
+
+(1) This section applies to a person or entity if:
+
+       (a) at a particular time (the transition time):
+
+             (i) the person or entity is a registered NDIS provider (other than a
+                  transitioned RAC provider) for a participant; and
+
+             (ii) the provision of supports involves the use of a regulated restrictive
+                  practice; and
+
+            (iii) the use is not in accordance with a behaviour support plan for the
+                  person with disability; and
+
+            (iv) the host jurisdiction in which the supports are provided has an
+                  authorisation process (however described) in relation to the use of the
+                  regulated restrictive practice; and
+
+             (v) the use of the regulated restrictive practice is authorised in accordance
+                  with the authorisation process; and
+
+       (b) at the transition time, the host jurisdiction in which the participant lives
+            becomes a participating jurisdiction.
+
+Note 1: For the meaning of host jurisdiction and participating jurisdiction, see sections 10 and
+              10A of the Act.
+
+Note 2:            Any provider approved as a registered provider of supports in a participating
+                   jurisdiction will automatically transition to be a NDIS provider in accordance with the
+                   National Disability Insurance Scheme (Quality and Safeguards Commission and Other
+                   Measures) Transitional Rules 2018.
+
+(2) The person or entity is not required to comply with sections 9 to 15 of this
+     instrument in relation to the person with disability and the use of the regulated
+     restrictive practice during the period:
+
+       (a) starting at the start of the transition time; and
+
+       (b) ending at the earliest of the following:
+
+             (i) if the provider does not comply with subsection (3) within the period
+                  required by that subsection--the end of that period;
+
+             (ii) if the Commissioner gives a written notice to the provider that this
+                  subsection no longer applies to the provider--the day specified in the
+                  notice (which must be at least 14 days after the notice is given);
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                           17
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 4 Special arrangements
+Division 2 Special arrangements for transitioned providers
+
+Section 28
+
+                      (iii) the end of 12 months after the transition time.
+
+          (3) The person or entity must facilitate the development of a behaviour support plan
+               for the person with disability that contains the use of the regulated restrictive
+               practice and that meets the requirements of Division 2 of Part 3:
+                 (a) within 6 months after the start of the transition time; or
+                 (b) such longer period as directed by the Commissioner.
+
+          (4) The registration of the person or entity as a registered NDIS provider is subject
+               to the following conditions:
+                 (a) the person or entity must comply with subsection (3);
+                 (b) if requested by the Commissioner--the person or entity must provide a
+                      copy of the behaviour support plan developed in accordance with
+                      subsection (3) to the Commissioner within the period requested by the
+                      Commissioner.
+
+28 Use of regulated restrictive practice where no authorisation process or
+              behaviour support plan
+
+          (1) This section applies to a person or entity if:
+                  (a) at a particular time (the transition time):
+                        (i) the person or entity is a registered NDIS provider (other than a
+                             transitioned RAC provider) for a participant; and
+                       (ii) the provision of supports involves the use of a regulated restrictive
+                             practice; and
+                       (iii) the use is not in accordance with a behaviour support plan for the
+                             person with disability; and
+                      (iv) the host jurisdiction in which the supports are provided does not have
+                             an authorisation process (however described) in relation to the use of
+                             the regulated restrictive practice; and
+                 (b) at the transition time, the host jurisdiction in which the participant lives
+                       becomes a participating jurisdiction.
+
+    Note 1:        For the meaning of host jurisdiction and participating jurisdiction, see sections 10
+
+    and 10A of the Act.
+
+    Note 2:        Any provider approved as a registered provider of supports in a participating
+
+    jurisdiction will automatically transition to be a NDIS provider in accordance with the National
+
+    Disability Insurance Scheme (Quality and Safeguards Commission and Other Measures)
+
+    Transitional Rules 2018.
+
+    (2) The person or entity is not required to comply with sections 9 to 15 in relation to
+         the use of the regulated restrictive practice.
+
+    (3) The person or entity must notify the Commissioner of the regulated restrictive
+         practice used by the person or entity:
+
+                   (a) in the form approved by the Commissioner; and
+                   (b) within 1 month after the start of the transition time, or such longer period
+
+                        as the Commissioner allows.
+
+18                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                              Support) Rules 2018
+
+Compilation No. 1        Compilation date: 01/12/2020                                         Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+                                                       Special arrangements Part 4
+                   Special arrangements for transitioned providers Division 2
+
+                                                                                              Section 29
+
+(4) The registration of the person or entity as a registered NDIS provider is subject
+     to the following conditions:
+       (a) the person or entity must comply with subsection (3);
+       (b) within 3 months after the transition time--the person or entity must take
+            all reasonable steps to facilitate the development of an interim behaviour
+            support plan for the person with disability that meets the requirements of
+            Division 2 of Part 3;
+       (c) within 6 months after the transition time--the person or entity must take
+            all reasonable steps to facilitate the development of a comprehensive
+            behaviour support plan for the person with disability that meets the
+            requirements of Division 2 of Part 3.
+
+(5) The registration of the registered NDIS provider is also subject to the condition
+     that the provider agrees to demonstrate compliance with paragraph (4)(b) or (c) if
+     required to do so by the Commissioner.
+
+Note 3:            Part 7.4 of the Criminal Code provides offences in relation to false or misleading
+
+statements, information and documents.
+
+29 Specialist behaviour support service providers
+
+(1) This section applies to a person or entity if:
+
+       (a) at a particular time (the transition time), the person or entity is approved to
+            deliver specialist behaviour support services to a person with disability in a
+            host jurisdiction; and
+
+       (b) at the transition time, the host jurisdiction in which the participant lives
+            becomes a participating jurisdiction.
+
+Note 1: For the meaning of host jurisdiction and participating jurisdiction, see sections 10 and
+              10A of the Act.
+
+Note 2:            Any provider approved as a registered provider of supports in a participating
+                   jurisdiction will automatically transition to be a NDIS provider in accordance with the
+                   National Disability Insurance Scheme (Quality and Safeguards Commission and Other
+                   Measures) Transitional Rules 2018.
+
+(2) The registration of the person or entity as a specialist behaviour support provider
+     is subject to the condition that the person or entity must notify the Commissioner
+     of the names and details of the behaviour support practitioners that, at the
+     transition time, the person or entity employs or otherwise engages to undertake
+     behaviour assessments (including functional behavioural assessments) and to
+     develop behaviour support plans.
+
+(3) A notification under subsection (2) must be given:
+       (a) in the form approved by the Commissioner; and
+       (b) within 1 month after the start of the transition time, or such longer period
+            as the Commissioner allows.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                           19
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Part 4 Special arrangements
+Division 3 Special arrangements for transitioned residential aged care providers
+
+Section 30
+
+Division 3--Special arrangements for transitioned residential aged
+            care providers
+
+30 Use of regulated restrictive practice where either no authorisation or
+              behaviour support plan
+
+    (1) This section applies to a person or entity if, on 1 December 2020:
+           (a) the person or entity is a transitioned RAC provider; and
+
+           (b) the person or entity is providing supports or services to a participant; and
+           (c) the provision of supports or services involves the use of a regulated
+
+                restrictive practice; and
+
+           (d) either:
+                 (i) the use of the regulated restrictive practice is not in accordance with a
+                      behaviour support plan for the participant; or
+                 (ii) the person or entity does not have an authorisation (however
+                      described) in relation to the use of the regulated restrictive practice
+                      (whether or not there is an authorisation process for such practices in
+                      the State or Territory in which the supports or services are provided).
+
+    Note:          A transitioned RAC provider is deemed to be a registered NDIS provider in accordance
+                   with the National Disability Insurance Scheme (Quality and Safeguards Commission
+                   and Other Measures) Transitional Rules 2018.
+
+    (2) The person or entity is not required to comply with sections 9 to 15 in relation to
+         the participant and the use of the regulated restrictive practice during the period:
+
+           (a) starting on 1 December 2020; and
+
+           (b) ending at the earliest of the following:
+
+                 (i) 1 December 2021;
+
+                 (ii) if, on 1 December 2020, the person or entity does not have a
+                      behaviour support plan for the participant--the day an interim
+                      behaviour support plan, or a comprehensive behaviour support plan,
+                      for the participant is lodged with the Commissioner;
+
+                (iii) if the person or entity does not comply with subsection (3) by the day
+                      required by that subsection--the end of that day;
+
+                (iv) if the Commissioner gives a written notice to the person or entity that
+                      this subsection no longer applies to the person or entity--the day
+                      specified in the notice (which must be at least 14 days after the notice
+                      is given).
+
+    (3) The person or entity must:
+           (a) notify the Commissioner of the regulated restrictive practice used by the
+                person or entity in the form approved by the Commissioner; and
+           (b) do so by:
+                 (i) 1 January 2021; or
+                 (ii) if the Commissioner allows a later day--such later day.
+
+20                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                   Support) Rules 2018
+
+Compilation No. 1  Compilation date: 01/12/2020                                               Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+                                                                                 Special arrangements Part 4
+                   Special arrangements for transitioned residential aged care providers Division 3
+
+                                                                                              Section 30
+
+Note:              If the use of the regulated restrictive practice is also a reportable incident, it must also
+                   be reported in accordance with Part 3 of the National Disability Insurance Scheme
+                   (Incident Management and Reportable Incidents) Rules 2018.
+
+(4) The registration of the person or entity as a registered NDIS provider is subject
+     to the following conditions:
+
+       (a) the person or entity must comply with subsection (3);
+
+       (b) if:
+
+             (i) there is an authorisation process in the State or Territory in which the
+                  supports or services are provided for the use of the regulated
+                  restrictive practice in relation to the participant; and
+
+             (ii) on 1 December 2020, the person or entity is not authorised in
+                  accordance with that authorisation process;
+
+            by 1 March 2021, the person or entity must take all reasonable steps to
+            obtain such authorisation;
+
+       (c) if, on 1 December 2020, the person or entity does not have a behaviour
+            support plan for the participant:
+
+             (i) by 1 March 2021, the person or entity must take all reasonable steps
+                  to facilitate the development of an interim behaviour support plan for
+                  the participant that meets the requirements of Division 2 of Part 3; and
+
+             (ii) by 1 June 2021, the person must take all reasonable steps to facilitate
+                  the development of a comprehensive behaviour support plan for the
+                  participant that meets the requirements of Division 2 of Part 3.
+
+(5) The registration of the person or entity as a registered NDIS provider is also
+     subject to the condition that the person or entity agrees to demonstrate
+     compliance with paragraphs (4)(b) and (c) if required to do so by the
+     Commissioner.
+
+Note:              Part 7.4 of the Criminal Code provides offences in relation to false or misleading
+                   statements, information and documents.
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                           21
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Endnotes
+
+Endnote 1--About the endnotes
+
+Endnotes
+
+Endnote 1--About the endnotes
+
+The endnotes provide information about this compilation and the compiled law.
+
+The following endnotes are included in every compilation:
+
+Endnote 1--About the endnotes
+Endnote 2--Abbreviation key
+Endnote 3--Legislation history
+Endnote 4--Amendment history
+
+Abbreviation key--Endnote 2
+The abbreviation key sets out abbreviations that may be used in the endnotes.
+
+Legislation history and amendment history--Endnotes 3 and 4
+Amending laws are annotated in the legislation history and amendment history.
+
+The legislation history in endnote 3 provides information about each law that has amended (or
+will amend) the compiled law. The information includes commencement details for amending
+laws and details of any application, saving or transitional provisions that are not included in
+this compilation.
+
+The amendment history in endnote 4 provides information about amendments at the provision
+(generally section or equivalent) level. It also includes information about any provision of the
+compiled law that has been repealed in accordance with a provision of the law.
+
+Editorial changes
+The Legislation Act 2003 authorises First Parliamentary Counsel to make editorial and
+presentational changes to a compiled law in preparing a compilation of the law for
+registration. The changes must not change the effect of the law. Editorial changes take effect
+from the compilation registration date.
+
+If the compilation includes editorial changes, the endnotes include a brief outline of the
+changes in general terms. Full details of any changes can be obtained from the Office of
+Parliamentary Counsel.
+
+Misdescribed amendments
+A misdescribed amendment is an amendment that does not accurately describe the
+amendment to be made. If, despite the misdescription, the amendment can be given effect as
+intended, the amendment is incorporated into the compiled law and the abbreviation "(md)"
+added to the details of the amendment included in the amendment history.
+
+If a misdescribed amendment cannot be given effect as intended, the abbreviation "(md not
+incorp)" is added to the details of the amendment included in the amendment history.
+
+22                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                   Support) Rules 2018
+
+Compilation No. 1  Compilation date: 01/12/2020                                               Registered: 14/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+                                                                                              Endnotes
+
+Endnote 2--Abbreviation key                                        Endnote 2--Abbreviation key
+
+  ad = added or inserted                          o = order(s)
+  am = amended                                    Ord = Ordinance
+  amdt = amendment                                orig = original
+  c = clause(s)                                   par = paragraph(s)/subparagraph(s)
+  C[x] = Compilation No. x
+  Ch = Chapter(s)                                    /sub-subparagraph(s)
+  def = definition(s)                             pres = present
+  Dict = Dictionary                               prev = previous
+  disallowed = disallowed by Parliament           (prev...) = previously
+  Div = Division(s)                               Pt = Part(s)
+  ed = editorial change                           r = regulation(s)/rule(s)
+  exp = expires/expired or ceases/ceased to have  reloc = relocated
+                                                  renum = renumbered
+     effect                                       rep = repealed
+                                                  rs = repealed and substituted
+  F = Federal Register of Legislation             s = section(s)/subsection(s)
+  gaz = gazette                                   Sch = Schedule(s)
+  LA = Legislation Act 2003                       Sdiv = Subdivision(s)
+  LIA = Legislative Instruments Act 2003          SLI = Select Legislative Instrument
+  (md) = misdescribed amendment can be given      SR = Statutory Rules
+                                                  Sub-Ch = Sub-Chapter(s)
+     effect                                       SubPt = Subpart(s)
+                                                  underlining = whole or part not
+  (md not incorp) = misdescribed amendment
+     cannot be given effect                          commenced or to be commenced
+
+  mod = modified/modification
+  No. = Number(s)
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                           23
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1  Compilation date: 01/12/2020
+
+                   Authorised Version F2020C01087 registered 14/12/2020
+Endnotes
+
+Endnote 3--Legislation history
+Endnote 3--Legislation history
+
+Name                           Registration   Commencement                                    Application, saving and
+                                              1 July 2018 (s 2)                               transitional provisions
+
+National Disability Insurance  18 May 2018    Sch 1 (items 14­26): 1 Dec --
+Scheme (Restrictive Practices  (F2018L00632)  2020 (s 2(1) item 1)
+and Behaviour Support)
+Rules 2018                     30 Nov 2020
+                               (F2020L01512)
+National Disability Insurance
+Scheme Legislation
+Amendment (Transitioning
+Aged Care Providers)
+Rules 2020
+
+24                 National Disability Insurance Scheme (Restrictive Practices and Behaviour
+
+                               Support) Rules 2018
+
+Compilation No. 1              Compilation date: 01/12/2020                                   Registered: 14/12/2020
+
+                               Authorised Version F2020C01087 registered 14/12/2020
+                                                                                                      Endnotes
+
+                                                                       Endnote 4--Amendment history
+
+Endnote 4--Amendment history
+
+Provision affected  How affected
+
+Part 1
+s 2 .................................................. rep LA s 48D
+s 5 .................................................. am F2020L01512
+Part 4
+Division 1
+Division 1 heading......................... ad F2020L01512
+s 25A ............................................. am F2020L01512
+Division 2
+Division 2 heading......................... ad F2020L01512
+s 26 ................................................ am F2020L01512
+s 27 ................................................ am F2020L01512
+s 28 ................................................ am F2020L01512
+s 29 ................................................ am F2020L01512
+
+Division 3
+Division 3 ...................................... ad F2020L01512
+s 30 ................................................ ad F2020L01512
+
+                   National Disability Insurance Scheme (Restrictive Practices and Behaviour                           25
+                                                    Support) Rules 2018                       Registered: 14/12/2020
+
+Compilation No. 1   Compilation date: 01/12/2020
+
+                    Authorised Version F2020C01087 registered 14/12/2020
+

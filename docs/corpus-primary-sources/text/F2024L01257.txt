@@ -1,0 +1,2143 @@
+National Disability Insurance Scheme (Getting
+the NDIS Back on Track No. 1) (NDIS
+Supports) Transitional Rules 2024
+
+I, Bill Shorten, Minister for the National Disability Insurance Scheme, make the
+following rules.
+Dated 30 September 2024
+
+Bill Shorten
+Minister for the National Disability Insurance Scheme
+
+OPC67017 - A
+
+              Authorised Version F2024L01257 registered 01/10/2024
+Authorised Version F2024L01257 registered 01/10/2024
+Contents
+
+Part 1--Preliminary                                                                           1
+
+              1  Name .............................................................................................................................1
+
+              2  Commencement.............................................................................................................1
+
+              3  Authority .......................................................................................................................1
+
+              4  Definitions .....................................................................................................................1
+
+Part 2--What supports are NDIS supports                                                       4
+
+              5  What supports are NDIS supports--general rule..........................................................4
+
+              6  Transitional rule for certain pre-commencement plans.................................................5
+
+Part 3--Replacement support determinations                                                    6
+
+              7  Replacement support determinations ............................................................................6
+
+Schedule 1--Supports that are NDIS supports unless otherwise
+
+              provided                                                                        8
+
+              1  Supports that are NDIS supports unless otherwise provided ........................................8
+
+Schedule 2--Supports that generally are not NDIS supports                                     19
+
+              1  Supports that generally are not NDIS supports...........................................................19
+
+                 National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  i
+
+                        (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                     Authorised Version F2024L01257 registered 01/10/2024
+Authorised Version F2024L01257 registered 01/10/2024
+                                                                            Preliminary Part 1
+
+                                                                            Section 1
+
+Part 1--Preliminary
+
+1 Name
+
+               This instrument is the National Disability Insurance Scheme (Getting the NDIS
+               Back on Track No. 1) (NDIS Supports) Transitional Rules 2024.
+
+2 Commencement
+
+          (1) Each provision of this instrument specified in column 1 of the table commences,
+               or is taken to have commenced, in accordance with column 2 of the table. Any
+               other statement in column 2 has effect according to its terms.
+
+Commencement information
+
+Column 1              Column 2                                              Column 3
+                                                                            Date/Details
+Provisions            Commencement                                          3 October 2024
+
+1. The whole of this  The later of:
+instrument
+                      (a) the day after this instrument is registered; and
+
+                      (b) the day on which Schedule 1 to the National
+                          Disability Insurance Scheme Amendment
+                          (Getting the NDIS Back on Track No. 1) Act
+                          2024 commences.
+
+              Note:   This table relates only to the provisions of this instrument as originally made. It will
+                      not be amended to deal with any later amendments of this instrument.
+
+(2) Any information in column 3 of the table is not part of this instrument.
+     Information may be inserted in this column, or information in it may be edited, in
+     any published version of this instrument.
+
+3 Authority
+
+               This instrument is made under item 138 of Schedule 1 to the National Disability
+               Insurance Scheme Amendment (Getting the NDIS Back on Track No. 1) Act
+               2024.
+
+4 Definitions
+
+          (1) In this instrument:
+
+               amending Act means the National Disability Insurance Scheme Amendment
+               (Getting the NDIS Back on Track No. 1) Act 2024.
+
+               cultural activity means a cultural activity for a participant or prospective
+               participant person who is an Indigenous person, and includes practices, ways of
+               understanding the world, and methods of expression such as language,
+               celebrations, and events. For this purpose, it is noted that:
+
+              National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1) (NDIS                 1
+
+                                Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                      Authorised Version F2024L01257 registered 01/10/2024
+Part 1 Preliminary
+
+Section 4
+
+                 (a) individual Aboriginal and Torres Strait Islander cultures have specific
+                      spiritualities and lore, and therefore obligations or responsibilities, that are
+                      connected to Country and community; and
+
+                 (b) this Connection to Country, Lore and Spirituality is a way of understanding
+                      life, identity and connection with others, or kinship.
+
+               eligible assistance animal means a dog or other animal that is:
+                 (a) accredited under a law of a State or Territory that provides for the
+                      accreditation of animals trained to assist a person with a disability to
+                      alleviate the effect of the disability; or
+                 (b) accredited by an animal training organisation prescribed in regulations
+                      made under section 132 of the Disability Discrimination Act 1992 for the
+                      purposes of paragraph 9(2)(b) of that Act; or
+                 (c) accredited by a registered NDIS provider who is registered to provide
+                      assistance animals under section 73E of the NDIS Act; or
+                 (d) trained to assist a person with a disability to alleviate the effect of the
+                      disability and to meet standards of hygiene and behaviour that are
+                      appropriate for an animal in a public place.
+
+               Hearing Services Program means the program under which hearing services
+               (within the meaning of the Hearing Services Administration Act 1997) are
+               provided by:
+
+                 (a) contracted service providers in accordance with agreements entered into
+                      under Part 3 of that Act; or
+
+                 (b) without limiting paragraph (a)--Australian Hearing Services under the
+                      Australian Hearing Services Act 1991.
+
+               high intensity daily personal activities mean the following activities:
+                 (a) complex bowel care;
+                 (b) enteral feeding and management;
+                 (c) severe dysphagia management;
+                 (d) tracheostomy management;
+                 (e) urinary catheter management;
+                  (f) ventilator management;
+                 (g) subcutaneous injections;
+                 (h) complex wound management.
+
+                           Note: Information about high intensity daily personal activities could in 2024 be viewed
+                                       on the Commission's website (www.ndiscommission.gov.au).
+
+               NDIS Act means the National Disability Insurance Scheme Act 2013.
+
+               replacement support determination means a determination under
+               subsection 10(6) of the NDIS Act.
+
+               specialised vehicle driving instructor in relation to driver training means a
+               person who:
+
+                 (a) is registered or licensed as a driving instructor in the State or Territory in
+                      which the driver training is to occur; and
+
+2  National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1) (NDIS
+
+              Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+              Authorised Version F2024L01257 registered 01/10/2024
+                                                                                          Preliminary Part 1
+
+                                                                                   Section 4
+
+       (b) has experience and training in providing driving instruction to people with
+            disability.
+
+     standard item for a participant or prospective participant means an item that is
+     not modified or adapted to address the functional impairments of the participant
+     or prospective participant.
+(2) An expression that is defined for the purposes of the NDIS Act has the same
+     meaning when used in this instrument as it has in that Act.
+
+              National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1) (NDIS  3
+
+              Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+              Authorised Version F2024L01257 registered 01/10/2024
+Part 2 What supports are NDIS supports
+
+Section 5
+
+Part 2--What supports are NDIS supports
+
+5 What supports are NDIS supports--general rule
+
+              Supports that are NDIS supports unless otherwise provided
+
+   (1) For the purposes of subsection 10(1) of the NDIS Act, a support covered by
+        column 2 of an item in the table in clause 1 of Schedule 1 to this instrument is an
+        NDIS support (subject to subsections 10(4) and (9) of the NDIS Act and
+        subsection (2) of this section) for:
+
+          (a) participants specified in column 3 of the item who have old framework
+               plans; and
+
+          (b) prospective participants specified in column 3 of the item, other than
+               prospective participants who, if they were participants, would be required
+               to be given notice under subsection 32B(2) of the NDIS Act (participants
+               that are to have new framework plans).
+
+              Note 1:  Subsection 10(4) of the NDIS Act allows supports to be declared to not be NDIS
+                       supports for participants or prospective participants. Those supports are declared under
+                       subsection (2) of this section.
+
+              Note 2:  Subsection 10(9) of the NDIS Act provides that a support is not an NDIS support for a
+                       participant or prospective participant if the support consists of the provision of:
+                       (a) sexual services; or
+                       (b) alcohol; or
+                       (c) drugs, the possession of which is a contravention of a law of the Commonwealth,
+
+                             a State or a Territory.
+
+              Supports that generally are not NDIS supports
+
+   (2) For the purposes of subsection 10(4) of the NDIS Act, a support covered by
+        column 2 of an item in the table in clause 1 of Schedule 2 to this instrument is
+        not an NDIS support for any participant (subject to subsection 10(6) of the NDIS
+        Act) or prospective participant.
+
+              Note 1:  Subsection 10(6) of the NDIS Act allows the CEO, on application by a participant, to
+                       determine that a support is taken to not be declared under subsection 10(4) of that Act
+                       in relation to the participant if, among other things, the CEO is satisfied that the support
+                       would replace one or more other supports that are NDIS supports for the participant.
+
+              Note 2:  Determinations under subsection 10(6) of the NDIS Act are referred to in this
+                       instrument as replacement support determinations. For additional rules about
+                       replacement support determinations, see section 7 of this instrument.
+
+              Interpretive provision
+
+   (3) A reference in this section to a provision of section 10 of the NDIS Act is a
+        reference to the provision as modified (if at all) by item 124 of the amending
+        Act.
+
+              Note:    That item provides that, until the first National Disability Insurance Scheme rules are
+                       made for the purposes of subsection 10(1) of the NDIS Act, section 10 of that Act has
+                       effect as if a reference in that section to the National Disability Insurance Scheme rules
+                       were a reference to rules made under item 138 of Schedule 1 to the amending Act.
+
+4  National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1) (NDIS
+
+                       Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                       Authorised Version F2024L01257 registered 01/10/2024
+                       What supports are NDIS supports Part 2
+
+                                                                             Section 6
+
+6 Transitional rule for certain pre-commencement plans
+
+(1) This section applies in relation to a participant if the plan that is in effect for the
+     participant includes a statement of participant supports approved by the CEO
+     before the commencement of Schedule 1 to the amending Act.
+
+(2) A support specified in the statement as a reasonable and necessary support for
+     the participant for the purposes of paragraph 33(2)(b) of the NDIS Act is taken to
+     be an NDIS support for the participant if:
+
+       (a) the support is expressed in the statement to be a stated support; or
+
+       (b) the Administrative Appeals Tribunal, in making any of the following
+            decisions before the commencement of Schedule 1 to the amending Act:
+
+             (i) a decision to vary the statement;
+
+             (ii) a decision to approve the statement, having set aside the approval of a
+                  different statement of participant supports for the participant;
+
+            (iii) a decision to remit the approval of a statement of participant supports
+                  for the participant for reconsideration by the CEO;
+
+            made a decision to the effect that that particular support should be specified
+            in, or funded under, the plan as a reasonable and necessary support.
+
+(3) For the purposes of subparagraph (2)(b)(iii), it does not matter:
+       (a) whether the Tribunal remitted the approval of the statement in accordance
+            with any directions or recommendations of the Tribunal; or
+       (b) whether the Tribunal also set aside the approval of the statement.
+
+(4) Subsection (2) applies:
+       (a) despite subsection 10(4) of the NDIS Act and subsection 5(2) of this
+            instrument; but
+       (b) subject to subsection 10(9) of the NDIS Act.
+
+              Note 1:  Subsection 10(4) of the NDIS Act allows supports to be declared to not be NDIS
+                       supports for participants or prospective participants. Those supports are declared under
+                       subsection 5(2) of this instrument.
+
+              Note 2:  Subsection 10(9) of the NDIS Act provides that a support is not an NDIS support for a
+                       participant if the support consists of the provision of:
+                       (a) sexual services; or
+                       (b) alcohol; or
+                       (c) drugs, the possession of which is a contravention of a law of the Commonwealth,
+
+                             a State or a Territory.
+
+              National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1) (NDIS               5
+
+                       Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                       Authorised Version F2024L01257 registered 01/10/2024
+Part 3 Replacement support determinations
+
+Section 7
+
+Part 3--Replacement support determinations
+
+7 Replacement support determinations
+
+               Supports for which determinations may be made
+
+          (1) For the purposes of paragraph 10(6)(a) of the NDIS Act, the CEO may make a
+               replacement support determination in relation to a support covered by column 1
+               of an item in the table in subsection (3) of this section.
+
+          (2) For the purposes of subparagraph 10(6)(d)(iv) of the NDIS Act, the CEO must be
+               satisfied that the conditions set out in column 2 of an item in the table in
+               subsection (3) are met before making a replacement support determination in
+               relation to a support covered by column 1 of the item.
+
+          (3) The table is as follows:
+
+   Replacement support determinations
+
+      Column 1                                   Column 2
+
+   Item Supports                                 Conditions
+
+   1  Standard commercially available household  The support must:
+
+      items                                      (a) be necessary to address needs of the
+                                                     participant arising from an impairment
+   2  The following:                                 in relation to which the participant meets
+                                                     the disability requirements or the early
+      (a) smart watches;                             intervention requirements; and
+
+      (b) tablets;                               (b) increase whole task independence; and
+
+      (c) smartphones;                           (c) reduce or eliminate the need for a
+                                                     support worker or disability specific
+      (d) an app used for accessibility or           assistive technology.
+          communication purposes
+                                                 The support must be necessary to address
+                                                 communication or accessibility needs of the
+                                                 participant arising from an impairment in
+                                                 relation to which the participant meets the
+                                                 disability requirements or the early
+                                                 intervention requirements.
+
+           Circumstances in which application for determination may not be made
+
+      (4) For the purposes of paragraph 10(7)(c) of the NDIS Act, an application for a
+           replacement support determination for one or more supports may not be made if
+           the application would result in the participant making more than one such
+           application for any of those supports:
+             (a) if the reassessment date of the participant's plan is less than 12 months
+                  after the plan came into effect--while the plan is in effect; or
+
+6     National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1) (NDIS
+
+                          Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                          Authorised Version F2024L01257 registered 01/10/2024
+                                      Replacement support determinations Part 3
+
+                                                                                           Section 7
+              (b) otherwise--during any 12-month period starting while the plan is in effect.
+
+              Interpretive provision
+
+(5) A reference in this section to a provision of section 10 of the NDIS Act is a
+     reference to the provision as modified (if at all) by item 124 of the amending
+     Act.
+
+              Note:  That item provides that, until the first National Disability Insurance Scheme rules are
+                     made for the purposes of subsection 10(1) of the NDIS Act, section 10 of that Act has
+                     effect as if a reference in that section to the National Disability Insurance Scheme rules
+                     were a reference to rules made under item 138 of Schedule 1 to the amending Act.
+
+              National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1) (NDIS  7
+
+                                      Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                     Authorised Version F2024L01257 registered 01/10/2024
+Schedule 1 Supports that are NDIS supports unless otherwise provided
+
+Clause 1
+
+Schedule 1--Supports that are NDIS supports unless
+         otherwise provided
+
+Note: See subsection 5(1)
+
+1 Supports that are NDIS supports unless otherwise provided
+               The following table sets out supports that are NDIS supports for participants and
+               prospective participants (subject to subsections 10(4) and (9) of the NDIS Act
+               and subsection 5(2) of this instrument):
+
+   Supports that are NDIS supports unless otherwise provided
+
+      Column 1             Column 2                                              Column 3
+
+   Item Category           Supports                                              Participants and
+                                                                                 prospective
+                                                                                 participants
+
+   1  Accommodation Supports that build capacity, guide, prompt, The following:
+
+      assistance or        or assist a participant to do activities for          (a) for supports
+      tenancy assistance   finding or keeping appropriate                            covered by
+                           accommodation.                                            paragraph (b) in
+
+                           This includes the following:                              column 2--
+                                                                                     participants who
+                           (a) supports that help a participant apply for            have the support
+                               a rental tenancy or to take part in tenancy           stated in their plan;
+                               obligations in line with their tenancy
+                               agreement;                                        (b) for all other
+                                                                                     supports in this
+                           (b) medium term accommodation where a                     category--
+                               participant cannot move into long term                participants or
+                               accommodation due to that                             prospective
+                               accommodation or other supports not                   participants
+                               being ready and current accommodation                 generally.
+                               is not suitable.
+
+   2  Assistance animals Support provided by an eligible assistance Participants who have
+
+                           animal.                                               the support stated in
+
+                           This includes the following:                          their plan and
+                           (a) assessment, matching and provision of an          prospective participants
+                                                                                 who are likely to have
+                               eligible assistance animal;                       this support stated in
+                           (b) dietary needs;                                    their plan
+                           (c) grooming;
+
+                           (d) veterinary services including flea and
+                               worm treatments, medication, and
+                               vaccinations;
+
+                           (e) yearly reviews to maintain accreditation.
+
+   3  Assistance in        Supports provided on a short-term basis that Participants or
+
+      coordinating or      provide assistance to manage life transitions. prospective participants
+
+      managing life        This includes the following:                          generally
+      stages, transitions
+      and supports         (a) transition from or to new educational or
+                               employment settings;
+
+8     National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                       (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                           Authorised Version F2024L01257 registered 01/10/2024
+                    Supports that are NDIS supports unless otherwise provided Schedule 1
+
+                                                                                            Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+   Column 1         Column 2                                              Column 3
+                                                                          Participants and
+Item Category       Supports                                              prospective
+                                                                          participants
+                    (b) transition to new living arrangements;
+                                                                          Participants or
+                    (c) support before and immediately                    prospective participants
+                        following hospital discharge where there          generally
+                        has been a change to a participant's
+                        disability support needs prior to hospital        Participants or
+                        admission;                                        prospective participants
+                                                                          generally
+                    (d) transition out of a mental health setting;
+                                                                          Participants or
+                    (e) transition out of a custodial setting.            prospective participants
+                                                                          generally
+4  Assistance to    Supports that build a participant's capacity
+
+   access and maintain to successfully prepare for, find or keep
+
+   employment or    employment in the open labour market
+
+   higher education (including self-employment and
+
+                    micro-enterprise) or the supported labour
+
+                    market.
+
+                    This includes the following:
+
+                    (a) employment preparation complementary
+                        to that delivered while at school and
+                        when leaving school;
+
+                    (b) assistance for a participant to transition
+                        to employment;
+
+                    (c) further education and training.
+
+5  Assistance with  Supports that provide assistance with or
+
+   daily life tasks in a supervision of daily living tasks to
+
+   group or shared  participants in a shared living environment.
+
+   living arrangement This includes the following:
+
+                    (a) supports provided on a temporary or
+                        ongoing basis;
+
+                    (b) supports for short term accommodation
+                        and respite;
+
+                    (c) supports provided to participants living
+                        in residential aged care facilities.
+
+6  Assistance with  Supports that provide transport assistance to
+
+   travel or transport participants that cannot travel or use public
+
+   arrangements     transport independently.
+
+                    This includes the following:
+
+                    (a) transport for the purposes of participants
+                        undertaking community-based activities;
+
+                    (b) transport for the purposes of participants
+                        attending school or other educational
+                        facilities;
+
+                    (c) provider travel costs;
+
+                    (d) costs associated with the use of taxis or
+
+               National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  9
+
+                    (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                    Authorised Version F2024L01257 registered 01/10/2024
+Schedule 1 Supports that are NDIS supports unless otherwise provided
+
+Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+          Column 1       Column 2                                              Column 3
+                                                                               Participants and
+Item Category            Supports                                              prospective
+                                                                               participants
+                         private transport;
+                                                                               Participants or
+                         (e) in-kind specialist school transport;              prospective participants
+                                                                               generally
+7         Assistive      (f) travel training to build a participant's
+                             confidence and skills to use public               Participants or
+          equipment for      transport safety and independently.               prospective participants
+                                                                               generally
+          recreation     The provision of assistive products used in
+                         sports or other recreational activities.              Participants or
+                                                                               prospective participants
+                         This includes the following:                          generally
+
+                         (a) personal recreation equipment
+                             modification and sporting equipment
+                             modification;
+
+                         (b) services to assess and prescribe, deliver,
+                             adjust and train a participant in
+                             successful use of an assistive product;
+
+                         (c) maintenance, spare parts and consumable
+                             items specific to an assistive product.
+
+8         Assistive products The provision of assistive products that
+
+          for household tasks support a participant to carry out domestic
+
+                         and everyday actions and tasks within a
+
+                         participant's home.
+
+                         This includes the following:
+
+                         (a) assistive products for the preparation of
+                             food and drink;
+
+                         (b) assistive products to facilitate house
+                             cleaning, gardening or laundry;
+
+                         (c) additional costs to upgrade or modify
+                             standard household items to household
+                             items that include accessibility features
+                             that address a participant's support
+                             needs;
+
+                         (d) services to assess and prescribe, deliver,
+                             adjust and train a participant in
+                             successful use of an assistive product;
+
+                         (e) maintenance, spare parts and consumable
+                             items specific to an assistive product.
+
+9         Assistive products Provision of assistive products for self-care
+
+          for personal care activities and participation in self-care.
+
+          and safety     This includes the following:
+
+                         (a) modified foods, including for the
+                             purposes of percutaneous endoscopic
+                             gastrostomy feeding;
+
+                         (b) products to facilitate washing and drying
+                             the participant's body, caring for the
+                             participant's body and body parts,
+
+10        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                         (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                         Authorised Version F2024L01257 registered 01/10/2024
+                     Supports that are NDIS supports unless otherwise provided Schedule 1
+
+                                                                                            Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+    Column 1         Column 2                                              Column 3
+                                                                           Participants and
+Item Category        Supports                                              prospective
+                                                                           participants
+                     dressing and protecting the participant's
+                     body;                                                 Participants who have
+                                                                           the support stated in
+                     (c) modified or adaptive clothing;                    their plan and
+                                                                           prospective participants
+                     (d) modified or adaptive products to manage           who are likely to have
+                         menstruation including applicators and            this support stated in
+                         period underwear;                                 their plan
+
+                     (e) products to manage incontinence;                  Participants or
+                                                                           prospective participants
+                     (f) furniture and other products that are             generally
+                         adapted or specifically made to be placed
+                         in or added to a participant's home
+                         (including indoor and outdoor areas) to
+                         help with movement, positioning and
+                         other safety needs, including entry and
+                         exit of the environment;
+
+                     (g) services to assess and prescribe, deliver,
+                         adjust and train a participant in
+                         successful use of an assistive product;
+
+                     (h) maintenance, spare parts and consumable
+                         items specific to an assistive product;
+
+                     (i) visual and tactile alerting systems.
+
+10 Specialist positive Supports that are provided by professionals
+          behaviour support with specialist skills in positive behaviour
+                                      support.
+
+                     This includes the following:
+
+                     (a) assessment, development and delivery of
+                         a comprehensive plan that aims to reduce
+                         and manage behaviours of concern;
+
+                     (b) training and ongoing monitoring of staff
+                         in implementation of a behaviour support
+                         plan;
+
+                     (c) training and capacity building for a
+                         participant's informal supports in the use
+                         of positive behaviour support;
+
+                     (d) development and delivery of interim or
+                         transitional plans.
+
+11  Communication    The provision of assistive products to
+
+    and information  support communication and information
+
+    equipment        management.
+
+                     This includes the following:
+
+                     (a) products that help a participant to
+                         receive, send, produce and/or process
+                         information in different forms;
+
+                     (b) products that facilitate a participant
+
+               National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  11
+
+                     (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                     Authorised Version F2024L01257 registered 01/10/2024
+Schedule 1 Supports that are NDIS supports unless otherwise provided
+
+Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+          Column 1  Column 2                                              Column 3
+                                                                          Participants and
+Item Category       Supports                                              prospective
+                                                                          participants
+                    communicating by language, signs and
+                    symbols, receiving and producing                      Participants or
+                    messages, having conversations and                    prospective participants
+                    using communication devices and                       generally
+                    techniques;
+                                                                          Participants or
+                    (c) services to assess and prescribe, deliver,        prospective participants
+                        adjust and train a participant in                 generally
+                        successful use of an assistive product;
+                                                                          Participants or
+                    (d) maintenance, spare parts and consumable
+                        items specific to an assistive product.
+
+12 Community nursing Supports that provide disability-related
+
+          care      nursing care for participants with high care
+
+                    needs (not including high intensity daily
+
+                    personal activities), requiring a high level of
+
+                    clinical skill.
+
+                    This includes the following:
+
+                    (a) catheter care;
+
+                    (b) skin integrity checks;
+
+                    (c) tracheostomy care;
+
+                    (d) medication management;
+
+                    (e) intramuscular injections;
+
+                    (f) training of support workers to respond to
+                        a participant's complex needs.
+
+13 Prostheses and   Assistive products externally applied to
+          orthoses  replace, wholly or in part an absent or
+                    deficient body segment which assists
+                    participant control and functioning of their
+                    neuromuscular skeletal systems.
+
+                    This includes the following:
+
+                    (a) design, manufacture and fit of
+                        customised functional prosthetics and
+                        orthotics;
+
+                    (b) assessment and specification
+                        (prescription) of a product by a
+                        professionally qualified prosthetist,
+                        orthotist, pedorthotist, podiatrist, or
+                        occupational therapist trained in
+                        provision of that product;
+
+                    (c) osseo-integrated, external products;
+
+                    (d) services to train a participant in
+                        successful use of an assistive product;
+
+                    (e) maintenance, spare parts and consumable
+                        items specific to an assistive product.
+
+14 Daily personal   Supports that provide supervision or
+
+12        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                    (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                    Authorised Version F2024L01257 registered 01/10/2024
+                     Supports that are NDIS supports unless otherwise provided Schedule 1
+
+                                                                                             Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+    Column 1         Column 2                                              Column 3
+                                                                           Participants and
+Item Category        Supports                                              prospective
+                                                                           participants
+    activities       assistance with personal daily living tasks to        prospective participants
+                     help a participant to live as independently as        generally
+                     possible in their own home and in the
+                     community.                                            Participants or
+                                                                           prospective participants
+                     This includes the following:                          generally
+
+                     (a) assistance with eating and drinking,              Participants or
+                         dressing and toileting;                           prospective participants
+                                                                           generally
+                     (d) maintaining personal hygiene, including
+                         showering, bathing, hair washing and
+                         drying, fingernail and toenail cutting and
+                         cleaning;
+
+                     (e) moving and positioning;
+
+                     (f) in-kind personal care in school.
+
+15  Development of   Supports that provide training and
+
+    daily care and life development activities for participants or
+
+    skills           carers to increase a participant's ability to
+
+                     live as independently as possible (including
+
+                     as part of psychosocial recovery supports).
+
+                     This includes increasing the participant's
+                     ability to independently undertake the
+                     following activities:
+
+                     (a) shopping;
+
+                     (b) meal preparation;
+
+                     (c) managing finances;
+
+                     (d) managing a participant's own personal
+                         care;
+
+                     (e) travel and use public transport;
+
+                     (f) engage in social activities;
+
+                     (g) improve relationship and social skills.
+
+16 Disability-related Health supports that relate to the functional
+
+    health supports  impact of a participant's disability.
+
+                     This includes the following:
+
+                     (a) supports, services and assistive products
+                         to manage dysphagia, diabetes,
+                         continence, wound and pressure care,
+                         respiration, nutrition, podiatry and foot
+                         care, and seizures;
+
+                     (b) supports for people with complex
+                         communication access needs or
+                         behaviours when accessing health or
+                         mental health services, including
+                         hospitals and in-patient facilities;
+
+                     (c) specialist allied health services and
+
+                National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  13
+
+                     (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                     Authorised Version F2024L01257 registered 01/10/2024
+Schedule 1 Supports that are NDIS supports unless otherwise provided
+
+Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+          Column 1          Column 2                                              Column 3
+                                                                                  Participants and
+Item Category               Supports                                              prospective
+                                                                                  participants
+                            supports that facilitate enhanced
+                            functioning and community                             Participants or
+                            re-integration of people with recently                prospective participants
+                            acquired severe conditions including                  generally
+                            newly acquired spinal cord and severe
+                            acquired brain injury;                                Participants or
+                                                                                  prospective participants
+                            (d) training support workers, family and              generally
+                                friends to perform roles where
+                                appropriate.                                      Participants or
+                                                                                  prospective participants
+17 Early intervention Supports that are evidence-based early                      generally
+                                                                                  Participants or
+          supports for early childhood intervention supports for children         prospective participants
+                                                                                  generally
+          childhood         0-9 years (including children aged 0-6 with           Participants who have
+
+                            developmental delay) and their families to
+
+                            achieve better long-term outcomes for the
+
+                            child.
+
+                            This includes the following:
+
+                            (a) therapy provided by allied health
+                                professionals including speech
+                                pathologists and occupational therapists;
+
+                            (b) a key worker for a child's family.
+
+18 Exercise                 Supports that maintain or increase physical
+
+          physiology and    mobility or well-being through personal
+
+          personal well-being training or exercise physiology to address
+
+          activities        the functional impact of the participant's
+
+                            disability.
+
+                            This includes the following:
+
+                            (a) accessing services from an appropriately
+                                qualified professional;
+
+                            (b) assessment and development of a
+                                personalised exercise program which
+                                aims to increase or maintain a
+                                participant's functional capacity;
+
+                            (c) maintenance of muscle strength, range of
+                                motion, balance and mobility.
+
+19 Group and centre Supports for participants to access and
+
+          based activities  participate in community, social, cultural
+
+                            and recreational activities that are provided
+
+                            in a group setting, either in the community
+
+                            or in a centre.
+
+20        Hearing equipment The provision of hearing equipment directly
+
+                            related to a participant's permanent hearing
+
+                            impairment that is not provided through the
+
+                            Hearing Services Program for the
+
+                            participant.
+
+21 High intensity daily Supports that assist a participant with
+
+14        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                            (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                            Authorised Version F2024L01257 registered 01/10/2024
+                         Supports that are NDIS supports unless otherwise provided Schedule 1
+
+                                                                                             Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+    Column 1             Column 2                                                      Column 3
+                                                                                       Participants and
+Item Category            Supports                                                      prospective
+                                                                                       participants
+    personal activities complex to undertake high intensity daily                      the support stated in
+                               personal activities.                                    their plan and
+                                                                                       prospective participants
+                         These supports must be provided by a                          that are likely to have
+                         worker with additional qualifications and                     this support stated in
+                         experience relevant to the participant's                      their plan
+                         complex or psychosocial needs.
+                                                                                       Participants who have
+                         This includes the following:                                  the support stated in
+                                                                                       their plan and
+                         (a) a suitably qualified worker undertaking                   prospective participants
+                             the activities;                                           that are likely to have
+                                                                                       this support stated in
+                         (b) a suitably qualified worker supervising                   their plan
+                             the participant or another person in the
+                             participant's support network                             Participants or
+                             undertaking the activities.                               prospective participants
+                                                                                       generally
+22 Home modification Supports that design, change or modify a
+                                                                                       Participants who have
+    design and           participant's home to help the participant                    the support stated in
+                                                                                       their plan and
+    construction         live as independently as possible and to live                 prospective participants
+                                                                                       that are likely to have
+                         safely at home.                                               this support stated in
+                                                                                       their plan
+                         This includes the following:                                  Participants or
+
+                         (a) installing equipment or changing a
+                             building's structure, fixture or fittings;
+
+                         (b) internal and external building
+                             modifications to remedy damage arising
+                             exclusively from disability-related
+                             behaviours or use of NDIS funded
+                             assistive technology or equipment;
+
+                         (c) regulatory certification requirements for
+                             works.
+
+23 Household tasks Supports that provide assistance with
+                                      essential household tasks that a participant is
+                                      not able to do themselves because of their
+                                      disability.
+
+                         This includes the following:
+
+                         (a) meal preparation and delivery;
+
+                         (b) house or yard maintenance;
+
+                         (c) cleaning and laundry.
+
+24 Innovative            Supports that are tailored for individual
+          community      participants with extraordinary support
+          participation  needs to assist them to participate in the
+                         community.
+
+                         Extraordinary support needs arise due to a
+                         participant's specific situational and
+                         personal circumstances.
+
+25  Interpreting and     Supports that assist a participant with
+
+                National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  15
+
+                         (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                         Authorised Version F2024L01257 registered 01/10/2024
+Schedule 1 Supports that are NDIS supports unless otherwise provided
+
+Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+          Column 1       Column 2                                              Column 3
+                                                                               Participants and
+Item Category            Supports                                              prospective
+                                                                               participants
+          translation    independent communication in personal,                prospective participants
+                         social, cultural or community activities              generally
+                         where translation and interpretation is
+                         needed as a result of their disability.               Participants who have
+                                                                               the support stated in
+26 Management of         Supports provided by a registered plan                their plan
+          funding for    management provider to manage the funding             Participants or
+          supports       of supports under a participant's plan.               prospective participants
+                                                                               generally
+27 Participation in      Supports that assist a participant to take
+                                                                               Participants or
+          community, social part in community, social, cultural and civic      prospective participants
+                                                                               generally
+          and civic activities activities.
+                                                                               Participants who have
+                         This includes the following:                          the support stated in
+                                                                               their plan and
+                         (a) supporting participants during relevant           prospective participants
+                             activities;                                       that are likely to have
+                                                                               this support stated in
+                         (b) working with participants to develop              their plan
+                             their ability to partake in these activities.     Participants who have
+                                                                               the support stated in
+28 Personal mobility The provision of personal mobility                        their plan and
+                                                                               prospective participants
+          equipment      equipment that supports or replaces a                 that are likely to have
+                                                                               this support stated in
+                         participant's capacity to move indoors and            their plan
+                                                                               Participants or
+                         outdoors and to transfer from one place to
+
+                         another.
+
+                         This includes the following:
+
+                         (a) assistive products for walking;
+
+                         (b) wheelchairs and motorised mobility
+                             devices;
+
+                         (c) transfer devices and hoists;
+
+                         (d) services to train a participant in
+                             successful use of equipment provided;
+
+                         (e) maintenance, spare parts and consumable
+                             items specific to equipment provided.
+
+29 Specialist disability The provision of specialist disability
+
+          accommodation  accommodation which is accommodation for
+
+                         a participant who requires specialist housing
+
+                         solutions, including to assist with the
+
+                         delivery of supports that cater for
+
+                         the person's extreme functional impairment
+
+                         or very high support needs.
+
+30 Specialised driver Supports that provide driver training with a
+
+          training       specialised vehicle driving instructor.
+
+                         Supports that provide training on the use of
+                         adapted equipment or vehicle modifications.
+
+31 Specialised hearing Specialist audiological services provided by
+
+16        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                         (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                         Authorised Version F2024L01257 registered 01/10/2024
+                         Supports that are NDIS supports unless otherwise provided Schedule 1
+
+                                                                                            Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+Column 1                 Column 2                                              Column 3
+                                                                               Participants and
+Item Category            Supports                                              prospective
+                                                                               participants
+          services       an allied health professional for participants        prospective participants
+                         with complex needs.                                   generally
+32 Specialised
+          supported      This includes the following:                          Participants or
+          employment                                                           prospective participants
+                         (a) assessing hearing impairment;                     generally
+33 Support                                                                     Participants who have
+          coordination   (b) prescription of audiological aids and             the support stated in
+                             equipment.                                        their plan
+34 Therapeutic
+          supports       Supports that provide a participant with              Participants or
+                         assistance to prepare for, find and retain a          prospective participants
+35 Vehicle               job in the participant's employment setting           generally
+          modifications  of choice.
+                                                                               Participants or
+                         Supports that assist participants to connect          prospective participants
+                         with informal community and funded                    generally
+                         supports (including as part of psychosocial
+                         recovery supports).
+
+                         This includes the following:
+
+                         (a) building a participant's capacity to
+                             connect with supports;
+
+                         (b) assisting participants to understand and
+                             utilise their plan;
+
+                         (c) connecting with providers and
+                             mainstream services;
+
+                         (d) addressing barriers and reducing
+                             complexity in the support environment.
+
+                         Supports that provide evidence-based
+                         therapy to help participants improve or
+                         maintain their functional capacity in areas
+                         such as language and communication,
+                         personal care, mobility and movement,
+                         interpersonal interactions, functioning
+                         (including psychosocial functioning) and
+                         community living.
+
+                         This includes an assessment by allied health
+                         professionals for support planning and
+                         review as required.
+
+                         The provision of assistive products that can
+                         be added to vehicles or modifications made
+                         to vehicles that help a participant to operate,
+                         enter, exit or ride in the vehicle safely.
+
+                         This includes the following:
+
+                         (a) passenger and wheelchair hoists;
+
+                         (b) modified controls;
+
+                         (c) modified restraints and modified car
+
+               National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  17
+
+                         (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                         Authorised Version F2024L01257 registered 01/10/2024
+Schedule 1 Supports that are NDIS supports unless otherwise provided
+
+Clause 1
+
+Supports that are NDIS supports unless otherwise provided
+
+          Column 1  Column 2                                                           Column 3
+                                                                                       Participants and
+Item Category       Supports                                                           prospective
+                                                                                       participants
+                                          seats;
+                                                                                       Participants or
+                                      (d) certification costs for registration and     prospective participants
+                                          additional vehicle insurance premium         generally
+                                          costs as a direct result of a modification;
+
+                                      (e) services to assess and prescribe, deliver,
+                                          adjust and train a participant in
+                                          successful use of an assistive product or
+                                          modification;
+
+                                      (f) maintenance, spare parts and consumable
+                                          items specific to an assistive product or
+                                          modification.
+
+                                      This support does not include the purchase
+                                      of a vehicle.
+
+36 Vision equipment The provision of products for navigation,
+                                      orientation, braille, magnifiers and note
+                                      taking equipment.
+
+18        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                    (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                    Authorised Version F2024L01257 registered 01/10/2024
+                         Supports that generally are not NDIS supports Schedule 2
+
+                                                                                                       Clause 1
+
+Schedule 2--Supports that generally are not NDIS
+         supports
+
+Note: See subsection 5(2)
+
+1 Supports that generally are not NDIS supports
+               The following table sets out supports that are not NDIS supports for:
+                 (a) a participant (unless a replacement support determination covering the
+                      support is in force for the participant); or
+                 (b) a prospective participant.
+
+Supports that generally are not NDIS supports
+
+   Column 1              Column 2
+
+Item Category            Supports
+
+1  Day-to-day living costs-- The following:
+
+   accommodation and     (a) rent, rental bonds, home and property deposits, stamp
+   household                 duty, mortgage repayments, and strata fees;
+
+                         (b) purchase of land, or house and land packages;
+
+                         (c) standard home security and maintenance costs, fencing,
+                             gates, and building repairs;
+
+                         (d) pools, pool heating and maintenance, spa baths, saunas,
+                             and steam rooms;
+
+                         (e) standard home repairs, home improvements, standard
+                             renovations and maintenance;
+
+                         (f) water, gas and electricity bills, council rates, land taxes
+                             and levies;
+
+                         (g) water filters, purifiers, or aerators;
+
+                         (h) electricity generators, solar panels, home batteries for
+                             power storage, hot water and gas systems;
+
+                         (i) standard household (including garden) items, appliances,
+                             tools and products;
+
+                         (j) standard furniture, fixtures or fittings.
+
+2  Day-to-day living costs-- The following:
+
+   finance and payments  (a) donations, tithes, gifts, and political contributions;
+
+                         (b) fines, penalties, and court-ordered amounts;
+
+                         (c) travel insurance, life insurance, income protection
+                             insurance, home and contents insurance, car insurance and
+                             excess insurance for novated vehicles;
+
+                         (d) health insurance, ambulance membership, gap payments
+                             for Medicare-funded services and private health insurance
+                             claims;
+
+                         (e) superannuation for the participant, or a member of a self
+                             managed superannuation fund (within the meaning of the
+                             Superannuation Industry (Supervision) Act 1993) of
+                             which the participant is a member;
+
+               National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  19
+
+                         (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+               Authorised Version F2024L01257 registered 01/10/2024
+Schedule 2 Supports that generally are not NDIS supports
+
+Clause 1
+
+Supports that generally are not NDIS supports
+
+          Column 1            Column 2
+
+Item Category                 Supports
+
+                              (f) fringe benefits for staff or contractors;
+
+                              (g) education and tuition fees including fees for school,
+                                  vocational education and training and higher education;
+
+                              (h) legal costs;
+
+                              (i) child support fees and debt repayments;
+
+                              (j) gift cards;
+
+                              (k) business development costs and business skills
+                                  development costs, including company registration,
+                                  book-keeping, accounting services or software;
+
+                              (l) debts, liabilities, loan repayments, buy now pay later
+                                  payments, and taxes.
+
+3         Day-to-day living costs-- The following:
+
+          food and groceries  (a) groceries including all food, beverage, cleaning,
+
+                              household and health products;
+
+                              (b) fast food services, takeaway food and food delivery
+                                  platforms.
+
+                              Meal delivery platforms where the food and ingredient
+                              component can be separately identified from the meal
+                              preparation and delivery components are not included in
+                              paragraph (b).
+
+4         Day-to-day living costs-- The following:
+
+          lifestyle           (a) cigarettes, vapes and smoking paraphernalia, and legal
+
+                              cannabis;
+
+                              (b) smoking cessation devices such nicotine replacement
+                                  items;
+
+                              (c) gambling;
+
+                              (d) internet devices (such as modems and routers), land line
+                                  phones, mobile phones (including smart phones), mobile
+                                  phone accessories, tablets and sim cards;
+
+                              (e) internet, landline and mobile phone plans and data;
+
+                              (f) standard computers, standard computer accessories,
+                                  consoles and games, and subscriptions for streaming
+                                  services;
+
+                              (g) standard recreational equipment and tools, including toys,
+                                  balls and racquets;
+
+                              (h) costs associated with recreational sports and activities,
+                                  including membership costs, venue hire fees, uniforms
+                                  and footwear;
+
+                              (i) costs associated with elite or professional sports and
+                                  activities, including equipment and modifications to
+                                  equipment and related travel costs;
+
+                              (j) dating or relationship services, including virtual reality,
+                                  match makers or apps;
+
+                              (k) costs associated with weddings, honeymoons, funerals,
+                                  and other social, business, private, public, formal or
+
+20        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                     (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                              Authorised Version F2024L01257 registered 01/10/2024
+                         Supports that generally are not NDIS supports Schedule 2
+
+                                                                                            Clause 1
+
+Supports that generally are not NDIS supports
+
+   Column 1              Column 2
+
+Item Category            Supports
+                             informal events;
+
+                         (l) musical instruments, music production and social media
+                             production;
+
+                         (m) tickets to theme parks, tourism and entertainment
+                             operators;
+
+                         (n) tickets to music, theatre, cinema or sporting events, and
+                             conference fees or entrance fees;
+
+                         (o) accommodation to attend or participate in work, study,
+                             music, theatre, cinema, sporting events or conferences, or
+                             any other social, business, private, public, formal or
+                             informal event;
+
+                         (p) standard indoor or outdoor play equipment;
+
+                         (q) general health, fitness, social or recreational activity costs
+                             or services;
+
+                         (r) membership and entry to a recreational club and standard
+                             gym equipment;
+
+                         (s) non-prescription medicines, sunscreens, weight loss
+                             products, vitamins, sport or athletic supplements, and
+                             homeopathic medicines.
+
+5  Day-to-day living costs-- The following:
+
+   clothing and beauty   (a) jewellery and watches (including smart watches);
+
+                         (b) makeup, cosmetic treatments, cosmetics, and cosmetic
+                             accessories;
+
+                         (c) standard clothing and footwear;
+
+                         (d) hair treatments, cutting, dying, styling, extensions,
+                             threading, weaving, hair replacements and transplants and
+                             wigs;
+
+                         (e) manicures, pedicures, false nail application or removal of
+                             any kind, nail painting and removal, nail decorations, nail
+                             piercings, hand or foot massage or treatments;
+
+                         (f) body art including body piercings, tattoo services, and
+                             henna.
+
+6  Day-to-day living costs-- The following:
+
+   travel and transport  (a) cruises, holiday packages, holiday accommodation, and
+
+                         airfares, including interstate and overseas travel, and
+
+                         passports, visas, activities and meals included in travel;
+
+                         (b) vehicles, including motor vehicles, motorbikes,
+                             watercraft, all-terrain vehicles, standard bikes and
+                             scooters, and other recreational vehicles;
+
+                         (c) vehicles, devices, modifications or products that are not
+                             legal for use in the relevant state or territory;
+
+                         (d) mechanical repairs (except for repairs to vehicle
+                             modifications funded under any plan for the participant),
+                             automotive tools;
+
+                         (e) vehicle registration;
+
+               National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  21
+
+                         (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+               Authorised Version F2024L01257 registered 01/10/2024
+Schedule 2 Supports that generally are not NDIS supports
+
+Clause 1
+
+Supports that generally are not NDIS supports
+
+          Column 1                 Column 2
+
+Item Category                      Supports
+
+                                   (f) personal mobility devices, including e-scooters, electric
+                                       bikes and skateboards;
+
+                                   (g) transport for children as part of their reasonable care and
+                                       support provided by families or carers;
+
+                                   (h) petrol, diesel and gas.
+
+7         Day-to-day living costs-- The following:
+
+          pets                     (a) animals, including pets and companion animals (other
+
+                                   than eligible assistance animals);
+
+                                   (b) pet food for animals (other than eligible assistance
+                                       animals included in a participant's plan);
+
+                                   (c) veterinarian costs, pet boarding, pet grooming for animals
+                                       (other than eligible assistance animals included in a
+                                       participant's plan);
+
+                                   (d) pet insurance;
+
+                                   (e) taxidermy and pet cremations, burials or funerals.
+
+8         Day-to-day living costs-- Surrogacy and fertility treatments.
+
+          reproductive health and
+
+          family related
+
+9         Not evidenced based--    The following:
+
+          alternative and          (a) crystal therapy;
+          complementary therapies  (b) tarot card reading, psychics, mediums, and clairvoyants;
+
+                                   (c) cuddle therapy;
+
+                                   (d) reflexology;
+
+                                   (e) aromatherapy;
+
+                                   (f) sound therapy;
+
+                                   (g) yoga therapy;
+
+                                   (h) wilderness therapy;
+
+                                   (i) animal therapy, including puppy therapy and goat therapy;
+
+                                   (j) hair therapy;
+
+                                   (k) alternative or complementary medicine.
+
+10        Not evidenced based--    The following:
+
+          wellness and coaching    (a) massage that is not provided by an allied health
+
+                                   professional for disability related purposes;
+
+                                   (b) sports or athletic supplements;
+
+                                   (c) life coaches, wellness coaches, career coaches, or cultural
+                                       coaches;
+
+                                   (d) hypnotherapy;
+
+                                   (e) neurofeedback;
+
+                                   (f) gaming therapy;
+
+                                   (g) mastermind coaching, including apps and software;
+
+                                   (h) somatic therapy
+
+                                   (i) kinesiology.
+
+22        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                          (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                          Authorised Version F2024L01257 registered 01/10/2024
+                           Supports that generally are not NDIS supports Schedule 2
+
+                                                                                            Clause 1
+
+Supports that generally are not NDIS supports
+
+    Column 1               Column 2
+
+Item Category              Supports
+
+11  Not evidenced based--  The following:
+
+    energy and healing     (a) reiki (including intuitive reiki);
+    practices related      (b) scalar lounge;
+
+                           (c) frequency healing and energy balanced massage;
+
+                           (d) deep energy clearing;
+
+                           (e) spinal flow technique;
+
+                           (f) shamanic healing.
+
+12 Health                  The following:
+
+                           (a) the diagnosis, early intervention and clinical treatment of
+                               health and dental health conditions, including ongoing or
+                               chronic health conditions;
+
+                           (b) diagnostic assessments and screening services;
+
+                           (c) time-limited, recovery-oriented services and therapies:
+                                   (i) where the predominant purpose is treatment directly
+                                       related to the person's health status; or
+                                   (ii) that are provided after a recent medical or surgical
+                                       event, with the aim of improving the person's
+                                       functional status, including post-acute
+                                       rehabilitation or post-acute care;
+
+                           (d) pharmaceuticals (including prescription medicines and
+                               non-prescription medicines), biological medicines,
+                               vaccines, sunscreens, weight loss products, vitamins, sport
+                               and athletic supplements, and homeopathic medicines;
+
+                           (e) equipment or assistive products prescribed or issued as a
+                               result of clinical care, treatment or management from a
+                               medical practitioner and then delivered in the clinical
+                               setting, unrelated to the person's disability;
+
+                           (f) surgical services or procedures related to aids and
+                               equipment;
+
+                           (g) acute, subacute, emergency, and outpatient clinical
+                               services delivered through public or private hospitals;
+
+                           (h) prescription spectacles or contact lenses;
+
+                           (i) nursing services (where related to treatment of a health
+                               event);
+
+                           (j) ambulance services
+
+                           (k) health transport services;
+
+                           (l) hospital in the home services;
+
+                           (m) sleep consultant services;
+
+                           (n) health retreats;
+
+                           (o) new-born follow-up provided in the health system,
+                               including child and maternal health services;
+
+                           (p) hearing services or supports provided by the Hearing
+                               Services Program;
+
+               National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  23
+
+                           (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+               Authorised Version F2024L01257 registered 01/10/2024
+Schedule 2 Supports that generally are not NDIS supports
+
+Clause 1
+
+Supports that generally are not NDIS supports
+
+          Column 1        Column 2
+
+Item Category             Supports
+
+                          (q) surgical services for hearing;
+
+                          (r) sub-acute palliative care, including in-patient and
+                              out-patient services delivered in the person's home or
+                              clinical setting.
+
+                          NDIS supports for the participant that may continue to be
+                          provided at the same time as sub-acute or palliative care
+                          services are not included in paragraph (r).
+
+13 Mental health          The following:
+
+                          (a) pharmaceuticals (including prescription medicines and
+                              non-prescription medicines);
+
+                          (b) treatment, including for drug and alcohol dependency,
+                              gambling, and other addictions or disorders;
+
+                          (c) acute, subacute, emergency and outpatient clinical
+                              services delivered through public and private hospital
+                              mental health services;
+
+                          (d) supports related to mental health that are clinical in nature,
+                              including acute, ambulatory or continuing care or
+                              rehabilitation;
+
+                          (e) residential care where the primary purpose is for inpatient
+                              or outpatient treatment or clinical rehabilitation.
+
+14 Child protection and   The following:
+          family support
+                          (a) travel or accommodation for parents visiting their children
+                              that are in out-of-home care;
+
+                          (b) guardianship services for children and adults;
+
+                          (c) general family therapy;
+
+                          (d) parenting programs;
+
+                          (e) babysitting, nannying services, and au pairs;
+
+                          (f) marriage and relationship counselling;
+
+                          (g) child protection services required by families who have
+                              entered, or are at risk of entering, the relevant State or
+                              Territory statutory child protection system;
+
+                          (h) general parenting programs, counselling or other supports
+                              for families, which are provided to families at risk of child
+                              protection intervention and to the broader community,
+                              including making them accessible and appropriate for
+                              families of people with disability;
+
+                          (i) out-of-home care or support to carers of children in
+                              out-of-home care where these supports are not additional
+                              to the needs of children of similar age in similar
+                              out-of-home care arrangements.
+
+15 Early childhood        The following:
+          development
+                          (a) early childhood supports or therapies to support the
+                              general child development needs of a child;
+
+                          (b) childcare fees (including fees associated with specialist or
+                              segregated childcare service models), long day care,
+
+24        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                       (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                       Authorised Version F2024L01257 registered 01/10/2024
+                          Supports that generally are not NDIS supports Schedule 2
+
+                                                                                            Clause 1
+
+Supports that generally are not NDIS supports
+
+Column 1                  Column 2
+
+Item Category             Supports
+
+                              family day care or informal care arrangements, including
+                              costs associated with reasonable adjustments that
+                              childcare services are required to make to accommodate a
+                              child with developmental delay or disability;
+
+                          (c) teaching aids or supports related to educational
+                              attainment;
+
+                          (d) building modifications for early childhood educational
+                              and care settings;
+
+                          (e) meeting the early childhood education and care needs of a
+                              child.
+
+16 School education       The following:
+
+                          (a) fees or payments for outside school hours care, including
+                              before school, after school, student free days, vacation
+                              care and school holiday programs;
+
+                          (b) education and tuition fees across all education settings;
+
+                          (c) standard school uniforms, shoes, lunchboxes, drink bottles
+                              or other school equipment;
+
+                          (d) personalised learning or supports for students that
+                              primarily relate to their educational attainment;
+
+                          (e) aids and equipment for educational purposes, including
+                              modified computer hardware, education software, and
+                              braille textbooks;
+
+                          (f) assistive products which are fixed or non-transportable in
+                              schools that enable a student access to education,
+                              including hoists and specially adapted furniture;
+
+                          (g) reasonable adjustments to education campuses, including
+                              capital works, including ramps, lifts, and hearing loops;
+
+                          (h) services from a person employed by the participant's
+                              school or the relevant authority or Department of State for
+                              a State or Territory with responsibility for school
+                              education;
+
+                          (i) textbooks and teaching aids, including in alternative
+                              formats;
+
+                          (j) tutors and scribes;
+
+                          (k) educational supports associated with home schooling;
+
+                          (l) school refusal programs;
+
+                          (m) school camp, incursion or excursion fees;
+
+                          (n) transport between school activities, including excursions
+                              and sporting carnivals;
+
+                          (o) work experience generally provided as part of a school
+                              program.
+
+17 Higher education and   The following:
+
+vocational education and  (a) education or tuition fees across all higher education and
+training                      vocational education training (VET) settings;
+
+                          (b) supports (including assistive products) for students that
+
+               National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  25
+
+                          (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                     Authorised Version F2024L01257 registered 01/10/2024
+Schedule 2 Supports that generally are not NDIS supports
+
+Clause 1
+
+Supports that generally are not NDIS supports
+
+          Column 1        Column 2
+
+Item Category             Supports
+                              primarily relate to their education and training;
+
+                          (c) building modifications to higher education and VET
+                              settings;
+
+                          (d) services from a person employed for educational purposes
+                              by the participant's higher education or VET provider;
+
+                          (e) personalised learning or supports for students that
+                              primarily relate to their educational attainment;
+
+                          (f) assistive products which are fixed or non-transportable in
+                              higher education or VET settings that enable a student or
+                              trainee to access to education or training, including hoists
+                              and specially adapted furniture;
+
+                          (g) textbooks and teaching aids, including in alternative
+                              formats such as braille or Easy English;
+
+                          (h) education and training to facilitate transition to
+                              employment generally provided in higher education and
+                              VET settings.
+
+18 Employment             The following:
+
+                          (a) government funded employment programs, including
+                              Disability Employment Services and Workforce Australia;
+
+                          (b) work-specific aids and equipment required to perform a
+                              job, including modified hardware and software;
+
+                          (c) reasonable adjustments (including assistive products and
+                              workplace modifications) to access a workplace;
+
+                          (d) employer responsibilities, including recruitment
+                              processes, work arrangements, transport for work
+                              activities;
+
+                          (e) employer compliance with employment laws, including
+                              those dealing with discrimination on the basis of
+                              disability;
+
+                          (f) employment programs, including both disability-targeted
+                              and open employment services, to provide advice and
+                              support to job seekers with disability who are largely
+                              independent once placed in employment to find and retain
+                              a job;
+
+                          (g) employment programs to encourage and assist employers
+                              to have recruitment policies and practices to hire and be
+                              inclusive of people with disability in the workplace. This
+                              includes support, training and resources, funding
+                              assistance to help employers make reasonable
+                              adjustments, and incentives for hiring people with
+                              disability, such as wage subsidies.
+
+19 Housing and community The following:
+
+          infrastructure  (a) direct costs of compliance with a person's tenancy
+
+                          agreement, including bond, pest control, exit cleaning and
+
+                          general damage repairs;
+
+                          (b) housing for people with disability, other than participants
+                              eligible for specialist disability accommodation;
+
+26        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                          (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                          Authorised Version F2024L01257 registered 01/10/2024
+               Supports that generally are not NDIS supports Schedule 2
+
+                                                                                            Clause 1
+
+Supports that generally are not NDIS supports
+
+Column 1       Column 2
+
+Item Category  Supports
+
+               (c) design and subsequent changes or modifications to state
+                   and territory owned residential facilities (including aged
+                   care facilities, transitional and boarding accommodation
+                   and rehabilitation facilities), public buildings and
+                   boarding schools to make buildings accessible for people
+                   with disability to a reasonable adjustment standard;
+
+               (d) design and subsequent changes or modifications to
+                   specialist disability accommodation;
+
+               (e) reasonable adjustments to social housing to make
+                   buildings accessible for people with disability;
+
+               (f) providing new publicly funded housing stock that meet
+                   accessibility standards and guidelines that apply in the
+                   location in which the housing is located;
+
+               (g) homelessness-specific services including homelessness
+                   outreach and emergency accommodation;
+
+               (h) the improvement of community infrastructure, including
+                   improving accessibility of the built and natural
+                   environment;
+
+               (i) postal services;
+
+               (j) housing subsidies, including rental bonds, mortgage relief
+                   and assistance with buying a home;
+
+               (k) crisis housing;
+
+               (l) mobile homes, caravans, campervans, tents.
+
+20 Transport   The following:
+               (a) accessible public transport;
+               (b) public transport fares;
+               (c) concessions to facilitate use of public transport;
+               (d) airline lounge memberships and access fees;
+               (e) transport costs for animals, other than eligible assistance
+
+                   animals included in a participant's plan;
+               (f) transport infrastructure, including road and footpath
+
+                   infrastructure;
+               (g) community transport services;
+               (h) modifications to public transport and taxis.
+
+21 Justice     The following:
+
+               (a) supports in secure mental health facilities that are clinical
+                   in nature;
+
+               (b) supervision and monitoring to prevent or observe
+                   offending behaviour or to monitor adherence to justice
+                   system-imposed conditions;
+
+               (c) the day-to-day care and support needs of a person in
+                   custody (including in a secure mental health facility),
+                   including supervision, personal care and general supports;
+
+               (d) pre-sentence psychological and psychiatric reports;
+
+               National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  27
+
+               (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+               Authorised Version F2024L01257 registered 01/10/2024
+Schedule 2 Supports that generally are not NDIS supports
+
+Clause 1
+
+Supports that generally are not NDIS supports
+
+          Column 1     Column 2
+
+Item Category          Supports
+
+                       (e) secure accommodation facilities where the purpose of this
+                           accommodation is to safeguard the community or prevent
+                           reoffending, including secure mental health facilities.
+
+22 Aged care           The following:
+
+                       (a) any of the following within the meaning of the Aged Care
+                           Act 1997:
+                               (i) basic daily care fees;
+                               (ii) refundable accommodation deposits;
+                               (iii) extra service fees;
+
+                       (b) any of the following services provided by a residential
+                           aged care service:
+                               (i) daily assistance with tasks such as cleaning,
+                                   cooking and laundry;
+                               (ii) personal care supports including bathing, dressing
+                                   and going to the toilet;
+                               (iii) access to health practitioner services, clinical care
+                                   and therapies;
+                               (iv) social and emotional support services and
+                                   entertainment.
+
+                       Supports for a participant that entered residential aged care
+                       before the age of 65 are not included in paragraph (b) if there
+                       is an agreement in place between the Agency and the
+                       Department of Health and Aged Care that those supports
+                       should be funded by the Agency.
+
+23 Unlawful goods and  The following:
+          services
+                       (a) supports the provision of which would be contrary to:
+                               (i) a law of the Commonwealth; or
+                               (ii) a law of the State or Territory in which the support
+                                   would be provided;
+
+                       (b) assistive products, vehicle modifications, or home
+                           modifications that do not comply with Commonwealth,
+                           State or Territory laws, the National Construction Code,
+                           or mandated Australian standards for the location and
+                           purpose the participant requires them;
+
+                       (c) supports involving restrictive practices that are prohibited
+                           in the participant's State or Territory of residence;
+
+                       (d) consumable products that are against the law;
+
+                       (e) firearms and weapons;
+
+                       (f) seclusion rooms.
+
+24 Income replacement  The following:
+                       (a) income support payments;
+                       (b) rent subsidy;
+                       (c) income supplementation.
+
+              Note:  Subsection 10(9) of the NDIS Act provides that a support is not an NDIS support for a
+                     participant if the support consists of the provision of:
+                     (a) sexual services; or
+
+28        National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)
+
+                     (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+                     Authorised Version F2024L01257 registered 01/10/2024
+                                      Supports that generally are not NDIS supports Schedule 2
+
+                                                                                          Clause 1
+
+              (b) alcohol; or
+              (c) drugs, the possession of which is a contravention of a law of the Commonwealth,
+
+                    a State or a Territory.
+
+              National Disability Insurance Scheme (Getting the NDIS Back on Track No. 1)  29
+
+              (NDIS Supports) Transitional Rules 2024
+
+OPC67017 - A
+
+              Authorised Version F2024L01257 registered 01/10/2024
+

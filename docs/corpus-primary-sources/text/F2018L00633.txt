@@ -1,0 +1,1053 @@
+National Disability Insurance Scheme (Incident
+Management and Reportable Incidents)
+Rules 2018
+
+I, Graeme Head, as delegate of the Minister for Social Services, make the following
+rules.
+
+Dated         17 May 2018
+
+Graeme Head
+Commissioner of the NDIS Quality and Safeguards Commission
+
+OPC62681 - A
+
+              Authorised Version F2018L00633 registered 18/05/2018
+Authorised Version F2018L00633 registered 18/05/2018
+Contents
+
+Part 1--Preliminary                                                                             2
+
+              1   Name........................................................................................................................... 2
+
+              2   Commencement .......................................................................................................... 2
+
+              3   Authority..................................................................................................................... 2
+
+              4   Definitions .................................................................................................................. 2
+
+Part 2--Incident management systems for registered NDIS providers                               3
+
+Division 1--Introduction                                                                        3
+
+              5   Simplified outline of this Part ..................................................................................... 3
+
+              6   Purpose of this Part ..................................................................................................... 3
+
+              7   Incidents that are also reportable incidents ................................................................. 4
+
+Division 2--Incident management system requirements                                             5
+
+              8   System must comply with this Division...................................................................... 5
+
+              9   Incidents that must be covered .................................................................................... 5
+
+              10  Incident management system procedures.................................................................... 5
+
+              11  System must afford procedural fairness ...................................................................... 6
+
+              12  Documentation, record keeping and statistics ............................................................. 6
+
+              13  Roles, responsibilities, compliance and training of workers ....................................... 8
+
+Part 3--Reportable incidents                                                                    9
+
+              14  Simplified outline of this Part ..................................................................................... 9
+
+              15  Purpose of this Part ..................................................................................................... 9
+
+              16  What is a reportable incident? ...................................................................................10
+
+              17  Reportable incidents include alleged reportable incidents .........................................10
+
+              18  Duty of key personnel of registered NDIS providers in relation to reportable
+
+                  incidents .....................................................................................................................10
+
+              19  Duty of workers to notify registered NDIS provider of reportable incidents .............11
+
+              20  Certain reportable incidents must be notified to the Commissioner within 24
+
+                  hours ..........................................................................................................................11
+
+              21  Other reportable incidents must be notified to the Commissioner within 5
+
+                  business days..............................................................................................................12
+
+              22  Circumstances in which certain information relating to reportable incidents
+
+                  need not be obtained or notified .................................................................................13
+
+              23  Keeping the Commissioner updated ..........................................................................13
+
+              24  Providing the Commissioner with a final report ........................................................14
+
+              25  Record keeping ..........................................................................................................14
+
+              26  Action by the Commissioner in relation to reportable incidents ................................15
+
+Part 4--Inquiries by the Commissioner                                                           16
+
+              27  Inquiries by the Commissioner in relation to reportable incidents .............................16
+
+Part 5--Other matters                                                                           17
+
+              28  Commissioner must comply with procedural fairness rules.......................................17
+
+              29  Commissioner may take action under the Act............................................................17
+
+                  National Disability Insurance Scheme (Incident Management and Reportable      i
+
+                              Incidents) Rules 2018
+
+OPC62681 - A
+
+                       Authorised Version F2018L00633 registered 18/05/2018
+Authorised Version F2018L00633 registered 18/05/2018
+Preamble
+
+               The National Disability Insurance Scheme (NDIS) represents a fundamental
+               change to how supports for people with disability are funded and delivered
+               across Australia. The NDIS is designed to produce major benefits for people with
+               disability, their families and the broader community.
+
+               The NDIS Quality and Safeguards Commission is responsible for a range of
+               functions under the National Quality and Safeguarding Framework aimed at
+               protecting and preventing harm to people with disability in the NDIS market.
+               The Commission will build the capability of NDIS participants and providers to
+               uphold the rights of people with disability and realise the benefits of the NDIS.
+               The legislation underpinning the NDIS is intended to support participants to be
+               informed purchasers and consumers of NDIS supports and services and to live
+               free from abuse, neglect, violence and exploitation.
+
+               Registered NDIS providers must establish incident management arrangements to
+               enable the identification of systemic issues and drive improvements in the quality
+               of the supports they deliver. Providers must also notify, investigate and respond
+               to reportable incidents.
+
+               The NDIS Quality and Safeguards Commissioner will receive notifications of
+               reportable incidents and oversee providers' responses to these incidents.
+
+               The Commissioner will work with providers to build their capability to respond
+               appropriately to incidents and improve their systems to prevent incidents from
+               occurring and minimise their impact on people with disability when they do
+               occur.
+
+               Oversight, combined with effective provider practice, can reduce preventable
+               deaths, serious injuries and other serious incidents through early intervention and
+               capacity-building.
+
+              National Disability Insurance Scheme (Incident Management and Reportable  1
+
+              Incidents) Rules 2018
+
+OPC62681 - A
+
+              Authorised Version F2018L00633 registered 18/05/2018
+Part 1 Preliminary
+
+Section 1
+
+Part 1--Preliminary
+
+1 Name
+
+               This instrument is the National Disability Insurance Scheme (Incident
+               Management and Reportable Incidents) Rules 2018.
+
+2 Commencement
+
+          (1) Each provision of this instrument specified in column 1 of the table commences,
+               or is taken to have commenced, in accordance with column 2 of the table. Any
+               other statement in column 2 has effect according to its terms.
+
+   Commencement information
+
+   Column 1               Column 2                                                       Column 3
+                                                                                         Date/Details
+   Provisions             Commencement                                                   1 July 2018
+
+   1. The whole of this   1 July 2018.
+   instrument
+
+               Note:      This table relates only to the provisions of this instrument as originally made. It will
+                          not be amended to deal with any later amendments of this instrument.
+
+   (2) Any information in column 3 of the table is not part of this instrument.
+        Information may be inserted in this column, or information in it may be edited, in
+        any published version of this instrument.
+
+3 Authority
+
+               This instrument is made under the National Disability Insurance Scheme Act
+               2013.
+
+4 Definitions             A number of expressions used in this instrument are defined in section 9 of the Act,
+                          including the following:
+                   Note:  (a) key personnel;
+                          (b) registered NDIS provider;
+                          (c) reportable incident.
+
+               In this instrument:
+
+               Act means the National Disability Insurance Scheme Act 2013.
+
+2              National Disability Insurance Scheme (Incident Management and Reportable
+
+                                    Incidents) Rules 2018
+
+OPC62681 - A
+
+                          Authorised Version F2018L00633 registered 18/05/2018
+                        Incident management systems for registered NDIS providers Part 2
+                                                                             Introduction Division 1
+
+                                                                                 Section 5
+
+Part 2--Incident management systems for registered NDIS
+          providers
+
+Division 1--Introduction
+
+5 Simplified outline of this Part
+
+              This Part requires all registered NDIS providers to implement and maintain a
+              system to record and manage certain incidents that happen in connection with
+              providing supports or services to people with disability.
+
+              The incidents that must be recorded and managed are:
+                   (a) incidents that have, or could have, caused harm to a person with
+                          disability receiving supports or services; and
+                   (b) acts by a person with disability that happen in connection with the
+                          provision of supports or services and that have caused serious harm, or
+                          a risk of serious harm, to another person; and
+                   (c) reportable incidents that are alleged to have occurred in connection
+                          with the provision of supports or services.
+
+              The incident management system must set up procedures for identifying,
+              assessing, managing and resolving such incidents. These procedures must specify
+              things such as the people to whom incidents must be reported, how people with
+              disability affected by an incident will be supported and involved in resolving the
+              incident and when corrective action is required.
+
+              Registered NDIS providers must keep records about incidents, and must
+              document their incident management system. Copies of the documented system
+              must be available to certain people, including workers and persons with
+              disability receiving supports or services from the provider.
+
+6 Purpose of this Part
+
+(1) This Part is made for the purposes of paragraph 73Y(b) of the Act.
+
+(2) It sets out what must be included in the incident management systems of
+     registered NDIS providers.
+
+              Note 1:  Failure by a registered NDIS provider to comply with the requirements of this Part
+                       constitutes a breach of condition of registration (see paragraph 73F(2)(g) of the Act)
+                       and may lead to compliance and enforcement action under Division 8 of Part 3A of the
+                       Act.
+
+              Note 2:  A registered NDIS provider has additional obligations if an incident is the subject of a
+                       complaint (see sections 73W and 73X of the Act and the National Disability Insurance
+                       Scheme (Complaints Management and Resolution) Rules 2018).
+
+                       National Disability Insurance Scheme (Incident Management and Reportable  3
+
+                        Incidents) Rules 2018
+
+OPC62681 - A
+
+                        Authorised Version F2018L00633 registered 18/05/2018
+Part 2 Incident management systems for registered NDIS providers
+Division 1 Introduction
+
+Section 7
+
+7 Incidents that are also reportable incidents
+
+              The requirements of this Part and the requirements of Part 3 must be complied
+              with in relation to an incident if the incident is both:
+
+                (a) of a kind that is required to be covered by an incident management system;
+                     and
+
+               (b) a reportable incident.
+
+              Note:  For the kinds of incidents required to be covered by an incident management system,
+                     see section 9 of this instrument. For the meaning of reportable incident, see
+                     subsection 73Z(4) of the Act and section 16 of this instrument.
+
+4          National Disability Insurance Scheme (Incident Management and Reportable
+
+                     Incidents) Rules 2018
+
+OPC62681 - A
+
+                     Authorised Version F2018L00633 registered 18/05/2018
+                     Incident management systems for registered NDIS providers Part 2
+                                     Incident management system requirements Division 2
+
+                                                                              Section 8
+
+Division 2--Incident management system requirements
+
+8 System must comply with this Division
+
+              A registered NDIS provider must implement and maintain an incident
+              management system that complies with the requirements set out in this Division.
+
+              Note:  The incident management system must also be appropriate for the size of the provider
+                     and for the classes of supports or services provided (see paragraph 73Y(a) of the Act).
+
+9 Incidents that must be covered
+
+          (1) The incident management system of a registered NDIS provider must cover
+               incidents that consist of acts, omissions, events or circumstances that:
+                 (a) occur in connection with providing supports or services to a person with
+                      disability; and
+                 (b) have, or could have, caused harm to the person with disability.
+
+          (2) The incident management system must also cover incidents that consist of acts
+               by a person with disability that:
+                 (a) occur in connection with providing supports or services to the person with
+                      disability; and
+                 (b) have caused serious harm, or a risk of serious harm, to another person.
+
+          (3) The incident management system must also cover reportable incidents that are
+               alleged to have occurred in connection with providing supports or services to a
+               person with disability.
+
+10 Incident management system procedures
+
+          (1) The incident management system of a registered NDIS provider must establish
+               procedures to be followed in identifying, managing and resolving incidents,
+               including procedures that specify the following:
+                 (a) how incidents are identified, recorded and reported;
+                 (b) to whom incidents must be reported;
+                 (c) the person who is responsible for reporting incidents that are reportable
+                      incidents to the Commissioner;
+                 (d) how the registered NDIS provider will provide support and assistance to
+                      persons with disability affected by an incident (including information about
+                      access to advocates such as independent advocates), to ensure their health,
+                      safety and wellbeing;
+                 (e) how persons with disability affected by an incident will be involved in the
+                      management and resolution of the incident;
+                 (f) when an investigation by the registered NDIS provider is required to
+                      establish the causes of a particular incident, its effect and any operational
+                      issues that may have contributed to the incident occurring, and the nature
+                      of that investigation;
+                 (g) when corrective action is required and the nature of that action.
+
+                     National Disability Insurance Scheme (Incident Management and Reportable  5
+
+                     Incidents) Rules 2018
+
+OPC62681 - A
+
+                     Authorised Version F2018L00633 registered 18/05/2018
+Part 2 Incident management systems for registered NDIS providers
+Division 2 Incident management system requirements
+
+Section 11
+
+          (2) The procedures may vary, depending on the seriousness of the incident.
+
+          (3) The incident management system must require all incidents to be assessed in
+               relation to the following, with the assessment considering the views of persons
+               with disability affected by the incident:
+                 (a) whether the incident could have been prevented;
+                 (b) how well the incident was managed and resolved;
+                 (c) what, if any, remedial action needs to be undertaken to prevent further
+                      similar incidents from occurring, or to minimise their impact;
+                 (d) whether other persons or bodies need to be notified of the incident.
+
+          (4) The incident management system must set out procedures for ensuring that the
+               requirements of subsection (3) are complied with.
+
+          (5) The incident management system must provide that, if the incident is a reportable
+               incident, the incident must also be notified and managed in accordance with
+               Part 3.
+
+          (6) The incident management system must also provide for the periodic review of
+               the system to ensure its effectiveness.
+
+11 System must afford procedural fairness
+
+          (1) The incident management system of a registered NDIS provider must require that
+               people are afforded procedural fairness when an incident is dealt with by the
+               provider.
+
+          (2) The Commissioner may, by notifiable instrument, make guidelines relating to
+               procedural fairness for the purposes of subsection (1).
+
+12 Documentation, record keeping and statistics
+
+          (1) A registered NDIS provider must:
+                 (a) document its incident management system; and
+                 (b) provide copies of the documented system, in an accessible form, to the
+                      following persons:
+                        (i) persons with disability receiving supports or services from the
+                            registered NDIS provider;
+                       (ii) each person employed or otherwise engaged by the registered NDIS
+                            provider;
+                      (iii) the family members, carers, independent advocates and significant
+                            others of persons with disability receiving supports or services from
+                            the registered NDIS provider; and
+                 (c) assist persons referred to in paragraph (b) to understand how the
+                      documented system operates.
+
+          (2) The incident management system of a registered NDIS provider must provide for
+               the following details, as a minimum, to be recorded in relation to each incident
+               that occurs:
+                 (a) a description of the incident, including the impact on, or harm caused to,
+                      any person with disability affected by the incident;
+
+6  National Disability Insurance Scheme (Incident Management and Reportable
+
+              Incidents) Rules 2018
+
+OPC62681 - A
+
+              Authorised Version F2018L00633 registered 18/05/2018
+                     Incident management systems for registered NDIS providers Part 2
+                                     Incident management system requirements Division 2
+
+                                                                                               Section 12
+
+              (b) whether the incident is a reportable incident;
+              (c) if known--the time, date and place at which the incident occurred;
+              (d) if paragraph (c) does not apply--the time and date the incident was first
+
+                   identified;
+              (e) the names and contact details of the persons involved in the incident;
+              (f) the names and contact details of any witnesses to the incident;
+              (g) details of the assessment undertaken in accordance with the requirements
+
+                   of subsection 10(3);
+              (h) the actions taken in response to the incident, including actions taken to
+
+                   support or assist persons with disability affected by the incident;
+              (i) any consultations undertaken with the persons with disability affected by
+
+                   the incident;
+              (j) whether persons with disability affected by the incident have been provided
+
+                   with any reports or findings regarding the incident;
+              (k) if an investigation is undertaken by the provider in relation to the
+
+                   incident--the details and outcomes of the investigation;
+              (l) the name and contact details of the person making the record of the
+
+                   incident.
+
+(3) The incident management system must provide for the following details, as a
+     minimum, to be recorded in relation to each reportable incident that is alleged to
+     have occurred:
+
+       (a) a description of the alleged incident;
+
+       (b) if known--the time, date and place at which the incident is alleged to have
+            occurred;
+
+       (c) the names and contact details of the persons involved in the alleged
+            incident;
+
+       (d) the names and contact details of any witnesses to the alleged incident;
+
+       (e) details of the assessment undertaken in accordance with the requirements
+            of subsection 10(3);
+
+       (f) the actions taken in response to the alleged incident, including actions
+            taken to support or assist persons with disability affected by the incident;
+
+       (g) any consultations undertaken with the persons with disability affected by
+            the alleged incident;
+
+       (h) whether persons with disability affected by the incident have been provided
+            with any reports or findings regarding the alleged incident;
+
+       (i) if an investigation is undertaken by the provider in relation to the alleged
+            incident--the details and outcomes of the investigation;
+
+       (j) the name and contact details of the person making the record of the alleged
+            incident.
+
+(4) A record made for the purposes of subsection (2) or (3) must be kept for 7 years
+     from the day the record is made.
+
+              Note:  A registered NDIS provider may be required to comply with other Commonwealth,
+                     State or Territory laws in relation to the retention of records.
+
+                     National Disability Insurance Scheme (Incident Management and Reportable       7
+
+                     Incidents) Rules 2018
+
+OPC62681 - A
+
+                     Authorised Version F2018L00633 registered 18/05/2018
+Part 2 Incident management systems for registered NDIS providers
+Division 2 Incident management system requirements
+
+Section 13
+
+          (5) The incident management system must provide for the collection of statistical
+               and other information relating to incidents to enable the registered NDIS
+               provider to:
+                 (a) review issues raised by the occurrence of incidents; and
+                 (b) identify and address systemic issues; and
+                 (c) report information relating to complaints to the Commissioner, if requested
+                      to do so by the Commissioner.
+
+          (6) This section does not limit paragraph 10(1)(a).
+
+13 Roles, responsibilities, compliance and training of workers
+
+          (1) The incident management system of a registered NDIS provider must set out the
+               roles and responsibilities of any persons employed or otherwise engaged by the
+               registered NDIS provider in identifying, managing and resolving incidents and in
+               preventing incidents from occurring.
+
+          (2) Without limiting subsection (1), the incident management system must provide
+               that each person employed or otherwise engaged by the registered NDIS provider
+               must comply with the incident management system.
+
+          (3) The incident management system must include requirements relating to the
+               provision of training to any persons employed or otherwise engaged by the
+               registered NDIS provider in the use of, and compliance with, the incident
+               management system.
+
+8  National Disability Insurance Scheme (Incident Management and Reportable
+
+              Incidents) Rules 2018
+
+OPC62681 - A
+
+              Authorised Version F2018L00633 registered 18/05/2018
+                                                                           Reportable incidents Part 3
+
+                                                                                               Section 14
+
+Part 3--Reportable incidents
+
+14 Simplified outline of this Part
+
+               Certain incidents that happen, or are alleged to have happened, in connection
+               with the provision of supports or services by registered NDIS providers are
+               known as reportable incidents. These incidents include the death, serious injury,
+               abuse or neglect of a person with disability and the use of restrictive practices in
+               particular circumstances.
+
+               If a reportable incident occurs, or is alleged to have occurred, the registered
+               NDIS provider must give details about the incident to the Commissioner. Details
+               of certain incidents (such as the death of a person with disability) must be
+               notified within 24 hours, while others must be notified within 5 business days.
+
+               Registered NDIS providers must keep records about reportable incidents.
+
+               If the Commissioner is notified about a reportable incident, the Commissioner
+               may take certain action, including requiring the provider to undertake specified
+               remedial action, carry out an internal investigation about the incident or engage
+               an independent expert to investigate and report on the incident.
+
+               The Commissioner has the power to authorise inquiries in relation to reportable
+               incidents. An inquiry can be carried out even if a reportable incident has not been
+               notified to the Commissioner.
+
+               The Commissioner can publish a report setting out his or her findings in relation
+               to an inquiry.
+
+15 Purpose of this Part
+
+(1) This Part is made for the purposes of section 73Z of the Act.
+
+(2) It is about reportable incidents that occur in connection with the provision of
+     supports or services by registered NDIS providers.
+
+      Note 1: This Part covers reportable incidents that are alleged to have occurred, as well as
+                    reportable incidents that have actually occurred (see section 17).
+
+      Note 2: For the meaning of reportable incident, see subsection 73Z(4) of the Act and
+                    section 16 of this instrument.
+
+(3) These reportable incidents must be notified and managed in accordance with this
+     Part.
+
+              Note:  Failure by a registered NDIS provider to comply with the requirements of this Part
+                     constitutes a breach of condition of registration (see paragraph 73F(2)(h) of the Act)
+                     and may lead to compliance and enforcement action under Division 8 of Part 3A of the
+                     Act.
+
+                     National Disability Insurance Scheme (Incident Management and Reportable      9
+
+                         Incidents) Rules 2018
+
+OPC62681 - A
+
+                     Authorised Version F2018L00633 registered 18/05/2018
+Part 3 Reportable incidents
+
+Section 16
+
+16 What is a reportable incident?
+
+    (1) This section is made for the purposes of subsection 73Z(5) of the Act.
+
+              Note 1:  Subsection 73Z(4) of the Act provides that reportable incident means:
+
+                       (a) the death of a person with disability; or
+                       (b) serious injury of a person with disability; or
+                       (c) abuse or neglect of a person with disability; or
+                       (d) unlawful sexual or physical contact with, or assault of, a person with disability; or
+                       (e) sexual misconduct committed against, or in the presence of, a person with
+
+                             disability, including grooming of the person for sexual activity; or
+
+                       (f) the use of a restrictive practice in relation to a person with disability, other than
+                             where the use is in accordance with an authorisation (however described) of a
+                             State or Territory in relation to the person.
+
+              Note 2:  Subsection 73Z(5) of the Act allows this instrument to provide that specified acts,
+                       omissions or events are, or are not, reportable incidents. This instrument can override
+                       subsection 73Z(4) of the Act in this regard.
+
+    (2) An act specified in paragraph 73Z(4)(d) of the Act that occurs in relation to a
+         person with disability is not a reportable incident if:
+           (a) the act is unlawful physical contact with a person with disability; and
+           (b) the contact with, and impact on, the person with disability is negligible.
+
+    (3) Despite paragraph 73Z(4)(f) of the Act, the use of a restrictive practice in
+         relation to a person with disability where the use is in accordance with an
+         authorisation (however described) of a State or Territory is a reportable incident
+         if the use is not in accordance with a behaviour support plan for the person with
+         disability.
+
+              Note:    See also subsection 73Z(4) of the Act, which sets out the definition of reportable
+                       incidents.
+
+    (4) Despite paragraph 73Z(4)(f) of the Act, the use of a restrictive practice in
+         relation to a person with disability where the use is not in accordance with an
+         authorisation (however described) of a State or Territory is not a reportable
+         incident if:
+
+           (a) the use is in accordance with a behaviour support plan for the person with
+                disability; and
+
+           (b) the State or Territory in which the restrictive practice is used does not have
+                authorisation process in relation to the use of the restrictive practice.
+
+17 Reportable incidents include alleged reportable incidents
+
+               A reference in this Part to a reportable incident that has occurred includes a
+               reference to a reportable incident that is alleged to have occurred.
+
+18 Duty of key personnel of registered NDIS providers in relation to reportable
+              incidents
+
+               The following must take all reasonable steps to ensure that reportable incidents
+               that occur in connection with the provision of supports or services by a registered
+               NDIS provider are notified to the Commissioner:
+
+                 (a) members of the key personnel of the provider;
+
+10  National Disability Insurance Scheme (Incident Management and Reportable
+
+                             Incidents) Rules 2018
+
+OPC62681 - A
+
+                             Authorised Version F2018L00633 registered 18/05/2018
+                                                                           Reportable incidents Part 3
+
+                                                                                          Section 19
+
+              (b) the person specified for the purposes of paragraph 10(1)(c) for the
+                   provider.
+
+19 Duty of workers to notify registered NDIS provider of reportable incidents
+
+               If a person employed or otherwise engaged by a registered NDIS provider
+               becomes aware that a reportable incident has occurred in connection with the
+               provision of supports or services by the provider, the person must notify one of
+               the following of that fact as soon as possible:
+
+                 (a) a member of the provider's key personnel;
+                 (b) a supervisor or manager of the person;
+                 (c) the person specified for the purposes of paragraph 10(1)(c) for the
+
+                      provider.
+
+20 Certain reportable incidents must be notified to the Commissioner within 24
+              hours
+
+(1) This section applies if:
+       (a) a registered NDIS provider becomes aware that a reportable incident has
+            occurred in connection with the provision of supports or services by the
+            provider; and
+       (b) the reportable incident is:
+             (i) the death of a person with disability; or
+             (ii) the serious injury of a person with disability; or
+            (iii) the abuse or neglect of a person with disability; or
+            (iv) the unlawful sexual or physical contact with, or assault of, a person
+                  with disability; or
+             (v) sexual misconduct committed against, or in the presence of, a person
+                  with disability, including grooming of the person for sexual activity.
+
+              Note:  For the purposes of subparagraph (b)(iv), certain physical contact is not a reportable
+                     incident and so is not covered by the requirements of this section (see
+                     subsection 16(2)).
+
+(2) Subject to subsection (3), the registered NDIS provider must notify the
+     Commissioner of the following information within 24 hours:
+
+       (a) the name and contact details of the registered NDIS provider;
+
+       (b) a description of the reportable incident;
+
+       (c) except for a reportable incident of a kind covered by
+            subparagraph (1)(b)(i)--a description of the impact on, or harm caused to,
+            the person with disability;
+
+       (d) the immediate actions taken in response to the reportable incident,
+            including actions taken to ensure the health, safety and wellbeing of
+            persons with disability affected by the incident and whether the incident
+            has been reported to police or any other body;
+
+       (e) the name and contact details of the person making the notification;
+
+       (f) if known--the time, date and place at which the reportable incident
+            occurred;
+
+                     National Disability Insurance Scheme (Incident Management and Reportable                11
+
+                     Incidents) Rules 2018
+
+OPC62681 - A
+
+                     Authorised Version F2018L00633 registered 18/05/2018
+Part 3 Reportable incidents
+
+Section 21
+
+              (g) the names and contact details of the persons involved in the reportable
+                   incident;
+
+              (h) any other information required by the Commissioner.
+
+              Note:  The information required by paragraphs (b), (c), (f) and (g) may not need to be given in
+                     certain circumstances (see section 22).
+
+    (3) If, within 24 hours after the provider became aware that the incident occurred,
+         insufficient information is available to comply with subsection (2), the provider
+         must:
+
+           (a) provide the information mentioned in paragraphs (2)(a) to (e) within the 24
+                hour period; and
+
+           (b) provide the remaining information required by that subsection within 5
+                business days after the provider became aware that the incident occurred.
+
+    (4) The registered NDIS provider must notify the Commissioner of the following
+         information within 5 business days after the provider became aware that the
+         incident occurred:
+
+           (a) the names and contact details of any witnesses to the reportable incident;
+
+           (b) any further actions proposed to be taken in response to the reportable
+                incident.
+
+    (5) A notification in accordance with subsection (2) may be given by telephone or in
+         writing.
+
+    (6) A notification given in accordance with paragraph (3)(a) or (b) or subsection (4)
+         must be given in writing.
+
+    (7) If a notification is given in writing, the Commissioner must acknowledge its
+         receipt within 24 hours.
+
+    (8) The Commissioner must approve a form for the purposes of giving notifications
+         in writing under this section.
+
+21 Other reportable incidents must be notified to the Commissioner within 5
+              business days
+
+          (1) A registered NDIS provider must notify the Commissioner in accordance with
+               this section if:
+                 (a) the registered NDIS provider becomes aware that a reportable incident has
+                      occurred in connection with the provision of supports or services by the
+                      provider; and
+                 (b) the reportable incident is not of a kind covered by paragraph 20(1)(b).
+
+          (2) The notification must:
+                 (a) be given in writing; and
+                 (b) be given within 5 business days after the provider became aware that the
+                      reportable incident occurred; and
+                 (c) include all of the information required by subsection (3).
+
+          (3) The information required is as follows:
+                 (a) the name and contact details of the registered NDIS provider;
+
+12  National Disability Insurance Scheme (Incident Management and Reportable
+
+                             Incidents) Rules 2018
+
+OPC62681 - A
+
+                             Authorised Version F2018L00633 registered 18/05/2018
+                                                                           Reportable incidents Part 3
+
+                                                                                               Section 22
+
+              (b) a description of the reportable incident, including the impact on, or harm
+                   caused to, the person with disability;
+
+              (c) if known--the time, date and place at which the reportable incident
+                   occurred;
+
+              (d) the names and contact details of the persons involved in the reportable
+                   incident;
+
+              (e) the names and contact details of any witnesses to the reportable incident;
+
+              (f) the immediate actions taken in response to the reportable incident,
+                   including actions taken to ensure the health, safety and wellbeing of
+                   persons with disability affected by the incident and whether the incident
+                   has been reported to police or any other body;
+
+              (g) any further actions proposed to be taken in response to the reportable
+                   incident;
+
+              (h) the name and contact details of the person making the notification;
+
+              (i) any other information required by the Commissioner.
+
+              Note:  The information required by paragraphs (b) to (e) may not need to be given in certain
+                     circumstances (see section 22).
+
+(4) The Commissioner must acknowledge receipt of the notification within 24 hours
+     after receiving it.
+
+(5) The Commissioner must approve a form for the purposes of giving notifications
+     under this section.
+
+22 Circumstances in which certain information relating to reportable incidents
+              need not be obtained or notified
+
+               A registered NDIS provider is not required to obtain, or notify the Commissioner
+               of, the information mentioned in paragraph 20(2)(b), (c), (f) or (g), 20(4)(a) or
+               21(3)(b), (c), (d) or (e) if obtaining the information would, or could reasonably
+               be expected to:
+
+                 (a) prejudice the conduct of a criminal investigation; or
+                 (b) expose a person with disability to a risk of harm.
+
+23 Keeping the Commissioner updated
+
+          (1) This section applies if:
+                 (a) a registered NDIS provider gives notification of a reportable incident under
+                      section 20 or 21 at a particular time; and
+                 (b) the provider becomes aware of significant new information in relation to
+                      the incident after that time; and
+                 (c) the significant new information:
+                        (i) is or relates to a change in the kind of reportable incident; or
+                       (ii) is a further reportable incident.
+
+          (2) The provider must notify the Commissioner of the significant new information as
+               soon as reasonably practicable after becoming aware of the information.
+
+          (3) The notification must be given in writing.
+
+                     National Disability Insurance Scheme (Incident Management and Reportable  13
+
+                     Incidents) Rules 2018
+
+OPC62681 - A
+
+                     Authorised Version F2018L00633 registered 18/05/2018
+Part 3 Reportable incidents
+
+Section 24
+
+          (4) If notification is given under this section of a further reportable incident, the
+               registered NDIS provider is taken to have complied with section 20 or 21 (as the
+               case requires).
+
+          (5) The Commissioner may approve a form for the purposes of giving notifications
+               in writing under this section.
+
+24 Providing the Commissioner with a final report
+
+          (1) If a registered NDIS provider gives notification of a reportable incident under
+               subsection 20(4) or section 21, the Commissioner may require the provider to
+               give the information required by subsection (2) of this section to the
+               Commissioner, within 60 business days after the notification is given under
+               subsection 20(4) or section 21, or a longer period specified by the Commissioner.
+
+          (2) The information required is as follows:
+                 (a) details of any internal or external investigation or assessment that has been
+                      undertaken in relation to the incident, including:
+                        (i) the name and position of the person who undertook the investigation;
+                            and
+                       (ii) when the investigation was undertaken; and
+                      (iii) details of any findings made; and
+                      (iv) details of any corrective or other action taken after the investigation;
+                 (b) a copy of any report of the investigation or assessment;
+                 (c) whether persons with disability affected by the incident (or their
+                      representative) have been kept informed of the progress, findings and
+                      actions relating to the investigation or assessment;
+                 (d) any other information required by the Commissioner.
+
+          (3) The information must be given in writing.
+
+          (4) The Commissioner must approve a form for the purposes of giving information
+               under this section.
+
+25 Record keeping
+
+    (1) If a registered NDIS provider becomes aware that a reportable incident has
+         occurred in connection with the provision of supports or services by the provider,
+         the provider must keep a record of the incident.
+
+    (2) The record must be kept for 7 years from the day that notification of the
+         reportable incident is given under subsection 20(2), paragraph 21(2)(b) or
+         subsection 23(2) (as the case requires).
+
+              Note:  A registered NDIS provider may be required to comply with other Commonwealth,
+                     State or Territory laws in relation to the retention of records.
+
+    (3) It is sufficient compliance with this section if the provider keeps the record of the
+         reportable incident required to be made under section 12.
+
+14  National Disability Insurance Scheme (Incident Management and Reportable
+
+                             Incidents) Rules 2018
+
+OPC62681 - A
+
+                             Authorised Version F2018L00633 registered 18/05/2018
+                                                                           Reportable incidents Part 3
+
+                                                                                               Section 26
+
+26 Action by the Commissioner in relation to reportable incidents
+
+(1) The Commissioner may, upon receiving notification that a reportable incident
+     has occurred in connection with the provision of supports or services by a
+     registered NDIS provider, do one or more of the following:
+
+       (a) refer the incident to another person or body with responsibility in relation
+            to the incident (such as a State or Territory agency responsible for child
+            protection);
+
+       (b) require or request the provider to undertake specified remedial action in
+            relation to the incident within a specified period, including remedial action
+            to ensure the health, safety and wellbeing of persons with disability
+            affected by the incident;
+
+       (c) require the provider to carry out an internal investigation in relation to the
+            incident, in the manner and within the timeframe specified in by the
+            Commissioner, and to provide a report on the investigation to the
+            Commissioner;
+
+       (d) require the provider to engage an appropriately qualified and independent
+            expert, at the expense of the provider, to carry out an investigation in
+            relation to the incident, in the manner and within the timeframe specified in
+            by the Commissioner, and to provide a report on the investigation to the
+            Commissioner;
+
+       (e) carry out an inquiry in relation to the incident in accordance with
+            section 27;
+
+       (f) take any other action that the Commissioner considers reasonable in the
+            circumstances.
+
+              Note:  The Commissioner may also share information in relation to a reportable incident in
+                     accordance with section 67E of the Act and the National Disability Insurance Scheme
+                     (Protection and Disclosure of Information--Commissioner) Rules 2018.
+
+(2) If an investigation is carried out under paragraph (1)(c) or (d) in relation to a
+     reportable incident, the Commissioner may take any action that the
+     Commissioner considers appropriate.
+
+(3) Without limiting subsection (2), the Commissioner may provide, or require the
+     registered NDIS provider to provide, information on the progress or outcome of
+     the investigation to:
+
+       (a) the person with disability involved in the incident (or a representative of
+            the person); and
+
+       (b) with the consent of the person with disability (or a representative of the
+            person)--any other person.
+
+                     National Disability Insurance Scheme (Incident Management and Reportable  15
+
+                     Incidents) Rules 2018
+
+OPC62681 - A
+
+                     Authorised Version F2018L00633 registered 18/05/2018
+Part 4 Inquiries by the Commissioner
+
+Section 27
+
+Part 4--Inquiries by the Commissioner
+
+27 Inquiries by the Commissioner in relation to reportable incidents
+          (1) This section is made for the purposes of section 73Z of the Act.
+          (2) The Commissioner may authorise an inquiry in relation to a reportable incident
+               that has occurred in connection with the provision of supports or services by a
+               registered NDIS provider.
+          (3) The Commissioner may authorise an inquiry in relation to a series of reportable
+               incidents that have occurred in connection with the provision of supports or
+               services by one or more registered NDIS providers.
+          (4) An inquiry may be carried out whether or not notification of the reportable
+               incident or reportable incidents has been received under section 20 or 21.
+          (5) An inquiry may be carried out as the Commissioner thinks fit and the
+               Commissioner is not bound by any rules of evidence.
+          (6) Without limiting subsection (5), the Commissioner may:
+                 (a) consult with other persons, organisations and governments on matters
+                      relating to the inquiry; or
+                 (b) request information that is relevant to the inquiry from any person; or
+                 (c) provide opportunities for people with disability to participate in the inquiry.
+          (7) The Commissioner may prepare and publish a report setting out his or her
+               findings in relation to the inquiry.
+
+16  National Disability Insurance Scheme (Incident Management and Reportable
+
+              Incidents) Rules 2018
+
+OPC62681 - A
+
+              Authorised Version F2018L00633 registered 18/05/2018
+                                                                           Other matters Part 5
+
+                                                                                               Section 28
+
+Part 5--Other matters
+
+28 Commissioner must comply with procedural fairness rules
+
+              The Commissioner must, in taking action in relation to a reportable incident,
+              have due regard to the rules of procedural fairness.
+
+              Note:  The Commissioner may make guidelines for the purposes of dealing with reportable
+                     incidents, including in relation to matters of procedural fairness (see
+                     subsection 181D(2) of the Act).
+
+29 Commissioner may take action under the Act
+
+               Nothing in this instrument prevents the Commissioner from taking action under
+               Division 8 of Part 3A of the Act in relation to:
+
+                 (a) an incident, including a reportable incident, that occurs in connection with
+                      providing supports or services to a person with disability; or
+
+                 (b) information received by the Commissioner under this instrument.
+
+                     National Disability Insurance Scheme (Incident Management and Reportable          17
+
+                       Incidents) Rules 2018
+
+OPC62681 - A
+
+                     Authorised Version F2018L00633 registered 18/05/2018
+

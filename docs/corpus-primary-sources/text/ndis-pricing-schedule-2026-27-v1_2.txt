@@ -1,0 +1,2948 @@
+National Disability Insurance Scheme
+        Pricing Schedule 2026-27
+
+                    Effective 1 July 2026
+Contents
+
+Background                                                         3
+
+Version Control                                                    4
+
+Schedule 1: Disability Support Workers                             5
+
+Schedule 2: Accommodation and Capital Costs                        17
+
+Schedule 3: Nursing and other labour supports                      19
+
+Schedule 4: Therapy and Professional Supports                      27
+
+Schedule 5: Early Childhood Supports                               49
+
+Schedule 6: Support Coordination                                   64
+
+Schedule 7: Plan Management                                        65
+
+Schedule 8: Notional Unit Priced Items                             66
+
+Schedule 9: Support items without specified prices                 78
+
+Schedule 10: Quotable Supports                                     89
+
+Schedule 11: Isolated Towns Modification Lists                     92
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 2 of 99
+Background
+
+This is the NDIS Pricing Schedule for 2026-27, which the National Disability Insurance
+Agency (NDIA) has published following the release of the Annual Pricing Review and
+the Fair Work Commission's Annual Wage Review decision.
+
+This documentis intended tohelp participants receive value for moneywhen
+theypurchasethe supports that they needby providing guidance onappropriate
+pricesforthosesupports.Providers can use the National Disability Insurance Scheme
+(NDIS) Pricing Schedule to inform their prices. Providers must discuss proposed
+changes to existing service agreements with participants and participants must agree to
+the changes.
+
+The NDIS Pricing Schedulesets outinformation from theNDIAregardingwhat it
+considers to betheappropriateand reasonablemaximumprices for all NDIS supports,
+and details the relevant factors and methods needed to understand and calculate those
+prices.
+
+The NDIS Pricing Schedule is published against the background ofthe National
+Disability Insurance Scheme Amendment (Securing the NDIS for Future Generations)
+Bill 2026(Bill), which was introduced into Parliament on 14 May 2026. Amongst other
+things, the Billproposesto amend theNational Disability Insurance Scheme Act 2013to
+provide the Minister for the NDIS with the power to make a pricing determination, that
+sets out themaximumamount, or the method fordeterminingthemaximumamount,
+foraNDIS support.It would also confer the NDIA with a specific function to
+provideadvice to the Minister for the NDIS for the purposes of making a pricing
+determination.
+
+If the Bill is subsequently passed, it is anticipated that theNDIA's views on appropriate
+and reasonable prices as set out in theNDIS Pricing Schedule will then be used to
+inform advice provided by the NDIA to the Minister for the NDIS for the purposes of
+making a pricing determination.
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 3 of 99
+Version Control
+
+This document is subject to change. The latest version of this document is available
+from https://www.ndis.gov.au/providers/pricing-and-payments/pricing/pricing-
+arrangements
+
+Version  Publication Date  Changes
+
+1.0      22 June 2026      Initial Publication
+
+1.1      3 July 2026       Correction of line item numbers
+                           for new Psychology and
+                           Exercise Physiology items
+
+1.2      22 July 2026      Addition of clarifying text for
+                           provisional psychology
+                           claiming, correction of
+                           typographical errors
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 4 of 99
+                        Schedule 1: Disability Support Workers
+
+Table 1: Disability Support Worker Level 1
+
+Support Item  Support Item Name                                           Unit    National  Remote       Very
+                                                                                            $115.60  Remote
+Number                                                                              $82.57
+                                                                                                     $123.86
+01_002_0107_1_1 Assistance With Self-Care Activities - Standard - Weekday Hour     $311.79
+                             Night                                                  $73.58
+
+01_010_0107_1_1 Assistance With Self-Care Activities - Night-Time Sleepover Each   $163.46  $436.51  $467.69
+                                                                                            $103.01  $110.37
+01_011_0107_1_1 Assistance With Self-Care Activities - Standard - Weekday Hour     $103.54
+                             Daytime                                               $133.50
+
+01_012_0107_1_1 Assistance With Self-Care Activities - Standard - Public  Hour      $81.07  $228.84 $245.19
+                             Holiday
+                                                                                    $73.58
+01_013_0107_1_1 Assistance With Self-Care Activities - Standard - Saturday Hour     $81.07  $144.96  $155.31
+                                                                                            $186.90  $200.25
+01_014_0107_1_1 Assistance With Self-Care Activities - Standard - Sunday Hour               $113.50  $121.61
+
+01_015_0107_1_1 Assistance With Self-Care Activities - Standard - Weekday Hour
+                             Evening
+
+01_200_0115_1_1 Short Term Accommodation - Standard - Weekday Daytime Hour                  $103.01  $110.37
+                                                                                            $113.50  $121.61
+01_201_0115_1_1 Short Term Accommodation - Standard - Weekday Evening Hour
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                           Page 5 of 99
+                                 Schedule 1: Disability Support Workers
+
+Support Item  Support Item Name                                          Unit  National  Remote       Very
+Number                                                                                            Remote
+                                                                         Hour   $103.54  $144.96  $155.31
+01_202_0115_1_1 Short Term Accommodation - Standard - Saturday           Hour   $133.50  $186.90  $200.25
+                                                                         Hour   $163.46  $228.84  $245.19
+01_203_0115_1_1 Short Term Accommodation - Standard - Sunday             Hour            $115.60  $123.86
+                                                                         Each    $82.57  $436.51  $467.69
+01_204_0115_1_1 Short Term Accommodation - Standard - Public Holiday     Hour   $311.79  $103.01  $110.37
+                                                                         Hour
+01_205_0115_1_1 Short Term Accommodation - Standard - Weekday Night              $73.58
+                                                                         Hour    $81.07
+01_206_0115_1_1 Short Term Accommodation - Sleepover                     Hour
+                                                                         Hour    $82.57
+01_801_0115_1_1 Assistance in Supported Independent Living - Standard -  Hour   $103.54
+                             Weekday Daytime                             Each   $133.50
+                                                                                $163.46
+01_802_0115_1_1 Assistance in Supported Independent Living - Standard -         $311.79  $113.50 $121.61
+                             Weekday Evening
+
+01_803_0115_1_1 Assistance in Supported Independent Living - Standard -                  $115.60 $123.86
+                             Weekday Night
+
+01_804_0115_1_1 Assistance in Supported Independent Living - Standard -                  $144.96 $155.31
+                             Saturday
+
+01_805_0115_1_1 Assistance in Supported Independent Living - Standard -                  $186.90 $200.25
+                             Sunday
+
+01_806_0115_1_1 Assistance in Supported Independent Living - Standard -                  $228.84 $245.19
+                             Public Holiday
+
+01_832_0115_1_1 Assistance in Supported Independent Living - Night-Time                  $436.51 $467.69
+                             Sleepover
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                        Page 6 of 99
+                                 Schedule 1: Disability Support Workers
+
+Support Item  Support Item Name                                      Unit       National  Remote       Very
+                                                                                  $73.58  $103.01  Remote
+Number
+                                                                                                   $110.37
+01_801_0138_1_1 Supported Independent Living - Standard - Weekday    Hour
+                             Daytime
+
+01_802_0138_1_1 Supported Independent Living - Standard - Weekday    Hour       $81.07 $113.50 $121.61
+                             Evening
+
+01_803_0138_1_1 Supported Independent Living - Standard - Weekday Night Hour     $82.57 $115.60 $123.86
+                                                                                $103.54 $144.96 $155.31
+01_804_0138_1_1 Supported Independent Living - Standard - Saturday   Hour       $133.50 $186.90 $200.25
+                                                                                $163.46 $228.84 $245.19
+01_805_0138_1_1 Supported Independent Living - Standard - Sunday     Hour       $311.79 $436.51 $467.69
+                                                                                $735.80 $1,030.12 $1,103.70
+01_806_0138_1_1 Supported Independent Living - Standard - Public Holiday Hour   $735.80 $1,030.12 $1,103.70
+                                                                                $735.80 $1,030.12 $1,103.70
+01_832_0138_1_1 Supported Independent Living - Night-Time Sleepover  Each       $735.80 $1,030.12 $1,103.70
+                                                                                $735.80 $1,030.12 $1,103.70
+01_049_0104_1_1 Establishment Fee For Personal Care/Participation    Each       $735.80 $1,030.12 $1,103.70
+                                                                                $163.46 $228.84 $245.19
+01_049_0107_1_1 Establishment Fee For Personal Care/Participation    Each
+
+04_049_0104_1_1 Establishment Fee For Personal Care/Participation    Each
+
+04_049_0125_1_1 Establishment Fee For Personal Care/Participation    Each
+
+04_049_0133_5_1 Establishment Fee For Personal Care/Participation    Each
+
+04_049_0136_1_1 Establishment Fee For Personal Care/Participation    Each
+
+04_102_0125_6_1 Access Community Social and Rec Activ - Standard - Public Hour
+                             Holiday
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                         Page 7 of 99
+                                 Schedule 1: Disability Support Workers
+
+Support Item  Support Item Name                                     Unit  National  Remote       Very
+Number                                                              Hour   $103.54  $144.96  Remote
+
+04_105_0125_6_1 Access Community Social and Rec Activ - Standard -                           $155.31
+                             Saturday
+
+04_106_0125_6_1 Access Community Social and Rec Activ - Standard -  Hour  $133.50 $186.90 $200.25
+                             Sunday
+
+04_103_0125_6_1 Access Community Social and Rec Activ - Standard -  Hour  $81.07 $113.50 $121.61
+                             Weekday Evening
+
+04_104_0125_6_1 Access Community Social and Rec Activ - Standard -  Hour  $73.58 $103.01 $110.37
+                             Weekday Daytime
+
+04_106_0136_6_1 Group Activities - Standard - Public Holiday        Hour  $163.46   $228.84  $245.19
+                                                                    Hour  $103.54   $144.96  $155.31
+04_104_0136_6_1 Group Activities - Standard - Saturday              Hour  $133.50   $186.90  $200.25
+                                                                    Hour            $103.01  $110.37
+04_105_0136_6_1 Group Activities - Standard - Sunday                Hour   $73.58   $113.50  $121.61
+                                                                    Hour   $81.07   $103.01  $110.37
+04_102_0136_6_1 Group Activities - Standard - Weekday Daytime       Hour   $73.58   $113.50  $121.61
+                                                                    Hour   $81.07   $144.96  $155.31
+04_103_0136_6_1 Group Activities - Standard - Weekday Evening       Hour  $103.54   $186.90  $200.25
+                                                                          $133.50
+04_801_0133_5_1 Supports in Employment - Weekday Daytime
+
+04_802_0133_5_1 Supports in Employment - Weekday Evening
+
+04_803_0133_5_1 Supports in Employment - Saturday
+
+04_804_0133_5_1 Supports in Employment - Sunday
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                   Page 8 of 99
+                                 Schedule 1: Disability Support Workers
+
+Support Item  Support Item Name                                            Unit  National  Remote       Very
+Number                                                                     Hour                     Remote
+                                                                           Hour   $163.46  $228.84
+04_805_0133_5_1 Supports in Employment - Public Holiday                    Hour    $73.58  $103.01  $245.19
+                                                                           Hour    $73.58  $103.01
+10_806_0133_5_1 Supports in Employment - Weekday Daytime                   Week                     $110.37
+
+15_035_0106_1_3 Assistance With Decision Making Daily Planning and                                  $110.37
+                             Budgeting
+
+15_037_0117_1_3 Skill Development And Training including Public Transport        $73.58 $103.01 $110.37
+                             Training
+
+01_066_0115_1_1 Unplanned onsite shared supports in Specialist Disability        $1,616.26 $2,262.76 $2,424.39
+                             Accommodation
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                          Page 9 of 99
+                                 Schedule 1: Disability Support Workers
+
+Table 2: Disability Support Worker Level 2
+
+Support Item  Support Item Name                                                 Unit National Remote Very
+Number                                                                                                                    Remote
+
+01_450_0107_1_1 Intensive and Complex Behaviour Supports - Weekday Daytime Hour       $79.60 $111.44 $119.40
+
+01_451_0107_1_1 Intensive and Complex Behaviour Supports - Weekday Evening Hour       $87.70 $122.78 $131.55
+
+01_452_0107_1_1 Intensive and Complex Behaviour Supports - Saturday             Hour $112.01 $156.81 $168.02
+
+01_453_0107_1_1 Intensive and Complex Behaviour Supports - Sunday               Hour $144.42 $202.19 $216.63
+
+01_454_0107_1_1 Intensive and Complex Behaviour Supports - Public Holiday       Hour $176.84 $247.58 $265.26
+
+01_455_0107_1_1 Intensive and Complex Behaviour Supports - Weekday Night Hour         $89.32 $125.05 $133.98
+
+01_400_0104_1_1 Assistance With Self-Care Activities - High Intensity - Weekday Hour  $79.60 $111.44 $119.40
+                             Daytime
+
+01_401_0104_1_1 Assistance With Self-Care Activities - High Intensity - Weekday Hour  $87.70 $122.78 $131.55
+                             Evening
+
+01_402_0104_1_1 Assistance With Self-Care Activities - High Intensity - Saturday Hour $112.01 $156.81 $168.02
+
+01_403_0104_1_1 Assistance With Self-Care Activities - High Intensity - Sunday Hour $144.42 $202.19 $216.63
+
+01_404_0104_1_1 Assistance With Self-Care Activities - High Intensity - Public  Hour $176.84 $247.58 $265.26
+                             Holiday
+
+01_405_0104_1_1 Assistance With Self-Care Activities - High Intensity - Weekday Hour  $89.32 $125.05 $133.98
+                             Night
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                     Page 10 of 99
+                                 Schedule 1: Disability Support Workers
+
+Support Item  Support Item Name                                                Unit National Remote Very
+Number                                                                                                                   Remote
+
+01_252_0115_1_1 Short Term Accommodation - High Intensity - Weekday Daytime Hour     $79.60 $111.44 $119.40
+
+01_253_0115_1_1 Short Term Accommodation - High Intensity - Weekday Evening Hour     $87.70 $122.78 $131.55
+
+01_254_0115_1_1 Short Term Accommodation - High Intensity - Weekday Night Hour       $89.32 $125.05 $133.98
+
+01_255_0115_1_1 Short Term Accommodation - High Intensity - Saturday           Hour $112.01 $156.81 $168.02
+
+01_256_0115_1_1 Short Term Accommodation - High Intensity - Sunday             Hour $144.42 $202.19 $216.63
+
+01_257_0115_1_1 Short Term Accommodation - High Intensity - Public Holiday     Hour $176.84 $247.58 $265.26
+
+01_450_0115_1_1 Intensive and Complex Behaviour Supports - Weekday Daytime Hour      $79.60 $111.44 $119.40
+
+01_451_0115_1_1 Intensive and Complex Behaviour Supports - Weekday Evening Hour      $87.70 $122.78 $131.55
+
+01_452_0115_1_1 Intensive and Complex Behaviour Supports - Saturday            Hour $112.01 $156.81 $168.02
+
+01_453_0115_1_1 Intensive and Complex Behaviour Supports - Sunday              Hour $144.42 $202.19 $216.63
+
+01_454_0115_1_1 Intensive and Complex Behaviour Supports - Public Holiday      Hour $176.84 $247.58 $265.26
+
+01_455_0115_1_1 Intensive and Complex Behaviour Supports - Weekday Night Hour        $89.32 $125.05 $133.98
+
+01_811_0115_1_1 Assistance in Supported Independent Living - High Intensity -  Hour  $79.60 $111.44 $119.40
+                             Weekday Daytime
+
+01_812_0115_1_1 Assistance in Supported Independent Living - High Intensity -  Hour  $87.70 $122.78 $131.55
+                             Weekday Evening
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                    Page 11 of 99
+                                 Schedule 1: Disability Support Workers
+
+Support Item  Support Item Name                                                Unit National Remote Very
+Number                                                                                                                   Remote
+
+01_813_0115_1_1 Assistance in Supported Independent Living - High Intensity -  Hour  $89.32 $125.05 $133.98
+                             Weekday Night
+
+01_814_0115_1_1 Assistance in Supported Independent Living - High Intensity -  Hour  $112.01 $156.81 $168.02
+                             Saturday
+
+01_815_0115_1_1 Assistance in Supported Independent Living - High Intensity -  Hour  $144.42 $202.19 $216.63
+                             Sunday
+
+01_816_0115_1_1 Assistance in Supported Independent Living - High Intensity -  Hour  $176.84 $247.58 $265.26
+                             Public Holiday
+
+01_450_0138_1_1 Intensive and Complex Behaviour Supports - Weekday Daytime Hour      $79.60 $111.44 $119.40
+
+01_451_0138_1_1 Intensive and Complex Behaviour Supports - Weekday Evening Hour      $87.70 $122.78 $131.55
+
+01_452_0138_1_1 Intensive and Complex Behaviour Supports - Saturday            Hour $112.01 $156.81 $168.02
+
+01_453_0138_1_1 Intensive and Complex Behaviour Supports - Sunday              Hour $144.42 $202.19 $216.63
+
+01_454_0138_1_1 Intensive and Complex Behaviour Supports - Public Holiday      Hour $176.84 $247.58 $265.26
+
+01_455_0138_1_1 Intensive and Complex Behaviour Supports - Weekday Night Hour        $89.32 $125.05 $133.98
+
+01_811_0138_1_1 Supported Independent Living - High Intensity - Weekday        Hour  $79.60 $111.44 $119.40
+                             Daytime
+
+01_812_0138_1_1 Supported Independent Living - High Intensity - Weekday        Hour  $87.70 $122.78 $131.55
+                             Evening
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                    Page 12 of 99
+                                 Schedule 1: Disability Support Workers
+
+Support Item  Support Item Name                                           Unit National Remote Very
+Number                                                                                                              Remote
+
+01_813_0138_1_1 Supported Independent Living - High Intensity - Weekday Night Hour  $89.32 $125.05 $133.98
+
+01_814_0138_1_1 Supported Independent Living - High Intensity - Saturday  Hour $112.01 $156.81 $168.02
+
+01_815_0138_1_1 Supported Independent Living - High Intensity - Sunday    Hour $144.42 $202.19 $216.63
+
+01_816_0138_1_1 Supported Independent Living - High Intensity - Public Holiday Hour $176.84 $247.58 $265.26
+
+04_400_0104_1_1 Access Community Social and Rec Activ - High Intensity -  Hour      $79.60 $111.44 $119.40
+                             Weekday Daytime
+
+04_401_0104_1_1 Access Community Social and Rec Activ - High Intensity -  Hour      $87.70 $122.78 $131.55
+                             Weekday Evening
+
+04_402_0104_1_1 Access Community Social and Rec Activ - High Intensity -  Hour $112.01 $156.81 $168.02
+                             Saturday
+
+04_403_0104_1_1 Access Community Social and Rec Activ - High Intensity -  Hour $144.42 $202.19 $216.63
+                             Sunday
+
+04_404_0104_1_1 Access Community Social and Rec Activ - High Intensity -  Hour $176.84 $247.58 $265.26
+                             Public Holiday
+
+04_450_0125_1_1 Intensive and Complex Behaviour Supports - Weekday Daytime Hour     $79.60 $111.44 $119.40
+
+04_451_0125_1_1 Intensive and Complex Behaviour Supports - Weekday Evening Hour     $87.70 $122.78 $131.55
+
+04_452_0125_1_1 Intensive and Complex Behaviour Supports - Saturday       Hour $112.01 $156.81 $168.02
+
+04_453_0125_1_1 Intensive and Complex Behaviour Supports - Sunday         Hour $144.42 $202.19 $216.63
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                   Page 13 of 99
+                                 Schedule 1: Disability Support Workers
+
+Support Item  Support Item Name                                            Unit National Remote Very
+Number                                                                                                               Remote
+
+04_454_0125_1_1 Intensive and Complex Behaviour Supports - Public Holiday  Hour $176.84 $247.58 $265.26
+
+04_450_0136_1_1 Intensive and Complex Behaviour Supports - Weekday Daytime Hour  $79.60 $111.44 $119.40
+
+04_451_0136_1_1 Intensive and Complex Behaviour Supports - Weekday Evening Hour  $87.70 $122.78 $131.55
+
+04_452_0136_1_1 Intensive and Complex Behaviour Supports - Saturday        Hour $112.01 $156.81 $168.02
+
+04_453_0136_1_1 Intensive and Complex Behaviour Supports - Sunday          Hour $144.42 $202.19 $216.63
+
+04_454_0136_1_1 Intensive and Complex Behaviour Supports - Public Holiday  Hour $176.84 $247.58 $265.26
+
+04_600_0104_6_1 Group Activities - High Intensity - Weekday Daytime        Hour  $79.60 $111.44 $119.40
+
+04_601_0104_6_1 Group Activities - High Intensity - Weekday Evening        Hour  $87.70 $122.78 $131.55
+
+04_602_0104_6_1 Group Activities - High Intensity - Saturday               Hour $112.01 $156.81 $168.02
+
+04_603_0104_6_1 Group Activities - High Intensity - Sunday                 Hour $144.42 $202.19 $216.63
+
+04_604_0104_6_1 Group Activities - High Intensity - Public Holiday         Hour $176.84 $247.58 $265.26
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                Page 14 of 99
+                                 Schedule 1: Disability Support Workers
+
+Table 3: Disability Support Worker Level 3
+
+Support Item  Support Item Name                                                  Unit National Remote Very
+Number                                                                                                                    Remote
+
+01_134_0117_8_1 Capacity Building and Training in Self-Management and Plan       Hour  $83.87 $117.42 $125.81
+                            Management
+
+08_005_0106_2_3 Assistance With Accommodation And Tenancy Obligations            Hour  $83.87 $117.42 $125.81
+                                                                                 Hour  $83.87 $117.42 $125.81
+09_006_0106_6_3 Life Transition Planning Incl. Mentoring Peer-Support And Indiv
+                            Skill Develop
+
+09_009_0117_6_3 Skills Development And Training                                  Hour  $83.87 $117.42 $125.81
+                                                                                 Hour  $83.87 $117.42 $125.81
+10_016_0102_5_3 Employment Assistance                                            Hour  $83.87 $117.42 $125.81
+                                                                                 Hour  $83.87 $117.42 $125.81
+11_024_0117_7_3 Individual Social Skills Development                             Hour  $83.87 $117.42 $125.81
+
+13_030_0102_4_3 Transition Through School And To Further Education
+
+15_038_0117_1_3 Training For Carers/Parents
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                      Page 15 of 99
+                                 Schedule 1: Disability Support Workers
+
+Table 4: Disability Support Worker Level 4
+
+Support Item  Support Item Name                                          Unit  National Remote Very
+Number                                                                                                        Remote
+                                                                         Hour
+07_101_0106_6_3 Psychosocial Recovery Coaching - Weekday Daytime         Hour    $110.44 $154.62 $165.66
+                                                                         Hour    $121.68 $170.35 $182.52
+07_102_0106_6_3 Psychosocial Recovery Coaching - Weekday Evening         Hour    $123.93 $173.50 $185.90
+                                                                         Hour    $155.41 $217.57 $233.12
+07_103_0106_6_3 Psychosocial Recovery Coaching - Weekday Night           Hour    $200.39 $280.55 $300.59
+                                                                         Hour    $245.36 $343.50 $368.04
+07_104_0106_6_3 Psychosocial Recovery Coaching - Saturday                Hour    $110.44 $154.62 $165.66
+                                                                                 $110.44 $154.62 $165.66
+07_105_0106_6_3 Psychosocial Recovery Coaching - Sunday
+
+07_106_0106_6_3 Psychosocial Recovery Coaching - Public Holiday
+
+10_101_0106_6_3 Psychosocial Recovery Coaching - Weekday Daytime
+
+15_300_0103_1_3 Assistive Technology Mentoring
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27              Page 16 of 99
+                  Schedule 2: Accommodation and Capital Costs
+
+Table 5: Centre Capital Costs
+
+Support Item  Support Item Name                                          Unit National Remote Very
+Number                                                                                                            Remote
+
+04_599_0104_6_1 Centre Capital Cost                                      Hour  $2.71 $3.79 $4.07
+
+04_599_0133_5_1 Centre Capital Cost                                      Hour  $2.71 $3.79 $4.07
+
+04_599_0136_6_1 Centre Capital Cost                                      Hour  $2.71 $3.79 $4.07
+
+10_599_0133_5_3 Centre Capital Cost                                      Hour  $2.71 $3.79 $4.07
+
+Table 6: Short Term Accommodation Participant and Worker Accommodation
+
+Support Item  Support Item Name                                          Unit National Remote Very
+Number                                                                                                             Remote
+
+01_250_0115_1_1 Short Term Accommodation - Participant Accommodation     Day $162.85 $227.99 $244.28
+
+01_251_0115_1_1 Short Term Accommodation - Support Worker Accommodation  Day $162.85 $227.99 $244.28
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27              Page 17 of 99
+              Schedule 2: Accommodation and Capital Costs
+
+Table 7: Medium Term Accommodation
+
+Support Item  Support Item Name                                    Unit National Remote Very
+Number                                                                                                     Remote
+
+01_082_0115_1_1 Medium Term Accommodation                          Day $162.85 $227.99 $244.28
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 18 of 99
+                  Schedule 3: Nursing and other labour supports
+
+Table 8: Nursing Supports Delivered by an Enrolled Nurse
+
+Support Item     Support Item Name                                            Unit National Remote Very
+Number                                                                                                                  Remote
+01_600_0114_1_1  Delivery of Health Supports by an Enrolled Nurse - Weekday
+                 Daytime                                                      Hour $103.44 $144.82 $155.16
+01_601_0114_1_1
+                 Delivery of Health Supports by an Enrolled Nurse - Weekday   Hour $114.10 $159.74 $171.15
+01_602_0114_1_1  Evening
+01_603_0114_1_1                                                               Hour  $147.55  $206.57  $221.33
+01_604_0114_1_1  Delivery of Health Supports by an Enrolled Nurse - Saturday  Hour  $169.62  $237.47  $254.43
+                                                                              Hour  $191.67  $268.34  $287.51
+01_605_0114_1_1  Delivery of Health Supports by an Enrolled Nurse - Sunday
+                                                                              Hour $116.22 $162.71 $174.33
+15_400_0114_1_3  Delivery of Health Supports by an Enrolled Nurse - Public
+                 Holiday                                                      Hour $103.44 $144.82 $155.16
+15_401_0114_1_3
+                 Delivery of Health Supports by an Enrolled Nurse - Weekday   Hour $114.10 $159.74 $171.15
+                 Night
+
+                 Delivery of Health Supports by an Enrolled Nurse - Weekday
+                 Daytime
+
+                 Delivery of Health Supports by an Enrolled Nurse - Weekday
+                 Evening
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                            Page 19 of 99
+                 Schedule 3: Nursing and other labour supports
+
+Support Item     Support Item Name                                             Unit National Remote Very
+Number                                                                                                                   Remote
+15_402_0114_1_3  Delivery of Health Supports by an Enrolled Nurse - Saturday
+15_403_0114_1_3  Delivery of Health Supports by an Enrolled Nurse - Sunday     Hour $147.55 $206.57 $221.33
+15_404_0114_1_3  Delivery of Health Supports by an Enrolled Nurse - Public     Hour $169.62 $237.47 $254.43
+                 Holiday                                                       Hour $191.67 $268.34 $287.51
+15_405_0114_1_3  Delivery of Health Supports by an Enrolled Nurse - Weekday
+                 Night                                                         Hour $116.22 $162.71 $174.33
+
+Table 9: Nursing Supports Delivered by a Registered Nurse
+
+Support Item     Support Item Name                                             Unit National Remote Very
+Number                                                                                                                Remote
+01_606_0114_1_1  Delivery of Health Supports by a Registered Nurse - Weekday
+                 Daytime                                                       Hour $128.05 $179.27 $192.08
+01_607_0114_1_1  Delivery of Health Supports by a Registered Nurse - Weekday
+                 Evening                                                       Hour $141.27 $197.78 $211.91
+01_608_0114_1_1
+01_609_0114_1_1  Delivery of Health Supports by a Registered Nurse - Saturday  Hour  $182.75 $255.85  $274.13
+01_610_0114_1_1  Delivery of Health Supports by a Registered Nurse - Sunday    Hour  $210.09 $294.13  $315.14
+                 Delivery of Health Supports by a Registered Nurse - Public    Hour  $237.43 $332.40  $356.15
+                 Holiday
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                    Page 20 of 99
+                 Schedule 3: Nursing and other labour supports
+
+Support Item     Support Item Name                                             Unit National Remote Very
+Number                                                                                                                Remote
+01_611_0114_1_1  Delivery of Health Supports by a Registered Nurse - Weekday
+                 Night                                                         Hour $143.90 $201.46 $215.85
+15_406_0114_1_3
+                 Delivery of Health Supports by a Registered Nurse - Weekday   Hour $128.05 $179.27 $192.08
+15_407_0114_1_3  Daytime
+                                                                               Hour $141.27 $197.78 $211.91
+15_408_0114_1_3  Delivery of Health Supports by a Registered Nurse - Weekday
+15_409_0114_1_3  Evening                                                       Hour  $182.75 $255.85  $274.13
+15_410_0114_1_3                                                                Hour  $210.09 $294.13  $315.14
+                 Delivery of Health Supports by a Registered Nurse - Saturday  Hour  $237.43 $332.40  $356.15
+15_411_0114_1_3
+                 Delivery of Health Supports by a Registered Nurse - Sunday    Hour $143.90 $201.46 $215.85
+
+                 Delivery of Health Supports by a Registered Nurse - Public
+                 Holiday
+
+                 Delivery of Health Supports by a Registered Nurse - Weekday
+                 Night
+
+Table 10: Nursing Supports Delivered by a Clinical Nurse
+
+Support Item     Support Item Name                                             Unit National Remote Very
+Number                                                                                                                   Remote
+01_612_0114_1_1  Delivery of Health Supports by a Clinical Nurse - Weekday
+                 Daytime                                                       Hour $148.13 $207.38 $222.20
+01_613_0114_1_1  Delivery of Health Supports by a Clinical Nurse - Weekday
+                 Evening                                                       Hour $163.39 $228.75 $245.09
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                    Page 21 of 99
+                 Schedule 3: Nursing and other labour supports
+
+Support Item     Support Item Name                                           Unit National Remote Very
+Number                                                                                                                 Remote
+01_614_0114_1_1  Delivery of Health Supports by a Clinical Nurse - Saturday
+01_615_0114_1_1                                                              Hour $211.39 $295.95 $317.09
+01_616_0114_1_1  Delivery of Health Supports by a Clinical Nurse - Sunday
+                                                                             Hour $243.02 $340.23 $364.53
+01_617_0114_1_1  Delivery of Health Supports by a Clinical Nurse - Public
+                 Holiday                                                     Hour $274.64 $384.50 $411.96
+15_412_0114_1_3
+                 Delivery of Health Supports by a Clinical Nurse - Weekday   Hour $166.45 $233.03 $249.68
+15_413_0114_1_3  Night
+                                                                             Hour $148.13 $207.38 $222.20
+15_414_0114_1_3  Delivery of Health Supports by a Clinical Nurse - Weekday
+15_415_0114_1_3  Daytime                                                     Hour $163.39 $228.75 $245.09
+15_416_0114_1_3
+                 Delivery of Health Supports by a Clinical Nurse - Weekday   Hour  $211.39 $295.95 $317.09
+15_417_0114_1_3  Evening                                                     Hour  $243.02 $340.23 $364.53
+                                                                             Hour  $274.64 $384.50 $411.96
+                 Delivery of Health Supports by a Clinical Nurse - Saturday
+                                                                             Hour $166.45 $233.03 $249.68
+                 Delivery of Health Supports by a Clinical Nurse - Sunday
+
+                 Delivery of Health Supports by a Clinical Nurse - Public
+                 Holiday
+
+                 Delivery of Health Supports by a Clinical Nurse - Weekday
+                 Night
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                  Page 22 of 99
+              Schedule 3: Nursing and other labour supports
+
+Table 11: Nursing Supports Delivered by a Clinical Nurse Consultant
+
+Support Item  Support Item Name                                               Unit National Remote Very
+Number                                                                                                              Remote
+
+01_618_0114_1_1 Delivery of Health Supports by a Clinical Nurse Consultant -  Hour $175.18 $245.25 $262.77
+                             Weekday Daytime
+
+01_619_0114_1_1 Delivery of Health Supports by a Clinical Nurse Consultant -  Hour $193.27 $270.58 $289.91
+                             Weekday Evening
+
+01_620_0114_1_1 Delivery of Health Supports by a Clinical Nurse Consultant -  Hour $250.12 $350.17 $375.18
+                             Saturday
+
+01_621_0114_1_1 Delivery of Health Supports by a Clinical Nurse Consultant -  Hour $287.58 $402.61 $431.37
+                             Sunday
+
+01_622_0114_1_1 Delivery of Health Supports by a Clinical Nurse Consultant - Public Hour $325.03 $455.04 $487.55
+                             Holiday
+
+01_623_0114_1_1 Delivery of Health Supports by a Clinical Nurse Consultant -  Hour $196.89 $275.65 $295.34
+                             Weekday Night
+
+15_418_0114_1_3 Delivery of Health Supports by a Clinical Nurse Consultant -  Hour $175.18 $245.25 $262.77
+                             Weekday Daytime
+
+15_419_0114_1_3 Delivery of Health Supports by a Clinical Nurse Consultant -  Hour $193.27 $270.58 $289.91
+                             Weekday Evening
+
+15_420_0114_1_3 Delivery of Health Supports by a Clinical Nurse Consultant -  Hour $250.12 $350.17 $375.18
+                             Saturday
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27             Page 23 of 99
+                 Schedule 3: Nursing and other labour supports
+
+Support Item     Support Item Name                                               Unit National Remote Very
+Number                                                                                                                 Remote
+
+15_421_0114_1_3 Delivery of Health Supports by a Clinical Nurse Consultant -     Hour $287.58 $402.61 $431.37
+                             Sunday
+
+15_422_0114_1_3 Delivery of Health Supports by a Clinical Nurse Consultant - Public Hour $325.03 $455.04 $487.55
+                             Holiday
+
+15_423_0114_1_3 Delivery of Health Supports by a Clinical Nurse Consultant -     Hour $196.89 $275.65 $295.34
+                             Weekday Night
+
+Table 12: Nursing Supports Delivered by a Nurse Practitioner
+
+Support Item     Support Item Name                                               Unit National Remote Very
+Number                                                                                                                    Remote
+01_624_0114_1_1  Delivery of Health Supports by a Nurse Practitioner - Weekday
+                 Daytime                                                         Hour $183.15 $256.41 $274.73
+01_625_0114_1_1
+                 Delivery of Health Supports by a Nurse Practitioner - Weekday   Hour $202.04 $282.86 $303.06
+01_626_0114_1_1  Evening
+01_627_0114_1_1                                                                  Hour  $261.50 $366.10 $392.25
+01_628_0114_1_1  Delivery of Health Supports by a Nurse Practitioner - Saturday  Hour  $300.67 $420.94 $451.01
+                                                                                 Hour  $339.84 $475.78 $509.76
+01_629_0114_1_1  Delivery of Health Supports by a Nurse Practitioner - Sunday
+                                                                                 Hour $205.83 $288.16 $308.75
+                 Delivery of Health Supports by a Nurse Practitioner - Public
+                 Holiday
+
+                 Delivery of Health Supports by a Nurse Practitioner - Weekday
+                 Night
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                      Page 24 of 99
+                 Schedule 3: Nursing and other labour supports
+
+Support Item     Support Item Name                                               Unit National Remote Very
+Number                                                                                                                    Remote
+15_424_0114_1_3  Delivery of Health Supports by a Nurse Practitioner - Weekday
+                 Daytime                                                         Hour $183.15 $256.41 $274.73
+15_425_0114_1_3
+                 Delivery of Health Supports by a Nurse Practitioner - Weekday   Hour $202.04 $282.86 $303.06
+15_426_0114_1_3  Evening
+15_427_0114_1_3                                                                  Hour  $261.50 $366.10 $392.25
+15_428_0114_1_3  Delivery of Health Supports by a Nurse Practitioner - Saturday  Hour  $300.67 $420.94 $451.01
+                                                                                 Hour  $339.84 $475.78 $509.76
+15_429_0114_1_3  Delivery of Health Supports by a Nurse Practitioner - Sunday
+                                                                                 Hour $205.83 $288.16 $308.75
+                 Delivery of Health Supports by a Nurse Practitioner - Public
+                 Holiday
+
+                 Delivery of Health Supports by a Nurse Practitioner - Weekday
+                 Night
+
+Table 13: Other Labour Indexed Supports
+
+Support Item     Support Item Name                                               Unit National Remote Very
+Number                                                                                                                   Remote
+01_004_0107_1_1
+01_016_0104_1_1  Assistance with Personal Domestic Activities                    Hour $61.16 $85.62 $91.74
+01_019_0120_1_1
+01_020_0120_1_1  Specialised Home Based Assistance For A Child                   Hour $61.16 $85.62 $91.74
+12_029_0126_3_3
+                 House or Yard Maintenance                                       Hour $59.01 $82.61 $88.52
+
+                 House Cleaning And Other Household Activities                   Hour $60.10 $84.14 $90.15
+
+                 Personal training provided by a Personal Trainer to a participant Hour $69.39 $97.15 $104.09
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                      Page 25 of 99
+                 Schedule 3: Nursing and other labour supports
+
+Support Item     Support Item Name                                 Unit National Remote Very
+Number           Community Engagement Assistance                                                           Remote
+
+15_045_0128_1_3                                                    Hour $53.02 $74.23 $79.53
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 26 of 99
+                  Schedule 4: Therapy and Professional Supports
+
+Table 14: Art Therapist
+
+Support Item Number Support Item Name                                Unit National Remote Very
+                                                                                                              Remote
+15_610_0128_1_3        Therapy - Art Therapist - Direct Service
+                                                                     Hour $156.16 $218.62 $234.24
+15_610_0128_1_3_CA Therapy - Art Therapist - Cancellation            Hour $156.16 $218.62 $234.24
+                                                                     Hour $156.16 $218.62 $234.24
+15_610_0128_1_3_NF Therapy - Art Therapist - Non-Face-to-Face        Hour $78.08 $109.31 $117.12
+                                                                     Hour $156.16 $218.62 $234.24
+15_610_0128_1_3_PT Therapy - Art Therapist - Provider Travel         Hour $156.16 $218.62 $234.24
+
+15_610_0128_1_3_RR Therapy - Art Therapist - NDIA Requested Reports
+
+15_610_0128_1_3_TH Therapy - Art Therapist - Telehealth
+
+Table 15: Audiologist
+
+Support Item Number Support Item Name                                Unit National Remote Very
+                                                                                                              Remote
+15_611_0128_1_3        Therapy - Audiologist - Direct Service
+                                                                     Hour $193.99 $271.59 $290.99
+15_611_0128_1_3_CA Therapy - Audiologist - Cancellation
+                                                                     Hour $193.99 $271.59 $290.99
+15_611_0128_1_3_NF Therapy - Audiologist - Non-Face-to-Face
+                                                                     Hour $193.99 $271.59 $290.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27    Page 27 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                              Unit National Remote Very
+                                                                                                            Remote
+15_611_0128_1_3_PT Therapy - Audiologist - Provider Travel
+                                                                   Hour $97.00 $135.80 $145.50
+15_611_0128_1_3_RR Therapy - Audiologist - NDIA Requested Reports  Hour $193.99 $271.59 $290.99
+                                                                   Hour $193.99 $271.59 $290.99
+15_611_0128_1_3_TH Therapy - Audiologist - Telehealth              Hour $193.99 $271.59 $290.99
+                                                                   Hour $193.99 $271.59 $290.99
+15_501_0119_1_3  Audiologist - Direct Service                      Hour $193.99 $271.59 $290.99
+                                                                   Hour $97.00 $135.80 $145.50
+15_501_0119_1_3_CA Audiologist - Cancellation                      Hour $193.99 $271.59 $290.99
+                                                                   Hour $193.99 $271.59 $290.99
+15_501_0119_1_3_NF Audiologist - Non-Face-to-Face                  Hour $193.99 $271.59 $290.99
+                                                                   Hour $193.99 $271.59 $290.99
+15_501_0119_1_3_PT Audiologist - Provider Travel                   Hour $193.99 $271.59 $290.99
+                                                                   Hour $97.00 $135.80 $145.50
+15_501_0119_1_3_RR Audiologist - NDIA Requested Reports            Hour $193.99 $271.59 $290.99
+                                                                   Hour $193.99 $271.59 $290.99
+15_501_0119_1_3_TH Audiologist - Telehealth
+
+15_502_0134_1_3  Audiologist - Direct Service
+
+15_502_0134_1_3_CA Audiologist - Cancellation
+
+15_502_0134_1_3_NF Audiologist - Non-Face-to-Face
+
+15_502_0134_1_3_PT Audiologist - Provider Travel
+
+15_502_0134_1_3_RR Audiologist - NDIA Requested Reports
+
+15_502_0134_1_3_TH Audiologist - Telehealth
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 28 of 99
+                        Schedule 4: Therapy and Professional Supports
+
+Table 16: Audiometrist
+
+Support Item Number Support Item Name                                           Unit National Remote Very
+                                                                                                                         Remote
+15_503_0134_1_3         Audiometrist - Direct Service
+                                                                                Hour $166.83 $233.56 $250.25
+15_503_0134_1_3_CA Audiometrist - Cancellation                                  Hour $166.83 $233.56 $250.25
+                                                                                Hour $166.83 $233.56 $250.25
+15_503_0134_1_3_NF Audiometrist - Non-Face-to-Face                              Hour $83.42 $116.79 $125.13
+                                                                                Hour $166.83 $233.56 $250.25
+15_503_0134_1_3_PT Audiometrist - Provider Travel                               Hour $166.83 $233.56 $250.25
+
+15_503_0134_1_3_RR Audiometrist - NDIA Requested Reports
+
+15_503_0134_1_3_TH Audiometrist - Telehealth
+
+Table 17: Counsellor
+
+Support Item Number Support Item Name                                           Unit National Remote Very
+                                                                                                                         Remote
+15_043_0128_1_3         Therapy - Counsellor - Direct Service
+                                                                                Hour $156.16 $218.62 $234.24
+                            � Paid unsupervised provisionally registered
+                                 psychologists can claim using this line item.
+
+15_043_0128_1_3_CA Therapy - Counsellor - Cancellation                          Hour  $156.16  $218.62  $234.24
+                                                                                Hour  $156.16  $218.62  $234.24
+15_043_0128_1_3_NF Therapy - Counsellor - Non-Face-to-Face                      Hour           $109.31  $117.12
+                                                                                       $78.08
+15_043_0128_1_3_PT Therapy - Counsellor - Provider Travel
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                              Page 29 of 99
+                                  Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                  Unit National Remote Very
+                                                                                                                Remote
+15_043_0128_1_3_RR Therapy - Counsellor - NDIA Requested Reports
+15_043_0128_1_3_TH Therapy - Counsellor - Telehealth                   Hour $156.16 $218.62 $234.24
+
+                                                                       Hour $156.16 $218.62 $234.24
+
+Table 18: Developmental Educator
+
+Support Item Number Support Item Name                                  Unit National Remote Very
+                                                                                                                Remote
+
+10_613_0128_5_3  Employment Therapy - Developmental Educator - Direct  Hour $193.99 $271.59 $290.99
+                 Service
+
+10_613_0128_5_3_CA Employment Therapy - Developmental Educator -       Hour $193.99 $271.59 $290.99
+                                   Cancellation
+
+10_613_0128_5_3_NF Employment Therapy - Developmental Educator - Non-  Hour $193.99 $271.59 $290.99
+                                   Face-to-Face
+
+10_613_0128_5_3_PT Employment Therapy - Developmental Educator - Provider Hour   $97.00 $135.80 $145.50
+                                   Travel
+
+10_613_0128_5_3_RR Employment Therapy - Developmental Educator - NDIA  Hour $193.99 $271.59 $290.99
+                                   Requested Reports
+
+10_613_0128_5_3_TH Employment Therapy - Developmental Educator -       Hour $193.99 $271.59 $290.99
+                                   Telehealth
+
+15_613_0128_1_3  Therapy - Developmental Educator - Direct Service     Hour $193.99 $271.59 $290.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                Page 30 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                    Unit National Remote Very
+                                                                                                                  Remote
+ 15_613_0128_1_3_CA Therapy - Developmental Educator - Cancellation
+ 15_613_0128_1_3_NF Therapy - Developmental Educator - Non-Face-to-Face  Hour $193.99 $271.59 $290.99
+ 15_613_0128_1_3_PT Therapy - Developmental Educator - Provider Travel   Hour $193.99 $271.59 $290.99
+ 15_613_0128_1_3_RR Therapy - Developmental Educator - NDIA Requested    Hour $97.00 $135.80 $145.50
+                                                                         Hour $193.99 $271.59 $290.99
+                                     Reports
+ 15_613_0128_1_3_TH Therapy - Developmental Educator - Telehealth        Hour $193.99 $271.59 $290.99
+
+Table 19: Dietitian                                                      Unit National Remote Very
+                                                                                                                  Remote
+ Support Item Number Support Item Name
+                                                                         Hour $178.99 $250.59 $268.49
+01_760_0128_3_3  Therapy - Dietitian - Direct Service                    Hour $178.99 $250.59 $268.49
+                                                                         Hour $178.99 $250.59 $268.49
+01_760_0128_3_3_CA Therapy - Dietitian - Cancellation                    Hour $89.50 $125.30 $134.25
+                                                                         Hour $178.99 $250.59 $268.49
+01_760_0128_3_3_NF Therapy - Dietitian - Non-Face-to-Face                Hour $178.99 $250.59 $268.49
+                                                                         Hour $178.99 $250.59 $268.49
+01_760_0128_3_3_PT Therapy - Dietitian - Provider Travel
+
+01_760_0128_3_3_RR Therapy - Dietitian - NDIA Requested Reports
+
+01_760_0128_3_3_TH Therapy - Dietitian - Telehealth
+
+12_025_0128_3_3  Therapy - Dietitian - Direct Service
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27        Page 31 of 99
+                                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                               Unit National Remote Very
+                                                                                                             Remote
+12_025_0128_3_3_CA Therapy - Dietitian - Cancellation
+                                                                    Hour $178.99 $250.59 $268.49
+12_025_0128_3_3_NF Therapy - Dietitian - Non-Face-to-Face           Hour $178.99 $250.59 $268.49
+                                                                    Hour $89.50 $125.30 $134.25
+12_025_0128_3_3_PT Therapy - Dietitian - Provider Travel            Hour $178.99 $250.59 $268.49
+                                                                    Hour $178.99 $250.59 $268.49
+12_025_0128_3_3_RR Therapy - Dietitian - NDIA Requested Reports     Hour $178.99 $250.59 $268.49
+                                                                    Hour $178.99 $250.59 $268.49
+12_025_0128_3_3_TH Therapy - Dietitian - Telehealth                 Hour $178.99 $250.59 $268.49
+                                                                    Hour $89.50 $125.30 $134.25
+15_062_0128_3_3  Therapy - Dietitian - Direct Service               Hour $178.99 $250.59 $268.49
+                                                                    Hour $178.99 $250.59 $268.49
+15_062_0128_3_3_CA Therapy - Dietitian - Cancellation
+                                                                    Unit National Remote Very
+15_062_0128_3_3_NF Therapy - Dietitian - Non-Face-to-Face                                                    Remote
+
+15_062_0128_3_3_PT Therapy - Dietitian - Provider Travel            Hour $161.99 $226.79 $242.99
+                                                                    Hour $161.99 $226.79 $242.99
+15_062_0128_3_3_RR Therapy - Dietitian - NDIA Requested Reports
+
+15_062_0128_3_3_TH Therapy - Dietitian - Telehealth
+
+Table 20: Exercise Physiologist
+
+Support Item Number Support Item Name
+
+12_027_0126_3_3  Therapy - Exercise Physiologist - Direct Service
+
+12_027_0126_3_3_CA2 Therapy - Exercise Physiologist - Cancellation
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27               Page 32 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                  Unit National Remote Very
+                                                                                                                Remote
+
+12_027_0126_3_3_NF Therapy - Exercise Physiologist - Non-Face-to-Face  Hour $161.99 $226.79 $242.99
+
+12_027_0126_3_3_PT Therapy - Exercise Physiologist - Provider Travel   Hour $81.00 $113.40 $121.50
+
+12_027_0126_3_3_RR Therapy - Exercise Physiologist - NDIA Requested Reports Hour $161.99 $226.79 $242.99
+
+12_027_0126_3_3_TH Therapy - Exercise Physiologist - Telehealth        Hour $161.99 $226.79 $242.99
+
+12_027_0128_3_3  Therapy - Exercise Physiologist - Direct Service      Hour $161.99 $226.79 $242.99
+
+12_027_0128_3_3_CA Therapy - Exercise Physiologist - Cancellation      Hour $161.99 $226.79 $242.99
+
+12_027_0128_3_3_NF Therapy - Exercise Physiologist - Non-Face-to-Face  Hour $161.99 $226.79 $242.99
+
+12_027_0128_3_3_PT Therapy - Exercise Physiologist - Provider Travel   Hour $81.00 $113.40 $121.50
+
+12_027_0128_3_3_RR Therapy - Exercise Physiologist - NDIA Requested Reports Hour $161.99 $226.79 $242.99
+
+12_027_0128_3_3_TH Therapy - Exercise Physiologist - Telehealth        Hour $161.99 $226.79 $242.99
+
+15_200_0126_1_3  Therapy - Exercise Physiologist - Direct Service      Hour $161.99 $226.79 $242.99
+
+15_200_0126_1_3_CA Therapy - Exercise Physiologist - Cancellation      Hour $161.99 $226.79 $242.99
+
+15_200_0126_1_3_NF Therapy - Exercise Physiologist - Non-Face-to-Face  Hour $161.99 $226.79 $242.99
+
+15_200_0126_1_3_PT Therapy - Exercise Physiologist - Provider Travel   Hour $81.00 $113.40 $121.50
+
+15_200_0126_1_3_RR Therapy - Exercise Physiologist - NDIA Requested Reports Hour $161.99 $226.79 $242.99
+
+15_200_0126_1_3_TH Therapy - Exercise Physiologist - Telehealth        Hour $161.99 $226.79 $242.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27      Page 33 of 99
+                           Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                        Unit National Remote Very
+                                                                                                                      Remote
+
+15_200_0128_1_3            Therapy - Exercise Physiologist - Direct Service  Hour $161.99 $226.79 $242.99
+
+15_200_0128_1_3_CA Therapy - Exercise Physiologist - Cancellation            Hour $161.99 $226.79 $242.99
+
+15_200_0128_1_3_NF Therapy - Exercise Physiologist - Non-Face-to-Face        Hour $161.99 $226.79 $242.99
+
+15_200_0128_1_3_PT Therapy - Exercise Physiologist - Provider Travel         Hour $81.00 $113.40 $121.50
+
+15_200_0128_1_3_RR Therapy - Exercise Physiologist - NDIA Requested Reports Hour $161.99 $226.79 $242.99
+
+15_200_0128_1_3_TH Therapy - Exercise Physiologist - Telehealth              Hour $161.99 $226.79 $242.99
+
+Table 21: Music Therapist
+
+Support Item Number Support Item Name                                        Unit National Remote Very
+                                                                                                                      Remote
+15_615_0128_1_3            Therapy - Music Therapist - Direct Service
+                                                                             Hour $156.16 $218.62 $234.24
+15_615_0128_1_3_CA Therapy - Music Therapist - Cancellation                  Hour $156.16 $218.62 $234.24
+                                                                             Hour $156.16 $218.62 $234.24
+15_615_0128_1_3_NF Therapy - Music Therapist - Non-Face-to-Face              Hour $78.08 $109.31 $117.12
+                                                                             Hour $156.16 $218.62 $234.24
+15_615_0128_1_3_PT Therapy - Music Therapist - Provider Travel               Hour $156.16 $218.62 $234.24
+
+15_615_0128_1_3_RR Therapy - Music Therapist - NDIA Requested Reports
+
+15_615_0128_1_3_TH Therapy - Music Therapist - Telehealth
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27            Page 34 of 99
+                                  Schedule 4: Therapy and Professional Supports
+
+Table 22: Occupational Therapist
+
+Support Item Number Support Item Name                                      Unit National Remote Very
+                                                                                                                    Remote
+
+01_661_0128_1_3  Therapy - Occupational Therapist - Direct Service         Hour $193.99 $271.59 $290.99
+
+01_661_0128_1_3_CA Therapy - Occupational Therapist - Cancellation         Hour $193.99 $271.59 $290.99
+
+01_661_0128_1_3_NF Therapy - Occupational Therapist - Non-Face-to-Face     Hour $193.99 $271.59 $290.99
+
+01_661_0128_1_3_PT Therapy - Occupational Therapist - Provider Travel      Hour $97.00 $135.80 $145.50
+
+01_661_0128_1_3_RR Therapy - Occupational Therapist - NDIA Requested       Hour $193.99 $271.59 $290.99
+                                   Reports
+
+01_661_0128_1_3_TH Therapy - Occupational Therapist - Telehealth           Hour $193.99 $271.59 $290.99
+
+10_617_0128_5_3  Employment Therapy - Occupational Therapist - Direct      Hour $193.99 $271.59 $290.99
+                 Service
+
+10_617_0128_5_3_CA Employment Therapy - Occupational Therapist -           Hour $193.99 $271.59 $290.99
+                                   Cancellation
+
+10_617_0128_5_3_NF Employment Therapy - Occupational Therapist - Non-Face- Hour $193.99 $271.59 $290.99
+                                   to-Face
+
+10_617_0128_5_3_PT Employment Therapy - Occupational Therapist - Provider  Hour  $97.00 $135.80 $145.50
+                                   Travel
+
+10_617_0128_5_3_RR Employment Therapy - Occupational Therapist - NDIA      Hour $193.99 $271.59 $290.99
+                                   Requested Reports
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                Page 35 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                           Unit National Remote Very
+                                                                                                                         Remote
+
+10_617_0128_5_3_TH Employment Therapy - Occupational Therapist - Telehealth Hour $193.99 $271.59 $290.99
+
+15_617_0128_1_3  Therapy - Occupational Therapist - Direct Service              Hour $193.99 $271.59 $290.99
+
+15_617_0128_1_3_CA Therapy - Occupational Therapist - Cancellation              Hour $193.99 $271.59 $290.99
+
+15_617_0128_1_3_NF Therapy - Occupational Therapist - Non-Face-to-Face          Hour $193.99 $271.59 $290.99
+
+15_617_0128_1_3_PT Therapy - Occupational Therapist - Provider Travel           Hour $97.00 $135.80 $145.50
+
+15_617_0128_1_3_RR Therapy - Occupational Therapist - NDIA Requested            Hour $193.99 $271.59 $290.99
+                                   Reports
+
+15_617_0128_1_3_TH Therapy - Occupational Therapist - Telehealth                Hour $193.99 $271.59 $290.99
+
+Table 23: Orientation and Mobility Specialist
+
+Support Item Number Support Item Name                                           Unit National Remote Very
+                                                                                                                         Remote
+15_626_0128_1_3  Therapy - Orientation Mobility Specialist - Direct Service
+                                                                                Hour $156.16 $218.62 $234.24
+15_626_0128_1_3_CA Therapy - Orientation Mobility Specialist - Cancellation     Hour $156.16 $218.62 $234.24
+                                                                                Hour $156.16 $218.62 $234.24
+15_626_0128_1_3_NF Therapy - Orientation Mobility Specialist - Non-Face-to-
+                                   Face                                         Hour $78.08 $109.31 $117.12
+
+15_626_0128_1_3_PT Therapy - Orientation Mobility Specialist - Provider Travel
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27               Page 36 of 99
+                           Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                       Unit National Remote Very
+                                                                                                                     Remote
+
+15_626_0128_1_3_RR Therapy - Orientation Mobility Specialist - NDIA Requested Hour $156.16 $218.62 $234.24
+                                   Reports
+
+ 15_626_0128_1_3_TH Therapy - Orientation Mobility Specialist - Telehealth  Hour $156.16 $218.62 $234.24
+Table 24: Orthoptist
+
+Support Item Number Support Item Name                                       Unit National Remote Very
+                                                                                                                     Remote
+15_618_0128_1_3            Therapy - Orthoptist - Direct Service
+                                                                            Hour $193.99 $271.59 $290.99
+15_618_0128_1_3_CA Therapy - Orthoptist - Cancellation                      Hour $193.99 $271.59 $290.99
+                                                                            Hour $193.99 $271.59 $290.99
+15_618_0128_1_3_NF Therapy - Orthoptist - Non-Face-to-Face                  Hour $97.00 $135.80 $145.50
+                                                                            Hour $193.99 $271.59 $290.99
+15_618_0128_1_3_PT Therapy - Orthoptist - Provider Travel                   Hour $193.99 $271.59 $290.99
+
+15_618_0128_1_3_RR Therapy - Orthoptist - NDIA Requested Reports
+
+15_618_0128_1_3_TH Therapy - Orthoptist - Telehealth
+
+Table 25: Physiotherapist
+
+Support Item Number Support Item Name                                       Unit National Remote Very
+                                                                                                                     Remote
+01_721_0128_1_3            Therapy - Physiotherapist - Direct Service
+                                                                            Hour $183.99 $257.59 $275.99
+01_721_0128_1_3_CA Therapy - Physiotherapist - Cancellation
+                                                                            Hour $183.99 $257.59 $275.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27           Page 37 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                   Unit National Remote Very
+                                                                                                                 Remote
+
+01_721_0128_1_3_NF Therapy - Physiotherapist - Non-Face-to-Face         Hour $183.99 $257.59 $275.99
+
+01_721_0128_1_3_PT Therapy - Physiotherapist - Provider Travel          Hour $92.00 $128.80 $138.00
+
+01_721_0128_1_3_RR Therapy - Physiotherapist - NDIA Requested Reports   Hour $183.99 $257.59 $275.99
+
+01_721_0128_1_3_TH Therapy - Physiotherapist - Telehealth               Hour $183.99 $257.59 $275.99
+
+10_055_0128_5_3  Employment Therapy - Physiotherapist - Direct Service  Hour $183.99 $257.59 $275.99
+
+10_055_0128_5_3_CA Employment Therapy - Physiotherapist - Cancellation  Hour $183.99 $257.59 $275.99
+
+10_055_0128_5_3_NF Employment Therapy - Physiotherapist - Non-Face-to-Face Hour $183.99 $257.59 $275.99
+
+10_055_0128_5_3_PT Employment Therapy - Physiotherapist - Provider Travel Hour $92.00 $128.80 $138.00
+
+10_055_0128_5_3_RR Employment Therapy - Physiotherapist - NDIA Requested Hour $183.99 $257.59 $275.99
+                                   Reports
+
+10_055_0128_5_3_TH Employment Therapy - Physiotherapist - Telehealth    Hour $183.99 $257.59 $275.99
+
+15_055_0128_1_3  Therapy - Physiotherapist - Direct Service             Hour $183.99 $257.59 $275.99
+
+15_055_0128_1_3_CA Therapy - Physiotherapist - Cancellation             Hour $183.99 $257.59 $275.99
+
+15_055_0128_1_3_NF Therapy - Physiotherapist - Non-Face-to-Face         Hour $183.99 $257.59 $275.99
+
+15_055_0128_1_3_PT Therapy - Physiotherapist - Provider Travel          Hour $92.00 $128.80 $138.00
+
+15_055_0128_1_3_RR Therapy - Physiotherapist - NDIA Requested Reports   Hour $183.99 $257.59 $275.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27       Page 38 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                              Unit National Remote Very
+                                                                                                            Remote
+ 15_055_0128_1_3_TH Therapy - Physiotherapist - Telehealth
+Table 26: Podiatrist                                               Hour $183.99 $257.59 $275.99
+ Support Item Number Support Item Name
+                                                                   Unit National Remote Very
+01_663_0128_1_3  Therapy - Podiatrist - Direct Service                                                      Remote
+
+01_663_0128_1_3_CA Therapy - Podiatrist - Cancellation             Hour $188.99 $264.59 $283.49
+                                                                   Hour $188.99 $264.59 $283.49
+01_663_0128_1_3_NF Therapy - Podiatrist - Non-Face-to-Face         Hour $188.99 $264.59 $283.49
+                                                                   Hour $94.50 $132.30 $141.75
+01_663_0128_1_3_PT Therapy - Podiatrist - Provider Travel          Hour $188.99 $264.59 $283.49
+                                                                   Hour $188.99 $264.59 $283.49
+01_663_0128_1_3_RR Therapy - Podiatrist - NDIA Requested Reports   Hour $188.99 $264.59 $283.49
+                                                                   Hour $188.99 $264.59 $283.49
+01_663_0128_1_3_TH Therapy - Podiatrist - Telehealth               Hour $188.99 $264.59 $283.49
+                                                                   Hour $94.50 $132.30 $141.75
+15_619_0128_1_3  Therapy - Podiatrist - Direct Service             Hour $188.99 $264.59 $283.49
+                                                                   Hour $188.99 $264.59 $283.49
+15_619_0128_1_3_CA Therapy - Podiatrist - Cancellation
+
+15_619_0128_1_3_NF Therapy - Podiatrist - Non-Face-to-Face
+
+15_619_0128_1_3_PT Therapy - Podiatrist - Provider Travel
+
+15_619_0128_1_3_RR Therapy - Podiatrist - NDIA Requested Reports
+
+15_619_0128_1_3_TH Therapy - Podiatrist - Telehealth
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 39 of 99
+                        Schedule 4: Therapy and Professional Supports
+
+Table 27: Psychologist
+
+Support Item Number Support Item Name                                        Unit National Remote Very
+                                                                                                                      Remote
+01_701_0128_1_3         Therapy - Psychologist - Direct Service
+                                                                             Hour $252.99 $354.19 $379.49
+                            � This includes paid provisionally registered
+                                 Psychologists operating under supervision.
+
+01_701_0128_1_3_CA Therapy - Psychologist - Cancellation                     Hour  $252.99  $354.19  $379.49
+                                                                             Hour  $252.99  $354.19  $379.49
+01_701_0128_1_3_NF Therapy - Psychologist - Non-Face-to-Face                 Hour  $126.50  $177.10  $189.75
+                                                                             Hour  $252.99  $354.19  $379.49
+01_701_0128_1_3_PT Therapy - Psychologist - Provider Travel                  Hour  $252.99  $354.19  $379.49
+                                                                             Hour  $252.99  $354.19  $379.49
+01_701_0128_1_3_RR Therapy - Psychologist - NDIA Requested Reports           Hour  $252.99  $354.19  $379.49
+                                                                             Hour  $252.99  $354.19  $379.49
+01_701_0128_1_3_TH Therapy - Psychologist - Telehealth                       Hour  $126.50  $177.10  $189.75
+                                                                             Hour  $252.99  $354.19  $379.49
+10_054_0128_5_3         Employment Therapy - Psychologist - Direct Service
+
+10_054_0128_5_3_CA Employment Therapy - Psychologist - Cancellation
+
+10_054_0128_5_3_NF Employment Therapy - Psychologist - Non-Face-to-Face
+
+10_054_0128_5_3_PT Employment Therapy - Psychologist - Provider Travel
+
+10_054_0128_5_3_RR Employment Therapy - Psychologist - NDIA Requested
+                                   Reports
+
+10_054_0128_5_3_TH Employment Therapy - Psychologist - Telehealth            Hour  $252.99  $354.19  $379.49
+                                                                             Hour  $252.99  $354.19  $379.49
+15_054_0128_1_3         Therapy - Psychologist - Direct Service
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                           Page 40 of 99
+                                     Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                                   Unit National Remote Very
+                                                                                                                                 Remote
+                                        � This includes paid provisionally registered
+                                            Psychologists operating under supervision.  Hour  $252.99  $354.19  $379.49
+                                                                                        Hour  $252.99  $354.19  $379.49
+15_054_0128_1_3_CA Therapy - Psychologist - Cancellation                                Hour  $126.50  $177.10  $189.75
+15_054_0128_1_3_NF Therapy - Psychologist - Non-Face-to-Face                            Hour  $252.99  $354.19  $379.49
+15_054_0128_1_3_PT Therapy - Psychologist - Provider Travel                             Hour  $252.99  $354.19  $379.49
+15_054_0128_1_3_RR Therapy - Psychologist - NDIA Requested Reports
+15_054_0128_1_3_TH Therapy - Psychologist - Telehealth
+
+Table 28: Rehabilitation Counsellor
+
+Support Item Number Support Item Name                                                   Unit National Remote Very
+                                                                                                                                 Remote
+
+10_620_0128_5_3  Employment Therapy - Rehabilitation Counsellor - Direct                Hour $193.99 $271.59 $290.99
+                 Service
+
+10_620_0128_5_3_CA Employment Therapy - Rehabilitation Counsellor -                     Hour $193.99 $271.59 $290.99
+                                   Cancellation
+
+10_620_0128_5_3_NF Employment Therapy - Rehabilitation Counsellor - Non                 Hour $193.99 $271.59 $290.99
+                                   Face-to-Face
+
+10_620_0128_5_3_PT Employment Therapy - Rehabilitation Counsellor - Provider Hour             $97.00 $135.80 $145.50
+                                   Travel
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                      Page 41 of 99
+                         Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                          Unit National Remote Very
+                                                                                                                        Remote
+10_620_0128_5_3_RR Employment Therapy - Rehabilitation Counsellor - NDIA
+                                   Requested Reports                           Hour $193.99 $271.59 $290.99
+
+10_620_0128_5_3_TH Employment Therapy - Rehabilitation Counsellor -            Hour $193.99 $271.59 $290.99
+                                   Telehealth
+
+15_620_0128_1_3          Therapy - Rehabilitation Counsellor - Direct Service  Hour  $193.99  $271.59  $290.99
+                                                                               Hour  $193.99  $271.59  $290.99
+15_620_0128_1_3_CA Therapy - Rehabilitation Counsellor - Cancellation          Hour  $193.99  $271.59  $290.99
+                                                                               Hour           $135.80  $145.50
+15_620_0128_1_3_NF Therapy - Rehabilitation Counsellor - Non-Face-to-Face      Hour   $97.00  $271.59  $290.99
+                                                                                     $193.99
+15_620_0128_1_3_PT Therapy - Rehabilitation Counsellor - Provider Travel
+
+15_620_0128_1_3_RR Therapy - Rehabilitation Counsellor - NDIA Requested
+                                   Reports
+
+15_620_0128_1_3_TH Therapy - Rehabilitation Counsellor - Telehealth            Hour $193.99 $271.59 $290.99
+
+Table 29: Social Worker
+
+Support Item Number Support Item Name                                          Unit National Remote Very
+                                                                                                                        Remote
+15_621_0128_1_3          Therapy - Social Worker - Direct Service
+                                                                               Hour $193.99 $271.59 $290.99
+15_621_0128_1_3_CA Therapy - Social Worker - Cancellation
+                                                                               Hour $193.99 $271.59 $290.99
+15_621_0128_1_3_NF Therapy - Social Worker - Non-Face-to-Face
+                                                                               Hour $193.99 $271.59 $290.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                             Page 42 of 99
+                              Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                Unit National Remote Very
+                                                                                                              Remote
+15_621_0128_1_3_PT Therapy - Social Worker - Provider Travel
+15_621_0128_1_3_RR Therapy - Social Worker - NDIA Requested Reports  Hour $97.00 $135.80 $145.50
+15_621_0128_1_3_TH Therapy - Social Worker - Telehealth
+                                                                     Hour $193.99 $271.59 $290.99
+
+                                                                     Hour $193.99 $271.59 $290.99
+
+Table 30: Speech Pathologist
+
+Support Item Number Support Item Name                                Unit National Remote Very
+                                                                                                              Remote
+
+01_665_0128_1_3  Therapy - Speech Pathologist - Direct Service       Hour $193.99 $271.59 $290.99
+
+01_665_0128_1_3_CA Therapy - Speech Pathologist - Cancellation       Hour $193.99 $271.59 $290.99
+
+01_665_0128_1_3_NF Therapy - Speech Pathologist - Non-Face-to-Face   Hour $193.99 $271.59 $290.99
+
+01_665_0128_1_3_PT Therapy - Speech Pathologist - Provider Travel    Hour $97.00 $135.80 $145.50
+
+01_665_0128_1_3_RR Therapy - Speech Pathologist - NDIA Requested Reports Hour $193.99 $271.59 $290.99
+
+01_665_0128_1_3_TH Therapy - Speech Pathologist - Telehealth         Hour $193.99 $271.59 $290.99
+
+10_622_0128_5_3  Employment Therapy - Speech Pathologist - Direct Service Hour $193.99 $271.59 $290.99
+
+10_622_0128_5_3_CA Employment Therapy - Speech Pathologist - Cancellation Hour $193.99 $271.59 $290.99
+
+10_622_0128_5_3_NF Employment Therapy - Speech Pathologist - Non-Face-to- Hour $193.99 $271.59 $290.99
+                                   Face
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27            Page 43 of 99
+                              Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                     Unit National Remote Very
+                                                                                                                   Remote
+10_622_0128_5_3_PT Employment Therapy - Speech Pathologist - Provider
+                                   Travel                                 Hour $97.00 $135.80 $145.50
+
+10_622_0128_5_3_RR Employment Therapy - Speech Pathologist - NDIA         Hour $193.99 $271.59 $290.99
+                                   Requested Reports
+
+10_622_0128_5_3_TH Employment Therapy - Speech Pathologist - Telehealth   Hour  $193.99  $271.59  $290.99
+                                                                          Hour  $193.99  $271.59  $290.99
+15_622_0128_1_3  Therapy - Speech Pathologist - Direct Service            Hour  $193.99  $271.59  $290.99
+                                                                          Hour  $193.99  $271.59  $290.99
+15_622_0128_1_3_CA Therapy - Speech Pathologist - Cancellation            Hour           $135.80  $145.50
+                                                                          Hour   $97.00  $271.59  $290.99
+15_622_0128_1_3_NF Therapy - Speech Pathologist - Non-Face-to-Face        Hour  $193.99  $271.59  $290.99
+                                                                                $193.99
+15_622_0128_1_3_PT Therapy - Speech Pathologist - Provider Travel
+
+15_622_0128_1_3_RR Therapy - Speech Pathologist - NDIA Requested Reports
+
+15_622_0128_1_3_TH Therapy - Speech Pathologist - Telehealth
+
+Table 31: Other Professional
+
+Support Item Number Support Item Name                                     Unit National Remote Very
+                                                                                                                   Remote
+01_741_0128_1_3  Therapy - Other Professional - Direct Service
+                                                                          Hour $156.16 $218.62 $234.24
+01_741_0128_1_3_CA Therapy - Other Professional - Cancellation
+                                                                          Hour $156.16 $218.62 $234.24
+01_741_0128_1_3_NF Therapy - Other Professional - Non-Face-to-Face
+                                                                          Hour $156.16 $218.62 $234.24
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                        Page 44 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                    Unit National Remote Very
+                                                                                                                  Remote
+
+01_741_0128_1_3_PT Therapy - Other Professional - Provider Travel        Hour $78.08 $109.31 $117.12
+
+01_741_0128_1_3_RR Therapy - Other Professional - NDIA Requested Reports Hour $156.16 $218.62 $234.24
+
+01_741_0128_1_3_TH Therapy - Other Professional - Telehealth             Hour $156.16 $218.62 $234.24
+
+10_011_0128_5_3  Employment Therapy - Other Professional - Direct Service Hour $156.16 $218.62 $234.24
+
+10_011_0128_5_3_CA Employment Therapy - Other Professional - Cancellation Hour $156.16 $218.62 $234.24
+
+10_011_0128_5_3_NF Employment Therapy - Other Professional - Non-Face-to- Hour $156.16 $218.62 $234.24
+                                   Face
+
+10_011_0128_5_3_PT Employment Therapy - Other Professional - Provider Travel Hour $78.08 $109.31 $117.12
+
+10_011_0128_5_3_RR Employment Therapy - Other Professional - NDIA        Hour $156.16 $218.62 $234.24
+                                   Requested Reports
+
+10_011_0128_5_3_TH Employment Therapy - Other Professional - Telehealth  Hour $156.16 $218.62 $234.24
+
+15_056_0128_1_3  Therapy - Other Professional - Direct Service           Hour $156.16 $218.62 $234.24
+
+15_056_0128_1_3_CA Therapy - Other Professional - Cancellation           Hour $156.16 $218.62 $234.24
+
+15_056_0128_1_3_NF Therapy - Other Professional - Non-Face-to-Face       Hour $156.16 $218.62 $234.24
+
+15_056_0128_1_3_PT Therapy - Other Professional - Provider Travel        Hour $78.08 $109.31 $117.12
+
+15_056_0128_1_3_RR Therapy - Other Professional - NDIA Requested Reports Hour $156.16 $218.62 $234.24
+
+15_056_0128_1_3_TH Therapy - Other Professional - Telehealth             Hour $156.16 $218.62 $234.24
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27        Page 45 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Table 32: Selection and/or Manufacture of Customised or Wearable Technology
+
+Support Item Number Support Item Name                                        Unit National Remote Very
+                                                                                                                      Remote
+15_047_0135_1_3  Selection or Manufacture of Individualised Technology -
+                 Direct Service                                              Hour $193.99 $271.59 $290.99
+
+15_047_0135_1_3_CA Selection or Manufacture of Individualised Technology -   Hour $193.99 $271.59 $290.99
+                                   Cancellation                              Hour $193.99 $271.59 $290.99
+                                                                             Hour $97.00 $135.80 $145.50
+15_047_0135_1_3_NF Selection or Manufacture of Individualised Technology -   Hour $193.99 $271.59 $290.99
+                                   Non-Face-to-Face                          Hour $193.99 $271.59 $290.99
+
+15_047_0135_1_3_PT Selection or Manufacture of Individualised Technology -
+                                   Provider Travel
+
+15_047_0135_1_3_RR Selection or Manufacture of Individualised Technology -
+                                   NDIA Requested Reports
+
+15_047_0135_1_3_TH Selection or Manufacture of Individualised Technology -
+                                   Telehealth
+
+Table 33: Specialist Behavioural Intervention Support including Training in Behaviour Management Strategies
+
+Support Item Number Support Item Name                                        Unit National Remote Very
+                                                                                                                      Remote
+
+11_022_0110_7_3  Specialist Behavioural Intervention Support - Direct Service Hour $252.99 $354.19 $379.49
+
+11_022_0110_7_3_CA Specialist Behavioural Intervention Support - Cancellation Hour $252.99 $354.19 $379.49
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27            Page 46 of 99
+                 Schedule 4: Therapy and Professional Supports
+
+Support Item Number Support Item Name                                        Unit National Remote Very
+                                                                                                                      Remote
+
+11_022_0110_7_3_NF Specialist Behavioural Intervention Support - Non-Face-to- Hour $252.99 $354.19 $379.49
+                                   Face
+
+11_022_0110_7_3_PT Specialist Behavioural Intervention Support - Provider    Hour $126.50 $177.10 $189.75
+                                   Travel
+
+11_022_0110_7_3_RR Specialist Behavioural Intervention Support - NDIA        Hour $252.99 $354.19 $379.49
+                                   Requested Reports
+
+11_022_0110_7_3_TH Specialist Behavioural Intervention Support - Telehealth  Hour $252.99 $354.19 $379.49
+
+11_023_0110_7_3  Behaviour Management Plan Implementation - Direct           Hour $252.99 $354.19 $379.49
+                 Service
+
+11_023_0110_7_3_CA Behaviour Management Plan Implementation - Cancellation Hour $252.99 $354.19 $379.49
+
+11_023_0110_7_3_NF Behaviour Management Plan Implementation - Non-Face- Hour $252.99 $354.19 $379.49
+                                   to-Face
+
+11_023_0110_7_3_PT Behaviour Management Plan Implementation - Provider       Hour $126.50 $177.10 $189.75
+                                   Travel
+
+11_023_0110_7_3_RR Behaviour Management Plan Implementation - NDIA           Hour $252.99 $354.19 $379.49
+                                   Requested Reports
+
+11_023_0110_7_3_TH Behaviour Management Plan Implementation - Telehealth Hour $252.99 $354.19 $379.49
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27            Page 47 of 99
+                                       Schedule 4: Therapy and Professional Supports
+
+Table 34: Therapy Assistant - Level 1
+
+Support Item Number Support Item Name                                    Unit National Remote Very
+                                                                                                                  Remote
+15_052_0128_1_3  Therapy Assistant - Level 1 - Direct Service
+                                                                         Hour $56.16 $78.62 $84.24
+15_052_0128_1_3_CA Therapy Assistant - Level 1 - Cancellation            Hour $56.16 $78.62 $84.24
+                                                                         Hour $56.16 $78.62 $84.24
+15_052_0128_1_3_NF Therapy Assistant - Level 1 - Non-Face-to-Face        Hour $28.08 $39.31 $42.12
+                                                                         Hour $56.16 $78.62 $84.24
+15_052_0128_1_3_PT Therapy Assistant - Level 1 - Provider Travel         Hour $56.16 $78.62 $84.24
+
+15_052_0128_1_3_RR Therapy Assistant - Level 1 - NDIA Requested Reports
+
+15_052_0128_1_3_TH Therapy Assistant - Level 1 - Telehealth
+
+Table 35: Therapy Assistant - Level 2
+
+Support Item Number Support Item Name                                    Unit National Remote Very
+                                                                                                                  Remote
+15_053_0128_1_3  Therapy Assistant - Level 2 - Direct Service
+                                                                         Hour $86.79 $121.51 $130.19
+15_053_0128_1_3_CA Therapy Assistant - Level 2 - Cancellation            Hour $86.79 $121.51 $130.19
+                                                                         Hour $86.79 $121.51 $130.19
+15_053_0128_1_3_NF Therapy Assistant - Level 2 - Non-Face-to-Face        Hour $43.40 $60.76 $65.10
+                                                                         Hour $86.79 $121.51 $130.19
+15_053_0128_1_3_PT Therapy Assistant - Level 2 - Provider Travel         Hour $86.79 $121.51 $130.19
+
+15_053_0128_1_3_RR Therapy Assistant - Level 2 - NDIA Requested Reports
+
+15_053_0128_1_3_TH Therapy Assistant - Level 2 - Telehealth
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                     Page 48 of 99
+                         Schedule 5: Early Childhood Supports
+
+Table 36: Art Therapist
+
+Support Item Number Support Item Name                                           Unit National Remote Very
+                                                                                                                         Remote
+
+15_610_0118_1_3          ECI Professional - Art Therapist - Direct Service      Hour $156.16 $218.62 $234.24
+
+15_610_0118_1_3_CA ECI Professional - Art Therapist - Cancellation              Hour $156.16 $218.62 $234.24
+
+15_610_0118_1_3_NF ECI Professional - Art Therapist - Non-Face-to-Face          Hour $156.16 $218.62 $234.24
+
+15_610_0118_1_3_PT ECI Professional - Art Therapist - Provider Travel           Hour $78.08 $109.31 $117.12
+
+15_610_0118_1_3_RR ECI Professional - Art Therapist - NDIA Requested Reports Hour $156.16 $218.62 $234.24
+
+15_610_0118_1_3_TH ECI Professional - Art Therapist - Telehealth                Hour $156.16 $218.62 $234.24
+
+Table 37: Counsellor
+
+Support Item Number Support Item Name                                           Unit National Remote Very
+                                                                                                                         Remote
+15_606_0118_1_3          ECI Professional - Counsellor - Direct Service
+                                                                                Hour $156.16 $218.62 $234.24
+                             � Paid unsupervised provisionally registered
+                                  psychologists can claim using this line item
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27               Page 49 of 99
+                                  Schedule 5: Early Childhood Supports
+
+Support Item Number Support Item Name                                      Unit National Remote Very
+                                                                                                                    Remote
+15_606_0118_1_3_CA ECI Professional - Counsellor - Cancellation
+15_606_0118_1_3_NF ECI Professional - Counsellor - Non-Face-to-Face        Hour $156.16 $218.62 $234.24
+15_606_0118_1_3_PT ECI Professional - Counsellor - Provider Travel         Hour $156.16 $218.62 $234.24
+15_606_0118_1_3_RR ECI Professional - Counsellor - NDIA Requested Reports  Hour $78.08 $109.31 $117.12
+15_606_0118_1_3_TH ECI Professional - Counsellor - Telehealth              Hour $156.16 $218.62 $234.24
+                                                                           Hour $156.16 $218.62 $234.24
+
+Table 38: Developmental Educator
+
+Support Item Number Support Item Name                                      Unit National Remote Very
+                                                                                                                    Remote
+
+15_613_0118_1_3  ECI Professional - Developmental Educator - Direct Service Hour $193.99 $271.59 $290.99
+
+15_613_0118_1_3_CA ECI Professional - Developmental Educator - Cancellation Hour $193.99 $271.59 $290.99
+
+15_613_0118_1_3_NF ECI Professional - Developmental Educator - Non-Face-to- Hour $193.99 $271.59 $290.99
+                                   Face
+
+15_613_0118_1_3_PT ECI Professional - Developmental Educator - Provider    Hour $97.00 $135.80 $145.50
+                                   Travel
+
+15_613_0118_1_3_RR ECI Professional - Developmental Educator - NDIA        Hour $193.99 $271.59 $290.99
+                                   Requested Reports
+
+15_613_0118_1_3_TH ECI Professional - Developmental Educator - Telehealth Hour $193.99 $271.59 $290.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27          Page 50 of 99
+                     Schedule 5: Early Childhood Supports
+
+Table 39: Dietitian
+
+Support Item Number Support Item Name                                     Unit National Remote Very
+                                                                                                                   Remote
+01_760_0118_1_3      ECI Professional - Dietitian - Direct Service
+                                                                          Hour $178.99 $250.59 $268.49
+01_760_0118_1_3_CA ECI Professional - Dietitian - Cancellation            Hour $178.99 $250.59 $268.49
+                                                                          Hour $178.99 $250.59 $268.49
+01_760_0118_1_3_NF ECI Professional - Dietitian - Non-Face-to-Face        Hour $89.50 $125.30 $134.25
+                                                                          Hour $178.99 $250.59 $268.49
+01_760_0118_1_3_PT ECI Professional - Dietitian - Provider Travel         Hour $178.99 $250.59 $268.49
+                                                                          Hour $178.99 $250.59 $268.49
+01_760_0118_1_3_RR ECI Professional - Dietitian - NDIA Requested Reports  Hour $178.99 $250.59 $268.49
+                                                                          Hour $178.99 $250.59 $268.49
+01_760_0118_1_3_TH ECI Professional - Dietitian - Telehealth              Hour $89.50 $125.30 $134.25
+                                                                          Hour $178.99 $250.59 $268.49
+15_062_0118_1_3      ECI Professional - Dietitian - Direct Service        Hour $178.99 $250.59 $268.49
+
+15_062_0118_1_3_CA ECI Professional - Dietitian - Cancellation
+
+15_062_0118_1_3_NF ECI Professional - Dietitian - Non-Face-to-Face
+
+15_062_0118_1_3_PT ECI Professional - Dietitian - Provider Travel
+
+15_062_0118_1_3_RR ECI Professional - Dietitian - NDIA Requested Reports
+
+15_062_0118_1_3_TH ECI Professional - Dietitian - Telehealth
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27         Page 51 of 99
+                                 Schedule 5: Early Childhood Supports
+
+Table 40: Early Childhood Teacher or Educator
+
+Support Item Number Support Item Name                                        Unit National Remote Very
+                                                                                                                      Remote
+15_625_0118_1_3  ECI Professional - Early Childhood Teacher or Educator -
+                 Direct Service                                              Hour $193.99 $271.59 $290.99
+
+15_625_0118_1_3_CA ECI Professional - Early Childhood Teacher or Educator -  Hour $193.99 $271.59 $290.99
+                                   Cancellation                              Hour $193.99 $271.59 $290.99
+                                                                             Hour $97.00 $135.80 $145.50
+15_625_0118_1_3_NF ECI Professional - Early Childhood Teacher or Educator -  Hour $193.99 $271.59 $290.99
+                                   Non-Face-to-Face                          Hour $193.99 $271.59 $290.99
+
+15_625_0118_1_3_PT ECI Professional - Early Childhood Teacher or Educator -
+                                   Provider Travel
+
+15_625_0118_1_3_RR ECI Professional - Early Childhood Teacher or Educator -
+                                   NDIA Requested Reports
+
+15_625_0118_1_3_TH ECI Professional - Early Childhood Teacher or Educator -
+                                   Telehealth
+
+Table 41: Exercise Physiologist
+
+Support Item Number Support Item Name                                        Unit National Remote Very
+                                                                                                                      Remote
+15_609_0118_1_3  ECI Professional - Exercise Physiologist - Direct Service
+                                                                             Hour $161.99 $226.79 $242.99
+15_609_0118_1_3_CA ECI Professional - Exercise Physiologist - Cancellation
+                                                                             Hour $161.99 $226.79 $242.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27            Page 52 of 99
+                           Schedule 5: Early Childhood Supports
+
+Support Item Number Support Item Name                                           Unit National Remote Very
+                                                                                                                         Remote
+
+15_609_0118_1_3_NF ECI Professional - Exercise Physiologist - Non-Face-to-      Hour $161.99 $226.79 $242.99
+                                   Face
+
+15_609_0118_1_3_PT ECI Professional - Exercise Physiologist - Provider Travel Hour $81.00 $113.40 $121.50
+
+15_609_0118_1_3_RR ECI Professional - Exercise Physiologist - NDIA Requested Hour $161.99 $226.79 $242.99
+                                   Reports
+
+15_609_0118_1_3_TH ECI Professional - Exercise Physiologist - Telehealth        Hour $161.99 $226.79 $242.99
+
+Table 42: Music Therapist
+
+Support Item Number Support Item Name                                           Unit National Remote Very
+                                                                                                                         Remote
+15_615_0118_1_3            ECI Professional - Music Therapist - Direct Service
+                                                                                Hour $156.16 $218.62 $234.24
+15_615_0118_1_3_CA ECI Professional - Music Therapist - Cancellation            Hour $156.16 $218.62 $234.24
+                                                                                Hour $156.16 $218.62 $234.24
+15_615_0118_1_3_NF ECI Professional - Music Therapist - Non-Face-to-Face        Hour $78.08 $109.31 $117.12
+                                                                                Hour $156.16 $218.62 $234.24
+15_615_0118_1_3_PT ECI Professional - Music Therapist - Provider Travel
+                                                                                Hour $156.16 $218.62 $234.24
+15_615_0118_1_3_RR ECI Professional - Music Therapist - NDIA Requested
+                                   Reports
+
+15_615_0118_1_3_TH ECI Professional - Music Therapist - Telehealth
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27               Page 53 of 99
+                                  Schedule 5: Early Childhood Supports
+
+Table 43: Occupational Therapist
+
+Support Item Number Support Item Name                                      Unit National Remote Very
+                                                                                                                    Remote
+
+01_650_0118_1_3  ECI Professional - Occupational Therapist - Direct Service Hour $193.99 $271.59 $290.99
+
+01_650_0118_1_3_CA ECI Professional - Occupational Therapist - Cancellation Hour $193.99 $271.59 $290.99
+
+01_650_0118_1_3_NF ECI Professional - Occupational Therapist - Non-Face-to- Hour $193.99 $271.59 $290.99
+                                   Face
+
+01_650_0118_1_3_PT ECI Professional - Occupational Therapist - Provider Travel Hour $97.00 $135.80 $145.50
+
+01_650_0118_1_3_RR ECI Professional - Occupational Therapist - NDIA        Hour $193.99 $271.59 $290.99
+                                   Requested Reports
+
+01_650_0118_1_3_TH ECI Professional - Occupational Therapist - Telehealth  Hour $193.99 $271.59 $290.99
+
+15_617_0118_1_3  ECI Professional - Occupational Therapist - Direct Service Hour $193.99 $271.59 $290.99
+
+15_617_0118_1_3_CA ECI Professional - Occupational Therapist - Cancellation Hour $193.99 $271.59 $290.99
+
+15_617_0118_1_3_NF ECI Professional - Occupational Therapist - Non-Face-to- Hour $193.99 $271.59 $290.99
+                                   Face
+
+15_617_0118_1_3_PT ECI Professional - Occupational Therapist - Provider Travel Hour $97.00 $135.80 $145.50
+
+15_617_0118_1_3_RR ECI Professional - Occupational Therapist - NDIA        Hour $193.99 $271.59 $290.99
+                                   Requested Reports
+
+15_617_0118_1_3_TH ECI Professional - Occupational Therapist - Telehealth  Hour $193.99 $271.59 $290.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27          Page 54 of 99
+                           Schedule 5: Early Childhood Supports
+
+Table 44: Orientation and Mobility Specialist
+
+Support Item Number Support Item Name                                                   Unit National Remote Very
+                                                                                                                                 Remote
+
+15_626_0118_1_3            ECI Professional - Orientation Mobility Specialist - Direct  Hour $156.16 $218.62 $234.24
+                           Service
+
+15_626_0118_1_3_CA ECI Professional - Orientation Mobility Specialist -                 Hour $156.16 $218.62 $234.24
+                                   Cancellation
+
+15_626_0118_1_3_NF ECI Professional - Orientation Mobility Specialist - Non-            Hour $156.16 $218.62 $234.24
+                                   Face-to-Face
+
+15_626_0118_1_3_PT ECI Professional - Orientation Mobility Specialist - Provider Hour   $78.08 $109.31 $117.12
+                                   Travel
+
+15_626_0118_1_3_RR ECI Professional - Orientation Mobility Specialist - NDIA            Hour $156.16 $218.62 $234.24
+                                   Requested Reports
+
+15_626_0118_1_3_TH ECI Professional - Orientation Mobility Specialist -                 Hour $156.16 $218.62 $234.24
+                                   Telehealth
+
+Table 45: Physiotherapist
+
+Support Item Number Support Item Name                                                   Unit National Remote Very
+                                                                                                                                 Remote
+01_720_0118_1_3            ECI Professional - Physiotherapist - Direct Service
+                                                                                        Hour $183.99 $257.59 $275.99
+01_720_0118_1_3_CA ECI Professional - Physiotherapist - Cancellation
+                                                                                        Hour $183.99 $257.59 $275.99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                       Page 55 of 99
+                      Schedule 5: Early Childhood Supports
+
+Support Item Number Support Item Name                                      Unit National Remote Very
+                                                                                                                    Remote
+01_720_0118_1_3_NF ECI Professional - Physiotherapist - Non-Face-to-Face
+                                                                           Hour $183.99 $257.59 $275.99
+01_720_0118_1_3_PT ECI Professional - Physiotherapist - Provider Travel
+                                                                           Hour $92.00 $128.80 $138.00
+01_720_0118_1_3_RR ECI Professional - Physiotherapist - NDIA Requested
+                                   Reports                                 Hour $183.99 $257.59 $275.99
+
+01_720_0118_1_3_TH ECI Professional - Physiotherapist - Telehealth         Hour  $183.99  $257.59  $275.99
+                                                                           Hour  $183.99  $257.59  $275.99
+15_003_0118_1_3       ECI Professional - Physiotherapist - Direct Service  Hour  $183.99  $257.59  $275.99
+                                                                           Hour  $183.99  $257.59  $275.99
+15_003_0118_1_3_CA ECI Professional - Physiotherapist - Cancellation       Hour           $128.80  $138.00
+                                                                           Hour   $92.00  $257.59  $275.99
+15_003_0118_1_3_NF ECI Professional - Physiotherapist - Non-Face-to-Face         $183.99
+
+15_003_0118_1_3_PT ECI Professional - Physiotherapist - Provider Travel
+
+15_003_0118_1_3_RR ECI Professional - Physiotherapist - NDIA Requested
+                                   Reports
+
+15_003_0118_1_3_TH ECI Professional - Physiotherapist - Telehealth         Hour $183.99 $257.59 $275.99
+
+Table 46: Podiatrist
+
+Support Item Number Support Item Name                                      Unit National Remote Very
+                                                                                                                    Remote
+01_663_0118_1_3       ECI Professional - Podiatrist - Direct Service
+                                                                           Hour $188.99 $264.59 $283.49
+01_663_0118_1_3_CA ECI Professional - Podiatrist - Cancellation
+                                                                           Hour $188.99 $264.59 $283.49
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                         Page 56 of 99
+                 Schedule 5: Early Childhood Supports
+
+Support Item Number Support Item Name                                      Unit National Remote Very
+                                                                                                                    Remote
+01_663_0118_1_3_NF ECI Professional - Podiatrist - Non-Face-to-Face
+                                                                           Hour $188.99 $264.59 $283.49
+01_663_0118_1_3_PT ECI Professional - Podiatrist - Provider Travel         Hour $94.50 $132.30 $141.75
+                                                                           Hour $188.99 $264.59 $283.49
+01_663_0118_1_3_RR ECI Professional - Podiatrist - NDIA Requested Reports  Hour $188.99 $264.59 $283.49
+                                                                           Hour $188.99 $264.59 $283.49
+01_663_0118_1_3_TH ECI Professional - Podiatrist - Telehealth              Hour $188.99 $264.59 $283.49
+                                                                           Hour $188.99 $264.59 $283.49
+15_619_0118_1_3  ECI Professional - Podiatrist - Direct Service            Hour $94.50 $132.30 $141.75
+                                                                           Hour $188.99 $264.59 $283.49
+15_619_0118_1_3_CA ECI Professional - Podiatrist - Cancellation            Hour $188.99 $264.59 $283.49
+
+15_619_0118_1_3_NF ECI Professional - Podiatrist - Non-Face-to-Face
+
+15_619_0118_1_3_PT ECI Professional - Podiatrist - Provider Travel
+
+15_619_0118_1_3_RR ECI Professional - Podiatrist - NDIA Requested Reports
+
+15_619_0118_1_3_TH ECI Professional - Podiatrist - Telehealth
+
+Table 47: Psychologist                                                     Unit National Remote Very
+ Support Item Number Support Item Name                                                                              Remote
+
+01_700_0118_1_3  ECI Professional - Psychologist - Direct Service          Hour $252.99 $354.19 $379.49
+
+                     � This includes paid provisionally registered
+                          Psychologists operating under supervision.
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27          Page 57 of 99
+                 Schedule 5: Early Childhood Supports
+
+Support Item Number Support Item Name                                   Unit National Remote Very
+                                                                                                                 Remote
+
+01_700_0118_1_3_CA2 ECI Professional - Psychologist - Cancellation      Hour $252.99 $354.19 $379.49
+
+01_700_0118_1_3_NF2 ECI Professional - Psychologist - Non-Face-to-Face  Hour $252.99 $354.19 $379.49
+
+01_700_0118_1_3_PT ECI Professional - Psychologist - Provider Travel    Hour $126.50 $177.10 $189.75
+
+01_700_0118_1_3_RR ECI Professional - Psychologist - NDIA Requested Reports Hour $252.99 $354.19 $379.49
+
+01_700_0118_1_3_TH ECI Professional - Psychologist - Telehealth         Hour $252.99 $354.19 $379.49
+
+15_001_0118_1_3  ECI Professional - Psychologist - Direct Service       Hour $252.99 $354.19 $379.49
+
+                     � This includes paid provisionally registered
+                          Psychologists operating under supervision.
+
+15_001_0118_1_3_CA ECI Professional - Psychologist - Cancellation       Hour $252.99 $354.19 $379.49
+
+15_001_0118_1_3_NF ECI Professional - Psychologist - Non-Face-to-Face   Hour $252.99 $354.19 $379.49
+
+15_001_0118_1_3_PT ECI Professional - Psychologist - Provider Travel    Hour $126.50 $177.10 $189.75
+
+15_001_0118_1_3_RR ECI Professional - Psychologist - NDIA Requested Reports Hour $252.99 $354.19 $379.49
+
+15_001_0118_1_3_TH ECI Professional - Psychologist - Telehealth         Hour $252.99 $354.19 $379.49
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27       Page 58 of 99
+                              Schedule 5: Early Childhood Supports
+
+Table 48: Social Worker
+
+Support Item Number Support Item Name                                            Unit National Remote Very
+                                                                                                                          Remote
+15_621_0118_1_3          ECI Professional - Social worker - Direct Service
+                                                                                 Hour $193.99 $271.59 $290.99
+15_621_0118_1_3_CA ECI Professional - Social worker - Cancellation               Hour $193.99 $271.59 $290.99
+                                                                                 Hour $193.99 $271.59 $290.99
+15_621_0118_1_3_NF ECI Professional - Social worker - Non-Face-to-Face           Hour $97.00 $135.80 $145.50
+                                                                                 Hour $193.99 $271.59 $290.99
+15_621_0118_1_3_PT ECI Professional - Social worker - Provider Travel
+                                                                                 Hour $193.99 $271.59 $290.99
+15_621_0118_1_3_RR ECI Professional - Social worker - NDIA Requested
+                                   Reports
+
+15_621_0118_1_3_TH ECI Professional - Social worker - Telehealth
+
+Table 49: Speech Pathologist
+
+Support Item Number Support Item Name                                            Unit National Remote Very
+                                                                                                                          Remote
+
+01_653_0118_1_3          ECI Professional - Speech Pathologist - Direct Service  Hour $193.99 $271.59 $290.99
+
+01_653_0118_1_3_CA ECI Professional - Speech Pathologist - Cancellation          Hour $193.99 $271.59 $290.99
+
+01_653_0118_1_3_NF ECI Professional - Speech Pathologist - Non-Face-to-Face Hour $193.99 $271.59 $290.99
+
+01_653_0118_1_3_PT ECI Professional - Speech Pathologist - Provider Travel       Hour $97.00 $135.80 $145.50
+
+01_653_0118_1_3_RR ECI Professional - Speech Pathologist - NDIA Requested Hour $193.99 $271.59 $290.99
+                                   Reports
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                Page 59 of 99
+                 Schedule 5: Early Childhood Supports
+
+Support Item Number Support Item Name                                       Unit National Remote Very
+                                                                                                                     Remote
+
+01_653_0118_1_3_TH ECI Professional - Speech Pathologist - Telehealth       Hour $193.99 $271.59 $290.99
+
+15_622_0118_1_3  ECI Professional - Speech Pathologist - Direct Service     Hour $193.99 $271.59 $290.99
+
+15_622_0118_1_3_CA ECI Professional - Speech Pathologist - Cancellation     Hour $193.99 $271.59 $290.99
+
+15_622_0118_1_3_NF ECI Professional - Speech Pathologist - Non-Face-to-Face Hour $193.99 $271.59 $290.99
+
+15_622_0118_1_3_PT ECI Professional - Speech Pathologist - Provider Travel  Hour $97.00 $135.80 $145.50
+
+15_622_0118_1_3_RR ECI Professional - Speech Pathologist - NDIA Requested Hour $193.99 $271.59 $290.99
+                                   Reports
+
+15_622_0118_1_3_TH ECI Professional - Speech Pathologist - Telehealth       Hour $193.99 $271.59 $290.99
+
+Table 50: Other Early Childhood Professional
+
+Support Item Number Support Item Name                                       Unit National Remote Very
+                                                                                                                     Remote
+01_740_0118_1_3  ECI Professional - Other Early Childhood Professional -
+                 Direct Service                                             Hour $193.99 $271.59 $290.99
+
+01_740_0118_1_3_CA ECI Professional - Other Early Childhood Professional -  Hour $193.99 $271.59 $290.99
+                                   Cancellation
+                                                                            Hour $193.99 $271.59 $290.99
+01_740_0118_1_3_NF ECI Professional - Other Early Childhood Professional -
+                                   Non-Face-to-Face
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27           Page 60 of 99
+                 Schedule 5: Early Childhood Supports
+
+Support Item Number Support Item Name                                       Unit National Remote Very
+                                                                                                                     Remote
+01_740_0118_1_3_PT ECI Professional - Other Early Childhood Professional -
+                                   Provider Travel                          Hour $97.00 $135.80 $145.50
+                                                                            Hour $193.99 $271.59 $290.99
+01_740_0118_1_3_RR ECI Professional - Other Early Childhood Professional -  Hour $193.99 $271.59 $290.99
+                                   NDIA Requested Reports                   Hour $193.99 $271.59 $290.99
+                                                                            Hour $193.99 $271.59 $290.99
+01_740_0118_1_3_TH ECI Professional - Other Early Childhood Professional -  Hour $193.99 $271.59 $290.99
+                                   Telehealth                               Hour $97.00 $135.80 $145.50
+                                                                            Hour $193.99 $271.59 $290.99
+15_005_0118_1_3  ECI Professional - Other Early Childhood Professional -    Hour $193.99 $271.59 $290.99
+                 Direct Service
+
+15_005_0118_1_3_CA ECI Professional - Other Early Childhood Professional -
+                                   Cancellation
+
+15_005_0118_1_3_NF ECI Professional - Other Early Childhood Professional -
+                                   Non-Face-to-Face
+
+15_005_0118_1_3_PT ECI Professional - Other Early Childhood Professional -
+                                   Provider Travel
+
+15_005_0118_1_3_RR ECI Professional - Other Early Childhood Professional -
+                                   NDIA Requested Reports
+
+15_005_0118_1_3_TH ECI Professional - Other Early Childhood Professional -
+                                   Telehealth
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27           Page 61 of 99
+                                      Schedule 5: Early Childhood Supports
+
+Table 51: Therapy Assistants Level 1
+
+Support Item Number Support Item Name                                         Unit National Remote Very
+                                                                                                                       Remote
+
+15_007_0118_1_3  ECI Professional - Therapy Assistant - Level 1 - Direct      Hour $56.16 $78.62 $84.24
+                 Service
+
+15_007_0118_1_3_CA ECI Professional - Therapy Assistant - Level 1 -           Hour $56.16 $78.62 $84.24
+                                   Cancellation
+
+15_007_0118_1_3_NF ECI Professional - Therapy Assistant - Level 1 - Non-Face- Hour  $56.16  $78.62  $84.24
+                                   to-Face
+
+15_007_0118_1_3_PT ECI Professional - Therapy Assistant - Level 1 - Provider  Hour  $28.08  $39.31  $42.12
+                                   Travel
+
+15_007_0118_1_3_RR ECI Professional - Therapy Assistant - Level 1 - NDIA      Hour $56.16 $78.62 $84.24
+                                   Requested Reports
+
+15_007_0118_1_3_TH ECI Professional - Therapy Assistant - Level 1 - Telehealth Hour $56.16 $78.62 $84.24
+
+Table 52: Therapy Assistants Level 2
+
+Support Item Number Support Item Name                                         Unit National Remote Very
+                                                                                                                       Remote
+15_008_0118_1_3  ECI Professional - Therapy Assistant - Level 2 - Direct
+                 Service                                                      Hour $86.79 $121.51 $130.19
+
+15_008_0118_1_3_CA ECI Professional - Therapy Assistant - Level 2 -           Hour $86.79 $121.51 $130.19
+                                   Cancellation
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                           Page 62 of 99
+Schedule 5: Early Childhood Supports
+
+Support Item Number Support Item Name                                         Unit National Remote Very
+                                                                                                                       Remote
+
+15_008_0118_1_3_NF ECI Professional - Therapy Assistant - Level 2 - Non-Face- Hour  $86.79 $121.51 $130.19
+                                   to-Face
+
+15_008_0118_1_3_PT ECI Professional - Therapy Assistant - Level 2 - Provider  Hour  $43.40  $60.76  $65.10
+                                   Travel
+
+15_008_0118_1_3_RR ECI Professional - Therapy Assistant - Level 2 - NDIA      Hour $86.79 $121.51 $130.19
+                                   Requested Reports
+
+15_008_0118_1_3_TH ECI Professional - Therapy Assistant - Level 2 - Telehealth Hour $86.79 $121.51 $130.19
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                           Page 63 of 99
+                            Schedule 6: Support Coordination
+
+Table 53: Support Coordination and Individualised Living Options
+
+Support item     Support Item name                                       Unit National Remote Very
+number                                                                                                           Remote
+01_850_0106_1_1
+07_001_0106_8_3  Individualised Living Options - Exploration and Design  Hour $100.14 $140.19 $150.21
+07_002_0106_8_3
+07_004_0132_8_3  Support Coordination Level 1: Support Connection        Hour $80.06 $112.08 $120.09
+10_002_0106_8_3
+                 Support Coordination Level 2: Coordination of Supports  Hour $100.14 $140.19 $150.21
+
+                 Support Coordination Level 3: Specialist Support Coordination Hour $190.54 $266.75 $285.80
+
+                 Support Coordination Level 2: Coordination of Supports  Hour $100.14 $140.19 $150.21
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27        Page 64 of 99
+                           Schedule 7: Plan Management
+
+Table 54: Plan Management
+
+Support item number        Support Item name                       Unit National  $104.45
+14_034_0127_8_3            Plan Management - Monthly Fee           Month
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                 Page 65 of 99
+                         Schedule 8: Notional Unit Priced Items
+
+Table 55: Labour Notional Unit Items
+
+Support Item Number  Support Item Name                                                                 Unit National
+01_023_0120_1_1      Assistance with the cost of the preparation and delivery of meals
+01_050_0115_1_1      Assistance With Daily Life Tasks Provided In Residential Aged Care Facility       Each  $1.00
+
+                                                                                                       Each  $1.00
+
+Table 56: Low Cost Assistance Technology Equipment
+
+Support Item Number Support Item Name                                                                  Unit National
+03_050903053_0103_1_1 Incontinence Alarms
+03_060000911_0135_1_1 Low Cost AT - Prosthetics And Orthotics                                          Each  $1.00
+03_090000911_0103_1_1 Low Cost AT - Personal Care And Safety
+03_040000919_0103_1_1 Disability-Related Health Consumables - Low Cost                                 Each  $1.00
+03_090348111_0103_1_2 Extra cost for adapted or adapting clothing and/or footwear for disability need
+03_090900111_0103_1_2 Assistive products for dressing or undressing                                    Each  $1.00
+03_091800084_0103_1_1 Continence - bowel care
+03_092100082_0103_1_1 Continence - consumables                                                         Each  $1.00
+
+                                                                                                       Each  $1.00
+
+                                                                                                       Each  $1.00
+
+                                                                                                       Each  $1.00
+
+                                                                                                       Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                      Page 66 of 99
+                                                            Schedule 8: Notional Unit Priced Items  Unit National
+
+ Support Item Number Support Item Name                                                              Each  $1.00
+ 03_092400080_0103_1_1 Continence - catheters/sheaths
+ 03_092700081_0103_1_1 Continence - drain/leg bags                                                  Each  $1.00
+ 03_092700083_0103_1_1 Continence - urinary collection items and accessories
+ 03_093021078_0103_1_1 Continence - reusable/washable personal protection                           Each  $1.00
+ 03_093021079_0103_1_1 Continence - disposable personal protection
+ 03_093040085_0103_1_1 Continence - bed/chair/floor protection                                      Each  $1.00
+ 03_120000911_0105_1_1 Low Cost AT - Personal Mobility
+ 03_220300911_0113_1_1 Low Cost AT - Vision Related AT                                              Each  $1.00
+ 03_220600911_0122_1_1 Low Cost AT - Hearing Related AT
+ 03_222100911_0124_1_1 Low Cost AT - Communication Or Cognitive Support                             Each  $1.00
+ 03_501509092_0103_1_1 Repairs and Maintenance - HEN AT
+ 03_710400002_0103_1_1 Disability-Related Health Equipment and Consumables - Set Up/Training        Each  $1.00
+ 03_710930080_0103_1_1 Delivery - Personal care Safety and Disability-related Health Consumables
+Table 57: Assistance Animal Ongoing Costs                                                           Each  $1.00
+ Support Item Number Support Item Name
+ 03_900100156_0130_1_1 Assistance Animal - Dog Guide - Dietary Needs                                Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                   Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Unit National
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Page 67 of 99
+                     Schedule 8: Notional Unit Priced Items
+
+Support Item Number Support Item Name                                                 Unit National
+03_900100157_0130_1_1 Assistance Animal - Dog Guide - Grooming
+03_900100158_0130_1_1 Assistance Animal - Dog Guide - Veterinary Services             Each  $1.00
+03_900100159_0130_1_1 Assistance Animal - Dog Guide - Annual Accreditation
+                                                                                      Each  $1.00
+
+                                                                                      Each  $1.00
+
+Table 58: Assistive Technology Supplementary Charges
+
+Support Item Number  Support Item Name                                                Unit National
+05_0002_0103_1_2     AT Supplementary Charge - AT Personal Care/Safety
+05_0002_0105_1_2     AT Supplementary Charge - Personal Mobility or Transfer          Each  $1.00
+05_0002_0109_1_2     AT Supplementary Charge - Vehicle modifications
+05_0002_0112_1_2     AT Supplementary Charge - Recreation including sport             Each  $1.00
+05_0002_0113_1_2     AT Supplementary Charge - Vision
+05_0002_0122_1_2     AT Supplementary Charge - Hearing products                       Each  $1.00
+05_0002_0123_1_2     AT Supplementary Charge - Household Tasks and Control
+05_0002_0124_1_2     AT Supplementary Charge - Communication and Information support  Each  $1.00
+05_0002_0135_1_2     AT Supplementary Charge - Prosthesis or Orthosis
+                                                                                      Each  $1.00
+
+                                                                                      Each  $1.00
+
+                                                                                      Each  $1.00
+
+                                                                                      Each  $1.00
+
+                                                                                      Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                     Page 68 of 99
+                                                            Schedule 8: Notional Unit Priced Items  Unit National
+Table 59: Assistive Technology Rental
+ Support Item Number Support Item Name                                                              Each  $1.00
+ 05_040312115_0103_1_2 AT Rental - Assistive Products for Respiration Support
+ 05_060000115_0135_1_2 AT Rental - Prosthesis and Orthosis                                          Each  $1.00
+ 05_090000155_0103_1_2 AT Rental - Personal Care and Safety
+ 05_121227125_0108_1_2 AT Rental - Vehicle modified for Access                                      Each  $1.00
+ 05_150000115_0123_1_2 AT Rental - Assistive Products for Household Tasks
+ 05_222100115_0124_1_2 AT Rental - Communication and Computer access                                Each  $1.00
+ 05_300000115_0112_1_2 AT Rental - Modified for accessible recreation
+ 05_220300115_0113_1_2 AT Rental - Vision support or alternate access                               Each  $1.00
+ 05_220600112_0122_1_2 AT Rental - Hearing Devices and Accessories
+Table 60: Assistive Products                                                                        Each  $1.00
+ Support Item Number Support Item Name
+ 05_150300111_0123_2_2 Assistive products for preparing food and drink                              Each  $1.00
+ 05_150600111_0123_2_2 Assistive products for dishwashing
+ 05_150900111_0123_2_2 Assistive products for eating and drinking                                   Each  $1.00
+ 05_151200111_0123_2_2 Assistive products to facilitate house cleaning
+                                                                                                    Each  $1.00
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+                                                                                                    Unit National
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Page 69 of 99
+                                                            Schedule 8: Notional Unit Priced Items  Unit National
+
+ Support Item Number Support Item Name                                                              Each  $1.00
+ 05_151600111_0123_2_2 Assistive products to facilitate laundry
+ 05_151800111_0123_2_2 Assistive products to facilitate gardening                                   Each  $1.00
+Table 61: Customisation and adaptations
+ Support Item Number Support Item Name                                                              Unit National
+ 05_189900111_0123_2_2 Customisation, adaptions, or upgrade cost to standard household items
+Table 62: Adaptive Assistive Technology                                                             Each  $1.00
+ Support Item Number Support Item Name
+ 05_221300111_0124_1_2 Communication and Information AT - Computer/Device Interfaces                Unit National
+ 05_222102112_0124_1_2 Adaptive software for a communication or information access disability need
+ 05_222404259_0113_1_2 Vision - modification to a standard item for vision impairment               Each  $1.00
+ 05_300000113_0112_1_2 Modification to a standard Recreation/Sporting Equipment
+Table 63: Assistive Technology Repairs and Maintenance                                              Each  $1.00
+ Support Item Number Support Item Name
+ 05_500000303_0103_1_2 Repairs and Maintenance - Other AT                                           Each  $1.00
+ 05_500403159_0103_1_1 Repairs and Maintenance - Disability-Related Health Machines
+                                                                                                    Each  $1.00
+
+                                                                                                    Unit National
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                   Page 70 of 99
+                                                          Schedule 8: Notional Unit Priced Items  Unit National
+
+Support Item Number Support Item Name                                                             Each  $1.00
+05_500433443_0103_1_2 Repairs and Maintenance - Personal Care/Safety After-Hours
+05_500612441_0135_1_2 Repairs and Maintenance - Orthosis                                          Each  $1.00
+05_500624304_0135_1_2 Repairs and Maintenance - Prosthesis - Minor
+05_500933306_0103_1_2 Repairs and Maintenance - Bathing And Toileting AT                          Each  $1.00
+05_501200307_0105_1_2 Repairs and Maintenance - Wheeled Mobility Minor
+05_501212373_0109_1_2 Repairs and Maintenance - Vehicle Modification                              Each  $1.00
+05_501224309_0105_1_2 Tyre - Wheeled mobility
+05_501236025_0105_1_2 Repairs and Maintenance - Transfer AT                                       Each  $1.00
+05_501288435_0105_1_2 Repairs and Maintenance - Mobility and Transfer - After-Hours
+05_501812311_0103_1_2 Repairs and Maintenance - Electric Bed                                      Each  $1.00
+05_502200312_0124_1_2 Repairs and Maintenance - Communication Cognitive or ECU AT
+05_502206151_0122_1_2 Repairs and Maintenance - Hearing AT                                        Each  $1.00
+05_502218315_0113_1_2 Repairs and Maintenance - Vision AT
+05_503000316_0112_1_2 Repairs and Maintenance - Specialised Recreation AT                         Each  $1.00
+
+                                                                                                  Each  $1.00
+
+                                                                                                  Each  $1.00
+
+                                                                                                  Each  $1.00
+
+                                                                                                  Each  $1.00
+
+                                                                                                  Each  $1.00
+
+                                                                                                  Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                 Page 71 of 99
+                                                            Schedule 8: Notional Unit Priced Items  Unit National
+Table 64: Assistive Technology Delivery
+ Support Item Number Support Item Name                                                              Each  $1.00
+ 05_711000080_0103_1_2 Delivery - Personal Care and Safety AT
+ 05_711000080_0105_1_2 Delivery - Personal Mobility and Transfer AT                                 Each  $1.00
+ 05_711000080_0109_1_2 Delivery - Vehicle modifications AT
+ 05_711000080_0112_1_2 Delivery - Recreation AT                                                     Each  $1.00
+ 05_711000080_0113_1_2 Delivery - Vision AT
+ 05_711000080_0119_1_2 Delivery - Specialised Hearing AT                                            Each  $1.00
+ 05_711000080_0122_1_2 Delivery - Hearing AT
+ 05_711000080_0123_1_2 Delivery - Household Tasks or Control AT                                     Each  $1.00
+ 05_711000080_0124_1_2 Delivery - Communication and Information AT
+ 05_711000080_0135_1_2 Delivery - Prosthesis or Orthosis                                            Each  $1.00
+Table 65: Home Modifications
+ Support Item Number Support Item Name                                                              Each  $1.00
+ 06_180000111_0111_2_2 HM Rental - Bathroom Toilet Ramp
+ 06_182100401_0111_2_2 MHM - Electrical and Door Automation                                         Each  $1.00
+ 06_182409401_0111_2_2 MHM - External Door
+                                                                                                    Each  $1.00
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+                                                                                                    Each  $1.00
+
+                                                                                                    Unit National
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Page 72 of 99
+Schedule 8: Notional Unit Priced Items
+
+Support Item Number Support Item Name                                                               Unit National
+06_182409402_0111_2_2 MHM - Internal Door
+06_182415401_0111_2_2 MHM - Flooring                                                                Each  $1.00
+06_182495322_0111_2_2 MHM - Practical Completion
+06_182495401_0111_2_2 MHM - Bathroom                                                                Each  $1.00
+06_182495402_0111_2_2 MHM - Kitchen
+06_182495405_0111_2_2 MHM - Laundry                                                                 Each  $1.00
+06_182495407_0111_2_2 MHM - Other works including Bedroom
+06_182495413_0111_2_2 MHM - Toilet Replacement                                                      Each  $1.00
+06_182495414_0111_2_2 MHM - Cabinetry Alterations
+06_182499311_0111_2_2 HM - Design Consultation with Builder                                         Each  $1.00
+06_183018404_0111_2_2 MHM - Ramp
+06_183090401_0111_2_2 MHM - Pathway - External                                                      Each  $1.00
+06_270303401_0111_2_2 MHM - Airconditioning
+06_501824150_0111_2_2 Building Modifications due to damage caused by disability-related behaviours  Each  $1.00
+06_501824151_0111_2_2 Building Modifications due to damage caused by AT
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+                                                                                                    Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                   Page 73 of 99
+                                   Schedule 8: Notional Unit Priced Items
+
+Table 66: Non-labour Travel Costs
+
+Support Item Number  Support Item Name                                     Unit National
+01_799_0102_1_1      Provider travel - non-labour costs
+01_799_0104_1_1      Provider travel - non-labour costs                    Each  $1.00
+01_799_0106_1_1      Provider travel - non-labour costs
+01_799_0107_1_1      Provider travel - non-labour costs                    Each  $1.00
+01_799_0110_1_1      Provider travel - non-labour costs
+01_799_0114_1_1      Provider travel - non-labour costs                    Each  $1.00
+01_799_0138_1_1      Provider travel - non-labour costs
+01_799_0117_8_1      Provider travel - non-labour costs                    Each  $1.00
+01_799_0118_1_1      Provider travel - non-labour costs
+01_799_0119_1_1      Provider travel - non-labour costs                    Each  $1.00
+01_799_0120_1_1      Provider travel - non-labour costs
+01_799_0126_1_1      Provider travel - non-labour costs                    Each  $1.00
+01_799_0128_1_1      Provider travel - non-labour costs
+01_799_0129_1_1      Provider travel - non-labour costs                    Each  $1.00
+01_799_0132_1_1      Provider travel - non-labour costs
+                                                                           Each  $1.00
+
+                                                                           Each  $1.00
+
+                                                                           Each  $1.00
+
+                                                                           Each  $1.00
+
+                                                                           Each  $1.00
+
+                                                                           Each  $1.00
+
+                                                                           Each  $1.00
+
+                                                                           Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27          Page 74 of 99
+                     Schedule 8: Notional Unit Priced Items
+
+Support Item Number  Support Item Name                             Unit National
+01_799_0134_1_1      Provider travel - non-labour costs
+01_799_0135_1_1      Provider travel - non-labour costs            Each  $1.00
+04_799_0104_6_1      Provider travel - non-labour costs
+04_799_0125_6_1      Provider travel - non-labour costs            Each  $1.00
+04_799_0133_5_1      Provider travel - non-labour costs
+04_799_0136_6_1      Provider travel - non-labour costs            Each  $1.00
+07_799_0106_6_3      Provider travel - non-labour costs
+07_799_0117_8_3      Provider travel - non-labour costs            Each  $1.00
+07_799_0132_8_3      Provider travel - non-labour costs
+08_799_0106_2_3      Provider travel - non-labour costs            Each  $1.00
+09_799_0106_6_3      Provider travel - non-labour costs
+09_799_0117_6_3      Provider travel - non-labour costs            Each  $1.00
+10_799_0102_5_3      Provider travel - non-labour costs
+10_799_0128_5_3      Provider travel - non-labour costs            Each  $1.00
+10_799_0133_5_3      Provider travel - non-labour costs
+11_799_0110_7_3      Provider travel - non-labour costs            Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 75 of 99
+                     Schedule 8: Notional Unit Priced Items
+
+Support Item Number  Support Item Name                             Unit National
+11_799_0117_7_3      Provider travel - non-labour costs
+12_799_0126_3_3      Provider travel - non-labour costs            Each  $1.00
+12_799_0128_3_3      Provider travel - non-labour costs
+13_799_0102_4_3      Provider travel - non-labour costs            Each  $1.00
+15_799_0103_6_3      Provider travel - non-labour costs
+15_799_0106_1_3      Provider travel - non-labour costs            Each  $1.00
+15_799_0114_1_3      Provider travel - non-labour costs
+15_799_0117_1_3      Provider travel - non-labour costs            Each  $1.00
+15_799_0118_1_3      Provider travel - non-labour costs
+15_799_0119_1_3      Provider travel - non-labour costs            Each  $1.00
+15_799_0126_1_3      Provider travel - non-labour costs
+15_799_0128_1_3      Provider travel - non-labour costs            Each  $1.00
+15_799_0134_1_3      Provider travel - non-labour costs
+15_799_0135_1_3      Provider travel - non-labour costs            Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+                                                                   Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 76 of 99
+                                    Schedule 8: Notional Unit Priced Items
+
+Table 67: Activity Based Transport
+
+Support Item Number  Support Item Name                                      Unit National
+04_590_0125_6_1      Activity Based Transport
+04_591_0136_6_1      Activity Based Transport                               Each  $1.00
+04_592_0104_6_1      Activity Based Transport
+04_821_0133_6_1      Activity Based Transport                               Each  $1.00
+07_501_0106_6_3      Activity Based Transport
+08_590_0106_2_3      Activity Based Transport                               Each  $1.00
+09_590_0106_6_3      Activity Based Transport
+09_591_0117_6_3      Activity Based Transport                               Each  $1.00
+10_590_0102_5_3      Activity Based Transport
+10_590_0133_5_3      Activity Based Transport                               Each  $1.00
+11_590_0117_7_3      Activity Based Transport
+13_590_0102_4_3      Activity Based Transport                               Each  $1.00
+
+                                                                            Each  $1.00
+
+                                                                            Each  $1.00
+
+                                                                            Each  $1.00
+
+                                                                            Each  $1.00
+
+                                                                            Each  $1.00
+
+                                                                            Each  $1.00
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27           Page 77 of 99
+                Schedule 9: Support items without specified prices
+
+Table 68: Labour items
+
+Support Item Number  Support Item Name                                                            Unit
+01_821_0115_1_1      Assistance in Supported Independent Living - Weekly                          Week
+01_822_0115_1_1      Assistance in Supported Independent Living - Exit Accommodation Permanently  Week
+01_821_0138_1_1      Supported Independent Living - Weekly                                        Week
+01_822_0138_1_1      Supported Independent Living - Exit Accommodation Permanently                Week
+02_051_0108_1_1      Transport                                                                    Year
+03_089_0121_1_1      Auslan Or Signed English Training                                            Hour
+03_090_0121_1_1      Interpreting And Translating                                                 Hour
+03_091_0121_1_1      Telephone Or Video Interpreting                                              Hour
+04_210_0125_6_1      Community Social And Recreational Activities                                 Each
+09_008_0116_6_3      Innovative Community Participation                                           Each
+09_011_0125_6_3      Community Participation Activities                                           Each
+10_021_0102_5_3      School Leaver Employment Supports                                            Each
+15_049_0128_1_3      Multidisciplinary Team                                                       Each
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                 Page 78 of 99
+                             Schedule 9: Support items without specified prices
+
+Table 69: Consumable items
+
+Support Item Number          Support Item Name                                                                    Unit
+03_150930078_0103_1_1        HEN - pump plus accessory - syringe feed                                             Year
+03_150930079_0103_1_1        HEN - pump plus accessory - non-syringe feed                                         Year
+03_150930080_0103_1_1        HEN - bolus syringes                                                                 Year
+03_150930081_0103_1_1        HEN - gastrostomy devices                                                            Year
+03_150930082_0103_1_1        Additional Extension Sets For Bolus Feeding - 10/Annual                              Year
+03_150930083_0103_1_1        Additional Extension Sets For Pump Feeding - 10/Annual                               Year
+03_150930084_0103_1_1        HEN - giving sets                                                                    Year
+03_150930085_0103_1_1        HEN - containers                                                                     Year
+03_150930086_0103_1_1        Additional Bolus Syringes - 100/Annual                                               Year
+03_150930087_0103_1_1        HEN - water flush syringes                                                           Year
+03_150930088_0103_1_1        HEN - Other equipment                                                                Each
+
+Table 70: Mid-Cost AT items                                                                                       Unit
+                                                                                                                  Each
+Support Item Number          Support Item Name                                                                    Each
+05_040312801_0103_1_1        Ventilators - Supplemental Ventilation Support (including CPAP and BPAP)
+05_040312811_0103_1_1        Ventilators - Invasive Ventilation for Continuous Use                     Page 79 of 99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+Support Item Number             Schedule 9: Support items without specified prices                      Unit
+05_040313111_0103_1_1                                                                                   Each
+05_040321811_0103_1_1  Support Item Name                                                                Each
+05_040322811_0103_1_1  Ventilator accessory - Filters and/or Humidifiers                                Each
+05_040609171_0103_1_1  Aspirators                                                                       Each
+05_040609811_0103_1_1  Cough Assist Machine                                                             Each
+05_043006111_0103_1_2  Cyclic Pressure Unit - Replacement Garments and Compression Sleeves              Each
+05_043303511_0103_1_2  Circulation Support - Air-Filled Garments and Compression Units                  Each
+05_043303811_0103_1_2  Cooling Vest - All Sizes                                                         Each
+05_043306002_0103_1_2  Postural Support - Air Floatation or Automated Pressure Management               Each
+05_043306803_0103_1_2  Postural Support - Foam and/or Gel component system                              Each
+05_043306804_0103_1_2  Pressure Reduction Mattress - Air Filled Section                                 Each
+05_044839811_0103_1_2  Pressure Reduction Mattress or Overlay - Complete                                Each
+05_044839870_0103_1_2  Pressure Reduction Mattress or Overlay - High Complexity Need                    Each
+05_060315111_0135_1_2  Standing Frame - Supports for Standing                                           Each
+05_060318821_0135_1_2  Standing or Walking Frame accessory - Powered Component (including Myoelectric)  Each
+05_060600111_0135_1_2  Orthosis - Cervical and Cranial                                                  Each
+05_060600821_0135_1_2  Orthosis - Cervico-Thoraco-Lumbo-Sacral                                          Each
+                       Orthosis - Upper Limb - Prefabricated
+                       Orthosis - Upper Limb - Custom Made
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                       Page 80 of 99
+Support Item Number             Schedule 9: Support items without specified prices                               Unit
+05_060688121_0135_1_2                                                                                            Each
+05_061203111_0135_1_2  Support Item Name                                                                         Each
+05_061203821_0135_1_2  Orthosis - Dynamic or Lycra - Limb                                                        Each
+05_061206111_0135_1_2  Orthosis - Foot (all types) or Prefabricated Orthotic Footwear                            Each
+05_061206821_0135_1_2  Orthosis - Footwear/Shoes Other - Custom Made                                             Each
+05_061206891_0135_1_2  Orthosis - Ankle Foot (AFO) - Prefabricated                                               Each
+05_061209111_0105_1_2  Orthosis - Ankle Foot (AFO) - Custom Made                                                 Each
+05_061209121_0135_1_2  Orthosis - Ankle Foot with Ankle Joints - Custom Made                                     Each
+05_061209821_0135_1_2  Orthosis - Knee - Prefabricated                                                           Each
+05_061212821_0135_1_2  Orthosis - Knee - Custom Made                                                             Each
+05_061215111_0105_1_2  Orthosis - Thigh Knee Ankle - Custom Made                                                 Each
+05_061218811_0135_1_2  Orthosis - Knee Ankle Foot - Custom Made                                                  Each
+05_061218821_0135_1_2  Orthosis - Hip - Prefabricated                                                            Each
+05_061219821_0135_1_2  Orthosis - Bilateral Hip Knee Ankle Foot Orthosis (incl RGO) - Prefabricated              Each
+05_061290821_0135_1_2  Orthosis - Hip Thigh Knee Ankle - Custom Made                                             Each
+05_061500811_0135_1_2  Orthosis - Bilateral Thoraco-lumbar/Lumbo-Sacral Hip Knee Ankle Foot - Custom             Each
+05_061826871_0135_1_2  Orthosis - Dynamic or Lycra - Full Body                                                   Each
+                       Orthosis - Trunk/Lower Body - FES or Powered - to support standing/walking
+                       Prosthesis - Accessory - Arm and Hand for Sport and Leisure                    Page 81 of 99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+Support Item Number             Schedule 9: Support items without specified prices                         Unit
+05_063000821_0135_1_2                                                                                      Each
+05_091200111_0103_1_2  Support Item Name                                                                   Each
+05_091203053_0103_1_2  Prosthesis - Not Limb Related                                                       Each
+05_091203811_0103_1_2  Toilet Attachments and Accessories - Seat/Toilet Raiser/Toileting Bidet             Each
+05_091203821_0103_1_2  Shower Commode - Wheeled - Low Transporter                                          Each
+05_091203891_0103_1_2  Shower Commode - Wheeled                                                            Each
+05_093305121_0103_1_2  Shower Commode - Wheeled - High Intensity need                                      Each
+05_093312811_0103_1_2  Shower Commode - Wheeled - Tilt In Space                                            Each
+05_093312891_0103_1_2  Bathing Support - Special Design                                                    Each
+05_120303111_0105_1_2  Change Table/Shower Trolley - Manual                                                Each
+05_120603831_0103_1_2  Change Table/Shower Trolley - Powered                                               Each
+05_120606096_0105_1_2  Walking Supports - Sticks Canes And Crutches                                        Each
+05_120606097_0105_1_2  Standing and/or Walking Frame - Child                                               Each
+05_120606811_0105_1_2  Wheeled Walker - Standard                                                           Each
+05_120606831_0105_1_2  Rollator - Standard                                                                 Each
+05_120612100_0105_1_2  Walking Frame or Walker                                                             Each
+05_121205811_0109_1_2  Rollator - Standard - Child                                                         Each
+                       Walking Tables
+                       Vehicle Modification - Adaptions for Driver Control                      Page 82 of 99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+Support Item Number             Schedule 9: Support items without specified prices                              Unit
+05_121208111_0109_1_2                                                                                           Each
+05_121209821_0109_1_2  Support Item Name                                                                        Each
+05_121212811_0103_1_2  Vehicle Modification - Adaptions For Ancillary Functions e.g. Lights Locking             Each
+05_121215811_0109_1_2  Vehicle Modification - For Seating and/or Seat Belts                                     Each
+05_121218811_0109_1_2  Specialised Child Car Seats - no Vehicle Modification Required                           Each
+05_121221811_0109_1_2  Vehicle Modification - Hoist for Passenger Loading (without Wheelchair)                  Each
+05_121230811_0109_1_2  Vehicle Modification - Hoist for Occupied Wheelchair Loading                             Each
+05_121290111_0109_1_2  Vehicle Modification - Hoist/Ramp for Unoccupied Wheelchair Loading                      Each
+05_121800821_0112_1_2  Vehicle Accessory -Trailer for wheeled mobility device                                   Each
+05_121821871_0112_1_2  Vehicle Modification - Engineers Certification                                           Each
+05_122203811_0105_1_2  Bicycle - Tricycle and/or Carts adapted for specific functional needs                    Each
+05_122203821_0105_1_2  Bicycle - Adaptation for Pedals/Seat/Handlebars                                          Each
+05_122203891_0105_1_2  Wheelchair - Manual - Folding - Basic                                                    Each
+05_122203911_0105_1_2  Wheelchair - Manual - Folding - Custom Made                                              Each
+05_122218111_0105_1_2  Wheelchair - Manual - Tilt In Space                                                      Each
+05_122290811_0105_1_2  Wheelchair - Manual - Rigid Frame                                                        Each
+05_122303811_0105_1_2  Wheelchair - Manual - Attendant Propel - Custom Folding/Rigid Frame                      Each
+                       Wheelchair - Manual - Sport and Recreation Use
+                       Scooter - Indoor/Outdoor use                                                  Page 83 of 99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+Support Item Number             Schedule 9: Support items without specified prices                           Unit
+05_122303891_0105_1_2                                                                                        Each
+05_122303911_0105_1_2  Support Item Name                                                                     Each
+05_122303991_0105_1_2  Scooter - Heavy Duty/Robust Activity Specific                                         Each
+05_122306811_0105_1_2  Scooter - Electric Powered - Portable                                                 Each
+05_122306824_0105_1_2  Scooter - Small Folding/Travel Light-Weight                                           Each
+05_122403811_0105_1_2  Wheelchair - Powered Base with or without Tilt - Indoor/Outdoor use                   Each
+05_122409871_0105_1_2  Wheelchair - Powered Base - Portable/Folding                                          Each
+05_122442871_0105_1_2  Wheelchair Accessory - Powered Alternate Operator Control System                      Each
+05_122490811_0105_1_2  Wheelchair Accessory - Power-Assist Drive Technology                                  Each
+05_122500821_0105_1_2  Wheelchair Accessory - Health-Related AT/Ventilator Carrier                           Each
+05_122503111_0105_1_2  Wheelchair Accessory - Powered Adjustment for Limbs or Recline or Elevate             Each
+05_122506111_0105_1_2  Postural Support - Seating System - Custom Made                                       Each
+05_122524111_0105_1_2  Postural Support - Positioning - Back                                                 Each
+05_122524811_0105_1_2  Postural Support - Positioning - Seat                                                 Each
+05_122707821_0105_1_2  Postural Support - Wheelchair Accessory                                               Each
+05_122707831_0105_1_2  Postural Support - Seating Componentry and Accessories                                Each
+05_122707931_0105_1_2  Stroller/Pram/Buggy with Specialised Seating system                                   Each
+                       Stroller/Pram/Buggy/Push Chair with Supportive Seating
+                       Wheeled base - paediatric - height adaptable for seating                   Page 84 of 99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+Support Item Number             Schedule 9: Support items without specified prices                     Unit
+05_122715831_0105_1_2                                                                                  Each
+05_123603811_0105_1_2  Support Item Name                                                               Each
+05_123606868_0105_1_2  Crawlers/Mobility Boards/Trolley                                                Each
+05_123612811_0105_1_2  Transfer AT - Mobile Hoist including Slings (x2)                                Each
+05_123612891_0105_1_2  Transfer AT - Mobile Hoist Seat or Table                                        Each
+05_123621111_0105_1_2  Transfer AT - Pool Environment Hoist                                            Each
+05_123621121_0105_1_2  Transfer AT - Ceiling Hoist                                                     Each
+05_180315111_0103_1_2  Transfer AT - Sling Standard                                                    Each
+05_180909811_0103_1_2  Transfer AT - Sling Non-Standard                                                Each
+05_180915811_0103_1_2  Bed - Ancillary Furniture                                                       Each
+05_180921821_0103_1_2  Specialised Seating with Sit-Stand Assistance                                   Each
+05_180939882_0105_1_2  Specialised Lounge Chair - Mobile with Pressure Management/Positioning Systems  Each
+05_181200711_0103_1_2  Specialised Static Seating with Pressure Management and/or Postural Support     Each
+05_181207811_0103_1_2  Postural Support - Modular Seating Systems                                      Each
+05_181210811_0103_1_2  Bed - Access/Transfer Pole/Blocks/Rails/Rail-Covers                             Each
+05_181224811_0103_1_2  Bed - Manually adjusted                                                         Each
+05_181800111_0103_2_2  Bed - Electrically adjusted                                                     Each
+                       Sleep Positioning System and Accessories - Custom Made
+                       Home Safety - Slip Resistance Coating/Grab and/or Guide Rails
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                      Page 85 of 99
+Support Item Number             Schedule 9: Support items without specified prices             Unit
+05_183015811_0103_2_2                                                                          Each
+05_220318811_0113_1_2  Support Item Name                                                       Each
+05_220321811_0113_1_2  Ramp - portable for access needs                                        Each
+05_220615111_0122_1_2  Vision - Electronic Video Magnifier                                     Each
+05_220615211_0122_1_2  Vision - Image Enlargement Software                                     Each
+05_220615811_0122_1_2  Hearing device - Standard level                                         Each
+05_220618811_0122_1_2  Hearing device - Intermediate level                                     Each
+05_220621811_0122_1_2  Hearing device - Advanced level                                         Each
+05_220625247_0122_1_2  Hearing device - Non-Standard                                           Each
+05_220627171_0122_1_2  Hearing device - External speech processor and accessories              Each
+05_220627232_0122_1_2  Hearing accessory - Induction Loop                                      Each
+05_220627271_0122_1_2  Hearing accessory - Remote Control                                      Each
+05_220627811_0122_1_2  Hearing accessory - TV function                                         Each
+05_220906234_0124_1_2  Hearing accessory - Music device                                        Each
+05_221315254_0124_1_2  Hearing device - Personal Amplifiers/Binaural Listener                  Each
+05_221315811_0124_1_2  Voice Amplifiers For Personal Use                                       Each
+05_221315880_0124_1_2  Communication AT - Simple Button or Keys with Voice Output              Each
+                       Communication - Face to Face - Electronic
+                       Personal Reader - Speech and/or Visual Output                Page 86 of 99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+Support Item Number             Schedule 9: Support items without specified prices                              Unit
+05_221336811_0113_1_2                                                                                           Each
+05_222100111_0124_1_2  Support Item Name                                                                        Each
+05_222106253_0124_1_2  Vision - Braille device                                                                  Each
+05_222106843_0122_1_2  Communication AT: Non-Electronic Devices Books or Tools for face to face                 Each
+05_222404225_0122_1_2  Communication - Amplifiers                                                               Each
+05_222903111_0103_1_2  Hearing accessory - Remote Microphone System                                             Each
+05_222903266_0122_1_2  Hearing device - Specialised Landline Telephone                                          Each
+05_222906111_0103_1_2  Adapted Devices for standard household items                                             Each
+05_222909111_0103_1_2  Hearing device - Baby Alert Systems                                                      Each
+05_223906811_0113_1_2  Safety Device - Seizure Mat/Location Alert - Alarm System                                Each
+05_223907278_0124_1_2  Safety Device - Flashing or Vibrating Doorbell/Smoke Alert/Personal Alarms               Each
+05_223912811_0113_1_2  Vision - Alternate format Printer                                                        Each
+05_224506811_0113_1_2  Vision - Portable Audible Player for Read Content                                        Each
+05_241327891_0124_1_2  Vision - Print Disability Software                                                       Each
+05_242400811_0103_1_2  Vision - Visual Navigation AT                                                            Each
+05_300000111_0112_1_2  Communication or ICT AT - Complex need interface - Eye or EMG/neural Control             Each
+05_300309811_0112_1_2  Device Positioning / Mounting Systems - Technology / other                               Each
+                       Assistive Products - Recreation and Sport not otherwise defined
+                       Recreation AT - Game Interface                                                Page 87 of 99
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+Support Item Number             Schedule 9: Support items without specified prices  Unit
+05_501224310_0105_1_2                                                               Each
+05_702288440_0124_1_2  Support Item Name                                            Hour
+05_800288834_0103_1_2  Wheelchair or Scooter - Battery or Charger                   Each
+05_801288834_0103_1_2  Programming/Customisation - For Electronic Equipment         Each
+                       Early Childhood Flexible AT Package
+                       Flexible AT Package - For Changing Need
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                   Page 88 of 99
+                             Schedule 10: Quotable Supports
+
+Table 71: Labour Based Quotable Supports
+
+Support Item Number  Support Item Name                                                                Unit National
+01_003_0107_1_1      Assistance From Live-In Carer                                                    Hour Quotable
+01_017_0107_1_1      On-Call Overnight Monitoring-Off Site or Onsite (Includes 1 hour of assistance)  Each Quotable
+01_021_0120_1_1      Linen Service                                                                    Each Quotable
+01_026_0115_1_1      Assistance In Living Arrangements (Host Family/Alternative Family Situation)     Day Quotable
+01_027_0115_1_1      Assistance In A Shared Living Arrangement                                        Each Quotable
+01_046_0115_1_1      Assistance In Individual Living Arrangement For Person With Complex Needs        Each Quotable
+01_851_0115_1_1      Individualised Living Options - Support Model                                    Week Quotable
+02_050_0108_1_1      Specialised Transport To School/Educational Facility/Employment/Community        Day Quotable
+15_046_0129_1_3      Specialised Driver Training                                                      Each Quotable
+
+Table 72: High Cost Consumables                                                                       Unit National
+                                                                                                      Each Quotable
+Support Item Number  Support Item Name
+
+03_040000111_0103_1_1 Disability-Related Health Consumables - High Cost
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                                     Page 89 of 99
+                                          Schedule 10: Quotable Supports
+
+Table 73: High Cost Assistive Technology
+
+Support Item Number  Support Item Name                                                            Unit National
+                                                                                                  Each Quotable
+05_061800121_0135_1_2 Prosthesis - Upper Limb (Including Powered)                                 Each Quotable
+                                                                                                  Each Quotable
+05_062200921_0135_1_2 Prosthesis - Osseo-Integration Mounting (Upper or Lower) - Additional Cost  Each Quotable
+                                                                                                  Each Quotable
+05_062409121_0135_1_2 Prosthesis - Transtibial or Lower                                           Each Quotable
+                                                                                                  Each Quotable
+05_062415121_0135_1_2 Prosthesis - Transfemoral or Higher                                         Each Quotable
+                                                                                                  Each Quotable
+05_062488034_0135_1_2 Prosthesis - Lower Limb - Not Defined                                       Each Quotable
+                                                                                                  Each Quotable
+05_062488121_0135_1_2 Prosthesis - Specialist Lower Limb For Sports                               Each Quotable
+                                                                                                  Each Quotable
+05_062490191_0135_1_2 Prosthesis - For Wet Area Use (i.e. waterproofing) - Additional Cost        Each Quotable
+                                                                                                  Each Quotable
+05_121227121_0109_1_2 Vehicle Modification - Chassis/Body work - For Wheelchair Passenger         Each Quotable
+
+05_121227221_0109_1_2 Vehicle Modification - Chassis/Body work - For Wheelchair Seated Driver               Page 90 of 99
+
+05_121805111_0112_1_2 Bicycle - Adapted FOR Hand Propulsion
+
+05_122306139_0105_1_2 Wheelchair - Powered - With Powered Standing Mechanism
+
+05_122306191_0105_1_2 Wheelchair - Powered - All Terrain/Heavy Duty Base (WITHOUT Seating)
+
+05_241303121_0123_1_2 Environmental Control (Ecu)/ Safety-Related Products
+
+05_500624305_0135_1_2 Repairs and Maintenance - Prosthesis - Major
+
+05_501200308_0105_1_2 Repairs and Maintenance - Wheeled Mobility Major
+
+05_900101111_0130_1_2 Assistance Animal - Dog Guide
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27
+                                          Schedule 10: Quotable Supports
+
+Table 74: Higher Cost or Complexity Home Modifications
+
+Support Item Number  Support Item Name                                    Unit National
+                                                                          Each Quotable
+06_123615401_0111_2_2 HM - Ceiling Hoist                                  Each Quotable
+                                                                          Each Quotable
+06_182488377_0111_2_2 HM - Bathroom/Toilet - Structural work              Each Quotable
+                                                                          Each Quotable
+06_182488378_0111_2_2 HM - Kitchen or Laundry - Structural Work           Each Quotable
+                                                                          Each Quotable
+06_182490112_0111_2_2 HM - Building Works Project Management              Each Quotable
+                                                                          Each Quotable
+06_182495121_0111_2_2 CHM - Deposit                                       Each Quotable
+                                                                          Each Quotable
+06_182495221_0111_2_2 CHM - Progress Stage
+
+06_182495321_0111_2_2 CHM - Practical Completion
+
+06_182495421_0111_2_2 HM - Certification and Compliance Approval
+
+06_183003384_0111_2_2 HM - Elevator
+
+06_183010387_0111_2_2 HM - Stair Climber or Stair / Platform Lift
+
+06_183018405_0111_2_2 HM - Ramp - Structural
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27         Page 91 of 99
+                  Schedule 11: Isolated Towns Modification Lists
+
+Table 75: Isolated Towns Modification List (Type 1)
+These NDIA enclaves have been re-classified as a remote area for planning and pricing purposes. Please refer to remote area
+price guidance for supports delivered in these communities.
+
+State  NDIA Enclave       Postcode                                 Location Name
+
+NSW    Balranald          2715                                     Balranald
+
+NSW    Broken Hill        2880                                     Broken Hill
+
+NSW    Hay                2711                                     Hay, Hay South
+
+NSW    Ravenswood Warren  2824                                     Ravenswood, Warren
+
+QLD    Cardwell           4849                                     Cardwell
+
+QLD    Charters Towers    4820                                     Alabama Hill, Breddan, Broughton, Charters Towers,
+                                                                   Charters Towers City, Columbia, Grand Secret,
+                                                                   Millchester, Mosman Park, Queenton, Richmond Hill,
+                                                                   Southern Cross, Toll, Towers Hill
+
+QLD    Dysart             4745                                     Dysart
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                      Page 92 of 99
+       Schedule 11: Isolated Towns Modification Lists
+
+State  NDIA Enclave       Postcode                                 Location Name
+QLD    Emerald            4702
+QLD    Emerald            4717                                     Bluff, Comet, Jellinbah, Stewarton
+QLD    Emerald            4720
+QLD    Moranbah           4741                                     Blackwater
+QLD    Moranbah           4744
+QLD    Roma               4455                                     Emerald
+WA     Greater Geraldton  6528
+WA     Greater Geraldton  6530                                     Coppabella
+
+WA     Greater Geraldton  6532                                     Moranbah
+
+                                                                   Roma
+
+                                                                   Mount Hill, South Greenough, Walkaway
+
+                                                                   Beachlands, Beresford, Bluff Point, Geraldton, Karloo,
+                                                                   Mahoments Flat, Meru, Moresby, Mount Tarcoola,
+                                                                   Rangeway, Spalding, Strathalbyn, Sunset Beach,
+                                                                   Tarcoola Beach, Utakarra, Waggrakine, Wandina,
+                                                                   Webberton, West End, Wonthella, Woorree
+
+                                                                   Bootenal, Bringo, Buller, Burma Road, Cape Burney,
+                                                                   Deepdale, Drummond Cove, Durawah, East Chapman,
+                                                                   Ellendale, Eradu, Eradu South, Georgina, Glenfield,
+                                                                   Greenough, Howatharra, Kojarena, Minnenooka,
+                                                                   Moonyoonooka, Mount Erin, Nanson, Narngulu, Narra
+                                                                   Tarra, North Eradu, Northern Gully, Oakajee, Rudds
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 93 of 99
+       Schedule 11: Isolated Towns Modification Lists
+
+State  NDIA Enclave       Postcode                                 Location Name
+
+WA     Greater Geraldton  6535                                     Gully, Sandsprings, Tibradden, Valentine, White Peak,
+WA     Irwin              6525                                     Wicherina, Wicherina South, Yetna
+
+WA     Kalgoorlie         6430                                     Alma, Bowes, East Bowes, Isseka, Northampton
+
+WA     Kalgoorlie         6432                                     Allanooka, Arrowsmith, Bonniefield, Bookara, Dongara,
+WA     Kalgoorlie         6431                                     Irwin, Milo, Mount Adams, Mount Horner, Port Denison,
+WA     Kalgoorlie         6434                                     Springfield, Yardarino
+WA     Kambalda           6442
+WA     Merredin           6415                                     Broadwood, Hannans, Kalgoorlie, Kalkurla, Lamington,
+WA     Mingenew           6522                                     Mullingar, Piccadilly, Somerville, South Kalgoorlie, West
+                                                                   Kalgoorlie, West Lamington, Williamstown
+
+                                                                   Boulder, Fimiston, South Boulder, Victory Heights
+
+                                                                   Brown Hill, Trafalgar
+
+                                                                   Parkeston
+
+                                                                   Kambalda West, Kambalda East
+
+                                                                   Merredin
+
+                                                                   Bundanoon, Holmwood, Ikewa, Lockier, Mingenew,
+                                                                   Mooriary, Mount Budd, Nangetty, Yandanooka,
+                                                                   Yarragadee
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 94 of 99
+                                 Schedule 11: Isolated Towns Modification Lists
+
+State              NDIA Enclave  Postcode                          Location Name
+NT                 Gunbalanya*   0822                              Gunbalanya
+
+*Gunbalanya has been re-classified as a very remote area for pricing and planning purposes.
+Table 76: New Isolated Towns Modification List (Type 2)
+It is considered reasonable and appropriate for Providers supporting participants in these locations to negotiate claimable travel
+time costs as part of their service agreement with participants. No additional price loading for these communities is recommended.
+Please refer to the national price guidance.
+
+State/ SA2 Name                  Suburb and Locality Name
+Territory
+
+NSW    Condobolin                Burcher, Condoblin, Derriwong, Fairholme, Mulguthrie, Ootha, Tullamore
+
+NSW    Coonamble                 Gulargambone
+
+NSW    Gunnedah Surrounds        Blue Vale, Boggabri, Breeza, Carroll, Curlewis, Emerald Hill, Ghoolendaadi,
+                                 Gunnedah, Keepit, Kelvin, Marys Mount, Milroy, Mullaley, Orange Grove, Piallaway,
+                                 Rangari, Tambar Springs, Wean, Willala
+
+NSW    Mudgee Surrounds - East   Aarons Pass, Breakfast Creek, Brogans Creek, Budden, Bylong, Camboon, Carwell,
+                                 Charbon, Clandula, Coggan, Coxs Creek, Coxs Crown, Crudine, Dabbee, Dungeree,
+                                 Ginghi, Growee, Illford, Kandos, Lee Creek, Monivae, Murrumbo, Nullo Mountain,
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27                 Page 95 of 99
+                             Schedule 11: Isolated Towns Modification Lists
+
+State/ SA2 Name              Suburb and Locality Name
+Territory
+                             Olinda, Pinnacle Swamp, Pyangle, Running Stream, Upper Bylong, Upper Growee,
+NSW  Parkes Surrounds        Rylstone
+
+QLD  Banana                  Alectown, Bogan Gate, Bruie Plains, Cookamidgera, Cooks Myalls, Goonumbla,
+                             Gunningblad, Mandagery, Nelungaloo, Parkes, Peak Hil, Tichborne, Trewilga,
+QLD  Broadsound Nebo         Trundle, Yarrabandai
+QLD  Central Highlands East
+                             Alberta, Banana, Baralaba, Callide, Castle Creek, Dakenba, Dixalea, Dululu,
+QLD  Tablelands              Dumgree, Dumpy Creek, Goovigen, Greycliffe, Jambin, Kianga, Kokotungo, Lawgi
+                             Dawes, Lonesome Creek, Mount Murchison, Moura, Orange Creek, Pheasant Creek,
+                             Prospect, Roundstone, Tarramba, Thangool, Theodore, Ulogie, Valentine Plains,
+                             Warnoah, Westwood, Woolein, Wowan
+
+                             Blue Mountain, Carmilla, Epsom, Illbilbie, Nebo
+
+                             Balcomba, Barnard, Boolburra, Coomoo, Duaringa, Gainsford, Goowarra, Mackenzie,
+                             Wallaroo
+
+                             Arriga, Biboohra, Chewko, Dimbulah, Glen Russell, Irvinebank, Julatten, Mount
+                             Molloy, Mutchilba, Paddy's Green, Southedge, Thornborough, Watsonville
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27            Page 96 of 99
+                            Schedule 11: Isolated Towns Modification Lists
+
+State/ SA2 Name             Suburb and Locality Name
+Territory
+                            Amyton, Appila, Bangor, Baroota, Belton, Black Rock, Booleroo Centre, Bruce,
+SA   Peterborough - Mount   Carrieton, Cavenaugh, Coomooroo, Dawson, Erskine, Eurelia, Hammond, Hardy,
+                            Johnburgh, Mambray Creek, Melrose, Minburra, Minvalara, Moockra, Morchard,
+     Remarkable             Murray Town, Nackara, Nectar Brook, Oodla Wirra, Orrorro, Paratoo, Parnaroo,
+                            Pekina, Peterborough, Port Germein, Sunnybrae, Telowie, Ucolta, Walloway,
+SA   Tatiara                Weeroona Island, Willowie, Wilmington, Wirrabara, Wongyarra, Yalpara, Yanyarrie,
+                            Yongala
+SA   Waikerie
+                            Bangham, Bordertown, Bordertown South, Buckingham, Carew, Custon, Keith,
+TAS  St Helens - Scamander  Kongal, Laffer, Mount Charles, Mundulla, Mundulla West, Padthaway, Petherick, Pine
+                            Hill, Pooginagoric, Swede Flat, Western Flat, Willalooka, Wolseley
+
+                            Annadale, Beatty, Beaumonts, Blanchetown, Boolgun, Brenda Park, Cadell, Devlins
+                            Pound, Dutton, Dutton East, Eba, Golden Heights, Holder, Holder Sliding, Kanni,
+                            Lindley, Lowbank, Maggea, Markaranka, Maude, Mcbean Pound, Morgan, Morphetts
+                            Flat, Mount Mary, Murbko, Naidia, North West Bend, Notts Well, Paisley, Pooginook,
+                            Qualco, Ramco, Ramco Heights, Sandleton, Steinfeld, Stockyard Plain, Stuart,
+                            Sunlands, Taylorville, Truro, Waikerie, Wombats Rest
+
+                            Akoroa, Ansons Bay, Beaumaris, Binalong Bay, Cornwall, Falmouth, Fingal, Four Mile
+                            Creek, Goshen, Goulds Country, Lottah, Mangana, Mathinna, Pyengana, Scamander,
+                            St Helens, St Marys, Stieglitz, The Gardens, Upper Esk, Upper Scamander,
+                            Weldborough
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27           Page 97 of 99
+State/ SA2 Name    Schedule 11: Isolated Towns Modification Lists
+Territory
+                         Suburb and Locality Name
+VIC  Buloke
+                         Ballapur, Banyan, Barrakee, Berriwilock, Bimbourie, Birchip, Birchip West, Boigbeat,
+VIC  West Wimmera        Bunguluke, Carron, Charlton, Chirrip, Cokum, Corack, Corack East, Culgoa, Curyo,
+                         Donald, Dooboobetic, Dumosa, Gil Gil, Glenloth, Glenloth East, Jeffcott, Jeffcott
+WA   Brookton            North, Jeruk, Jil Jil, Kalpienung, Karyrie, Kinnabulla, Laen, Laen North, Lake Tyrell,
+                         Lawler, Litchfield, Marlbed, Massey, Morton Plains, Myall, Myarin, Nandaly,
+WA   Cunderdin           Nareewillock, Narraport, Ninda, Nullawil, Nyarrin, Pier Milan, Reedy Dam, Rich Avon,
+                         Sea Lake, Springfield, Straten, Sutton, Teddywaddy, Teddywaddy West, Thalia,
+                         Towaninny, Towaninny South, Turriff East, Tyenna, Tyrell, Tyrell Downs, Wangie,
+                         Warmur, Warne, Watchem, Watchupga, Whirily, Wilkur, Willangie, Wooroonooka,
+                         Wycheproof, Wycheproof South, Yawong Hills, Yeungroon, Yeungroon East
+
+                         Apsley, Benayeo, Bringalbert, Charam, Chetwynd, Connewirrico, Dergholm,
+                         Dodorong, Douglas, Edenhope, Goroke, Gymbowen, Harrow, Kadnook, Karnak,
+                         Langkoop, Miga Lake, Minimay, Neuarpurr, Nurcoung, Ozenkadnook, Patyah,
+                         Peronne, Poolaijelo, Powers Creek, Ullswater, Wombelano
+
+                         Aldersyde, Brookton, Codjatotine, Dwarda, East Pingelly, Hasting, Jelcobine, Kweda,
+                         North Bannister, Pingelly, Pumphreys Bridge, Springs, Wandering, West Pingelly
+
+                         Baandee, Badjaling, Balkuling, Cubbine, Cunderdin, Daadenning Creek, Dangin,
+                         Doodenanning, Doodlakine, Dulbelling, Greenwoods Valley, Kellerberrin, Meckering,
+                         Mount Caroline, Mount Stirling, North Baandee, North Kellerberring, North Tammin,
+                         Pantapin, Quairading, Queladetting, South Doodlakine, South Quairading, South
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 98 of 99
+State/ SA2 Name  Schedule 11: Isolated Towns Modification Lists
+Territory
+                       Suburb and Locality Name
+WA  Dowerin
+                       Tammin, Tammin, Waeel, Wamensuking, Warding East, Watercarrin, Wyola West,
+WA  Kojonup            Yoting, Youndegin
+
+WA  Merredin           Benjaberring, Cowcowing, Cunjardine, Dowerin, Goomalling, Hindmarsh, Hulongine,
+                       Jennacubbine, Karranadgin, Konnongorring, Koomberkine, Korrelocking, Lake Hinds,
+WA  Moora              Lake Ninan Mocardy, Manmanning, Minnivale, Mumberkine, Nalkain, Nembudding,
+                       Rossmore, Ucarty, Ucarty West, Walyormourning, Wongamine, Wongan Hills,
+                       Wyalkatchem
+
+                       Bobalong, Boilup, Borderdale, Boscabel, Broomehill East, Broomehill Village,
+                       Broomehill West, Changerup, Cherry Tree Pool, Cranbrook, Dartnall, Frankland River,
+                       Jingalup, Kojonup, Lake Toolbrunup, Lumeah, Mobrup, Moonies Hill, Muradup, Orchid
+                       Valley, Qualeup, Ryansbrook, Tambellup, Tenterden, Wansbrough
+
+                       Korbel, Hines Hill, Nangeenan
+
+                       Barberton, Berkshire Valley, Bindi Bindi, Bolgart, Calingiri, Carani, Coomberdale,
+                       Gabalong, Gillingarra, Glentromie, Koojan, Miling, Mogumber, Moora, Namban, New
+                       Norcia, Old Plains, Piawaning, Waddington, Walebing, Wyening, Yarawindah,
+                       Yerecoin
+
+National Disability Insurance Scheme Pricing Schedule for 2026-27  Page 99 of 99
+

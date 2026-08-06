@@ -1,0 +1,3358 @@
+National Disability Insurance Scheme (Provider
+Registration and Practice Standards) Rules 2018
+
+made under the
+
+National Disability Insurance Scheme Act 2013
+
+Compilation No. 6           1 July 2026
+                            F2026L00802
+Compilation date:
+Includes amendments up to:
+
+Prepared by the NDIS Quality and Safeguards Commission
+
+                                            Authorised Version F2026C00527 registered 02/07/2026
+About this compilation
+
+This compilation
+This is a compilation of the National Disability Insurance Scheme (Provider Registration and
+Practice Standards) Rules 2018 that shows the text of the law as amended and in force on
+01/07/2026 (the compilation date).
+The notes at the end of this compilation (the endnotes) include information about amending
+laws and the amendment history of provisions of the compiled law.
+Uncommenced amendments
+The effect of uncommenced amendments is not shown in the text of the compiled law. The
+details of amendments made up to, but not commenced at, the compilation date are underlined
+in the endnotes. Any uncommenced amendments affecting the law are accessible on the
+Register (www.legislation.gov.au).
+Application, saving and transitional provisions
+If the operation of a provision or amendment of the compiled law is affected by an
+application, saving or transitional provision that is not included in this compilation, details are
+included in the endnotes.
+Modifications
+If the compiled law is modified by another law, the compiled law operates as modified but the
+modification does not amend the text of the law. Accordingly, this compilation does not show
+the text of the compiled law as modified. Any modifications affecting the law are accessible
+on the Register.
+Self-repealing provisions
+If a provision of the compiled law has been repealed in accordance with a provision of the
+law, details are included in the endnotes.
+
+                                            Authorised Version F2026C00527 registered 02/07/2026
+Contents
+
+Part 1--Preliminary                                                                                           2
+
+                   1 Name .......................................................................................................................................2
+
+                   3 Authority ..................................................................................................................................2
+
+                   4 Definitions ................................................................................................................................2
+
+                   5 Meaning of certification ...........................................................................................................4
+
+                   5A Meaning of NDIS digital platform ........................................................................................4
+
+Part 2--When an NDIS provider must be registered                                                              6
+
+                   6 Purpose of this Part...................................................................................................................6
+
+                   7 Classes of supports for which NDIS providers must be registered ..........................................6
+
+Part 3--Becoming a registered NDIS provider                                                                   8
+
+                   8 Purpose of this Part...................................................................................................................8
+
+                   9 Suitability of applicant .............................................................................................................8
+
+                   10 Suitability of key personnel....................................................................................................9
+
+                   11 Applicant must have an ABN...............................................................................................10
+
+Part 4--Conditions of registration                                                                            11
+
+                   12 Purpose of this Part...............................................................................................................11
+
+                   13 Giving Commissioner notice of certain changes..................................................................11
+
+                   13A Giving Commissioner notice of certain events .................................................................11
+
+                   13B Mid-term audit for certain providers .................................................................................12
+
+                   13BA Change in ownership audit for certain providers............................................................13
+
+                   13C Restrictions on providing high intensity personal daily activity supports.........................14
+
+                   13D Requirements for providing an NDIS digital platform service .........................................14
+
+Part 5--Register of NDIS providers                                                                            16
+
+Division 1--Introduction                                                                                      16
+
+                   14 Purpose of this Part...............................................................................................................16
+
+Division 2--Correction of entries                                                                             17
+
+                   15 Corrections on the Commissioner's initiative ......................................................................17
+
+                   16 Requests for corrections .......................................................................................................17
+
+Division 3--Publication of the NDIS Provider Register                                                         19
+
+                   17 NDIS Provider Register generally to be published in full....................................................19
+
+                   18 Certain parts of the NDIS Provider Register not to be published ........................................19
+
+Part 6--NDIS Practice Standards                                                                               20
+
+Division 1--NDIS Practice Standards                                                                           20
+
+                   19 Purpose of this Division .......................................................................................................20
+
+                   20 NDIS Practice Standards--class of supports, applicable standards and assessment
+                              process .........................................................................................................................20
+
+                   22 NDIS Practice Standards--requirements for government providers ...................................23
+
+                   23 Assessment by certification meets requirement to be assessed by verification ...................23
+
+                   24 Matters to be taken into account in assessments ..................................................................23
+
+Division 2--Transitional arrangements relating to transitioned providers                                      24
+
+                   25 Purpose of this Division .......................................................................................................24
+
+                   26 Transitional arrangements for certain providers requiring certification ..............................24
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  i
+
+                                     2018
+
+Compilation No. 6                                                          Compilation date: 01/07/2026
+
+                     Authorised Version F2026C00527 registered 02/07/2026
+                   27 Transitional arrangements for providers providing specialist disability
+                              accommodation and one or more other classes of supports ........................................25
+
+                   28 Transitional arrangements for providers of early intervention supports for early
+                              childhood .....................................................................................................................26
+
+                   29 Transitional arrangements for providers requiring verification ...........................................26
+
+Division 3--Transitional arrangements relating to transitioned residential
+
+                   aged care providers                                      29
+
+                   29A Purpose of this Division ....................................................................................................29
+                   29B Transitional arrangements for transitioned residential aged care providers ......................29
+
+Part 7--Application, saving and transitional provisions                     30
+
+                   30 Application of amendments made by the National Disability Insurance Scheme
+                              (Provider Registration and Practice Standards) Amendment (2019 Measures
+                              No. 1) Rules 2019 ........................................................................................................30
+
+                   31 Application of amendments made by the National Disability Insurance Scheme
+                              (Provider Registration and Practice Standards) Amendment (2021 Measures
+                              No. 1) Rules 2021 ........................................................................................................30
+
+                   32 Application of amendments made by the National Disability Insurance Scheme
+                              (Provider Registration and Practice Standards) Amendment (Mandatory
+                              Registration and Other Matters) Rules 2026 ..............................................................31
+
+Schedule 1--Core module                                                     34
+
+Part 1--Preliminary                                                         34
+
+                   1 Application of standards to applicants, providers, participants and others ............................34
+
+Part 2--Rights of participants and responsibilities of providers            35
+
+                   2 Standards relating to the rights of participants and the responsibilities of providers.............35
+
+                   3 Person-centred supports .........................................................................................................35
+
+                   4 Individual values and beliefs ..................................................................................................35
+
+                   5 Privacy and dignity.................................................................................................................35
+
+                   6 Independence and informed choice ........................................................................................35
+
+                   7 Freedom from violence, abuse, neglect, exploitation or discrimination ................................35
+
+Part 3--Provider governance and operational management                      36
+
+                   8 Standards relating to provider governance and operational management..............................36
+
+                   9 Governance and operational management .............................................................................36
+
+                   10 Risk management .................................................................................................................36
+
+                   11 Quality management.............................................................................................................36
+
+                   12 Information management .....................................................................................................36
+
+                   13 Complaints management and resolution ..............................................................................36
+
+                   14 Incident management ...........................................................................................................36
+
+                   15 Human resource management ..............................................................................................37
+
+                   16 Continuity of supports ..........................................................................................................37
+
+                   16A Emergency and disaster management ...............................................................................37
+
+Part 4--Provision of supports                                               38
+
+                   17 Standards relating to the provision of supports to participants ............................................38
+
+                   18 Access to supports ................................................................................................................38
+
+                   19 Support planning ..................................................................................................................38
+
+                   20 Service agreements...............................................................................................................38
+
+                   21 Responsive support provision ..............................................................................................38
+
+ii                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                     Authorised Version F2026C00527 registered 02/07/2026
+                   22 Transitions to and from a provider .......................................................................................38
+
+Part 5--Support provision environment                                                                         39
+
+                   23 Standards relating to the provision of supports to participants ............................................39
+
+                   24 Safe environment..................................................................................................................39
+
+                   25 Participant money and property ...........................................................................................39
+
+                   26 Medication management ......................................................................................................39
+
+                   26A Mealtime management ......................................................................................................39
+
+                   27 Waste management...............................................................................................................39
+
+Schedule 2--Module 1: High intensity daily personal activities 40
+
+                       1 Application of standards to applicants, providers, participants and others ............................40
+                       2 Standards relating to high intensity daily personal activities .................................................40
+                       3 Complex bowel care ...............................................................................................................40
+                       4 Enteral (naso-gastric tube-jejunum or duodenum) feeding and management........................41
+                       4A Severe dysphagia management............................................................................................41
+                       5 Tracheostomy management....................................................................................................41
+                       6 Urinary catheter management (in-dwelling urinary catheter, in-out catheter and
+
+                                   suprapubic catheter) ....................................................................................................41
+                       7 Ventilator management ..........................................................................................................41
+                       8 Subcutaneous injections .........................................................................................................42
+                       9 Complex wound management ................................................................................................42
+
+Schedule 3--Module 2: Specialist behaviour support                                                            43
+
+                   1 Application of standards to applicants, providers, participants and others ............................43
+
+                   2 Standards relating to specialist behaviour support .................................................................43
+
+                   3 Behaviour support in the NDIS ..............................................................................................43
+
+                   4 Regulated restrictive practices................................................................................................43
+
+                   5 Behaviour support plans .........................................................................................................44
+
+                   6 Supporting the implementation of a behaviour support plan .................................................44
+
+                   7 Behaviour support plan monitoring and review .....................................................................44
+
+                   8 Reportable incidents involving the use of a regulated restrictive practice.............................44
+
+                   9 Interim behaviour support plans.............................................................................................44
+
+Schedule 4--Module 2A: Implementing behaviour support plans 45
+
+                       1 Application of standards to applicants, providers, participants and others ............................45
+                       2 Standards relating to the use of regulated restrictive practices ..............................................45
+                       3 Behaviour support in the NDIS ..............................................................................................45
+                       4 Regulated restrictive practices................................................................................................45
+                       5 Supporting the assessment and development of behaviour support plans .............................46
+                       6 Supporting the implementation of a behaviour support plan .................................................46
+                       7 Monitoring and reporting the use of regulated restrictive practices.......................................46
+                       8 Behaviour support plan monitoring and review .....................................................................46
+                       9 Reportable incidents involving the use of a regulated restrictive practice.............................46
+                       10 Interim behaviour support plans...........................................................................................46
+
+Schedule 5--Module 3: Early childhood supports                                                                47
+
+                   1 Application of standards to applicants, providers, participants and others ............................47
+
+                   2 Standards relating to early childhood supports ......................................................................47
+
+                   3 The child.................................................................................................................................47
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  iii
+
+                                       2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                   4 The family ..............................................................................................................................47
+                   5 Inclusion .................................................................................................................................47
+                   6 Collaboration ..........................................................................................................................48
+                   7 Capacity building ...................................................................................................................48
+                   8 Evidence-informed supports...................................................................................................48
+                   9 Outcome based approach........................................................................................................48
+
+Schedule 6--Module 4: Specialised support coordination                   49
+
+                   1 Application of standards to applicants, providers, participants and others ............................49
+
+                   2 Standards relating to specialised support coordination ..........................................................49
+
+                   3 Specialised support coordination............................................................................................49
+
+                   4 Management of supports ........................................................................................................49
+
+                   5 Conflict of interest..................................................................................................................49
+
+Schedule 7--Module 5: Specialist disability accommodation                50
+
+                   1 Application of standards to applicants, providers, participants and others ............................50
+
+                   2 Standards relating to specialist disability accommodation.....................................................50
+
+                   3 Rights and responsibilities......................................................................................................50
+
+                   4 Conflict of interest..................................................................................................................50
+
+                   5 Service agreements with participants .....................................................................................51
+
+                   6 Enrolment of specialist disability accommodation dwellings ................................................51
+
+                   7 Tenancy management.............................................................................................................51
+
+Schedule 7A--Module 5A: Assistance with supported
+
+                   independent living                                    52
+
+                   1 Application of standards to applicants, providers, participants and others ............................52
+
+                   2 Standards relating to supported independent living supports.................................................52
+
+                   3 Supported decision-making ....................................................................................................52
+
+                   4 Safeguarding...........................................................................................................................52
+
+                   5 Practice governance................................................................................................................53
+
+                   6 Agreements about tenancy, housing and support arrangements ............................................53
+
+Schedule 8--Module 6: Verification                                       54
+
+                   1 Application of standards to applicants, providers, participants and others ............................54
+
+                   2 Standards relating to assessment by verification....................................................................54
+
+                   3 Risk management ...................................................................................................................54
+
+                   4 Complaints management and resolution ................................................................................54
+
+                   5 Incident management .............................................................................................................54
+
+                   6 Human resource management ................................................................................................55
+
+Endnotes                                                                 56
+
+Endnote 1--About the endnotes                                            56
+
+Endnote 2--Abbreviation key                                              57
+
+Endnote 3--Legislation history                                           58
+
+Endnote 4--Amendment history                                             59
+
+iv                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Preamble
+
+               The National Disability Insurance Scheme (NDIS) represents a fundamental
+               change to how supports for people with disability are funded and delivered
+               across Australia. The NDIS is designed to produce major benefits for people with
+               disability, their families and the broader community.
+
+               The NDIS Quality and Safeguards Commission is responsible for a range of
+               functions under the National Quality and Safeguarding Framework aimed at
+               protecting and preventing harm to people with disability in the NDIS market.
+
+               The Commission will build the capability of NDIS participants and providers to
+               uphold the rights of people with disability and realise the benefits of the NDIS.
+               The legislation underpinning the NDIS is intended to support participants to be
+               informed purchasers and consumers of NDIS supports and services and to live
+               free from abuse, neglect, violence and exploitation.
+
+               These rules set out some of the conditions that providers must comply with to
+               become and remain registered NDIS providers. They also set out the NDIS
+               Practice Standards that apply to all registered NDIS providers, and those that
+               apply to providers delivering more complex supports in areas such as behaviour
+               support, early childhood supports, specialist support coordination and specialist
+               disability accommodation.
+
+               These rules also deal with the Provider Register. To support people with
+               disability to exercise choice and control, the Provider Register will include
+               details about an NDIS provider's registration and any relevant compliance action
+               taken in relation to the provider.
+
+               Together with the NDIS Code of Conduct, these rules will enable people with
+               disability participating in the NDIS to be aware of what quality service provision
+               they should expect from registered NDIS providers.
+
+               The Commissioner works with providers to continuously improve the quality of
+               the supports and services provided to NDIS participants.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  1
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 1 Preliminary
+
+Section 1
+
+Part 1--Preliminary
+
+1 Name
+
+               This instrument is the National Disability Insurance Scheme (Provider
+               Registration and Practice Standards) Rules 2018.
+
+3 Authority
+
+               This instrument is made under the National Disability Insurance Scheme Act
+               2013.
+
+4 Definitions             A number of expressions used in this instrument are defined in section 9 of the Act,
+                          including the following:
+                   Note:  (a) approved quality auditor;
+                          (b) key personnel;
+                          (c) NDIS Practice Standards;
+                          (d) registered NDIS provider;
+                          (e) registered provider of supports.
+
+In this instrument:
+
+Act means the National Disability Insurance Scheme Act 2013.
+
+applicable standards means the NDIS Practice Standards that apply to a
+specified class of supports under Part 6.
+
+applicant means a person or entity who has made an application for registration
+under section 73C of the Act.
+
+assistance with supported independent living: see subsection 7(5).
+
+certification has the meaning given by section 5.
+
+mealtime management means:
+
+  (a) individual planning for the provision of meals to participants, including
+       planning in relation to the environment in which meals are provided and
+       the supports required to provide the meals to participants; or
+
+ (b) the provision of supports to participants to consume meals.
+
+NDIS digital platform: see section 5A.
+
+NDIS digital platform service means a service that is provided to facilitate the
+provision of supports under participants' plans on an NDIS digital platform.
+
+regulated restrictive practice means a restrictive practice that is or involves any
+of the following:
+
+2                  National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                          Authorised Version F2026C00527 registered 02/07/2026
+                                                                                    Preliminary Part 1
+
+                                                                               Section 4
+
+  (a) seclusion, which is the solitary confinement of a person with disability in a
+       room or a physical space at any hour of the day or night where voluntary
+       exit is prevented, or not facilitated, or it is implied that voluntary exit is not
+       permitted;
+
+ (b) chemical restraint, which is the use of a chemical substance for the primary
+       purpose of influencing a person's behaviour but does not include the use of
+       medication prescribed by a medical practitioner for the treatment of, or to
+       enable treatment of, a diagnosed mental disorder, a physical illness or a
+       physical condition;
+
+  (c) mechanical restraint, which is the use of a device to prevent, restrict, or
+       subdue a person's movement for the primary purpose of influencing a
+       person's behaviour but does not include the use of devices for therapeutic
+       or non-behavioural purposes;
+
+ (d) physical restraint, which is the use of physical force to prevent, restrict or
+       subdue movement of a person's body, or part of the person's body, for the
+       primary purpose of influencing the person's behaviour but does not include
+       the use of a hands-on technique in a reflexive way to guide or redirect a
+       person away from potential harm or injury, consistent with what could
+       reasonably be considered the exercise of care towards a person;
+
+  (e) environmental restraints, which restrict a person's free access to all parts of
+       the person's environment, including items and activities.
+
+Note: For the definition of restrictive practice, see section 9 of the Act.
+
+transitioned provider has the same meaning as in the National Disability
+Insurance Scheme (Quality and Safeguards Commission and Other Measures)
+Transitional Rules 2018.
+
+transitioned RAC provider has the same meaning as in the National Disability
+Insurance Scheme (Quality and Safeguards Commission and Other Measures)
+Transitional Rules 2018.
+
+verification means an assessment by an approved quality auditor of an applicant,
+or of a registered NDIS provider, against an applicable standard by conducting a
+desk audit of the applicant or provider, including reviewing the applicant's or
+provider's relevant documentation, in relation to the standard.
+
+worker means any of the following:
+  (a) a person employed or otherwise engaged by a registered NDIS provider;
+ (b) a partner (of a partnership that is a registered NDIS provider) whose role is
+       of the kind mentioned in paragraph (b) or (c) of the definition of risk
+       assessed role in the National Disability Insurance Scheme (Practice
+       Standards--Worker Screening) Rules 2018;
+  (c) an individual (who is a registered NDIS provider) whose role is of the kind
+       mentioned in paragraph (b) or (c) of the definition of risk assessed role in
+       the National Disability Insurance Scheme (Practice Standards--Worker
+       Screening) Rules 2018.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  3
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 1 Preliminary
+
+Section 5
+
+5 Meaning of certification
+
+          (1) Certification is an assessment by an approved quality auditor of an applicant, or
+               of a registered NDIS provider, against an applicable standard by conducting:
+                 (a) a desk audit of the applicant or provider, including reviewing the
+                      applicant's or provider's relevant documentation, in relation to the
+                      standard; and
+                 (b) an inspection of the sites, facilities, equipment and services used, or
+                      proposed to be used, in the delivery of supports or services by the applicant
+                      or provider in relation to the standard; and
+                 (c) interviews with relevant persons, including key personnel of the applicant
+                      or provider and persons receiving, or to receive, supports or services from
+                      the applicant or provider in relation to the standard.
+
+        (1A) The assessment must be proportionate to:
+                 (a) the size of the provider or applicant; and
+                 (b) the scale of the provider or applicant, having regard to:
+                        (i) the geographical area or areas in which the provider or applicant
+                            provides, or is to provide, supports or services; and
+                       (ii) the number of locations at or from which the provider or applicant
+                            provides, or is to provide, supports or services; and
+                 (c) the scope and complexity of the supports or services provided or to be
+                      provided.
+
+          (2) The assessment may be conducted by an appropriate sampling method.
+
+          (3) Despite subsection (1), the Commissioner may, in writing, authorise an approved
+               quality auditor to assess an applicant or a registered NDIS provider against an
+               applicable standard by conducting a review of the outcomes and evidence from a
+               comparable quality audit process undertaken in relation to the applicant or
+               provider, if the Commissioner considers it is appropriate to do so.
+
+          (4) If the Commissioner gives an authorisation under subsection (3), the applicant or
+               provider is taken, for the purposes of this instrument, to be assessed using
+               certification.
+
+5A Meaning of NDIS digital platform
+
+          (1) An NDIS digital platform is an online enabled application, website or system
+               operated to facilitate the provision of supports under participants' plans, where:
+                 (a) the operator of the application, website or system acts as an intermediary
+                      for participants seeking to access those supports who interact with persons
+                      providing the supports via the application, website or system; and
+                 (b) any of the following requires, and processes via the application, website or
+                      system, NDIS amounts under participants' plans as payment for the
+                      provision of those supports:
+                        (i) the operator of the application, website or system;
+
+4                  National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                                          Preliminary Part 1
+
+                                                                                 Section 5A
+
+             (ii) an associated entity (within the meaning of the Corporations Act
+                  2001) of the operator;
+
+            (iii) a person contracted, whether directly or through one or more
+                  interposed persons or entities, by the operator or an associated entity
+                  (within the meaning of the Corporations Act 2001) of the operator to
+                  process the payments.
+
+(2) An NDIS digital platform does not include an application, website or system
+     that is not operated for the primary purpose of facilitating the provision of
+     supports under participants' plans.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  5
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 2 When an NDIS provider must be registered
+
+Section 6
+
+Part 2--When an NDIS provider must be registered
+
+6 Purpose of this Part
+
+(1) This Part is made for the purposes of subsection 73B(1) of the Act.
+
+(2) NDIS providers of certain classes of supports under participants' plans must be
+     registered under section 73E of the Act to provide those classes of supports. This
+     Part sets out what those classes of supports are.
+
+Note 1:            If an NDIS provider provides a class of support set out in this Part but is not registered
+                   to provide that class of support, the provider may be liable to a civil penalty (see
+                   subsection 73B(2) of the Act).
+
+Note 2:            In addition to the circumstances provided for in this Part, a person must be registered
+                   under section 73E of the Act to provide supports to a participant who is in a
+                   participating jurisdiction and whose funding for supports is managed by the Agency
+                   (see subsection 33(6) of the Act).
+
+7 Classes of supports for which NDIS providers must be registered
+
+          (1) A person must be registered under section 73E of the Act to provide specialist
+               disability accommodation under a participant's plan.
+
+          (2) A person must be registered under section 73E of the Act to provide a class of
+               supports to a participant if, during the provision of the supports, there is, or is
+               likely to be, an interim or ongoing need to use a regulated restrictive practice in
+               relation to the participant.
+
+          (3) A person must be registered under section 73E of the Act to provide specialist
+               behaviour support services to a participant if the person will, as part of the
+               provision of the services:
+                 (a) undertake a behaviour support assessment (including a functional
+                      behavioural assessment) of the participant; or
+                 (b) develop a behaviour support plan for the participant.
+
+          (4) A person must be registered under section 73E of the Act to provide assistance
+               with supported independent living to a participant.
+
+          (5) A person provides assistance with supported independent living to a participant
+               if:
+                 (a) the participant requires constant, or immediately available,
+                      person-to-person supports at all times during a day, or for a substantial
+                      portion of a day; and
+                 (b) the assistance is provided, as needed, as a package of supports to assist the
+                      participant with, or to supervise, the tasks of daily life that enable the
+                      participant:
+                        (i) to live as autonomously as possible in the participant's home; and
+                       (ii) to access the community; and
+
+6                  National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                        Authorised Version F2026C00527 registered 02/07/2026
+                                                    When an NDIS provider must be registered Part 2
+
+                                                                                   Section 7
+
+       (c) the assistance includes the management by the person of the package of
+            supports, and of the supports provided in accordance with the package.
+
+(6) A person must be registered under section 73E of the Act to provide an NDIS
+     digital platform service to a participant.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  7
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 3 Becoming a registered NDIS provider
+
+Section 8
+
+Part 3--Becoming a registered NDIS provider
+
+8 Purpose of this Part
+
+This Part sets out requirements that an applicant must meet in order to be
+registered as a registered NDIS provider.
+
+Note:              These requirements are in addition to the requirements set out in section 73E of the
+                   Act.
+
+9 Suitability of applicant
+
+          (1) This section is made for the purposes of paragraph 73E(1)(d) of the Act.
+
+          (2) In determining whether the Commissioner is satisfied that the applicant is
+               suitable to provide supports or services to people with disability, the
+               Commissioner must have regard to the following matters:
+                 (a) whether the applicant has previously been registered as a registered NDIS
+                      provider or a registered provider of supports;
+                 (b) whether a banning order has ever been in force in relation to the applicant;
+                 (c) whether the applicant has been convicted of an indictable offence against a
+                      law of the Commonwealth or of a State or Territory;
+                 (d) whether the applicant is or has been an insolvent under administration or a
+                      Chapter 5 body corporate (within the meaning of the Corporations Act
+                      2001);
+                 (e) whether the applicant has been the subject of adverse findings or
+                      enforcement action by a Department of, or an authority or other body
+                      established for a public purpose by, the Commonwealth, a State or a
+                      Territory, including one with responsibilities relating to the quality or
+                      regulation of services provided to people with disability, older people or
+                      children;
+                  (f) whether the applicant has been the subject of adverse findings or
+                      enforcement action by any of the following:
+                        (i) the Australian Securities and Investments Commission;
+                       (ii) the Australian Charities and Not-for-profits Commission;
+                      (iii) the Australian Competition and Consumer Commission;
+                      (iv) the Australian Prudential Regulation Authority;
+                       (v) the Australian Crime Commission;
+                      (vi) AUSTRAC;
+                      (vii) a body of a State or Territory that is equivalent to a body mentioned in
+                            any of subparagraphs (i) to (vi);
+                     (viii) a work health and safety authority of a State or Territory;
+                 (g) whether the applicant has been the subject of any findings or judgment in
+                      relation to fraud, misrepresentation or dishonesty in any administrative,
+
+8                  National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                        Authorised Version F2026C00527 registered 02/07/2026
+                   Becoming a registered NDIS provider Part 3
+
+                                                                                            Section 10
+
+                      civil or criminal proceedings, or is currently party to any proceedings that
+                      may result in the applicant being the subject of such findings or judgment;
+                 (h) whether the applicant has ever been disqualified from managing
+                      corporations under Part 2D.6 of the Corporations Act 2001;
+                  (i) any other matter the Commissioner considers relevant.
+
+          (3) Paragraph (2)(c) does not affect the operation of Part VIIC of the Crimes Act
+               1914 (which includes provisions that, in certain circumstances, relieve persons
+               from the requirement to disclose spent convictions and require persons aware of
+               such convictions to disregard them).
+
+10 Suitability of key personnel
+
+          (1) This section is made for the purposes of paragraph 73E(1)(e) of the Act.
+
+          (2) In determining whether the Commissioner is satisfied that a member of the
+               applicant's key personnel is suitable to be involved in the provision of supports
+               or services for which the applicant will be registered to provide, the
+               Commissioner must have regard to the following matters:
+                 (a) whether a banning order has ever been in force in relation to the member;
+                 (b) whether the member has been convicted of an indictable offence against a
+                      law of the Commonwealth or of a State or Territory;
+                 (c) whether the member is or has been an insolvent under administration;
+                 (d) whether the member has been the subject of adverse findings or
+                      enforcement action by a Department of, or an authority or other body
+                      established for a public purpose by, the Commonwealth, a State or a
+                      Territory, including one with responsibilities relating to the quality or
+                      regulation of services provided to people with disability, older people and
+                      children;
+                 (e) whether the member has been the subject of adverse findings or
+                      enforcement action by any of the following:
+                        (i) the Australian Securities and Investments Commission;
+                       (ii) the Australian Charities and Not-for-profits Commission;
+                      (iii) the Australian Competition and Consumer Commission;
+                      (iv) the Australian Prudential Regulation Authority;
+                       (v) the Australian Crime Commission;
+                      (vi) AUSTRAC;
+                      (vii) a body of a State or Territory that is equivalent to a body mentioned in
+                            any of subparagraphs (i) to (vi);
+                     (viii) a work health and safety authority of a State or Territory;
+                  (f) whether the member has been the subject of any findings or judgment in
+                      relation to fraud, misrepresentation or dishonesty in any administrative,
+                      civil or criminal proceedings, or is currently party to any proceedings that
+                      may result in the member being the subject of such findings or judgment;
+                 (g) whether the member has ever been disqualified from managing
+                      corporations under Part 2D.6 of the Corporations Act 2001;
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  9
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 3 Becoming a registered NDIS provider
+
+Section 11
+
+                 (h) any other matter the Commissioner considers relevant.
+          (3) Paragraph (2)(b) does not affect the operation of Part VIIC of the Crimes Act
+
+               1914 (which includes provisions that, in certain circumstances, relieve persons
+               from the requirement to disclose spent convictions and require persons aware of
+               such convictions to disregard them).
+
+11 Applicant must have an ABN
+          (1) This section is made for the purposes of paragraph 73E(1)(f) of the Act.
+          (2) The applicant must have an ABN (within the meaning of the A New Tax System
+               (Australian Business Number) Act 1999).
+
+10                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                    Conditions of registration Part 4
+
+                                                        Section 12
+
+Part 4--Conditions of registration
+
+12 Purpose of this Part
+
+(1) This Part is made for the purposes of section 73H of the Act.
+
+(2) It sets out the conditions to which each registration, or each registration included
+     in a specified class of registration, is subject.
+
+Note 1: A registered NDIS provider may be liable to a civil penalty if the provider breaches a
+              condition to which the provider's registration is subject (see section 73J of the Act).
+
+Note 2:            The conditions in this Part are in addition to those set out in the Act (see
+                   subsection 73F(2) of the Act) and those imposed by the Commissioner under
+                   subsection 73G(1) of the Act.
+
+13 Giving Commissioner notice of certain changes
+
+          (1) The registration of each registered NDIS provider is subject to the condition that
+               the provider must give the Commissioner notice of any of the following changes:
+                 (a) a change to any of the provider's contact details that have been provided to
+                      the Commissioner;
+                 (b) a change in the scale of the provider relating to the supports or services the
+                      provider is registered to provide, including the following:
+                        (i) a change to the geographical area or areas in which the provider
+                            provides a support or service;
+                       (ii) a change to the locations at or from which the provider provides a
+                            support or service;
+                      (iii) a significant increase or decrease in the number of participants being
+                            provided with a support or service;
+                      (iv) a significant increase or decrease in the number of workers providing
+                            a support or service on behalf of the provider.
+
+          (2) Notice of such a change must be given to the Commissioner:
+                 (a) in the form approved by the Commissioner; and
+                 (b) as soon as practicable after the earlier of the following times:
+                        (i) when the provider becomes aware that the change will occur;
+                       (ii) when the change occurs.
+
+13A Giving Commissioner notice of certain events
+
+          (1) The registration of each registered NDIS provider is subject to the condition that
+               the provider must give the Commissioner notice of any of the following events:
+                 (a) an event that significantly affects the provider's ability to comply with any
+                      of the provider's conditions of registration;
+                 (b) a change that adversely affects access by a person with disability to the
+                      supports or services the provider is registered to provide;
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  11
+
+                         2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 4 Conditions of registration
+
+Section 13B
+
+       (c) an adverse change in the provider's financial capacity to provide any of the
+            supports or services the provider is registered to provide;
+
+       (d) a significant change in the organisation or governance arrangements of the
+            provider;
+
+       (e) an event, relating to the suitability of the provider to provide supports or
+            services to people with disability, to which the Commissioner would be
+            required to have regard under any of paragraphs 9(2)(c) to (h) if the
+            provider were an applicant for registration as a registered NDIS provider;
+
+       (f) an event, relating to the suitability of the provider's key personnel to be
+            involved in the provision of supports or services that the provider is
+            registered to provide, to which the Commissioner would be required to
+            have regard under any of paragraphs 10(2)(b) to (g) if the provider were an
+            applicant for registration as a registered NDIS provider.
+
+(2) Notice of such an event or change must be given to the Commissioner in the
+     form approved by the Commissioner.
+
+(3) Notice of a change mentioned in paragraph (1)(d) that occurs as a result of a
+     change in ownership of the provider or of a business operated by the provider
+     must be given to the Commissioner by the earlier of the following times:
+       (a) when the provider becomes aware that the change in ownership will occur;
+       (b) when a step or procedure occurs that is a necessary precondition to
+            effecting the change of ownership.
+
+(4) Notice of any other event or change mentioned in subsection (1) must be given to
+     the Commissioner by the earlier of the following times:
+       (a) when the provider becomes aware that the event or change will occur;
+       (b) when the event or change occurs.
+
+13B Mid-term audit for certain providers
+
+(1) This section applies in relation to a registered NDIS provider that is registered to
+     provide a class of supports for which, under the table in subsection 20(3), the
+     assessment method for the applicable standards is certification.
+
+Note:              This section does not apply in relation to certain registered NDIS providers (see
+                   subsection (7)).
+
+(2) The registration of the provider is subject to the condition that the provider must
+     undergo an audit in accordance with this section.
+
+(3) The audit must be carried out by an approved quality auditor using certification.
+
+(4) The audit must commence no later than:
+
+       (a) 18 months after the beginning of the period for which the provider's
+            registration is in force; or
+
+       (b) such longer period after the beginning of that period as the Commissioner
+            allows.
+
+12                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                                     Conditions of registration Part 4
+
+                                                                                       Section 13BA
+
+          (5) For each class of supports mentioned in subsection (1) that the provider is
+               registered to provide, the audit must assess whether the provider has met, and is
+               meeting, the following applicable standards for the class of supports:
+                 (a) the standards in Part 3 of Schedule 1;
+                 (b) any standard for which a previous assessment by an approved quality
+                      auditor identified a need for the provider to implement a corrective action
+                      plan;
+                 (c) any standard specified in relation to the audit, for the purposes of this
+                      paragraph, by the Commissioner in a written notice given to the provider.
+
+          (6) A report of the audit must be given to the Commissioner as soon as practicable
+               after the audit is completed.
+
+          (7) Despite subsection (1), this section does not apply in relation to a registered
+               NDIS provider if:
+                 (a) both:
+                        (i) the provider is a partnership or individual; and
+                       (ii) the only class of supports mentioned in subsection (1) that the
+                            provider is registered to provide is early intervention supports for
+                            early childhood; or
+                 (b) the only class of supports that the provider is registered to provide is
+                      specialist disability accommodation only; or
+                 (c) the provider is a transitioned provider or a transitioned RAC provider.
+
+13BA Change in ownership audit for certain providers
+
+          (1) This section applies in relation to a registered NDIS provider if:
+                 (a) the provider is registered to provide a class of supports for which, under the
+                      table in subsection 20(3), the assessment method for the applicable
+                      standards is certification; and
+                 (b) a significant change in the organisation or governance arrangements of the
+                      provider occurs as a result of a change (the relevant change) in ownership
+                      of the provider or of a business operated by the provider; and
+                 (c) during the 3-month period beginning on the day after the day on which the
+                      relevant change occurs:
+                        (i) the provider is not undergoing an audit described in section 13B; and
+                       (ii) the registration of the provider does not cease to be in force.
+
+          (2) The registration of the provider is subject to the condition that the provider must
+               undergo an audit in accordance with this section.
+
+          (3) The audit must be carried out by an approved quality auditor using certification.
+
+          (4) The audit must commence no later than:
+                 (a) 3 months after the day on which the relevant change occurs; or
+                 (b) such longer period after that day as the Commissioner allows.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  13
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 4 Conditions of registration
+
+Section 13C
+
+          (5) For each class of supports mentioned in paragraph (1)(a) that the provider is
+               registered to provide, the audit must assess whether the provider has met, and is
+               meeting, the following applicable standards for the class of supports:
+                 (a) the standards in Part 3 of Schedule 1;
+                 (b) any standard for which a previous audit by an approved quality auditor
+                      identified a need for the provider to implement a corrective action plan.
+
+          (6) The auditor must give a report of the audit to the Commissioner by the end of the
+               period of 28 days after the audit is completed.
+
+13C Restrictions on providing high intensity personal daily activity supports
+
+               The registration of each registered NDIS provider registered to provide high
+               intensity daily personal activities is subject to the condition that the provider
+               must not provide a support mentioned in Schedule 2 if the support is not set out
+               in the provider's certificate of registration.
+
+13D Requirements for providing an NDIS digital platform service
+
+          (1) This section applies in relation to a registered NDIS provider that is registered to
+               provide an NDIS digital platform service.
+
+               Requirement for evidence of compliance of persons providing supports with
+               worker screening check requirements
+
+          (2) The registration of the provider is subject to the condition that the provider must
+               not allow a person to represent via the platform that the person can provide
+               supports under participants' plans unless:
+                 (a) the person has given evidence to the provider that the circumstance
+                      mentioned in subsection (3) exists in respect of each individual covered by
+                      that subsection; and
+                 (b) the provider is not aware that that circumstance has ceased to exist in
+                      respect of any of those individuals.
+
+          (3) For the purposes of subsection (2), the circumstance is that each of the following
+               holds a clearance (however described) to work with people with disability:
+                 (a) the person (if the person is an individual);
+                 (b) each individual the person employs or otherwise engages to provide such
+                      supports.
+
+          (4) An individual holds a clearance for the purposes of subsection (3) if:
+                 (a) a decision has been made under an NDIS worker screening law in response
+                      to an application made by the individual for an NDIS worker screening
+                      check; and
+                 (b) the decision has the effect that the individual is cleared to work with people
+                      with disability; and
+                 (c) the clearance is in force.
+
+14                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                         Conditions of registration Part 4
+
+                                                                                Section 13D
+
+     Requirement for certain information about persons providing supports to be
+     checked and displayed on NDIS digital platform
+
+(5) The registration of the provider is subject to the condition that the provider must
+     check the information mentioned in paragraphs (6)(a) to (e), and display on the
+     platform the information mentioned in subsection (6) in relation to each of the
+     following:
+       (a) each person that represents via the platform that the person can provide
+            supports to participants;
+       (b) each person employed or otherwise engaged by the person mentioned in
+            paragraph (a) to provide such supports.
+
+(6) For the purposes of subsection (5), the information for each such person is the
+     following:
+       (a) whether a banning order against the person is in force;
+       (b) whether a banning order (within the meaning of the Aged Care Act 2024)
+            against the person is in force;
+       (c) whether a banning order (within the meaning of the Aged Care Quality and
+            Safety Commission Act 2018 as in force at any time before the
+            commencement of the Aged Care Act 2024) against the person is in force;
+       (d) that the person holds the credentials or qualifications that are stated on the
+            NDIS digital platform for the person;
+       (e) if the person is an individual--that the circumstance mentioned in
+            subsection (3) exists in relation to the person.
+       (f) general information about the processes undertaken in order to check the
+            credentials or qualifications of the person for the purposes of paragraph (d).
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  15
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 5 Register of NDIS providers
+Division 1 Introduction
+
+Section 14
+
+Part 5--Register of NDIS providers
+
+Division 1--Introduction
+
+14 Purpose of this Part
+          (1) This Part is made for the purposes of subsection 73ZDA(7) of the Act.
+          (2) It makes provision for and in relation to the correction and publication of the
+               NDIS Provider Register.
+
+16                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                         Register of NDIS providers Part 5
+                                            Correction of entries Division 2
+
+                                                               Section 15
+
+Division 2--Correction of entries
+
+15 Corrections on the Commissioner's initiative
+
+          (1) This section applies if:
+                 (a) the Commissioner becomes aware of a matter; and
+                 (b) based on the matter, the Commissioner considers that an entry in the NDIS
+                      Provider Register in relation to an NDIS provider or former NDIS provider
+                      requires a correction.
+
+          (2) The Commissioner must give a written notice to the provider:
+                 (a) setting out the details of the matter and the proposed correction; and
+                 (b) inviting the provider to give written comments on the matter and the
+                      proposed correction within the period specified in the notice.
+
+          (3) The period specified for the purposes of paragraph (2)(b) must not end earlier
+               than 28 days after the day on which the notice is given.
+
+          (4) As soon as practicable after the earlier of:
+                 (a) when the Commissioner receives comments from the provider; or
+                 (b) the end of the period specified for the purposes of paragraph (2)(b);
+
+               the Commissioner must:
+                 (c) make the proposed correction; or
+                 (d) make a different correction requested by the provider; or
+                 (e) decide not to make a correction.
+
+          (5) The Commissioner must give the provider written notice of a correction or
+               decision made under subsection (4).
+
+16 Requests for corrections
+
+(1) An NDIS provider or former NDIS provider may request that the Commissioner
+     make a correction to the NDIS Provider Register in relation to the provider.
+
+(2) A request under subsection (1):
+       (a) must be in a form approved by the Commissioner; and
+       (b) must be accompanied by any information or documents required by the
+            form.
+
+(3) If a request is made under subsection (1), the Commissioner may, by written
+     notice, require the provider to give the Commissioner such further information or
+     documents in relation to the request as the Commissioner reasonably requires.
+
+Note:              The Commissioner is not required to make a correction or decision on the request if
+                   subsection (2) or (3) of this section are not complied with (see section 197B of the
+                   Act).
+
+(4) If the Commissioner receives a request, the Commission must:
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  17
+
+                                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 5 Register of NDIS providers
+Division 2 Correction of entries
+
+Section 16
+
+                 (a) make the correction to the NDIS Provider Register; or
+                 (b) decide to not make the correction to the NDIS Provider Register.
+          (5) The Commission must notify the provider of a correction or decision made under
+               subsection (4).
+
+18                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                                   Register of NDIS providers Part 5
+                                                            Publication of the NDIS Provider Register Division 3
+
+                                                                                            Section 17
+
+Division 3--Publication of the NDIS Provider Register
+
+17 NDIS Provider Register generally to be published in full
+               Subject to section 18, the whole of the NDIS Provider Register may be published
+               on the Commission's website.
+
+18 Certain parts of the NDIS Provider Register not to be published
+               A part of the NDIS Provider Register must not be published if:
+                 (a) the Commissioner considers that the publication of the part would be
+                      contrary to the public interest; or
+                 (b) the Commissioner considers that the publication of the part would be
+                      contrary to the interests of one or more persons with disability receiving
+                      supports or services.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  19
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 6 NDIS Practice Standards
+Division 1 NDIS Practice Standards
+
+Section 19
+
+Part 6--NDIS Practice Standards
+
+Division 1--NDIS Practice Standards
+
+19 Purpose of this Division
+
+(1) This Division is made for the purposes of section 73T of the Act.
+
+Note:              Rules made for the purposes of section 73T of the Act are the NDIS Practice
+                   Standards (see section 9 of the Act).
+
+(2) It specifies the standards concerning the quality of supports and services to be
+     provided by registered NDIS providers.
+
+Note 1:            Applicants must be assessed by an approved quality auditor as meeting the applicable
+                   standards and other requirements prescribed by the NDIS Practice Standards in order to
+                   be registered as a registered NDIS provider (see paragraph 73E(1)(c) of the Act).
+
+Note 2:            Non-compliance with the NDIS Practice Standards by a registered NDIS provider
+                   constitutes a breach of a condition of registration (see paragraph 73F(2)(c) and
+                   section 73J of the Act).
+
+Note 3: Divisions 2 and 3 contain special rules that apply instead of, or as well as, some of the
+              rules in this Division in certain circumstances.
+
+20 NDIS Practice Standards--class of supports, applicable standards and
+              assessment process
+
+(1) To be registered to provide a class of supports specified in column 1 of an item
+     in the table in subsection (3), an applicant must:
+
+       (a) be assessed by an approved quality auditor, using the method specified in
+            column 3 of that item, as meeting each standard that:
+
+             (i) is specified in a Schedule mentioned in column 2 of that item; and
+
+             (ii) applies to the provider; and
+
+       (b) if the supports are to be provided in circumstances described in
+            subsection 7(2)--be assessed by an approved quality auditor as meeting the
+            standards specified in Schedule 4, using certification.
+
+Note:              The circumstances described in subsection 7(2) involve the use, or possible use, of a
+                   regulated restrictive practice in providing the supports.
+
+(2) To remain registered to provide a class of supports specified in column 1 of an
+     item in the table in subsection (3), a registered NDIS provider must comply with
+     the standards specified in:
+
+       (a) column 2 of that item; and
+
+       (b) if the supports are provided in circumstances described in
+            subsection 7(2)--Schedule 4.
+
+Note:              The circumstances described in subsection 7(2) involve the use of a regulated
+                   restrictive practice in providing the supports.
+
+(3) The following table has effect.
+
+20                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                           NDIS Practice Standards Part 6
+                                                       NDIS Practice Standards Division 1
+
+                                                                               Section 20
+
+NDIS Practice Standards--class of supports, standards and assessment method
+
+      Column 1                       Column 2               Column 3
+
+Item  To be registered, or remain the applicable standards  and the assessment method
+      registered, to provide this are specified in...       is....
+      class of supports...
+
+1     accommodation/tenancy          Schedule 8             verification.
+
+      assistance
+
+2     assistance to access and       Schedule 1             certification.
+
+      maintain employment or
+
+      higher education
+
+3     assistive products for         Schedule 8             verification.
+
+      personal care and safety
+
+4     high intensity daily personal Schedules 1 and 2       certification.
+
+      activities
+
+5     personal mobility equipment Schedule 8                verification.
+
+6     assistance in coordinating or Schedule 1              certification.
+
+      managing life stages,
+
+      transitions and supports
+
+7     assistance with daily personal Schedule 1             certification.
+
+      activities
+
+8     assistance with                Schedule 8             verification.
+
+      travel/transport arrangements
+
+9     vehicle modifications          Schedule 8             verification.
+
+10    specialist positive behaviour Schedules 1 and 3       certification.
+
+      support
+
+11    home modifications             Schedule 8             verification.
+
+12    assistive equipment for        Schedule 8             verification.
+
+      recreation
+
+13    vision equipment               Schedule 8             verification.
+
+14    community nursing care         Schedule 8             verification.
+
+15    assistance with daily life     Schedule 1             certification.
+
+      tasks in a group or shared
+
+      living arrangement (other
+
+      than assistance with
+
+      supported independent
+
+      living)
+
+16    innovative community           Schedule 8             verification.
+
+      participation
+
+17    development of daily living Schedule 1                certification.
+
+      and life skills
+
+18    early intervention supports Schedules 1 and 5         certification.
+
+      for early childhood
+
+19    specialised hearing services Schedule 8               verification.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  21
+
+                                                 2018
+
+Compilation No. 6                                                                Compilation date: 01/07/2026
+
+                           Authorised Version F2026C00527 registered 02/07/2026
+Part 6 NDIS Practice Standards
+Division 1 NDIS Practice Standards
+
+Section 20
+
+NDIS Practice Standards--class of supports, standards and assessment method
+
+      Column 1                       Column 2               Column 3
+
+Item  To be registered, or remain the applicable standards  and the assessment method
+      registered, to provide this are specified in...       is....
+      class of supports...
+
+20    household tasks                Schedule 8             verification.
+
+21    interpreting and translation Schedule 8               verification.
+
+22    hearing equipment              Schedule 8             verification.
+
+23    assistive products for         Schedule 8             verification.
+
+      household tasks
+
+24    communication and              Schedule 8             verification.
+
+      information equipment
+
+25    participation in community, Schedule 1                certification.
+
+      social and civic activities
+
+26    exercise physiology and        Schedule 8             verification.
+
+      personal training
+
+27    management of funding for Schedule 8                  verification.
+
+      supports in participant plans
+
+28    therapeutic supports           Schedule 8             verification.
+
+29    specialised driver training    Schedule 8             verification.
+
+30    assistance animals             Schedule 8             verification.
+
+31    specialist disability          Schedule 7             certification.
+
+      accommodation only
+
+31A specialist disability            Schedules 1 and 7      certification.
+           accommodation and one or
+           more other classes of
+           supports
+
+32    specialised support            Schedules 1 and 6      certification.
+
+      coordination
+
+33    specialised supported          Schedule 1             certification.
+
+      employment
+
+34    hearing services               Schedule 8             verification.
+
+35    customised prosthetics         Schedule 8             verification.
+
+36    group and centre-based         Schedule 1             certification.
+
+      activities
+
+37    providing an NDIS digital      Schedule 1             certification.
+
+      platform service
+
+38    assistance with supported      Schedules 1 and 7A     certification.
+
+      independent living
+
+      (4) Despite column 2 of item 18 of the table in subsection (3), an individual or a
+           partnership that applies to provide early intervention supports for early childhood
+
+22                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                             Authorised Version F2026C00527 registered 02/07/2026
+                                                        NDIS Practice Standards Part 6
+                                                    NDIS Practice Standards Division 1
+
+                                                                         Section 22
+
+     is required to be assessed by an approved quality auditor as meeting the
+     standards specified in:
+
+       (a) clause 7 of Schedule 1; and
+       (b) Schedule 5.
+
+(5) Despite column 2 of item 18 of the table in subsection (3), to remain registered to
+     provide early intervention supports for early childhood, an individual or
+     partnership is required to comply with the standards specified in:
+       (a) clause 7 of Schedule 1; and
+       (b) Schedule 5.
+
+22 NDIS Practice Standards--requirements for government providers
+
+          (1) To be registered as a registered NDIS provider to provide any class of supports,
+               an applicant covered by subsection (3) must be assessed by an approved quality
+               auditor as meeting the standards specified in Schedule 1 using certification.
+
+          (2) To remain registered as a registered NDIS provider to provide any class of
+               supports, a provider covered by subsection (3) must comply with the standards
+               specified in Schedule 1.
+
+          (3) The applicants and providers covered by this subsection are as follows:
+                 (a) the Commonwealth;
+                 (b) an authority of the Commonwealth;
+                 (c) a State or Territory;
+                 (d) an authority of a State or Territory;
+                 (e) a local government authority.
+
+          (4) This section applies to an applicant or provider in addition to section 20.
+
+23 Assessment by certification meets requirement to be assessed by verification
+
+               For the purposes of this instrument, if compliance with an applicable standard
+               must be assessed using verification, the requirement is met if compliance with
+               the standard is assessed using certification.
+
+24 Matters to be taken into account in assessments
+
+The quality indicators set out in the National Disability Insurance Scheme
+(Quality Indicators for NDIS Practice Standards) Guidelines 2018 (as existing
+from time to time) must be taken into account in assessing the following:
+
+  (a) whether an applicant for registration as a registered NDIS provider meets
+       the NDIS Practice Standards;
+
+ (b) whether a registered NDIS provider is complying with those standards.
+
+Note:              The National Disability Insurance Scheme (Quality Indicators for NDIS Practice
+                   Standards) Guidelines 2018 could in 2021 be viewed on the Federal Register of
+                   Legislation website (https://legislation.gov.au).
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  23
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 6 NDIS Practice Standards
+Division 2 Transitional arrangements relating to transitioned providers
+
+Section 25
+
+Division 2--Transitional arrangements relating to transitioned
+            providers
+
+25 Purpose of this Division
+
+          (1) This Division is made for the purposes of section 73T of the Act.
+
+          (2) It modifies the application of the NDIS Practice Standards in Division 1 of this
+               Part for a limited period in relation to transitioned providers.
+
+                   Note: Similar modifications apply in relation to transitioned RAC providers, see Division 3.
+
+26 Transitional arrangements for certain providers requiring certification
+
+(1) This section applies to a person or entity (the provider) if:
+       (a) at a particular time (the transition time), the provider is approved under
+            section 70 of the Act to provide one or more of the following classes of
+            supports to a participant:
+             (i) assistance to access and maintain employment or higher education;
+             (ii) high intensity daily personal activities;
+            (iii) assistance in coordinating or managing life stages, transitions and
+                  supports;
+            (iv) assistance with daily personal activities;
+             (v) specialist positive behaviour support;
+            (vi) assistance with daily life tasks in a group or shared living
+                  arrangement;
+           (vii) development of daily care and life skills;
+          (viii) participation in community, social and civic activities;
+            (ix) specialised support coordination;
+             (x) specialised supported employment;
+            (xi) group and centre-based activities; and
+       (b) at the transition time, the host jurisdiction in which the participant lives
+            becomes a participating jurisdiction.
+
+Note 1: For the meaning of host jurisdiction and participating jurisdiction, see sections 10 and
+              10A of the Act.
+
+Note 2:            The provider will be deemed to be a registered NDIS provider in accordance with the
+                   National Disability Insurance Scheme (Quality and Safeguards Commission and Other
+                   Measures) Transitional Rules 2018.
+
+(2) Despite sections 20 and 22, to remain registered to provide the class of supports
+     during the transition period for the provider, the provider must comply with the
+     standards specified in clauses 2 to 7, 14, 15, 20 and 24 of Schedule 1.
+
+(3) For the purposes of subsection (2), the transition period for the provider:
+       (a) starts at the transition time; and
+       (b) ends at the earliest of the following:
+
+24                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                 NDIS Practice Standards Part 6
+                   Transitional arrangements relating to transitioned providers Division 2
+
+                                                                         Section 27
+
+                    (i) if the Commissioner gives a written notice to the provider that this
+                         subsection no longer applies to the provider--the day specified in the
+                         notice (which must be at least 14 days after the notice is given);
+
+                   (ii) if the provider makes an application under section 73C of the Act and
+                         the Commissioner makes a decision under section 73E of the Act to
+                         register, or not to register, the provider as a registered NDIS
+                         provider--the day after the day the decision is made;
+
+                   (iii) if the registration of the provider is revoked under section 73P of the
+                         Act--at the start of the day the revocation takes effect;
+
+                   (iv) unless section 73K of the Act applies--the expiry of the period
+                         specified for the purposes of paragraph 73E(5)(e) of the Act.
+
+27 Transitional arrangements for providers providing specialist disability
+              accommodation and one or more other classes of supports
+
+(1) This section applies to a person or entity (the provider) if:
+       (a) at a particular time (the transition time), the provider is approved under
+            section 70 of the Act to provide:
+             (i) specialist disability accommodation to a participant; and
+             (ii) one or more other classes of supports; and
+       (b) at the transition time, the host jurisdiction in which the participant lives
+            becomes a participating jurisdiction.
+
+Note 1: For the meaning of host jurisdiction and participating jurisdiction, see sections 10 and
+              10A of the Act.
+
+Note 2:            The provider will be deemed to be a registered NDIS provider in accordance with the
+                   National Disability Insurance Scheme (Quality and Safeguards Commission and Other
+                   Measures) Transitional Rules 2018.
+
+(2) Despite sections 20 and 22, to remain registered to provide those supports during
+     the transition period for the provider, the provider must comply with the
+     standards specified in:
+
+       (a) clauses 2 to 7, 14, 15, 20 and 24 of Schedule 1; and
+
+       (b) Schedule 7.
+
+(3) For the purposes of subsection (2), the transition period for the provider:
+
+       (a) starts at the transition time; and
+
+       (b) ends at the earliest of the following:
+
+             (i) if the Commissioner gives a written notice to the provider that this
+                  subsection no longer applies to the provider--the day specified in the
+                  notice (which must be at least 14 days after the notice is given);
+
+             (ii) if the provider makes an application under section 73C of the Act and
+                  the Commissioner makes a decision under section 73E of the Act to
+                  register, or not to register, the provider as a registered NDIS
+                  provider--the day after the day the decision is made;
+
+            (iii) if the registration of the provider is revoked under section 73P of the
+                  Act--at the start of the day the revocation takes effect;
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  25
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 6 NDIS Practice Standards
+Division 2 Transitional arrangements relating to transitioned providers
+
+Section 28
+
+                   (iv) unless section 73K of the Act applies--the expiry of the period
+                        specified for the purposes of paragraph 73E(5)(e) of the Act.
+
+28 Transitional arrangements for providers of early intervention supports for
+              early childhood
+
+(1) This section applies to a person or entity (the provider) if:
+
+       (a) at a particular time (the transition time), the provider is approved under
+            section 70 of the Act to provide early intervention supports for early
+            childhood to a participant; and
+
+       (b) at the transition time, the host jurisdiction in which the participant lives
+            becomes a participating jurisdiction.
+
+            Note 1: For the meaning of host jurisdiction and participating jurisdiction, see sections 10 and
+                          10A of the Act.
+
+            Note 2:  The provider will be deemed to be a registered NDIS provider in accordance with the
+                     National Disability Insurance Scheme (Quality and Safeguards Commission and Other
+                     Measures) Transitional Rules 2018.
+
+(2) Despite sections 20 and 22, to remain registered to provide the supports during
+     the transition period for the provider, the provider must comply with the
+     standards specified in:
+
+       (a) if the provider is an individual or a partnership--clause 7 of Schedule 1; or
+
+       (b) otherwise--clauses 2 to 7, 14, 15, 20 and 24 of Schedule 1.
+
+(3) For the purposes of subsection (2), the transition period for the provider:
+
+       (a) starts at the transition time; and
+
+       (b) ends at the earliest of the following:
+
+             (i) if the Commissioner gives a written notice to the provider that this
+                  subsection no longer applies to the provider--the day specified in the
+                  notice (which must be at least 14 days after the notice is given);
+
+             (ii) if the provider makes an application under section 73C of the Act and
+                  the Commissioner makes a decision under section 73E of the Act to
+                  register, or not to register, the provider as a registered NDIS
+                  provider--the day after the day the decision is made;
+
+            (iii) if the registration of the provider is revoked under section 73P of the
+                  Act--at the start of the day the revocation takes effect;
+
+            (iv) unless section 73K of the Act applies--the expiry of the period
+                  specified for the purposes of paragraph 73E(5)(e) of the Act.
+
+29 Transitional arrangements for providers requiring verification
+
+          (1) This section applies to a person or entity (the provider) if:
+                 (a) at a particular time (the transition time), the provider is approved under
+                      section 70 of the Act to provide one or more of the following classes of
+                      supports to a participant:
+                        (i) accommodation/tenancy assistance;
+
+26                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                     Authorised Version F2026C00527 registered 02/07/2026
+                                                                 NDIS Practice Standards Part 6
+                   Transitional arrangements relating to transitioned providers Division 2
+
+                                                                         Section 29
+
+                         (ii) assistive products for personal care and safety;
+                        (iii) personal mobility equipment;
+                        (iv) assistance with travel/transport arrangements;
+                         (v) vehicle modifications;
+                        (vi) home modifications;
+                       (vii) assistive equipment for recreation;
+                      (viii) vision equipment;
+                        (ix) community nursing care;
+                         (x) innovative community participation;
+                        (xi) specialised hearing services;
+                       (xii) household tasks;
+                      (xiii) interpreting and translating;
+                      (xiv) hearing equipment;
+                       (xv) assistive products for household tasks;
+                      (xvi) communication and information equipment;
+                      (xvii) exercise physiology and personal training;
+                     (xviii) management of funding for supports in participant's plans;
+                      (xix) therapeutic supports;
+                       (xx) specialised driver training;
+                      (xxi) assistance animals;
+                      (xxii) hearing services;
+                     (xxiii) customised prosthetics; and
+                   (b) at the transition time, the host jurisdiction in which the participant lives
+                        becomes a participating jurisdiction.
+
+Note 1: For the meaning of host jurisdiction and participating jurisdiction, see sections 10 and
+              10A of the Act.
+
+Note 2:            The provider will be deemed to be a registered NDIS provider in accordance with the
+                   National Disability Insurance Scheme (Quality and Safeguards Commission and Other
+                   Measures) Transitional Rules 2018.
+
+(2) Sections 20 and 22 do not apply to the provider during the transition period in
+     relation to the provision of the class of supports.
+
+(3) For the purposes of subsection (2), the transition period for the provider:
+
+       (a) starts at the transition time; and
+
+       (b) ends at the earliest of the following:
+
+             (i) if the Commissioner gives a written notice to the provider that this
+                  subsection no longer applies to the provider--the day specified in the
+                  notice (which must be at least 14 days after the notice is given);
+
+             (ii) if the provider makes an application under section 73C of the Act and
+                  the Commissioner makes a decision under section 73E of the Act to
+                  register, or not to register, the provider as a registered NDIS
+                  provider--the day after the day the decision is made;
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  27
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 6 NDIS Practice Standards
+Division 2 Transitional arrangements relating to transitioned providers
+
+Section 29
+
+                      (iii) if the registration of the provider is revoked under section 73P of the
+                            Act--at the start of the day the revocation takes effect;
+
+                      (iv) unless section 73K of the Act applies--the expiry of the period
+                            specified for the purposes of paragraph 73E(5)(e) of the Act.
+
+28                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                        NDIS Practice Standards Part 6
+Transitional arrangements relating to transitioned residential aged care providers Division 3
+
+                                                                              Section 29A
+
+Division 3--Transitional arrangements relating to transitioned
+            residential aged care providers
+
+29A Purpose of this Division
+
+          (1) This Division is made for the purposes of section 73T of the Act.
+
+          (2) It modifies the application of the NDIS Practice Standards in Division 1 of this
+               Part for a limited period in relation to transitioned RAC providers.
+
+29B Transitional arrangements for transitioned residential aged care providers
+
+(1) This section applies to person or entity if the person or entity is a transitioned
+     RAC provider.
+
+Note:              A transitioned RAC provider is deemed to be a registered NDIS provider in accordance
+                   with the National Disability Insurance Scheme (Quality and Safeguards Commission
+                   and Other Measures) Transitional Rules 2018.
+
+(2) Despite sections 20 and 22, to remain a registered NDIS provider during the
+     transition period for the provider, the provider must comply with the standards
+     specified in clauses 2 to 7, 14, 15, 20 and 24 of Schedule 1.
+
+(3) For the purposes of subsection (2), the transition period for the provider:
+
+       (a) starts at the start of 1 December 2020; and
+
+       (b) ends at the earliest of the following:
+
+             (i) if the Commissioner gives a written notice to the provider that this
+                  subsection no longer applies to the provider--the start of the day
+                  specified in the notice (which must be at least 14 days after the notice
+                  is given);
+
+             (ii) if, on or after 1 December 2020, the provider makes an application
+                  under section 73C of the Act and the Commissioner makes a decision
+                  under section 73E of the Act to register, or not to register, the provider
+                  as a registered NDIS provider--the start of the day after the day the
+                  decision is made;
+
+            (iii) if the registration of the provider is revoked under section 73P of the
+                  Act--the start of the day the revocation takes effect;
+
+            (iv) unless section 73K of the Act applies--the expiry of the period
+                  specified for the purposes of paragraph 73E(5)(e) of the Act.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  29
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 7 Application, saving and transitional provisions
+
+Section 30
+
+Part 7--Application, saving and transitional provisions
+
+30 Application of amendments made by the National Disability Insurance
+              Scheme (Provider Registration and Practice Standards) Amendment
+              (2019 Measures No. 1) Rules 2019
+
+          (1) The amendments of sections 4 and 5 made by the National Disability Insurance
+               Scheme (Provider Registration and Practice Standards) Amendment (2019
+               Measures No. 1) Rules 2019 apply in relation to an assessment commenced on or
+               after 1 January 2020.
+
+          (2) The amendments of sections 9 and 10 made by the National Disability Insurance
+               Scheme (Provider Registration and Practice Standards) Amendment (2019
+               Measures No. 1) Rules 2019 apply in relation to an application under section 73C
+               of the Act made on or after 1 January 2020.
+
+          (3) Sections 13, 13A and 13B, as inserted by the National Disability Insurance
+               Scheme (Provider Registration and Practice Standards) Amendment (2019
+               Measures No. 1) Rules 2019, apply on and after 1 January 2020 in relation to a
+               registered NDIS provider, whether registered before, on or after that day.
+
+          (4) Despite the repeal of section 21 by the National Disability Insurance Scheme
+               (Provider Registration and Practice Standards) Amendment (2019 Measures
+               No. 1) Rules 2019, that section continues to apply, in relation to an assessment
+               commenced before 1 January 2020, as if that repeal had not happened.
+
+31 Application of amendments made by the National Disability Insurance
+              Scheme (Provider Registration and Practice Standards) Amendment
+              (2021 Measures No. 1) Rules 2021
+
+               Definitions
+
+          (1) In this section:
+
+               amending Rules means the National Disability Insurance Scheme (Provider
+               Registration and Practice Standards) Amendment (2021 Measures No. 1)
+               Rules 2021.
+
+               existing registered NDIS provider means a person or entity who was a registered
+               NDIS provider immediately before 15 November 2021.
+
+               Delayed application of emergency and disaster management standard for
+               existing registered NDIS providers
+
+          (2) Clause 16A of Schedule 1, as inserted by the amending Rules, applies in relation
+               to an existing registered NDIS provider on and after 24 January 2022.
+
+30                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                           Application, saving and transitional provisions Part 7
+
+                                                                                            Section 32
+
+               Delayed application of mealtime management standard for existing registered
+               NDIS providers
+
+          (3) Clause 26A of Schedule 1, as inserted by the amending Rules, applies in relation
+               to an existing registered NDIS provider on and after 13 December 2021.
+
+               Application of amendments to applications for registration
+
+          (4) The amendments of this instrument made by the amending Rules apply in
+               relation to an application under section 73C of the Act:
+                 (a) made on or after 15 November 2021; or
+                 (b) made but not decided before 15 November 2021, if the assessment under
+                      paragraph 73E(1)(c) of the Act has not been made before that day.
+
+               Application of amendments to mid-term audits
+
+          (5) Subject to subsections (2) and (3), the amendments of this instrument made by
+               the amending Rules apply in relation to a mid-term audit under section 13B of
+               this instrument carried out on or after 15 November 2021.
+
+32 Application of amendments made by the National Disability Insurance
+              Scheme (Provider Registration and Practice Standards) Amendment
+              (Mandatory Registration and Other Matters) Rules 2026
+
+          (1) In this section:
+
+               amending Rules means the National Disability Insurance Scheme (Provider
+               Registration and Practice Standards) Amendment (Mandatory Registration and
+               Other Matters) Rules 2026.
+
+               existing NDIS provider means a person or entity (other than a registered NDIS
+               provider) who was an NDIS provider immediately before 1 July 2026.
+
+               existing registered NDIS provider means a person or entity who was a registered
+               NDIS provider immediately before 1 July 2026.
+
+               Transitional arrangements in relation to the provision of assistance with
+               supported independent living
+
+          (2) The amendments made by Part 1 of Schedule 1 to the amending Rules apply in
+               relation to the provision under a participant's plan of the class of support (the
+               specified class of support) mentioned in that Part as follows:
+                 (a) if the provider of the support is an existing registered NDIS provider--on
+                      or after the day (the transition day) on which the Commissioner makes a
+                      decision under subsection 73L(1) of the Act whether to vary the provider's
+                      registration to include the specified class of support;
+                 (b) if the provider of the support is an existing NDIS provider that, before
+                      1 July 2026, had provided assistance with supported independent living
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  31
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Part 7 Application, saving and transitional provisions
+
+Section 32
+
+                      (within the meaning of this instrument as amended by the amending Rules)
+                      to a participant--on or after:
+
+                        (i) in the case that the provider makes an application, before 1 October
+                            2026, under subsection 73C(1) of the Act to be registered to provide
+                            the specified class of support--the day on which the Commissioner
+                            makes a decision under subsection 73E(1) of the Act on the
+                            application; or
+
+                       (ii) otherwise--1 October 2026;
+                 (c) in any other case--on or after 1 July 2026.
+
+          (3) If:
+                 (a) immediately before 1 July 2026, an existing registered NDIS provider was
+                      registered to provide the class of support specified in item 15 of the table in
+                      subsection 20(3); and
+                 (b) the transition day for the provider occurs after 1 July 2026;
+
+               then, despite sections 20 and 22, to remain registered to provide that class of
+               support during the period between 1 July 2026 and the transition day, the
+               provider must comply with Schedule 7A, as inserted by Part 1 of Schedule 1 to
+               the amending Rules, as if those standards were specified for the class of support
+               specified in that item.
+
+               Transitional arrangements in relation to the provision of NDIS digital platform
+               services
+
+          (4) The amendments made by items 6, 7, 8 and 10 of Schedule 1 to the amending
+               Rules apply in relation to the provision under a participant's plan of the class of
+               support (the specified class of support) mentioned in that Part as follows:
+                 (a) if the provider of the support is an existing registered NDIS provider--on
+                      or after the day on which the Commissioner makes a decision under
+                      subsection 73L(1) of the Act whether to vary the provider's registration to
+                      include the specified class of support;
+                 (b) if the provider of the support is an existing NDIS provider that, before
+                      1 July 2026, had provided an NDIS digital platform service (within the
+                      meaning of this instrument as amended by the amending Rules) to a
+                      participant--on or after:
+                        (i) in the case that the provider makes an application, before 1 October
+                            2026, under subsection 73C(1) of the Act to be registered to provide
+                            the specified class of support--the day on which the Commissioner
+                            makes a decision under subsection 73E(1) of the Act on the
+                            application; or
+                       (ii) otherwise--1 October 2026;
+                 (c) in any other case--on or after 1 July 2026.
+
+          (5) The amendments made by item 9 of Schedule 1 to the amending Rules apply in
+               relation to the provision of an NDIS digital platform service on or after 1 January
+               2027.
+
+32                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                Application, saving and transitional provisions Part 7
+
+                                                                                  Section 32
+
+     Transitional provisions in relation to change of ownership requirements
+
+(6) The amendments made by Part 3 of Schedule 1 to the amending Rules apply in
+     relation to a change in ownership of a registered NDIS provider, or of a business
+     of the provider, that occurs on or after 1 July 2026.
+
+(7) If:
+       (a) a notice is required to be given under subsection 13A(3) of this instrument
+            (as amended by the amending Rules) in respect of a change in ownership
+            that occurs on or after 1 July 2026; and
+       (b) the time mentioned in paragraph 13A(3)(a) or (b) for giving that notice
+            occurs before 1 July 2026;
+
+     then, despite that subsection, the notice must be given to the Commissioner as
+     soon as practicable on or after 1 July 2026.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  33
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 1 Core module
+Part 1 Preliminary
+
+Clause 1
+
+Schedule 1--Core module
+
+Note: See sections 20, 22, 26, 27 and 28.
+
+Part 1--Preliminary
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) This Schedule applies to a person or entity who is applying to become a
+     registered NDIS provider in the same way as it applies to a registered NDIS
+     provider.
+
+Note:              See sections 20, 22, 26, 27 and 28 for the applicants and providers that must comply
+                   with the NDIS Practice Standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+34                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                        Authorised Version F2026C00527 registered 02/07/2026
+                                                                                              Core module Schedule 1
+                                                  Rights of participants and responsibilities of providers Part 2
+
+                                                                                                       Clause 2
+
+Part 2--Rights of participants and responsibilities of
+          providers
+
+2 Standards relating to the rights of participants and the responsibilities of
+              providers
+               This Part specifies the NDIS Practice Standards relating to the rights of
+               participants and the responsibilities of providers who deliver supports and
+               services to them.
+
+3 Person-centred supports
+          (1) Each participant can access supports that promote, uphold and respect their legal
+               and human rights.
+          (2) Each participant is enabled to exercise informed choice and control.
+          (3) The provision of supports promotes, upholds and respects individual rights to
+               freedom of expression, self-determination and decision-making.
+
+4 Individual values and beliefs
+               Each participant can access supports that respect their culture, diversity, values
+               and beliefs.
+
+5 Privacy and dignity
+               Each participant can access supports that respect and protect their dignity and
+               right to privacy.
+
+6 Independence and informed choice
+               Each participant is supported by the provider to make informed choices, exercise
+               control and maximise their independence in relation to the supports provided.
+
+7 Freedom from violence, abuse, neglect, exploitation or discrimination
+               Each participant can access supports free from violence, abuse, neglect,
+               exploitation or discrimination.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  35
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 1 Core module
+Part 3 Provider governance and operational management
+
+Clause 8
+
+Part 3--Provider governance and operational management
+
+8 Standards relating to provider governance and operational management
+               This Part specifies the NDIS Practice Standards relating to the governance and
+               operational management arrangements for registered NDIS providers.
+
+9 Governance and operational management
+               Each participant's support is overseen by robust governance and operational
+               management systems relevant and proportionate to the size and scale of the
+               provider and the scope and complexity of the supports being delivered.
+
+10 Risk management
+               Risks to participants, workers and the provider are identified and managed.
+
+11 Quality management
+               Each participant benefits from a quality management system that is relevant and
+               proportionate to the size and scale of the provider and that promotes continuous
+               improvement of support delivery.
+
+12 Information management
+          (1) Management of each participant's information ensures that it is identifiable,
+               accurately recorded, current and confidential.
+          (2) Each participant's information is easily accessible to the participant and
+               appropriately utilised by relevant workers.
+
+13 Complaints management and resolution
+          (1) Each participant has knowledge of and access to the provider's complaints
+               management and resolution system.
+          (2) Complaints are welcomed, acknowledged, respected and well managed.
+
+14 Incident management
+               Each participant is safeguarded by the provider's incident management system,
+               ensuring that incidents are acknowledged, responded to, well managed and
+               learned from.
+
+36                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                                              Core module Schedule 1
+                                                       Provider governance and operational management Part 3
+
+                                                                                                      Clause 15
+
+15 Human resource management
+               Each participant's support needs are met by workers who are competent in
+               relation to their role, hold relevant qualifications and have relevant expertise and
+               experience to provide person-centred support.
+
+16 Continuity of supports
+               Each participant has access to timely and appropriate supports without
+               interruption.
+
+16A Emergency and disaster management
+               Emergency and disaster management includes planning that:
+                 (a) ensures that the risks to the health, safety and wellbeing of participants that
+                      may arise in an emergency or disaster are considered and mitigated; and
+                 (b) ensures the continuity of supports critical to the health, safety and
+                      wellbeing of participants in an emergency or disaster.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  37
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 1 Core module
+Part 4 Provision of supports
+
+Clause 17
+
+Part 4--Provision of supports
+
+17 Standards relating to the provision of supports to participants
+               This Part specifies the NDIS Practice Standards relating to the provision of
+               supports to participants.
+
+18 Access to supports
+               Each participant can access the most appropriate supports that meet the
+               participant's needs, goals and preferences.
+
+19 Support planning
+          (1) Each participant is actively involved in the development of their support plans.
+          (2) Support plans reflect participant needs, requirements, preferences, strengths and
+               goals, and are regularly reviewed.
+
+20 Service agreements
+               Each participant has a clear understanding of the supports they have chosen and
+               how the supports will be provided.
+
+21 Responsive support provision
+               Each participant can access responsive, timely, competent and appropriate
+               supports to meet their needs, desired outcomes and goals.
+
+22 Transitions to and from a provider
+               Each participant experiences a planned and coordinated transition to or from the
+               provider.
+
+38                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                                              Core module Schedule 1
+                                                                              Support provision environment Part 5
+
+                                                                                                      Clause 23
+
+Part 5--Support provision environment
+
+23 Standards relating to the provision of supports to participants
+               This Part specifies the NDIS Practice Standards relating to the environment in
+               which supports are provided to participants.
+
+24 Safe environment
+               Each participant can access supports in a safe environment that is appropriate to
+               their needs.
+
+25 Participant money and property
+               Participant money and property is secure and each participant uses their own
+               money and property as they determine.
+
+26 Medication management
+          (1) This standard applies to a provider that is responsible for administering
+               medication to participants.
+          (2) Each participant requiring medication is confident that their provider
+               administers, stores and monitors the effects of the participant's medication and
+               works to prevent errors and incidents.
+
+26A Mealtime management
+          (1) This standard applies to a provider that is responsible for providing supports to
+               participants who require mealtime management.
+          (2) Each participant requiring mealtime management receives meals that are:
+                 (a) nutritious, and of a texture that is appropriate to their individual needs; and
+                 (b) appropriately planned, and prepared in an environment and manner that
+                      meets their individual needs and preferences; and
+                 (c) delivered in a way that is appropriate to their individual needs and ensures
+                      that the meals are enjoyable.
+
+27 Waste management
+          (1) This standard applies to a provider that is required to manage waste, or infectious
+               or hazardous substances.
+          (2) Each participant, each worker and any other person in the support environment is
+               protected from harm as a result of exposure to waste or infectious or hazardous
+               substances generated during the delivery of supports.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  39
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 2 Module 1: High intensity daily personal activities
+
+Clause 1
+
+Schedule 2--Module 1: High intensity daily personal
+         activities
+
+Note: See sections 13C and 20.
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) An NDIS Practice Standard in this Schedule applies to a person or entity who:
+
+       (a) is applying to be registered to provide high intensity daily personal
+            activities; and
+
+       (b) has requested in the application for registration that the support mentioned
+            in the standard be set out in the person's or entity's certificate of
+            registration;
+
+     in the same way that the standard applies to a registered NDIS provider who is
+     registered to provide those activities and has that support set out in the provider's
+     certificate of registration.
+
+Note:              See section 20 for the applicants that must be assessed as meeting, and the providers
+                   that must comply with, the standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+2 Standards relating to high intensity daily personal activities
+
+               This Schedule specifies the NDIS Practice Standards relating to the provision of
+               high intensity daily personal activities.
+
+3 Complex bowel care
+
+          (1) This standard applies to a provider that is registered to provide high intensity
+               daily personal activities if complex bowel care is set out in the provider's
+               certificate of registration.
+
+          (2) Each participant requiring complex bowel care receives appropriate support that
+               is relevant and proportionate to their individual needs.
+
+40                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                   Module 1: High intensity daily personal activities Schedule 2
+
+                                                                                                       Clause 4
+
+4 Enteral (naso-gastric tube-jejunum or duodenum) feeding and management
+
+          (1) This standard applies to a provider that is registered to provide high intensity
+               daily personal activities if enteral (naso-gastric tube-jejunum or duodenum)
+               feeding and management is set out in the provider's certificate of registration.
+
+          (2) Each participant requiring enteral feeding and management receives appropriate
+               nutrition, fluids and medication that are relevant and proportionate to their
+               individual needs.
+
+4A Severe dysphagia management
+
+          (1) This standard applies to a provider that is registered to provide high intensity
+               daily personal activities if severe dysphagia management is set out in the
+               provider's certificate of registration.
+
+          (2) Each participant requiring severe dysphagia management receives appropriate
+               support that is relevant and proportionate to their individual needs and
+               preferences.
+
+5 Tracheostomy management
+
+          (1) This standard applies to a provider that is registered to provide high intensity
+               daily personal activities if tracheostomy management is set out in the provider's
+               certificate of registration.
+
+          (2) Each participant with a tracheostomy receives appropriate suctioning and
+               management of their tracheostomy that are relevant and proportionate to their
+               individual needs.
+
+6 Urinary catheter management (in-dwelling urinary catheter, in-out catheter
+              and suprapubic catheter)
+
+          (1) This standard applies to a provider that is registered to provide high intensity
+               daily personal activities if in-dwelling, in-out and suprapubic catheter urinary
+               management is set out in the provider's certificate of registration.
+
+          (2) Each participant with a catheter receives appropriate catheter management that is
+               relevant and proportionate to their individual needs.
+
+7 Ventilator management
+
+          (1) This standard applies to a provider that is registered to provide high intensity
+               daily personal activities if ventilator management is set out in the provider's
+               certificate of registration.
+
+          (2) Each participant requiring ventilator management receives appropriate support
+               that is relevant and proportionate to their individual needs and the specific
+               ventilator used.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  41
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 2 Module 1: High intensity daily personal activities
+
+Clause 8
+
+8 Subcutaneous injections
+          (1) This standard applies to a provider that is registered to provide high intensity
+               daily personal activities if subcutaneous injections is set out in the provider's
+               certificate of registration.
+          (2) Each participant requiring subcutaneous injections receives appropriate support
+               that is relevant and proportionate to their individual needs and the specific
+               subcutaneous injections and medication administered.
+
+9 Complex wound management
+          (1) This standard applies to a provider that is registered to provide high intensity
+               daily personal activities if complex wound management is set out in the
+               provider's certificate of registration.
+          (2) Each participant requiring complex wound management receives appropriate
+               support that is relevant and proportionate to their individual needs.
+
+42                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                   Module 2: Specialist behaviour support Schedule 3
+
+                                                                                                       Clause 1
+
+Schedule 3--Module 2: Specialist behaviour support
+
+Note: See section 20.
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) This Schedule applies to a person or entity who is applying to become a
+     registered NDIS provider in the same way as it applies to a registered NDIS
+     provider.
+
+Note:              See section 20 for the applicants and providers that must comply with the NDIS
+                   Practice Standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+2 Standards relating to specialist behaviour support
+
+               This Schedule specifies the NDIS Practice Standards relating to the provision of
+               specialist behaviour support.
+
+3 Behaviour support in the NDIS
+
+               Each participant can access behaviour support that:
+                 (a) is appropriate to their needs; and
+                 (b) incorporates evidence-informed practice; and
+                 (c) complies with relevant Commonwealth, State and Territory laws and
+                      policies.
+
+4 Regulated restrictive practices
+
+               Each participant is subject only to a regulated restrictive practice that meets:
+                 (a) the State or Territory authorisation and consent requirements (if any) in the
+                      State or Territory in which the practice will be used; and
+                 (b) the relevant requirements and safeguards provided for in relevant
+                      Commonwealth, State and Territory laws and policies.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  43
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 3 Module 2: Specialist behaviour support
+
+Clause 5
+
+5 Behaviour support plans
+               Each participant's quality of life is maintained and improved by person-centred,
+               evidence-informed behaviour support plans that are responsive to their needs.
+
+6 Supporting the implementation of a behaviour support plan
+               Each participant's behaviour support plan is implemented effectively to meet the
+               participant's behaviour support needs.
+
+7 Behaviour support plan monitoring and review
+               Each participant has a current behaviour support plan that:
+                 (a) reflects their needs, improves their quality of life and supports their
+                      progress toward positive change; and
+                 (b) progresses toward the reduction and elimination of the use of the regulated
+                      restrictive practice, where one is in place for the participant.
+
+8 Reportable incidents involving the use of a regulated restrictive practice
+               Each participant that is subject to an emergency or unauthorised use of a
+               regulated restrictive practice by a provider has the use of that practice reported to
+               the Commissioner and reviewed by the provider.
+
+9 Interim behaviour support plans
+               Each participant with an immediate need for a behaviour support plan receives
+               an interim behaviour support plan that minimises the risk to the participant and
+               others.
+
+44                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                   Module 2A: Implementing behaviour support plans Schedule 4
+
+                                                                                                       Clause 1
+
+Schedule 4--Module 2A: Implementing behaviour
+         support plans
+
+Note: See section 20.
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) This Schedule applies to a person or entity who is applying to become a
+     registered NDIS provider in the same way as it applies to a registered NDIS
+     provider.
+
+Note:              See section 20 for the applicants and providers that must comply with the NDIS
+                   Practice Standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+2 Standards relating to the use of regulated restrictive practices
+
+               This Schedule specifies the NDIS Practice Standards relating to the
+               implementation of behaviour support plans.
+
+3 Behaviour support in the NDIS
+
+               Each participant can access behaviour support that:
+                 (a) is appropriate to their needs; and
+                 (b) incorporates evidence-informed practice; and
+                 (c) complies with relevant Commonwealth, State and Territory laws and
+                      policies.
+
+4 Regulated restrictive practices
+
+               Each participant is subject only to a regulated restrictive practice that meets:
+                 (a) the State or Territory authorisation and consent requirements (if any) in the
+                      State or Territory in which the practice will be used; and
+                 (b) the relevant requirements and safeguards provided for in Commonwealth
+                      legislation and policies.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  45
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 4 Module 2A: Implementing behaviour support plans
+
+Clause 5
+
+5 Supporting the assessment and development of behaviour support plans
+               Each participant's quality of life is maintained and improved by tailored,
+               evidence-informed behaviour support plans that are responsive to their needs.
+
+6 Supporting the implementation of a behaviour support plan
+               Each participant's behaviour support plan is implemented effectively to meet the
+               participant's behaviour support needs.
+
+7 Monitoring and reporting the use of regulated restrictive practices
+               Each participant that is subject to the use of a regulated restrictive practice by a
+               provider has the use of that practice reported to the Commissioner and reviewed
+               by the provider.
+
+8 Behaviour support plan monitoring and review
+               Each participant's behaviour support plan is regularly monitored and reviewed to
+               ensure that the plan:
+                 (a) reflects their needs, improves their quality of life and supports their
+                      progress toward positive change; and
+                 (b) if a regulated restrictive practice is used in relation to the participant--
+                      supports the reduction and elimination of the use of the regulated restrictive
+                      practice.
+
+9 Reportable incidents involving the use of a regulated restrictive practice
+               Each participant that is subject to an emergency or unauthorised use of a
+               regulated restrictive practice by a provider has the use of that practice reported to
+               the Commissioner and reviewed by the provider.
+
+10 Interim behaviour support plans
+               Each participant with an immediate need for a behaviour support plan receives
+               an interim behaviour support plan that minimises the risk to the participant and
+               others.
+
+46                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                   Module 3: Early childhood supports Schedule 5
+
+                                                                                                       Clause 1
+
+Schedule 5--Module 3: Early childhood supports
+
+Note: See section 20.
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) This Schedule applies to a person or entity who is applying to become a
+     registered NDIS provider in the same way as it applies to a registered NDIS
+     provider.
+
+Note:              See section 20 for the applicants and providers that must comply with the NDIS
+                   Practice Standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+2 Standards relating to early childhood supports
+
+               This Schedule specifies the NDIS Practice Standards relating to the provision of
+               early childhood supports.
+
+3 The child
+
+               Each participant can access supports that promote and respect their legal and
+               human rights, support their development of functional skills and enable them to
+               participate meaningfully and be included in everyday activities with their peers.
+
+4 The family
+
+               Each participant can access family-centred supports that are culturally inclusive
+               and responsive and that focus on their strengths.
+
+5 Inclusion
+
+               Each participant can access supports that engage their natural environments and
+               enable inclusive and meaningful participation in their family and community life.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  47
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 5 Module 3: Early childhood supports
+
+Clause 6
+
+6 Collaboration
+               Each participant receives coordinated supports from a collaborative team
+               comprising their family, the provider and other relevant providers, to facilitate
+               the participant's development and address the family's needs and priorities.
+
+7 Capacity building
+               Each participant receives supports that build the knowledge, skills and abilities
+               of their family and other persons to support the participant's learning and
+               development.
+
+8 Evidence-informed supports
+               Each participant receives evidence-informed supports from providers with
+               quality standards and validated practices.
+
+9 Outcome based approach
+               Each participant receives supports that are outcome-based and goal-focused.
+
+48                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                   Module 4: Specialised support coordination Schedule 6
+
+                                                                                                              Clause 1
+
+Schedule 6--Module 4: Specialised support
+         coordination
+
+Note: See section 20.
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) This Schedule applies to a person or entity who is applying to become a
+     registered NDIS provider in the same way as it applies to a registered NDIS
+     provider.
+
+Note:              See section 20 for the applicants and providers that must comply with the NDIS
+                   Practice Standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+2 Standards relating to specialised support coordination
+
+               This Schedule specifies the NDIS Practice Standards relating to the provision of
+               specialised support coordination.
+
+3 Specialised support coordination
+
+               Each participant receiving specialised support coordination receives tailored
+               support to implement, monitor and review their support plans and reduce the risk
+               and complexity of their situation.
+
+4 Management of supports
+
+               Each participant exercises meaningful choice and control over their supports and
+               maximises the value for money they receive from their supports.
+
+5 Conflict of interest
+
+               Each participant receives transparent, factual advice about their support options
+               and that promotes choice and control.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  49
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 7 Module 5: Specialist disability accommodation
+
+Clause 1
+
+Schedule 7--Module 5: Specialist disability
+         accommodation
+
+Note: See sections 20 and 27.
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) This Schedule applies to a person or entity who is applying to become a
+     registered NDIS provider in the same way as it applies to a registered NDIS
+     provider.
+
+Note:              See sections 20 and 27 for the applicants and providers that must comply with the
+                   NDIS Practice Standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+2 Standards relating to specialist disability accommodation
+
+               This Schedule specifies the NDIS Practice Standards relating to the provision of
+               specialist disability accommodation.
+
+3 Rights and responsibilities
+
+          (1) Each participant's access to specialist disability accommodation is consistent
+               with their legal and human rights.
+
+          (2) Each participant is supported to exercise informed choice and control.
+
+4 Conflict of interest
+
+               Each participant's right to exercise choice and control over other NDIS support
+               provision is not limited by the participant's choice of specialist disability
+               accommodation dwelling.
+
+50                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                    Module 5: Specialist disability accommodation
+
+                                                                                                       Clause 5
+5 Service agreements with participants
+
+               Each participant is supported to understand the terms and conditions that apply to
+               their specialist disability accommodation dwelling and the associated service or
+               tenancy agreements.
+
+6 Enrolment of specialist disability accommodation dwellings
+               Each participant's specialist disability accommodation dwelling meets the
+               requirements of the design type, category and other standards that were identified
+               through the dwelling enrolment process.
+
+7 Tenancy management
+               Each participant accessing a specialist disability accommodation dwelling is able
+               to exercise choice and control and is supported by effective tenancy
+               management.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  51
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 7A Module 5A: Assistance with supported independent living
+
+Clause 1
+
+Schedule 7A--Module 5A: Assistance with supported
+         independent living
+
+Note: See section 20.
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) This Schedule applies to a person or entity who is applying to become a
+     registered NDIS provider in the same way as it applies to a registered NDIS
+     provider.
+
+Note:              See section 20 for the applicants and providers that must comply with the NDIS
+                   Practice Standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+2 Standards relating to supported independent living supports
+
+               This Schedule specifies the NDIS Practice Standards relating to the provision of
+               supports to assist with supported independent living.
+
+3 Supported decision-making
+
+          (1) Each participant is supported to understand and make genuine decisions for
+               themselves.
+
+          (2) Each participant is provided with accessible information, and decision-making
+               support, about:
+                 (a) the supports and services delivered in their home; and
+                 (b) the supports and services delivered to enable them to access their
+                      community.
+
+4 Safeguarding
+
+          (1) Each participant is supported to live in a safe, respectful and supportive home
+               environment.
+
+52                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                     Module 5A: Assistance with supported independent living Schedule 7A
+
+                                                                                                       Clause 5
+
+          (2) Each participant is supported to have adequate safeguards in place to mitigate
+               harm at home and when participants access their community.
+
+5 Practice governance
+          (1) Each participant is supported in their home by workers that have the necessary
+               training, knowledge and skills to support them.
+          (2) Each participant is supported by workers that have the knowledge of, and
+               guidance to use, evidence-informed practices that:
+                 (a) are tailored to the participant's needs; and
+                 (b) enable the provision of safe and high quality supports.
+
+6 Agreements about tenancy, housing and support arrangements
+          (1) Each participant who has a tenancy agreement with the provider is supported to
+               understand how the terms and conditions of the tenancy agreement interact with
+               their service agreement with the provider.
+          (2) Each such participant is supported by effective tenancy management and is able
+               to exercise choice and control and their tenancy rights.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  53
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Schedule 8 Module 6: Verification
+
+Clause 1
+
+Schedule 8--Module 6: Verification
+
+Note: See section 20.
+
+1 Application of standards to applicants, providers, participants and others
+
+(1) This Schedule applies to a person or entity who is applying to become a
+     registered NDIS provider in the same way as it applies to a registered NDIS
+     provider.
+
+Note:              See section 20 for the applicants and providers that must comply with the NDIS
+                   Practice Standards specified in this Schedule.
+
+(2) This Schedule applies to the following in the same way as it applies to a
+     participant:
+
+       (a) a prospective participant;
+
+       (b) a person with disability receiving supports or services under the
+            arrangements set out in Chapter 2 of the Act from a person (other than the
+            Agency) referred to in paragraph (a) of the definition of NDIS provider in
+            section 9 of the Act;
+
+       (c) a person with disability receiving supports or services from a person
+            included in a class of persons prescribed for the purposes of
+            subparagraph (b)(ii) of the definition of NDIS provider in section 9 of the
+            Act.
+
+2 Standards relating to assessment by verification
+
+               This Schedule specifies the NDIS Practice Standards that providers of certain
+               classes of support that must be assessed using verification are required to comply
+               with.
+
+3 Risk management
+               Risks to participants, workers and the provider are identified and managed.
+
+4 Complaints management and resolution
+
+          (1) Each participant has knowledge of and access to the provider's complaints
+               management and resolution system.
+
+          (2) Complaints are welcomed, acknowledged, respected and well-managed.
+
+5 Incident management
+
+               Each participant is safeguarded by the provider's incident management system,
+               ensuring that incidents are acknowledged, responded to, well-managed and
+               learned from.
+
+54                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                                  Module 6: Verification Schedule 8
+
+                                                                                                       Clause 6
+6 Human resource management
+
+               Each participant's support needs are met by workers who are competent in
+               relation to their role, hold relevant qualifications and have relevant expertise and
+               experience to provide person-centred support.
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  55
+
+                   2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Endnotes
+
+Endnote 1--About the endnotes
+
+Endnotes
+
+Endnote 1--About the endnotes
+
+The endnotes provide information about this compilation and the compiled law.
+
+The following endnotes are included in every compilation:
+
+Endnote 1--About the endnotes
+Endnote 2--Abbreviation key
+Endnote 3--Legislation history
+Endnote 4--Amendment history
+
+Abbreviation key--Endnote 2
+The abbreviation key sets out abbreviations that may be used in the endnotes.
+
+Legislation history and amendment history--Endnotes 3 and 4
+Amending laws are annotated in the legislation history and amendment history.
+
+The legislation history in endnote 3 provides information about each law that has amended (or
+will amend) the compiled law. The information includes commencement details for amending
+laws and details of any application, saving or transitional provisions that are not included in
+this compilation.
+
+The amendment history in endnote 4 provides information about amendments at the provision
+(generally section or equivalent) level. It also includes information about any provision of the
+compiled law that has been repealed in accordance with a provision of the law.
+
+Misdescribed amendments
+A misdescribed amendment is an amendment that does not accurately describe how an
+amendment is to be made. If, despite the misdescription, the amendment can be given effect
+as intended, then the misdescribed amendment can be incorporated through an editorial
+change made under section 15V of the Legislation Act 2003.
+
+If a misdescribed amendment cannot be given effect as intended, the amendment is not
+incorporated and "(md not incorp)" is added to the amendment history.
+
+56                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+                                                                                                              Endnotes
+
+                                                      Endnote 2--Abbreviation key
+
+Endnote 2--Abbreviation key
+
+ad = added or inserted                          orig = original
+am = amended                                    p = page(s)
+amdt = amendment                                para = paragraph(s)/subparagraph(s)
+C[x] = Compilation No. x
+ch = Chapter(s)                                    /sub-subparagraph(s)
+cl = clause(s)
+cont. = continued                               pres = present
+def = definition(s)                             prev = previous
+Dict = Dictionary                               (prev...) = previously
+disallowed = disallowed by Parliament           pt = Part(s)
+div = Division(s)                               r = regulation(s)/Court rule(s)
+exp = expires/expired or ceases/ceased to have  reloc = relocated
+                                                renum = renumbered
+   effect                                       rep = repealed
+                                                rs = repealed and substituted
+gaz = gazette                                   s = section(s)/subsection(s)
+LA = Legislation Act 2003
+LIA = Legislative Instruments Act 2003             /rule(s)/subrule(s)/order(s)/suborder(s)
+(md not incorp) = misdescribed amendment
+                                                sch = Schedule(s)
+   cannot be given effect                       SLI = Select Legislative Instrument
+                                                SR = Statutory Rules
+mod = modified/modification                     sub ch = Sub-Chapter(s)
+No. = Number(s)                                 sub div = Subdivision(s)
+Ord = Ordinance                                 sub pt = Subpart(s)
+                                                underlining = whole or part not
+
+                                                   commenced or to be commenced
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules  57
+
+                                                2018
+
+Compilation No. 6                                                        Compilation date: 01/07/2026
+
+                   Authorised Version F2026C00527 registered 02/07/2026
+Endnotes
+
+Endnote 3--Legislation history
+Endnote 3--Legislation history
+
+Name                           Registration                Commencement                  Application, saving and
+                                                                                         transitional provisions
+National Disability Insurance  18 May 2018 (F2018L00631)   1 July 2018 (s 2(1) item 1)   --
+Scheme (Provider               4 Dec 2019 (F2019L01565)    1 Jan 2020 (s 2(1) item 1)    --
+Registration and Practice      26 June 2020 (F2020L00790)                                --
+Standards) Rules 2018          30 Nov 2020 (F2020L01512)   27 June 2020 (s 2(1) item 1)  --
+                               29 Oct 2021 (F2021L01480)   Sch 1 (items 8­13): 1 Dec     --
+National Disability Insurance  25 June 2026 (F2026L00793)  2020 (s 2(1) item 1)          --
+Scheme (Provider               24 June 2026 (F2026L00802)  15 Nov 2021 (s 2(1) item 1)
+Registration and Practice
+Standards) Amendment                                       26 June 2026 (s 2(1) item 1)
+(2019 Measures No. 1)
+Rules 2019                                                 1 July 2026 (s 2(1) item 1)
+
+National Disability Insurance
+Scheme Amendment
+(Provider Registration ­
+Extension of Exemption)
+Rules 2020
+
+National Disability Insurance
+Scheme Legislation
+Amendment (Transitioning
+Aged Care Providers)
+Rules 2020
+
+National Disability Insurance
+Scheme (Provider
+Registration and Practice
+Standards) Amendment
+(2021 Measures No. 1) Rules
+2021
+
+National Disability Insurance
+Scheme (Provider
+Registration and Practice
+Standards) Amendment
+(Consequential Amendment)
+Rules 2026
+
+National Disability Insurance
+Scheme (Provider
+Registration and Practice
+Standards) Amendment
+(Mandatory Registration and
+Other Matters) Rules 2026
+
+58                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                               Authorised Version F2026C00527 registered 02/07/2026
+                                                                                                                Endnotes
+
+                                                               Endnote 4--Amendment history
+
+Endnote 4--Amendment history
+
+Provision affected                                       How affected
+Part 1
+s 2....................................................  rep LA s 48D
+s 4....................................................  am F2019L01565; F2020L01512; F2021L01480; F2026L00802
+s 5....................................................  am F2019L01565
+s 5A.................................................    ad F2026L00802
+Part 2
+s 7....................................................  am F2020L00790; F2026L00802
+                                                         (4) and (5) rep end of 30 Nov 2020 (s 7(5))
+Part 3
+s 9....................................................  am F2019L01565
+s 10..................................................   am F2019L01565
+Part 4
+Part 4 heading .................................         rs F2021L01480
+s 13..................................................   rs F2019L01565
+s 13A...............................................     ad F2019L01565
+                                                         am F2026L00802
+s 13B ...............................................    ad F2019L01565
+                                                         am F2020L01512; F2021L01480
+s 13BA ............................................      ad F2026L00802
+s 13C ...............................................    ad F2021L01480
+s 13D...............................................     ad F2026L00802
+Part 5
+Division 1                                               am F2026L00793
+s 14
+Part 6                                                   am F2020L01512
+Division 1                                               am F2021L01480; F2026L00802
+s 19..................................................   rep F2019L01565
+s 20..................................................   rs F2021L01480
+s 21..................................................
+s 24..................................................   rs F2020L01512
+Division 2                                               am F2019L01565; F2020L01512
+Division 2 heading..........................             am F2019L01565
+s 25..................................................   am F2019L01565
+s 26..................................................   am F2019L01565
+s 27..................................................
+s 28..................................................
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules    59
+
+                                                         2018
+
+Compilation No. 6                                                                                              Compilation date: 01/07/2026
+
+                                                         Authorised Version F2026C00527 registered 02/07/2026
+Endnotes
+
+Endnote 4--Amendment history
+
+Provision affected                                       How affected
+s 29..................................................   am F2019L01565
+Division 3
+Division 3 .......................................       ad F2020L01512
+s 29A...............................................     ad F2020L01512
+s 29B ...............................................    ad F2020L01512
+Part 7
+Part 7...............................................    ad F2019L01565
+s 30..................................................   ad F2019L01565
+s 31..................................................   ad F2021L01480
+s 32..................................................   ad F2026L00802
+Schedule 1
+Schedule 1 heading .........................             am F2019L01565
+Part 1
+c 1 ...................................................  am F2019L01565; F2026L00802
+Part 3
+c 16A...............................................     ad F2021L01480
+Part 5
+c 26A...............................................     ad F2021L01480
+Schedule 2
+Schedule 2.......................................        am F2021L01480
+c 1 ...................................................  am F2021L01480; F2026L00802
+c 3 ...................................................  am F2021L01480
+c 4 ...................................................  am F2021L01480
+c 4A.................................................    ad F2021L01480
+c 5 ...................................................  am F2021L01480
+c 6 ...................................................  am F2021L01480
+c 7 ...................................................  am F2021L01480
+c 8 ...................................................  am F2021L01480
+c 9 ...................................................  am F2021L01480
+Schedule 3
+cl 1 ..................................................  am F2026L00802
+Schedule 4
+cl 1 ..................................................  am F2026L00802
+c 2 ...................................................  am F2021L01480
+Schedule 5
+cl 1 ..................................................  am F2026L00802
+Schedule 6
+cl 1 ..................................................  am F2026L00802
+Schedule 7
+
+60                 National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules
+Compilation No. 6                                                       2018
+
+                                                                                                               Compilation date: 01/07/2026
+
+                                                         Authorised Version F2026C00527 registered 02/07/2026
+                                                                                                              Endnotes
+                                                                               Endnote 4--Amendment history
+
+Provision affected                                       How affected
+cl 1 ..................................................  am F2026L00802
+Schedule 7A                                              ad F2026L00802
+Schedule 7A....................................          am F2026L00802
+Schedule 8
+cl 1 ..................................................
+
+                   National Disability Insurance Scheme (Provider Registration and Practice Standards) Rules   61
+
+                                                                         2018
+
+Compilation No. 6                                                                                              Compilation date: 01/07/2026
+
+                                                         Authorised Version F2026C00527 registered 02/07/2026
+

@@ -1,0 +1,660 @@
+                                         EXPLANATORY STATEMENT
+
+        Issued by the authority of the Commissioner of the NDIS Quality and Safeguards
+                                                     Commission
+
+                              National Disability Insurance Scheme Act 2013
+
+         National Disability Insurance Scheme (Approved Quality Auditors) Rules 2025
+
+Purpose
+
+The National Disability Insurance Scheme (Approved Quality Auditors) Rules 2025 (the
+Instrument) is made under sections 73U and 209 of the National Disability Insurance
+Scheme Act 2013 (the Act).
+
+This Instrument sets out conditions and requirements governing the approval of an approved
+quality auditor (AQA) under the National Disability Insurance Scheme (NDIS), with the
+purpose of promoting and safeguarding the quality and integrity of NDIS audits.
+
+In particular, this Instrument sets out the matters to which the Commissioner of the NDIS
+Quality and Safeguards Commission (Commissioner) must or may have regard to, in
+deciding whether to: give, or refuse to give, an approval as an AQA; whether or not to make
+an approval that is subject to conditions; and, whether or not to revoke an approval. This
+Instrument also sets out conditions that apply to the approval of all AQAs, which continue to
+apply until an approval is varied or revoked.
+
+Together with the National Disability Insurance Scheme (Approved Quality Auditors
+Scheme) Guidelines 2018, this Instrument establishes the Approved Quality Auditor Scheme
+(AQA Scheme). The AQA Scheme provides the framework for quality audits under the NDIS
+and sets out requirements on AQAs when undertaking quality audits of prospective and
+current registered NDIS providers.
+
+Background
+
+The NDIS Quality and Safeguards Commission (Commission) oversees a single national
+registration and regulatory system for NDIS providers of supports and services to NDIS
+participants which sets a consistent approach to quality. An important aspect of NDIS
+provider registration is the quality audits of prospective and registered NDIS providers
+against all applicable standards and requirements prescribed by the NDIS Practice
+Standards. These quality audits help to protect the rights and safety of people with disability
+by providing independent assessments that help ensure that only providers who meet
+required standards are registered as registered NDIS providers.
+
+The Commissioner's functions include the approval of AQAs and oversight of the quality
+audits they undertake under the Act. AQAs perform critical quality audit activities and make
+recommendations and findings to:
+
+    · satisfy the requirement in section 73E(1)(c) of the Act in determining an application
+         for registration;
+
+    · inform decisions about the ongoing registration of a registered NDIS provider, as well
+         as their compliance with the NDIS Practice Standards; and
+
+                                                                                                                                       1
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+    · inform the NDIS Commission of quality and safeguarding risks in the NDIS market,
+         including the capability of NDIS providers and their workforce to deliver quality and
+         safe NDIS supports and services to people with disability.
+
+The National Disability Insurance Scheme Amendment (Getting the NDIS Back of Track No.
+1) Act 2024 introduced key quality and safeguarding reforms including new powers to make
+NDIS rules in relation to approved quality auditors to enhance participant protection and the
+quality and integrity of auditing within the NDIS.
+
+The strengthening of the quality and integrity of auditing within the NDIS is consistent with
+the findings and recommendations made by Independent Review into the National Disability
+Insurance Scheme in relation to risk-based registration of NDIS providers.
+
+This Instrument supports the effective operation of the NDIS by setting out the requirements
+governing the approval of AQAs under the NDIS.
+
+Section 209 of the Act provides that the Minister may, by legislative instrument, make rules
+(NDIS rules) prescribing matters required or permitted by this Act to be prescribed or which
+are necessary or convenient to be prescribed in order to carry out or give effect to the Act.
+
+Subsection 201A(1) of the Act provides that the Minister may delegate to the Commissioner
+the Minister's powers under section 209 of the Act to make NDIS rules, including NDIS rules
+made for the purposes of subsections 73U(4A) and (9A) of the Act. The Minister has
+delegated this power to the Commissioner.
+
+Subsection 73U(1) of the Act provides that the Commissioner may approve a person or body
+to become an AQA in the NDIS.
+
+Subsection 73U(4A) of the Act provides that NDIS rules may specify conditions of the
+approval for a person or body to become an approved quality auditor.
+
+Subsection 73U(9A) of the Act provides that NDIS rules prescribe requirements with which
+the Commissioner must comply, criteria that the Commissioner is to apply, or matters to
+which the Commissioner may, must or must not have regard to, in deciding whether to give,
+or refuse to give, an approval as an AQA, whether or not to make an approval that is subject
+to conditions, and, whether or not to vary or revoke an approval.
+
+In making this Instrument, the Commissioner has had regard to the objects and principles of
+the Act and the need to ensure the financial sustainability of the NDIS, as required by
+subsection 209(3) of the Act.
+
+The Instrument is a legislative instrument for the purposes of the Legislation Act 2003 and is
+an NDIS rule for the purposes of section 209 of the Act.
+
+Commencement
+
+The Instrument commences the day after it is registered on the Federal Register of
+Legislation.
+
+                                                                                                                                       2
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+Consultation
+
+Section 209 of the Act provides that NDIS rules fall into four categories. Subsection 209(8) of
+the Act provides that certain categories of NDIS rules are `Category D' rules. Category D
+rules include rules made for the purposes of subsections 73U(4A) and (9A) of the Act.
+
+Under subsection 209(7) of the Act, Category D rules cannot be made under subsection
+209(1) unless each host jurisdiction (states and territories) has been consulted in relation to
+the making of those rules. In compliance with this requirement, prior to making the
+Instrument the Commissioner (as the Minister's delegate) consulted all states and territories
+in relation to the making of this instrument. All states and territories have had the opportunity
+to review this Instrument and provide comments and feedback.
+
+In making the Instrument, the Commissioner has also undertaken a targeted consultation
+process with AQAs and the Joint Accreditation System of Australia and New Zealand
+(JASANZ), the body responsible for the accreditation of a certification body against the AQA
+Scheme.
+
+Close consultation was also undertaken with the Department of Health, Disability and
+Ageing.
+
+Impact Analysis Statement
+
+The Office of Impact Assessment has advised that the proposed amendments do not require
+detailed Impact Analysis (OIA ID: OIA25-09693).
+
+Documents incorporated by reference
+
+Section 4 of the Instrument incorporates by reference the National Disability Insurance
+Scheme (Approved Quality Auditors Scheme) Guidelines 2018, as existing from time to time.
+The National Disability Insurance Scheme (Approved Quality Auditors Scheme) Guidelines
+2018 are freely available on the Federal Register of Legislation
+(https://www.legislation.gov.au/F2018N00114).
+
+Subsection 209(2) of the Act provides authority to incorporate the National Disability
+Insurance Scheme (Approved Quality Auditors Scheme) Guidelines 2018, as existing from
+time to time, despite subsection 14(2) of the Legislation Act 2003.
+
+Explanation of the provisions
+
+Part 1 ­ Preliminary
+
+Section 1 - Name
+
+Section 1 provides that the Instrument is titled the National Disability Insurance Scheme
+(Approved Quality Auditors) Rules 2025.
+
+Section 2 ­ Commencement
+
+Section 2 provides that the whole of the Instrument commences on the day after the
+instrument is registered.
+
+                                                                                                                                       3
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+Section 3 ­ Authority
+
+Section 3 provides that the Instrument is made under the National Disability Insurance
+Scheme Act 2013.
+
+Section 4 ­ Definitions
+
+Section 4 provides the definitions for terms used in the Instrument.
+
+A legislative note provides a number of expressions used in the instrument are defined in
+section 9 of the NDIS Act, including:
+
+    · "approved quality auditor";
+    · "banning order";
+    · "Commission";
+    · "Commissioner";
+    · "key personnel".
+
+Section 4 also provides that in the Instrument, a reference to the following terms, have the
+following meanings:
+
+Act means the National Disability Insurance Scheme Act 2013.
+
+applicant means a person or body who has made a request to be approved as an AQA
+under section 73U of the Act.
+
+AQA means a person or body approved by the Commissioner as under section 73U.
+
+AQA Code of Conduct means the Code of Conduct contained in Annex A of the AQA
+Guidelines.
+
+AQA Guidelines means the National Disability Insurance Scheme (Approved Quality
+Auditors Scheme) Guidelines 2018 (as existing from time to time).
+
+auditor means a person employed, contracted or otherwise engaged by the AQA to conduct
+an audit. An auditor includes an auditor-in-training and an audit team leader.
+
+certification body means a body that has received JASANZ accreditation towards
+becoming an AQA.
+
+JASANZ means the Joint Accreditation System of Australia and New Zealand being the
+body responsible for the accreditation of a certification body.
+
+JASANZ accreditation has the same meaning as in the AQA Guidelines (as existing from
+time to time).
+
+Part 2 ­ Matters to which the Commissioner must or may have regard
+
+Section 5 ­ Purpose of this Part
+
+Section 5 provides that Part 2 of this Instrument is made for the purposes of subsection
+73U(9A) of the Act. Part 2 of the Instrument sets out the matters to which the Commissioner
+must or may have regard in deciding whether to give, or refuse to give, an approval under
+
+                                                                                                                                       4
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+subsection 73U(1) of the Act; whether or not to make an approval given under subsection
+73U(1) of the Act subject to conditions; and whether or not to revoke an approval given
+under subsection 73U(1) of the Act.
+
+These matters are consistent with the matters that were previously embedded in the AQA
+Guidelines.
+
+The matters listed in this Part provide guidance on the expectations for AQAs by setting out
+factors that must or may be considered by the Commissioner when making decisions on the
+approval and revocation of approval as an AQA.
+
+Section 6 ­ Matters to which the Commissioner must have regard when giving or refusing an
+approval as an AQA
+
+Section 6 sets out the matters to which the Commissioner must have regard to in deciding
+whether to give, or refuse to give, an approval under subsection 73U(1) of the Act.
+
+Subsection 6(1) provides that this section is made for the purposes of paragraph 73U(9A)(a)
+of the Act. Paragraph 73U(9A)(a) of the Act provides that NDIS rules may prescribe
+requirements with which the Commissioner must comply, criteria that the Commissioner is to
+apply, or matters to which the Commissioner may, must or must not have regard, in deciding
+whether to give, or refuse to give, an approval under subsection 73U(1) of the Act.
+
+Subsection 6(2) sets out the matters the Commissioner must have regard to when deciding
+whether to give, or refuse to give, an approval under subsection 73U(1) of the Act.
+
+Paragraph 6(2)(a) provides that the Commissioner must have regard to whether the
+applicant holds, or has held, JASANZ accreditation. This will allow the Commissioner to take
+into account the applicant's capacity to meet the required professional and operational
+standards for auditing including whether the applicant's accreditation has previously been
+revoked.
+
+Paragraph 6(2)(b) provides that the Commissioner must have regard to whether the
+applicant has previously been approved as an AQA under subsection 73U(1) of the Act. This
+will allow the Commissioner to take into account an applicant's previous behaviour and
+performance as an AQA.
+
+Paragraph 6(2)(c) provides that the Commissioner must have regard to whether a banning
+order has ever been in force in relation to the applicant or any member of the applicant's key
+personnel. This refers only to banning orders made under section 73ZN of the Act. Having
+regard to whether a banning order has ever been in force will allow the Commissioner to
+take into account whether any integrity risks are present that could affect quality and integrity
+of auditing.
+
+Paragraph 6(2)(d) provides that the Commissioner must have regard to the applicant's
+experience as a certification body. This will allow the Commissioner to take into account an
+applicant's previous experience performance in conducting audits.
+
+Paragraph 6(2)(e) provides that the Commissioner must have regard to the applicant's
+understanding of the NDIS. Auditing in the NDIS requires an understanding of NDIS-specific
+supports and services and how the NDIS Practice Standards apply. Having regard to the
+
+                                                                                                                                       5
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+applicant's understanding of the NDIS, including knowledge of the operation of the NDIS
+Practice Standards, will allow the Commissioner to take into account whether the applicant
+will likely be able to effectively undertake audits in the NDIS context.
+
+Paragraph 6(2)(f) provides that the Commissioner must have regard to the applicant's ability
+to undertake participant centred audit practice. Auditing in the NDIS involves more than an
+assessment of technical or paper-based compliance with the NDIS Practice Standards.
+Auditing in the NDIS requires undertaking participant centred audit practice including by
+engaging with participants and assessing how provider practices impact participants'
+autonomy, safety and wellbeing. Having regard to the applicant's ability to undertake
+participant centred audit practice will allow the Commissioner to take into account whether
+the applicant is able to undertake audits which prioritise participant outcomes, safety and
+experience.
+
+Further information on participant centred practice is available in the Principles for Audit
+Reports delivered following audits undertaken in accordance with the National Disability
+Insurance Scheme (Approved Quality Auditor Scheme) Guidelines 2018 (Commission,
+2022), which provides practical examples of how this can be demonstrated in audit reports.
+The guidance is available on the Commission website (https://www.ndiscommission.gov.au).
+
+Paragraph 6(2)(g) provides that the Commissioner must have regard to any real or
+perceived conflict of interest, including any mitigation strategies. This will allow the
+Commissioner to take into account whether there are any conflicts of interest that may
+impact the integrity and independence of audits and whether any identified conflicts of
+interest will be appropriately managed.
+
+Requiring the Commissioner to have regard to these matters supports the objective of
+ensuring that only applicants that are likely to conduct audits to a high standard of quality
+and integrity can be approved as an AQA. These matters are not exhaustive, and the
+Commissioner may have regard to any other matters considered relevant.
+
+Section 7 ­ Matters to which the Commissioner may have regard when making an approval
+subject to conditions
+
+Section 7 sets out the matters to which the Commissioner may have regard in deciding
+whether to make an approval under subsection 73U(1) of the Act subject to conditions.
+
+Subsection 7(1) provides that this section is made for the purposes of paragraph 73U(9A)(b)
+of the Act. Paragraph 73U(9A)(b) of the Act provides that NDIS rules may prescribe
+requirements with which the Commissioner must comply, criteria that the Commissioner is to
+apply, or matters to which the Commissioner may, must or must not have regard, in deciding
+whether or not to make an approval given under subsection 73U(1) of the Act subject to
+conditions.
+
+Subsection 7(2) sets out the matters the Commissioner may have regard to when deciding
+whether or not to make an approval given under subsection 73U(1) of the Act subject to
+conditions.
+
+Paragraph 7(2)(a) provides that the Commissioner may have regard to the accreditation
+status of the applicant with JASANZ. This will allow the Commissioner to consider whether
+
+                                                                                                                                       6
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+there are any gaps in accreditation status that could be addressed through appropriate
+conditions.
+
+Paragraph 7(2)(b) provides that the Commissioner may have regard to any non-compliance
+with the AQA Guidelines, including the AQA Code of Conduct. This will allow the
+Commissioner to consider whether there is a history of non-compliance that may require
+conditional approval.
+
+Requiring the Commissioner to have regard to these matters protects the integrity and
+quality of auditing in the NDIS and allows the Commissioner to tailor approval conditions to
+address specific concerns. These matters are not exhaustive, and the Commissioner may
+have regard to any other matters considered relevant.
+
+Section 8 ­ Matters to which the Commissioner may have regard when revoking an approval
+as an AQA
+
+Section 8 sets out the matters to which the Commissioner may have regard in deciding
+whether to revoke an approval given under subsection 73U(1) of the Act.
+
+Subsection 8(1) provides that this section is made for the purposes of paragraph 73U(9A)(c)
+of the Act. Paragraph 73U(9A)(c) of the Act provides that NDIS rules may prescribe
+requirements with which the Commissioner must comply, criteria that the Commissioner is to
+apply, or matters to which the Commissioner may, must or must not have regard, in deciding
+whether to vary or revoke an approval given under subsection 73U(1) of the Act.
+
+Subsection 8(2) sets out the matters the Commissioner may have regard to when deciding
+whether to revoke an approval given under subsection 73U(1) of the Act.
+
+Paragraph 8(2)(a) provides that the Commissioner may have regard to any non-compliance
+with the AQA Guidelines, including the AQA Code of Conduct. The AQA Guidelines and
+AQA Code of Conduct set out the expectations and requirements on AQAs when
+undertaking audits in the NDIS. Having regard to any non-compliance with the AQA
+Guidelines and AQA Code of Conduct will allow the Commissioner to assess whether
+revocation of approval is necessary to help safeguard the quality and integrity of audits in the
+NDIS.
+
+Paragraph 8(2)(b) provides that the Commissioner may have regard to the AQA's conduct,
+including compliance with relevant policies and standards. Having regard to the AQA's
+conduct including any non-compliance with relevant policies and standards will allow the
+Commissioner to assess whether revocation of approval is necessary to help safeguard the
+quality and integrity of audits in the NDIS.
+
+Paragraph 8(2)(c) provides that the Commissioner may have regard to any real or perceived
+conflict of interest in respect of undertaking NDIS audits for the AQA or the AQA's key
+personnel. Having regard to whether there are any conflicts of interest that may impact the
+integrity and independence of audits will allow the Commissioner to assess whether
+revocation of approval is necessary to help safeguard the quality and integrity of audits in the
+NDIS.
+
+Paragraph 8(2)(d) provides that the Commissioner may have regard to any information from
+JASANZ in respect of the AQA's performance. The NDIS Commission engages JASANZ to
+
+                                                                                                                                       7
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+manage and administer the AQA Scheme. JASANZ conduct accreditation of bodies seeking
+to become an AQA and continue to monitor their compliance throughout their accreditation
+term. Having regard to any information from JASANZ on the AQA's performance will allow
+the Commissioner to assess whether revocation of approval is necessary to help safeguard
+the quality and integrity of audits in the NDIS.
+
+Paragraph 8(2)(e) provides that the Commissioner may have regard to Commission
+assessments of the quality of audits and reports undertaken by the AQA. Having regard to
+Commission assessments of the quality of audits and reports undertaken by the AQA will
+allow the Commissioner to assess whether revocation of approval is necessary to help
+safeguard the quality and integrity of audits in the NDIS.
+
+Paragraph 8(2)(f) provides that the Commissioner may have regard to whether the AQA's
+JASANZ accreditation has been suspended or revoked. JASANZ accreditation is evidence
+of the AQA's capacity to meet the required professional and operational standards for
+auditing. Having regard to whether JASANZ accreditation has been suspended or revoked
+will allow the Commissioner to assess whether revocation of approval is necessary to help
+safeguard the quality and integrity of audits in the NDIS.
+
+Paragraph 8(2)(g) provides that the Commissioner may have regard to whether a banning
+order has ever been in force in relation to the AQA or any member of the AQA's key
+personnel. Having regard to whether a banning order has ever been in force in relation to the
+AQA or any member of the AQA's key personnel will allow the Commissioner to assess
+whether revocation of approval is necessary to help safeguard the quality and integrity of
+audits in the NDIS.
+
+Paragraph 8(2)(h) provides that the Commissioner may have regard to the AQA's
+understanding of the NDIS. Having regard to the AQA's understanding of the NDIS,
+including knowledge of the NDIS Practice Standards, will allow the Commissioner to assess
+whether revocation of approval is necessary to help safeguard the quality and integrity of
+audits in the NDIS as the AQA may not be able to effectively undertake audits in the NDIS
+context.
+
+Paragraph 8(2)(i) provides that the Commissioner may have regard to the AQA's ability to
+undertake participant centred audit practice. Having regard to the applicant's ability to
+undertake participant centred audit practice will allow the Commissioner to assess whether
+revocation of approval is necessary to help safeguard the quality and integrity of audits in the
+NDIS as the AQA may not be able to effectively undertake audits which prioritise participant
+outcomes, safety and experience.
+
+Requiring the Commissioner to have regard to these matters helps ensure that the
+Commissioner is able to revoke AQAs that compromise the quality and integrity of audits in
+the NDIS. These matters are not exhaustive, and the Commissioner may have regard to any
+other matters considered relevant.
+
+Part 3 ­ Conditions of approval as an AQA
+
+Section 9 ­ Purpose of this Part
+
+                                                                                                                                       8
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+Section 9 provides that Part 3 of this Instrument is made for the purposes of subsection
+73U(4A) of the Act. Part 3 of the Instrument sets out conditions that apply to the approval of
+all AQAs.
+Section 10 ­ Condition to prevent employment or engagement of a person against whom a
+banning order has been made
+Section 10 provides that the approval of an AQA is subject to the condition that the AQA
+must not employ or engage as a member of an audit team, or continue to employ or engage
+as a member of an audit team, a person against whom a banning order has been made; or
+have, or continue to have, such a person as a member of the AQA's key personnel. For
+clarity, this includes any banning order that has been made under section 73ZN of the Act,
+whether the banning order is still inforce or has expired.
+Section 73U(5A) of the Act specifically authorises conditions that restrict the employment or
+engagement of a person, against whom a banning order has been made, by an AQA and
+require the AQA to not have, or continue to have, a person against whom a banning order
+has been made as member of their key personnel.
+Imposing a condition requiring an AQA not to employ or engage a person against whom a
+banning order has been made helps prevent banned persons from being able to move from
+the NDIS provider sector of the NDIS market system to the NDIS auditing sector and
+continue to engage in activities that had them banned from the provider market.
+Section 11 ­ Condition to ensure compliance with the Code of Conduct for AQAs
+Section 11 provides that the approval of an AQA must ensure that they and all of their
+auditors and personnel comply with the AQA Code of Conduct.
+Imposing compliance with the AQA Code of Conduct helps safeguard the quality and
+integrity of audits in the NDIS. The AQA Code of Conduct sets out core requirements
+relating to expected conduct and behaviour. Compliance with the AQA Code of Conduct is
+also required under the AQA Guidelines.
+
+                                                                                                                                       9
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+                     STATEMENT OF COMPATIBILITY WITH HUMAN RIGHTS
+
+ Prepared in accordance with Part 3 of the Human Rights (Parliamentary Scrutiny) Act 2011
+
+   NATIONAL DISABILITY INSURANCE SCHEME (APPROVED QUALITY AUDITORS)
+                                                     RULES 2025
+
+   The National Disability Insurance Scheme (Approved Quality Auditors) Rules 2025 (the
+Instrument) is compatible with the human rights and freedoms recognised or declared in the
+international instruments listed in section 3 of the Human Rights (Parliamentary Scrutiny) Act
+
+                                                          2011.
+
+Overview of the Instrument
+
+The Instrument sets out conditions and requirements governing the approval of an approved
+quality auditor (AQA) under the National Disability Insurance Scheme (NDIS), with the
+purpose of promoting and safeguarding the quality and integrity of NDIS audits.
+
+The Instrument, together with the National Disability Insurance Scheme (Approved Quality
+Auditors Scheme) Guidelines 2018 (AQA Guidelines), establishes the Approved Quality
+Auditor Scheme (AQA Scheme). The AQA Scheme provides the framework for quality audits
+under the NDIS and sets out requirements on AQAs when undertaking quality audits of
+prospective and current registered NDIS providers.
+
+The functions of the Commissioner of the NDIS Quality and Safeguards Commission
+(Commissioner) include the approval of AQAs and oversight of the quality audits they
+undertake under the National Disability Insurance Scheme 2013 (the Act). Quality audits
+help to protect the rights and safety of people with disability by providing independent
+assessments that help ensure that only providers who meet required NDIS Practice
+Standards are registered as registered NDIS providers.
+
+AQAs perform critical quality audit activities and make recommendations and findings to:
+
+    · satisfy the requirement in paragraph 73E(1)(c) of the Act in determining an
+         application for registration;
+
+    · inform decisions about the ongoing registration of a registered NDIS provider, as well
+         as their compliance with the NDIS Practice Standards; and
+
+    · inform the NDIS Commission of quality and safeguarding risks in the NDIS market,
+         including the capability of NDIS providers and their workforce to deliver quality and
+         safe NDIS supports and services to people with disability.
+
+The Instrument supports the effective operation of the NDIS by setting out the requirements
+governing the approval of AQAs under the NDIS to enhance participant protection and
+safeguard the quality and integrity of auditing within the NDIS.
+
+Human rights implications
+
+This Instrument engages the following human rights under international human rights law:
+
+                                                                                                                                     10
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+    · Right to protection from exploitation, violence and abuse ­ article 20(2) of the
+         International Covenant on Civil and Political Rights (ICCPR) and article 16(1) of the
+         Convention on the Rights of Persons with Disabilities (CRPD);
+
+    · Right to the highest attainable standard of health ­ article 12 of the International
+         Covenant on Economic and Social and Cultural Rights (ICESCR) and article 25 of
+         the CRPD;
+
+    · Right to an adequate standard of living ­ article 11 of the ICESCR and article 28 of
+         the CRPD;
+
+    · Right to social security ­ article 9 of the ICESCR and article 28 of the CRPD; and
+    · Right to work ­ article 6 of ICESCR.
+
+The Instrument seeks to protect and promote the rights of persons with disability by
+strengthening the framework for approval of AQAs to enhance the quality and integrity of
+NDIS audits. This will help ensure that only providers who meet required standards are
+registered as registered NDIS providers which support people with disability to access
+quality supports and services that support them to enjoy the highest attainable standard of
+health, enjoy an adequate standard of living and to live free from exploitation, violence and
+abuse.
+
+The right to protection from exploitation, violence and abuse
+
+Article 20(2) of the ICCPR and article 16(1) of the CRPD recognise the right to protection
+from exploitation, violence and abuse. The CRPD also requires that positive measures be
+taken to prevent exploitation, violence and abuse of persons with disabilities (article 16(2))
+and that all facilities and programmes designed to serve persons with disability are
+effectively monitored by independent authorities in order to prevent the occurrence of all
+forms of exploitation, violence and abuse (article 16(3)).
+
+Quality audits against the NDIS Practice Standards are an important mechanism for
+providing protections for people with disability from the risk of exploitation, violence and
+abuse in the course of NDIS support provision. AQAs perform a critical quality assurance
+role by assessing whether NDIS providers meet quality expectations for the provision of
+supports and services in the NDIS, including compliance with obligations relating to the
+rights of people with disability.
+
+The Instrument promotes the right to protection from exploitation, violence and abuse of
+persons with disabilities as it sets out the requirements governing approval as an AQA to
+ensure that only appropriately qualified and skilled individuals who meet integrity
+requirements are authorised to conduct quality audits in the NDIS. This enhances participant
+protection and the quality and integrity of auditing within the NDIS.
+
+The right to health and right to an adequate standard of living
+
+Articles 11 and 12 of the ICESCR and articles 25 and 28 of the CRPD recognise the rights of
+persons with disabilities to an adequate standard of living and enjoyment of the highest
+attainable standard of health.
+
+The Instrument engages the right to health and right to an adequate standard of living as the
+suitability of AQAs directly affect the quality and safety of NDIS supports and services, which
+in turn impacts on the health and safety of NDIS participants. AQAs play a key role in
+
+                                                                                                                                     11
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+upholding the rights to health and an adequate standard of living by assessing whether NDIS
+providers comply the NDIS Practice Standards, which cover participants rights.
+
+The Instrument helps to promote the right to health and the right to an adequate standard of
+living through strengthened requirements that AQAs must achieve and adhere to in order
+to become and remain an AQA. Ensuring that quality audits in the NDIS are conducted by
+qualified and skilled AQAs will help ensure that unsafe or substandard practices, which may
+compromise NDIS participants' health and safety, do not go undetected.
+
+The right to social security
+
+Article 9 of the ICESCR recognises the right to social security and social insurance. Article
+28 of the CRPD recognises the right of persons with disability to an adequate standard of
+living for themselves and their families. Article 28(2) seeks to ensure equal access by
+persons with disabilities to appropriate and affordable services, devices and other assistance
+for disability-related needs.
+
+The Instrument engages the right to social security as it supports the effective operation and
+integrity of the NDIS. By strengthening the framework for approval of AQAs, this Instrument
+ensures that only individuals meeting the strengthened integrity requirements are approved
+as an AQA.
+
+The Instrument promotes the right to social security by ensuring that audits are only
+conducted by qualified and skilled AQAs, which in turn ensures that only providers who meet
+required standards become registered NDIS providers and deliver supports and services in
+the NDIS. This protects NDIS participants' ongoing access to the NDIS and promotes the
+effective administration of the NDIS.
+
+The right to work
+
+Article 6 of ICESCR recognises the right of every person to the opportunity to gain a living by
+work which they freely choose or accept. This right also applies to workers who work with
+people with disability, including NDIS participants.
+
+The right to work is engaged by section 10 of the Instrument which provides that the
+approval of an AQA is subject to the condition that the AQA must not employ or engage as a
+member of an audit team, or continue to employ or engage as a member of an audit team, a
+person against whom a banning order has been made; or have, or continue to have, such a
+person as a member of the AQA's key personnel.
+
+Section 73U(5A) of the Act specifically authorises conditions that restrict the employment or
+engagement of a person, against whom a banning order has been made, by an AQA and
+require the AQA to not have, or continue to have, a person against whom a banning order
+has been made as member of their key personnel.
+
+The paramount objective of this instrument is to protect people with disability from
+experiencing harm arising from unsafe supports or services under the NDIS. Consistent with
+this objective, imposing a condition requiring an AQA not to employ or engage a person
+against whom a banning order has been made helps prevent banned persons from being
+able to move from the NDIS provider sector of the NDIS market system to the NDIS auditing
+sector and continue to engage in activities that had them banned from the provider market.
+
+                                                                                                                                     12
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+The instrument supports a proportionate approach to safeguards that does not
+unduly prevent a person from choosing to work in the NDIS market but ensures the risk of
+harm to people with disability is minimised by excluding individuals from working in NDIS
+audits whose behavioural history indicates they pose a risk to NDIS services and supports.
+To the extent that this condition on approval of an AQA limits a person's right to work, the
+limitation is reasonable, necessary and proportionate to the legitimate objective of protecting
+the safety, rights and wellbeing of people with disability. NDIS audits play a central role in
+maintaining the quality and integrity of NDIS supports and services. Ensuring that audits are
+only conducted by qualified, skilled and ethical individuals is critical to safeguarding NDIS
+participants and maintaining public confidence in the NDIS.
+Conclusion
+The National Disability Insurance Scheme (Approved Quality Auditors) Rules 2025 is
+compatible with human rights because it advances the protection of the rights of people with
+disability in Australia consistent with the CRPD. The Instrument forms part of an overall
+legislative scheme designed to protect and promote the human rights of people with
+disability by ensuring quality audits of NDIS providers are conducted by AQAs who are
+suitably qualified and skilled. To the extent the Instrument impinges on the right to work, the
+impositions are reasonable, necessary and proportionate to achieving the protection of the
+rights and safety of people with disability and confidence in the quality and integrity of
+auditing in the NDIS.
+
+   Louise Glanville, Commissioner of the NDIS Quality and Safeguards Commission
+
+                                                                                                                                     13
+
+                                   Authorised Version Explanatory Statement registered 14/11/2025 to F2025L01383
+
