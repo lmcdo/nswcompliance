@@ -23,6 +23,7 @@ from services.shadow_detector import (
     _adg_compliant,
     _worst_case,
 )
+from services.shadow_model import Scenario
 
 
 # ---------------------------------------------------------------------------
@@ -214,8 +215,11 @@ def test_build_scenario_list_null_shadow_map_value_does_not_crash(monkeypatch):
     import services.shadow_detector as sd
 
     # Minimal SHADOW_SCENARIOS stub: one scenario
+    # Scenario NamedTuple: (key, month, day, local_hour, local_minute,
+    # description). No hour_utc and no direction_deg — the hand-computed UTC
+    # offset and the stored bearing constant were the shadow calibration defect.
     STUB_SCENARIOS = [
-        ("jun21_12pm", 6, 21, 2, "ADG noon Jun 21", "2025-06-21", "12:00", 0.0),
+        Scenario("jun21_12pm", 6, 21, 12, 0, "ADG noon Jun 21"),
     ]
     monkeypatch.setattr(sd, "SHADOW_SCENARIOS", STUB_SCENARIOS)
     monkeypatch.setattr(sd, "shadow_reach_m", lambda *a, **kw: 0.0)
@@ -243,8 +247,11 @@ def test_build_scenario_list_errored_scenario_is_typed_unavailable(monkeypatch):
     numeric no-shadow claim. FAILS on the pre-change code."""
     import services.shadow_detector as sd
 
+    # Scenario NamedTuple: (key, month, day, local_hour, local_minute,
+    # description). No hour_utc and no direction_deg — the hand-computed UTC
+    # offset and the stored bearing constant were the shadow calibration defect.
     STUB_SCENARIOS = [
-        ("jun21_12pm", 6, 21, 2, "ADG noon Jun 21", "2025-06-21", "12:00", 0.0),
+        Scenario("jun21_12pm", 6, 21, 12, 0, "ADG noon Jun 21"),
     ]
     monkeypatch.setattr(sd, "SHADOW_SCENARIOS", STUB_SCENARIOS)
 
@@ -265,8 +272,11 @@ def test_build_scenario_list_errored_scenario_is_typed_unavailable(monkeypatch):
 def test_build_scenario_list_computed_scenario_is_typed_computed(monkeypatch):
     import services.shadow_detector as sd
 
+    # Scenario NamedTuple: (key, month, day, local_hour, local_minute,
+    # description). No hour_utc and no direction_deg — the hand-computed UTC
+    # offset and the stored bearing constant were the shadow calibration defect.
     STUB_SCENARIOS = [
-        ("jun21_12pm", 6, 21, 2, "ADG noon Jun 21", "2025-06-21", "12:00", 0.0),
+        Scenario("jun21_12pm", 6, 21, 12, 0, "ADG noon Jun 21"),
     ]
     monkeypatch.setattr(sd, "SHADOW_SCENARIOS", STUB_SCENARIOS)
     monkeypatch.setattr(sd, "shadow_reach_m", lambda *a, **kw: 14.0)

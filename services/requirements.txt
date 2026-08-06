@@ -14,6 +14,19 @@ supabase==2.31.0
 geopandas==1.1.4
 pybdshadow==0.3.5
 shapely==2.1.2
+# suncalc: solar position for services/solar_position.py. Already present in
+# this container as a pybdshadow dependency — pybdshadow calls it to derive the
+# sun position for the shadow polygon (pybdshadow/pybdshadow.py:34,129). Now
+# declared explicitly because solar_position.py imports it DIRECTLY to compute
+# the per-address bearing, and a transitive pin is not a contract: a pybdshadow
+# release that swapped solar libraries would remove it without warning.
+# Using the same library as the polygon is deliberate — it is what stops the
+# reported Direction and the drawn shadow from disagreeing.
+suncalc==0.1.3
+# NOTE: pvlib is NOT here and must not be added. It is the test-only reference
+# in tests/test_shadow_calibration.py (requirements-test.txt). It was named as
+# our method on three customer surfaces while never being imported; #878 and
+# migration 064 removed those claims.
 
 # sentinel2.py (Shadow, Threat Radar)
 numpy==2.5.1

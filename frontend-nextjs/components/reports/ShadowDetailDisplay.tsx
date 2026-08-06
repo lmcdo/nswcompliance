@@ -3,6 +3,7 @@
 // scenario table can be render-tested; no second shadow card is being created —
 // page.tsx now imports this component in the same render slot.
 import { cn } from '@/lib/utils';
+import { surfaceChangeState } from '@/lib/shadow-surface-change';
 
 export interface ShadowScenarioRow {
   date_label?: string;
@@ -22,6 +23,7 @@ export interface ShadowData {
   confidence?: string | null;
   construction_change_detected?: boolean | null;
   construction_change_note?: string | null;
+  construction_change_score?: number | null;
 }
 
 // Clean a worst-case scenario label for display. The backend labels already
@@ -120,19 +122,20 @@ export function ShadowDisplay({ data }: { data: ShadowData }) {
           </table>
         </div>
       )}
-      {data.construction_change_note ? (
-        // A note means the Sentinel-2 change check did not produce a clean
-        // reading (e.g. a timeout) — surface the note, never a false "no change".
+      {surfaceChangeState(data) === 'not_assessed' ? (
+        // The check produced no reading — a note (timeout, cloud cover), a null
+        // score, or the legacy no-data 0.0. Say so; never a false "no change".
         <div className="text-[11px] text-slate-400 leading-snug">
-          Construction change check: {data.construction_change_note}
+          Surface-change check: not assessed
+          {data.construction_change_note ? ` — ${data.construction_change_note}` : ' — no usable satellite reading'}
         </div>
       ) : data.construction_change_detected === true ? (
         <div className="text-slate-700">
-          Recent satellite passes show surface change consistent with construction activity near this lot.
+          Recent satellite passes show bare-soil increase across the 400m x 400m area centred on this property. The reading averages that whole area and cannot identify which lot changed.
         </div>
       ) : data.construction_change_detected === false ? (
         <div className="text-slate-500">
-          No construction-scale surface change detected in recent satellite passes near this lot.
+          No bare-soil increase across the 400m x 400m area centred on this property, against a 12-month baseline. Works on a single lot are too small to register.
         </div>
       ) : null}
       {data.temporal_caveat && <div className="text-[11px] text-slate-400 leading-snug mt-1">{data.temporal_caveat}</div>}

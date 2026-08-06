@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
+import { surfaceChangeState } from '@/lib/shadow-surface-change';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
@@ -41,7 +42,9 @@ interface ShadowScenario {
   status?: 'computed' | 'unavailable';  // absent on pre-fix cached rows = computed
   shadow_length_m: number | null;       // null when the scenario computation errored
   shadow_overlap_fraction: number | null;
-  shadow_direction_deg: number;
+  // null when the bearing is not meaningful: sun below the horizon, or so near
+  // the zenith that a direction says nothing about a centimetres-long shadow.
+  shadow_direction_deg: number | null;
   overlaps_subject_lot: boolean | null;
   shadow_on_lot: GeoJSONCollection | null;
   shadow_polygon: GeoJSONCollection | null;
@@ -56,6 +59,10 @@ interface ShadowOutputs {
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
   construction_change_detected: boolean;
+  // Set when the Sentinel-2 check produced no clean reading (cloud, timeout,
+  // error). Must be checked BEFORE reporting a negative — otherwise "no change"
+  // is served for a check that never ran.
+  construction_change_note?: string | null;
   adg_compliant: boolean | null;  // null = not assessed (noon scenario missing/errored)
   worst_case_scenario: string;
 }
@@ -559,14 +566,20 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       });
     } else {
     const len = worstScenario.shadow_length_m;
-    const dir = bearingToCompass(worstScenario.shadow_direction_deg);
+    // Guarded: shadow_direction_deg is nullable now. Math.round(null/45) is 0,
+    // so an unguarded call would silently render "N" — a fabricated direction —
+    // and Math.round(undefined/45) indexes the array with NaN and renders
+    // "undefined". Absent direction must read as absent.
+    const dir = worstScenario.shadow_direction_deg != null
+      ? bearingToCompass(worstScenario.shadow_direction_deg)
+      : null;
     const overlapPct = worstScenario.shadow_overlap_fraction != null
       ? Math.round(worstScenario.shadow_overlap_fraction * 100)
       : null;
 
     findings.push({
       label: `Worst case — ${SCENARIO_LABELS[worstScenario.scenario] ?? worstScenario.scenario}`,
-      value: `${len.toFixed(0)}m shadow cast ${dir}${overlapPct != null ? ` — ${overlapPct}% of lot covered` : ''}`,
+      value: `${len.toFixed(0)}m shadow${dir ? ` cast ${dir}` : ''}${overlapPct != null ? ` — ${overlapPct}% of lot covered` : ''}`,
       detail: len > 20
         ? 'At this length, the shadow would extend well beyond your immediate boundary. This is the scenario to reference if objecting to a neighbour\'s DA.'
         : 'A relatively short shadow. The impact on your property would be limited to the area nearest the boundary.',
@@ -588,13 +601,25 @@ function ShadowCard({ result }: { result: ShadowResult }) {
     severity: o.height_source === 'default' ? 'amber' : 'green',
   });
 
-  // Construction activity
-  if (o.construction_change_detected) {
+  // Ground-surface change. The measurement is ONE mean bare-soil index over a
+  // 400m x 400m box centred on this property — it contains the subject's own lot
+  // and a few hundred others, and resolves no direction. Wording that named a
+  // neighbour ("going up next door") described something the measurement does
+  // not contain. Three-state: a check that could not run is not a clear result.
+  const changeState = surfaceChangeState(o);
+  if (changeState === 'not_assessed') {
     findings.push({
-      label: 'Sentinel-2 satellite change detection',
-      value: 'Construction activity detected nearby',
-      detail: 'Satellite imagery shows recent ground disturbance near this property — likely demolition, excavation, or site clearing. This could mean a new building is going up next door. Check your council\'s DA tracker.',
-      severity: 'red',
+      label: 'Sentinel-2 surface-change check',
+      value: 'Not assessed — no usable satellite reading',
+      detail: `This check did not produce a result${o.construction_change_note ? ` (${o.construction_change_note})` : ''}. Nothing was measured, so this is not a finding that the area is unchanged — cloud cover over the 90-day window is the usual cause.`,
+      severity: 'amber',
+    });
+  } else if (changeState === 'detected') {
+    findings.push({
+      label: 'Sentinel-2 bare-soil index change',
+      value: 'Ground-surface change detected within 200m of this property',
+      detail: 'Satellite imagery shows bare ground across the surrounding 400m x 400m area that was not there 12 months ago — consistent with clearing, excavation or earthworks somewhere in that area. The reading averages the whole area, so it cannot tell you which lot changed or in which direction. Search your council\'s DA tracker for applications near this address.',
+      severity: 'amber',
     });
   }
 
@@ -689,8 +714,8 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         </summary>
         <div className="px-5 pb-4 text-xs text-gray-400 space-y-1.5">
           <p>1. We find your lot boundary from the NSW Planning Portal cadastre.</p>
-          <p>2. A hypothetical building is placed on the lot immediately to the north of yours, at the maximum height permitted by the LEP ({o.height_m}m).</p>
-          <p>3. Shadow is computed geometrically using solar position for each of the 5 ADG test scenarios (winter solstice 9am/12pm/3pm, equinox noon, summer noon).</p>
+          <p>2. A hypothetical building is modelled immediately north of your lot, at the maximum height mapped at your location ({o.height_m}m). Its outline is a rectangle offset north of your own boundary — we do not fetch the neighbouring parcel, so its real shape, position and height control are not known to this model.</p>
+          <p>3. Shadow is computed geometrically from the sun&apos;s position at each of the 5 ADG test scenarios (winter solstice 9am/12pm/3pm, equinox noon, summer noon). Times are NSW local wall-clock, with daylight saving applied where it applies — 21 December is AEDT.</p>
           <p>4. We check whether the shadow polygon overlaps your lot boundary.</p>
           <p className="pt-1 text-gray-500 font-medium">This model considers a hypothetical new building only — it does not account for shadow from existing structures, trees, or infrastructure (e.g. overpasses, bridges).</p>
         </div>
