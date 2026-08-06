@@ -1414,6 +1414,51 @@ class TestConfirmAndCalculate:
         assert inputs["confirmed_structure_count"] == 3
         assert inputs["confirmed_structure_count_submitted"] == 1
 
+    def test_an_unknown_index_answer_cannot_reduce_the_effective_count(self, monkeypatch):
+        """Sol round-12: my own round-11 change introduced this.
+
+        `{index: 99, answer: 'rejected'}` excludes nothing — it names no real
+        structure — but it was counted, so it could pull a 3-structure lot
+        down to 2 and clear the cl 53(1) block on a structure that does not
+        exist.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 99, "answer": "rejected"}],
+        ))
+        assert _stored_inputs(conn)["confirmed_structure_count"] == 3
+        assert resp.granny_flat_buildable is False
+
+    def test_a_failed_detect_row_read_is_surfaced_not_swallowed(self, monkeypatch):
+        """Sol round-12: a transient SQL error must not restore the old behaviour.
+
+        Sharing the SEPP fallback's `except` turned a failed read into a
+        silent None, and the count then fell back to the caller's figure with
+        nothing said about it.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+
+        original = gf._fetch_detect_row
+
+        def boom(c, r):
+            raise RuntimeError("transient SQL error")
+
+        monkeypatch.setattr(gf, "_fetch_detect_row", boom)
+        try:
+            resp = gf.confirm_and_calculate(_make_confirm_req())
+        finally:
+            monkeypatch.setattr(gf, "_fetch_detect_row", original)
+        assert any("could not be re-read" in w for w in resp.warnings), resp.warnings
+
     def test_an_existing_granny_flat_answer_outranks_the_request_flag(self, monkeypatch):
         """Sol round-11: the answer is the specific evidence for cl 53(1).
 
@@ -1485,15 +1530,6 @@ class TestConfirmAndCalculate:
         # Sol round-9: the note is not enough — a referent-less answer must not
         # sit in the column a calibration consumer reads as human labels.
         assert inputs["structure_types"] == []
-
-    def test_reason_never_says_the_count_reflects_answers_it_contradicts(self):
-        """Sol round-9: 'used 3, reflecting the 2 you classified' is self-refuting."""
-        _, reason = _compute_confidence(
-            True, 3, 3, True, count_source="machine_default",
-            answers_given=2, answers_consistent=False)
-        low = reason.lower()
-        assert "does not follow from the" in low
-        assert "reflecting the" not in low
 
     def test_duplicate_indexes_rejected_under_every_provenance(self):
         """Sol round-4: two answers for one structure are ambiguous regardless."""

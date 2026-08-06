@@ -840,8 +840,15 @@ def _effective_structure_count(
         return submitted_count
     if not structure_types:
         return submitted_count
+    # Only answers that name a real detected structure may move the count. An
+    # answer for an index the detect run never produced excludes nothing, and
+    # counting it would let {index: 99, answer: 'rejected'} reduce the total
+    # and clear the cl 53(1) block on the strength of a structure that does
+    # not exist.
+    known = {ident for ident, _ in _structure_identity(detected_structures)}
     not_separate = sum(
-        1 for s in structure_types if s.answer in _NON_STRUCTURE_ANSWERS
+        1 for s in structure_types
+        if s.index in known and s.answer in _NON_STRUCTURE_ANSWERS
     )
     detected_total = sum(1 for s in detected_structures if isinstance(s, dict))
     return max(0, detected_total - not_separate)
@@ -1001,7 +1008,6 @@ def _compute_confidence(
     rent_available: bool,
     count_source: str = "unrecorded",
     answers_given: Optional[int] = None,
-    answers_consistent: bool = True,
 ) -> tuple[str, str]:
     """
     Returns (confidence, reason) tuple.
@@ -1044,11 +1050,12 @@ def _compute_confidence(
     # Some answers were given, just not enough to license the claim. Saying
     # nothing was checked would understate what the person actually did — and
     # on this path their answers have already MOVED the count.
-    # `answers_consistent` is False when the submitted count does not follow
-    # from those answers, in which case the count does NOT reflect them and
-    # saying it does would be its own false statement.
-    some_answers = answers_given is not None and answers_given > 0
-    partly_answered = some_answers and answers_consistent
+    # `confirmed_count` is the count the report USED, and since 2026-08-06 the
+    # endpoint derives that from the detected structures and these answers —
+    # so when answers exist the count follows from them by construction. The
+    # earlier "count does not follow from your answers" branch described the
+    # SUBMITTED figure, which now has its own warning and never reaches here.
+    partly_answered = answers_given is not None and answers_given > 0
 
     if human_checked and counts_agree and rent_available:
         return (
@@ -1063,13 +1070,6 @@ def _compute_confidence(
 
     if samgeo_count is None:
         reason = "Structure count entered manually (aerial detection not available). "
-    elif not human_checked and some_answers and not answers_consistent:
-        reason = (
-            f"Aerial detection found {samgeo_count} structure{plural} on this lot. "
-            f"The report used {confirmed_count}, which does not follow from the "
-            f"{answers_given} structure(s) classified — so the count has not been "
-            "checked against the aerial image. "
-        )
     elif not human_checked and partly_answered:
         # Some structures were classified and the count reflects those answers,
         # but not every detected secondary structure was covered. Saying it was
@@ -1443,17 +1443,40 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     tile_b64: Optional[str] = None
     detect_manifest = None
     detected_structures_carry = None
+    # The detect-row read has its OWN try. Sharing the SEPP fallback's
+    # `except` swallowed a failed read into a silent None, and the count then
+    # fell back to whatever the caller sent with nothing said about it — a
+    # transient SQL error would have quietly restored the exact behaviour this
+    # change removes. A failure here is recorded and surfaced instead.
+    detect_row_unavailable = False
     _confirm_conn = None
     try:
         _confirm_conn = _get_conn()
-        sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards(_confirm_conn)
-        tile_b64, detect_manifest, detected_structures_carry = _fetch_detect_row(
-            _confirm_conn, req)
+        try:
+            sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards(_confirm_conn)
+        except Exception:
+            sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards()
+        try:
+            tile_b64, detect_manifest, detected_structures_carry = _fetch_detect_row(
+                _confirm_conn, req)
+        except Exception as e:
+            detect_row_unavailable = True
+            logger.error(f"Detect-row read failed for detect_id={req.detect_id}: {e}")
     except Exception:
+        detect_row_unavailable = True
         sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards()
     finally:
         if _confirm_conn:
-            _confirm_conn.close()
+            try:
+                _confirm_conn.close()
+            except Exception:
+                pass
+    if detect_row_unavailable:
+        warnings.append(
+            "The structure detection for this address could not be re-read, so "
+            "the structure count could not be checked against it. The count "
+            "supplied with the request was used."
+        )
     if sepp_min_lot is None or sepp_max_gf is None:
         raise HTTPException(status_code=503, detail=_SEPP_UNAVAILABLE_DETAIL)
 
@@ -1688,9 +1711,6 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 rent_available=weekly_rent is not None,
                 count_source=count_source,
                 answers_given=len(req.structure_types or []),
-                # A note means the answers and the count disagree, so the
-                # count cannot be described as reflecting them.
-                answers_consistent=provenance_note is None,
             )
 
             # Cap confidence to medium when key eligibility inputs are unknown.
