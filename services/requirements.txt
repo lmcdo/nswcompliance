@@ -50,3 +50,10 @@ scikit-image
 
 # Fuzzy matching for pre-DA site-history address/DA reconciliation (imported by services/pre_da_history.py)
 rapidfuzz
+
+# icontract: services/flood_truth.py decorates four liability-critical functions
+# with @icontract.ensure postconditions and falls back to no-op decorators when
+# the import fails. It was declared only in scripts/requirements-maintenance.txt,
+# so the fallback was what actually ran in this container — the contracts have
+# never been active in production. Pure Python, no build step.
+icontract>=2.7.3

@@ -41,3 +41,8 @@ pyproj>=3.6,<4
 # wheel (pymupdf-1.28.0-cp310-abi3-manylinux_2_28_x86_64.whl) that covers
 # CI's Python 3.12 with no system libraries.
 PyMuPDF==1.28.0
+# icontract: five tests in tests/test_flood_truth.py assert the flood
+# postconditions are actually attached. Without it they skipped — silently, and
+# in every environment — so the contracts they guard went unverified from the
+# day they were written. Matches the pin now in services/requirements.txt.
+icontract>=2.7.3

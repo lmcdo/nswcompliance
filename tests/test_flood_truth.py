@@ -2057,14 +2057,34 @@ def test_icontract_signal_contract_active():
 
 
 def _check_postcondition(func, name):
-    """Helper: assert icontract postcondition exists.
+    """Assert the icontract postcondition is actually attached to `func`.
 
-    Skips if icontract isn't installed or if the conftest mock chain prevents
-    icontract from setting __postconditions__ (known WSL + conftest_mocks issue).
-    In CI (GitHub Actions), icontract is installed cleanly and these tests run.
+    This used to skip whenever `__postconditions__` was absent — which is the
+    same observable state as THE DECORATOR HAVING BEEN DELETED, the exact
+    mutant each caller below claims to kill. So the check could never fail,
+    and it never did: it skipped in every environment from the day it was
+    written, because icontract was declared only in
+    scripts/requirements-maintenance.txt and so was never installed anywhere.
+    That also concealed a real defect — `_compute_flood_signal` had no
+    decorator at all, in any commit that ever touched it.
+
+    The old docstring asserted "In CI (GitHub Actions), icontract is installed
+    cleanly and these tests run." That was untrue, and it is why nobody chased
+    the skip for as long as it existed.
+
+    Now: if icontract is importable, a missing postcondition is a FAILURE.
+    Only a genuinely absent library skips, and scripts/check_dependency_skips.py
+    counts that so it cannot go unnoticed either.
     """
-    if not hasattr(func, '__postconditions__'):
-        pytest.skip(f"icontract postconditions not active on {name} (env issue or not installed)")
+    try:
+        import icontract  # noqa: F401
+    except ImportError:
+        pytest.skip(
+            f"icontract not installed, so {name}'s postcondition cannot be checked "
+            "(it is pinned in services/requirements.txt and requirements-test.txt)")
+    assert hasattr(func, '__postconditions__'), (
+        f"{name} has no __postconditions__. icontract IS installed, so the "
+        "@icontract.ensure decorator has been removed or was never added.")
     assert len(func.__postconditions__) > 0, \
         f"{name} must have at least one postcondition"
 

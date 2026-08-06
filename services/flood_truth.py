@@ -82,7 +82,14 @@ except ImportError:
     from geometry_checks import check_point_nsw
 
 # icontract: runtime postcondition assertions for liability-critical functions.
-# Gracefully degrade if not installed (production may not have it yet).
+# Declared in services/requirements.txt (what the container installs) and in
+# requirements-test.txt since 2026-08-06. Before that it was declared only in
+# scripts/requirements-maintenance.txt, so THIS FALLBACK is what ran in
+# production, CI and local checkouts alike, and every contract below was a
+# no-op from the day it was written.
+# The fallback stays for genuinely minimal environments, but it is no longer
+# the normal case — and tests/test_flood_truth.py now FAILS rather than skips
+# when icontract is importable and a decorator has gone missing.
 try:
     import icontract
 except ImportError:
@@ -1203,6 +1210,12 @@ def _query_ground_elevation(lat: float, lng: float) -> dict:
         logger.warning(f"DEM identify: {e}")
         return {"ground_elevation_m_ahd": None}
 
+@icontract.ensure(
+    lambda result: result in _VALID_FLOOD_SIGNALS,
+    description="Flood signal must be one of none/low/moderate/elevated/unavailable — "
+                "the frontend and PDF both render a badge straight from this value, so an "
+                "unrecognised string shows as blank rather than as an error.",
+)
 def _compute_flood_signal(internal_outputs: dict) -> str:
     """
     Multi-source convergence signal for B2B/UI consumption.
