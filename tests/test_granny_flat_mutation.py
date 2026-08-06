@@ -1325,6 +1325,57 @@ class TestConfirmAndCalculate:
         assert inputs["confirmed_count_source"] == "machine_default"
         assert "does not follow from the review" in inputs["confirmed_count_source_note"]
 
+    def test_count_contradicting_its_answers_is_flagged_under_any_provenance(self, monkeypatch):
+        """Sol round-4: answers and a count that disagree matter whoever sent them.
+
+        The implied-count check used to run only when 'user_reviewed' was
+        claimed, so the same contradiction went unrecorded under
+        machine_default.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "does not follow" in inputs["confirmed_count_source_note"]
+        assert any("not treated as reviewed" in w for w in resp.warnings), resp.warnings
+
+    def test_duplicate_indexes_rejected_under_every_provenance(self):
+        """Sol round-4: two answers for one structure are ambiguous regardless."""
+        import pydantic
+        for source in ("machine_default", "unrecorded", None):
+            with pytest.raises(pydantic.ValidationError):
+                _make_confirm_req(
+                    confirmed_count_source=source,
+                    structure_types=[{"index": 1, "answer": "garage"},
+                                     {"index": 1, "answer": "rejected"}],
+                )
+
+    def test_report_id_lookup_is_bound_to_the_same_detect_run(self, monkeypatch):
+        """Sol round-4: a stale report_id must not win over the current detect run.
+
+        A report_id from an earlier detection on the same parcel would
+        otherwise return that run's tile, manifest and structures, and the
+        review would be evaluated against the wrong run.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        gf.confirm_and_calculate(_make_confirm_req(report_id="11111111-1111-1111-1111-111111111111"))
+        by_id = [(sql, p) for sql, p in conn._cursor.executed
+                 if "WHERE id = %s" in sql and "granny_flat_reports" in sql]
+        assert by_id, "the report_id carry-forward lookup must run when report_id is given"
+        sql, params = by_id[-1]
+        assert "outputs->>'detect_id' = %s" in sql
+        assert "test-detect-id" in [str(x) for x in params]
+
     def test_machine_count_comes_from_the_detect_row_not_the_client_echo(self, monkeypatch):
         """The detector's own count, not the number the client handed back.
 

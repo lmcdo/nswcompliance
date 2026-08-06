@@ -386,15 +386,24 @@ class GrannyFlatConfirmRequest(BaseModel):
         a row whose own fields contradict each other, and it can refuse
         duplicate indexes that would make the answer set ambiguous.
         """
-        if self.confirmed_count_source == "user_reviewed":
-            if not self.structure_types:
-                raise ValueError(
-                    "confirmed_count_source='user_reviewed' requires a non-empty "
-                    "structure_types — a review with no recorded answers is not a review"
-                )
+        if self.confirmed_count_source == "user_reviewed" and not self.structure_types:
+            raise ValueError(
+                "confirmed_count_source='user_reviewed' requires a non-empty "
+                "structure_types — a review with no recorded answers is not a review"
+            )
+        # Shape checks apply to ANY answer list, whatever provenance is
+        # claimed. Two conflicting answers for the same structure are
+        # ambiguous no matter who is said to have given them, and the Next
+        # route already refuses both — a direct caller should not be able to
+        # store what the route would reject.
+        if self.structure_types:
             seen = [s.index for s in self.structure_types]
             if len(seen) != len(set(seen)):
                 raise ValueError("structure_types contains duplicate index values")
+            if any(i < 0 or i > 100 for i in seen):
+                raise ValueError("structure_types index values must be between 0 and 100")
+            if len(seen) > 40:
+                raise ValueError("structure_types accepts at most 40 entries")
         return self
 
 
@@ -763,6 +772,29 @@ def _get_weekly_rent(postcode: Optional[str]) -> Optional[float]:
 _NON_STRUCTURE_ANSWERS = {"part_of_main", "rejected"}
 
 
+def _count_mismatch_note(
+    structure_types: Optional[list],
+    detected_structures: list,
+    submitted_count: int,
+) -> Optional[str]:
+    """Describe a submitted count that its own answers do not support.
+
+    The count the answers imply is every structure the DETECT run found, less
+    those answered 'part_of_main' or 'rejected'. Returns None when they agree.
+    """
+    not_separate = sum(
+        1 for s in (structure_types or []) if s.answer in _NON_STRUCTURE_ANSWERS
+    )
+    detected_total = sum(1 for s in detected_structures if isinstance(s, dict))
+    implied = max(0, detected_total - not_separate)
+    if implied == submitted_count:
+        return None
+    return (
+        f"the answers imply {implied} structure(s) while {submitted_count} was "
+        "submitted — the count does not follow from the review"
+    )
+
+
 def _resolve_count_source(
     claimed: Optional[str],
     structure_types: Optional[list],
@@ -792,10 +824,20 @@ def _resolve_count_source(
     A downgrade is recorded rather than silent — the note is stored alongside
     the claim so a row can be audited later.
     """
+    have_row = isinstance(detected_structures, list) and bool(detected_structures)
+
     if claimed != "user_reviewed":
+        # Not a review claim — but if answers WERE recorded, the count still
+        # has to follow from them. Answers and a count that contradict each
+        # other are worth surfacing whoever is said to have produced them.
+        if have_row and structure_types and submitted_count is not None:
+            note = _count_mismatch_note(
+                structure_types, detected_structures, submitted_count)
+            if note:
+                return (claimed or "unrecorded"), note
         return (claimed or "unrecorded"), None
 
-    if not isinstance(detected_structures, list) or not detected_structures:
+    if not have_row:
         return "machine_default", (
             "claimed user_reviewed, but the detect run's structures could not be "
             "re-read, so the review could not be checked against them"
@@ -824,17 +866,10 @@ def _resolve_count_source(
         )
 
     if submitted_count is not None:
-        not_separate = sum(
-            1 for s in (structure_types or [])
-            if s.answer in _NON_STRUCTURE_ANSWERS
-        )
-        implied = max(0, len(all_indexes) - not_separate)
-        if implied != submitted_count:
-            return "machine_default", (
-                f"claimed user_reviewed, but the answers imply {implied} structure(s) "
-                f"while {submitted_count} was submitted — the count does not follow "
-                "from the review"
-            )
+        note = _count_mismatch_note(
+            structure_types, detected_structures, submitted_count)
+        if note:
+            return "machine_default", "claimed user_reviewed, but " + note
     return "user_reviewed", None
 
 
@@ -1464,10 +1499,17 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             _CARRY_COLS = ("SELECT outputs->>'tile_b64', outputs->'execution_manifest', "
                            "       outputs->'detected_structures' "
                            "FROM granny_flat_reports ")
+            # The report_id branch is also bound to detect_id: a caller can
+            # hold a report_id from an EARLIER detection on the same parcel,
+            # and matching on it alone would return that older run's tile,
+            # manifest and structures — then store them beside the current
+            # detect_id, and evaluate the review against the wrong run.
             row = None
             if req.report_id:
-                cur.execute(_CARRY_COLS + "WHERE id = %s AND prop_id = %s",
-                            (req.report_id, req.prop_id))
+                cur.execute(
+                    _CARRY_COLS + "WHERE id = %s AND prop_id = %s "
+                                  "AND outputs->>'detect_id' = %s",
+                    (req.report_id, req.prop_id, req.detect_id))
                 row = cur.fetchone()
             if row is None and req.detect_id:
                 cur.execute(
@@ -1506,8 +1548,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             # confidence badge.
             if provenance_note:
                 warnings.append(
-                    "Structure review not applied: " + provenance_note.replace(
-                        "claimed user_reviewed, but ", "")
+                    "Structure count not treated as reviewed: "
+                    + provenance_note.replace("claimed user_reviewed, but ", "")
                     + ". The structure count in this report has not been "
                       "checked against the aerial image."
                 )
