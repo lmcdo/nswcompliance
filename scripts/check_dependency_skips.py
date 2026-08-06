@@ -60,21 +60,30 @@ def main() -> int:
     skips = report.get("skips") or []
     count = report.get("count")
     if count is None:
-        count = len(skips)
+        count = len([s for s in skips if s.get("dependency")])
+    total = report.get("total")
+    if total is None:
+        total = len(skips)
 
+    # Only the classified skips group by dependency; the unclassified ones are
+    # still counted in `total` and listed by name if the total ratchet trips.
     by_dep: dict[str, list[str]] = {}
     for s in skips:
-        by_dep.setdefault(s["dependency"], []).append(s["test"])
+        dep = s.get("dependency")
+        if dep:
+            by_dep.setdefault(dep, []).append(s["test"])
 
     if not BASELINE.exists():
         print(f"DEPENDENCY-SKIP RATCHET: no baseline — writing {BASELINE.name} at {count}")
         BASELINE.write_text(json.dumps(
-            {"count": count, "dependencies": {k: len(v) for k, v in sorted(by_dep.items())}},
+            {"total_skipped": total, "count": count,
+             "dependencies": {k: len(v) for k, v in sorted(by_dep.items())}},
             indent=1) + "\n", encoding="utf-8")
         return 0
 
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     limit = baseline.get("count") or 0
+    total_limit = baseline.get("total_skipped")
     known = baseline.get("dependencies") or {}
 
     print(f"DEPENDENCY-SKIP CENSUS: {count} test(s) skipped for a missing import "
@@ -96,16 +105,40 @@ def main() -> int:
         print("  baseline in the same commit — deliberately, in review.")
         return 1
 
-    if count > limit:
+    # EXACT match, both directions. A ratchet left loose is not a ratchet: if
+    # a dependency is installed and the count drops 23 -> 18 without the
+    # baseline being tightened, a later change that removes it again restores
+    # all 23 and still passes — the five recovered tests stop running a second
+    # time, silently. Recovering coverage therefore costs one line in the
+    # baseline, in the same commit, where a reviewer sees it.
+    if count != limit:
         print()
-        print(f"DEPENDENCY-SKIP RATCHET: FAILED — {count} skips against a baseline of {limit}.")
-        print("  More tests stopped running than last time.")
+        verb = "MORE" if count > limit else "FEWER"
+        print(f"DEPENDENCY-SKIP RATCHET: FAILED — {count} dependency skips "
+              f"against a baseline of {limit} ({verb} than recorded).")
+        if count < limit:
+            print(f"  Good news, but it must be locked in: set \"count\" to {count} "
+                  f"in {BASELINE.name}.")
+        else:
+            print("  More tests stopped running than last time.")
         return 1
 
-    if count < limit:
+    # The total covers skips this script cannot classify — a custom reason like
+    # skipif(boto3 is None, reason="requires boto3") matches no pattern here,
+    # so counting only the recognised ones would leave the same hole one
+    # rephrasing away.
+    if total_limit is not None and total != total_limit:
         print()
-        print(f"Baseline is loose by {limit - count}. Lower `count` in "
-              f"{BASELINE.name} to {count} to lock the gain in.")
+        print(f"SKIP-TOTAL RATCHET: FAILED — {total} skipped test(s) against a "
+              f"baseline of {total_limit}.")
+        unclassified = [s for s in skips if not s.get("dependency")]
+        if unclassified:
+            print(f"  {len(unclassified)} of them are not attributable to a missing import:")
+            for s in unclassified[:10]:
+                print(f"    {s['test']}  ({s.get('reason','')[:70]})")
+        print(f"  If the change is intended, set \"total_skipped\" to {total} in "
+              f"{BASELINE.name}.")
+        return 1
 
     return 0
 

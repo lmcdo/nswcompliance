@@ -207,22 +207,33 @@ def _dependency_from_skip_reason(reason: str):
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    # EVERY skip is recorded, not only the ones a regex recognises. Classifying
+    # first and counting second would leave the obvious hole: a skip whose
+    # reason happens to be phrased differently — pytest.mark.skipif(boto3 is
+    # None, reason="requires boto3") — matches nothing, gets counted nowhere,
+    # and disappears exactly like the tests this exists to catch. The total is
+    # what the ratchet enforces; the dependency breakdown is for diagnosis.
     skipped = terminalreporter.stats.get("skipped", [])
-    found = []
+    all_skips = []
     for rep in skipped:
         reason = ""
         if isinstance(getattr(rep, "longrepr", None), tuple) and len(rep.longrepr) == 3:
             reason = rep.longrepr[2]
         reason = _re.sub(r"^Skipped: ", "", str(reason))
-        dep = _dependency_from_skip_reason(reason)
-        if dep:
-            found.append({"test": rep.nodeid, "dependency": dep, "reason": reason})
+        all_skips.append({
+            "test": rep.nodeid,
+            "dependency": _dependency_from_skip_reason(reason),
+            "reason": reason,
+        })
 
+    found = [s for s in all_skips if s["dependency"]]
     out = Path(config.rootdir) / ".pytest-skips.json"
     try:
-        out.write_text(json.dumps(
-            {"count": len(found), "skips": sorted(found, key=lambda s: s["test"])},
-            indent=1), encoding="utf-8")
+        out.write_text(json.dumps({
+            "total": len(all_skips),
+            "count": len(found),
+            "skips": sorted(all_skips, key=lambda s: s["test"]),
+        }, indent=1), encoding="utf-8")
     except OSError:
         pass
 

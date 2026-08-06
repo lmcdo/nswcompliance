@@ -1,6 +1,5 @@
 {
-  "status": "passed",
-  "timestamp": "2026-08-03T18:00:00+10:00",
-  "target": "typed-absence four named paths: shadow errored-scenario/ADG three-state, cache max-age + run_date preservation, _fetch_db_data split, TOD not-assessed render",
-  "findings_summary": "all four paths and their consumers read this session with file:line (shadow: detector + PDF rows 2260/4420/5915 + generate route 137 + ShadowTool 324/364; caches: conveyancing 916-940 created_at exists, flood 1716-1751 run_date column exists; db_data: 539-578 + renderer params; tod: 662-675 + PDF tod= param); no schema changes, no DB writes"
+  "status": "trivial",
+  "reason": "Two-line fix inside scripts/check_dependency_skips.py: read total_skipped from the baseline alongside count. No DB access anywhere in this script — it reads two local JSON files written by the test run. Same commit as the change that introduced the field.",
+  "timestamp": "2026-08-06T23:10:00+10:00"
 }

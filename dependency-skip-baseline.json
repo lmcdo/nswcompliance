@@ -5,6 +5,8 @@
   "numpy + matplotlib + PIL": "matplotlib is the missing one (numpy and pillow are already in the CI closure). requirements.txt pins 3.11.0.",
   "icontract": "Declared in NO runtime requirements file — only scripts/requirements-maintenance.txt. services/flood_truth.py carries a _FakeIcontract no-op fallback, so its postconditions are inert in CI, locally AND in the deployed service. These 5 tests assert those postconditions fire, so they have never once run. Worth its own decision: either make icontract a real dependency of the service that advertises contracts, or stop advertising them."
  },
+ "_total_note": "total_skipped covers EVERY skip, including the 2 deliberate env-gated ones (live Gemini smoke) and any skip whose reason no pattern recognises. Enforced exactly, both directions, so a rephrased skip reason cannot slip past the dependency classifier.",
+ "total_skipped": 25,
  "count": 23,
  "dependencies": {
   "icontract": 5,
