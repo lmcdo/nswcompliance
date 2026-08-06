@@ -111,6 +111,15 @@ jobs:
           # that is genuinely still in flight before calling it unverified.
           HEAD_TIME=$(gh api "repos/${GH_REPO}/commits/main" --jq .commit.committer.date)
           HEAD_AGE_H=$(( ( $(date -u +%s) - $(date -u -d "$HEAD_TIME" +%s) ) / 3600 ))
+          # A committer date is author-supplied and can be in the future, which
+          # would make HEAD_AGE_H negative and grant an unbounded grace period
+          # to a head nothing has verified. Anything not plainly within the
+          # in-flight window is treated as unverified — fail closed.
+          if [ "$HEAD_AGE_H" -lt 0 ]; then
+            echo "state=broken" >> "$GITHUB_OUTPUT"
+            echo "detail=main is at \`${HEAD_SHA:0:8}\`, whose committer date is in the FUTURE, and the newest completed \`gates\` run is for \`${SHA:0:8}\`. The current head of main is unverified; a future-dated commit cannot be used to argue its run is still in flight." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "$HEAD_AGE_H" -gt 3 ]; then
             echo "state=broken" >> "$GITHUB_OUTPUT"
             echo "detail=main is at \`${HEAD_SHA:0:8}\` (${HEAD_AGE_H}h old) but the newest completed \`gates\` run is for \`${SHA:0:8}\`. Nothing has verified the current head of main — the workflow may no longer be firing." >> "$GITHUB_OUTPUT"

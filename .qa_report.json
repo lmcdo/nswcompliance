@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Repairs CI rather than served output: adds the missing PyMuPDF test dependency, removes pytest fail-fast, scopes the QA-report job to pull requests (it is structurally unpassable on main), and adds a red-main alarm plus a dependency-skip ratchet. No product code, no DB writes, no user-facing text. Standard rather than minor because it changes what the gates verify and therefore what a green tick means.",
- "commit_hash": "ee5700d1",
+ "commit_hash": "c4261af1",
  "files": [
   "requirements-test.txt",
   ".github/workflows/gates.yml",
@@ -16,7 +16,7 @@
   "passes_when": "The whole suite runs to completion under CI's exact import surface with 0 failures (3665 passed), the four TestExtractorSelectionRules tests among them; the dependency-skip census reports 23 against a baseline of 23; and no job in gates.yml can be red-by-construction on main.",
   "fails_when": "Any test fails under the SIMULATED CI import surface — that is the real condition, because the whole outage was a module present locally and absent in CI, and a plain local run cannot see it (this machine has PyMuPDF installed, which is why 3698 tests passed here on 08-06 while main had already been red for three days). The ratchet goes red if the skip count rises, if a new dependency starts skipping tests, or if .pytest-skips.json is absent — a missing census is failure, never zero.",
   "demonstrated_failing": "All four states reproduced red before the fix. (1) With the CI import blocker and no PyMuPDF the suite reports exactly 4 failures, all ModuleNotFoundError: No module named 'fitz'. (2) The real CI log for run 30856789737 shows the identical failure and '1 failed, 1405 passed, 1 skipped, 19 deselected' — 1,405 of 3,665 tests ran, ~2,260 did not. (3) The ratchet was fed a doctored census three ways: new dependency -> exit 1, rising count on a known dependency -> exit 1, missing report -> exit 2, unchanged -> exit 0. (4) gh run list --workflow gates.yml --branch main returns five consecutive failures dated 2026-08-03, confirming the outage independently of the report of it.",
-  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again. Sol round 3: compare only the totals -> the offsetting shapely/icontract trade passes again; restore the auto-write on a missing baseline -> deleting the file passes with an inflated baseline. Sol round 4: gate the whole qa-and-liability job on pull_request -> a direct main push is unscanned; treat a missing total_skipped as 'no opinion' -> the unrecognised-skip axis switches off silently; swallow the census write error -> the ratchet reads the previous run's numbers. Sol round 5: use HEAD^ as the main-push scan base -> an earlier commit in a multi-commit push goes unscanned; restore the >50h clock rule -> the alarm cries wolf every Monday.",
+  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again. Sol round 3: compare only the totals -> the offsetting shapely/icontract trade passes again; restore the auto-write on a missing baseline -> deleting the file passes with an inflated baseline. Sol round 4: gate the whole qa-and-liability job on pull_request -> a direct main push is unscanned; treat a missing total_skipped as 'no opinion' -> the unrecognised-skip axis switches off silently; swallow the census write error -> the ratchet reads the previous run's numbers. Sol round 5: use HEAD^ as the main-push scan base -> an earlier commit in a multi-commit push goes unscanned; restore the >50h clock rule -> the alarm cries wolf every Monday. Sol round 6: drop the negative-age branch -> a future-dated commit grants an unbounded grace period and main sits unverified while the sweep reports ok.",
   "self_comparison_note": "This does not re-run the code and check it agrees with itself. The import surface is derived from requirements-test.txt through pip's own resolver (48 packages), not from whatever happens to be installed here, and the outcome is cross-checked against the actual GitHub Actions log rather than a local re-execution."
  },
  "pre_impl": {
@@ -103,9 +103,9 @@
   },
   {
    "scenario": "the newest completed gates run on main cannot be found, or is green but stale — the gates workflow stopped running at all (disabled, quota exhausted, trigger edited away)",
-   "what_happens": "no failure event is ever emitted, an event-driven alarm stays silent, and absence looks identical to health",
+   "what_happens": "no failure event is ever emitted, so an event-driven alarm stays silent and absence looks identical to health",
    "mitigated": true,
-   "how": "the daily scheduled sweep asserts a recent AND successful run, treating both 'no completed run' and 'succeeded but >50h ago' as broken",
+   "how": "the daily sweep treats 'no completed run at all' as broken, and treats main's current HEAD having no successful run as broken once that HEAD is more than 3h old. It does NOT alarm on elapsed time alone: a green run on the current HEAD is healthy at any age, so an unchanged main over a weekend stays silent (corrected in round 5 — the original 50h clock rule would have cried wolf every Monday).",
    "repro": "read the Assess main step: the empty-RUN_JSON and AGE_H>50 branches both set state=broken"
   },
   {
@@ -205,6 +205,13 @@
    "mitigated": true,
    "how": "three layers now: pytest_sessionstart removes it, a failed write removes it, and the CI step rm -f's it before pytest so a file that cannot be removed fails the step visibly instead of being absorbed. Residual, stated: if all three removals fail AND the stale counts match exactly, it would still pass — contrived enough to record rather than engineer around.",
    "repro": "the rm -f in the pytest step, plus pytest_sessionstart in tests/conftest.py"
+  },
+  {
+   "scenario": "a commit with a committer date in the future is pushed to main while gates is disabled",
+   "what_happens": "HEAD_AGE_H goes negative, the in-flight grace period never expires, and the sweep reports ok while main's head is unverified for days",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed: a negative age is treated as broken outright. A committer date is author-supplied, so it may buy a grace period only when it plainly falls inside the in-flight window; anything else fails closed.",
+   "repro": "read the HEAD_AGE_H -lt 0 branch in the Assess main step"
   }
  ],
  "post_merge": {
