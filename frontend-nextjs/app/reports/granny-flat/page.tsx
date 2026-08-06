@@ -361,15 +361,18 @@ function GrannyFlatPageInner() {
     setErrorMsg('');
 
     // Provenance of the count, as a transmitted field rather than an
-    // assumption at the far end. A count is only "reviewed" when a person
-    // answered for EVERY secondary structure they were shown; a partial pass
-    // leaves it as the detector's own figure.
+    // assumption at the far end. 'detections_classified' is claimed only when
+    // a person answered for EVERY secondary structure they were shown; a
+    // partial pass leaves it as the detector's own figure. Note what it does
+    // NOT claim: this screen shows only what the detector found, so a person
+    // cannot report a structure it missed, and the value is named for
+    // classification coverage rather than for verifying the total.
     //
     // `count` arrives already adjusted — ConfirmationPanel.handleStructureType
     // is what moves it. Do not subtract again here.
     const secondary = detect.detected_structures.filter((s) => !s.is_main_dwelling);
     const allAnswered = secondary.length > 0 && secondary.every((s) => s.index in answers);
-    const countSource = allAnswered ? 'user_reviewed' : 'machine_default';
+    const countSource = allAnswered ? 'detections_classified' : 'machine_default';
     const structureTypesPayload = secondary
       .filter((s) => s.index in answers)
       .map((s) => ({ index: s.index, answer: answers[s.index] }));
@@ -1097,7 +1100,7 @@ export function ConfirmationPanel({
                   {usePerStructureQuestions && (
                     <p className={`text-xs mb-2 ${allSecondaryAnswered ? 'text-teal-700' : 'text-gray-400'}`}>
                       {allSecondaryAnswered
-                        ? `Count used for this check: ${confirmedCount} — based on your answers below.`
+                        ? `Count used for this check: ${confirmedCount} — based on your answers below. Only buildings the scan found are listed; if one is missing from the map, the count cannot account for it.`
                         : `Count used for this check: ${confirmedCount} — the detector's own figure. Answer for each structure below and it will reflect your review (${answeredCount} of ${secondaryStructures.length} answered).`}
                     </p>
                   )}

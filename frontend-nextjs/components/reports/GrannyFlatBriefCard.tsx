@@ -244,10 +244,13 @@ export function GrannyFlatBriefCard({ address, active, lotAreaM2 }: { address?: 
         index: typeof s.index === 'number' ? s.index : i,
         answer: deselected[i] ? 'rejected' : 'kept',
       }));
-    // …and the count is only "reviewed" once every structure has been touched.
-    // Clicking Calculate with the defaults untouched is silence, not review.
+    // …and 'detections_classified' is claimed only once every structure has
+    // been touched. Clicking Calculate with the defaults untouched is silence,
+    // not a judgement. The value is named for what this card can observe:
+    // the person went through the detections. It cannot cover a building the
+    // scan missed, because there is nothing here to click for one.
     const allTouched = structures.length > 0 && structures.every((_, i) => i in deselected);
-    const countSource = allTouched ? 'user_reviewed' : 'machine_default';
+    const countSource = allTouched ? 'detections_classified' : 'machine_default';
     setConfirm({ kind: 'submitting' });
     try {
       const res = await fetch('/api/satellite/granny-flat', {

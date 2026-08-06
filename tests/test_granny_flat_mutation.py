@@ -718,7 +718,7 @@ class TestComputeConfidenceMutation:
         seeded from the detector and the UI never let anyone change it, so
         equality measured nothing.
         """
-        conf, _ = _compute_confidence(True, 2, 2, True, count_source="user_reviewed")
+        conf, _ = _compute_confidence(True, 2, 2, True, count_source="detections_classified")
         assert conf == "high"
 
     def test_high_needs_human_reviewed_count(self):
@@ -765,7 +765,7 @@ class TestComputeConfidenceMutation:
         assert "structures" in reason
 
     def test_high_reason_mentions_bond_data(self):
-        _, reason = _compute_confidence(True, 1, 1, True, count_source="user_reviewed")
+        _, reason = _compute_confidence(True, 1, 1, True, count_source="detections_classified")
         assert "bond" in reason.lower()
 
     def test_reason_never_claims_a_person_acted_when_none_did(self):
@@ -782,18 +782,19 @@ class TestComputeConfidenceMutation:
                 )
                 low = reason.lower()
                 assert "you confirmed" not in low, (confirmed, machine, source)
-                assert "your review" not in low, (confirmed, machine, source)
+                assert "you classified" not in low, (confirmed, machine, source)
+                assert "your answers" not in low, (confirmed, machine, source)
                 assert "not reviewed structure by structure" in low, (confirmed, machine, source)
 
     def test_medium_disagreement_names_both_counts(self):
         """Human recorded a different number from the detector — both appear."""
-        _, reason = _compute_confidence(True, 1, 3, True, count_source="user_reviewed")
+        _, reason = _compute_confidence(True, 1, 3, True, count_source="detections_classified")
         assert "3" in reason and "1" in reason
-        assert "your review recorded" in reason.lower()
+        assert "your answers give" in reason.lower()
 
     def test_zero_counts_agree_high(self):
         """FLIPPED 2026-08-06 (Lane 1, item 3) — needs a human reviewer now."""
-        assert _compute_confidence(True, 0, 0, True, count_source="user_reviewed")[0] == "high"
+        assert _compute_confidence(True, 0, 0, True, count_source="detections_classified")[0] == "high"
         assert _compute_confidence(True, 0, 0, True)[0] == "medium"
 
 
@@ -1294,18 +1295,18 @@ class TestConfirmAndCalculate:
         req = _make_confirm_req(
             confirmed_structure_count=2, samgeo_structure_count=2,
             existing_secondary_dwelling=False,   # otherwise the >=2 cap applies
-            confirmed_count_source="user_reviewed",
+            confirmed_count_source="detections_classified",
             structure_types=[{"index": 1, "answer": "garage"}],
         )
         resp = gf.confirm_and_calculate(req)
         assert resp.confidence == "high"
 
-    def test_user_reviewed_is_downgraded_when_the_count_contradicts_the_answers(self, monkeypatch):
+    def test_detections_classified_is_downgraded_when_the_count_contradicts_the_answers(self, monkeypatch):
         """Sol round-3 finding: index coverage alone was not enough.
 
         Genuine answers can be paired with a count they do not support — by a
         stale client or a crafted request — and index coverage would still
-        have granted 'user_reviewed'.
+        have granted 'detections_classified'.
         """
         conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
         _capture_json(monkeypatch)
@@ -1317,7 +1318,7 @@ class TestConfirmAndCalculate:
         # Answers imply 2 (one of the three is part of the main dwelling)…
         gf.confirm_and_calculate(_make_confirm_req(
             confirmed_structure_count=3,   # …but 3 is submitted
-            confirmed_count_source="user_reviewed",
+            confirmed_count_source="detections_classified",
             structure_types=[{"index": 1, "answer": "part_of_main"},
                              {"index": 2, "answer": "garage"}],
         ))
@@ -1328,7 +1329,7 @@ class TestConfirmAndCalculate:
     def test_count_contradicting_its_answers_is_flagged_under_any_provenance(self, monkeypatch):
         """Sol round-4: answers and a count that disagree matter whoever sent them.
 
-        The implied-count check used to run only when 'user_reviewed' was
+        The implied-count check used to run only when 'detections_classified' was
         claimed, so the same contradiction went unrecorded under
         machine_default.
         """
@@ -1392,7 +1393,7 @@ class TestConfirmAndCalculate:
             confirmed_structure_count=2,
             samgeo_structure_count=99,   # a lie the client could tell
             existing_secondary_dwelling=False,
-            confirmed_count_source="user_reviewed",
+            confirmed_count_source="detections_classified",
             structure_types=[{"index": 1, "answer": "garage"}],
         ))
         # 2 from the detect row, matching the submitted 2 — the echoed 99 is
@@ -1400,7 +1401,7 @@ class TestConfirmAndCalculate:
         assert resp.confidence == "high"
         assert "99" not in resp.confidence_reason
 
-    def test_user_reviewed_without_answers_is_rejected(self, monkeypatch):
+    def test_detections_classified_without_answers_is_rejected(self, monkeypatch):
         """Sol finding 3: a review claim with nothing recorded behind it.
 
         Without this the provenance field is a self-assertion — a caller could
@@ -1409,21 +1410,21 @@ class TestConfirmAndCalculate:
         """
         import pydantic
         with pytest.raises(pydantic.ValidationError):
-            _make_confirm_req(confirmed_count_source="user_reviewed")
+            _make_confirm_req(confirmed_count_source="detections_classified")
         with pytest.raises(pydantic.ValidationError):
-            _make_confirm_req(confirmed_count_source="user_reviewed", structure_types=[])
+            _make_confirm_req(confirmed_count_source="detections_classified", structure_types=[])
 
     def test_duplicate_structure_indexes_are_rejected(self):
         """Two answers for the same structure make the answer set ambiguous."""
         import pydantic
         with pytest.raises(pydantic.ValidationError):
             _make_confirm_req(
-                confirmed_count_source="user_reviewed",
+                confirmed_count_source="detections_classified",
                 structure_types=[{"index": 1, "answer": "garage"},
                                  {"index": 1, "answer": "rejected"}],
             )
 
-    def test_user_reviewed_is_downgraded_when_answers_name_unknown_structures(self, monkeypatch):
+    def test_detections_classified_is_downgraded_when_answers_name_unknown_structures(self, monkeypatch):
         """Sol finding 1: the caller's provenance flag is not trusted.
 
         An answer for a structure the detect run never produced cannot be a
@@ -1437,16 +1438,16 @@ class TestConfirmAndCalculate:
         ])
         resp = gf.confirm_and_calculate(_make_confirm_req(
             confirmed_structure_count=1, samgeo_structure_count=1,
-            confirmed_count_source="user_reviewed",
+            confirmed_count_source="detections_classified",
             structure_types=[{"index": 99, "answer": "garage"}],
         ))
         assert resp.confidence == "medium"
         inputs = _stored_inputs(conn)
         assert inputs["confirmed_count_source"] == "machine_default"
-        assert inputs["confirmed_count_source_claimed"] == "user_reviewed"
+        assert inputs["confirmed_count_source_claimed"] == "detections_classified"
         assert "never produced" in inputs["confirmed_count_source_note"]
 
-    def test_user_reviewed_is_downgraded_when_a_structure_has_no_answer(self, monkeypatch):
+    def test_detections_classified_is_downgraded_when_a_structure_has_no_answer(self, monkeypatch):
         """Partial coverage is not a review of the count."""
         conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
         _capture_json(monkeypatch)
@@ -1456,14 +1457,14 @@ class TestConfirmAndCalculate:
             {"index": 2, "is_main_dwelling": False},
         ])
         gf.confirm_and_calculate(_make_confirm_req(
-            confirmed_count_source="user_reviewed",
+            confirmed_count_source="detections_classified",
             structure_types=[{"index": 1, "answer": "garage"}],
         ))
         inputs = _stored_inputs(conn)
         assert inputs["confirmed_count_source"] == "machine_default"
         assert "no answer" in inputs["confirmed_count_source_note"]
 
-    def test_user_reviewed_is_downgraded_when_the_detect_row_is_missing(self, monkeypatch):
+    def test_detections_classified_is_downgraded_when_the_detect_row_is_missing(self, monkeypatch):
         """A review we cannot check is a review we do not credit.
 
         Three states: absent evidence is its own outcome, never a pass.
@@ -1472,7 +1473,7 @@ class TestConfirmAndCalculate:
         _capture_json(monkeypatch)
         conn._cursor._fetchone = None
         gf.confirm_and_calculate(_make_confirm_req(
-            confirmed_count_source="user_reviewed",
+            confirmed_count_source="detections_classified",
             structure_types=[{"index": 1, "answer": "garage"}],
         ))
         inputs = _stored_inputs(conn)
@@ -1539,7 +1540,7 @@ class TestConfirmAndCalculate:
         req = _make_confirm_req(
             confirmed_structure_count=2,
             samgeo_structure_count=3,
-            confirmed_count_source="user_reviewed",
+            confirmed_count_source="detections_classified",
             structure_types=[
                 {"index": 1, "answer": "part_of_main"},
                 {"index": 2, "answer": "garage"},
@@ -1548,7 +1549,7 @@ class TestConfirmAndCalculate:
         gf.confirm_and_calculate(req)
 
         inputs = _stored_inputs(conn)
-        assert inputs["confirmed_count_source"] == "user_reviewed"
+        assert inputs["confirmed_count_source"] == "detections_classified"
         assert inputs["detect_id"] == "test-detect-id"
         assert inputs["structure_types"] == [
             {"index": 1, "answer": "part_of_main"},

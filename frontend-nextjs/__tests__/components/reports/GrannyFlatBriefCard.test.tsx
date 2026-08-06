@@ -265,7 +265,7 @@ describe('confirm success', () => {
     fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
     await flush();
 
-    expect(confirmBodies[0].confirmed_count_source).toBe('user_reviewed');
+    expect(confirmBodies[0].confirmed_count_source).toBe('detections_classified');
     expect(confirmBodies[0].structure_types).toEqual([
       { index: 0, answer: 'kept' },
       { index: 1, answer: 'rejected' },

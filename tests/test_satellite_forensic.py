@@ -114,7 +114,7 @@ class TestGrannyFlatConfidenceCap:
             # FLIPPED 2026-08-06 (Lane 1, item 3): "high" now also requires a
             # human-reviewed count. This test is about the CAP, so it needs a
             # genuine "high" to cap — hence the explicit provenance.
-            count_source="user_reviewed",
+            count_source="detections_classified",
         )
         # Base confidence is "high" (human reviewed + counts agree + rent available)
         assert conf == "high"
