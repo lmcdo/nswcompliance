@@ -190,6 +190,7 @@ diagnose_*.py
 !package.json
 !tsconfig.json
 !mutation-baselines.json
+!dependency-skip-baseline.json
 
 # Database backups (large binary files)
 backups/
@@ -519,6 +520,7 @@ scripts/*
 !scripts/qa_gate.py
 !scripts/qa_report_template.json
 !scripts/check_test_baselines.py
+!scripts/check_dependency_skips.py
 !scripts/satellite_freshness_monitor.py
 !scripts/run_monitors.py
 !scripts/run_alerts_dispatch.py

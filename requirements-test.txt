@@ -32,3 +32,12 @@ psycopg2-binary>=2.9
 # DLL load fails there under a long venv path (MAX_PATH), unrelated to CI.
 rasterio>=1.3
 pyproj>=3.6,<4
+# PyMuPDF: tests/test_dcp_as_at.py::TestExtractorSelectionRules generates real
+# PDFs to exercise the extractor-selection rules, and the module under test
+# (scripts/extract_dcp_stated_dates.py:95,139) opens them with fitz. Absent
+# here, those four tests died on ModuleNotFoundError and -x stopped the whole
+# run — main was red from 2026-08-03 to 2026-08-06 and ~1,800 tests never
+# executed. Pinned to match requirements.txt:120. Ships an abi3 manylinux
+# wheel (pymupdf-1.28.0-cp310-abi3-manylinux_2_28_x86_64.whl) that covers
+# CI's Python 3.12 with no system libraries.
+PyMuPDF==1.28.0
