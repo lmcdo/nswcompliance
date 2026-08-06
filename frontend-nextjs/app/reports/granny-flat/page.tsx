@@ -361,7 +361,7 @@ function GrannyFlatPageInner() {
     setErrorMsg('');
 
     // Provenance of the count, as a transmitted field rather than an
-    // assumption at the far end. 'detections_classified' is claimed only when
+    // assumption at the far end. 'secondary_detections_classified' is claimed only when
     // a person answered for EVERY secondary structure they were shown; a
     // partial pass leaves it as the detector's own figure. Note what it does
     // NOT claim: this screen shows only what the detector found, so a person
@@ -372,7 +372,7 @@ function GrannyFlatPageInner() {
     // is what moves it. Do not subtract again here.
     const secondary = detect.detected_structures.filter((s) => !s.is_main_dwelling);
     const allAnswered = secondary.length > 0 && secondary.every((s) => s.index in answers);
-    const countSource = allAnswered ? 'detections_classified' : 'machine_default';
+    const countSource = allAnswered ? 'secondary_detections_classified' : 'machine_default';
     const structureTypesPayload = secondary
       .filter((s) => s.index in answers)
       .map((s) => ({ index: s.index, answer: answers[s.index] }));

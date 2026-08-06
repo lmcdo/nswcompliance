@@ -19,7 +19,7 @@ Detection approach (3 improvements over baseline):
 
 Confidence logic:
   "high"   — SAMGEO_VALIDATED + a PERSON classified every detected structure
-             (inputs.confirmed_count_source = 'detections_classified'), the
+             (inputs.confirmed_count_source = 'secondary_detections_classified'), the
              resulting total matches the detector, + rent data present.
              It does NOT mean the total was checked against the world: no
              surface lets anyone report a structure the detector MISSED, and
@@ -359,14 +359,14 @@ class StructureConfirmation(BaseModel):
 # the standalone tool passed `onCountChange` to a component that never called
 # it, so the count could only ever echo the detector.
 #
-# 'detections_classified' is named for exactly what it records: a person gave
+# 'secondary_detections_classified' is named for exactly what it records: a person gave
 # an answer for every structure the DETECTOR FOUND. It is deliberately NOT
 # called 'user_reviewed' or 'user_verified'. Neither surface lets anyone add a
 # structure the detector missed, so this state says nothing about false
 # negatives — and detection recall is itself unmeasured until check GF-1 in
 # ~/.claude/plans/ce-calibration-execution-plan-2026-08.md runs. The label must
 # not imply the total was confirmed against the world.
-CountSource = Literal["detections_classified", "machine_default", "unrecorded"]
+CountSource = Literal["secondary_detections_classified", "machine_default", "unrecorded"]
 
 
 class GrannyFlatConfirmRequest(BaseModel):
@@ -389,7 +389,7 @@ class GrannyFlatConfirmRequest(BaseModel):
 
     @model_validator(mode="after")
     def _reviewed_requires_answers(self):
-        """'detections_classified' is only meaningful with the answers behind it.
+        """'secondary_detections_classified' is only meaningful with the answers behind it.
 
         Without this a caller could assert the provenance and buy "high"
         confidence with nothing recorded — the same unfalsifiable claim in a
@@ -397,9 +397,9 @@ class GrannyFlatConfirmRequest(BaseModel):
         a row whose own fields contradict each other, and it can refuse
         duplicate indexes that would make the answer set ambiguous.
         """
-        if self.confirmed_count_source == "detections_classified" and not self.structure_types:
+        if self.confirmed_count_source == "secondary_detections_classified" and not self.structure_types:
             raise ValueError(
-                "confirmed_count_source='detections_classified' requires a non-empty "
+                "confirmed_count_source='secondary_detections_classified' requires a non-empty "
                 "structure_types — a review with no recorded answers is not a review"
             )
         # Shape checks apply to ANY answer list, whatever provenance is
@@ -802,7 +802,7 @@ def _count_mismatch_note(
         return None
     return (
         f"the answers imply {implied} structure(s) while {submitted_count} was "
-        "submitted — the count does not follow from the review"
+        "submitted — the count does not follow from the answers"
     )
 
 
@@ -816,7 +816,7 @@ def _resolve_count_source(
 
     Returns (resolved_source, downgrade_note).
 
-    'detections_classified' is the only value that can buy "high" confidence, so it
+    'secondary_detections_classified' is the only value that can buy "high" confidence, so it
     cannot be a flag a caller sets. It stands only when the submitted answers
     actually reconcile with what the DETECT run recorded:
       * every non-main structure the detector found has an answer,
@@ -836,52 +836,60 @@ def _resolve_count_source(
     the claim so a row can be audited later.
     """
     have_row = isinstance(detected_structures, list) and bool(detected_structures)
+    fallback = claimed or "unrecorded"
 
-    if claimed != "detections_classified":
-        # Not a review claim — but if answers WERE recorded, the count still
-        # has to follow from them. Answers and a count that contradict each
-        # other are worth surfacing whoever is said to have produced them.
-        if have_row and structure_types and submitted_count is not None:
-            note = _count_mismatch_note(
+    # --- Checks that apply whatever provenance is claimed -------------------
+    # An answer that names no structure in the detect run, or a count its own
+    # answers do not support, is wrong regardless of who is said to have
+    # produced it. Gating these on the claim let a 'machine_default' request
+    # store an answer for a structure that does not exist — silently, as
+    # human-labelled calibration data with no referent.
+    if have_row and structure_types:
+        all_indexes = {
+            s.get("index") for s in detected_structures if isinstance(s, dict)
+        }
+        answered = {s.index for s in structure_types}
+        unknown = answered - all_indexes
+        if unknown:
+            note = (
+                "answers reference structure indexes the detect run never "
+                f"produced: {sorted(str(i) for i in unknown)}"
+            )
+            return ("machine_default" if claimed == "secondary_detections_classified" else fallback), (
+                ("claimed secondary_detections_classified, but " + note)
+                if claimed == "secondary_detections_classified" else note
+            )
+        if submitted_count is not None:
+            mismatch = _count_mismatch_note(
                 structure_types, detected_structures, submitted_count)
-            if note:
-                return (claimed or "unrecorded"), note
-        return (claimed or "unrecorded"), None
+            if mismatch:
+                return ("machine_default" if claimed == "secondary_detections_classified" else fallback), (
+                    ("claimed secondary_detections_classified, but " + mismatch)
+                    if claimed == "secondary_detections_classified" else mismatch
+                )
 
+    if claimed != "secondary_detections_classified":
+        return fallback, None
+
+    # --- The coverage check that licenses the claim -------------------------
     if not have_row:
         return "machine_default", (
-            "claimed detections_classified, but the detect run's structures could not be "
-            "re-read, so the review could not be checked against them"
+            "claimed secondary_detections_classified, but the detect run's structures "
+            "could not be re-read, so the answers could not be checked against them"
         )
 
-    all_indexes = {
-        s.get("index") for s in detected_structures if isinstance(s, dict)
-    }
     expected = {
         s.get("index") for s in detected_structures
         if isinstance(s, dict) and not s.get("is_main_dwelling")
     }
     answered = {s.index for s in (structure_types or [])}
-
-    unknown = answered - all_indexes
-    if unknown:
-        return "machine_default", (
-            f"claimed detections_classified, but answers reference structure indexes the "
-            f"detect run never produced: {sorted(str(i) for i in unknown)}"
-        )
     missing = expected - answered
     if missing:
         return "machine_default", (
-            f"claimed detections_classified, but {len(missing)} of {len(expected)} detected "
-            "secondary structures have no answer"
+            f"claimed secondary_detections_classified, but {len(missing)} of "
+            f"{len(expected)} detected secondary structures have no answer"
         )
-
-    if submitted_count is not None:
-        note = _count_mismatch_note(
-            structure_types, detected_structures, submitted_count)
-        if note:
-            return "machine_default", "claimed detections_classified, but " + note
-    return "detections_classified", None
+    return "secondary_detections_classified", None
 
 
 def _compute_confidence(
@@ -927,16 +935,17 @@ def _compute_confidence(
         )
 
     counts_agree = (samgeo_count is not None and confirmed_count == samgeo_count)
-    human_checked = (count_source == "detections_classified")
+    human_checked = (count_source == "secondary_detections_classified")
     plural = 's' if samgeo_count != 1 else ''
 
     if human_checked and counts_agree and rent_available:
         return (
             "high",
             f"Aerial detection found {samgeo_count} structure{plural} on this lot and "
-            "you classified each one, giving the same total. "
-            "A structure the detection did not find could not be classified and "
-            "is outside this check. "
+            "you classified each secondary structure among them, giving the same total. "
+            "The principal dwelling is identified by the detection, not by you, and a "
+            "structure the detection did not find could not be classified at all — "
+            "both are outside this check. "
             "Rent estimate sourced from NSW Fair Trading bond data."
         )
 
@@ -957,7 +966,7 @@ def _compute_confidence(
         # Human agreed, but rent data is the missing piece.
         reason = (
             f"Aerial detection found {samgeo_count} structure{plural} and you "
-            "classified each one, giving the same total. "
+            "classified each secondary structure among them, giving the same total. "
         )
     else:
         reason = (
@@ -1539,7 +1548,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 detected_structures_carry = row[2]
 
             # Provenance is resolved HERE, against the detect row, not taken
-            # from the caller's flag — 'detections_classified' is what buys "high",
+            # from the caller's flag — 'secondary_detections_classified' is what buys "high",
             # so it must rest on evidence rather than on an assertion.
             count_source, provenance_note = _resolve_count_source(
                 req.confirmed_count_source,
@@ -1564,7 +1573,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             if provenance_note:
                 warnings.append(
                     "Structure count not treated as reviewed: "
-                    + provenance_note.replace("claimed detections_classified, but ", "")
+                    + provenance_note.replace("claimed secondary_detections_classified, but ", "")
                     + ". The structure count in this report has not been "
                       "checked against the aerial image."
                 )
@@ -1689,11 +1698,16 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # and made the audit trail unable to tell them apart.
     ds_samgeo.record_response(
         {
-            "structure_count": req.samgeo_structure_count,
+            # The detector's OWN count, read back from the detect row. Logging
+            # req.samgeo_structure_count here recorded a number the client
+            # handed us as SAM's response — the audit trail would have said
+            # SAM returned 99 structures because a request said so.
+            "structure_count": machine_count,
+            "structure_count_client_echo": req.samgeo_structure_count,
             "count_used_in_report": req.confirmed_structure_count,
             "count_source": count_source,
         },
-        features_returned=req.samgeo_structure_count,
+        features_returned=machine_count,
     )
 
     ds_aerial = DataSourceQuery(

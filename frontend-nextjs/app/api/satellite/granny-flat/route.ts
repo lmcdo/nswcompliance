@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
     // How confirmed_structure_count came to hold its value. Three states —
     // an absent value is 'unrecorded' downstream, never treated as a human
     // check. See services/granny_flat.CountSource.
-    confirmed_count_source?: 'detections_classified' | 'machine_default' | 'unrecorded';
+    confirmed_count_source?: 'secondary_detections_classified' | 'machine_default' | 'unrecorded';
     // Per-structure human answers, bound to detected_structures[].index.
     // Previously computed in the browser and discarded.
     structure_types?: { index: number; answer: string }[];
@@ -450,9 +450,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Reject a bad provenance value rather than coercing it. Silently
-    // defaulting an unknown string to 'detections_classified' would manufacture the
+    // defaulting an unknown string to 'secondary_detections_classified' would manufacture the
     // exact claim this field exists to make falsifiable.
-    const COUNT_SOURCES = ['detections_classified', 'machine_default', 'unrecorded'] as const;
+    const COUNT_SOURCES = ['secondary_detections_classified', 'machine_default', 'unrecorded'] as const;
     if (confirmed_count_source !== undefined &&
         !COUNT_SOURCES.includes(confirmed_count_source)) {
       return NextResponse.json(
@@ -492,10 +492,10 @@ export async function POST(request: NextRequest) {
     // unfalsifiable assertion this field exists to remove — refuse it here as
     // well as in the Python model, so neither entry point can create a row
     // whose own fields contradict each other.
-    if (confirmed_count_source === 'detections_classified' &&
+    if (confirmed_count_source === 'secondary_detections_classified' &&
         (!structure_types || structure_types.length === 0)) {
       return NextResponse.json(
-        { error: "confirmed_count_source='detections_classified' requires a non-empty structure_types" },
+        { error: "confirmed_count_source='secondary_detections_classified' requires a non-empty structure_types" },
         { status: 400 },
       );
     }

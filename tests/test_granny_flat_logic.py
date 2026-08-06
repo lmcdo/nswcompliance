@@ -44,11 +44,11 @@ def test_compute_confidence_high_when_validated_counts_agree_and_rent_available(
     This test used to omit count_source and assert "high" on count equality
     alone. That was the 0%-drift trap: the count was seeded from the detector
     and the UI could not edit it, so equality was the detector agreeing with
-    itself. "high" now requires count_source='detections_classified'.
+    itself. "high" now requires count_source='secondary_detections_classified'.
     """
     conf, reason = _compute_confidence(
         validated=True, confirmed_count=3, samgeo_count=3, rent_available=True,
-        count_source="detections_classified",
+        count_source="secondary_detections_classified",
     )
     assert conf == "high"
     assert "3" in reason
@@ -81,7 +81,7 @@ def test_compute_confidence_high_single_structure():
     """Plural check: 1 structure should say 'structure' not 'structures'."""
     conf, reason = _compute_confidence(
         validated=True, confirmed_count=1, samgeo_count=1, rent_available=True,
-        count_source="detections_classified",
+        count_source="secondary_detections_classified",
     )
     assert conf == "high"
     # singular
@@ -131,7 +131,7 @@ def test_compute_confidence_zero_counts_agree():
     """
     conf, _ = _compute_confidence(
         validated=True, confirmed_count=0, samgeo_count=0, rent_available=True,
-        count_source="detections_classified",
+        count_source="secondary_detections_classified",
     )
     assert conf == "high"
 
