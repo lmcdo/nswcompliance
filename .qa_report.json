@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes numbers and claims on a paid surface. The shadow bearing served in the PDF Direction column stops being one of five stored constants and becomes a per-address calculation; the December scenario's modelled instant moves by one hour, changing its bearing, altitude, reach and coverage; and the sentence 'Construction activity detected on adjacent lot / No significant ground disturbance detected on adjacent lots' — a factual assertion about a third party's land, rendered on all 538 stored reports from a check that never produced a reading — is replaced with a three-state, area-scoped statement. Not standard tier: this is user-facing regulatory-adjacent output on a $39 paid PDF, plus a statement about someone else's property.",
-  "commit_hash": "37d3728e",
+  "commit_hash": "4c63fb12",
   "files": [
     "services/solar_position.py",
     "services/shadow_model.py",
@@ -39,21 +39,21 @@
   "functions": [
     {
       "name": "local_wall_clock_to_utc",
-      "file_line": "services/solar_position.py:83",
+      "file_line": "services/solar_position.py:98",
       "input": "year, month, day, hour and minute integers plus a ZoneInfo (defaults to Australia/Sydney), supplied by Scenario.instant_utc for each ADG test scenario",
       "output": "a timezone-aware UTC datetime, consumed by pybdshadow.bdshadow_sunlight to cast the polygon and by sun_position to derive the reported bearing",
       "if_none": "Cannot be None — all arguments are ints with defaults. A naive datetime cannot enter here because the function CONSTRUCTS the aware value; sun_position separately raises ValueError on a naive input rather than assuming the server's zone."
     },
     {
       "name": "sun_position",
-      "file_line": "services/solar_position.py:103",
+      "file_line": "services/solar_position.py:118",
       "input": "a timezone-aware UTC datetime plus WGS84 latitude and longitude floats taken from the shadow request body",
       "output": "a tuple of solar altitude and compass azimuth in degrees, consumed by shadow_bearing_deg and by the reach ceiling check in shadow_detector",
       "if_none": "suncalc missing -> RuntimeError (never a fabricated position). Naive datetime -> ValueError. Callers convert both into typed absence."
     },
     {
       "name": "shadow_bearing_deg",
-      "file_line": "services/solar_position.py:151",
+      "file_line": "services/solar_position.py:166",
       "input": "a timezone-aware UTC datetime plus WGS84 latitude and longitude floats for the subject property",
       "output": "an optional float bearing written to scenarios[].shadow_direction_deg, rendered as the PDF Direction column and the ShadowTool worst-case sentence",
       "if_none": "Returns None when the sun is at/below the horizon or at/above 85 deg altitude (azimuth ill-conditioned). Rendered as an em dash in the PDF and omitted from the ShadowTool sentence; never coalesced to 0, which bearingToCompass would render as 'N'."
@@ -74,7 +74,7 @@
     },
     {
       "name": "max_shadow_length_m",
-      "file_line": "services/solar_position.py:186",
+      "file_line": "services/solar_position.py:201",
       "input": "the modelled building height in metres and the solar altitude in degrees at the instant being checked",
       "output": "an optional float giving the longest physically possible shadow, used to reject implausible reach values in _build_scenario_list",
       "if_none": "Returns None when altitude <= 0 or height <= 0; the caller then skips the check rather than treating an unknown ceiling as a breach."
