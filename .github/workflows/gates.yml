@@ -71,7 +71,13 @@ jobs:
       # Fail-fast saves runner minutes and costs diagnostic information at
       # exactly the moment it is most needed. The whole suite runs in ~30s.
       - name: pytest
-        run: python -m pytest tests/ -q --tb=short
+        run: |
+          # Remove any census before the run so the ratchet can never read a
+          # file this run did not produce. conftest does this too; doing it
+          # here as well means a failure to remove it fails the step visibly
+          # rather than being absorbed inside pytest.
+          rm -f .pytest-skips.json
+          python -m pytest tests/ -q --tb=short
       # A skipped test is not a passing test. tests/conftest.py writes every
       # dependency-driven skip to .pytest-skips.json; this ratchets the count
       # so the silent version of the same failure cannot grow unnoticed.
@@ -169,7 +175,15 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
           else
-            BASE=$(git rev-parse HEAD^ 2>/dev/null || echo HEAD)
+            # github.event.before, not HEAD^: a push can carry SEVERAL commits,
+            # and HEAD^ would scan only the last one — prohibited wording
+            # introduced in an earlier commit of the same push would sail
+            # through. Falls back to HEAD^ when `before` is the all-zero SHA
+            # (first push of a ref) or is no longer reachable.
+            BASE="${{ github.event.before }}"
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]                || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              BASE=$(git rev-parse HEAD^ 2>/dev/null || echo HEAD)
+            fi
           fi
           echo "Scanning against base: $BASE"
           python scripts/liability_language_check.py --diff-base "$BASE"

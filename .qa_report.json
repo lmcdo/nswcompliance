@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Repairs CI rather than served output: adds the missing PyMuPDF test dependency, removes pytest fail-fast, scopes the QA-report job to pull requests (it is structurally unpassable on main), and adds a red-main alarm plus a dependency-skip ratchet. No product code, no DB writes, no user-facing text. Standard rather than minor because it changes what the gates verify and therefore what a green tick means.",
- "commit_hash": "f804951b",
+ "commit_hash": "ee5700d1",
  "files": [
   "requirements-test.txt",
   ".github/workflows/gates.yml",
@@ -16,7 +16,7 @@
   "passes_when": "The whole suite runs to completion under CI's exact import surface with 0 failures (3665 passed), the four TestExtractorSelectionRules tests among them; the dependency-skip census reports 23 against a baseline of 23; and no job in gates.yml can be red-by-construction on main.",
   "fails_when": "Any test fails under the SIMULATED CI import surface — that is the real condition, because the whole outage was a module present locally and absent in CI, and a plain local run cannot see it (this machine has PyMuPDF installed, which is why 3698 tests passed here on 08-06 while main had already been red for three days). The ratchet goes red if the skip count rises, if a new dependency starts skipping tests, or if .pytest-skips.json is absent — a missing census is failure, never zero.",
   "demonstrated_failing": "All four states reproduced red before the fix. (1) With the CI import blocker and no PyMuPDF the suite reports exactly 4 failures, all ModuleNotFoundError: No module named 'fitz'. (2) The real CI log for run 30856789737 shows the identical failure and '1 failed, 1405 passed, 1 skipped, 19 deselected' — 1,405 of 3,665 tests ran, ~2,260 did not. (3) The ratchet was fed a doctored census three ways: new dependency -> exit 1, rising count on a known dependency -> exit 1, missing report -> exit 2, unchanged -> exit 0. (4) gh run list --workflow gates.yml --branch main returns five consecutive failures dated 2026-08-03, confirming the outage independently of the report of it.",
-  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again. Sol round 3: compare only the totals -> the offsetting shapely/icontract trade passes again; restore the auto-write on a missing baseline -> deleting the file passes with an inflated baseline. Sol round 4: gate the whole qa-and-liability job on pull_request -> a direct main push is unscanned; treat a missing total_skipped as 'no opinion' -> the unrecognised-skip axis switches off silently; swallow the census write error -> the ratchet reads the previous run's numbers.",
+  "mutation_evidence": "Restore -x to the pytest step -> the run again reports only the first failure and says nothing about the remaining ~2,260 tests. Remove PyMuPDF from requirements-test.txt -> the 4 failures return under the blocker. Delete the pytest_terminal_summary hook -> .pytest-skips.json is never written and check_dependency_skips.py exits 2 rather than silently passing. Drop the pull_request guard on qa-and-liability -> it fails on every main push on the squash-merge hash mismatch and main can never be green. Sol round 2: loosen the ratchet back to `count > limit` -> the recovered-then-regressed case passes again; count only classified skips -> a 'requires boto3' skip is invisible again. Sol round 3: compare only the totals -> the offsetting shapely/icontract trade passes again; restore the auto-write on a missing baseline -> deleting the file passes with an inflated baseline. Sol round 4: gate the whole qa-and-liability job on pull_request -> a direct main push is unscanned; treat a missing total_skipped as 'no opinion' -> the unrecognised-skip axis switches off silently; swallow the census write error -> the ratchet reads the previous run's numbers. Sol round 5: use HEAD^ as the main-push scan base -> an earlier commit in a multi-commit push goes unscanned; restore the >50h clock rule -> the alarm cries wolf every Monday.",
   "self_comparison_note": "This does not re-run the code and check it agrees with itself. The import surface is derived from requirements-test.txt through pip's own resolver (48 packages), not from whatever happens to be installed here, and the outcome is cross-checked against the actual GitHub Actions log rather than a local re-execution."
  },
  "pre_impl": {
@@ -184,6 +184,27 @@
    "mitigated": true,
    "how": "Sol finding, verified real and fixed two ways: pytest_sessionstart deletes any existing census before the run, and a failed write removes the file rather than swallowing the error. The ratchet then exits 2 ('report not found'), which is honest. Verified as a side effect: a PARTIAL run now writes a partial census that fails the ratchet (exit 1) rather than certifying a subset as the whole suite.",
    "repro": "python -m pytest tests/test_dcp_as_at.py -q then scripts/check_dependency_skips.py — exits 1, not 0"
+  },
+  {
+   "scenario": "an admin pushes several commits to main at once and the prohibited wording is in an earlier one, not the tip",
+   "what_happens": "HEAD^..HEAD scans only the last commit of the push, so wording introduced in any earlier commit of the same push is never examined",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed: the base is github.event.before, which is the ref as it stood before the whole push, falling back to HEAD^ only when `before` is the all-zero SHA or is unreachable.",
+   "repro": "read the else-branch of the Liability language scan step in gates.yml"
+  },
+  {
+   "scenario": "main is green on Friday, nothing is pushed over the weekend, and the Monday sweep fires anyway",
+   "what_happens": "the clock-based staleness rule (>50h) opens a red-main issue for a main that is verified and unchanged — a false alarm every Monday, which is precisely how the next real alarm gets ignored. I wrote this one in.",
+   "mitigated": true,
+   "how": "Sol finding, verified real and fixed: staleness is now about COVERAGE, not elapsed time. A successful run whose headSha equals main's current HEAD is green at any age; the alarm fires when HEAD has no completed run and is more than 3h old, which is the state that actually means 'nothing checked this'.",
+   "repro": "read the SHA = HEAD_SHA branch in the Assess main step"
+  },
+  {
+   "scenario": "a census file from an earlier run survives into this one and happens to match the baseline",
+   "what_happens": "the ratchet reads numbers this run did not produce and exits 0",
+   "mitigated": true,
+   "how": "three layers now: pytest_sessionstart removes it, a failed write removes it, and the CI step rm -f's it before pytest so a file that cannot be removed fails the step visibly instead of being absorbed. Residual, stated: if all three removals fail AND the stale counts match exactly, it would still pass — contrived enough to record rather than engineer around.",
+   "repro": "the rm -f in the pytest step, plus pytest_sessionstart in tests/conftest.py"
   }
  ],
  "post_merge": {

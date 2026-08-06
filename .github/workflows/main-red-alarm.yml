@@ -16,8 +16,14 @@
 #      workflow is disabled, its trigger is edited away, the runner quota is
 #      exhausted, or a push silently never fired it, then no failure event is
 #      ever emitted and silence looks exactly like health. The sweep asserts
-#      the opposite: main must have a RECENT and SUCCESSFUL gates run, and
+#      the opposite: main's CURRENT HEAD must have a successful run, and
 #      absence is treated as breakage rather than as nothing to report.
+#
+#      Note what the sweep does NOT do: complain about the clock. A green run
+#      on the current HEAD means main is verified however long ago it ran, so
+#      a quiet weekend is silent. An alarm that fires every Monday morning
+#      teaches people to dismiss it, which is the failure this file exists to
+#      prevent, reintroduced one layer up.
 #
 # The issue is deliberately a single reused one, found by its title, so a long
 # outage is one loud thing rather than seventy-two hourly ones. Alarm fatigue
@@ -77,8 +83,10 @@ jobs:
           SHA=$(echo "$RUN_JSON" | jq -r .headSha)
           UPDATED=$(echo "$RUN_JSON" | jq -r .updatedAt)
           AGE_H=$(( ( $(date -u +%s) - $(date -u -d "$UPDATED" +%s) ) / 3600 ))
+          HEAD_SHA=$(gh api "repos/${GH_REPO}/commits/main" --jq .sha)
 
-          echo "Latest gates run on main: $CONCLUSION, ${AGE_H}h old, $URL"
+          echo "main HEAD: ${HEAD_SHA:0:8}"
+          echo "Latest gates run on main: $CONCLUSION on ${SHA:0:8}, ${AGE_H}h old, $URL"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 
           if [ "$CONCLUSION" != "success" ]; then
@@ -87,17 +95,30 @@ jobs:
             exit 0
           fi
 
-          # Green but stale. 50h rather than 24h so a quiet weekend does not
-          # cry wolf, while three days of nothing still trips it — the actual
-          # duration of the outage this was written for.
-          if [ "$AGE_H" -gt 50 ]; then
+          # Staleness is about COVERAGE, not the clock. A green run on main's
+          # current HEAD means main is verified, however long ago it ran — a
+          # quiet weekend is not a fault, and an alarm that cries wolf every
+          # Monday is how the next real one gets ignored. What is a fault is
+          # HEAD having no run at all: something was pushed and nothing
+          # checked it.
+          if [ "$SHA" = "$HEAD_SHA" ]; then
+            echo "state=ok" >> "$GITHUB_OUTPUT"
+            echo "detail=Latest gates run on main: success, on current HEAD \`${HEAD_SHA:0:8}\` (${AGE_H}h ago)." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # HEAD is newer than the last completed run. Allow a window for a run
+          # that is genuinely still in flight before calling it unverified.
+          HEAD_TIME=$(gh api "repos/${GH_REPO}/commits/main" --jq .commit.committer.date)
+          HEAD_AGE_H=$(( ( $(date -u +%s) - $(date -u -d "$HEAD_TIME" +%s) ) / 3600 ))
+          if [ "$HEAD_AGE_H" -gt 3 ]; then
             echo "state=broken" >> "$GITHUB_OUTPUT"
-            echo "detail=The last \`gates\` run on main succeeded but was ${AGE_H}h ago. Nothing has verified main since; the workflow may no longer be firing." >> "$GITHUB_OUTPUT"
+            echo "detail=main is at \`${HEAD_SHA:0:8}\` (${HEAD_AGE_H}h old) but the newest completed \`gates\` run is for \`${SHA:0:8}\`. Nothing has verified the current head of main — the workflow may no longer be firing." >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "state=ok" >> "$GITHUB_OUTPUT"
-          echo "detail=Latest gates run on main: success, ${AGE_H}h ago." >> "$GITHUB_OUTPUT"
+          echo "detail=Last completed run succeeded; HEAD \`${HEAD_SHA:0:8}\` is only ${HEAD_AGE_H}h old and its run may still be in flight." >> "$GITHUB_OUTPUT"
 
       - name: Raise or update the alarm
         if: steps.assess.outputs.state == 'broken'
