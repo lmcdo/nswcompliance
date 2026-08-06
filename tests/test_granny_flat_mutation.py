@@ -1368,6 +1368,26 @@ class TestConfirmAndCalculate:
         assert "does not follow" in inputs["confirmed_count_source_note"]
         assert any("not treated as reviewed" in w for w in resp.warnings), resp.warnings
 
+    def test_claim_is_refused_when_there_was_nothing_to_classify(self, monkeypatch):
+        """Sol round-8: a lot with only a principal dwelling.
+
+        `expected` is empty, so the coverage check passed vacuously and the
+        claim was granted for a review that could not have happened — the
+        self-agreement trap in the new field's clothes.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [{"index": 0, "is_main_dwelling": True}])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1,
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 0, "answer": "kept"}],
+        ))
+        assert resp.confidence == "medium"
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "nothing to classify" in inputs["confirmed_count_source_note"]
+
     def test_unknown_index_is_flagged_under_any_provenance(self, monkeypatch):
         """Sol round-6: an answer with no referent must never be stored quietly.
 

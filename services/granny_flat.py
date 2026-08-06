@@ -882,6 +882,17 @@ def _resolve_count_source(
         s.get("index") for s in detected_structures
         if isinstance(s, dict) and not s.get("is_main_dwelling")
     }
+    if not expected:
+        # The detector found no secondary structure, so there was nothing for
+        # anyone to classify and the claim is vacuously true. Granting it would
+        # let a lot with only a principal dwelling reach "high" on the strength
+        # of a review that could not have happened — the self-agreement trap
+        # wearing the new field's clothes.
+        return "machine_default", (
+            "claimed secondary_detections_classified, but the detect run found no "
+            "secondary structure, so there was nothing to classify"
+        )
+
     answered = {s.index for s in (structure_types or [])}
     missing = expected - answered
     if missing:
