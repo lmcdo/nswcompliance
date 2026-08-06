@@ -759,10 +759,15 @@ def _get_weekly_rent(postcode: Optional[str]) -> Optional[float]:
     return entry.get("median_weekly_rent_1br_aud") if entry else None
 
 
+# An answer that says "this is not a separate building on the lot".
+_NON_STRUCTURE_ANSWERS = {"part_of_main", "rejected"}
+
+
 def _resolve_count_source(
     claimed: Optional[str],
     structure_types: Optional[list],
     detected_structures: Optional[list],
+    submitted_count: Optional[int] = None,
 ) -> tuple[str, Optional[str]]:
     """Decide the count provenance from evidence, not from the caller's word.
 
@@ -771,8 +776,15 @@ def _resolve_count_source(
     'user_reviewed' is the only value that can buy "high" confidence, so it
     cannot be a flag a caller sets. It stands only when the submitted answers
     actually reconcile with what the DETECT run recorded:
-      * every non-main structure the detector found has an answer, and
-      * no answer names an index that run never produced.
+      * every non-main structure the detector found has an answer,
+      * no answer names an index that run never produced, and
+      * the submitted count equals the count those answers imply
+        (every detected structure, less the ones answered 'part_of_main' or
+        'rejected' — the two answers that mean "not a separate building").
+
+    That last check is what stops a stale or crafted request pairing genuine
+    answers with a count they do not support. Index coverage alone would let
+    answers implying 2 structures ride along with a submitted 3.
 
     Anything else is 'machine_default'. That includes the case where the
     detect row could not be re-read: absent evidence is its own outcome and
@@ -810,6 +822,19 @@ def _resolve_count_source(
             f"claimed user_reviewed, but {len(missing)} of {len(expected)} detected "
             "secondary structures have no answer"
         )
+
+    if submitted_count is not None:
+        not_separate = sum(
+            1 for s in (structure_types or [])
+            if s.answer in _NON_STRUCTURE_ANSWERS
+        )
+        implied = max(0, len(all_indexes) - not_separate)
+        if implied != submitted_count:
+            return "machine_default", (
+                f"claimed user_reviewed, but the answers imply {implied} structure(s) "
+                f"while {submitted_count} was submitted — the count does not follow "
+                "from the review"
+            )
     return "user_reviewed", None
 
 
@@ -1463,12 +1488,34 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 req.confirmed_count_source,
                 req.structure_types,
                 detected_structures_carry,
+                submitted_count=req.confirmed_structure_count,
             )
+
+            # The detector's count comes from the DETECT ROW when we have it.
+            # `req.samgeo_structure_count` is echoed back by the client
+            # (page.tsx -> route.ts -> here), so comparing the submitted count
+            # against it was comparing two caller-supplied numbers. Census
+            # finding, closed here now that the row is being read anyway.
+            if isinstance(detected_structures_carry, list):
+                machine_count = len(detected_structures_carry)
+            else:
+                machine_count = req.samgeo_structure_count
+
+            # A downgrade is surfaced, not just recorded — a reader should see
+            # that the review did not hold together, not only a quieter
+            # confidence badge.
+            if provenance_note:
+                warnings.append(
+                    "Structure review not applied: " + provenance_note.replace(
+                        "claimed user_reviewed, but ", "")
+                    + ". The structure count in this report has not been "
+                      "checked against the aerial image."
+                )
 
             confidence, confidence_reason = _compute_confidence(
                 validated=SAMGEO_VALIDATED,
                 confirmed_count=req.confirmed_structure_count,
-                samgeo_count=req.samgeo_structure_count,
+                samgeo_count=machine_count,
                 rent_available=weekly_rent is not None,
                 count_source=count_source,
             )

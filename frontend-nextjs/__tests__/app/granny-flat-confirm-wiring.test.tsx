@@ -105,6 +105,29 @@ describe('ConfirmationPanel — count control is connected', () => {
     );
   });
 
+  it('retracts the existing-granny-flat answer when that classification is changed away', () => {
+    // Sol finding: marking a structure 'Existing granny flat' set the flag
+    // true, and changing it to something else left it stuck true while other
+    // structures were still unanswered — serving an ineligible verdict off a
+    // retracted answer.
+    // Structure 1 is already answered 'existing granny flat'; structure 2 is
+    // still unanswered. Change structure 1 to a garage.
+    const { onExistingSecondaryDwellingChange } = renderPanel({
+      structureTypes: { 1: 'existing_gf' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: /^Garage \/ outbuilding/ })[0]);
+
+    // No answer now says there is one, and not everything is answered — so
+    // the honest state is unknown, not "yes".
+    expect(onExistingSecondaryDwellingChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('still reports an existing granny flat while one is selected', () => {
+    const { onExistingSecondaryDwellingChange } = renderPanel();
+    fireEvent.click(screen.getAllByRole('button', { name: /^Existing granny flat/ })[0]);
+    expect(onExistingSecondaryDwellingChange).toHaveBeenLastCalledWith(true);
+  });
+
   it('says the count is the detector own figure until every structure is answered', () => {
     renderPanel();
     expect(

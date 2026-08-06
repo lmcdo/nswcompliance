@@ -1013,6 +1013,13 @@ export function ConfirmationPanel({
       // All answered — false if no GF, null if any unsure
       const anyUnsure = values.some(t => t === 'unsure');
       onExistingSecondaryDwellingChange(anyUnsure ? null : false);
+    } else {
+      // No existing_gf among the answers and not everything answered yet.
+      // Without this branch, changing an 'existing_gf' answer to something
+      // else left existingSecondaryDwelling stuck at true, and the request
+      // then asserted an existing granny flat that no current answer says is
+      // there — serving an ineligible verdict off a retracted answer.
+      onExistingSecondaryDwellingChange(null);
     }
     onStructureTypesChange(next);
     // The count control, finally connected. `onCountChange` was passed to this

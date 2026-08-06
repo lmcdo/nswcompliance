@@ -1288,13 +1288,66 @@ class TestConfirmAndCalculate:
             {"index": 0, "is_main_dwelling": True},
             {"index": 1, "is_main_dwelling": False},
         ])
+        # Internally coherent: the detect row holds 2 structures, the one
+        # secondary structure is answered 'garage' (still a building), so the
+        # answers imply 2 — which is what is submitted.
         req = _make_confirm_req(
-            confirmed_structure_count=1, samgeo_structure_count=1,
+            confirmed_structure_count=2, samgeo_structure_count=2,
+            existing_secondary_dwelling=False,   # otherwise the >=2 cap applies
             confirmed_count_source="user_reviewed",
             structure_types=[{"index": 1, "answer": "garage"}],
         )
         resp = gf.confirm_and_calculate(req)
         assert resp.confidence == "high"
+
+    def test_user_reviewed_is_downgraded_when_the_count_contradicts_the_answers(self, monkeypatch):
+        """Sol round-3 finding: index coverage alone was not enough.
+
+        Genuine answers can be paired with a count they do not support — by a
+        stale client or a crafted request — and index coverage would still
+        have granted 'user_reviewed'.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        # Answers imply 2 (one of the three is part of the main dwelling)…
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=3,   # …but 3 is submitted
+            confirmed_count_source="user_reviewed",
+            structure_types=[{"index": 1, "answer": "part_of_main"},
+                             {"index": 2, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "does not follow from the review" in inputs["confirmed_count_source_note"]
+
+    def test_machine_count_comes_from_the_detect_row_not_the_client_echo(self, monkeypatch):
+        """The detector's own count, not the number the client handed back.
+
+        `samgeo_structure_count` travels page -> route -> here, so comparing
+        the submitted count against it compared two caller-supplied numbers.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            samgeo_structure_count=99,   # a lie the client could tell
+            existing_secondary_dwelling=False,
+            confirmed_count_source="user_reviewed",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        # 2 from the detect row, matching the submitted 2 — the echoed 99 is
+        # ignored, so this is 'high' rather than a spurious disagreement.
+        assert resp.confidence == "high"
+        assert "99" not in resp.confidence_reason
 
     def test_user_reviewed_without_answers_is_rejected(self, monkeypatch):
         """Sol finding 3: a review claim with nothing recorded behind it.
