@@ -820,7 +820,12 @@ def _storable_answers(
     if structure_types is None:
         return None
     if not isinstance(detected_structures, list) or not detected_structures:
-        return [s.model_dump() for s in structure_types]
+        # No detect row, so NOTHING here can be joined to a building. Writing
+        # these into `structure_types` would hand a calibration consumer a
+        # plausible-looking human classification with no referent — the exact
+        # shape of unusable label data this lane exists to stop producing.
+        # They are kept, but under a name that says what they are.
+        return []
     known = {ident for ident, _ in _structure_identity(detected_structures)}
     return [s.model_dump() for s in structure_types if s.index in known]
 
@@ -1829,6 +1834,15 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         # records that some were dropped.
                         "structure_types": _storable_answers(
                             req.structure_types, detected_structures_carry),
+                        # Answers we could not bind to a detected building.
+                        # Retained (the person did give them) but kept out of
+                        # the column calibration reads, so an unjoinable label
+                        # is never mistaken for a usable one.
+                        "structure_types_unjoinable": (
+                            [s.model_dump() for s in req.structure_types]
+                            if req.structure_types and
+                               not isinstance(detected_structures_carry, list)
+                            else None),
                         # The join key back to the detect run. Accepted by this
                         # endpoint since it existed, never stored until now.
                         "detect_id": req.detect_id,

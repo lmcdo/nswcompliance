@@ -1605,6 +1605,22 @@ class TestConfirmAndCalculate:
         assert inputs["structure_types"] == [{"index": 1, "answer": "garage"}]
         assert resp.confidence == "high"
 
+    def test_answers_with_no_detect_row_are_kept_out_of_the_calibration_column(self, monkeypatch):
+        """A label that cannot be joined to a building must not look usable.
+
+        With no detect row every answer is unjoinable, so writing them into
+        `structure_types` would hand a calibration consumer plausible human
+        classifications pointing at nothing.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = None          # no detect row resolves
+        gf.confirm_and_calculate(_make_confirm_req(
+            structure_types=[{"index": 1, "answer": "garage"}]))
+        inputs = _stored_inputs(conn)
+        assert inputs["structure_types"] == []
+        assert inputs["structure_types_unjoinable"] == [{"index": 1, "answer": "garage"}]
+
     def test_unknown_index_is_flagged_under_any_provenance(self, monkeypatch):
         """Sol round-6: an answer with no referent must never be stored quietly.
 
