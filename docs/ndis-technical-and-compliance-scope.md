@@ -882,34 +882,68 @@ Reconciled against [M6-11] §Module 7 (8.5–11.5 wk to first demoable; 6-wk SIL
 
 ### C2. Pricing Schedule Licence Resolution
 
-**Verified 2026-08-06** (WebSearch on `"NDIS Pricing Arrangements" 2026-27 CC-BY-NC copyright licence PDF`): the search returned no primary-source content — third-party sites (Centre of Hope, MyCareSpace, SupportAbility, Magnum, AllPlan, HunterCare, PrepMyBook) all discuss the pricing arrangements, none cited a licence notice. `[UNVERIFIED-PRIMARY]`. Per [M1-5] §Module 1 and [M6-11] §Module 7, the notice was previously read as **CC BY-NC 3.0** in one source and **CC BY-NC-ND** in another — the conflict is unresolved.
+**Verified 2026-08-06** — the NDIA site-wide copyright and licence notice was fetched from an AU network by the founder and pasted back for direct inspection this session. Source: https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright (page dated "current as of 3 May 2026"). Confirmed facts, load-bearing for this section and C3 and C11:
 
-**Preferred architecture, in order (per [M6-11] §Module 7 rulings):**
+- Governing licence for NDIA-published content: **CC BY-NC 3.0 AU** (the Australian port, NOT the 4.0 International variant that Federal Register content uses).
+- Plain-English gloss on the notice, verbatim: *"We expect that you will only use information on the website to help people with disability and not use it for commercial purposes."*
+- Required attribution string: `© National Disability Insurance Scheme Agency 2013`.
+- Exclusions from the licence: logos, trademarks, and any third-party material appearing on the site (trademark handling in C11).
+- The CC BY-NC 3.0 vs CC BY-NC-ND conflict flagged in the prior four docs is resolved for the site-wide notice: it is BY-NC (no ND). Whether the 2026-27 Pricing Arrangements PDF itself carries a more-specific per-document notice that overrides the site-wide one is `[UNVERIFIED-PRIMARY]` and is logged in Z3.
 
-1. **Pointer-only** (recommended for MVP) — store item number, service-category label, and price-limit as **facts** (uncopyrightable per *IceTV v Nine Network Australia Pty Ltd* [2009] HCA 14 — Australian copyright doesn't protect facts, only their expression). Do NOT store surrounding explanatory text, cancellation rules, or travel rules. Link out to the current NDIS.gov.au PDF for any narrative rule. Cite `source_url + fetched_date` on every price fact. **This architecture is safe whether the licence is CC-BY-NC 4.0, CC-BY-NC 3.0, or CC-BY-NC-ND** — no derivative work is created because facts are extracted.
-2. **Paraphrase + link** — only if the licence is confirmed CC-BY-NC (no ND). Store paraphrased summaries alongside the pointer, always attributed. Blocked if ND.
-3. **Commercial licence request to NDIA** — draft in C8. Fallback if customer demand requires embedded verbatim rules.
+**Ingest decision: split posture by content class.**
 
-**Recommendation: option 1 for MVP; upgrade to option 3 only if a paying customer explicitly requires embedded rules.** Ingest boundary: `services/ndia_pricing_pointers.py` (new) fetches the PDF, extracts item numbers + price limits as `{item_number, price_limit_aud, unit, effective_from, source_url, fetched_at}` rows into a `pricing_pointer` table. **NEVER** extracts narrative text.
+1. **Numerical facts** — item numbers, price limits in AUD, unit codes, cancellation-fee percentages, travel-rate caps, effective_date. **Extract as structured data.** Numbers are not copyright-protected in Australia (*IceTV v Nine Network Australia Pty Ltd* [2009] HCA 14 — copyright protects expression, not the underlying facts). Store number + citation, not the paragraph the number appeared in.
+2. **Explanatory paragraphs** — definitions, worked examples, decision trees, narrative rule text. **Pointer-only.** Never ingested. Surface in-product as "See source: [link]" with the deep-linked URL of the current NDIA PDF.
+3. **Attribution rendering** — every screen, PDF, API payload, sales-collateral snippet, or other user-facing surface that renders any pricing content MUST render, in a non-suppressible footer:
+   > `© National Disability Insurance Agency, licensed under CC BY-NC 3.0 AU — https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright`
+   The API server returns this string as a top-level `attribution` field on every response that includes pricing data; the OEM licence agreement (C9) makes footer suppression a material breach and adds it to the forbidden-use schedule at T5.i.
+
+**Parallel commercial-licence request to NDIA** — still recommended. Draft belongs in C8.a and is now retargeted to a resolved-licence baseline (request written permission to republish, on the reasoning that written permission removes residual ambiguity and departments generally grant such requests for compliance tools that advance the mission). If NDIA refuses or does not reply within 90 days, the split posture above is the launch state. Not on the MVP critical path.
+
+**Corpus DB schema — licence tracking columns.** Every document ingested carries the following provenance fields. Add to the `instrument` table from T3.e and to a new `pricing_source` table for the Pricing Arrangements PDF; the schema decision lives here (not deferred to another section):
+
+```sql
+ALTER TABLE instrument ADD COLUMN licence_status       TEXT NOT NULL DEFAULT 'unknown';
+   -- 'cc-by-4.0' | 'cc-by-nc-3.0-au' | 'crown-copyright' | 'per-doc-override' | 'unknown'
+ALTER TABLE instrument ADD COLUMN licence_notice_url   TEXT;
+   -- URL of the copyright notice as fetched
+ALTER TABLE instrument ADD COLUMN licence_captured_at  TIMESTAMPTZ;
+   -- when the notice was last read verbatim by a human
+ALTER TABLE instrument ADD COLUMN ingest_posture       TEXT NOT NULL DEFAULT 'pointer-only';
+   -- 'verbatim' | 'facts-only' | 'paraphrase-plus-link' | 'pointer-only'
+ALTER TABLE instrument ADD COLUMN attribution_string   TEXT;
+   -- rendered verbatim on every user-facing surface
+```
+
+For the Pricing Arrangements PDF at seed time: `licence_status='cc-by-nc-3.0-au'`, `licence_notice_url='https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright'`, `ingest_posture='facts-only'`, `attribution_string='© National Disability Insurance Agency, licensed under CC BY-NC 3.0 AU'`. If the PDF itself declares a different notice than the site-wide one (see Z3), `licence_status` flips to `'per-doc-override'` and the ingest posture is re-scoped.
+
+Ingest boundary: `services/ndia_pricing_pointers.py` (new) fetches the PDF, extracts `{item_number, price_limit_aud, unit, effective_from, source_url, fetched_at, source_hash}` rows into a `pricing_fact` table. NEVER extracts narrative text; NEVER strips the attribution field on the surfaced response.
 
 ---
 
 ### C3. Commission-Published Guidance Layer
 
-Tier B/C candidates (from [M1-5] §Module 1 Tier C row):
+**Baseline assumption:** NDIA- and Commission-published guidance is CC BY-NC 3.0 AU unless the specific document declares otherwise. Source is the same site-wide notice cited in C2: https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright (verified 2026-08-06 from an AU network; page dated "current as of 3 May 2026"). The Commission's own website (ndiscommission.gov.au) has not been verified this session to carry the identical notice; baseline assumption is that it does under the NDIA umbrella, but each document below is tagged `[UNVERIFIED-PRIMARY]` for per-document override until the founder fetches each PDF and confirms.
 
-| Document | Expected URL | Licence (expected) | Ingest strategy | Risk notes |
+**Ingest posture across the guidance layer: paraphrase + link, never verbatim reproduction.** Rationale: the NC clause on CC BY-NC 3.0 AU bites verbatim commercial republication; it does not bar factual summarisation with attribution. This is the same posture that LexisNexis, Thomson Reuters, and Xero-adjacent Australian compliance tools take with departmental NC-licensed content — paraphrase the operative rule, link to the primary source, carry the attribution string. Rules Engine adopts the same posture across every guidance document.
+
+| Document | Expected URL | Licence (baseline) | Ingest strategy | Per-doc override risk |
 |---|---|---|---|---|
-| Practice Standards booklet Nov 2021 v4 (~45pp) | ndiscommission.gov.au/…/practice-standards | CC-BY 4.0 (Commission website default per [M1-5] §Module 1) `[UNVERIFIED-PRIMARY]` | Ingest verbatim, cite as persuasive background | Guidance is not law; must be labelled clearly |
-| Provider / Worker Code of Conduct Guidance | ndiscommission.gov.au/…/code-of-conduct | CC-BY 4.0 `[UNVERIFIED-PRIMARY]` | Verbatim | Same |
-| Position Statements batch (Feb 2026) | ndiscommission.gov.au/…/position-statements | CC-BY 4.0 `[UNVERIFIED-PRIMARY]` | Verbatim | Same |
-| Detailed Guidance — Incident Management (Sep 2024) | ndiscommission.gov.au/…/reportable-incidents-guidance | CC-BY 4.0 `[UNVERIFIED-PRIMARY]` | Verbatim | Operationalises 24h/5-business-day form split — high value |
-| Detailed Guidance — Complaints (Sep 2024) | ndiscommission.gov.au/…/complaints-guidance | CC-BY 4.0 `[UNVERIFIED-PRIMARY]` | Verbatim | Same |
-| Worker Screening Q&A | ndiscommission.gov.au/…/worker-screening | CC-BY 4.0 `[UNVERIFIED-PRIMARY]` | Verbatim | Cross-jurisdictional Q&A — high value |
-| Provider Toolkit | ndiscommission.gov.au/…/provider-toolkit | CC-BY 4.0 `[UNVERIFIED-PRIMARY]` | Verbatim | Broad; scan for anything non-CC |
-| **Regulated Restrictive Practices Guide** (per [M1-5] §Module 1 Tier B row) | ndiscommission.gov.au/…/rrp-guide | **CC-BY-NC** (International; per [M1-5]) `[UNVERIFIED-PRIMARY]` | **Paraphrase + link** — do NOT ingest verbatim | This is the exception; treat as Tier B not Tier C |
+| Practice Standards booklet Nov 2021 v4 (~45pp) — companion to F2018L00631 | ndiscommission.gov.au/…/practice-standards | CC BY-NC 3.0 AU `[UNVERIFIED-PRIMARY]` | **Paraphrase + link.** Never reproduce paragraphs. | Founder to confirm per-doc notice |
+| Provider / Worker Code of Conduct Guidance | ndiscommission.gov.au/…/code-of-conduct | CC BY-NC 3.0 AU `[UNVERIFIED-PRIMARY]` | Paraphrase + link | Founder to confirm |
+| Position Statements batch (Feb 2026) | ndiscommission.gov.au/…/position-statements | CC BY-NC 3.0 AU `[UNVERIFIED-PRIMARY]` | Paraphrase + link | Founder to confirm |
+| Detailed Guidance — Incident Management (Sep 2024) | ndiscommission.gov.au/…/reportable-incidents-guidance | CC BY-NC 3.0 AU `[UNVERIFIED-PRIMARY]` | Paraphrase + link (24-hr Immediate / 5-business-day timeframes are facts and can be extracted structurally per the IceTV posture used in C2) | Founder to confirm |
+| Detailed Guidance — Complaints (Sep 2024) | ndiscommission.gov.au/…/complaints-guidance | CC BY-NC 3.0 AU `[UNVERIFIED-PRIMARY]` | Paraphrase + link | Founder to confirm |
+| Worker Screening Q&A | ndiscommission.gov.au/…/worker-screening | CC BY-NC 3.0 AU `[UNVERIFIED-PRIMARY]` | Paraphrase + link (per-jurisdiction facts extractable structurally) | Founder to confirm |
+| Provider Toolkit | ndiscommission.gov.au/…/provider-toolkit | CC BY-NC 3.0 AU `[UNVERIFIED-PRIMARY]` | Paraphrase + link | Founder to confirm — broad document |
+| Regulated Restrictive Practices Guide (per [M1-5] §Module 1 Tier B row) | ndiscommission.gov.au/…/rrp-guide | CC BY-NC 3.0 AU `[UNVERIFIED-PRIMARY]` — was flagged as CC BY-NC International in [M1-5]; baseline reconciled to the site-wide AU 3.0 pending per-doc capture | Paraphrase + link | Highest — capture and re-verify first |
 
-**Founder action before build:** re-fetch each document from an AU home network, quote each copyright notice verbatim into `docs/ndis-guidance-licence-notices.md`, and re-verify the Regulated Restrictive Practices Guide's licence explicitly.
+**Attribution requirement (identical to C2):** every user-facing surface that renders any guidance-derived content MUST render, in a non-suppressible footer:
+> `© NDIS Quality and Safeguards Commission (or NDIA, whichever published), licensed under CC BY-NC 3.0 AU — https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright`
+
+Substitute the actual Commission-side notice URL once verified per-document.
+
+**Founder action before build:** re-fetch each document from an AU home network, drop extracted text into `docs/corpus-primary-sources/` per that folder's README, capture each copyright notice verbatim, and log any per-document override (a document declaring anything other than CC BY-NC 3.0 AU) to Z3 so it can be re-scoped.
 
 ---
 
@@ -1177,6 +1211,77 @@ Verified 2026-08-06 (search reused from C6.d):
 
 ---
 
+### C11. Branding Constraints and Enforcement Patterns
+
+Anchor throughout: the NDIA site-wide copyright and trademark notice at https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright, verified 2026-08-06 (page dated "current as of 3 May 2026"). This section sits at C4-liability-posture depth because getting branding wrong triggers a distinct enforcement pipeline that is orthogonal to content licensing.
+
+#### C11.a Trademarked terms
+
+The NDIS acronym and the NDIS logo are registered trademarks of the NDIA (per the Trademarks section of the notice cited above). The CC BY-NC 3.0 AU licence explicitly excludes logos, trademarks, and any third-party material from its grant.
+
+**Rule for this product:** the product name, its domain, and its marketing copy MUST NOT contain the string "NDIS" or any NDIS logo variant. This is a bright-line rule, not a preference. It flows into the Z1 decision "Product name — does it include 'NDIS' or not?".
+
+#### C11.b Forbidden affiliation language
+
+Every phrase pattern the NDIA copyright page calls out as enforceable, listed so the marketing-copy scanner (C11.e) can pattern-match:
+
+1. **"NDIS approved"** — implies NDIA endorsement of a third-party product or service.
+2. **"100% NDIS funded"** — implies a funding relationship.
+3. **"NDIS packages"** or **"NDIS bundles"** used as product- or service-names — implies the product is an NDIS-branded offering.
+4. **Domain names containing "NDIS"** — including subdomains and hyphenated variants (`ndis-tools.com.au`, `myndisapp.com`, etc.).
+5. **Business names containing "NDIS"** — including registered business names and trading names.
+6. **"I heart NDIS" / "we support NDIS" logos or graphics** deployed in any way that implies a funding or endorsement relationship.
+7. Any use of the NDIS logo, or of a graphic that could be confused for the NDIS logo, on product, marketing, or documentation surfaces.
+
+#### C11.c Enforcement pattern
+
+Cite: https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright (verified 2026-08-06). The NDIA states on that page that it actively enforces its trademarks and copyright, that it issues cease-and-desist correspondence to parties misusing the NDIS acronym, logo, or affiliation language, and that where the conduct amounts to misleading or deceptive claims in trade it refers matters to the ACCC.
+
+The pattern in public statements targets:
+- Misleading affiliation with the NDIA (implying endorsement, approval, funding, or partnership).
+- Trademark misuse (acronym and logo).
+- Product- or service-name confusion.
+
+The pattern does **not** — based on the copyright page and search results verified 2026-08-06 — target compliance databases that reproduce rules content with proper attribution under the CC BY-NC 3.0 AU licence. No public enforcement action against a compliance-reference product for reproducing regulatory content with attribution has surfaced. `[UNVERIFIED]` for exhaustiveness of enforcement history — absence of surfaced action is not evidence of absence, but is the best signal available.
+
+**Consequence for Rules Engine posture:** the content-ingest strategy in C2 and C3 is compatible with the enforcement pattern; the naming and marketing surface is where the enforcement risk actually lands.
+
+#### C11.d Product-naming guidance
+
+**Recommendation:** the product name MUST NOT reference NDIS. Naming around the trademark up-front is cheaper than a rebrand after a cease-and-desist. The positioning ("Australian disability-sector regulatory reference") is descriptive-only and the marketing copy can describe the sector accurately without borrowing the acronym.
+
+Three worked examples of compliant naming patterns for the founder to pick from (descriptive-only — sector described, acronym not borrowed):
+
+1. **"ProviderRules AU"** — foregrounds the audience (providers) and the artefact (rules); geographic scope in the suffix.
+2. **"CareCode Library"** — foregrounds the content class (a code library for the care sector); "library" reinforces the library-not-oracle posture from C4.
+3. **"Disability Sector Compliance Feed"** — descriptive with no borrowed terms; verbose but unambiguously non-affiliated.
+
+Founder picks one, then registers the domain, ABN business name, GitHub org, and social handles before OEM outreach starts. Downstream decisions in Z1 (repo shape, publish-artifact URL) inherit from this pick.
+
+#### C11.e Marketing-copy guardrail
+
+Wire a keyword scanner into the pre-push hook next to the liability-language scanner (T7 row 10). The scanner runs over every public-facing surface: website copy, sales collateral (`docs/marketing/*.md`), PDF footer templates, API payload disclaimer strings, README, and every markdown file destined for publish.
+
+**Flag on any occurrence of:**
+- Any exact phrase from C11.b (1)–(6).
+- The bare string "NDIS" used as a brandable term — i.e. not preceded by a factual descriptor like "the NDIS Act 2013", "the NDIS Quality and Safeguards Commission", or "the NDIS Practice Standards".
+- The strings "NDIS approved", "NDIS certified", "NDIS partner", "NDIS endorsed", "authorised by NDIS", "official NDIS", "NDIA-approved".
+- Any file or image asset with "ndis" in the filename (asset-filename scan) — catches accidental logo commits.
+
+Implementation: extend `scripts/liability_language_check.py` to accept a second lexicon file (`scripts/branding_forbidden_terms.txt`), or add a sibling `scripts/ndis_branding_check.py`. Runs in pre-commit AND pre-push. Failing the scan blocks the commit or push.
+
+#### C11.f Consequences per SKU
+
+- **OEM Rules Feed (SKU 1).** The OEM licence agreement (C9) must include a clause requiring licensees not to expose "NDIS approved", "NDIS certified", or any other affiliation-claiming language in their end-user UI. Add to the forbidden-use schedule at T5.i as items 9–10 (branding-affiliation prohibition; NDIS-as-brandable-term prohibition). Material-breach cure period the same as items 1–8.
+- **Consultant Seat (SKU 2).** PDF footer template and web UI must not include NDIS as a brandable term. Where clause text or a document title contains "NDIS" (unavoidable — the Act is called the NDIS Act 2013), the string is a factual reference to a named legal instrument and is not brandable use. The non-customisable footer in C4.b already conforms; verify no other UI surface introduces the acronym as a brandable term.
+- **Provider Self-Serve (SKU 3, deferred).** Same as Consultant Seat, plus the sophisticated-user acknowledgement modal at C4.c should include a sentence: "This tool is not affiliated with the National Disability Insurance Agency or the NDIS Quality and Safeguards Commission." Fold into the ToS clause pack.
+
+#### C11.g Insurance implication
+
+Tech-PI carriers price known enforcement patterns into their wording. When the founder obtains carrier quotes per C5, disclose the NDIA trademark enforcement pattern in the application — a two-line disclosure at quote time ("the product operates in a domain where the primary trademark holder actively enforces via cease-and-desist and ACCC referral; product naming, marketing, and OEM contracts are designed to avoid trademark exposure — see C11 of the scope document") is cheaper than a coverage dispute post-bind. Underwriters do not like surprises after they have priced the risk.
+
+---
+
 ## CROSS-CUTTING
 
 ### X1. Port-Specific Risks — NSW-Planning Coupling Leaks
@@ -1288,11 +1393,13 @@ Ordered by dependency and consequence.
 
 7. **Data residency default.** Options: (a) AU-region only (Supabase Sydney, Vercel `syd1`, SES `ap-southeast-2`); (b) multi-region for latency. **Recommend (a)** per C7.d — simplifies APP 8 compliance to nothing. Consequence of (b): APP 8 assessment for every processor.
 
-8. **Publish-artifact URL.** Options: (a) NDIS product lives at `ndis.plotdetect.com.au` (subdomain, close brand); (b) fresh domain `rulesengine.au` or similar (recommended per [M6-11] §Module 9 90-day plan). **Recommend (b)** — fresh brand for a fresh audience; the NSW-planning association is a distraction to NDIS buyers.
+8. **Product name — does it include "NDIS" or not?** Options: (a) name contains "NDIS" or "NDIA"; (b) descriptive-only name that references the sector without borrowing the acronym (three worked examples in C11.d: "ProviderRules AU", "CareCode Library", "Disability Sector Compliance Feed"). **Recommend (b)** — the NDIA copyright page confirms an active cease-and-desist + ACCC-referral enforcement pattern around the acronym and logo; naming around the trademark up-front is cheaper than a rebrand after enforcement contact. Downstream: this decision locks in the domain, brand assets, GitHub org, and sales collateral before OEM outreach starts, so it must be taken before decision 9 (Publish-artifact URL) rather than after.
 
-9. **Whether to open a Consultant Seat design-partner pilot before OEM signs.** Options: (a) OEM first, Seat conditional on OEM signal; (b) both in parallel per [M6-11] §Module 6D. **Recommend (b)** — the segments do not overlap, and consultant sign-ups are useful social proof for OEM sales conversations.
+9. **Publish-artifact URL.** Options: (a) NDIS product lives at `ndis.plotdetect.com.au` (subdomain, close brand); (b) fresh domain `rulesengine.au` or similar (recommended per [M6-11] §Module 9 90-day plan). **Recommend (b)** — fresh brand for a fresh audience; the NSW-planning association is a distraction to NDIS buyers. Inherits from decision 8: the domain must be consistent with the chosen product name and must NOT contain "NDIS" per C11.b(4).
 
-10. **Whether to publish the OEM API OpenAPI spec publicly before the first licensee signs.** Options: (a) public from day 1 (SEO + trust artifact); (b) NDA-gated until first paying licensee. **Recommend (a)** — the schema is not the moat, the content + operations is; public OpenAPI is a trust artifact and speeds sales conversations.
+10. **Whether to open a Consultant Seat design-partner pilot before OEM signs.** Options: (a) OEM first, Seat conditional on OEM signal; (b) both in parallel per [M6-11] §Module 6D. **Recommend (b)** — the segments do not overlap, and consultant sign-ups are useful social proof for OEM sales conversations.
+
+11. **Whether to publish the OEM API OpenAPI spec publicly before the first licensee signs.** Options: (a) public from day 1 (SEO + trust artifact); (b) NDA-gated until first paying licensee. **Recommend (a)** — the schema is not the moat, the content + operations is; public OpenAPI is a trust artifact and speeds sales conversations.
 
 ---
 
@@ -1325,7 +1432,8 @@ Stratified reconciliation with [M6-11] §Module 7:
 - **All legislation.gov.au and ndiscommission.gov.au URLs 403'd** to WebFetch this session (verified 2026-08-06). Every F-number's exact copyright notice (C1), every clause count (T2.a), every compilation number, every made-date is `[UNVERIFIED-PRIMARY]` in this document; the [M1-5] and [M6-11] figures are cited unchanged, but neither this scoping nor those docs opened the primary PDF.
 - **F-numbers for Worker Screening Rules and Procedural Fairness Guidelines** were marked "TO VERIFY" in the prompt's context; this scoping did not verify them.
 - **Federal Register machine-readable feed availability** (T4.a) is not confirmed. WebSearch 2026-08-06 did not surface a documented REST API; the Office of Parliamentary Counsel (opc.gov.au) page was 403 for WebFetch. Build-plan fallback is HTML scraping.
-- **Pricing Schedule 2026-27 licence notice** (C2) is not verified verbatim; the CC-BY-NC 3.0 vs CC-BY-NC-ND conflict identified in [M1-5] §Module 1 remains unresolved.
+- **Whether the 2026-27 Pricing Arrangements PDF itself carries a per-document licence notice that overrides the site-wide CC BY-NC 3.0 AU** (C2, C3) — `[UNVERIFIED-PRIMARY]`, awaiting founder confirmation from an AU network. Site-wide NDIA copyright notice IS verified this session (see C2); the question here is narrower: does the PDF declare something different (e.g. NC-ND, a Crown-copyright variant, an "all rights reserved" override)? Until captured, `licence_status='cc-by-nc-3.0-au'` is the working assumption; a per-doc override flips it to `'per-doc-override'` and re-scopes the ingest posture.
+- **Whether specific Commission-published guidance PDFs carry per-document licence overrides** (C3) — `[UNVERIFIED-PRIMARY]`, awaiting per-doc capture into `docs/corpus-primary-sources/`. Site-wide baseline is CC BY-NC 3.0 AU under the NDIA umbrella; each document (Practice Standards booklet, Code of Conduct Guidance, Position Statements, Incident-Management Detailed Guidance, Complaints Detailed Guidance, Worker Screening Q&A, Provider Toolkit, Regulated Restrictive Practices Guide) needs its notice read verbatim before the paraphrase-plus-link ingest posture is locked in.
 - **Per-instrument page counts, section counts, defined-term counts, cross-reference counts** in T2.a are all `[INFERENCE]` or `[UNVERIFIED-PRIMARY]` — the numbers repeat and refine [M1-5] figures without opening the source.
 - **Insurance premium ranges** in C5 are `[INFERENCE]` from BizCover published anchors + broker-quote norms. No live quote was obtained; every dollar figure requires a founder to seek an actual quote.
 - **Solicitor cost ranges** in C9 are `[INFERENCE]` from Sprintlaw / LegalVision published packages. No live quote.

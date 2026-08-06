@@ -374,10 +374,10 @@ docs/*
 !docs/intelligence-brief/
 !docs/intelligence-brief/**
 !docs/*.md
-# NDIS corpus: extracted text is tracked, raw PDFs never are
+# NDIS corpus: extracted text (.txt, .md) is tracked, raw PDFs never are
 !docs/corpus-primary-sources/
 !docs/corpus-primary-sources/**
-docs/corpus-primary-sources/*.pdf
+docs/corpus-primary-sources/**/*.pdf
 
 # PDF page images (stored in cloud, not git)
 frontend-nextjs/public/pdf-pages/
