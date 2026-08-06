@@ -147,11 +147,14 @@ Fetch strategy shorthand: **HTML-primary** = fetch `/{f_number}/latest/text` HTM
 | Quality Indicators Guidelines | `F2018N00041` | HTML | Indicator-list parser (per-standard) | ~50 | ~120 indicators | domain terms | Back-references to Practice Standards | 32 |
 | Approved Quality Auditors Rules 2025 | `F2025L01383` | HTML-primary | Sectionizer + auditor-obligations mapper | ~35 `[INFERENCE]` | ~40 rules | ~8 | To Practice Standards Rules; replaces 2018 Guidelines architecture | 24 |
 | NDIS Supports Transitional Rules 2024 | `F2024L01257` | HTML-primary — TAG SUNSET-PENDING | Simple sectionizer + transition-date extractor | ~20 `[INFERENCE]` | ~15 rules | | To Act s10 | 12 |
-| Worker Screening Rules | F-number **TO VERIFY** | HTML-primary | Sectionizer + jurisdiction-mapper | ~50 `[INFERENCE]` | ~40 rules | ~10 | To state worker-screening Acts; to Act s73L | 32 |
-| Procedural Fairness Guidelines | F-number **TO VERIFY** | HTML/PDF | Non-obligation extract | ~20 `[INFERENCE]` | ~20 procedural | | To Act s73B, s73Z (banning) | 16 |
+| Worker Screening Rules | `F2018L00887` (principal, in force effective 31/07/2018 — F-number confirmed 2026-08-06 from Federal Register search) | HTML-primary | Sectionizer + jurisdiction-mapper | ~50 `[INFERENCE]` | ~40 rules | ~10 | To state worker-screening Acts; to Act s73L | 32 |
+| Procedural Fairness Guidelines *(Notifiable Instrument — Ni tag)* | `F2018N00155` (principal; currently in force via compilation `F2026C00166`, comp #1 dated 28/01/2026 — F-number and compilation confirmed 2026-08-06 from Federal Register search + founder-provided PDF extract at `docs/corpus-primary-sources/text/F2026C00166.txt`) | HTML/PDF — **Notifiable Instrument variant of the OPC template** (see note below) | Non-obligation extract | ~20 `[INFERENCE]` (950 lines in extracted text) | ~20 procedural | | To Act s73B, s73Z (banning) | 18 (+2 vs L-Rules baseline for Ni template variance) |
 
-**Per-instrument extractor hours: ~304 hrs ≈ 7.6 person-weeks.**
+**Per-instrument extractor hours: ~306 hrs ≈ 7.65 person-weeks** (the +2 hrs vs the previous rollup is the Notifiable-Instrument template variance for F2018N00155 called out above; noise-floor delta, no change to the person-week rollup).
+
 That is the greenfield estimate. Because the Provider Registration & Practice Standards Rules (F2018L00631) alone accounts for ~60 hrs — and its Schedules are the Practice Standards modules that drive the whole audit-pack downstream product — the MVP demo slice ([M6-11] §Module 7: "6-week SIL slice = Practice Standards Core + SIL supplementary + Restrictive Practices + Quality Indicators Core") corresponds to F2018L00631 + F2018L00632 + F2018N00041 + Code of Conduct = ~136 hrs ≈ **3.4 person-weeks of extractor work**. Add 40 hrs of amendment-monitoring infrastructure = ~4.4 weeks — inside the [M6-11] "MVP subset ~5.5 person-weeks corpus" number, within the noise floor.
+
+**Notifiable-Instrument (Ni) template variance note.** Two Tier A documents use the `N` collection tag rather than `L`: F2018N00041 (Quality Indicators Guidelines) and F2018N00155 (Procedural Fairness Guidelines). OPC's Notifiable-Instrument template shares the front-matter block with the Legislative-Instrument template but differs in endnote layout and in the "made under" attribution formatting. The delta is small — probably a shared parser with a per-tag branch on the endnote block — and is estimated at +2 hours per Ni instrument versus the L-Rules baseline. The +2 hours is baked into F2018N00155's row above; F2018N00041's row already uses an indicator-list parser that sidesteps most of the template-variance surface, so no adjustment for that one.
 
 #### T2.b Corpus-wide extractor architecture
 
@@ -207,6 +210,18 @@ That is the greenfield estimate. Because the Provider Registration & Practice St
                     │  cross_ref tables (T3)       │
                     └──────────────────────────────┘
 ```
+
+**Licence-parsing simplification (per C1.a finding).** Because zero of the 15 extracted Tier A PDFs carry a per-document copyright notice (verified 2026-08-06), the extractor does NOT need per-document licence-parsing logic. Licence is stored per-source at ingest time from a host-keyed lookup table:
+
+```
+LICENCE_BY_HOST = {
+    'legislation.gov.au':  ('cc-by-4.0',       'https://www.legislation.gov.au/...'),
+    'ndis.gov.au':         ('cc-by-nc-3.0-au', 'https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright'),
+    'ndiscommission.gov.au': ('cc-by-nc-3.0-au', 'https://www.ndis.gov.au/...'),  # baseline pending per-doc capture — see Z3
+}
+```
+
+At ingest time, the fetch_manager writes `instrument.licence_status`, `instrument.licence_notice_url`, and `instrument.attribution_string` from this table by host, and does not attempt to parse the PDF for a licence notice. This simplifies the licence-tracking schema recommendation from C2 to a one-time seed of the lookup table rather than a per-fetch parse. The `per-doc-override` value in `licence_status` remains available for future documents that DO carry a per-doc notice, but is dormant for the Tier A corpus as verified today.
 
 #### T2.c Corpus totals reconciled to [M6-11]
 
@@ -852,31 +867,41 @@ Reconciled against [M6-11] §Module 7 (8.5–11.5 wk to first demoable; 6-wk SIL
 
 ### C1. Licence Audit of every Tier A corpus source
 
-**Method note (per §Evidence Rules):** every `legislation.gov.au` URL and every `ndiscommission.gov.au` URL returned HTTP 403 to WebFetch this session (verified 2026-08-06). Copyright notices below are **NOT** verified verbatim by this document; they are cited from the earlier [M1-5] §Module 1 corpus manifest and from the WebSearch pmc.gov.au result (which itself was 403 for a direct WebFetch, so its content is search-index-snippet quality).
+**Method note:** all `legislation.gov.au` URLs returned HTTP 403 to WebFetch in this scoping session, but the founder has since dropped `pdftotext -layout` extracts of 15 Tier A source PDFs into `docs/corpus-primary-sources/text/`. The licence findings below are now read from those extracts directly, not from a WebSearch snippet. The `[UNVERIFIED-PRIMARY]` tags previously carried on the notice column reflected that the PDF had not been opened; that condition is largely resolved by the corpus drop (see subsection immediately below).
 
-| F/C-number | Instrument | Expected licence | Notice verbatim | Verified this session |
+#### C1.a Per-document copyright notice pattern — verified
+
+Verified 2026-08-06 by `grep -i -E "copyright|creative commons|©|attribution|by-nc|by 4\.0"` across all 15 files in `docs/corpus-primary-sources/text/` (F2018L00633, F2018L00633ES, F2020C01087, F2024C00048, F2024L01257, F2024L01257ES, F2025L01383, F2025L01383ES, F2025L01383SES, F2026C00165, F2026C00166, F2026C00527, F2026C00528, C2026C00181REC01, ndis-pricing-schedule-2026-27-v1_2): **zero hits across every file**.
+
+Conclusion:
+- **No Federal Register instrument in the Tier A corpus carries an in-document copyright notice.** The licence is applied at platform level (legislation.gov.au terms of use) — this is consistent Office of Parliamentary Counsel practice and is NOT a data-quality issue. The absence of a per-doc notice is the norm on that platform, not an oversight.
+- **No per-document notice in the 2026-27 Pricing Arrangements PDF either** — the pricing schedule extract is likewise silent. The site-wide CC BY-NC 3.0 AU notice on ndis.gov.au (verified in C2 from an AU network) is therefore the sole governing notice for the pricing schedule. See C2 for how this closes the previously-open PDF-level-override question.
+
+**What this simplifies:** the extractor does NOT need per-document licence-parsing logic. Licence is stored per-source at ingest time from a lookup table keyed by host (`legislation.gov.au` → `cc-by-4.0`; `ndis.gov.au` → `cc-by-nc-3.0-au`). See T2.b for the schema simplification that flows from this finding.
+
+**What remains unverified:** the founder-fetched sample is comprehensive across Tier A F-instruments but does NOT include every Commission-published guidance PDF. The pattern "zero per-doc notice" is a strong sample-inference across the Federal Register instruments and the one NDIA-hosted PDF captured; it is not yet an exhaustive per-doc verification across the guidance layer. See Z3.
+
+#### C1.b Per-instrument audit table
+
+| F/C-number | Instrument | Licence (governing) | Notice source | Corpus extract |
 |---|---|---|---|---|
-| C2013A00020 | NDIS Act 2013 | CC-BY 4.0 (default for Federal Register per [M1-5] §Module 1 and PMC copyright page per WebSearch 2026-08-06) | `[UNVERIFIED-PRIMARY]` — must be re-fetched from AU IP | NO |
-| F2018L00629 | Code of Conduct Rules | CC-BY 4.0 | `[UNVERIFIED-PRIMARY]` | NO |
-| F2018L00631 | Provider Registration & Practice Standards Rules | CC-BY 4.0 | `[UNVERIFIED-PRIMARY]` | NO |
-| F2018L00632 | Restrictive Practices & Behaviour Support Rules | CC-BY 4.0 | `[UNVERIFIED-PRIMARY]` | NO |
-| F2018L00633 | Incident Management & Reportable Incidents Rules | CC-BY 4.0 | `[UNVERIFIED-PRIMARY]` | NO |
-| F2018L00634 | Complaints Management & Resolution Rules | CC-BY 4.0 | `[UNVERIFIED-PRIMARY]` | NO |
-| F2018N00041 | Quality Indicators Guidelines | CC-BY 4.0 (Guidelines are Notifiable Instruments — same Federal Register default) | `[UNVERIFIED-PRIMARY]` | NO |
-| F2025L01383 | Approved Quality Auditors Rules 2025 | CC-BY 4.0 | `[UNVERIFIED-PRIMARY]` | NO |
-| F2024L01257 | NDIS Supports Transitional Rules 2024 (SUNSET-PENDING) | CC-BY 4.0 | `[UNVERIFIED-PRIMARY]` | NO |
-| **F-number TO VERIFY** | Worker Screening Rules | CC-BY 4.0 (assumed) | `[UNVERIFIED-PRIMARY]` + F-number identification | NO |
-| **F-number TO VERIFY** | Procedural Fairness Guidelines | CC-BY 4.0 (assumed) | `[UNVERIFIED-PRIMARY]` + F-number identification | NO |
+| C2013A00020 (compilation C2026C00181REC01) | NDIS Act 2013 | CC-BY 4.0 (Federal Register platform terms) | Platform-level; no per-doc notice in PDF | `docs/corpus-primary-sources/text/C2026C00181REC01.txt` |
+| F2018L00629 (compilation F2024C00048) | Code of Conduct Rules | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2024C00048.txt` |
+| F2018L00631 (compilation F2026C00527) | Provider Registration & Practice Standards Rules | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2026C00527.txt` |
+| F2018L00632 (compilation F2020C01087) | Restrictive Practices & Behaviour Support Rules | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2020C01087.txt` |
+| F2018L00633 | Incident Management & Reportable Incidents Rules | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2018L00633.txt` (+ ES) |
+| F2018L00634 (compilation F2026C00165) | Complaints Management & Resolution Rules | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2026C00165.txt` |
+| F2018N00041 (compilation F2026C00528) | Quality Indicators Guidelines *(Notifiable Instrument — Ni tag)* | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2026C00528.txt` |
+| F2025L01383 | Approved Quality Auditors Rules 2025 | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2025L01383.txt` (+ ES, SES) |
+| F2024L01257 | NDIS Supports Transitional Rules 2024 (SUNSET-PENDING) | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2024L01257.txt` (+ ES) |
+| **F2018L00887** (F-number confirmed) | Worker Screening Rules — principal, in force effective 31/07/2018 | CC-BY 4.0 | Platform-level (extract not yet dropped) | Founder to drop when convenient |
+| **F2018N00155** (F-number confirmed; principal — currently in force via compilation **F2026C00166**, comp #1 dated 28/01/2026) | Procedural Fairness Guidelines *(Notifiable Instrument — Ni tag, NOT a Legislative Instrument)* | CC-BY 4.0 | Platform-level | `docs/corpus-primary-sources/text/F2026C00166.txt` |
 
-**Baseline finding from WebSearch 2026-08-06 (pmc.gov.au search result):** "Most of the content on the Legislation Register can be freely used under a Creative Commons licence. The specific details indicate that content from the Federal Register of Legislation is shared under a Creative Commons Attribution 4.0 International (the CC BY 4.0 licence)."
+**Notifiable-Instrument (Ni) parser note.** Two Tier A documents carry the `N` collection tag rather than `L`: F2018N00041 (Quality Indicators Guidelines) and F2018N00155 (Procedural Fairness Guidelines). Notifiable Instruments use a slightly different OPC template than Legislative Instruments — shared front-matter block, but endnote block layout differs and the "made under" attribution formatting is not identical. This flows into T2.a as a parser-strategy variant, not a whole-new parser. See T2.a for the small hours delta.
 
-**Founder action before build:**
-1. Open each F-number PDF from an AU home network.
-2. Copy the copyright notice verbatim into `docs/ndis-corpus-licence-notices.md` (a new file, one section per F-number).
-3. Identify the F-numbers for Worker Screening Rules and Procedural Fairness Guidelines. Candidate: `F2018L00887` (Worker Screening Rules) `[INFERENCE]` — verify.
-4. Flag anything non-standard (a custom Commonwealth notice, a Crown copyright variant, a missing statement) and re-scope T2 for that instrument.
+**Baseline finding from platform:** Federal Register content is CC BY 4.0 per the Office of Parliamentary Counsel / PMC baseline (WebSearch 2026-08-06); confirmed by the absence of any conflicting per-document notice across all 15 extracted files.
 
-**Zero-tolerance rule:** if any Tier A instrument turns out to carry a licence other than CC-BY 4.0 (or another attribution-only Creative Commons variant), that instrument's clause text CANNOT be republished verbatim without a commercial-licence request — this is a KILL SIGNAL for the affected instrument (see X4).
+**Zero-tolerance rule (unchanged):** if any subsequently-added Tier A instrument turns out to carry a licence other than CC-BY 4.0 (or another attribution-only Creative Commons variant), that instrument's clause text CANNOT be republished verbatim without a commercial-licence request — this remains a KILL SIGNAL for the affected instrument (see X4). The corpus verification so far has not surfaced any such override.
 
 ---
 
@@ -888,7 +913,8 @@ Reconciled against [M6-11] §Module 7 (8.5–11.5 wk to first demoable; 6-wk SIL
 - Plain-English gloss on the notice, verbatim: *"We expect that you will only use information on the website to help people with disability and not use it for commercial purposes."*
 - Required attribution string: `© National Disability Insurance Scheme Agency 2013`.
 - Exclusions from the licence: logos, trademarks, and any third-party material appearing on the site (trademark handling in C11).
-- The CC BY-NC 3.0 vs CC BY-NC-ND conflict flagged in the prior four docs is resolved for the site-wide notice: it is BY-NC (no ND). Whether the 2026-27 Pricing Arrangements PDF itself carries a more-specific per-document notice that overrides the site-wide one is `[UNVERIFIED-PRIMARY]` and is logged in Z3.
+- The CC BY-NC 3.0 vs CC BY-NC-ND conflict flagged in the prior four docs is resolved for the site-wide notice: it is BY-NC (no ND).
+- **PDF-level override question — RESOLVED.** The founder-provided extract of the pricing schedule at `docs/corpus-primary-sources/text/ndis-pricing-schedule-2026-27-v1_2.txt` was grep-verified 2026-08-06 (`grep -i -E "copyright|creative commons|©|attribution|by-nc|by 4\.0"` — zero hits). No per-document copyright notice exists in the PDF. The site-wide CC BY-NC 3.0 AU notice on ndis.gov.au is therefore the sole governing notice for the pricing schedule, and the split-posture ingest below is fully defensible in writing (no ambiguity to be resolved by re-reading the PDF).
 
 **Ingest decision: split posture by content class.**
 
@@ -915,7 +941,7 @@ ALTER TABLE instrument ADD COLUMN attribution_string   TEXT;
    -- rendered verbatim on every user-facing surface
 ```
 
-For the Pricing Arrangements PDF at seed time: `licence_status='cc-by-nc-3.0-au'`, `licence_notice_url='https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright'`, `ingest_posture='facts-only'`, `attribution_string='© National Disability Insurance Agency, licensed under CC BY-NC 3.0 AU'`. If the PDF itself declares a different notice than the site-wide one (see Z3), `licence_status` flips to `'per-doc-override'` and the ingest posture is re-scoped.
+For the Pricing Arrangements PDF at seed time: `licence_status='cc-by-nc-3.0-au'`, `licence_notice_url='https://www.ndis.gov.au/policies-rules-and-legal/using-our-websites-and-social-media/copyright'`, `ingest_posture='facts-only'`, `attribution_string='© National Disability Insurance Agency, licensed under CC BY-NC 3.0 AU'`. The `'per-doc-override'` case is retained in the enum for defensive completeness but is no longer live for the pricing schedule per the C1.a grep verification; a future document that DOES carry a per-doc notice would flip to that value.
 
 Ingest boundary: `services/ndia_pricing_pointers.py` (new) fetches the PDF, extracts `{item_number, price_limit_aud, unit, effective_from, source_url, fetched_at, source_hash}` rows into a `pricing_fact` table. NEVER extracts narrative text; NEVER strips the attribution field on the surfaced response.
 
@@ -1429,11 +1455,12 @@ Stratified reconciliation with [M6-11] §Module 7:
 
 **Claims this document could not primary-verify.** Every one of the following must be re-verified from an AU home network before build starts.
 
-- **All legislation.gov.au and ndiscommission.gov.au URLs 403'd** to WebFetch this session (verified 2026-08-06). Every F-number's exact copyright notice (C1), every clause count (T2.a), every compilation number, every made-date is `[UNVERIFIED-PRIMARY]` in this document; the [M1-5] and [M6-11] figures are cited unchanged, but neither this scoping nor those docs opened the primary PDF.
-- **F-numbers for Worker Screening Rules and Procedural Fairness Guidelines** were marked "TO VERIFY" in the prompt's context; this scoping did not verify them.
+- **All legislation.gov.au and ndiscommission.gov.au URLs 403'd** to WebFetch during the original scoping session (2026-08-06). This is partially resolved: the founder has since dropped `pdftotext -layout` extracts of 15 Tier A source PDFs into `docs/corpus-primary-sources/text/`, so clause structure and copyright-notice presence are now verifiable locally. Live compilation numbers, made-dates, and register-side metadata still require an AU-network fetch when values need to move.
+- **F-numbers for Worker Screening Rules and Procedural Fairness Guidelines** — RESOLVED. Worker Screening Rules is F2018L00887 (principal, in force effective 31/07/2018) and Procedural Fairness Guidelines is F2018N00155 (principal; currently in force via compilation F2026C00166, comp #1 dated 28/01/2026). Both confirmed from Federal Register searches plus, for F2018N00155, the founder-provided PDF extract.
 - **Federal Register machine-readable feed availability** (T4.a) is not confirmed. WebSearch 2026-08-06 did not surface a documented REST API; the Office of Parliamentary Counsel (opc.gov.au) page was 403 for WebFetch. Build-plan fallback is HTML scraping.
-- **Whether the 2026-27 Pricing Arrangements PDF itself carries a per-document licence notice that overrides the site-wide CC BY-NC 3.0 AU** (C2, C3) — `[UNVERIFIED-PRIMARY]`, awaiting founder confirmation from an AU network. Site-wide NDIA copyright notice IS verified this session (see C2); the question here is narrower: does the PDF declare something different (e.g. NC-ND, a Crown-copyright variant, an "all rights reserved" override)? Until captured, `licence_status='cc-by-nc-3.0-au'` is the working assumption; a per-doc override flips it to `'per-doc-override'` and re-scopes the ingest posture.
-- **Whether specific Commission-published guidance PDFs carry per-document licence overrides** (C3) — `[UNVERIFIED-PRIMARY]`, awaiting per-doc capture into `docs/corpus-primary-sources/`. Site-wide baseline is CC BY-NC 3.0 AU under the NDIA umbrella; each document (Practice Standards booklet, Code of Conduct Guidance, Position Statements, Incident-Management Detailed Guidance, Complaints Detailed Guidance, Worker Screening Q&A, Provider Toolkit, Regulated Restrictive Practices Guide) needs its notice read verbatim before the paraphrase-plus-link ingest posture is locked in.
+- **Whether specific Commission-published guidance PDFs carry per-document licence overrides** (C1.a, C3) — the pattern "zero per-doc notice" is verified across the 15 Tier A source PDFs currently in `docs/corpus-primary-sources/text/` (grep-verified 2026-08-06). Not every Commission guidance PDF has been extracted yet — the resolved finding is a pattern-inference from the extracted sample, not an exhaustive per-doc verification across the full guidance layer. Documents not yet extracted (Practice Standards booklet, Code of Conduct Guidance, Position Statements, Incident-Management Detailed Guidance, Complaints Detailed Guidance, Worker Screening Q&A, Provider Toolkit, Regulated Restrictive Practices Guide) should be extracted before their content is ingested.
+- **Whether F2018N00155's Notifiable-Instrument template variance introduces parser edge cases beyond the estimated +2 hours** (T2.a, C1.a) — `[INFERENCE]` only until the extractor is actually written against it. The template variance is a known small delta (endnote layout + "made under" formatting); the +2-hour estimate assumes a shared parser with a per-tag branch, which is the cheap architecture. If the Ni template turns out to differ more structurally, the hours estimate for F2018N00155 (and by extension F2018N00041 for the parts that don't sidestep template variance) may grow — bounded by ~+8 hours at the worst realistic case.
+- **Whether legislation.gov.au's terms of use have changed between the OPC/PMC CC-BY-4.0 baseline verification and the founder's fetch date** (C1) — worth a founder confirmation. Fetch the current terms-of-use page from an AU network, paste the current wording; if unchanged from the CC-BY-4.0 baseline, this is closed. If changed, revisit the licence rows in C1.b and the `LICENCE_BY_HOST` seed in T2.b.
 - **Per-instrument page counts, section counts, defined-term counts, cross-reference counts** in T2.a are all `[INFERENCE]` or `[UNVERIFIED-PRIMARY]` — the numbers repeat and refine [M1-5] figures without opening the source.
 - **Insurance premium ranges** in C5 are `[INFERENCE]` from BizCover published anchors + broker-quote norms. No live quote was obtained; every dollar figure requires a founder to seek an actual quote.
 - **Solicitor cost ranges** in C9 are `[INFERENCE]` from Sprintlaw / LegalVision published packages. No live quote.
