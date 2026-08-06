@@ -2230,6 +2230,32 @@ class TestModels:
             estimated_weekly_rent_aud=None, rental_yield_annual_pct=None,
             assumed_build_cost_aud=None,
             confidence="high", confidence_reason="test",
+            review_state="reviewed", review_state_label="L",
+            review_state_detail="D",
             data_sources=[], warnings=[],
         )
         assert resp.granny_flat_buildable is True
+
+    def test_confirm_response_requires_review_state(self):
+        """The state a report is in is not optional on the wire.
+
+        Defaulting it would let a code path return no state and have the
+        surface render an empty badge — the silence the whole change removes.
+        A missing state must be a 500 at the boundary, not a blank line in a
+        paid PDF.
+        """
+        import pytest as _pytest
+        for missing in ("review_state", "review_state_label", "review_state_detail"):
+            kwargs = dict(
+                report_id="r", address="a",
+                granny_flat_buildable=True, max_floor_area_m2=60.0,
+                estimated_weekly_rent_aud=None, rental_yield_annual_pct=None,
+                assumed_build_cost_aud=None,
+                confidence="high", confidence_reason="test",
+                review_state="reviewed", review_state_label="L",
+                review_state_detail="D",
+                data_sources=[], warnings=[],
+            )
+            del kwargs[missing]
+            with _pytest.raises(Exception):
+                GrannyFlatConfirmResponse(**kwargs)

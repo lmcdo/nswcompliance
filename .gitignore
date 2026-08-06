@@ -413,6 +413,10 @@ scripts/*
 !scripts/xref_detection_audit.py
 # Precinct boundary health check (run before/after every boundary import)
 !scripts/verify_precinct_boundaries.py
+# Granny-flat review-state measurement — the read-only query behind the badge
+# change (which states are DISTINGUISHABLE in stored rows, and the before/after
+# for every existing report). Committed so the claims can cite a command.
+!scripts/measure_granny_confidence_states.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py

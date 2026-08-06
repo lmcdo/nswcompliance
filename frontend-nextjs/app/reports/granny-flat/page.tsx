@@ -7,6 +7,7 @@ import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { SoftwareAppJsonLd } from '@/lib/json-ld';
 import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
+import { resolveGrannyReviewState } from '@/lib/granny-flat-review-state';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 
@@ -64,6 +65,13 @@ interface ConfirmResult {
   assumed_build_cost_aud: number | null;
   confidence: string;
   confidence_reason: string;
+  // What actually happened to the structure list. Optional: a report loaded
+  // from a pre-2026-08-06 row has no stored state and is derived instead.
+  review_state?: string;
+  review_state_label?: string;
+  review_state_detail?: string;
+  detected_structures?: unknown[];
+  samgeo_structure_count?: number | null;
   data_sources: string[];
   warnings: string[];
   eplanning_history?: EplanningHistory;
@@ -97,11 +105,10 @@ function deriveWhatToChange(reason: string | null, lotArea: number | null): stri
   return "A DA pathway may still be available at council's discretion — a town planner or certifier can advise on your options.";
 }
 
-const CONFIDENCE_LABEL: Record<string, string> = {
-  high: 'High confidence',
-  medium: 'Medium confidence',
-  low: 'Low confidence (pre-validation)',
-};
+// The high/medium/low grade is no longer shown. It graded a lot the scan
+// never checked as "medium", which reads as a middling amount of confidence
+// rather than an unverified result. Reports now say what happened instead —
+// see lib/granny-flat-review-state.ts.
 
 function GrannyFlatPageInner() {
   const searchParams = useSearchParams();
@@ -1679,6 +1686,9 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
   const weeklyRent = result.estimated_weekly_rent_aud;
   const annualRent = weeklyRent ? weeklyRent * 52 : null;
   const displayAddr = inputAddress || result.address;
+  const reviewState = resolveGrannyReviewState(
+    result as unknown as Record<string, unknown>,
+  );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -1686,10 +1696,18 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-semibold text-gray-900">{displayAddr}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {CONFIDENCE_LABEL[result.confidence] ?? result.confidence}
+            <p className="text-xs font-medium text-gray-600 mt-0.5">
+              {reviewState.label}
             </p>
-            {result.confidence_reason && (
+            <p className="text-xs text-gray-500 mt-1 max-w-sm">{reviewState.detail}</p>
+            {/* A stored reason on a pre-2026-08-06 row credits the reader
+                with having personally checked the count ("counts agree") —
+                which could not have happened: the count was seeded from the
+                detector and the control that would change it was never
+                wired. Rendering it beside the state above would contradict
+                it in the next line. Measured 2026-08-06: 18 of 20 completed
+                rows carry that phrasing. */}
+            {result.confidence_reason && !reviewState.derived && (
               <p className="text-xs text-gray-500 mt-1 max-w-sm">{result.confidence_reason}</p>
             )}
             <button

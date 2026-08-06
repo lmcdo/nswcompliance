@@ -64,6 +64,11 @@ const CONFIRM_OK = {
   confidence: 'medium',
   confidence_reason:
     'User selections matched the aerial detection; rent derived from postcode-level bond lodgement data.',
+  // Served since 2026-08-06: what happened to the structure list, not a grade.
+  review_state: 'reviewed',
+  review_state_label: 'Reviewed by you',
+  review_state_detail:
+    'You classified each structure the scan found on this lot, and your answers give the same total.',
   data_sources: ['NSW SIX Maps', 'NSW Fair Trading rental bond data'],
   warnings: [],
 };
@@ -202,8 +207,13 @@ describe('confirm success', () => {
     expect(screen.getByText(`${CONFIRM_OK.rental_yield_annual_pct}% p.a.`)).toBeInTheDocument();
     expect(screen.getByText('Assumed build cost')).toBeInTheDocument();
     expect(screen.getByText(`$${CONFIRM_OK.assumed_build_cost_aud.toLocaleString('en-AU')}`)).toBeInTheDocument();
-    // confidence + reason verbatim from the response fixture
-    expect(screen.getByText(CONFIRM_OK.confidence)).toBeInTheDocument();
+    // The review STATE is rendered; the high/medium/low grade is not. A card
+    // that printed "medium" told someone whose scan found nothing that we
+    // were middlingly sure, when nothing had been checked against anything.
+    expect(screen.getByText(CONFIRM_OK.review_state_label)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(CONFIRM_OK.review_state_detail.slice(0, 40)))).toBeInTheDocument();
+    expect(screen.queryByText(/Confidence:/i)).toBeNull();
+    expect(screen.queryByText(CONFIRM_OK.confidence)).toBeNull();
     expect(screen.getByText(new RegExp(CONFIRM_OK.confidence_reason.slice(0, 40)))).toBeInTheDocument();
     // the selection affordance is replaced by the result
     expect(screen.queryByRole('button', { name: CALC_BUTTON })).toBeNull();

@@ -24,6 +24,7 @@
 // visible error, never zeros.
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { resolveGrannyReviewState } from '@/lib/granny-flat-review-state';
 
 // Detected structure row from the granny-flat detection service.
 export interface DetectedStructureRow {
@@ -64,6 +65,9 @@ export interface GfYieldResult {
   assumed_build_cost_aud?: number | null;
   confidence?: string | null;
   confidence_reason?: string | null;
+  review_state?: string | null;
+  review_state_label?: string | null;
+  review_state_detail?: string | null;
 }
 
 type ConfirmState =
@@ -100,8 +104,9 @@ function money(v: number | null | undefined): string {
 }
 
 // Yield block — the confirm/calculate outputs, labelled as computed estimates.
-// confidence + confidence_reason are surfaced verbatim from the response.
+// The structure list carries its review STATE (what happened), not a grade.
 function YieldBlock({ result }: { result: GfYieldResult }) {
+  const reviewState = resolveGrannyReviewState(result as unknown as Record<string, unknown>);
   const rows: { label: string; value: string }[] = [
     {
       label: 'Buildable floor area',
@@ -138,12 +143,16 @@ function YieldBlock({ result }: { result: GfYieldResult }) {
           </div>
         ))}
       </dl>
-      {(result.confidence || result.confidence_reason) && (
-        <p className="mt-2 text-xs text-slate-500">
-          {result.confidence ? <>Confidence: <span className="font-medium">{result.confidence}</span></> : null}
-          {result.confidence && result.confidence_reason ? ' — ' : null}
-          {result.confidence_reason}
-        </p>
+      {/* What happened to the structure list, not a grade. "Confidence:
+          medium" told someone whose scan found nothing that we were middlingly
+          sure — when nothing had been checked against anything. */}
+      <p className="mt-2 text-xs text-slate-500">
+        <span className="font-medium text-slate-600">{reviewState.label}</span>
+        {' — '}
+        {reviewState.detail}
+      </p>
+      {result.confidence_reason && !reviewState.derived && (
+        <p className="mt-1 text-xs text-slate-500">{result.confidence_reason}</p>
       )}
       <p className="mt-2 text-xs text-slate-400">
         Computed estimates from aerial detection, SEPP (Housing) 2021 standards and NSW rental bond data — indicative only, not advice.

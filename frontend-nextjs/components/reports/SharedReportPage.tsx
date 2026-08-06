@@ -32,6 +32,14 @@ interface Props {
   address: string;
   runDate: string;
   confidence?: string;
+  /**
+   * What was actually checked, when the product can say. Replaces the
+   * "Confidence: x" grade for products that have moved off the ladder
+   * (granny-flat, 2026-08-06). Products still passing `confidence` render
+   * unchanged — this is additive on purpose.
+   */
+  stateLabel?: string;
+  stateDetail?: string;
   generatePath: string;
   highlights: Highlight[];
 }
@@ -42,6 +50,8 @@ export function SharedReportPage({
   address,
   runDate,
   confidence,
+  stateLabel,
+  stateDetail,
   generatePath,
   highlights,
 }: Props) {
@@ -57,8 +67,13 @@ export function SharedReportPage({
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{address}</h1>
         <p className="text-sm text-gray-500">
           Generated {runDate}
-          {confidence && <span> · Confidence: {confidence}</span>}
+          {stateLabel
+            ? <span> · {stateLabel}</span>
+            : confidence && <span> · Confidence: {confidence}</span>}
         </p>
+        {stateDetail && (
+          <p className="text-xs text-gray-500 mt-1 max-w-xl">{stateDetail}</p>
+        )}
       </div>
 
       {/* Key findings */}
