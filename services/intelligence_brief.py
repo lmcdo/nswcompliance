@@ -673,6 +673,8 @@ class ShadowScenarioOutput(BaseModel):
     shadow_overlap_fraction: Optional[float] = None  # 0-1; brief converts to percent
     shadow_direction_deg: Optional[float] = None
     overlaps_subject_lot: Optional[bool] = None
+    status: Optional[str] = None       # "computed" | "unavailable"
+    error_note: Optional[str] = None   # why the scenario has no measurements
 
 
 class ShadowServiceOutput(BaseModel):
@@ -2337,6 +2339,8 @@ def _build_shadow_result(shadow_result: Optional[dict]) -> Optional[ShadowResult
             overlap_pct=(frac * 100 if frac is not None else None),
             shadow_direction_deg=s.shadow_direction_deg,
             overlaps_subject_lot=s.overlaps_subject_lot,
+            status=s.status,
+            error_note=s.error_note,
         ))
     return ShadowResult(
         height_m=out.height_m,

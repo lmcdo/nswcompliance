@@ -74,6 +74,7 @@ import os
 import sys
 from collections import Counter
 from datetime import datetime, timezone
+from typing import Optional
 
 import psycopg2
 import psycopg2.extras
@@ -88,7 +89,11 @@ from services.shadow_model import (  # noqa: E402
     model_all_scenarios, northern_neighbour_proxy,
 )
 from services.shadow_detector import (  # noqa: E402
-    DEFAULT_HEIGHT_M, _adg_compliant, _build_scenario_list, _worst_case,
+    DEFAULT_HEIGHT_M, _adg_compliant, _arcgis_to_geojson, _build_scenario_list,
+    _fetch_lot_geometry, _worst_case,
+)
+from services.geometry_checks import (  # noqa: E402
+    check_polygon_wgs84, check_rings_epsg3857,
 )
 
 SCENARIOS = {"jun21_9am": (6, 21, 9), "jun21_12pm": (6, 21, 12),
@@ -242,23 +247,65 @@ def _regenerate_outputs(row: dict, pass_cfg: dict) -> dict:
         "reason": pass_cfg["reason"],
         "regenerated": ["scenarios", "north_proxy_polygon", "adg_compliant",
                         "worst_case_scenario"],
-        "preserved": ["lot_polygon", "height_m", "construction_change_*"],
+        "preserved": ["height_m", "construction_change_*"],
+        # Records WHICH of the two happened for a row that had no boundary, so
+        # the row itself says whether its geometry is stored or refetched.
+        "lot_polygon": ("refetched from the NSW Planning Portal 2026-08-07"
+                        if row.get("_refetched_geometry") else "preserved"),
     }
     return outputs
+
+
+def refetch_lot_polygon(row: dict) -> tuple[Optional[dict], str]:
+    """Fetch this row's lot boundary live from the NSW Planning Portal.
+
+    Returns (geojson_or_None, human_readable_outcome). Used only for rows whose
+    stored lot_polygon is missing: marking them "not assessed" while the
+    boundary is still published would be reporting an absence we did not have
+    to accept. Every response goes through the SAME entry checks the live
+    pipeline applies — CRS wkid and ring plausibility — so a refetched boundary
+    cannot enter on weaker terms than a fresh report's.
+    """
+    prop_id = row.get("prop_id")
+    if not prop_id:
+        return None, "no prop_id to fetch with"
+    try:
+        geometry = _fetch_lot_geometry(str(prop_id))
+    except Exception as e:                       # network, timeout, HTTP error
+        return None, f"portal fetch raised: {str(e)[:60]}"
+    if not geometry:
+        return None, "portal returned no geometry"
+
+    sr = geometry.get("spatialReference") or {}
+    wkid = sr.get("latestWkid") or sr.get("wkid")
+    if wkid is not None and wkid not in (3857, 102100):
+        return None, f"portal returned unexpected CRS wkid={wkid}"
+    rings_reason = check_rings_epsg3857(geometry.get("rings"))
+    if rings_reason:
+        return None, f"implausible rings: {rings_reason}"
+    lot_geojson = _arcgis_to_geojson(geometry)
+    polygon_reason = check_polygon_wgs84(lot_geojson)
+    if polygon_reason:
+        return None, f"converted polygon implausible: {polygon_reason}"
+    return lot_geojson, "refetched from the NSW Planning Portal"
 
 
 def _regeneratable(row: dict) -> str | None:
     """None if the row can be regenerated, else the reason it cannot.
 
-    Reported, never guessed: a row without geometry is excluded from the write
-    set and named in the run output, rather than silently skipped.
+    Reported, never guessed: a row that cannot be regenerated is excluded from
+    the write set and named in the run output, rather than silently skipped.
+    A missing lot_polygon is NOT such a reason on its own — the boundary is
+    fetched live first, and only a genuine fetch failure blocks the row.
     """
     if row["lat"] is None or row["lng"] is None:
         return "no coordinates"
     if row["height_m"] is None:
         return "no height_m"
     if not (row["outputs"] or {}).get("lot_polygon"):
-        return "no stored lot_polygon"
+        failure = row.get("_refetch_failure")
+        return (f"no lot boundary — refetch failed: {failure}" if failure
+                else "no stored lot_polygon and no refetch attempted")
     return None
 
 
@@ -288,7 +335,8 @@ def _connect(readonly: bool):
 
 def _fetch_corpus(cur) -> list[dict]:
     cur.execute("""
-        SELECT id::text AS id, address, lat, lng, run_date::text AS run_date,
+        SELECT id::text AS id, address, lat, lng, prop_id,
+               run_date::text AS run_date,
                confidence, outputs,
                (outputs ->> 'height_m')::numeric AS height_m,
                md5(outputs::text) AS outputs_md5
@@ -323,7 +371,8 @@ def _blast_radius(rows_before_after: list[tuple]) -> dict:
         "reach_deltas": [], "overlap_pct_deltas": [], "adg_examples": {},
     }
     for row, new_out, new_conf in rows_before_after:
-        old_out, old_conf = row["outputs"], row["confidence"]
+        # The TRUE pre-state, not the working copy the geometry refetch mutated.
+        old_out, old_conf = row["_pre_outputs"], row["confidence"]
         changed_verdict = False
 
         old_adg, new_adg = old_out.get("adg_compliant"), new_out["adg_compliant"]
@@ -515,21 +564,56 @@ def main() -> int:
     corpus = _fetch_corpus(cur)
     conn.close()
 
+    # Snapshot the TRUE pre-state before anything can mutate it. The geometry
+    # refetch below writes into row["outputs"] in place, and a backup taken
+    # afterwards would record a boundary the row never actually held — the
+    # rollback would then "restore" the row to a state that never existed.
+    for r in corpus:
+        r["_pre_outputs"] = copy.deepcopy(r["outputs"])
+
     selected = [r for r in corpus if pass_cfg["select"](r)]
     if not selected:
         print(f"NO ROWS SELECTED [{args.pass_name}]: zero of "
               f"{len(corpus)} rows match this pass — nothing written.")
         return 0
 
-    blocked = [(r, why) for r in selected for why in [_regeneratable(r)] if why]
-    writable = [r for r in selected if _regeneratable(r) is None]
     print(f"CORPUS {len(corpus)} shadow reports")
     print(f"SELECTED [{args.pass_name}]: {len(selected)}  "
           f"(expected {pass_cfg['expected_count']})")
+
+    # A missing lot_polygon is not a verdict — the boundary may still be
+    # published. Fetch it live before writing the row off, and record which of
+    # the two actually happened for every such row.
+    needs_geometry = [r for r in selected
+                      if not (r["outputs"] or {}).get("lot_polygon")]
+    refetched, refetch_failed = 0, []
+    if needs_geometry:
+        print(f"REFETCHING lot geometry for {len(needs_geometry)} row(s) with no "
+              f"stored boundary:")
+        for r in needs_geometry:
+            lot_geojson, outcome = refetch_lot_polygon(r)
+            if lot_geojson is None:
+                refetch_failed.append((r, outcome))
+                # Carry the real reason to the blocked list, so the run says
+                # WHY the boundary is unavailable rather than restating that it
+                # is missing.
+                r["_refetch_failure"] = outcome
+                print(f"    {r['id'][:8]}  FAILED — {outcome}")
+                continue
+            r["outputs"]["lot_polygon"] = lot_geojson
+            r["_refetched_geometry"] = True
+            refetched += 1
+            print(f"    {r['id'][:8]}  OK — {outcome}  "
+                  f"(prop_id {r.get('prop_id')})")
+        print(f"  refetched {refetched}, still without geometry "
+              f"{len(refetch_failed)}")
+
+    blocked = [(r, why) for r in selected for why in [_regeneratable(r)] if why]
+    writable = [r for r in selected if _regeneratable(r) is None]
     if blocked:
         print(f"CANNOT REGENERATE: {len(blocked)} — reported, never guessed:")
         for r, why in blocked[:20]:
-            print(f"    {r['id'][:8]}  {why:<22} {r['address'][:44]}")
+            print(f"    {r['id'][:8]}  {why:<38} {r['address'][:40]}")
     if pass_cfg["expected_ids"] is not None and \
             {r["id"] for r in selected} != pass_cfg["expected_ids"]:
         sys.exit("ABORTED: selection drifted from the measured id set.")
@@ -543,7 +627,7 @@ def main() -> int:
     # ------------------------------------------------------- guard 1: backup
     backup_rows = [{"id": r["id"], "address": r["address"],
                     "run_date": r["run_date"], "confidence": r["confidence"],
-                    "outputs": r["outputs"], "pre_md5": r["outputs_md5"]}
+                    "outputs": r["_pre_outputs"], "pre_md5": r["outputs_md5"]}
                    for r in writable]
     with open(backup_path, "w", encoding="utf-8") as f:
         json.dump({"taken": datetime.now(timezone.utc).isoformat(),
