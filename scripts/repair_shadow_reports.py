@@ -517,8 +517,8 @@ def main() -> int:
 
     selected = [r for r in corpus if pass_cfg["select"](r)]
     if not selected:
-        print(f"IDEMPOTENCE CONFIRMED [{args.pass_name}]: zero rows selected "
-              f"from {len(corpus)} — nothing to do, nothing written.")
+        print(f"NO ROWS SELECTED [{args.pass_name}]: zero of "
+              f"{len(corpus)} rows match this pass — nothing written.")
         return 0
 
     blocked = [(r, why) for r in selected for why in [_regeneratable(r)] if why]
