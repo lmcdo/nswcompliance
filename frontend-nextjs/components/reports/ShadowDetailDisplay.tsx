@@ -4,6 +4,9 @@
 // page.tsx now imports this component in the same render slot.
 import { cn } from '@/lib/utils';
 import { surfaceChangeState } from '@/lib/shadow-surface-change';
+import {
+  SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
+} from '@/lib/shadow-scenario-availability';
 
 export interface ShadowScenarioRow {
   date_label?: string;
@@ -11,6 +14,11 @@ export interface ShadowScenarioRow {
   shadow_length_m?: number | null;
   overlap_pct?: number | null;
   overlaps_subject_lot?: boolean | null;
+  // Carried from the service so a scenario with no result can say so. Without
+  // these, every measurement is simply null and the row renders as three em
+  // dashes — which a reader skims as "nothing to worry about".
+  status?: string | null;
+  error_note?: string | null;
 }
 
 export interface ShadowData {
@@ -104,19 +112,35 @@ export function ShadowDisplay({ data }: { data: ShadowData }) {
             </thead>
             <tbody>
               {scenarios.map((s, i) => (
-                <tr key={i} className="border-t border-slate-100 align-top">
-                  <td className="py-1 pr-3 text-slate-700">{cleanScenarioLabel(s.date_label) || s.date_label || '—'}</td>
-                  <td className="py-1 pr-3 tabular-nums text-slate-500">{s.time_label || '—'}</td>
-                  <td className="py-1 pr-3 tabular-nums text-slate-700">{s.shadow_length_m != null ? `${s.shadow_length_m} m` : '—'}</td>
-                  <td className="py-1 pr-3 tabular-nums text-slate-700">
-                    {s.overlap_pct != null
-                      ? `${s.overlap_pct.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
-                      : '—'}
-                  </td>
-                  <td className="py-1 text-slate-500">
-                    {s.overlaps_subject_lot == null ? '—' : s.overlaps_subject_lot ? 'Yes' : 'No'}
-                  </td>
-                </tr>
+                isScenarioUnavailable(s) ? (
+                  // One amber statement across the measurement columns, not
+                  // three em dashes. An empty cell reads as "fine" to someone
+                  // skimming; this has to read as an absence and look unlike a
+                  // result.
+                  <tr key={i} className="border-t border-slate-100 align-top bg-amber-50">
+                    <td className="py-1 pr-3 text-slate-700">{cleanScenarioLabel(s.date_label) || s.date_label || '—'}</td>
+                    <td className="py-1 pr-3 tabular-nums text-slate-500">{s.time_label || '—'}</td>
+                    <td className="py-1 text-amber-900 text-xs leading-snug" colSpan={3}>
+                      <span className="font-medium">{SCENARIO_NOT_ASSESSED_LABEL}</span>
+                      {' — '}
+                      {scenarioUnavailableMessage(s.error_note)}
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={i} className="border-t border-slate-100 align-top">
+                    <td className="py-1 pr-3 text-slate-700">{cleanScenarioLabel(s.date_label) || s.date_label || '—'}</td>
+                    <td className="py-1 pr-3 tabular-nums text-slate-500">{s.time_label || '—'}</td>
+                    <td className="py-1 pr-3 tabular-nums text-slate-700">{s.shadow_length_m != null ? `${s.shadow_length_m} m` : '—'}</td>
+                    <td className="py-1 pr-3 tabular-nums text-slate-700">
+                      {s.overlap_pct != null
+                        ? `${s.overlap_pct.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
+                        : '—'}
+                    </td>
+                    <td className="py-1 text-slate-500">
+                      {s.overlaps_subject_lot == null ? '—' : s.overlaps_subject_lot ? 'Yes' : 'No'}
+                    </td>
+                  </tr>
+                )
               ))}
             </tbody>
           </table>

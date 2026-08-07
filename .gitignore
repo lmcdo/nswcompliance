@@ -645,4 +645,4 @@ latent-scope-data/
 # through the pipeline's own functions, with backup/predict/guard/verify/
 # idempotence/rollback. Committed so the production write can be audited and
 # rolled back from the repo rather than from memory.
-!scripts/repair_shadow_impossible_reach.py
+!scripts/repair_shadow_reports.py

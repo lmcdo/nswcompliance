@@ -256,14 +256,28 @@ def get_scenario_metadata() -> list:
 OVERLAP_THRESHOLD = 0.40
 
 
+class ShadowGeometryError(RuntimeError):
+    """The shadow/lot intersection could not be COMPUTED.
+
+    Distinct from a computed empty intersection. Conflating the two is what
+    let a GEOS TopologyException be served as "0% of the lot is in shadow" —
+    a measurement the run never made, about the customer's own amenity.
+    """
+
+
 def _shadow_intersection(shadow_geojson: dict, lot_geojson: dict):
+    """The shadow's intersection with the subject lot, or None if they do not meet.
+
+    Returns None ONLY when the geometry is valid and the shadow genuinely does
+    not touch the lot. Raises ShadowGeometryError when the intersection could
+    not be computed at all — GEOS raises TopologyException on self-touching or
+    unclosed cadastral rings, and that is an ABSENCE OF MEASUREMENT, not a
+    finding of no shadow. The previous code caught it and returned None, which
+    every caller then coerced to 0.0.
     """
-    Return the shapely geometry of the shadow's intersection with the subject lot.
-    Returns None on error or if shapely unavailable.
-    """
+    from shapely.geometry import shape
+    from shapely.ops import unary_union
     try:
-        from shapely.geometry import shape
-        from shapely.ops import unary_union
         lot = shape(lot_geojson)
         shadow_shapes = [
             shape(f["geometry"])
@@ -273,39 +287,51 @@ def _shadow_intersection(shadow_geojson: dict, lot_geojson: dict):
         if not shadow_shapes:
             return None
         intersection = unary_union(shadow_shapes).intersection(lot)
-        return intersection if not intersection.is_empty else None
     except Exception as e:
-        logger.warning(f"Shadow intersection failed: {e}")
-        return None
+        raise ShadowGeometryError(str(e)) from e
+    return intersection if not intersection.is_empty else None
 
 
-def shadow_overlap_fraction(shadow_geojson: dict, lot_geojson: dict) -> float:
+def shadow_overlap_fraction(shadow_geojson: dict,
+                            lot_geojson: dict) -> Optional[float]:
     """
     Fraction (0–1) of the subject lot area covered by the shadow polygon.
     0.0 = no overlap; 1.0 = entire lot in shadow.
+
+    None means the fraction COULD NOT BE COMPUTED — never that it is zero.
+    Returning 0.0 from the failure path put a fabricated "no overlap" on
+    stored reports: 7 of them told a customer they met the ADG solar-access
+    test while the recomputed truth was up to 100% of the lot in shadow
+    (measured 2026-08-07 over the stored corpus).
     """
     try:
         from shapely.geometry import shape
         lot = shape(lot_geojson)
         lot_area = lot.area
         if lot_area == 0:
-            return 0.0
+            # A fraction OF zero area is undefined, not zero.
+            logger.warning("Overlap fraction: lot has zero area")
+            return None
         intersection = _shadow_intersection(shadow_geojson, lot_geojson)
         if intersection is None:
             return 0.0
         return round(min(1.0, intersection.area / lot_area), 3)
+    except ShadowGeometryError as e:
+        logger.warning(f"Overlap fraction unavailable — intersection failed: {e}")
+        return None
     except Exception as e:
-        logger.warning(f"Overlap fraction failed: {e}")
-        return 0.0
+        logger.warning(f"Overlap fraction unavailable: {e}")
+        return None
 
 
-def shadow_reach_m(shadow_geojson: dict, lot_geojson: dict) -> float:
+def shadow_reach_m(shadow_geojson: dict, lot_geojson: dict) -> Optional[float]:
     """
     How far (metres) the shadow penetrates into the subject lot, measured
     from the lot's northern boundary southward.
 
     0   = shadow doesn't enter the lot.
     lot_depth_m = shadow covers the entire lot.
+    None = the penetration could not be computed — NOT that it is zero.
 
     This replaces the old shadow_length_m (which measured from lot centroid
     to all shadow vertices including the proxy building, making it useless).
@@ -321,12 +347,16 @@ def shadow_reach_m(shadow_geojson: dict, lot_geojson: dict) -> float:
         south_lat = intersection.bounds[1]  # miny
         reach_lat = lot_north_lat - south_lat
         return round(max(0.0, reach_lat * 111_000), 1)
+    except ShadowGeometryError as e:
+        logger.warning(f"shadow_reach_m unavailable — intersection failed: {e}")
+        return None
     except Exception as e:
-        logger.warning(f"shadow_reach_m failed: {e}")
-        return 0.0
+        logger.warning(f"shadow_reach_m unavailable: {e}")
+        return None
 
 
-def shadow_length_m(shadow_geojson: dict, lot_geojson: dict, **_kwargs) -> float:
+def shadow_length_m(shadow_geojson: dict, lot_geojson: dict,
+                    **_kwargs) -> Optional[float]:
     """
     Backwards-compatible wrapper — now returns shadow_reach_m.
     Old signature accepted (lot_centroid_lng, lot_centroid_lat); new callers
@@ -335,13 +365,20 @@ def shadow_length_m(shadow_geojson: dict, lot_geojson: dict, **_kwargs) -> float
     return shadow_reach_m(shadow_geojson, lot_geojson)
 
 
-def overlaps_lot(shadow_geojson: dict, lot_geojson: dict) -> bool:
+def overlaps_lot(shadow_geojson: dict, lot_geojson: dict) -> Optional[bool]:
     """
     True if the shadow covers ≥OVERLAP_THRESHOLD of the subject lot area.
     A 40% threshold means the rear yard (principal private open space) is
     materially impacted; minor edge shadows at 9am/3pm don't trigger this.
+
+    None when the fraction could not be computed. Never False from an
+    uncomputed fraction: `None >= 0.40` would raise, and coercing it to False
+    would assert the lot is unaffected on the strength of a failed geometry op.
     """
-    return shadow_overlap_fraction(shadow_geojson, lot_geojson) >= OVERLAP_THRESHOLD
+    fraction = shadow_overlap_fraction(shadow_geojson, lot_geojson)
+    if fraction is None:
+        return None
+    return fraction >= OVERLAP_THRESHOLD
 
 
 def shadow_on_lot_geojson(shadow_geojson: dict, lot_geojson: dict) -> Optional[dict]:
@@ -349,9 +386,16 @@ def shadow_on_lot_geojson(shadow_geojson: dict, lot_geojson: dict) -> Optional[d
     Return a GeoJSON FeatureCollection of the shadow clipped to the subject lot.
     Used to render exactly which part of the lot is in shadow — not the full
     pybdshadow polygon (which includes the proxy building footprint).
-    Returns None if no intersection.
+    Returns None if there is no intersection, and also if one could not be
+    computed. Unlike the numeric fields, that conflation is harmless here: this
+    is the clipped polygon the map draws, and drawing nothing is the correct
+    response to both. The claim-bearing fields are handled above.
     """
-    intersection = _shadow_intersection(shadow_geojson, lot_geojson)
+    try:
+        intersection = _shadow_intersection(shadow_geojson, lot_geojson)
+    except ShadowGeometryError as e:
+        logger.warning(f"shadow_on_lot_geojson unavailable: {e}")
+        return None
     if intersection is None:
         return None
     try:

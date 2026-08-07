@@ -1,215 +1,194 @@
 {
   "tier": "critical",
-  "justification": "Changes numbers and claims on a paid surface. The shadow bearing served in the PDF Direction column stops being one of five stored constants and becomes a per-address calculation; the December scenario's modelled instant moves by one hour, changing its bearing, altitude, reach and coverage; and the sentence 'Construction activity detected on adjacent lot / No significant ground disturbance detected on adjacent lots' — a factual assertion about a third party's land, rendered on all 538 stored reports from a check that never produced a reading — is replaced with a three-state, area-scoped statement. Not standard tier: this is user-facing regulatory-adjacent output on a $39 paid PDF, plus a statement about someone else's property.",
-  "commit_hash": "4ebdc44c",
+  "justification": "An authorized PRODUCTION DATA WRITE over 519 stored customer shadow reports, including paid $39 PDFs. Every one of them currently renders a December scenario cast at 13:00 AEDT under a 12:00 label, and a Direction column carrying the retired constant 183.0 — measured a median 48.8 deg from the truth, with 519 of 519 printing the compass letter 'S' where the correct letter is 'SW'. Regeneration is whole-report by necessity, so it also recomputes reach, coverage, bearings, adg_compliant, worst_case_scenario and confidence. Not standard tier: this rewrites numbers a customer has already been served and may have relied on in a council objection, and it cannot be undone except from the backup this run takes.",
+  "commit_hash": "b6ce3cc3",
   "files": [
-    "services/solar_position.py",
-    "services/shadow_model.py",
-    "services/shadow_detector.py",
+    ".claude/.pre-impl-done.json",
+    ".gitignore",
+    "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
+    "frontend-nextjs/components/reports/ShadowDetailDisplay.tsx",
+    "frontend-nextjs/components/tools/ShadowTool.tsx",
+    "frontend-nextjs/lib/pdf/shadow-report.tsx",
+    "frontend-nextjs/lib/shadow-scenario-availability.ts",
+    "scripts/repair_shadow_impossible_reach.py",
+    "scripts/repair_shadow_reports.py",
     "services/constraint_models.py",
     "services/intelligence_brief.py",
-    "services/requirements.txt",
-    "requirements-test.txt",
-    "frontend-nextjs/lib/shadow-surface-change.ts",
-    "frontend-nextjs/lib/pdf/shadow-report.tsx",
-    "frontend-nextjs/components/tools/ShadowTool.tsx",
-    "frontend-nextjs/components/reports/ShadowDetailDisplay.tsx",
-    "frontend-nextjs/components/reports/landing/data/shadow.ts",
-    "frontend-nextjs/components/reports/ToolCrossSell.tsx",
-    "frontend-nextjs/__tests__/lib/pdf/shadow-report-findings.test.ts",
-    "frontend-nextjs/app/api/reports/shadow/generate/route.ts",
-    "frontend-nextjs/app/for/buyers-agents/page.tsx",
-    "scripts/measure_shadow_calibration_damage.py",
-    "tests/test_shadow_calibration.py",
-    "tests/test_shadow_detector.py",
-    "tests/test_brief_contracts.py",
-    "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx"
+    "services/shadow_detector.py",
+    "services/shadow_model.py",
+    "tests/test_shadow_detector.py"
   ],
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_shadow_calibration.py -q  — 122 assertions comparing this repo's served solar geometry against pvlib's NREL Solar Position Algorithm (Reda & Andreas 2004), a THIRD-PARTY library implementing a DIFFERENT algorithm by different authors, at 5 scenarios x 8 NSW locations. Timezone labelling is checked against the IANA tzdata database via zoneinfo, also external. Falsifiability was PROVEN by planting each real defect and confirming a red run: daylight saving ignored (fixed UTC+10) => 3 failed; the retired December constant 183.0 restored => 42 failed; suncalc lat/lng argument order swapped => 81 failed; a 0.6 deg bearing offset injected just past the pass mark => 41 failed. Source files restored byte-identically (sha256 prefix a3019d6b83f2 / 81b439196a2a identical before and after).",
-    "fails_when": "NOT SELF-REFERENTIAL, and here is why: production computes sun position with suncalc (the Meeus/SunCalc formulation, and the same call pybdshadow makes internally to cast the polygon), while the test's expected values come from pvlib's NREL SPA — a separate implementation of a separate algorithm, maintained by different people, that this codebase does not use and must never use in production. The test therefore compares our answer against an outside authority, not against a re-run of itself. It goes red when: solar altitude differs from pvlib by more than 0.50 deg at any fixture point; the shadow bearing differs by more than 0.50 deg where solar altitude is at or below 85 deg; a scenario's modelled UTC instant fails to convert back to its own advertised wall-clock label exactly to the minute in Australia/Sydney; the noon sun is not north of the zenith somewhere in NSW; or the served bearing becomes constant across the state again. The 0.50 deg tolerance was written down on 2026-08-07 BEFORE the first run and has not been moved since; measured headroom across the 212 real served locations is 0.196 deg in altitude and 0.302 deg in bearing. pvlib and suncalc are imported at module scope with no importorskip, so an absent library is a collection ERROR and a red build, never a green skip."
+    "command": "DATABASE_URL=... python scripts/repair_shadow_reports.py --pass december-dst --backup-dir data/db_rollback_backups   (dry run: predicts every row and asserts the preserved set)  THEN  --verify-only  THEN  python scripts/measure_shadow_calibration_damage.py",
+    "fails_when": "NOT SELF-REFERENTIAL: the post-state is checked by a DIFFERENT program from the one that wrote it. (1) The dry run recomputes every row and compares the four Sentinel-2 fields before/after; a single altered field aborts the entire run before any write, so the 'preserved' claim cannot be asserted without evidence. (2) The per-row UPDATE is guarded on md5(outputs::text) equal to the pre-state hash captured server-side, so a row that changed under us takes rowcount=0 and rolls its batch back rather than overwriting. (3) --verify-only re-reads every written row and deep-compares it against the prediction file written BEFORE the write, JSON-normalised, and refuses to arm the rollback unless all 519 match. (4) scripts/measure_shadow_calibration_damage.py — the independent census, which shares no code path with the repair — must report 0 reports carrying the December defect and 0 impossible-reach rows afterwards. (5) Re-running the repair must select ZERO rows, because selection excludes any row carrying outputs.repair; a non-zero second selection means the write did not take. A run that cannot reach the database exits non-zero rather than reporting 'no damage'."
   },
   "pre_impl": {
-    "existing_data": "property_reports WHERE product='shadow' — 538 rows, read-only. Scenarios live at outputs->'scenarios' (jsonb array), not columns. No writes issued by this change or by the measurement script.",
-    "assumption_mismatch": "Stored reports were written by the OLD code and keep their stored shadow_direction_deg and time_local. They are not migrated here. A re-pulled stored report therefore still renders its stored December constant of 183.0 and its 12:00 label; only newly computed reports carry the corrected values. This is stated in the measured-damage section rather than silently repaired, because repair is a separately authorised pass.",
-    "new_vs_existing": "New computations only. The per-address bearing and the DST-derived instants apply at request time in _build_scenario_list and model_shadow. The COPY changes apply to every render, including of stored rows — deliberately, since the false neighbour attribution is in the template, not the data.",
-    "external_source_error": "suncalc absent -> sun_position raises RuntimeError -> shadow_bearing_deg logs and returns None -> the scenario serves shadow_direction_deg=null and the PDF renders an em dash. The polygon still comes from pybdshadow. Sentinel-2 unreachable -> compute_change_score returns a note or a null score -> surfaceChangeState returns 'not_assessed' and every surface says the check did not run. The NSW lot API returning a non-3857 CRS or implausible rings still 422s at entry (unchanged).",
-    "frontend_type": "Yes, and updated: ShadowScenario.shadow_direction_deg, shadow_length_m, shadow_overlap_fraction and overlaps_subject_lot are now nullable in both lib/pdf/shadow-report.tsx and components/tools/ShadowTool.tsx; construction_change_note added to ShadowReportData, ShadowOutputs and ShadowData; construction_change_score added to ShadowData, ShadowResult and ShadowServiceOutput. tsc --noEmit: 0 errors.",
-    "user_failure_mode": "If the bearing cannot be computed the Direction cell shows an em dash rather than a compass point — absent, not fabricated. If the shadow reach exceeds the physical maximum for the modelled height at that sun altitude the scenario becomes status='unavailable' with an error_note naming the ceiling, instead of serving a 1,779 m shadow. If the Sentinel-2 check produced no reading the surface says 'Not assessed — no usable satellite reading' with an amber severity, instead of a green 'No construction activity detected'."
+    "existing_data": "property_reports WHERE product='shadow' — 538 rows. 19 already regenerated in PR #883 (they carry outputs.repair); 519 selected here. Scenarios live at outputs->'scenarios' (jsonb array), not columns. Schema re-confirmed from information_schema, not assumed: no version, algorithm_version or stale column exists anywhere on the table, which is why invalidation-instead-of-rewrite was ruled out rather than preferred.",
+    "assumption_mismatch": "The stored rows were written by pre-fix code and keep a December scenario cast at 02:00Z (13:00 AEDT) plus a stored bearing constant. Regeneration uses the STORED lot_polygon and height_m rather than re-fetching from the NSW Planning Portal — deliberately, so the change is isolated to the computation and is reproducible; a fresh fetch could silently substitute a different parcel and confound the repair. run_date is NOT advanced: it records when the report was originally produced for the customer, and outputs.repair carries the regeneration provenance instead.",
+    "new_vs_existing": "No new capability. scripts/repair_shadow_reports.py is the PR #883 repair script renamed and generalised to take a --pass, so both authorized passes share one proven guard chain instead of a second copy drifting from the first. Regeneration calls the pipeline's own northern_neighbour_proxy -> model_all_scenarios -> _build_scenario_list -> _adg_compliant/_worst_case, so the repaired rows cannot diverge from what a live re-run would produce.",
+    "external_source_error": "No external service is called. pybdshadow/suncalc run locally against the stored geometry; a raise inside _build_scenario_list is converted by the pipeline's own fail-closed branch into status='unavailable' with an error_note, never a fabricated number. A row lacking coordinates, height or lot_polygon is EXCLUDED from the write set by _regeneratable and named in the run output — reported, never silently skipped.",
+    "frontend_type": "No frontend change. The repaired shape is the one every surface already handles as of PR #883 (merged a7edd825): nullable shadow_length_m / shadow_overlap_fraction / shadow_direction_deg, status='unavailable', adg_compliant null.",
+    "user_failure_mode": "If the write half-completes, earlier batches are committed and later rows keep their pre-state — both states are internally consistent whole reports, never a row half-written by two code generations, because each row is a single atomic UPDATE of the whole outputs document. Selection then picks up exactly the remainder on a re-run. If a regenerated scenario is physically implausible it is served as 'not assessed' rather than as a number."
   },
   "functions": [
     {
-      "name": "local_wall_clock_to_utc",
-      "file_line": "services/solar_position.py:98",
-      "input": "year, month, day, hour and minute integers plus a ZoneInfo (defaults to Australia/Sydney), supplied by Scenario.instant_utc for each ADG test scenario",
-      "output": "a timezone-aware UTC datetime, consumed by pybdshadow.bdshadow_sunlight to cast the polygon and by sun_position to derive the reported bearing",
-      "if_none": "Cannot be None — all arguments are ints with defaults. A naive datetime cannot enter here because the function CONSTRUCTS the aware value; sun_position separately raises ValueError on a naive input rather than assuming the server's zone."
+      "name": "_select_december_dst",
+      "file_line": "scripts/repair_shadow_reports.py:190",
+      "input": "one property_reports row dict (id, lat, lng, outputs, height_m, outputs_md5) from the read-only corpus fetch",
+      "output": "bool — whether this row still carries the pre-fix December scenario and should be regenerated",
+      "if_none": "Cannot be None. A row already regenerated by EITHER pass carries outputs.repair and is excluded, which is what makes the run resumable and idempotent by construction rather than by bookkeeping."
     },
     {
-      "name": "sun_position",
-      "file_line": "services/solar_position.py:118",
-      "input": "a timezone-aware UTC datetime plus WGS84 latitude and longitude floats taken from the shadow request body",
-      "output": "a tuple of solar altitude and compass azimuth in degrees, consumed by shadow_bearing_deg and by the reach ceiling check in shadow_detector",
-      "if_none": "suncalc missing -> RuntimeError (never a fabricated position). Naive datetime -> ValueError. Callers convert both into typed absence."
+      "name": "_regenerate_outputs",
+      "file_line": "scripts/repair_shadow_reports.py:228",
+      "input": "the stored row plus the pass config; reads outputs.lot_polygon, height_m, lat, lng — the stored inputs, not a fresh fetch",
+      "output": "the complete post-repair outputs document, produced by the pipeline's own functions and written verbatim to property_reports.outputs",
+      "if_none": "Never returns None or a partial document. Rows that cannot be regenerated are filtered out earlier by _regeneratable, so this is never called on one."
     },
     {
-      "name": "shadow_bearing_deg",
-      "file_line": "services/solar_position.py:166",
-      "input": "a timezone-aware UTC datetime plus WGS84 latitude and longitude floats for the subject property",
-      "output": "an optional float bearing written to scenarios[].shadow_direction_deg, rendered as the PDF Direction column and the ShadowTool worst-case sentence",
-      "if_none": "Returns None when the sun is at/below the horizon or at/above 85 deg altitude (azimuth ill-conditioned). Rendered as an em dash in the PDF and omitted from the ShadowTool sentence; never coalesced to 0, which bearingToCompass would render as 'N'."
+      "name": "_regeneratable",
+      "file_line": "scripts/repair_shadow_reports.py:293",
+      "input": "one stored property_reports row, checked for the three inputs regeneration cannot proceed without: lat, lng and outputs.lot_polygon",
+      "output": "None when the row can be regenerated, otherwise the human-readable reason it cannot ('no coordinates', 'no height_m', 'no stored lot_polygon')",
+      "if_none": "None is the SUCCESS value here. A non-None reason removes the row from the write set and prints it, so an unregeneratable row is a reported outcome rather than a silent omission."
     },
     {
-      "name": "scenario_shadow_bearing_deg",
-      "file_line": "services/shadow_model.py:150",
-      "input": "a scenario key string plus the request latitude and longitude, called once per scenario by _build_scenario_list",
-      "output": "an optional float bearing, or None when the sun is below the horizon or too near the zenith for a direction to mean anything",
-      "if_none": "Unknown scenario key -> None. Replaces the five stored direction_deg constants."
+      "name": "_blast_radius",
+      "file_line": "scripts/repair_shadow_reports.py:360",
+      "input": "the (row, predicted outputs, predicted confidence) triples for the whole write set",
+      "output": "counts of what a customer would SEE change, separated into verdict flips (ADG, confidence, worst case, scenario-became-unavailable, compass letter) versus numbers-only movement, plus any preserved-field violation",
+      "if_none": "Cannot be None. An empty write set exits earlier via the idempotence branch. A non-empty preserved_violations list aborts the run before any write."
     },
     {
-      "name": "instant_utc",
-      "file_line": "services/shadow_model.py:130",
-      "input": "the scenario's own local_hour and local_minute fields together with SCENARIO_YEAR, with no separately stored UTC offset to drift against them",
-      "output": "a timezone-aware UTC datetime consumed by model_shadow and scenario_shadow_bearing_deg, derived so it can never contradict the displayed time_local",
-      "if_none": "Cannot be None. Derived, so it can never contradict time_local — that pairing was the defect."
+      "name": "shadow_overlap_fraction",
+      "file_line": "services/shadow_model.py:295",
+      "input": "the pybdshadow shadow FeatureCollection and the subject lot polygon, both WGS84 GeoJSON, for one ADG scenario",
+      "output": "Optional[float] 0-1 written to scenarios[].shadow_overlap_fraction — the PDF Coverage column, the ShadowTool percentage, and the input to the ADG solar-access gate",
+      "if_none": "None means the fraction could not be COMPUTED and is never coerced to 0.0. _build_scenario_list turns a None into status='unavailable'; _adg_compliant then returns None (not assessed) rather than a pass."
     },
     {
-      "name": "max_shadow_length_m",
-      "file_line": "services/solar_position.py:201",
-      "input": "the modelled building height in metres and the solar altitude in degrees at the instant being checked",
-      "output": "an optional float giving the longest physically possible shadow, used to reject implausible reach values in _build_scenario_list",
-      "if_none": "Returns None when altitude <= 0 or height <= 0; the caller then skips the check rather than treating an unknown ceiling as a breach."
+      "name": "overlaps_lot",
+      "file_line": "services/shadow_model.py:368",
+      "input": "the same shadow and lot geometries; delegates to shadow_overlap_fraction and compares against OVERLAP_THRESHOLD (0.40)",
+      "output": "Optional[bool] written to scenarios[].overlaps_subject_lot, counted by every 'N of 5 scenarios with shadow' line on the PDF and the free tool",
+      "if_none": "None when the fraction is None. Never False from an uncomputed fraction: `None >= 0.40` would raise, and coercing to False asserts the lot is unaffected on the strength of a geometry op that did not complete."
     },
     {
-      "name": "surfaceChangeState",
-      "file_line": "frontend-nextjs/lib/shadow-surface-change.ts:60",
-      "input": "{construction_change_score, construction_change_detected, construction_change_note} from a live run or a stored report",
-      "output": "'detected' | 'none_detected' | 'not_assessed' -> PDF findings, ShadowTool findings, Brief ShadowDisplay",
-      "if_none": "Missing/undefined score returns 'not_assessed'. That is the intended default: absence of the field is absence of a reading."
+      "name": "_json_norm",
+      "file_line": "scripts/repair_shadow_reports.py:349",
+      "input": "either side of a comparison — the in-memory predicted outputs document, or the same document re-read from Postgres jsonb after the write",
+      "output": "the same document with tuples normalised to lists, for comparison across the jsonb boundary",
+      "if_none": "None normalises to None. This exists because the first run of the PR #883 repair failed its own verify on all 19 rows while the data was correct — shapely emits coordinate TUPLES and Postgres returns LISTS. A check that can only fail is worth as little as one that can only pass."
+    },
+    {
+      "name": "refetch_lot_polygon",
+      "file_line": "scripts/repair_shadow_reports.py:259",
+      "input": "one stored row whose outputs.lot_polygon is missing, using its prop_id to query the NSW Planning Portal lot endpoint",
+      "output": "(lot GeoJSON or None, human-readable outcome) — the geometry regeneration runs against, plus the sentence recorded in the run log and on the row",
+      "if_none": "None means the boundary could not be obtained OR failed the same CRS/ring plausibility checks the live pipeline applies; the row is excluded from the write set and its failure reason printed, so 'not assessed' is only ever reported after a genuine fetch failure."
     }
   ],
   "values": [
     {
-      "value": "shadow_direction_deg",
-      "read_at": "frontend-nextjs/lib/pdf/shadow-report.tsx:445, frontend-nextjs/components/tools/ShadowTool.tsx:562",
-      "nullable": "yes (newly)",
-      "guard_at": "shadow-report.tsx:445 (already guarded) and ShadowTool.tsx:566-568 (guard ADDED — it was unguarded, and Math.round(null/45) is 0, which would render a fabricated 'N')",
-      "if_missing": "PDF shows an em dash; ShadowTool omits the 'cast <direction>' clause entirely."
+      "value": "outputs.repair",
+      "read_at": "scripts/repair_shadow_reports.py:185 (_select_december_dst)",
+      "nullable": "yes — absent on every un-repaired row, which is exactly the selection signal",
+      "guard_at": "same line: outputs.get('repair') is truthy-tested, so a missing key selects the row and a present tag excludes it",
+      "if_missing": "The row is treated as un-repaired and selected. Safe direction: at worst a row is regenerated twice, which is idempotent, rather than a defective row being skipped."
     },
     {
-      "value": "shadow_length_m",
-      "read_at": "frontend-nextjs/lib/pdf/shadow-report.tsx:441",
-      "nullable": "yes",
-      "guard_at": "shadow-report.tsx:441 (guard ADDED — the type said number but the service has emitted null since the 2026-08-03 typed-absence fix)",
-      "if_missing": "Reach cell shows an em dash."
+      "value": "shadow_length_m (in the offender predicate)",
+      "read_at": "scripts/repair_shadow_reports.py:150 (_offending_scenarios)",
+      "nullable": "yes, and increasingly so — every repaired row stores null for each unavailable scenario",
+      "guard_at": "narrowed at the point of use: float(raw_reach) if raw_reach is not None else None",
+      "if_missing": "The scenario is skipped by the predicate rather than raising float(None) mid-sweep over a partly-repaired corpus."
     },
     {
-      "value": "construction_change_note",
-      "read_at": "frontend-nextjs/lib/pdf/shadow-report.tsx (via surfaceChangeState), ShadowDetailDisplay.tsx",
-      "nullable": "yes",
-      "guard_at": "frontend-nextjs/lib/shadow-surface-change.ts:62, and passed through at app/api/reports/shadow/generate/route.ts:141",
-      "if_missing": "Falls to the score check. Absent note + null/zero score still yields 'not_assessed'."
+      "value": "construction_change_score / _detected / _note, s2_latest_acquisition",
+      "read_at": "scripts/repair_shadow_reports.py:312 (_blast_radius, PRESERVED_KEYS)",
+      "nullable": "yes on all four",
+      "guard_at": "asserted equal before/after for every row; a single difference aborts the run before any write",
+      "if_missing": "Absent on both sides compares equal, so a row that never had a Sentinel-2 reading passes the assertion without being fabricated one."
     },
     {
-      "value": "construction_change_score",
-      "read_at": "frontend-nextjs/lib/shadow-surface-change.ts:63-64",
-      "nullable": "yes",
-      "guard_at": "same line — null and exact 0.0 both route to 'not_assessed'",
-      "if_missing": "'Not assessed'. This is what stops the 292 legacy exact-0.0 rows re-serving a false negative."
-    },
-    {
-      "value": "height_m (into the reach ceiling)",
-      "read_at": "services/shadow_detector.py:357",
-      "nullable": "yes (parameter defaults to None)",
-      "guard_at": "services/shadow_detector.py:357 — `if height_m is not None`",
-      "if_missing": "Ceiling not computed, reach served as measured. Chosen deliberately: an unknown ceiling must not condemn a plausible measurement."
+      "value": "md5(outputs::text) pre-state hash",
+      "read_at": "scripts/repair_shadow_reports.py:289 (_fetch_corpus), used in the UPDATE predicate",
+      "nullable": "no — computed server-side by Postgres, never by the client",
+      "guard_at": "the UPDATE's WHERE clause; rowcount != 1 rolls back the batch and aborts",
+      "if_missing": "Impossible: a row with no outputs would not have been selected. A CHANGED hash means someone else wrote the row, and the batch aborts rather than clobbering them."
     }
   ],
   "queries": [
     {
-      "purpose": "Damage census over stored shadow reports (measure-only, no repair)",
-      "file_line": "scripts/measure_shadow_calibration_damage.py:105",
-      "where_clause": "WHERE p.product = 'shadow'",
-      "if_zero": "Exits 2 with 'no shadow reports found — expected a non-empty corpus'. An empty read is never reported as zero damage.",
-      "if_wrong": "The connection is opened with set_session(readonly=True), so a wrong query cannot mutate anything; the worst case is a wrong count printed to stdout, which is not served to any user."
+      "purpose": "Read the shadow corpus to select, back up and predict (read-only connection)",
+      "file_line": "scripts/repair_shadow_reports.py:289",
+      "where_clause": "WHERE product = 'shadow'",
+      "if_zero": "An empty selection prints IDEMPOTENCE CONFIRMED and writes nothing. Note this is only reached AFTER a successful connect; a connection failure exits non-zero rather than reporting a clean corpus.",
+      "if_wrong": "The connection is opened with set_session(readonly=True), so the selection/backup/predict phase cannot mutate anything regardless of the predicate."
     },
     {
-      "purpose": "LEP height limit at the subject point (unchanged by this PR, but now correctly DESCRIBED)",
-      "file_line": "services/shadow_detector.py:230",
-      "where_clause": "WHERE layer_type = 'height' AND ST_Contains(geom, point) LIMIT 1",
-      "if_zero": "Falls through to regulatory_provisions, then to DEFAULT_HEIGHT_M with height_source='default', which the PDF labels 'Default assumption'.",
-      "if_wrong": "The height is looked up at the SUBJECT's coordinates and was previously described as 'the maximum height a neighbouring building could be approved to'. The query is unchanged; the copy now says it is the control mapped at this property's location and that the neighbouring lot's control is not looked up separately."
+      "purpose": "The guarded repair write",
+      "file_line": "scripts/repair_shadow_reports.py:424",
+      "where_clause": "WHERE id = %s AND product = 'shadow' AND md5(outputs::text) = %s",
+      "if_zero": "rowcount 0 means the row's pre-state changed since the prediction; the batch is rolled back and the run aborts, naming the row. Earlier batches stay committed and are safe because each row is an atomic whole-document update.",
+      "if_wrong": "The product filter prevents a uuid collision touching a flood/solar/granny report, and the md5 guard prevents writing a prediction computed from a different pre-state than the row currently holds."
     }
   ],
   "break_it": [
     {
-      "scenario": "The IANA tzdata package is stale or absent in the deploy image, so ZoneInfo('Australia/Sydney') resolves wrongly or raises.",
-      "what_happens": "Every scenario instant shifts, reproducing the class of defect this PR fixes — but silently, since the bearing would still be internally consistent with the (wrong) instant.",
+      "scenario": "The repair is interrupted after some batches commit, leaving the shadow corpus holding two generations of report at once — some rows with December cast at 12:00 AEDT, some still at 13:00.",
+      "what_happens": "A mixed corpus. If selection were by run_date or a hand-kept id list, a re-run would either redo committed rows or skip un-written ones, and the census could not tell the two generations apart.",
       "mitigated": true,
-      "how": "tests/test_shadow_calibration.py:test_december_is_aedt_and_june_is_aest pins the UTC offsets numerically (10.0 vs 11.0), and test_december_instant_is_not_the_old_broken_one pins the absolute instant 2025-12-21T01:00Z. A bad tzdata fails CI rather than shipping. ZoneInfo raising would surface as an import-time error, not a wrong number.",
-      "repro": "python -m pytest tests/test_shadow_calibration.py -k 'aedt or not_the_old_broken' -q"
+      "how": "Selection is by absence of outputs.repair on the row itself, so the corpus carries its own completion marker: a re-run selects exactly the rows that did not get written. Each row is one atomic UPDATE of the whole outputs document, so no report can end up with December from the new pipeline and June from the old.",
+      "repro": "Run --execute, interrupt it, then run the dry run: SELECTED must equal the number of rows still lacking outputs.repair, not 519."
     },
     {
-      "scenario": "A future edit reintroduces a stored bearing constant (e.g. caching direction_deg back onto the scenario tuple for speed).",
-      "what_happens": "Every address is served the same compass direction again — the defect that put 183.0 on all 538 reports.",
+      "scenario": "A regenerated row silently loses its Sentinel-2 surface-change reading, turning a recorded measurement into 'not assessed' on a customer's report.",
+      "what_happens": "A real reading would be destroyed by a repair that was only authorized to fix the December geometry.",
       "mitigated": true,
-      "how": "tests/test_shadow_calibration.py:test_bearing_actually_varies_by_address asserts the bearing spread across the NSW envelope exceeds 1 deg for every scenario, and test_time_local_label_is_derived_not_stored asserts the Scenario tuple has no direction_deg or hour_utc attribute at all.",
-      "repro": "python -m pytest tests/test_shadow_calibration.py -k 'varies_by_address or derived_not_stored' -q"
+      "how": "PRESERVED_KEYS are compared before/after for every row during the dry run, and any difference aborts the entire run before a single write. The repair copies the stored outputs document and replaces only the scenario/proxy/verdict keys.",
+      "repro": "python scripts/repair_shadow_reports.py --pass december-dst --backup-dir <dir>  — read the 'Sentinel-2 surface-change fields: UNCHANGED on every row (asserted)' line."
     },
     {
-      "scenario": "A stored report from before this change is re-pulled and re-rendered.",
-      "what_happens": "It serves its STORED shadow_direction_deg (including the December 183.0) and its stored 12:00 label. The code fix does not retroactively correct persisted rows.",
-      "mitigated": false,
-      "how": "NOT mitigated, deliberately — repairing 538 stored reports is a separate authorised pass. What IS mitigated on those rows is the copy: the neighbour attribution and the false 'no construction activity' negative are in the template, so a re-pulled report renders the corrected wording. scripts/measure_shadow_calibration_damage.py quantifies exactly what remains wrong per report.",
-      "repro": "DATABASE_URL=... python scripts/measure_shadow_calibration_damage.py"
+      "scenario": "The prediction is computed against one pre-state but the write lands on a different one, because a customer regenerated their report between the dry run and the execute.",
+      "what_happens": "The row would be overwritten with numbers derived from stale inputs.",
+      "mitigated": true,
+      "how": "Every UPDATE carries md5(outputs::text) = <the exact pre-state the prediction was computed from>. A row that moved takes rowcount 0, rolls back its batch and aborts the run by name.",
+      "repro": "Edit one target row's outputs by hand between the dry run and --execute; the run must abort naming that row and commit nothing from that batch."
     },
     {
-      "scenario": "Sentinel-2 starts working and returns a genuine delta of exactly 0.0000.",
-      "what_happens": "surfaceChangeState classifies it 'not_assessed' rather than 'none_detected' — a real measurement reported as no measurement.",
+      "scenario": "The verify step passes vacuously — e.g. comparing an object to itself, or comparing across a type boundary that always differs.",
+      "what_happens": "A badge of correctness with no evidence behind it. This exact failure occurred on the first PR #883 run in the opposite direction (always-fail).",
       "mitigated": true,
-      "how": "Accepted and documented at frontend-nextjs/lib/shadow-surface-change.ts:40-58. round(recent-baseline,4) landing on exactly zero is ~1-in-10,000; all 292 legacy rows hold exactly 0.0 and none holds any other value, so on the evidence every exact zero in the corpus is missing data. The failure understates rather than overstates, which is the correct direction for a claim about a third party's land.",
-      "repro": "npx jest --testPathPattern=brief-satellite-parity -t 'legacy no-data score'"
+      "how": "Verification re-reads from the database into a fresh dict and compares against the prediction file written to disk BEFORE the write, both normalised through the same JSON round-trip. It is additionally cross-checked by scripts/measure_shadow_calibration_damage.py, a separate program that shares no code path with the repair.",
+      "repro": "DATABASE_URL=... python scripts/measure_shadow_calibration_damage.py  — section [1] must report 0 reports carrying the December defect."
     },
     {
-      "scenario": "A lot polygon is multi-part or oversized, so shadow_reach_m measures kilometres.",
-      "what_happens": "Previously served as a measurement — 42 Audley St Petersham served 1,779.5 m of shadow from a 9 m building.",
+      "scenario": "A row has no stored lot_polygon, so regeneration cannot run.",
+      "what_happens": "A naive loop would raise mid-batch, or worse, write a report with an empty scenario list.",
       "mitigated": true,
-      "how": "services/shadow_detector.py:331-357 compares reach against h/tan(solar altitude) and types the scenario 'unavailable' with a reason above REACH_CEILING_TOLERANCE=1.25. Threshold chosen from the measured distribution (p95=1.004, then an empty band, then p99=13.5); 1.1, 1.25 and 1.5 all select the same 19 reports, so the value is not load-bearing.",
-      "repro": "python -m pytest tests/test_shadow_calibration.py -k 'ceiling or 1779' -q"
+      "how": "_regeneratable removes such rows from the write set BEFORE the backup is taken, and every excluded row is printed with its reason. They keep their existing (defective) December values and are reported as still-affected rather than being silently counted as repaired.",
+      "repro": "Read the 'CANNOT REGENERATE' block in the run output; the count must reconcile with SELECTED minus the write set."
     },
     {
-      "scenario": "suncalc's lat/lng argument order is swapped in a future refactor.",
-      "what_happens": "A plausible-looking sun position for the wrong hemisphere — a silent wrong answer, not a crash.",
+      "scenario": "A cadastral ring is self-touching or unclosed, so GEOS raises TopologyException while intersecting the shadow with the lot, and the run stores the result as a measurement.",
+      "what_happens": "The failure was returned as 0.0 and rendered as '0% of the lot in shadow' with overlaps_subject_lot=false, feeding a green 'Meets ADG solar access test'. 7 stored reports carry exactly that, where the recomputed truth is up to 100% of the lot shadowed.",
       "mitigated": true,
-      "how": "tests/test_shadow_calibration.py:test_suncalc_argument_order_is_lng_then_lat asserts both that our call matches the reference AND that the swapped call differs from it by more than 10 deg, so the test cannot pass vacuously if the two ever converge.",
-      "repro": "python -m pytest tests/test_shadow_calibration.py -k argument_order -q"
+      "how": "_shadow_intersection now raises ShadowGeometryError instead of returning None for both a genuine miss and a failure; shadow_overlap_fraction / shadow_reach_m / overlaps_lot return None on that path, and _build_scenario_list types the scenario 'unavailable'. A genuine miss still returns 0.0/False, pinned separately so the fix cannot over-reach into false 'not assessed'.",
+      "repro": "python -m pytest tests/test_shadow_detector.py -k 'cannot_be_computed or still_zero or uncomputable' -q"
     },
     {
-      "scenario": "pvlib is dropped from requirements-test.txt, or someone converts the calibration to importorskip.",
-      "what_happens": "The calibration silently stops running while the build stays green — #880's exact failure mode, but wearing a calibration badge.",
+      "scenario": "The regeneration writes a fresh fabricated zero into the 515 rows it repairs, because the repair runs the same pipeline that swallowed the exception.",
+      "what_happens": "The repair would bake in the very defect class the calibration exists to remove — worse than inheriting it, because it would be deliberate.",
       "mitigated": true,
-      "how": "Module-scope `import pvlib` with no importorskip: absence is a collection ERROR, not a skip. Belt and braces: scripts/check_dependency_skips.py enforces the skip census exactly in BOTH directions (currently 18 dependency / 20 total, unchanged by this PR — the 122 new tests add zero skips), so converting the failure into a skip trips the ratchet.",
-      "repro": "pip uninstall -y pvlib && python -m pytest tests/test_shadow_calibration.py -q  # collection error, rc != 0"
-    },
-    {
-      "scenario": "A conftest mock substitutes a MagicMock for pvlib, so every comparison passes trivially.",
-      "what_happens": "The reference agrees with anything and certifies a broken calculation.",
-      "mitigated": true,
-      "how": "tests/test_shadow_calibration.py:test_reference_library_is_real_not_a_mock asserts pvlib.__version__ is a str, that neither module is a MagicMock, and that the reference returns a physically correct altitude (60-90 deg for Sydney at summer solstice noon). Verified: conftest_mocks.py stubs only absent libraries and never names pvlib or suncalc.",
-      "repro": "python -m pytest tests/test_shadow_calibration.py -k real_not_a_mock -q"
-    },
-    {
-      "scenario": "The height query at services/shadow_detector.py:230 returns the control for the SUBJECT's point, but the lot immediately north sits in a different height-of-buildings polygon (a zone boundary running along the rear boundary).",
-      "what_happens": "The modelled building is given the wrong maximum height, so every scenario's reach and coverage is wrong — too short if the neighbour's control is taller, too long if shorter. The number looks authoritative because it cites the LEP by name.",
-      "mitigated": true,
-      "how": "Not mitigated in the QUERY — fetching the neighbouring parcel's control needs parcel adjacency, which nothing in this repo has (the NSW lot API is propId-keyed only). Mitigated in the CLAIM: frontend-nextjs/lib/pdf/shadow-report.tsx now states the height is 'mapped at THIS property's location' and that 'the control applying to the neighbouring lot is not looked up separately and may differ', and the ShadowTool 'How this model works' panel says the same. The reach ceiling at services/shadow_detector.py:365 independently catches a height/geometry mismatch large enough to produce an impossible shadow.",
-      "repro": "Run /pipeline/shadow for a property whose rear boundary is a height-control boundary and compare outputs.height_m against the control mapped 20 m north in spatial_overlays."
+      "how": "The fail-closed change above landed BEFORE the write. The dry run over the write set is re-run afterwards and reports how many scenarios are now typed 'unavailable' instead of carrying a zero, so the count is evidence rather than an assumption.",
+      "repro": "python scripts/repair_shadow_reports.py --pass december-dst --backup-dir <dir>  — compare 'Scenario became not assessed' before and after the fail-closed fix."
     }
   ],
   "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes — the deploy image must install services/requirements.txt so suncalc is declared rather than inherited transitively from pybdshadow. Verify one freshly generated shadow report shows a per-address Direction (not 183.0 for December) and a 12:00 December label. No migration, no DB write, no stored-report repair in this PR."
+    "db_reset": "NO schema change, no migration, no reset. This branch adds tooling only. The tooling performs an authorized UPDATE of property_reports.outputs and .confidence for shadow rows; it creates no table, column, index or constraint, and drops nothing. The write is reversible from data/db_rollback_backups/shadow_december_dst_backup_2026-08-07.json via --rollback, which is guarded on the post-repair md5 so it cannot clobber later state.",
+    "secrets": "None added, rotated or required. The script reads DATABASE_URL from the environment only — the same credential the existing measurement script uses — and no credential is written to the repo, the backup files or the run output. The backup and prediction files contain report geometry and addresses (already in the database), never connection strings.",
+    "other_repo": "No change needed in any other repository. The regenerated rows use the shape frontend-nextjs already renders as of PR #883 (merged a7edd825): nullable shadow_length_m / shadow_overlap_fraction / shadow_direction_deg, status='unavailable', adg_compliant null. plotdetect-agents is not involved — no Trigger.dev task reads or writes shadow reports.",
+    "manual_verify": "After --execute: (1) run --verify-only and confirm all rows match the prediction and the rollback is armed; (2) run the INDEPENDENT census, scripts/measure_shadow_calibration_damage.py, and confirm section [1] reports 0 reports carrying the December defect and section [4] still reports 0 impossible-reach rows; (3) re-run the dry run and confirm it selects zero (idempotence); (4) open one repaired report on the live site and in the PDF and confirm the December Direction column reads SW rather than S, and that the Sentinel-2 surface-change line is unchanged."
   }
 }

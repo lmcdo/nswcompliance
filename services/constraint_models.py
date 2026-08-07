@@ -100,6 +100,13 @@ class ShadowScenario(BaseModel):
     overlap_pct: Optional[float] = None
     shadow_direction_deg: Optional[float] = None  # compass bearing the shadow falls toward (opposite of sun azimuth)
     overlaps_subject_lot: Optional[bool] = None
+    # "computed" | "unavailable". Absent on rows written before the typed-absence
+    # fix, which were all computed. Carried to the surface DELIBERATELY: without
+    # it every measurement field is simply null and the page renders three em
+    # dashes, which a reader skims as "nothing to worry about" rather than "we
+    # have no answer".
+    status: Optional[str] = None
+    error_note: Optional[str] = None
 
 
 class ShadowResult(BaseModel):

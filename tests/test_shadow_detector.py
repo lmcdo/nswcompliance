@@ -394,3 +394,93 @@ def test_mainland_longitude_is_not_refused_by_the_lord_howe_gate(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         sd.run_shadow(req)
     assert "Lord Howe" not in str(exc.value.detail)
+
+
+# ---------------------------------------------------------------------------
+# Intersection failure must FAIL CLOSED, not become a measured zero
+# (authorized-repair prerequisite, 2026-08-07)
+# ---------------------------------------------------------------------------
+
+def test_overlap_fraction_is_none_when_the_intersection_cannot_be_computed(monkeypatch):
+    """GEOS raises TopologyException on self-touching or unclosed cadastral
+    rings. That used to be caught and returned as 0.0, so a failed geometry op
+    was served as "0% of the lot is in shadow". Across the stored corpus 7
+    reports told a customer they met the ADG solar-access test on exactly that
+    basis, while the recomputed truth was up to 100% of the lot in shadow.
+    FAILS on the pre-fix code, which returned 0.0."""
+    import services.shadow_model as sm
+
+    def _raise(*a, **kw):
+        raise sm.ShadowGeometryError("TopologyException: Ring edge missing")
+    monkeypatch.setattr(sm, "_shadow_intersection", _raise)
+
+    lot = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+    shadow = {"type": "FeatureCollection", "features": []}
+
+    assert sm.shadow_overlap_fraction(shadow, lot) is None
+    assert sm.shadow_reach_m(shadow, lot) is None
+    # And the boolean must not become False — that asserts the lot is
+    # unaffected on the strength of a computation that did not happen.
+    assert sm.overlaps_lot(shadow, lot) is None
+
+
+def test_genuine_no_overlap_is_still_zero_not_none(monkeypatch):
+    """The counterpart pin: a VALID geometry whose shadow simply misses the lot
+    must stay 0.0/False. Without this, the fix above could over-reach and turn
+    every clear result into 'not assessed', which would be its own false claim.
+
+    `shapely.geometry` is injected as a stub module with a fixed-area geometry,
+    so this runs identically whether or not shapely is installed. Without that
+    the test measures the ENVIRONMENT, not the behaviour: where shapely is
+    absent, conftest_mocks' MagicMock lot sends the function down its exception
+    path and returns None; where it is present, the real path returns 0.0. The
+    same assertion would then pass on one interpreter and fail on the other —
+    which is how this test failed the first time it ran under the gate."""
+    import sys
+    import types
+    import services.shadow_model as sm
+
+    class _StubLot:
+        area = 100.0
+        bounds = (0.0, 0.0, 1.0, 1.0)
+
+    shapely_stub = types.ModuleType("shapely")
+    geometry_stub = types.ModuleType("shapely.geometry")
+    geometry_stub.shape = lambda _g: _StubLot()
+    shapely_stub.geometry = geometry_stub
+    monkeypatch.setitem(sys.modules, "shapely", shapely_stub)
+    monkeypatch.setitem(sys.modules, "shapely.geometry", geometry_stub)
+    monkeypatch.setattr(sm, "_shadow_intersection", lambda *a, **kw: None)
+
+    lot = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+    shadow = {"type": "FeatureCollection", "features": []}
+
+    assert sm.shadow_overlap_fraction(shadow, lot) == 0.0
+    assert sm.shadow_reach_m(shadow, lot) == 0.0
+    assert sm.overlaps_lot(shadow, lot) is False
+
+
+def test_uncomputable_overlap_makes_the_scenario_unavailable(monkeypatch):
+    """End-to-end: an unintersectable lot must not be served as status
+    'computed' with null measurements — the PDF prints an em dash for a null
+    reach, which reads as 'no shadow'. It must be typed-unavailable, and the
+    ADG chain must end NOT-ASSESSED rather than issuing a pass."""
+    import services.shadow_detector as sd
+    import services.shadow_model as sm
+
+    STUB_SCENARIOS = [Scenario("jun21_12pm", 6, 21, 12, 0, "ADG noon Jun 21")]
+    monkeypatch.setattr(sd, "SHADOW_SCENARIOS", STUB_SCENARIOS)
+    monkeypatch.setattr(sd, "shadow_reach_m", lambda *a, **kw: None)
+    monkeypatch.setattr(sd, "shadow_overlap_fraction", lambda *a, **kw: None)
+    monkeypatch.setattr(sd, "overlaps_lot", lambda *a, **kw: None)
+    monkeypatch.setattr(sd, "shadow_on_lot_geojson", lambda *a, **kw: None)
+
+    shadow_map = {"jun21_12pm": {"type": "FeatureCollection", "features": []}}
+    lot = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+
+    result = sd._build_scenario_list(shadow_map, lot, 151.21, -33.87, height_m=9.0)
+    assert result[0]["status"] == "unavailable"
+    assert result[0]["shadow_overlap_fraction"] is None
+    assert result[0]["overlaps_subject_lot"] is None
+    assert "could not be intersected" in result[0]["error_note"]
+    assert sd._adg_compliant(result) is None

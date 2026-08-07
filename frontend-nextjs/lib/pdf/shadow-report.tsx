@@ -17,6 +17,9 @@ import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock,
 import { s2ImageryCurrency } from './imagery-currency';
 import { AerialWithOverlay } from './map-overlay';
 import { SURFACE_CHANGE_AREA_NOTE, surfaceChangeState } from '../shadow-surface-change';
+import {
+  SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
+} from '../shadow-scenario-availability';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -446,6 +449,24 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                   ? Math.round(sc.shadow_overlap_fraction * 100) : null;
                 const pillColor = coveragePillColor(pct);
                 const isWorstCase = sc.scenario === data.worst_case_scenario;
+                // A scenario with no result must not look like a row with a
+                // missing number. It spans the measurement columns with one
+                // labelled statement instead — a direction printed beside
+                // "not assessed" reads as a partial result, and the bearing
+                // survives an unavailable scenario because it comes from the
+                // sun's position rather than from the lot geometry that failed.
+                if (isScenarioUnavailable(sc)) {
+                  return (
+                    <View key={sc.scenario} style={[s.tableRow, { backgroundColor: AMBER_LIGHT }]}>
+                      <Text style={s.colDate}>
+                        {SCENARIO_LABELS[sc.scenario] ?? sc.scenario}
+                      </Text>
+                      <Text style={{ flex: 1, fontSize: 7.5, color: GRAY_700 }}>
+                        {`${SCENARIO_NOT_ASSESSED_LABEL} — ${scenarioUnavailableMessage(sc.error_note)}`}
+                      </Text>
+                    </View>
+                  );
+                }
                 return (
                   <View key={sc.scenario} style={[s.tableRow, isWorstCase ? { backgroundColor: TEAL_LIGHT } : {}]}>
                     <Text style={s.colDate}>
@@ -453,12 +474,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                       {isWorstCase ? ' ★' : ''}
                     </Text>
                     <Text style={s.colReach}>
-                      {/* An unavailable scenario must be visibly distinct from a
-                          computed zero-length shadow — a bare em dash reads as
-                          "no shadow", which is a claim the run did not make. */}
-                      {sc.status === 'unavailable'
-                        ? 'not assessed'
-                        : sc.shadow_length_m != null && sc.shadow_length_m > 0
+                      {sc.shadow_length_m != null && sc.shadow_length_m > 0
                         ? `${sc.shadow_length_m.toFixed(0)} m` : '—'}
                     </Text>
                     <Text style={s.colDir}>

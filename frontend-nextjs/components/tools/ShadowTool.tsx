@@ -6,6 +6,9 @@ import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { surfaceChangeState } from '@/lib/shadow-surface-change';
+import {
+  SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
+} from '@/lib/shadow-scenario-availability';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
@@ -40,6 +43,7 @@ interface ShadowScenario {
   date: string;
   time_local: string;
   status?: 'computed' | 'unavailable';  // absent on pre-fix cached rows = computed
+  error_note?: string | null;           // why a scenario has no measurements
   shadow_length_m: number | null;       // null when the scenario computation errored
   shadow_overlap_fraction: number | null;
   // null when the bearing is not meaningful: sun below the horizon, or so near
@@ -379,14 +383,30 @@ function ShadowLockedPreviewCard({
           </p>
           <div className="space-y-1.5">
             {teaserScenarios.map((s) => (
-              <div key={s.scenario} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-gray-50">
-                <span className="text-gray-600">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
-                <span className="font-medium text-gray-900 tabular-nums">
-                  {s.shadow_length_m != null
-                    ? `${s.shadow_length_m.toFixed(0)}m shadow${s.overlaps_subject_lot ? ' · overlaps lot' : ''}`
-                    : 'not computed'}
-                </span>
-              </div>
+              isScenarioUnavailable(s) ? (
+                // "not computed" is operator shorthand, and sitting in the
+                // value column it reads as a value. A scenario with no result
+                // gets its own amber block that says why and says it is
+                // neither a pass nor a fail.
+                <div key={s.scenario} className="text-sm py-1.5 px-2 border-b border-gray-50 bg-amber-50 rounded">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
+                    <span className="font-medium text-amber-900">{SCENARIO_NOT_ASSESSED_LABEL}</span>
+                  </div>
+                  <p className="text-xs text-amber-800 leading-snug mt-0.5">
+                    {scenarioUnavailableMessage(s.error_note)}
+                  </p>
+                </div>
+              ) : (
+                <div key={s.scenario} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-gray-50">
+                  <span className="text-gray-600">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
+                  <span className="font-medium text-gray-900 tabular-nums">
+                    {s.shadow_length_m != null
+                      ? `${s.shadow_length_m.toFixed(0)}m shadow${s.overlaps_subject_lot ? ' · overlaps lot' : ''}`
+                      : '—'}
+                  </span>
+                </div>
+              )
             ))}
             {/* Blurred remaining rows — use real scenario labels, blur real values */}
             {sortedScenarios.slice(2).map((s) => (

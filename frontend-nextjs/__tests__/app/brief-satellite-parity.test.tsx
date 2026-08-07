@@ -202,3 +202,66 @@ describe('page source — new satellite rows are wired', () => {
     expect(PAGE_SRC).toContain('Best roof segment');
   });
 });
+
+describe('ShadowDisplay — a scenario with no result must not read as a clear one', () => {
+  const UNAVAILABLE_SCENARIO = {
+    date_label: '21 Jun',
+    time_label: '12:00',
+    shadow_length_m: null,
+    overlap_pct: null,
+    overlaps_subject_lot: null,
+    status: 'unavailable',
+    error_note: 'the shadow could not be intersected with this lot\'s boundary — no overlap was measured',
+  };
+
+  it('says what was tried, why there is no answer, and that it is neither a pass nor a fail', () => {
+    render(<ShadowDisplay data={{ ...KINCUMBER_SHADOW, scenarios: [UNAVAILABLE_SCENARIO] }} />);
+    expect(screen.getByText(/Not assessed/)).toBeInTheDocument();
+    // (1) why there is no answer — named in plain words, not internals
+    expect(screen.getByText(/recorded lot boundary is incomplete/)).toBeInTheDocument();
+    // (2) explicitly not a verdict in either direction
+    expect(screen.getByText(/not a result/)).toBeInTheDocument();
+    expect(screen.getByText(/neither a pass nor a fail/)).toBeInTheDocument();
+    // (3) what the reader can do about it
+    expect(screen.getByText(/ask the council/)).toBeInTheDocument();
+  });
+
+  it('does NOT render the operator-facing internals to the reader', () => {
+    render(<ShadowDisplay data={{ ...KINCUMBER_SHADOW, scenarios: [UNAVAILABLE_SCENARIO] }} />);
+    expect(screen.queryByText(/could not be intersected/)).toBeNull();
+    expect(screen.queryByText(/no overlap was measured/)).toBeNull();
+  });
+
+  it('does not fall back to an em dash or a zero for the missing measurements', () => {
+    const { container } = render(
+      <ShadowDisplay data={{ ...KINCUMBER_SHADOW, scenarios: [UNAVAILABLE_SCENARIO] }} />
+    );
+    const row = container.querySelector('tbody tr');
+    expect(row).not.toBeNull();
+    // An empty cell reads as "fine" to someone skimming — that is the defect.
+    expect(row!.textContent).not.toMatch(/0 m|0%|—\s*—/);
+    expect(row!.className).toContain('amber');
+  });
+
+  it('a computed scenario is unaffected — the amber state must not leak', () => {
+    const { container } = render(<ShadowDisplay data={{
+      ...KINCUMBER_SHADOW,
+      scenarios: [{ date_label: '21 Jun', time_label: '12:00', shadow_length_m: 14,
+                    overlap_pct: 30, overlaps_subject_lot: true, status: 'computed' }],
+    }} />);
+    const row = container.querySelector('tbody tr');
+    expect(row!.textContent).toContain('14 m');
+    expect(row!.className).not.toContain('amber');
+    expect(screen.queryByText(/Not assessed/)).toBeNull();
+  });
+
+  it('legacy rows with no status field still render as computed results', () => {
+    const { container } = render(<ShadowDisplay data={{
+      ...KINCUMBER_SHADOW,
+      scenarios: [{ date_label: '21 Jun', time_label: '12:00', shadow_length_m: 14,
+                    overlap_pct: 30, overlaps_subject_lot: true }],
+    }} />);
+    expect(container.querySelector('tbody tr')!.textContent).toContain('14 m');
+    expect(screen.queryByText(/Not assessed/)).toBeNull();
+  });
+});
