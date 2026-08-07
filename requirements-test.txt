@@ -2,7 +2,7 @@
 # These are the minimum deps needed to run `python -m pytest`
 pytest>=7.0
 pydantic>=2.13.4
-fastapi>=0.139.2,<1.0.0
+fastapi>=0.141.1,<1.0.0
 hypothesis>=6.0
 python-dotenv>=1.2.2
 httpx>=0.27.0
@@ -11,7 +11,7 @@ httpx>=0.27.0
 # boto3 at module scope. It passed locally only because a dev checkout also has
 # requirements.txt installed — this file claims to be the pytest minimum and was
 # understating it. Pure Python, installs in seconds.
-boto3>=1.34
+boto3>=1.43.63
 # pdfplumber: same chain — tests/test_columnar_reader.py imports it transitively.
 # Pinned range matches scripts/requirements-extract.txt.
 pdfplumber>=0.10
