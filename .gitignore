@@ -641,3 +641,8 @@ latent-scope-data/
 !scripts/check_ts_dcp_readers.py
 # Shadow calibration damage census (read-only; repair is a separate pass).
 !scripts/measure_shadow_calibration_damage.py
+# The authorized repair for the 19 impossible-reach reports — regenerates them
+# through the pipeline's own functions, with backup/predict/guard/verify/
+# idempotence/rollback. Committed so the production write can be audited and
+# rolled back from the repo rather than from memory.
+!scripts/repair_shadow_impossible_reach.py

@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes numbers and claims on a paid surface. The shadow bearing served in the PDF Direction column stops being one of five stored constants and becomes a per-address calculation; the December scenario's modelled instant moves by one hour, changing its bearing, altitude, reach and coverage; and the sentence 'Construction activity detected on adjacent lot / No significant ground disturbance detected on adjacent lots' — a factual assertion about a third party's land, rendered on all 538 stored reports from a check that never produced a reading — is replaced with a three-state, area-scoped statement. Not standard tier: this is user-facing regulatory-adjacent output on a $39 paid PDF, plus a statement about someone else's property.",
-  "commit_hash": "c05ceb90",
+  "commit_hash": "2f65fb05",
   "files": [
     "services/solar_position.py",
     "services/shadow_model.py",
