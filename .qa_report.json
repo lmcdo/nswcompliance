@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "An authorized PRODUCTION DATA WRITE over 519 stored customer shadow reports, including paid $39 PDFs. Every one of them currently renders a December scenario cast at 13:00 AEDT under a 12:00 label, and a Direction column carrying the retired constant 183.0 — measured a median 48.8 deg from the truth, with 519 of 519 printing the compass letter 'S' where the correct letter is 'SW'. Regeneration is whole-report by necessity, so it also recomputes reach, coverage, bearings, adg_compliant, worst_case_scenario and confidence. Not standard tier: this rewrites numbers a customer has already been served and may have relied on in a council objection, and it cannot be undone except from the backup this run takes.",
-  "commit_hash": "pending",
+  "commit_hash": "79167d92",
   "files": [
     "scripts/repair_shadow_reports.py",
     ".gitignore",
@@ -37,7 +37,7 @@
     {
       "name": "_regeneratable",
       "file_line": "scripts/repair_shadow_reports.py:250",
-      "input": "one stored row",
+      "input": "one stored property_reports row, checked for the three inputs regeneration cannot proceed without: lat, lng and outputs.lot_polygon",
       "output": "None when the row can be regenerated, otherwise the human-readable reason it cannot ('no coordinates', 'no height_m', 'no stored lot_polygon')",
       "if_none": "None is the SUCCESS value here. A non-None reason removes the row from the write set and prints it, so an unregeneratable row is a reported outcome rather than a silent omission."
     },
@@ -51,7 +51,7 @@
     {
       "name": "_json_norm",
       "file_line": "scripts/repair_shadow_reports.py:301",
-      "input": "any predicted or re-read outputs document",
+      "input": "either side of a comparison — the in-memory predicted outputs document, or the same document re-read from Postgres jsonb after the write",
       "output": "the same document with tuples normalised to lists, for comparison across the jsonb boundary",
       "if_none": "None normalises to None. This exists because the first run of the PR #883 repair failed its own verify on all 19 rows while the data was correct — shapely emits coordinate TUPLES and Postgres returns LISTS. A check that can only fail is worth as little as one that can only pass."
     }
@@ -104,11 +104,11 @@
   ],
   "break_it": [
     {
-      "scenario": "The run dies halfway — network drop, machine sleeps, process killed — leaving some rows regenerated and some not.",
-      "what_happens": "The corpus is mixed. Without a resumable predicate this would need manual reconciliation, and a naive re-run would redo work or double-write.",
+      "scenario": "The repair is interrupted after some batches commit, leaving the shadow corpus holding two generations of report at once — some rows with December cast at 12:00 AEDT, some still at 13:00.",
+      "what_happens": "A mixed corpus. If selection were by run_date or a hand-kept id list, a re-run would either redo committed rows or skip un-written ones, and the census could not tell the two generations apart.",
       "mitigated": true,
-      "how": "Selection is by absence of outputs.repair, so a re-run picks up exactly the rows that did not get written. Each row is one atomic UPDATE of the whole outputs document, so no row can be half-written by two code generations. Batches are committed independently, so completed work is never lost by a later failure.",
-      "repro": "Run with --execute, kill mid-run, then re-run the dry run: SELECTED should equal the number of rows not yet written, not 519."
+      "how": "Selection is by absence of outputs.repair on the row itself, so the corpus carries its own completion marker: a re-run selects exactly the rows that did not get written. Each row is one atomic UPDATE of the whole outputs document, so no report can end up with December from the new pipeline and June from the old.",
+      "repro": "Run --execute, interrupt it, then run the dry run: SELECTED must equal the number of rows still lacking outputs.repair, not 519."
     },
     {
       "scenario": "A regenerated row silently loses its Sentinel-2 surface-change reading, turning a recorded measurement into 'not assessed' on a customer's report.",
@@ -138,5 +138,11 @@
       "how": "_regeneratable removes such rows from the write set BEFORE the backup is taken, and every excluded row is printed with its reason. They keep their existing (defective) December values and are reported as still-affected rather than being silently counted as repaired.",
       "repro": "Read the 'CANNOT REGENERATE' block in the run output; the count must reconcile with SELECTED minus the write set."
     }
-  ]
+  ],
+  "post_merge": {
+    "db_reset": "NO schema change, no migration, no reset. This branch adds tooling only. The tooling performs an authorized UPDATE of property_reports.outputs and .confidence for shadow rows; it creates no table, column, index or constraint, and drops nothing. The write is reversible from data/db_rollback_backups/shadow_december_dst_backup_2026-08-07.json via --rollback, which is guarded on the post-repair md5 so it cannot clobber later state.",
+    "secrets": "None added, rotated or required. The script reads DATABASE_URL from the environment only — the same credential the existing measurement script uses — and no credential is written to the repo, the backup files or the run output. The backup and prediction files contain report geometry and addresses (already in the database), never connection strings.",
+    "other_repo": "No change needed in any other repository. The regenerated rows use the shape frontend-nextjs already renders as of PR #883 (merged a7edd825): nullable shadow_length_m / shadow_overlap_fraction / shadow_direction_deg, status='unavailable', adg_compliant null. plotdetect-agents is not involved — no Trigger.dev task reads or writes shadow reports.",
+    "manual_verify": "After --execute: (1) run --verify-only and confirm all rows match the prediction and the rollback is armed; (2) run the INDEPENDENT census, scripts/measure_shadow_calibration_damage.py, and confirm section [1] reports 0 reports carrying the December defect and section [4] still reports 0 impossible-reach rows; (3) re-run the dry run and confirm it selects zero (idempotence); (4) open one repaired report on the live site and in the PDF and confirm the December Direction column reads SW rather than S, and that the Sentinel-2 surface-change line is unchanged."
+  }
 }
