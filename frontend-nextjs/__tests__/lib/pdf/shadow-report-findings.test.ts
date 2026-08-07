@@ -10,7 +10,7 @@
 
 // @react-pdf/renderer ships ESM Jest cannot parse; every consumer test mocks
 // it. buildFindings itself is pure — only the module's render exports touch
-// the renderer. shadow-surface-change stays real: buildFindings branches on it.
+// the renderer. buildFindings itself is pure arithmetic over the scenario list.
 jest.mock('@react-pdf/renderer', () => ({
   Document: () => null,
   Page: () => null,
@@ -60,9 +60,6 @@ function reportData(scenarios: ShadowScenario[]): ShadowReportData {
     height_source: 'planning_portal',
     lep_name: 'Central Coast LEP 2022',
     scenarios,
-    construction_change_score: null,
-    construction_change_detected: false,
-    construction_change_note: 'Sentinel-2 timeout',
     adg_compliant: true,
     worst_case_scenario: 'jun21_9am',
   } as ShadowReportData;

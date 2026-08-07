@@ -34,8 +34,6 @@ Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
         "overlaps_subject_lot": bool
       }
     ],
-    "construction_change_score": float | null,
-    "construction_change_detected": bool,
     "adg_compliant": bool|null,  # noon-only gate; null = NOT ASSESSED (noon scenario
                                  # missing/errored/overlap unknown) — never a verdict
     "worst_case_scenario": str   # scenario key with longest shadow
@@ -73,7 +71,6 @@ try:
         scenario_shadow_bearing_deg,
     )
     from services.solar_position import sun_position, max_shadow_length_m
-    from services.sentinel2 import compute_change_score
     from services.execution_manifest import MANIFEST_KEY, build_manifest
     from services.geometry_checks import (
         check_point_nsw, check_polygon_wgs84, check_rings_epsg3857,
@@ -87,7 +84,6 @@ except ImportError:
         scenario_shadow_bearing_deg,
     )
     from solar_position import sun_position, max_shadow_length_m
-    from sentinel2 import compute_change_score
     from execution_manifest import MANIFEST_KEY, build_manifest
     from geometry_checks import (
         check_point_nsw, check_polygon_wgs84, check_rings_epsg3857,
@@ -98,7 +94,7 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
 DEFAULT_HEIGHT_M = 9.0
 LOT_API = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot"
-DATA_SOURCES = ["NSW Planning Portal API", "Element84 Sentinel-2 (free)", "pybdshadow"]
+DATA_SOURCES = ["NSW Planning Portal API", "pybdshadow"]
 
 # Algorithm revision for execution manifests (campaign item 4): the scenario
 # set + proxy model + ADG overlap rule. Bump on method change, not per deploy.
@@ -530,7 +526,7 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confid
 
 @router.post("/shadow")
 def run_shadow(request: ShadowRequest):
-    """Shadow Detector: 5 ADG scenarios + S2 construction change score."""
+    """Shadow Detector: the 5 ADG solar-access scenarios."""
     # Units/CRS entry check (campaign item 4): a swapped or projected
     # coordinate reproduces identically on every recompute — this is the only
     # defence. Failure is typed unavailable (422 with the reason), never a
@@ -617,26 +613,6 @@ def run_shadow(request: ShadowRequest):
     else:
         height_m, lep_name, height_source = _get_height_limit(request.lat, request.lng)
 
-    # Audit trail: track Sentinel-2 change score
-    ds_sentinel = DataSourceQuery(
-        "Element84 Sentinel-2 BSI change detection",
-        "https://earth-search.aws.element84.com/v1",
-        {"lat": request.lat, "lng": request.lng, "buffer_m": 200},
-    )
-    try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            fut = ex.submit(compute_change_score, request.lat, request.lng, 200)
-            change = fut.result(timeout=25)
-        ds_sentinel.record_response(change, features_returned=1 if change.get("change_score") is not None else 0)
-    except concurrent.futures.TimeoutError:
-        logger.warning("Sentinel-2 change score timed out after 25s — skipping")
-        change = {"change_score": None, "construction_detected": False, "note": "Sentinel-2 timeout"}
-        ds_sentinel.record_error("Timeout after 25s")
-    except Exception as e:
-        logger.warning(f"Change score: {e}")
-        change = {"change_score": None, "construction_detected": False, "note": str(e)}
-        ds_sentinel.record_error(str(e))
-
     # Proxy building: max-height structure at the north lot boundary.
     # Models worst-case shadow — the closest a neighbour could build.
     # Road width is not accounted for: roads reduce real-world impact but
@@ -677,17 +653,6 @@ def run_shadow(request: ShadowRequest):
         if _lga_conn:
             _lga_conn.close()
 
-    # Latest acquisition date among the S2 scenes that actually contributed —
-    # read from the identity the computation itself returned, never a
-    # parallel lookup (campaign item 4). None when S2 was unavailable.
-    _scene_identity = change.get("scene_identity")
-    s2_latest_acquisition = None
-    if _scene_identity:
-        used_dts = [s.get("datetime") for s in _scene_identity.get("recent_scenes", [])
-                    if s.get("used") and s.get("datetime")]
-        if used_dts:
-            s2_latest_acquisition = max(used_dts)[:10]
-
     outputs = {
         "height_m": height_m,
         "height_source": height_source,
@@ -697,10 +662,6 @@ def run_shadow(request: ShadowRequest):
         "lot_polygon": lot_geojson,
         "north_proxy_polygon": north_proxy,
         "scenarios": scenarios,
-        "construction_change_score": change.get("change_score"),
-        "construction_change_detected": bool(change.get("construction_detected", False)),
-        "construction_change_note": change.get("note"),
-        "s2_latest_acquisition": s2_latest_acquisition,
         "adg_compliant": _adg_compliant(scenarios),
         "worst_case_scenario": _worst_case(scenarios),
     }
@@ -711,15 +672,12 @@ def run_shadow(request: ShadowRequest):
         confidence = "low"
 
     # Execution manifest (campaign item 4): every identity below comes from
-    # the objects this run actually consumed — `change` is the dict the S2
-    # computation returned (scene ids/datetimes or None on timeout, recorded
-    # as such), lot_wkid is the CRS the lot API actually declared.
+    # the objects this run actually consumed — lot_wkid is the CRS the lot API
+    # actually declared, height names the control that was found.
     manifest = build_manifest(
         product="shadow",
         algorithm_version=ALGORITHM_VERSION,
         inputs={
-            "sentinel2": _scene_identity,
-            "sentinel2_note": change.get("note"),
             "lot_geometry": {"api": LOT_API, "prop_id": request.prop_id,
                              "wkid": lot_wkid},
             "height": {"value_m": height_m, "source": height_source,
@@ -769,7 +727,7 @@ def run_shadow(request: ShadowRequest):
             "lng": request.lng,
             "height_m_override": request.height_m,
         },
-        data_sources=[ds_lot, ds_height, ds_shadow, ds_sentinel],
+        data_sources=[ds_lot, ds_height, ds_shadow],
         output_summary=outputs,
         disclaimer_version=get_current_disclaimer_version("shadow"),
         intermediate_calculations={
@@ -777,8 +735,6 @@ def run_shadow(request: ShadowRequest):
             "height_source": height_source,
             "adg_compliant": outputs["adg_compliant"],
             "worst_case_scenario": outputs["worst_case_scenario"],
-            "construction_change_score": outputs["construction_change_score"],
-            "construction_change_detected": outputs["construction_change_detected"],
             "shadow_overlap_fractions": {
                 s["scenario"]: s.get("shadow_overlap_fraction", 0.0)
                 for s in scenarios

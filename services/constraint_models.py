@@ -118,15 +118,8 @@ class ShadowResult(BaseModel):
     scenarios: list[ShadowScenario] = []
     worst_case_scenario: Optional[str] = None
     # Run-level confidence from the shadow service ("low" when the height fell
-    # back to the two-storey default) + Sentinel-2 change-detection passthrough.
+    # back to the two-storey default).
     confidence: Optional[str] = None
-    construction_change_detected: Optional[bool] = None
-    construction_change_note: Optional[str] = None
-    # Carried so the UI applies the same three-state rule as the PDF and web
-    # tool (frontend-nextjs/lib/shadow-surface-change.ts): a null score, a note,
-    # or an exact 0.0 all mean the check produced no reading, which is not the
-    # same as a finding of no change.
-    construction_change_score: Optional[float] = None
     temporal_caveat: str = (
         "Shadow analysis reflects the height control mapped at this property "
         "only. The modelled building north of the lot is an offset rectangle, "

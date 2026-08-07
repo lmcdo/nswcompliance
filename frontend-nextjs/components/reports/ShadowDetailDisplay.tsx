@@ -3,7 +3,6 @@
 // scenario table can be render-tested; no second shadow card is being created —
 // page.tsx now imports this component in the same render slot.
 import { cn } from '@/lib/utils';
-import { surfaceChangeState } from '@/lib/shadow-surface-change';
 import {
   SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
 } from '@/lib/shadow-scenario-availability';
@@ -29,9 +28,6 @@ export interface ShadowData {
   worst_case_scenario?: string | null;
   temporal_caveat?: string | null;
   confidence?: string | null;
-  construction_change_detected?: boolean | null;
-  construction_change_note?: string | null;
-  construction_change_score?: number | null;
 }
 
 // Clean a worst-case scenario label for display. The backend labels already
@@ -146,37 +142,6 @@ export function ShadowDisplay({ data }: { data: ShadowData }) {
           </table>
         </div>
       )}
-      {/* Branch on the classified state ONLY. Re-reading the raw nullable
-          construction_change_detected here meant a valid 'none_detected'
-          (real score, null flag) matched neither ===true nor ===false and
-          rendered nothing at all — a completed check vanishing from the card. */}
-      {(() => {
-        const changeState = surfaceChangeState(data);
-        if (changeState === 'not_assessed') {
-          return (
-            <div className="text-[11px] text-slate-400 leading-snug">
-              Surface-change check: not assessed
-              {data.construction_change_note ? ` — ${data.construction_change_note}` : ' — no usable satellite reading'}
-            </div>
-          );
-        }
-        if (changeState === 'detected') {
-          return (
-            <div className="text-slate-700">
-              Recent satellite passes show a bare-soil increase across the 400m x 400m area centred on this property. The reading averages that whole area and cannot identify which lot changed.
-            </div>
-          );
-        }
-        // 'none_detected' means the score did not cross the detection
-        // threshold — NOT that the index was unchanged. A score of 0.031 is a
-        // real measured increase; calling that "no increase" states something
-        // the number contradicts.
-        return (
-          <div className="text-slate-500">
-            No threshold-level bare-soil increase across the 400m x 400m area centred on this property, against a 12-month baseline. A change confined to one lot is too small to move an area-wide average.
-          </div>
-        );
-      })()}
       {data.temporal_caveat && <div className="text-[11px] text-slate-400 leading-snug mt-1">{data.temporal_caveat}</div>}
     </div>
   );

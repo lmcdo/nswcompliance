@@ -1,7 +1,7 @@
 """
 Adversarial unit tests for services/shadow_detector.py.
 
-Pure-logic functions only — no DB, no network, no shadow_model/sentinel2 imports.
+Pure-logic functions only — no DB, no network, no shadow_model imports.
 
 Covers:
   _arcgis_to_geojson  — coordinate transform, edge cases

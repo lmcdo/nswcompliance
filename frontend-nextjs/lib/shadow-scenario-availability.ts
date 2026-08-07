@@ -1,10 +1,8 @@
-// prior-art-checked: lib/shadow-surface-change.ts is the closest sibling and was
-// considered first, but it answers a DIFFERENT question about a DIFFERENT field —
-// the three-state Sentinel-2 surface-change reading. This module is about whether
-// a shadow SCENARIO produced a geometric result at all. Merging them would put two
-// unrelated absence rules behind one name. Same pattern deliberately: one exported
-// string per state, imported by every surface, so the PDF, the report page and the
-// free tool cannot drift into three different wordings of the same absence.
+// prior-art-checked: this is now the ONLY shadow absence-copy module. Its former
+// sibling lib/shadow-surface-change.ts was deleted with the adjacent-lot check
+// (§4h, 2026-08-07), so there is nothing left to merge with or duplicate. One
+// exported string per state, imported by every surface, so the PDF, the report
+// page and the free tool cannot drift into three wordings of the same absence.
 
 /**
  * What a customer reads when a shadow scenario produced no result.
