@@ -417,6 +417,37 @@ def _build_scenario_list(
             })
             continue
 
+        overlap_fraction = shadow_overlap_fraction(shadow_geojson, lot_geojson)
+        overlaps = overlaps_lot(shadow_geojson, lot_geojson)
+
+        # A scenario is only 'computed' if its claim-bearing measurements were
+        # actually measured. shadow_reach_m / shadow_overlap_fraction return
+        # None when the GEOS intersection could not be evaluated at all — a
+        # self-touching or unclosed cadastral ring raises TopologyException,
+        # which used to be swallowed and served as 0.0. Serving None fields
+        # under status='computed' would just move that lie one level down: the
+        # PDF prints an em dash for a null reach, which reads as "no shadow".
+        if reach_m is None or overlap_fraction is None:
+            logger.warning(
+                "scenario %s has no computable overlap/reach (lot geometry "
+                "could not be intersected) — reporting unavailable", key)
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": ("the shadow could not be intersected with this "
+                               "lot's boundary — no overlap was measured"),
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
+
         scenarios.append({
             "scenario": key,
             "label": description,
@@ -424,9 +455,9 @@ def _build_scenario_list(
             "time_local": time_local,
             "status": "computed",
             "shadow_length_m": reach_m,
-            "shadow_overlap_fraction": shadow_overlap_fraction(shadow_geojson, lot_geojson),
+            "shadow_overlap_fraction": overlap_fraction,
             "shadow_direction_deg": direction_deg,
-            "overlaps_subject_lot": overlaps_lot(shadow_geojson, lot_geojson),
+            "overlaps_subject_lot": overlaps,
             "shadow_on_lot": shadow_on_lot_geojson(shadow_geojson, lot_geojson),
             "shadow_polygon": shadow_geojson,
         })
