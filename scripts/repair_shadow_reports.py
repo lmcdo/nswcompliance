@@ -49,7 +49,7 @@ GUARDS — none skippable, at any scale
 4. Per-row guarded UPDATE: WHERE id AND product='shadow' AND
    md5(outputs::text) = <pre-state md5>. rowcount != 1 rolls back the batch.
 5. BATCHED: each batch is its own transaction, so nothing holds locks across
-   the corpus. Partial completion is SAFE and resumable — selection excludes
+   the corpus. Partial completion is resumable — selection excludes
    rows already carrying a repair tag, so a re-run picks up the remainder.
 6. VERIFY: re-read and deep-compare against the prediction, JSON-normalised
    (shapely emits coordinate tuples; Postgres returns lists).
@@ -505,7 +505,7 @@ def main() -> int:
                            "--verify-only")
         with open(backup_path, "w", encoding="utf-8") as f:
             json.dump(backup, f, indent=1, default=str)
-        print(f"VERIFIED: all {len(predictions)} rows match the prediction "
+        print(f"MATCHED: all {len(predictions)} rows equal the prediction "
               f"exactly (JSON-normalised).")
         print(f"ROLLBACK ARMED -> {backup_path}")
         return 0
@@ -603,7 +603,8 @@ def main() -> int:
                         f"WRITE ABORTED in batch {bi} at {row['id']}: pre-state "
                         f"hash did not match (rowcount={cur.rowcount}). This "
                         f"batch rolled back; {written} rows from earlier batches "
-                        f"are committed and SAFE — re-running selects only the "
+                        f"are committed and remain in place — re-running selects "
+                        f"only the "
                         f"remainder.")
             conn.commit()
         finally:
@@ -639,7 +640,7 @@ def main() -> int:
                    "guard": "pre-repair outputs + md5; post_repair_md5 added "
                             "after verify",
                    "rows": backup_rows}, f, indent=1, default=str)
-    print(f"VERIFIED: all {len(predictions)} rows match the prediction exactly.")
+    print(f"MATCHED: all {len(predictions)} rows equal the prediction exactly.")
     print("Rollback armed. Re-run without --execute to confirm idempotence.")
     return 0
 

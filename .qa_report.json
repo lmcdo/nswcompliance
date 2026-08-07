@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "An authorized PRODUCTION DATA WRITE over 519 stored customer shadow reports, including paid $39 PDFs. Every one of them currently renders a December scenario cast at 13:00 AEDT under a 12:00 label, and a Direction column carrying the retired constant 183.0 — measured a median 48.8 deg from the truth, with 519 of 519 printing the compass letter 'S' where the correct letter is 'SW'. Regeneration is whole-report by necessity, so it also recomputes reach, coverage, bearings, adg_compliant, worst_case_scenario and confidence. Not standard tier: this rewrites numbers a customer has already been served and may have relied on in a council objection, and it cannot be undone except from the backup this run takes.",
-  "commit_hash": "79167d92",
+  "commit_hash": "59ef50ea",
   "files": [
     "scripts/repair_shadow_reports.py",
     ".gitignore",
