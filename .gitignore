@@ -417,6 +417,7 @@ scripts/*
 # change (which states are DISTINGUISHABLE in stored rows, and the before/after
 # for every existing report). Committed so the claims can cite a command.
 !scripts/measure_granny_confidence_states.py
+!scripts/measure_climate_reference_availability.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py
