@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Removes content from a paid surface and deletes a paid-tier feature listing. The Sentinel-2 adjacent-lot construction check is withdrawn from the shadow product entirely: it returned a reading in 0 of 538 stored reports while all 538 rendered a confident negative about neighbouring land, and at 20 m SWIR a suburban lot is about one pixel, so even working it measures roughly 30-40 properties at once. Beyond the render surfaces this deletes a COMMERCIAL REPRESENTATION: the landing page sold 'Surface-change screening detail' as free:false/paid:true beside a $29 price, logged as DQ-52 before removal. Critical tier because content leaves a paid PDF and a paywall comparison table, and because deleting services/sentinel2.py is irreversible without a revert.",
-  "commit_hash": "c072ef1c",
+  "commit_hash": "05fc5e35",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
@@ -92,14 +92,14 @@
     },
     {
       "scenario": "Pre-DA History breaks because it was assumed to share the deleted Sentinel-2 module.",
-      "what_happens": "A live product loses its imagery timeline.",
+      "what_happens": "A live product loses its imagery timeline: Pre-DA History's annual Sentinel-2 composites 2017-2024 stop resolving, and the failure would surface as an ImportError at request time rather than as a typed absence.",
       "mitigated": true,
       "how": "Grep-verified before deletion: pre_da_history.py never imports services/sentinel2.py - its ds_sentinel2 is a DataSourceQuery audit label for its own Element84 calls. The only importers were shadow_detector.py and one test, both handled.",
       "repro": "grep -nE '^[[:space:]]*(from|import).*sentinel2' services/pre_da_history.py   (returns nothing)"
     },
     {
       "scenario": "The field-coverage ratchet is loosened to let the removal through, so a FUTURE accidental field loss also passes.",
-      "what_happens": "The ratchet stops protecting every other model.",
+      "what_happens": "The ratchet stops protecting every other model. A future rename or accidental field drop anywhere in the brief contract would pass silently, which is exactly the loss the ratchet was added to catch.",
       "mitigated": true,
       "how": "Only the six construction_change_* entries were removed from scripts/brief_field_coverage_baseline.json; the ratchet logic is untouched and its own unit tests (field loss, rename, model disappearing) still pass. Any other field loss still fails.",
       "repro": "python -m pytest tests/test_brief_field_coverage_ratchet.py -q"
