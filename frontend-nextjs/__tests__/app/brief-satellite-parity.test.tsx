@@ -117,15 +117,59 @@ describe('ShadowDisplay — full scenario table + confidence caveats', () => {
     expect(screen.getByText(/Run confidence:/)).toBeInTheDocument();
   });
 
-  it('renders the construction-change note instead of a false clear reading', () => {
+  it('renders the surface-change note instead of a false clear reading', () => {
     render(<ShadowDisplay data={KINCUMBER_SHADOW} />);
-    expect(screen.getByText(/Construction change check: Sentinel-2 timeout/)).toBeInTheDocument();
-    expect(screen.queryByText(/No construction-scale surface change/)).toBeNull();
+    expect(screen.getByText(/not assessed/)).toBeInTheDocument();
+    expect(screen.getByText(/Sentinel-2 timeout/)).toBeInTheDocument();
+    expect(screen.queryByText(/No threshold-level bare-soil increase/)).toBeNull();
   });
 
-  it('states the checked-clear reading when the change check completed without a note', () => {
-    render(<ShadowDisplay data={{ ...KINCUMBER_SHADOW, construction_change_note: null }} />);
-    expect(screen.getByText(/No construction-scale surface change detected/)).toBeInTheDocument();
+  it('states the clear reading only when a real score came back', () => {
+    // A score is REQUIRED for the negative. Clearing the note alone is not
+    // enough — that is the state 292 stored reports are in, and it used to
+    // render as a clear result.
+    render(<ShadowDisplay data={{
+      ...KINCUMBER_SHADOW, construction_change_note: null, construction_change_score: 0.031,
+    }} />);
+    // "threshold-level" is load-bearing: 0.031 IS a measured increase, just
+    // below the detection threshold, so a categorical "No bare-soil increase"
+    // would state something the number contradicts.
+    expect(screen.getByText(/No threshold-level bare-soil increase/)).toBeInTheDocument();
+    expect(screen.queryByText(/No bare-soil increase across/)).toBeNull();
+  });
+
+  it('does NOT claim a clear reading from the legacy no-data score of exactly 0.0', () => {
+    // The 292 pre-June stored reports: score exactly 0.0, no note, because the
+    // no-data path returned a hard-coded zero before the note key existed. A
+    // real delta is round(recent - baseline, 4) and landing on 0.0000 is a
+    // ~1-in-10,000 coincidence; all 292 hold exactly 0.0 and none holds any
+    // other value. Reporting "no change" for these asserted a negative about
+    // neighbouring land from a check that never ran.
+    render(<ShadowDisplay data={{
+      ...KINCUMBER_SHADOW, construction_change_note: null, construction_change_score: 0.0,
+    }} />);
+    expect(screen.getByText(/not assessed/)).toBeInTheDocument();
+    expect(screen.queryByText(/No threshold-level bare-soil increase/)).toBeNull();
+  });
+
+  it('never attributes surface change to a named neighbouring lot', () => {
+    // The measurement is one mean bare-soil index over a 400m x 400m box that
+    // contains the subject's own lot and a few hundred others, and resolves no
+    // direction. Prose naming an adjacent lot described something the
+    // measurement does not contain.
+    for (const score of [0.031, 0.31]) {
+      const { container, unmount } = render(<ShadowDisplay data={{
+        ...KINCUMBER_SHADOW,
+        construction_change_note: null,
+        construction_change_score: score,
+        construction_change_detected: score > 0.12,
+      }} />);
+      const text = container.textContent ?? '';
+      expect(text).not.toMatch(/adjacent lot/i);
+      expect(text).not.toMatch(/next door/i);
+      expect(text).not.toMatch(/to the north/i);
+      unmount();
+    }
   });
 
   it('omits the caveat when the height came from a mapped LEP control', () => {

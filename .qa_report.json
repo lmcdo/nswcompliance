@@ -1,54 +1,215 @@
 {
-  "tier": "standard",
-  "commit_hash": "af38c3ac",
-  "justification": "Removes a customer-facing feature from the granny-flat ineligible result: the 'Eligible properties nearby' block, its API route and its tests. Standard rather than critical because removal is the safe direction — no claim is added, no stored data changes, and no code path can now serve a wrong result from it. It is not minor: it deletes a served surface and a public endpoint.",
+  "tier": "critical",
+  "justification": "Changes numbers and claims on a paid surface. The shadow bearing served in the PDF Direction column stops being one of five stored constants and becomes a per-address calculation; the December scenario's modelled instant moves by one hour, changing its bearing, altitude, reach and coverage; and the sentence 'Construction activity detected on adjacent lot / No significant ground disturbance detected on adjacent lots' — a factual assertion about a third party's land, rendered on all 538 stored reports from a check that never produced a reading — is replaced with a three-state, area-scoped statement. Not standard tier: this is user-facing regulatory-adjacent output on a $39 paid PDF, plus a statement about someone else's property.",
+  "commit_hash": "4ebdc44c",
   "files": [
-    "frontend-nextjs/app/reports/granny-flat/page.tsx",
-    "frontend-nextjs/app/api/reports/granny-flat/nearby/route.ts",
-    "frontend-nextjs/__tests__/api/reports/granny-flat-nearby.test.ts"
+    "services/solar_position.py",
+    "services/shadow_model.py",
+    "services/shadow_detector.py",
+    "services/constraint_models.py",
+    "services/intelligence_brief.py",
+    "services/requirements.txt",
+    "requirements-test.txt",
+    "frontend-nextjs/lib/shadow-surface-change.ts",
+    "frontend-nextjs/lib/pdf/shadow-report.tsx",
+    "frontend-nextjs/components/tools/ShadowTool.tsx",
+    "frontend-nextjs/components/reports/ShadowDetailDisplay.tsx",
+    "frontend-nextjs/components/reports/landing/data/shadow.ts",
+    "frontend-nextjs/components/reports/ToolCrossSell.tsx",
+    "frontend-nextjs/__tests__/lib/pdf/shadow-report-findings.test.ts",
+    "frontend-nextjs/app/api/reports/shadow/generate/route.ts",
+    "frontend-nextjs/app/for/buyers-agents/page.tsx",
+    "scripts/measure_shadow_calibration_damage.py",
+    "tests/test_shadow_calibration.py",
+    "tests/test_shadow_detector.py",
+    "tests/test_brief_contracts.py",
+    "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx"
   ],
   "falsifiable_check": {
-    "claim": "Nothing still references the removed endpoint or component, and no other feature depended on them.",
-    "fails_when": "Any remaining source file references /api/reports/granny-flat/nearby, NearbyEligible, or NearbyResult; or tsc/jest regress.",
-    "how_checked": "grep for 'granny-flat/nearby', 'NearbyEligible', 'NearbyResult' and 'selectedLat|selectedLng' across frontend-nextjs; npx tsc --noEmit; npx jest.",
-    "command": "grep -rn 'granny-flat/nearby\\|NearbyEligible\\|electedLat' frontend-nextjs --include=*.ts --include=*.tsx | grep -v node_modules   &&   cd frontend-nextjs && npx tsc --noEmit && npx jest",
-    "result": "PASSED. 0 references remain. tsc 0 errors. jest 78 suites / 1025 tests pass (down 10 = the deleted route's own tests). The similarly-named nearby_secondary_dwelling_count in GrannyFlatTool.tsx is a DA-approval count from a different pipeline and is deliberately untouched."
+    "command": "python -m pytest tests/test_shadow_calibration.py -q  — 122 assertions comparing this repo's served solar geometry against pvlib's NREL Solar Position Algorithm (Reda & Andreas 2004), a THIRD-PARTY library implementing a DIFFERENT algorithm by different authors, at 5 scenarios x 8 NSW locations. Timezone labelling is checked against the IANA tzdata database via zoneinfo, also external. Falsifiability was PROVEN by planting each real defect and confirming a red run: daylight saving ignored (fixed UTC+10) => 3 failed; the retired December constant 183.0 restored => 42 failed; suncalc lat/lng argument order swapped => 81 failed; a 0.6 deg bearing offset injected just past the pass mark => 41 failed. Source files restored byte-identically (sha256 prefix a3019d6b83f2 / 81b439196a2a identical before and after).",
+    "fails_when": "NOT SELF-REFERENTIAL, and here is why: production computes sun position with suncalc (the Meeus/SunCalc formulation, and the same call pybdshadow makes internally to cast the polygon), while the test's expected values come from pvlib's NREL SPA — a separate implementation of a separate algorithm, maintained by different people, that this codebase does not use and must never use in production. The test therefore compares our answer against an outside authority, not against a re-run of itself. It goes red when: solar altitude differs from pvlib by more than 0.50 deg at any fixture point; the shadow bearing differs by more than 0.50 deg where solar altitude is at or below 85 deg; a scenario's modelled UTC instant fails to convert back to its own advertised wall-clock label exactly to the minute in Australia/Sydney; the noon sun is not north of the zenith somewhere in NSW; or the served bearing becomes constant across the state again. The 0.50 deg tolerance was written down on 2026-08-07 BEFORE the first run and has not been moved since; measured headroom across the 212 real served locations is 0.196 deg in altitude and 0.302 deg in bearing. pvlib and suncalc are imported at module scope with no importorskip, so an absent library is a collection ERROR and a red build, never a green skip."
   },
   "pre_impl": {
-    "existing_data": "The endpoint filtered granny_flat_reports on confidence='high' AND granny_flat_buildable=true. That is 11 rows, spread over 9 postcodes, with one address (12 Selby Place Blacktown) stored three times so it would have listed the same property up to three times. Measured 2026-08-06: only 3 of 87 stored addresses have any such row within the 1km radius, so the block returned empty for 97% of addresses.",
-    "assumption_mismatch": "A mid-review grep suggested selectedLat/selectedLng were never set, which would have made the block unreachable dead code. That was wrong — the grep under-reported; setSelectedLat(lat) is called at page.tsx:462 on address selection, so the block did render. Re-verified against origin/main before acting; the removal is justified on purpose and liability, not on it being dead.",
-    "new_vs_existing": "Pure deletion. The component, its route and its test file are removed; selectedLat/selectedLng state became write-only as a result of the deletion and is removed with it, per the cleanup rule. No replacement is added — the ineligible result now goes straight from the notify-me block to the cross-sell cards."
+    "existing_data": "property_reports WHERE product='shadow' — 538 rows, read-only. Scenarios live at outputs->'scenarios' (jsonb array), not columns. No writes issued by this change or by the measurement script.",
+    "assumption_mismatch": "Stored reports were written by the OLD code and keep their stored shadow_direction_deg and time_local. They are not migrated here. A re-pulled stored report therefore still renders its stored December constant of 183.0 and its 12:00 label; only newly computed reports carry the corrected values. This is stated in the measured-damage section rather than silently repaired, because repair is a separately authorised pass.",
+    "new_vs_existing": "New computations only. The per-address bearing and the DST-derived instants apply at request time in _build_scenario_list and model_shadow. The COPY changes apply to every render, including of stored rows — deliberately, since the false neighbour attribution is in the template, not the data.",
+    "external_source_error": "suncalc absent -> sun_position raises RuntimeError -> shadow_bearing_deg logs and returns None -> the scenario serves shadow_direction_deg=null and the PDF renders an em dash. The polygon still comes from pybdshadow. Sentinel-2 unreachable -> compute_change_score returns a note or a null score -> surfaceChangeState returns 'not_assessed' and every surface says the check did not run. The NSW lot API returning a non-3857 CRS or implausible rings still 422s at entry (unchanged).",
+    "frontend_type": "Yes, and updated: ShadowScenario.shadow_direction_deg, shadow_length_m, shadow_overlap_fraction and overlaps_subject_lot are now nullable in both lib/pdf/shadow-report.tsx and components/tools/ShadowTool.tsx; construction_change_note added to ShadowReportData, ShadowOutputs and ShadowData; construction_change_score added to ShadowData, ShadowResult and ShadowServiceOutput. tsc --noEmit: 0 errors.",
+    "user_failure_mode": "If the bearing cannot be computed the Direction cell shows an em dash rather than a compass point — absent, not fabricated. If the shadow reach exceeds the physical maximum for the modelled height at that sun altitude the scenario becomes status='unavailable' with an error_note naming the ceiling, instead of serving a 1,779 m shadow. If the Sentinel-2 check produced no reading the surface says 'Not assessed — no usable satellite reading' with an amber severity, instead of a green 'No construction activity detected'."
   },
-  "functions": "N/A — deletion only, no new or changed functions.",
-  "values": "N/A — no values are read or written by this change.",
-  "queries": "N/A — the only query in the change is the one being deleted.",
+  "functions": [
+    {
+      "name": "local_wall_clock_to_utc",
+      "file_line": "services/solar_position.py:98",
+      "input": "year, month, day, hour and minute integers plus a ZoneInfo (defaults to Australia/Sydney), supplied by Scenario.instant_utc for each ADG test scenario",
+      "output": "a timezone-aware UTC datetime, consumed by pybdshadow.bdshadow_sunlight to cast the polygon and by sun_position to derive the reported bearing",
+      "if_none": "Cannot be None — all arguments are ints with defaults. A naive datetime cannot enter here because the function CONSTRUCTS the aware value; sun_position separately raises ValueError on a naive input rather than assuming the server's zone."
+    },
+    {
+      "name": "sun_position",
+      "file_line": "services/solar_position.py:118",
+      "input": "a timezone-aware UTC datetime plus WGS84 latitude and longitude floats taken from the shadow request body",
+      "output": "a tuple of solar altitude and compass azimuth in degrees, consumed by shadow_bearing_deg and by the reach ceiling check in shadow_detector",
+      "if_none": "suncalc missing -> RuntimeError (never a fabricated position). Naive datetime -> ValueError. Callers convert both into typed absence."
+    },
+    {
+      "name": "shadow_bearing_deg",
+      "file_line": "services/solar_position.py:166",
+      "input": "a timezone-aware UTC datetime plus WGS84 latitude and longitude floats for the subject property",
+      "output": "an optional float bearing written to scenarios[].shadow_direction_deg, rendered as the PDF Direction column and the ShadowTool worst-case sentence",
+      "if_none": "Returns None when the sun is at/below the horizon or at/above 85 deg altitude (azimuth ill-conditioned). Rendered as an em dash in the PDF and omitted from the ShadowTool sentence; never coalesced to 0, which bearingToCompass would render as 'N'."
+    },
+    {
+      "name": "scenario_shadow_bearing_deg",
+      "file_line": "services/shadow_model.py:150",
+      "input": "a scenario key string plus the request latitude and longitude, called once per scenario by _build_scenario_list",
+      "output": "an optional float bearing, or None when the sun is below the horizon or too near the zenith for a direction to mean anything",
+      "if_none": "Unknown scenario key -> None. Replaces the five stored direction_deg constants."
+    },
+    {
+      "name": "instant_utc",
+      "file_line": "services/shadow_model.py:130",
+      "input": "the scenario's own local_hour and local_minute fields together with SCENARIO_YEAR, with no separately stored UTC offset to drift against them",
+      "output": "a timezone-aware UTC datetime consumed by model_shadow and scenario_shadow_bearing_deg, derived so it can never contradict the displayed time_local",
+      "if_none": "Cannot be None. Derived, so it can never contradict time_local — that pairing was the defect."
+    },
+    {
+      "name": "max_shadow_length_m",
+      "file_line": "services/solar_position.py:201",
+      "input": "the modelled building height in metres and the solar altitude in degrees at the instant being checked",
+      "output": "an optional float giving the longest physically possible shadow, used to reject implausible reach values in _build_scenario_list",
+      "if_none": "Returns None when altitude <= 0 or height <= 0; the caller then skips the check rather than treating an unknown ceiling as a breach."
+    },
+    {
+      "name": "surfaceChangeState",
+      "file_line": "frontend-nextjs/lib/shadow-surface-change.ts:60",
+      "input": "{construction_change_score, construction_change_detected, construction_change_note} from a live run or a stored report",
+      "output": "'detected' | 'none_detected' | 'not_assessed' -> PDF findings, ShadowTool findings, Brief ShadowDisplay",
+      "if_none": "Missing/undefined score returns 'not_assessed'. That is the intended default: absence of the field is absence of a reading."
+    }
+  ],
+  "values": [
+    {
+      "value": "shadow_direction_deg",
+      "read_at": "frontend-nextjs/lib/pdf/shadow-report.tsx:445, frontend-nextjs/components/tools/ShadowTool.tsx:562",
+      "nullable": "yes (newly)",
+      "guard_at": "shadow-report.tsx:445 (already guarded) and ShadowTool.tsx:566-568 (guard ADDED — it was unguarded, and Math.round(null/45) is 0, which would render a fabricated 'N')",
+      "if_missing": "PDF shows an em dash; ShadowTool omits the 'cast <direction>' clause entirely."
+    },
+    {
+      "value": "shadow_length_m",
+      "read_at": "frontend-nextjs/lib/pdf/shadow-report.tsx:441",
+      "nullable": "yes",
+      "guard_at": "shadow-report.tsx:441 (guard ADDED — the type said number but the service has emitted null since the 2026-08-03 typed-absence fix)",
+      "if_missing": "Reach cell shows an em dash."
+    },
+    {
+      "value": "construction_change_note",
+      "read_at": "frontend-nextjs/lib/pdf/shadow-report.tsx (via surfaceChangeState), ShadowDetailDisplay.tsx",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/lib/shadow-surface-change.ts:62, and passed through at app/api/reports/shadow/generate/route.ts:141",
+      "if_missing": "Falls to the score check. Absent note + null/zero score still yields 'not_assessed'."
+    },
+    {
+      "value": "construction_change_score",
+      "read_at": "frontend-nextjs/lib/shadow-surface-change.ts:63-64",
+      "nullable": "yes",
+      "guard_at": "same line — null and exact 0.0 both route to 'not_assessed'",
+      "if_missing": "'Not assessed'. This is what stops the 292 legacy exact-0.0 rows re-serving a false negative."
+    },
+    {
+      "value": "height_m (into the reach ceiling)",
+      "read_at": "services/shadow_detector.py:357",
+      "nullable": "yes (parameter defaults to None)",
+      "guard_at": "services/shadow_detector.py:357 — `if height_m is not None`",
+      "if_missing": "Ceiling not computed, reach served as measured. Chosen deliberately: an unknown ceiling must not condemn a plausible measurement."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Damage census over stored shadow reports (measure-only, no repair)",
+      "file_line": "scripts/measure_shadow_calibration_damage.py:105",
+      "where_clause": "WHERE p.product = 'shadow'",
+      "if_zero": "Exits 2 with 'no shadow reports found — expected a non-empty corpus'. An empty read is never reported as zero damage.",
+      "if_wrong": "The connection is opened with set_session(readonly=True), so a wrong query cannot mutate anything; the worst case is a wrong count printed to stdout, which is not served to any user."
+    },
+    {
+      "purpose": "LEP height limit at the subject point (unchanged by this PR, but now correctly DESCRIBED)",
+      "file_line": "services/shadow_detector.py:230",
+      "where_clause": "WHERE layer_type = 'height' AND ST_Contains(geom, point) LIMIT 1",
+      "if_zero": "Falls through to regulatory_provisions, then to DEFAULT_HEIGHT_M with height_source='default', which the PDF labels 'Default assumption'.",
+      "if_wrong": "The height is looked up at the SUBJECT's coordinates and was previously described as 'the maximum height a neighbouring building could be approved to'. The query is unchanged; the copy now says it is the control mapped at this property's location and that the neighbouring lot's control is not looked up separately."
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Another surface still calls /api/reports/granny-flat/nearby after the route file is deleted, so a live page starts issuing requests that now 404.",
-      "what_happens": "The calling page would silently render an empty section forever, because the original component swallowed fetch errors with a bare catch and a graceful empty state — the failure would be invisible rather than loud.",
+      "scenario": "The IANA tzdata package is stale or absent in the deploy image, so ZoneInfo('Australia/Sydney') resolves wrongly or raises.",
+      "what_happens": "Every scenario instant shifts, reproducing the class of defect this PR fixes — but silently, since the bearing would still be internally consistent with the (wrong) instant.",
       "mitigated": true,
-      "how": "Grepped the whole frontend for 'granny-flat/nearby' after deletion: zero references. The only caller was the component removed in the same commit.",
-      "repro": "grep -rn 'granny-flat/nearby' frontend-nextjs --include=*.ts --include=*.tsx | grep -v node_modules   (expect no output)"
+      "how": "tests/test_shadow_calibration.py:test_december_is_aedt_and_june_is_aest pins the UTC offsets numerically (10.0 vs 11.0), and test_december_instant_is_not_the_old_broken_one pins the absolute instant 2025-12-21T01:00Z. A bad tzdata fails CI rather than shipping. ZoneInfo raising would surface as an import-time error, not a wrong number.",
+      "repro": "python -m pytest tests/test_shadow_calibration.py -k 'aedt or not_the_old_broken' -q"
     },
     {
-      "scenario": "The deletion catches the unrelated nearby_secondary_dwelling_count feature in GrannyFlatTool.tsx, which shares the word 'nearby'.",
-      "what_happens": "A genuine, separately-sourced count of nearby secondary dwelling APPROVALS from DA data would vanish from the tool, removing real information rather than the manufactured comparables.",
+      "scenario": "A future edit reintroduces a stored bearing constant (e.g. caching direction_deg back onto the scenario tuple for speed).",
+      "what_happens": "Every address is served the same compass direction again — the defect that put 183.0 on all 538 reports.",
       "mitigated": true,
-      "how": "Each of the four other files matching 'nearby' was opened and classified before deleting anything: two are navigation copy about nearby councils, and GrannyFlatTool's nearby_secondary_dwelling_count is DA-approval data from a different pipeline. All four are untouched and their tests still pass.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/components/tools/GrannyFlatTool-paywall.test.tsx"
+      "how": "tests/test_shadow_calibration.py:test_bearing_actually_varies_by_address asserts the bearing spread across the NSW envelope exceeds 1 deg for every scenario, and test_time_local_label_is_derived_not_stored asserts the Scenario tuple has no direction_deg or hour_utc attribute at all.",
+      "repro": "python -m pytest tests/test_shadow_calibration.py -k 'varies_by_address or derived_not_stored' -q"
     },
     {
-      "scenario": "selectedLat/selectedLng are left in place after their only reader is deleted, or are removed too aggressively and break address selection.",
-      "what_happens": "Left in, they are write-only state that a later reader could resurrect and re-point at a removed feature. Removed carelessly, the onSelect handler at page.tsx:462 loses sibling setters in the same arrow body and address selection stops recording the address or postcode.",
+      "scenario": "A stored report from before this change is re-pulled and re-rendered.",
+      "what_happens": "It serves its STORED shadow_direction_deg (including the December 183.0) and its stored 12:00 label. The code fix does not retroactively correct persisted rows.",
+      "mitigated": false,
+      "how": "NOT mitigated, deliberately — repairing 538 stored reports is a separate authorised pass. What IS mitigated on those rows is the copy: the neighbour attribution and the false 'no construction activity' negative are in the template, so a re-pulled report renders the corrected wording. scripts/measure_shadow_calibration_damage.py quantifies exactly what remains wrong per report.",
+      "repro": "DATABASE_URL=... python scripts/measure_shadow_calibration_damage.py"
+    },
+    {
+      "scenario": "Sentinel-2 starts working and returns a genuine delta of exactly 0.0000.",
+      "what_happens": "surfaceChangeState classifies it 'not_assessed' rather than 'none_detected' — a real measurement reported as no measurement.",
       "mitigated": true,
-      "how": "Removed by exact-string replacement of only the selectedLat/selectedLng fragments, leaving setAddress/setPostcode and the other reset setters in the same handlers intact. Verified by 0 remaining references, tsc 0 errors, and the full jest suite passing.",
-      "repro": "grep -n 'electedLat\\|electedLng' frontend-nextjs/app/reports/granny-flat/page.tsx   (expect no output), then npx tsc --noEmit"
+      "how": "Accepted and documented at frontend-nextjs/lib/shadow-surface-change.ts:40-58. round(recent-baseline,4) landing on exactly zero is ~1-in-10,000; all 292 legacy rows hold exactly 0.0 and none holds any other value, so on the evidence every exact zero in the corpus is missing data. The failure understates rather than overstates, which is the correct direction for a claim about a third party's land.",
+      "repro": "npx jest --testPathPattern=brief-satellite-parity -t 'legacy no-data score'"
+    },
+    {
+      "scenario": "A lot polygon is multi-part or oversized, so shadow_reach_m measures kilometres.",
+      "what_happens": "Previously served as a measurement — 42 Audley St Petersham served 1,779.5 m of shadow from a 9 m building.",
+      "mitigated": true,
+      "how": "services/shadow_detector.py:331-357 compares reach against h/tan(solar altitude) and types the scenario 'unavailable' with a reason above REACH_CEILING_TOLERANCE=1.25. Threshold chosen from the measured distribution (p95=1.004, then an empty band, then p99=13.5); 1.1, 1.25 and 1.5 all select the same 19 reports, so the value is not load-bearing.",
+      "repro": "python -m pytest tests/test_shadow_calibration.py -k 'ceiling or 1779' -q"
+    },
+    {
+      "scenario": "suncalc's lat/lng argument order is swapped in a future refactor.",
+      "what_happens": "A plausible-looking sun position for the wrong hemisphere — a silent wrong answer, not a crash.",
+      "mitigated": true,
+      "how": "tests/test_shadow_calibration.py:test_suncalc_argument_order_is_lng_then_lat asserts both that our call matches the reference AND that the swapped call differs from it by more than 10 deg, so the test cannot pass vacuously if the two ever converge.",
+      "repro": "python -m pytest tests/test_shadow_calibration.py -k argument_order -q"
+    },
+    {
+      "scenario": "pvlib is dropped from requirements-test.txt, or someone converts the calibration to importorskip.",
+      "what_happens": "The calibration silently stops running while the build stays green — #880's exact failure mode, but wearing a calibration badge.",
+      "mitigated": true,
+      "how": "Module-scope `import pvlib` with no importorskip: absence is a collection ERROR, not a skip. Belt and braces: scripts/check_dependency_skips.py enforces the skip census exactly in BOTH directions (currently 18 dependency / 20 total, unchanged by this PR — the 122 new tests add zero skips), so converting the failure into a skip trips the ratchet.",
+      "repro": "pip uninstall -y pvlib && python -m pytest tests/test_shadow_calibration.py -q  # collection error, rc != 0"
+    },
+    {
+      "scenario": "A conftest mock substitutes a MagicMock for pvlib, so every comparison passes trivially.",
+      "what_happens": "The reference agrees with anything and certifies a broken calculation.",
+      "mitigated": true,
+      "how": "tests/test_shadow_calibration.py:test_reference_library_is_real_not_a_mock asserts pvlib.__version__ is a str, that neither module is a MagicMock, and that the reference returns a physically correct altitude (60-90 deg for Sydney at summer solstice noon). Verified: conftest_mocks.py stubs only absent libraries and never names pvlib or suncalc.",
+      "repro": "python -m pytest tests/test_shadow_calibration.py -k real_not_a_mock -q"
+    },
+    {
+      "scenario": "The height query at services/shadow_detector.py:230 returns the control for the SUBJECT's point, but the lot immediately north sits in a different height-of-buildings polygon (a zone boundary running along the rear boundary).",
+      "what_happens": "The modelled building is given the wrong maximum height, so every scenario's reach and coverage is wrong — too short if the neighbour's control is taller, too long if shorter. The number looks authoritative because it cites the LEP by name.",
+      "mitigated": true,
+      "how": "Not mitigated in the QUERY — fetching the neighbouring parcel's control needs parcel adjacency, which nothing in this repo has (the NSW lot API is propId-keyed only). Mitigated in the CLAIM: frontend-nextjs/lib/pdf/shadow-report.tsx now states the height is 'mapped at THIS property's location' and that 'the control applying to the neighbouring lot is not looked up separately and may differ', and the ShadowTool 'How this model works' panel says the same. The reach ceiling at services/shadow_detector.py:365 independently catches a height/geometry mismatch large enough to produce an impossible shadow.",
+      "repro": "Run /pipeline/shadow for a property whose rear boundary is a height-control boundary and compare outputs.height_m against the control mapped 20 m north in spatial_overlays."
     }
   ],
   "post_merge": {
-    "db_reset": "None. No migration and no writes. The 11 rows the endpoint used to select are untouched and keep their stored values.",
-    "secrets": "None added, changed or removed by this change.",
-    "other_repo": "None. The endpoint had no external caller; it was fetched only from the page in this repo.",
-    "manual_verify": "Load a granny-flat result for an ineligible address and confirm the 'Eligible properties nearby' teal block no longer appears, and that the notify-me block and cross-sell cards still render in order."
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — the deploy image must install services/requirements.txt so suncalc is declared rather than inherited transitively from pybdshadow. Verify one freshly generated shadow report shows a per-address Direction (not 183.0 for December) and a 12:00 December label. No migration, no DB write, no stored-report repair in this PR."
   }
 }

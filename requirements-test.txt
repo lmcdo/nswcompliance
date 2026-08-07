@@ -46,3 +46,29 @@ PyMuPDF==1.28.0
 # in every environment — so the contracts they guard went unverified from the
 # day they were written. Matches the pin now in services/requirements.txt.
 icontract>=2.7.3
+
+# ---------------------------------------------------------------------------
+# Shadow calibration (lane 2, 2026-08-07)
+# ---------------------------------------------------------------------------
+# suncalc: what PRODUCTION uses for solar position (services/solar_position.py),
+# and the same function pybdshadow calls internally to cast the shadow polygon.
+# tests/test_shadow_calibration.py imports it directly. Pure Python + numpy.
+suncalc>=0.1.3
+#
+# pvlib: the INDEPENDENT REFERENCE for tests/test_shadow_calibration.py — NREL's
+# Solar Position Algorithm, a different algorithm by different authors from the
+# Meeus/SunCalc formulation production uses. 122 assertions compare the two.
+#
+# ⚠ TEST-ONLY, AND IT MUST STAY THAT WAY. pvlib is deliberately ABSENT from
+# services/requirements.txt (the container manifest) so it cannot reach
+# production. It was named as our method in the shadow disclaimer, the paid PDF
+# and marketing copy for months while never being imported anywhere in the repo;
+# PR #878 and migration 064 removed those claims. Nothing may reintroduce them.
+# Its ONLY legitimate use is as the yardstick a test measures us against.
+#
+# Declared HERE rather than in requirements.txt because this is the file CI
+# actually installs (.github/workflows/gates.yml:66,151,244). requirements.txt
+# already listed pvlib==0.15.2 and CI never read it — a library declared in a
+# file nothing installs is exactly what turned four flood postconditions into
+# decoration for months (#880).
+pvlib>=0.15.2

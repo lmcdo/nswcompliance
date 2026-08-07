@@ -5,10 +5,15 @@ POST /pipeline/shadow
   Output: ShadowResult matching frontend ShadowResult interface
 
 Shadow polygons come from pybdshadow, which derives sun position internally
-from the modelled UTC instant. No solar-position library is imported here.
-The "shadows extend SOUTHWARD for Sydney" direction claim is NOT closed by a
-committed test -- see the services/shadow_model docstring and the
-services/CLAUDE.md shadow caveat.
+from the modelled UTC instant via `suncalc`. The bearing reported beside each
+polygon comes from `services.solar_position`, which calls that same `suncalc`
+function -- so the Direction column and the drawn shadow cannot disagree.
+
+The "shadows extend SOUTHWARD for Sydney" claim, open as an unverified caveat
+since April, IS now closed by tests/test_shadow_calibration.py, which asserts it
+across latitude, season and hour against pvlib's independent NREL SPA
+implementation. pvlib is a TEST dependency only and must never be named as our
+method on any customer surface (PR #878, migration 064).
 
 Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
 {
@@ -65,7 +70,9 @@ try:
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
         shadow_on_lot_geojson, lot_depth_m,
         SHADOW_SCENARIOS, SCENARIO_YEAR, northern_neighbour_proxy,
+        scenario_shadow_bearing_deg,
     )
+    from services.solar_position import sun_position, max_shadow_length_m
     from services.sentinel2 import compute_change_score
     from services.execution_manifest import MANIFEST_KEY, build_manifest
     from services.geometry_checks import (
@@ -77,7 +84,9 @@ except ImportError:
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
         shadow_on_lot_geojson, lot_depth_m,
         SHADOW_SCENARIOS, SCENARIO_YEAR, northern_neighbour_proxy,
+        scenario_shadow_bearing_deg,
     )
+    from solar_position import sun_position, max_shadow_length_m
     from sentinel2 import compute_change_score
     from execution_manifest import MANIFEST_KEY, build_manifest
     from geometry_checks import (
@@ -93,7 +102,22 @@ DATA_SOURCES = ["NSW Planning Portal API", "Element84 Sentinel-2 (free)", "pybds
 
 # Algorithm revision for execution manifests (campaign item 4): the scenario
 # set + proxy model + ADG overlap rule. Bump on method change, not per deploy.
-ALGORITHM_VERSION = "shadow-adg-scenarios-1.0"
+# 2.0: per-address bearing, DST-derived instants, reach plausibility ceiling.
+ALGORITHM_VERSION = "shadow-adg-scenarios-2.0"
+
+# How far past the physical maximum h/tan(altitude) a reported reach may sit
+# before it is treated as impossible rather than measured.
+#
+# CHOSEN FROM THE DATA, not picked for roundness. Across all 2,690 scenario-rows
+# in the 538 stored reports (measured 2026-08-07) the ratio reach/ceiling is
+# sharply bimodal: p50 0.732, p90 1.003, p95 1.004 — the legitimate mass sits AT
+# the ceiling, because the proxy building's south edge coincides with the lot's
+# north bound, so reach is geometrically capped at h/tan(A). Above that there is
+# an empty band and then a jump to p99 = 13.5. Thresholds of 1.1, 1.25 and 1.5
+# all select the SAME 19 reports (95, 95 and 93 rows), so the exact value is not
+# load-bearing; 1.25 sits in the middle of the gap and leaves 25% headroom for
+# the 111,000 m/deg flat-earth approximation and pybdshadow's aeqd round-trip.
+REACH_CEILING_TOLERANCE = 1.25
 
 
 class ShadowRequest(BaseModel):
@@ -274,12 +298,27 @@ def _build_scenario_list(
     lot_geojson: dict,
     lot_centroid_lng: float,
     lot_centroid_lat: float,
+    height_m: Optional[float] = None,
 ) -> list:
-    """Convert raw shadow GeoJSON dict → list of ShadowScenario objects."""
-    meta_by_key = {s[0]: s for s in SHADOW_SCENARIOS}
+    """Convert raw shadow GeoJSON dict → list of ShadowScenario objects.
+
+    `lot_centroid_lng/lat` were passed in but never read: the bearing served as
+    `shadow_direction_deg` was one of five constants identical for every
+    address. They are now used, which is the whole of the per-address compass
+    fix. The bearing comes from the same `suncalc` call pybdshadow makes to cast
+    the polygon, so the reported direction and the drawn shadow agree by
+    construction.
+    """
+    meta_by_key = {s.key: s for s in SHADOW_SCENARIOS}
     scenarios = []
-    for key, *_ in SHADOW_SCENARIOS:
-        _, month, day, hour_utc, description, date_str, time_local, direction_deg = meta_by_key[key]
+    for scenario in SHADOW_SCENARIOS:
+        key = scenario.key
+        meta = meta_by_key[key]
+        description, date_str, time_local = meta.description, meta.date_str, meta.time_local
+        # None when the bearing is not meaningful (sun below horizon, or so near
+        # the zenith it is ill-conditioned). Never a fabricated fallback.
+        direction_deg = scenario_shadow_bearing_deg(
+            key, lot_centroid_lat, lot_centroid_lng)
         shadow_geojson = shadow_map.get(key) or {}
         if "error" in shadow_geojson or not shadow_geojson:
             # Typed absence (output-grounding fix 1, 2026-08-03). An errored
@@ -303,13 +342,88 @@ def _build_scenario_list(
                 "shadow_polygon": None,
             })
             continue
+
+        reach_m = shadow_reach_m(shadow_geojson, lot_geojson)
+
+        # PHYSICAL CEILING. A vertical object of height h at solar altitude A
+        # cannot cast a shadow longer than h/tan(A); `shadow_reach_m` measures
+        # from the lot's northern bound to the southernmost intersection, so an
+        # oversized or multi-part lot polygon yields a reach no sun could
+        # produce. 10 of 538 stored reports exceeded it — one served 1,779 m
+        # from a 9 m building (42 Audley St Petersham, measured 2026-08-07).
+        # An impossible number is UNAVAILABLE, not a measurement: the same
+        # typed-absence rule the errored branch above already applies.
+        ceiling_m = None
+        ceiling_failure = None
+        if height_m is not None:
+            try:
+                alt_deg, _ = sun_position(
+                    scenario.instant_utc(), lot_centroid_lat, lot_centroid_lng)
+                ceiling_m = max_shadow_length_m(height_m, alt_deg)
+            except Exception as e:
+                # FAIL CLOSED (Sol pre-push round). A swallowed exception here
+                # silently disabled the guard: the 1,779 m reach this check
+                # exists to block would have been served as status='computed'
+                # whenever sun_position raised. An unvalidatable reach is
+                # UNAVAILABLE, exactly like an unavailable polygon. Distinct
+                # from max_shadow_length_m returning None (altitude <= 0):
+                # there no finite ceiling physically exists and the skip is
+                # legitimate; here we simply do not know it.
+                ceiling_failure = str(e)[:120]
+
+        if ceiling_failure is not None:
+            logger.warning(
+                "reach ceiling could not be computed for %s: %s — reporting "
+                "unavailable", key, ceiling_failure)
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": (
+                    f"shadow reach could not be validated against the physical "
+                    f"ceiling ({ceiling_failure})"),
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
+
+        if reach_m is not None and ceiling_m is not None and reach_m > ceiling_m * REACH_CEILING_TOLERANCE:
+            logger.warning(
+                "shadow reach %.1f m exceeds the physical ceiling %.1f m for a "
+                "%.1f m building at solar altitude %.2f deg (%s) — reporting "
+                "unavailable", reach_m, ceiling_m, height_m, alt_deg, key)
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": (
+                    f"computed reach {reach_m:.0f} m exceeds the {ceiling_m:.0f} m "
+                    f"physical maximum for a {height_m:.0f} m building at this sun "
+                    f"altitude — lot geometry implausible"),
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
+
         scenarios.append({
             "scenario": key,
             "label": description,
             "date": date_str,
             "time_local": time_local,
             "status": "computed",
-            "shadow_length_m": shadow_reach_m(shadow_geojson, lot_geojson),
+            "shadow_length_m": reach_m,
             "shadow_overlap_fraction": shadow_overlap_fraction(shadow_geojson, lot_geojson),
             "shadow_direction_deg": direction_deg,
             "overlaps_subject_lot": overlaps_lot(shadow_geojson, lot_geojson),
@@ -394,6 +508,27 @@ def run_shadow(request: ShadowRequest):
     if coord_reason:
         raise HTTPException(
             422, f"Shadow analysis could not be determined: {coord_reason}")
+
+    # Civil-time supportability. Every scenario wall-clock label is resolved
+    # in Australia/Sydney (services/solar_position.py NSW_TZ), but Lord Howe
+    # Island keeps its own IANA zone (Australia/Lord_Howe: +10:30 outside
+    # daylight saving), so a winter scenario there would be modelled 30
+    # minutes early while displaying the Sydney label. Refusing east of
+    # longitude 154.0 states a geographic fact, not an approximated civil
+    # boundary: the NSW mainland ends at Cape Byron (153.64 E), so the only
+    # land the accepted envelope admits past 154.0 is the Lord Howe group.
+    # (The far-west Broken Hill zone has no such clean line — towns on both
+    # civil times sit in the same longitude band — so it stays a documented
+    # limitation in solar_position.py.) Exposure of this refusal, measured
+    # 2026-08-07: 0 of 538 stored shadow reports lie east of 154.0
+    # (easternmost 153.61).
+    if request.lng > 154.0:
+        raise HTTPException(
+            422, "Shadow analysis could not be determined: this location is "
+                 "in the Lord Howe Island region, which keeps a different "
+                 "civil time from the rest of NSW. Shadow scenarios are "
+                 "modelled in NSW mainland time only, so this address is "
+                 "refused rather than modelled with mislabelled times.")
 
     # Audit trail: track lot geometry fetch
     ds_lot = DataSourceQuery("NSW Planning Portal lot API", LOT_API, {"propId": request.prop_id})
@@ -496,7 +631,7 @@ def run_shadow(request: ShadowRequest):
         raise HTTPException(500, str(e))
 
     scenarios = _build_scenario_list(
-        shadow_map, lot_geojson, request.lng, request.lat
+        shadow_map, lot_geojson, request.lng, request.lat, height_m
     )
 
     # Resolve LGA for council name on report

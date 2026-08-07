@@ -115,10 +115,16 @@ class ShadowResult(BaseModel):
     confidence: Optional[str] = None
     construction_change_detected: Optional[bool] = None
     construction_change_note: Optional[str] = None
+    # Carried so the UI applies the same three-state rule as the PDF and web
+    # tool (frontend-nextjs/lib/shadow-surface-change.ts): a null score, a note,
+    # or an exact 0.0 all mean the check produced no reading, which is not the
+    # same as a finding of no change.
+    construction_change_score: Optional[float] = None
     temporal_caveat: str = (
-        "Shadow analysis reflects current height controls only. "
-        "Does not account for approved or pending development applications "
-        "on adjacent lots."
+        "Shadow analysis reflects the height control mapped at this property "
+        "only. The modelled building north of the lot is an offset rectangle, "
+        "not the neighbouring parcel, and approved or pending development "
+        "applications are not accounted for."
     )
 
 

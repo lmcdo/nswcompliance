@@ -187,6 +187,8 @@
     "value_min"
   ],
   "DCPControls": [
+    "as_at_note",
+    "as_at_status",
     "controls",
     "dcp_name",
     "dcp_url",
@@ -258,6 +260,7 @@
     "overlay_coverage",
     "overlays",
     "riparian_land",
+    "servicing",
     "terrestrial_biodiversity",
     "wetlands"
   ],
@@ -494,6 +497,7 @@
     "confidence",
     "construction_change_detected",
     "construction_change_note",
+    "construction_change_score",
     "height_m",
     "height_source",
     "scenarios",
@@ -521,6 +525,7 @@
     "confidence",
     "construction_change_detected",
     "construction_change_note",
+    "construction_change_score",
     "height_m",
     "height_source",
     "scenarios",
