@@ -1,9 +1,13 @@
 {
   "tier": "critical",
   "justification": "An authorized PRODUCTION DATA WRITE over 519 stored customer shadow reports, including paid $39 PDFs. Every one of them currently renders a December scenario cast at 13:00 AEDT under a 12:00 label, and a Direction column carrying the retired constant 183.0 — measured a median 48.8 deg from the truth, with 519 of 519 printing the compass letter 'S' where the correct letter is 'SW'. Regeneration is whole-report by necessity, so it also recomputes reach, coverage, bearings, adg_compliant, worst_case_scenario and confidence. Not standard tier: this rewrites numbers a customer has already been served and may have relied on in a council objection, and it cannot be undone except from the backup this run takes.",
-  "commit_hash": "c465ce6a",
+  "commit_hash": "7fce61d0",
   "files": [
     "scripts/repair_shadow_reports.py",
+    "scripts/repair_shadow_impossible_reach.py",
+    "services/shadow_model.py",
+    "services/shadow_detector.py",
+    "tests/test_shadow_detector.py",
     ".gitignore",
     ".claude/.pre-impl-done.json"
   ],
@@ -47,6 +51,20 @@
       "input": "the (row, predicted outputs, predicted confidence) triples for the whole write set",
       "output": "counts of what a customer would SEE change, separated into verdict flips (ADG, confidence, worst case, scenario-became-unavailable, compass letter) versus numbers-only movement, plus any preserved-field violation",
       "if_none": "Cannot be None. An empty write set exits earlier via the idempotence branch. A non-empty preserved_violations list aborts the run before any write."
+    },
+    {
+      "name": "shadow_overlap_fraction",
+      "file_line": "services/shadow_model.py:295",
+      "input": "the pybdshadow shadow FeatureCollection and the subject lot polygon, both WGS84 GeoJSON, for one ADG scenario",
+      "output": "Optional[float] 0-1 written to scenarios[].shadow_overlap_fraction — the PDF Coverage column, the ShadowTool percentage, and the input to the ADG solar-access gate",
+      "if_none": "None means the fraction could not be COMPUTED and is never coerced to 0.0. _build_scenario_list turns a None into status='unavailable'; _adg_compliant then returns None (not assessed) rather than a pass."
+    },
+    {
+      "name": "overlaps_lot",
+      "file_line": "services/shadow_model.py:368",
+      "input": "the same shadow and lot geometries; delegates to shadow_overlap_fraction and compares against OVERLAP_THRESHOLD (0.40)",
+      "output": "Optional[bool] written to scenarios[].overlaps_subject_lot, counted by every 'N of 5 scenarios with shadow' line on the PDF and the free tool",
+      "if_none": "None when the fraction is None. Never False from an uncomputed fraction: `None >= 0.40` would raise, and coercing to False asserts the lot is unaffected on the strength of a geometry op that did not complete."
     },
     {
       "name": "_json_norm",
@@ -137,6 +155,20 @@
       "mitigated": true,
       "how": "_regeneratable removes such rows from the write set BEFORE the backup is taken, and every excluded row is printed with its reason. They keep their existing (defective) December values and are reported as still-affected rather than being silently counted as repaired.",
       "repro": "Read the 'CANNOT REGENERATE' block in the run output; the count must reconcile with SELECTED minus the write set."
+    },
+    {
+      "scenario": "A cadastral ring is self-touching or unclosed, so GEOS raises TopologyException while intersecting the shadow with the lot, and the run stores the result as a measurement.",
+      "what_happens": "The failure was returned as 0.0 and rendered as '0% of the lot in shadow' with overlaps_subject_lot=false, feeding a green 'Meets ADG solar access test'. 7 stored reports carry exactly that, where the recomputed truth is up to 100% of the lot shadowed.",
+      "mitigated": true,
+      "how": "_shadow_intersection now raises ShadowGeometryError instead of returning None for both a genuine miss and a failure; shadow_overlap_fraction / shadow_reach_m / overlaps_lot return None on that path, and _build_scenario_list types the scenario 'unavailable'. A genuine miss still returns 0.0/False, pinned separately so the fix cannot over-reach into false 'not assessed'.",
+      "repro": "python -m pytest tests/test_shadow_detector.py -k 'cannot_be_computed or still_zero or uncomputable' -q"
+    },
+    {
+      "scenario": "The regeneration writes a fresh fabricated zero into the 515 rows it repairs, because the repair runs the same pipeline that swallowed the exception.",
+      "what_happens": "The repair would bake in the very defect class the calibration exists to remove — worse than inheriting it, because it would be deliberate.",
+      "mitigated": true,
+      "how": "The fail-closed change above landed BEFORE the write. The dry run over the write set is re-run afterwards and reports how many scenarios are now typed 'unavailable' instead of carrying a zero, so the count is evidence rather than an assumption.",
+      "repro": "python scripts/repair_shadow_reports.py --pass december-dst --backup-dir <dir>  — compare 'Scenario became not assessed' before and after the fail-closed fix."
     }
   ],
   "post_merge": {
