@@ -1,194 +1,121 @@
 {
   "tier": "critical",
-  "justification": "An authorized PRODUCTION DATA WRITE over 519 stored customer shadow reports, including paid $39 PDFs. Every one of them currently renders a December scenario cast at 13:00 AEDT under a 12:00 label, and a Direction column carrying the retired constant 183.0 — measured a median 48.8 deg from the truth, with 519 of 519 printing the compass letter 'S' where the correct letter is 'SW'. Regeneration is whole-report by necessity, so it also recomputes reach, coverage, bearings, adg_compliant, worst_case_scenario and confidence. Not standard tier: this rewrites numbers a customer has already been served and may have relied on in a council objection, and it cannot be undone except from the backup this run takes.",
-  "commit_hash": "b6ce3cc3",
+  "justification": "Removes content from a paid surface and deletes a paid-tier feature listing. The Sentinel-2 adjacent-lot construction check is withdrawn from the shadow product entirely: it returned a reading in 0 of 538 stored reports while all 538 rendered a confident negative about neighbouring land, and at 20 m SWIR a suburban lot is about one pixel, so even working it measures roughly 30-40 properties at once. Beyond the render surfaces this deletes a COMMERCIAL REPRESENTATION: the landing page sold 'Surface-change screening detail' as free:false/paid:true beside a $29 price, logged as DQ-52 before removal. Critical tier because content leaves a paid PDF and a paywall comparison table, and because deleting services/sentinel2.py is irreversible without a revert.",
+  "commit_hash": "05fc5e35",
   "files": [
-    ".claude/.pre-impl-done.json",
-    ".gitignore",
+    ".claude/DATA_QUALITY_TRACKER.md",
     "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
+    "frontend-nextjs/__tests__/app/shadow-removal-consumer-check.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/ShadowTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/ShadowTool.test.tsx",
+    "frontend-nextjs/__tests__/lib/pdf/shadow-report-findings.test.ts",
+    "frontend-nextjs/app/api/reports/shadow/generate/route.ts",
+    "frontend-nextjs/app/how-it-works/page.tsx",
     "frontend-nextjs/components/reports/ShadowDetailDisplay.tsx",
+    "frontend-nextjs/components/reports/landing/FeatureGrid.tsx",
+    "frontend-nextjs/components/reports/landing/data/shadow.ts",
     "frontend-nextjs/components/tools/ShadowTool.tsx",
     "frontend-nextjs/lib/pdf/shadow-report.tsx",
     "frontend-nextjs/lib/shadow-scenario-availability.ts",
-    "scripts/repair_shadow_impossible_reach.py",
-    "scripts/repair_shadow_reports.py",
+    "frontend-nextjs/lib/shadow-surface-change.ts",
+    "scripts/brief_field_coverage_baseline.json",
+    "services/CLAUDE.md",
     "services/constraint_models.py",
     "services/intelligence_brief.py",
+    "services/sentinel2.py",
     "services/shadow_detector.py",
-    "services/shadow_model.py",
+    "tests/test_brief_contracts.py",
+    "tests/test_brief_satellite_field_mapping.py",
+    "tests/test_execution_manifests.py",
     "tests/test_shadow_detector.py"
   ],
   "falsifiable_check": {
-    "command": "DATABASE_URL=... python scripts/repair_shadow_reports.py --pass december-dst --backup-dir data/db_rollback_backups   (dry run: predicts every row and asserts the preserved set)  THEN  --verify-only  THEN  python scripts/measure_shadow_calibration_damage.py",
-    "fails_when": "NOT SELF-REFERENTIAL: the post-state is checked by a DIFFERENT program from the one that wrote it. (1) The dry run recomputes every row and compares the four Sentinel-2 fields before/after; a single altered field aborts the entire run before any write, so the 'preserved' claim cannot be asserted without evidence. (2) The per-row UPDATE is guarded on md5(outputs::text) equal to the pre-state hash captured server-side, so a row that changed under us takes rowcount=0 and rolls its batch back rather than overwriting. (3) --verify-only re-reads every written row and deep-compares it against the prediction file written BEFORE the write, JSON-normalised, and refuses to arm the rollback unless all 519 match. (4) scripts/measure_shadow_calibration_damage.py — the independent census, which shares no code path with the repair — must report 0 reports carrying the December defect and 0 impossible-reach rows afterwards. (5) Re-running the repair must select ZERO rows, because selection excludes any row carrying outputs.repair; a non-zero second selection means the write did not take. A run that cannot reach the database exits non-zero rather than reporting 'no damage'."
+    "command": "cd frontend-nextjs && npx jest --testPathPattern=shadow-removal-consumer-check  THEN  grep -rniE 'construction_change|compute_change_score|surfaceChangeState|bare.soil' services scripts src frontend-nextjs",
+    "fails_when": "The consumer check RENDERS each surface rather than reading source. It calls buildFindings and asserts no finding mentions the removed check while the findings list stays non-empty, so removal cannot be faked by emptying it. It renders ShadowDisplay and asserts both the absence of the wording AND that the card's last element still has content, which fails if removal left a trailing empty block. It asserts the landing config sells nothing it cannot do, that features.length is exactly 3 (the value that triggers lg:grid-cols-3 and prevents an empty fourth cell), and that the paid comparison row is gone. It goes red if any surface regains the wording, if the findings list collapses to empty, if a hole opens at the end of the card, or if a fourth feature is added without revisiting the grid. The grep is the negative-claim evidence and must return only Pre-DA History's unrelated ds_sentinel2 audit labels plus the two stored-data measurement scripts."
   },
   "pre_impl": {
-    "existing_data": "property_reports WHERE product='shadow' — 538 rows. 19 already regenerated in PR #883 (they carry outputs.repair); 519 selected here. Scenarios live at outputs->'scenarios' (jsonb array), not columns. Schema re-confirmed from information_schema, not assumed: no version, algorithm_version or stale column exists anywhere on the table, which is why invalidation-instead-of-rewrite was ruled out rather than preferred.",
-    "assumption_mismatch": "The stored rows were written by pre-fix code and keep a December scenario cast at 02:00Z (13:00 AEDT) plus a stored bearing constant. Regeneration uses the STORED lot_polygon and height_m rather than re-fetching from the NSW Planning Portal — deliberately, so the change is isolated to the computation and is reproducible; a fresh fetch could silently substitute a different parcel and confound the repair. run_date is NOT advanced: it records when the report was originally produced for the customer, and outputs.repair carries the regeneration provenance instead.",
-    "new_vs_existing": "No new capability. scripts/repair_shadow_reports.py is the PR #883 repair script renamed and generalised to take a --pass, so both authorized passes share one proven guard chain instead of a second copy drifting from the first. Regeneration calls the pipeline's own northern_neighbour_proxy -> model_all_scenarios -> _build_scenario_list -> _adg_compliant/_worst_case, so the repaired rows cannot diverge from what a live re-run would produce.",
-    "external_source_error": "No external service is called. pybdshadow/suncalc run locally against the stored geometry; a raise inside _build_scenario_list is converted by the pipeline's own fail-closed branch into status='unavailable' with an error_note, never a fabricated number. A row lacking coordinates, height or lot_polygon is EXCLUDED from the write set by _regeneratable and named in the run output — reported, never silently skipped.",
-    "frontend_type": "No frontend change. The repaired shape is the one every surface already handles as of PR #883 (merged a7edd825): nullable shadow_length_m / shadow_overlap_fraction / shadow_direction_deg, status='unavailable', adg_compliant null.",
-    "user_failure_mode": "If the write half-completes, earlier batches are committed and later rows keep their pre-state — both states are internally consistent whole reports, never a row half-written by two code generations, because each row is a single atomic UPDATE of the whole outputs document. Selection then picks up exactly the remainder on a re-run. If a regenerated scenario is physically implausible it is served as 'not assessed' rather than as a number."
+    "existing_data": "property_reports WHERE product='shadow' - 538 rows, READ-ONLY, no writes in this PR. Every row carries construction_change_score/_detected/_note; measured state today: 292 legacy exact-0.0, 241 with a note, 5 null score, and ZERO that would render a real reading. The stored fields are deliberately left in place - they are the historic audit trail, and scripts/measure_shadow_calibration_damage.py must keep being able to re-verify the 0/538 finding.",
+    "assumption_mismatch": "The section 4h surface list was written from a census and was INCOMPLETE - it named the PDF, free tool, Brief, report page and map, and missed five commercial/documentation surfaces including the paid-tier listing. Verified independently against origin/main before editing. Two claimed surfaces do NOT render the check: ShadowMap.tsx and app/reports/shadow/** both return zero matches.",
+    "new_vs_existing": "Pure removal. No new capability, no DA-feed replacement built. The one added file is a consumer-check test. FeatureGrid gains a conditional column count rather than a second grid component.",
+    "external_source_error": "One fewer external dependency: the shadow pipeline no longer calls Element84 at all, so the 25s timeout path, the ThreadPoolExecutor and the 'Insufficient cloud-free scenes' branch are gone with it. Pre-DA History's own Sentinel-2 usage is a separate code path and is untouched.",
+    "frontend_type": "Types narrowed: construction_change_score/_detected/_note and s2_latest_acquisition removed from ShadowReportData, ShadowOutputs and ShadowData; the Brief's ShadowServiceOutput and ShadowScenario models drop the same three. tsc --noEmit: 0 errors.",
+    "user_failure_mode": "A stored report that used to render 'Surface-change check: not assessed' now renders nothing in that slot. Verified not to leave a hole: PDF and tool findings are .map() over an array, the Brief card's last element still carries content, and the landing grid drops to lg:grid-cols-3 so no empty cell appears."
   },
   "functions": [
     {
-      "name": "_select_december_dst",
-      "file_line": "scripts/repair_shadow_reports.py:190",
-      "input": "one property_reports row dict (id, lat, lng, outputs, height_m, outputs_md5) from the read-only corpus fetch",
-      "output": "bool — whether this row still carries the pre-fix December scenario and should be regenerated",
-      "if_none": "Cannot be None. A row already regenerated by EITHER pass carries outputs.repair and is excluded, which is what makes the run resumable and idempotent by construction rather than by bookkeeping."
-    },
-    {
-      "name": "_regenerate_outputs",
-      "file_line": "scripts/repair_shadow_reports.py:228",
-      "input": "the stored row plus the pass config; reads outputs.lot_polygon, height_m, lat, lng — the stored inputs, not a fresh fetch",
-      "output": "the complete post-repair outputs document, produced by the pipeline's own functions and written verbatim to property_reports.outputs",
-      "if_none": "Never returns None or a partial document. Rows that cannot be regenerated are filtered out earlier by _regeneratable, so this is never called on one."
-    },
-    {
-      "name": "_regeneratable",
-      "file_line": "scripts/repair_shadow_reports.py:293",
-      "input": "one stored property_reports row, checked for the three inputs regeneration cannot proceed without: lat, lng and outputs.lot_polygon",
-      "output": "None when the row can be regenerated, otherwise the human-readable reason it cannot ('no coordinates', 'no height_m', 'no stored lot_polygon')",
-      "if_none": "None is the SUCCESS value here. A non-None reason removes the row from the write set and prints it, so an unregeneratable row is a reported outcome rather than a silent omission."
-    },
-    {
-      "name": "_blast_radius",
-      "file_line": "scripts/repair_shadow_reports.py:360",
-      "input": "the (row, predicted outputs, predicted confidence) triples for the whole write set",
-      "output": "counts of what a customer would SEE change, separated into verdict flips (ADG, confidence, worst case, scenario-became-unavailable, compass letter) versus numbers-only movement, plus any preserved-field violation",
-      "if_none": "Cannot be None. An empty write set exits earlier via the idempotence branch. A non-empty preserved_violations list aborts the run before any write."
-    },
-    {
-      "name": "shadow_overlap_fraction",
-      "file_line": "services/shadow_model.py:295",
-      "input": "the pybdshadow shadow FeatureCollection and the subject lot polygon, both WGS84 GeoJSON, for one ADG scenario",
-      "output": "Optional[float] 0-1 written to scenarios[].shadow_overlap_fraction — the PDF Coverage column, the ShadowTool percentage, and the input to the ADG solar-access gate",
-      "if_none": "None means the fraction could not be COMPUTED and is never coerced to 0.0. _build_scenario_list turns a None into status='unavailable'; _adg_compliant then returns None (not assessed) rather than a pass."
-    },
-    {
-      "name": "overlaps_lot",
-      "file_line": "services/shadow_model.py:368",
-      "input": "the same shadow and lot geometries; delegates to shadow_overlap_fraction and compares against OVERLAP_THRESHOLD (0.40)",
-      "output": "Optional[bool] written to scenarios[].overlaps_subject_lot, counted by every 'N of 5 scenarios with shadow' line on the PDF and the free tool",
-      "if_none": "None when the fraction is None. Never False from an uncomputed fraction: `None >= 0.40` would raise, and coercing to False asserts the lot is unaffected on the strength of a geometry op that did not complete."
-    },
-    {
-      "name": "_json_norm",
-      "file_line": "scripts/repair_shadow_reports.py:349",
-      "input": "either side of a comparison — the in-memory predicted outputs document, or the same document re-read from Postgres jsonb after the write",
-      "output": "the same document with tuples normalised to lists, for comparison across the jsonb boundary",
-      "if_none": "None normalises to None. This exists because the first run of the PR #883 repair failed its own verify on all 19 rows while the data was correct — shapely emits coordinate TUPLES and Postgres returns LISTS. A check that can only fail is worth as little as one that can only pass."
-    },
-    {
-      "name": "refetch_lot_polygon",
-      "file_line": "scripts/repair_shadow_reports.py:259",
-      "input": "one stored row whose outputs.lot_polygon is missing, using its prop_id to query the NSW Planning Portal lot endpoint",
-      "output": "(lot GeoJSON or None, human-readable outcome) — the geometry regeneration runs against, plus the sentence recorded in the run log and on the row",
-      "if_none": "None means the boundary could not be obtained OR failed the same CRS/ring plausibility checks the live pipeline applies; the row is excluded from the write set and its failure reason printed, so 'not assessed' is only ever reported after a genuine fetch failure."
+      "name": "buildFindings",
+      "file_line": "frontend-nextjs/lib/pdf/shadow-report.tsx:245",
+      "input": "the ShadowReportData for one stored or freshly computed shadow report, read for its scenarios, adg_compliant verdict, modelled height and zone",
+      "output": "the Finding[] the paid PDF renders as its findings list - one fewer entry now that the surface-change finding is gone",
+      "if_none": "Cannot be None. An empty array would render a findings section with no rows; the consumer check asserts the list stays non-empty so removal cannot be faked by emptying it."
     }
   ],
   "values": [
     {
-      "value": "outputs.repair",
-      "read_at": "scripts/repair_shadow_reports.py:185 (_select_december_dst)",
-      "nullable": "yes — absent on every un-repaired row, which is exactly the selection signal",
-      "guard_at": "same line: outputs.get('repair') is truthy-tested, so a missing key selects the row and a present tag excludes it",
-      "if_missing": "The row is treated as un-repaired and selected. Safe direction: at worst a row is regenerated twice, which is idempotent, rather than a defective row being skipped."
+      "value": "shadowConfig.comparison",
+      "read_at": "frontend-nextjs/components/reports/landing/data/shadow.ts:51 (pricing comparison table)",
+      "nullable": "no - a static array",
+      "guard_at": "asserted in the consumer check: 'Surface-change screening detail' must not appear",
+      "if_missing": "The row is gone, so the paid tier no longer advertises a capability the product does not have. This was DQ-52."
     },
     {
-      "value": "shadow_length_m (in the offender predicate)",
-      "read_at": "scripts/repair_shadow_reports.py:150 (_offending_scenarios)",
-      "nullable": "yes, and increasingly so — every repaired row stores null for each unavailable scenario",
-      "guard_at": "narrowed at the point of use: float(raw_reach) if raw_reach is not None else None",
-      "if_missing": "The scenario is skipped by the predicate rather than raising float(None) mid-sweep over a partly-repaired corpus."
-    },
-    {
-      "value": "construction_change_score / _detected / _note, s2_latest_acquisition",
-      "read_at": "scripts/repair_shadow_reports.py:312 (_blast_radius, PRESERVED_KEYS)",
-      "nullable": "yes on all four",
-      "guard_at": "asserted equal before/after for every row; a single difference aborts the run before any write",
-      "if_missing": "Absent on both sides compares equal, so a row that never had a Sentinel-2 reading passes the assertion without being fabricated one."
-    },
-    {
-      "value": "md5(outputs::text) pre-state hash",
-      "read_at": "scripts/repair_shadow_reports.py:289 (_fetch_corpus), used in the UPDATE predicate",
-      "nullable": "no — computed server-side by Postgres, never by the client",
-      "guard_at": "the UPDATE's WHERE clause; rowcount != 1 rolls back the batch and aborts",
-      "if_missing": "Impossible: a row with no outputs would not have been selected. A CHANGED hash means someone else wrote the row, and the batch aborts rather than clobbering them."
+      "value": "shadowConfig.features.length",
+      "read_at": "frontend-nextjs/components/reports/landing/FeatureGrid.tsx:28",
+      "nullable": "no",
+      "guard_at": "FeatureGrid branches to lg:grid-cols-3 at exactly 3; asserted in the consumer check",
+      "if_missing": "At 4 columns with 3 cards the desktop grid would show an empty fourth cell - the hole the ruling required closing. Verified no other landing page changes: bushfire 6, conveyancing 8, flood 8, intelligence-brief 9, pre-da 8, solar 4, threat-radar 4 all keep grid-cols-4."
     }
   ],
   "queries": [
     {
-      "purpose": "Read the shadow corpus to select, back up and predict (read-only connection)",
-      "file_line": "scripts/repair_shadow_reports.py:289",
-      "where_clause": "WHERE product = 'shadow'",
-      "if_zero": "An empty selection prints IDEMPOTENCE CONFIRMED and writes nothing. Note this is only reached AFTER a successful connect; a connection failure exits non-zero rather than reporting a clean corpus.",
-      "if_wrong": "The connection is opened with set_session(readonly=True), so the selection/backup/predict phase cannot mutate anything regardless of the predicate."
-    },
-    {
-      "purpose": "The guarded repair write",
-      "file_line": "scripts/repair_shadow_reports.py:424",
-      "where_clause": "WHERE id = %s AND product = 'shadow' AND md5(outputs::text) = %s",
-      "if_zero": "rowcount 0 means the row's pre-state changed since the prediction; the batch is rolled back and the run aborts, naming the row. Earlier batches stay committed and are safe because each row is an atomic whole-document update.",
-      "if_wrong": "The product filter prevents a uuid collision touching a flood/solar/granny report, and the md5 guard prevents writing a prediction computed from a different pre-state than the row currently holds."
+      "purpose": "Count which state each stored report would render before removal (read-only; no writes in this PR)",
+      "file_line": "scripts/measure_shadow_calibration_damage.py:110",
+      "where_clause": "WHERE p.product = 'shadow'",
+      "if_zero": "Exits 2 rather than reporting no damage - an unread corpus is not a clean one.",
+      "if_wrong": "The connection is opened readonly, so a wrong predicate cannot mutate anything; the script is retained precisely so the 0/538 finding stays re-verifiable after the feature is gone."
     }
   ],
   "break_it": [
     {
-      "scenario": "The repair is interrupted after some batches commit, leaving the shadow corpus holding two generations of report at once — some rows with December cast at 12:00 AEDT, some still at 13:00.",
-      "what_happens": "A mixed corpus. If selection were by run_date or a hand-kept id list, a re-run would either redo committed rows or skip un-written ones, and the census could not tell the two generations apart.",
+      "scenario": "A future session re-adds a satellite change check to shadow because services/CLAUDE.md still describes one.",
+      "what_happens": "The 0/538 detector returns, along with the per-parcel attribution the sensor cannot support.",
       "mitigated": true,
-      "how": "Selection is by absence of outputs.repair on the row itself, so the corpus carries its own completion marker: a re-run selects exactly the rows that did not get written. Each row is one atomic UPDATE of the whole outputs document, so no report can end up with December from the new pipeline and June from the old.",
-      "repro": "Run --execute, interrupt it, then run the dry run: SELECTED must equal the number of rows still lacking outputs.repair, not 519."
+      "how": "The Shadow Detector section of services/CLAUDE.md now records the removal, the 0/538 measurement and the 20 m SWIR physics, and says shadow queries no satellite imagery at all. The Threat Radar section's false 'same Sentinel-2 pipeline' claim - which is what made the original surface census short - is corrected with the grep result.",
+      "repro": "grep -n 'REMOVED 2026-08-07' services/CLAUDE.md"
     },
     {
-      "scenario": "A regenerated row silently loses its Sentinel-2 surface-change reading, turning a recorded measurement into 'not assessed' on a customer's report.",
-      "what_happens": "A real reading would be destroyed by a repair that was only authorized to fix the December geometry.",
+      "scenario": "Removal leaves an empty space where the section was, which a reader interprets as 'nothing to report'.",
+      "what_happens": "An absence that looks like a clear result - the same class as the em-dash defect #885 fixed.",
       "mitigated": true,
-      "how": "PRESERVED_KEYS are compared before/after for every row during the dry run, and any difference aborts the entire run before a single write. The repair copies the stored outputs document and replaces only the scenario/proxy/verdict keys.",
-      "repro": "python scripts/repair_shadow_reports.py --pass december-dst --backup-dir <dir>  — read the 'Sentinel-2 surface-change fields: UNCHANGED on every row (asserted)' line."
+      "how": "The consumer check renders each surface and asserts the findings list stays non-empty, the Brief card's last element still has content, and the landing grid drops to 3 columns so no empty cell appears.",
+      "repro": "cd frontend-nextjs && npx jest --testPathPattern=shadow-removal-consumer-check"
     },
     {
-      "scenario": "The prediction is computed against one pre-state but the write lands on a different one, because a customer regenerated their report between the dry run and the execute.",
-      "what_happens": "The row would be overwritten with numbers derived from stale inputs.",
+      "scenario": "Pre-DA History breaks because it was assumed to share the deleted Sentinel-2 module.",
+      "what_happens": "A live product loses its imagery timeline: Pre-DA History's annual Sentinel-2 composites 2017-2024 stop resolving, and the failure would surface as an ImportError at request time rather than as a typed absence.",
       "mitigated": true,
-      "how": "Every UPDATE carries md5(outputs::text) = <the exact pre-state the prediction was computed from>. A row that moved takes rowcount 0, rolls back its batch and aborts the run by name.",
-      "repro": "Edit one target row's outputs by hand between the dry run and --execute; the run must abort naming that row and commit nothing from that batch."
+      "how": "Grep-verified before deletion: pre_da_history.py never imports services/sentinel2.py - its ds_sentinel2 is a DataSourceQuery audit label for its own Element84 calls. The only importers were shadow_detector.py and one test, both handled.",
+      "repro": "grep -nE '^[[:space:]]*(from|import).*sentinel2' services/pre_da_history.py   (returns nothing)"
     },
     {
-      "scenario": "The verify step passes vacuously — e.g. comparing an object to itself, or comparing across a type boundary that always differs.",
-      "what_happens": "A badge of correctness with no evidence behind it. This exact failure occurred on the first PR #883 run in the opposite direction (always-fail).",
+      "scenario": "The field-coverage ratchet is loosened to let the removal through, so a FUTURE accidental field loss also passes.",
+      "what_happens": "The ratchet stops protecting every other model. A future rename or accidental field drop anywhere in the brief contract would pass silently, which is exactly the loss the ratchet was added to catch.",
       "mitigated": true,
-      "how": "Verification re-reads from the database into a fresh dict and compares against the prediction file written to disk BEFORE the write, both normalised through the same JSON round-trip. It is additionally cross-checked by scripts/measure_shadow_calibration_damage.py, a separate program that shares no code path with the repair.",
-      "repro": "DATABASE_URL=... python scripts/measure_shadow_calibration_damage.py  — section [1] must report 0 reports carrying the December defect."
+      "how": "Only the six construction_change_* entries were removed from scripts/brief_field_coverage_baseline.json; the ratchet logic is untouched and its own unit tests (field loss, rename, model disappearing) still pass. Any other field loss still fails.",
+      "repro": "python -m pytest tests/test_brief_field_coverage_ratchet.py -q"
     },
     {
-      "scenario": "A row has no stored lot_polygon, so regeneration cannot run.",
-      "what_happens": "A naive loop would raise mid-batch, or worse, write a report with an empty scenario list.",
+      "scenario": "A later cleanup strips construction_change_* from the 538 stored reports because nothing reads them any more.",
+      "what_happens": "The evidence for the removal is destroyed. The 0-of-538 finding could no longer be re-derived, so the decision to withdraw a paid feature would rest on a number nobody can check again — and DQ-52's record would point at fields that no longer exist.",
       "mitigated": true,
-      "how": "_regeneratable removes such rows from the write set BEFORE the backup is taken, and every excluded row is printed with its reason. They keep their existing (defective) December values and are reported as still-affected rather than being silently counted as repaired.",
-      "repro": "Read the 'CANNOT REGENERATE' block in the run output; the count must reconcile with SELECTED minus the write set."
-    },
-    {
-      "scenario": "A cadastral ring is self-touching or unclosed, so GEOS raises TopologyException while intersecting the shadow with the lot, and the run stores the result as a measurement.",
-      "what_happens": "The failure was returned as 0.0 and rendered as '0% of the lot in shadow' with overlaps_subject_lot=false, feeding a green 'Meets ADG solar access test'. 7 stored reports carry exactly that, where the recomputed truth is up to 100% of the lot shadowed.",
-      "mitigated": true,
-      "how": "_shadow_intersection now raises ShadowGeometryError instead of returning None for both a genuine miss and a failure; shadow_overlap_fraction / shadow_reach_m / overlaps_lot return None on that path, and _build_scenario_list types the scenario 'unavailable'. A genuine miss still returns 0.0/False, pinned separately so the fix cannot over-reach into false 'not assessed'.",
-      "repro": "python -m pytest tests/test_shadow_detector.py -k 'cannot_be_computed or still_zero or uncomputable' -q"
-    },
-    {
-      "scenario": "The regeneration writes a fresh fabricated zero into the 515 rows it repairs, because the repair runs the same pipeline that swallowed the exception.",
-      "what_happens": "The repair would bake in the very defect class the calibration exists to remove — worse than inheriting it, because it would be deliberate.",
-      "mitigated": true,
-      "how": "The fail-closed change above landed BEFORE the write. The dry run over the write set is re-run afterwards and reports how many scenarios are now typed 'unavailable' instead of carrying a zero, so the count is evidence rather than an assumption.",
-      "repro": "python scripts/repair_shadow_reports.py --pass december-dst --backup-dir <dir>  — compare 'Scenario became not assessed' before and after the fail-closed fix."
+      "how": "The stored keys are deliberately left in place and scripts/measure_shadow_calibration_damage.py is retained with its section [3] intact, so the census can still be re-run against the corpus. This PR issues no production write. Historic audit and live claim are separate: the live claim is gone, the audit stays.",
+      "repro": "DATABASE_URL=... python scripts/measure_shadow_calibration_damage.py  — section [3] must still report 0 reports with any real reading across 538."
     }
   ],
   "post_merge": {
-    "db_reset": "NO schema change, no migration, no reset. This branch adds tooling only. The tooling performs an authorized UPDATE of property_reports.outputs and .confidence for shadow rows; it creates no table, column, index or constraint, and drops nothing. The write is reversible from data/db_rollback_backups/shadow_december_dst_backup_2026-08-07.json via --rollback, which is guarded on the post-repair md5 so it cannot clobber later state.",
-    "secrets": "None added, rotated or required. The script reads DATABASE_URL from the environment only — the same credential the existing measurement script uses — and no credential is written to the repo, the backup files or the run output. The backup and prediction files contain report geometry and addresses (already in the database), never connection strings.",
-    "other_repo": "No change needed in any other repository. The regenerated rows use the shape frontend-nextjs already renders as of PR #883 (merged a7edd825): nullable shadow_length_m / shadow_overlap_fraction / shadow_direction_deg, status='unavailable', adg_compliant null. plotdetect-agents is not involved — no Trigger.dev task reads or writes shadow reports.",
-    "manual_verify": "After --execute: (1) run --verify-only and confirm all rows match the prediction and the rollback is armed; (2) run the INDEPENDENT census, scripts/measure_shadow_calibration_damage.py, and confirm section [1] reports 0 reports carrying the December defect and section [4] still reports 0 impossible-reach rows; (3) re-run the dry run and confirm it selects zero (idempotence); (4) open one repaired report on the live site and in the PDF and confirm the December Direction column reads SW rather than S, and that the Sentinel-2 surface-change line is unchanged."
+    "db_reset": "No schema change, no migration, no data write. The 538 stored reports keep their construction_change_* keys as historic audit; nothing renders them.",
+    "secrets": "None added or removed. One external dependency is dropped - the shadow pipeline no longer calls Element84's Sentinel-2 catalogue, which required no credential.",
+    "other_repo": "No change needed elsewhere. plotdetect-agents does not call the shadow pipeline's S2 path.",
+    "manual_verify": "Open a stored shadow report on the live site and the paid PDF and confirm: no surface-change section, no empty space where it was, the scenario table and ADG finding still render, and the landing page shows three feature cards with no gap and no 'Surface-change screening detail' row in the pricing table."
   }
 }

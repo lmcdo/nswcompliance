@@ -131,26 +131,6 @@ export async function POST(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       shadow_polygon: (sc as any).shadow_polygon ?? null,
     })),
-    construction_change_score: rawOutputs.construction_change_score != null
-      ? Number(rawOutputs.construction_change_score) : null,
-    construction_change_detected: Boolean(rawOutputs.construction_change_detected),
-    // The service has always emitted this, and every stored report carries it,
-    // but the PDF never received it — so a Sentinel-2 check that could not run
-    // rendered as "No significant ground disturbance detected on adjacent
-    // lots". 246 of the 538 stored reports carry an explicit no-reading note.
-    construction_change_note:
-      typeof rawOutputs.construction_change_note === 'string' &&
-      rawOutputs.construction_change_note.trim() !== ''
-        ? rawOutputs.construction_change_note
-        : null,
-    // Runtime-validated: only an ISO-date string may reach the PDF — a
-    // malformed persisted value must fall to the explicit not-recorded
-    // wording, never render as '[object Object]' provenance.
-    s2_latest_acquisition:
-      typeof rawOutputs.s2_latest_acquisition === 'string' &&
-      /^\d{4}-\d{2}-\d{2}$/.test(rawOutputs.s2_latest_acquisition)
-        ? rawOutputs.s2_latest_acquisition
-        : null,
     // null = NOT ASSESSED (noon scenario missing/errored) — Boolean() coerced
     // it to false, which rendered a "Concern" verdict from a failed model run
     // (output-grounding fix 1, 2026-08-03).

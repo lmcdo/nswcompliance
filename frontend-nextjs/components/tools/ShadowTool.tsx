@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
-import { surfaceChangeState } from '@/lib/shadow-surface-change';
 import {
   SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
 } from '@/lib/shadow-scenario-availability';
@@ -61,12 +60,6 @@ interface ShadowOutputs {
   lot_polygon: GeoJSONGeometry | null;
   north_proxy_polygon: GeoJSONGeometry | null;
   scenarios: ShadowScenario[];
-  construction_change_score: number | null;
-  construction_change_detected: boolean;
-  // Set when the Sentinel-2 check produced no clean reading (cloud, timeout,
-  // error). Must be checked BEFORE reporting a negative — otherwise "no change"
-  // is served for a check that never ran.
-  construction_change_note?: string | null;
   adg_compliant: boolean | null;  // null = not assessed (noon scenario missing/errored)
   worst_case_scenario: string;
 }
@@ -635,28 +628,6 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       : 'This is the maximum building height permitted under the planning controls. The shadow model assumes a building at this full height on the neighbouring lot.',
     severity: o.height_source === 'default' ? 'amber' : 'green',
   });
-
-  // Ground-surface change. The measurement is ONE mean bare-soil index over a
-  // 400m x 400m box centred on this property — it contains the subject's own lot
-  // and a few hundred others, and resolves no direction. Wording that named a
-  // neighbour ("going up next door") described something the measurement does
-  // not contain. Three-state: a check that could not run is not a clear result.
-  const changeState = surfaceChangeState(o);
-  if (changeState === 'not_assessed') {
-    findings.push({
-      label: 'Sentinel-2 surface-change check',
-      value: 'Not assessed — no usable satellite reading',
-      detail: `This check did not produce a result${o.construction_change_note ? ` (${o.construction_change_note})` : ''}. Nothing was measured, so this is not a finding that the area is unchanged — cloud cover over the 90-day window is the usual cause.`,
-      severity: 'amber',
-    });
-  } else if (changeState === 'detected') {
-    findings.push({
-      label: 'Sentinel-2 bare-soil index change',
-      value: 'Bare-soil increase detected across the surrounding area',
-      detail: 'Satellite imagery shows bare ground across the surrounding 400m x 400m area that was not there 12 months ago — consistent with clearing, excavation or earthworks somewhere in that area. The reading averages the whole area, so it cannot tell you which lot changed or in which direction. Search your council\'s DA tracker for applications near this address.',
-      severity: 'amber',
-    });
-  }
 
   const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' };
 

@@ -1,4 +1,4 @@
-import { Sun, Building2, Map, Satellite } from "lucide-react"
+import { Sun, Building2, Map } from "lucide-react"
 import type { ProductLandingConfig } from "../types"
 
 export const shadowConfig: ProductLandingConfig = {
@@ -17,7 +17,6 @@ export const shadowConfig: ProductLandingConfig = {
   dataSources: [
     { icon: Building2, name: "NSW Planning", description: "Height controls" },
     { icon: Sun, name: "ADG Standards", description: "Solar access tests" },
-    { icon: Satellite, name: "ESA Sentinel", description: "Surface-change screening" },
   ],
 
   featuresTitle: "What This Report Checks",
@@ -38,11 +37,6 @@ export const shadowConfig: ProductLandingConfig = {
       title: "Shadow Path and Overlap",
       description: "For each scenario, the shadow direction, length, and whether it crosses onto your property. Direction is calculated for your address from the sun's position at that date and time. Displayed on an interactive map showing which part of your lot is affected.",
     },
-    {
-      icon: Satellite,
-      title: "Ground-Surface Change Screening",
-      description: "Sentinel-2 imagery compared against a 12-month baseline across a 400m x 400m area centred on your property, flagging bare-soil increase consistent with clearing or earthworks. It reads that area as a whole — it cannot identify which lot changed, and works on a single lot are too small to register.",
-    },
   ],
 
   pricingTitle: "Free Check vs Full Report",
@@ -54,9 +48,8 @@ export const shadowConfig: ProductLandingConfig = {
     { name: "Worst-case scenario summary", free: true, paid: true },
     { name: "All 5 scenario breakdowns", free: false, paid: true },
     { name: "Hourly shadow diagrams", free: false, paid: true },
-    { name: "Surface-change screening detail", free: false, paid: true },
     { name: "Objection-ready summary paragraph", free: false, paid: true },
     { name: "Downloadable PDF report", free: false, paid: true },
   ],
-  methodology: "Solar position is calculated for your exact latitude and longitude at each test date and time, using local NSW wall-clock times with daylight saving applied where it is in force. Shadow length and direction are derived geometrically from the maximum permissible building height mapped at your location, sourced from NSW Government planning controls, modelled as a rectangle immediately north of your boundary — the neighbouring parcel itself is not retrieved. In place of any proposed design, the model assumes the full height envelope: the rectangle described above, at the height control mapped at your own property. The neighbouring parcel's own control, and any building actually proposed, may differ. Surface-change screening compares Sentinel-2 bare-soil index across a 400m x 400m area centred on your property against a 12-month baseline; it reports change across that area as a whole and cannot attribute it to an individual lot.",
+  methodology: "Solar position is calculated for your exact latitude and longitude at each test date and time, using local NSW wall-clock times with daylight saving applied where it is in force. Shadow length and direction are derived geometrically from the maximum permissible building height mapped at your location, sourced from NSW Government planning controls, modelled as a rectangle immediately north of your boundary — the neighbouring parcel itself is not retrieved. In place of any proposed design, the model assumes the full height envelope: the rectangle described above, at the height control mapped at your own property. The neighbouring parcel's own control, and any building actually proposed, may differ.",
 }

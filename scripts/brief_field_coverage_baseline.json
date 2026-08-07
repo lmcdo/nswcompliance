@@ -495,9 +495,6 @@
   "ShadowResult": [
     "adg_compliant",
     "confidence",
-    "construction_change_detected",
-    "construction_change_note",
-    "construction_change_score",
     "height_m",
     "height_source",
     "scenarios",
@@ -523,9 +520,6 @@
   "ShadowServiceOutput": [
     "adg_compliant",
     "confidence",
-    "construction_change_detected",
-    "construction_change_note",
-    "construction_change_score",
     "height_m",
     "height_source",
     "scenarios",

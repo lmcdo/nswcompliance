@@ -14,9 +14,7 @@ import {
   Image,
 } from '@react-pdf/renderer';
 import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
-import { s2ImageryCurrency } from './imagery-currency';
 import { AerialWithOverlay } from './map-overlay';
-import { SURFACE_CHANGE_AREA_NOTE, surfaceChangeState } from '../shadow-surface-change';
 import {
   SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
 } from '../shadow-scenario-availability';
@@ -65,16 +63,6 @@ export interface ShadowReportData {
   height_source: string | null;
   lep_name: string | null;
   scenarios: ShadowScenario[];
-  construction_change_score: number | null;
-  construction_change_detected: boolean;
-  // Set when the Sentinel-2 check did NOT produce a clean reading (cloud cover,
-  // timeout, error). Present in the service output and in every stored report,
-  // but the PDF never read it — so a check that could not run rendered as a
-  // clear negative on all 538 stored reports.
-  construction_change_note?: string | null;
-  // Latest acquisition date (YYYY-MM-DD) among the Sentinel-2 scenes the
-  // change computation actually used; null when identity was not recorded.
-  s2_latest_acquisition?: string | null;
   adg_compliant: boolean | null;  // null = not assessed (noon scenario missing/errored)
   worst_case_scenario: string;
   confidence: string;
@@ -351,38 +339,6 @@ export function buildFindings(data: ShadowReportData): Finding[] {
     });
   }
 
-  // Ground-surface change — see SURFACE_CHANGE_AREA_NOTE for why no direction
-  // and no neighbouring lot is named.
-  //
-  // THREE-STATE. The previous code had two branches, so every report that could
-  // not be measured rendered the negative: "No significant ground disturbance
-  // detected on adjacent lots". Across all 538 stored shadow reports the check
-  // has NEVER returned a reading — 231 "Insufficient cloud-free scenes", 10
-  // timeouts, 5 errors, and 292 pre-June rows holding exactly 0.0 before the
-  // note key existed — so 538 of 538 asserted a negative about somebody else's
-  // land from no evidence. A check that did not run is NOT a clear result.
-  const changeState = surfaceChangeState(data);
-
-  if (changeState === 'not_assessed') {
-    findings.push({
-      label: 'Sentinel-2 surface-change check',
-      value: 'Not assessed — no usable satellite reading',
-      detail: `This check did not produce a result${data.construction_change_note ? ` (${data.construction_change_note})` : ''}. It is not a finding that the area is unchanged; nothing was measured. Cloud cover over the 90-day window is the usual cause.`,
-      severity: 'amber',
-    });
-  } else {
-    findings.push({
-      label: `Sentinel-2 bare-soil index change${data.construction_change_score != null ? ` · score ${data.construction_change_score.toFixed(3)}` : ''}`,
-      value: changeState === 'detected'
-        ? 'Bare-soil increase detected across the surrounding area'
-        : 'No threshold-level bare-soil increase across the surrounding area',
-      detail: changeState === 'detected'
-        ? `Satellite imagery shows a bare-soil signal across the ${SURFACE_CHANGE_AREA_NOTE} that was not present 12 months ago — consistent with clearing, excavation or earthworks somewhere in that area. The measurement covers the whole area at once and cannot identify which lot changed, or in which direction it lies. Search the ePlanning Portal for applications near this address.`
-        : `Across the ${SURFACE_CHANGE_AREA_NOTE}, the bare-soil index has not risen above the detection threshold against the 12-month baseline. A reading below the threshold is not a reading of zero change: this is an area-wide average, and a change confined to one lot is too small to move it.`,
-      severity: changeState === 'detected' ? 'amber' : 'green',
-    });
-  }
-
   return findings;
 }
 
@@ -639,10 +595,6 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         {isPaid && (
           <DataCurrencyTable rows={[
             { source: 'NSW Planning Portal (lot boundary + height controls)', type: 'Live API query', currency: `Queried ${data.run_date}` },
-            // Acquisition date of the latest scene the computation actually
-            // used (campaign item 4) — the query date alone said nothing
-            // about how old the imagery was.
-            { source: 'Element84 Sentinel-2 (construction change)', type: 'Satellite imagery', currency: s2ImageryCurrency(data.s2_latest_acquisition, data.run_date) },
             { source: 'Shadow geometry (pybdshadow)', type: 'Computed', currency: 'Analytical model' },
           ]} />
         )}
@@ -650,7 +602,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         {/* Methodology — compact */}
         <Text style={s.sectionTitle}>Methodology</Text>
         <Text style={s.bodyText}>
-          Shadow geometry computed using the pybdshadow shadow-casting model, which derives sun position from the modelled date and time, for ADG test dates (21 Jun, 21 Sep, 21 Dec). Times shown are local wall-clock times for New South Wales, with daylight saving applied where it is in force — the 21 December scenario is AEDT. The compass direction shown for each scenario is calculated for this address, from the same sun position used to cast the shadow. Building height from the height control mapped at this property&apos;s location. The modelled building north of the lot is a rectangle offset from the subject boundary, not a surveyed neighbouring parcel. Ground-surface change from Sentinel-2 bare-soil index over a {SURFACE_CHANGE_AREA_NOTE}; it reports change across that whole area and cannot attribute it to a particular lot.
+          Shadow geometry computed using the pybdshadow shadow-casting model, which derives sun position from the modelled date and time, for ADG test dates (21 Jun, 21 Sep, 21 Dec). Times shown are local wall-clock times for New South Wales, with daylight saving applied where it is in force — the 21 December scenario is AEDT. The compass direction shown for each scenario is calculated for this address, from the same sun position used to cast the shadow. Building height from the height control mapped at this property&apos;s location. The modelled building north of the lot is a rectangle offset from the subject boundary, not a surveyed neighbouring parcel.
         </Text>
 
         <Text style={[s.sectionTitle, { marginTop: 4 }]}>Disclaimer</Text>

@@ -2,7 +2,6 @@
 
 What must hold:
   - manifests are derived from the objects actually passed into the
-    computation (scene identity comes back from compute_change_score itself,
     with per-scene used flags),
   - a wrong-CRS or implausible-geometry input yields the product's TYPED
     unavailable state — never a number, never a crash,
@@ -171,56 +170,6 @@ class TestManifestFrame:
         assert ident["id"] == "S2A_56HLH_20260801_0_L2A"
         assert ident["datetime"].startswith("2026-08-01T00:05")
         assert ident["cloud_cover"] == 3.2
-
-
-# ---------------------------------------------------------------------------
-# sentinel2 — identity survives the aggregation chokepoint
-# ---------------------------------------------------------------------------
-
-def _fake_item(item_id, dt):
-    return SimpleNamespace(id=item_id, datetime=dt,
-                           properties={"eo:cloud_cover": 5.0,
-                                       "platform": "sentinel-2a"})
-
-
-class TestSentinel2SceneIdentity:
-    def _run(self, monkeypatch, bsi_by_id):
-        from services import sentinel2
-
-        recent = [_fake_item("REC-A", datetime(2026, 7, 30, tzinfo=timezone.utc)),
-                  _fake_item("REC-B", datetime(2026, 7, 20, tzinfo=timezone.utc))]
-        baseline = [_fake_item("BASE-A", datetime(2024, 7, 30, tzinfo=timezone.utc))]
-
-        monkeypatch.setattr(
-            sentinel2, "get_scenes",
-            lambda lat, lng, radius_m, ds, de, max_cloud=20:
-                recent if ds > "2026-01-01" else baseline)
-        monkeypatch.setattr(
-            sentinel2, "_compute_bsi_scene",
-            lambda item, bbox: bsi_by_id.get(item.id))
-        return sentinel2.compute_change_score(SYD_LAT, SYD_LNG, 100)
-
-    def test_scene_identity_survives_aggregation(self, monkeypatch):
-        out = self._run(monkeypatch, {"REC-A": 0.30, "REC-B": 0.28, "BASE-A": 0.10})
-        ids = [s["id"] for s in out["scene_identity"]["recent_scenes"]]
-        assert ids == ["REC-A", "REC-B"]
-        assert out["scene_identity"]["baseline_scenes"][0]["id"] == "BASE-A"
-        assert out["scene_identity"]["algorithm_version"]
-        assert out["change_score"] == pytest.approx(0.19)
-
-    def test_scene_identity_marks_unusable_scenes(self, monkeypatch):
-        """A scene attempted but unreadable is recorded used=False — the
-        manifest cannot claim inputs that were dropped."""
-        out = self._run(monkeypatch, {"REC-A": 0.30, "REC-B": None, "BASE-A": 0.10})
-        by_id = {s["id"]: s["used"]
-                 for s in out["scene_identity"]["recent_scenes"]}
-        assert by_id == {"REC-A": True, "REC-B": False}
-
-    def test_insufficient_scenes_still_carry_identity(self, monkeypatch):
-        out = self._run(monkeypatch, {"REC-A": None, "REC-B": None, "BASE-A": None})
-        assert out["note"] == "Insufficient cloud-free scenes"
-        assert len(out["scene_identity"]["recent_scenes"]) == 2
-        assert not any(s["used"] for s in out["scene_identity"]["recent_scenes"])
 
 
 # ---------------------------------------------------------------------------

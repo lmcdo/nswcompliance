@@ -691,16 +691,8 @@ class ShadowServiceOutput(BaseModel):
     worst_case_scenario: Optional[str] = None
     scenarios: list[ShadowScenarioOutput] = []
     # Run-level passthrough (PR-B): the envelope confidence is merged into the
-    # outputs dict by get_shadow_risk; Sentinel-2 change detection rides along.
+    # outputs dict by get_shadow_risk.
     confidence: Optional[str] = None
-    construction_change_detected: Optional[bool] = None
-    construction_change_note: Optional[str] = None
-    # The score is carried so the UI can apply the SAME three-state rule the
-    # PDF and the web tool use (frontend-nextjs/lib/shadow-surface-change.ts).
-    # Without it the brief cannot tell a measured "no change" from the legacy
-    # no-data 0.0, and would keep rendering a negative for a check that never
-    # produced a reading — which is what all 538 stored reports did.
-    construction_change_score: Optional[float] = None
 
 
 class StrataCoreOutput(BaseModel):
@@ -2349,9 +2341,6 @@ def _build_shadow_result(shadow_result: Optional[dict]) -> Optional[ShadowResult
         scenarios=scenarios,
         worst_case_scenario=out.worst_case_scenario,
         confidence=out.confidence,
-        construction_change_detected=out.construction_change_detected,
-        construction_change_note=out.construction_change_note,
-        construction_change_score=out.construction_change_score,
     )
 
 
