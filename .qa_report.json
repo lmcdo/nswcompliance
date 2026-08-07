@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Removes content from a paid surface and deletes a paid-tier feature listing. The Sentinel-2 adjacent-lot construction check is withdrawn from the shadow product entirely: it returned a reading in 0 of 538 stored reports while all 538 rendered a confident negative about neighbouring land, and at 20 m SWIR a suburban lot is about one pixel, so even working it measures roughly 30-40 properties at once. Beyond the render surfaces this deletes a COMMERCIAL REPRESENTATION: the landing page sold 'Surface-change screening detail' as free:false/paid:true beside a $29 price, logged as DQ-52 before removal. Critical tier because content leaves a paid PDF and a paywall comparison table, and because deleting services/sentinel2.py is irreversible without a revert.",
-  "commit_hash": "pending",
+  "commit_hash": "c072ef1c",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
@@ -103,6 +103,13 @@
       "mitigated": true,
       "how": "Only the six construction_change_* entries were removed from scripts/brief_field_coverage_baseline.json; the ratchet logic is untouched and its own unit tests (field loss, rename, model disappearing) still pass. Any other field loss still fails.",
       "repro": "python -m pytest tests/test_brief_field_coverage_ratchet.py -q"
+    },
+    {
+      "scenario": "A later cleanup strips construction_change_* from the 538 stored reports because nothing reads them any more.",
+      "what_happens": "The evidence for the removal is destroyed. The 0-of-538 finding could no longer be re-derived, so the decision to withdraw a paid feature would rest on a number nobody can check again — and DQ-52's record would point at fields that no longer exist.",
+      "mitigated": true,
+      "how": "The stored keys are deliberately left in place and scripts/measure_shadow_calibration_damage.py is retained with its section [3] intact, so the census can still be re-run against the corpus. This PR issues no production write. Historic audit and live claim are separate: the live claim is gone, the audit stays.",
+      "repro": "DATABASE_URL=... python scripts/measure_shadow_calibration_damage.py  — section [3] must still report 0 reports with any real reading across 538."
     }
   ],
   "post_merge": {
