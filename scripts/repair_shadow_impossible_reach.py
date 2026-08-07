@@ -164,12 +164,16 @@ def _offending_scenarios(row: dict) -> list[dict]:
         key, reach = s.get("scenario"), s.get("shadow_length_m")
         if key not in SCENARIOS or reach is None:
             continue
+        # Narrow once, immediately after the None guard. A repaired row stores
+        # shadow_length_m = null for any unavailable scenario, so this field is
+        # genuinely nullable and float(None) would raise mid-sweep.
+        reach_m = float(reach)
         alt = _sun_altitude_deg(_old_instant(key), lat, lng)
         if alt <= 0.5:
             continue
         ceiling = h / math.tan(math.radians(alt))
-        if float(reach) > ceiling * REACH_CEILING_TOLERANCE:
-            out.append({"key": key, "reach": float(reach),
+        if reach_m > ceiling * REACH_CEILING_TOLERANCE:
+            out.append({"key": key, "reach": reach_m,
                         "ceiling": round(ceiling, 1)})
     return out
 
