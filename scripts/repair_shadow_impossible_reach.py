@@ -161,13 +161,15 @@ def _offending_scenarios(row: dict) -> list[dict]:
     h = float(row["height_m"])
     out = []
     for s in (row["outputs"].get("scenarios") or []):
-        key, reach = s.get("scenario"), s.get("shadow_length_m")
-        if key not in SCENARIOS or reach is None:
+        key = s.get("scenario")
+        raw_reach = s.get("shadow_length_m")
+        # Nullable BY DESIGN, and increasingly so: a repaired row stores
+        # shadow_length_m = null for every unavailable scenario, so a later
+        # sweep over a partly-repaired corpus meets None routinely. Narrow at
+        # the point of use rather than relying on a guard several lines up.
+        reach_m = float(raw_reach) if raw_reach is not None else None
+        if key not in SCENARIOS or reach_m is None:
             continue
-        # Narrow once, immediately after the None guard. A repaired row stores
-        # shadow_length_m = null for any unavailable scenario, so this field is
-        # genuinely nullable and float(None) would raise mid-sweep.
-        reach_m = float(reach)
         alt = _sun_altitude_deg(_old_instant(key), lat, lng)
         if alt <= 0.5:
             continue
