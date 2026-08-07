@@ -294,11 +294,36 @@ structural rather than practical.**
 | Recorded hazard events (NPWS fire history) | Yes — **we already hold it** in `spatial_overlays` | Yes | **No — it is circular.** Fire history is one of the six weighted inputs (`_normalize_fire_history`). Correlating the composite against its own component is the DQ-30 "0% drift" trap: it would return a strong result that means nothing. Holding it out and correlating the other five against it just asks whether Bush Fire Prone Land predicts fires — which it does by construction, since BFPL is drawn from vegetation and fire-behaviour modelling. |
 | NARCliM projections vs observed | Yes (BoM ACORN-SAT; NARCliM2.0 publishes its own evaluation) | Partially | **No — wrong object.** It would validate NARCliM, a third party's model already evaluated by its authors. Our heat component is a linear rescale of a NARCliM delta: if NARCliM is right our component is right by construction, and if it is wrong that is a defect in a cited source, not in our aggregation. It leaves the actual questionable parts untouched. |
 
-**The structural reason, which no new dataset fixes.** Five of the six components
-are *membership of a mapped regulatory overlay*. An EPI flood planning layer is
-not a prediction that can be wrong — it is a legal designation, and the layer
-**is** the ground truth for "is this land in the flood planning area". There is
-no higher authority to check it against.
+**The structural reason, which no new dataset fixes.** Four of the six components
+— flood, bushfire, coastal and landslide — are *membership of a mapped
+regulatory overlay*. An EPI flood planning layer is not a prediction that can be
+wrong: it is a legal designation, and **at the source** it is definitional for
+"is this land in the flood planning area". There is no higher authority to
+correlate it against, so there is no error term for that component.
+
+> **⚠ Two corrections to an earlier draft of this paragraph, both raised in
+> cross-review and both correct.**
+>
+> **(1) It said "five of six". That overcounted.** Fire history is **NPWS
+> observational event data, not a regulatory designation** — it records where
+> fires were recorded, which is an empirical claim that can be incomplete, not a
+> legal one. Heat is a model projection. So the definitional argument covers
+> four components, not five.
+>
+> **(2) It said the layer "IS the ground truth", full stop. That conflated the
+> authoritative source with our copy of it.** What we query is
+> `spatial_overlays`, an **ingest that is geographically partial** — the code
+> says so itself in every non-intersection `confidence_reason`: *"absence here
+> does not distinguish unmapped-at-point from layer-not-ingested"*. A designation
+> is definitional at the Planning Portal; our non-intersection is **inconclusive
+> unless coverage at that point is confirmed**. A property inside an official
+> flood area that our ingest does not cover returns "not present".
+>
+> This does not rescue the composite — it makes the position worse, not better,
+> and it is the reason the per-hazard `confidence_reason` strings carry the
+> coverage caveat rather than asserting a clean negative. The conclusion below is
+> unchanged, but it now rests on the weights having no referent, not on the
+> inputs being infallible.
 
 What remains genuinely arbitrary is everything we added on top: the equal weights
 (0.167), the interaction bonuses (0.05/0.05/0.05/0.03), the heat scale endpoint
