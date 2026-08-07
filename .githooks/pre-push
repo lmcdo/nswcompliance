@@ -4,6 +4,7 @@
 #
 # Checks:
 #   0. Push-to-main guard
+#   0b. Planted-defect guard (a falsifiability proof left a mutation on disk)
 #   1. Python unit tests (1794+ tests)
 #   1b. Mutation test count baselines (ratchet — counts never drop)
 #   2. Frontend Jest tests (615+ tests)
@@ -23,6 +24,35 @@ while read local_ref local_sha remote_ref remote_sha; do
 done
 
 set -e
+
+# ── 0b. Planted-defect guard ────────────────────────────────────────────────
+# A falsifiability proof plants a defect, confirms the check goes red, and
+# restores. On 2026-08-07 one of those scripts died before its restore line and
+# left the planted defect in the working tree; it was caught by a later grep and
+# could have shipped. scripts/falsifiability.py writes a sidecar before every
+# plant and deletes it only after a verified restore, so a surviving sidecar is
+# proof that a run died mid-plant.
+#
+# This one BLOCKS rather than warning, and unlike a lint it cannot false-positive:
+# the sidecar exists only if a plant was started and not verifiably undone.
+#
+# The sidecar search runs in SHELL, not in Python, and does not depend on the
+# helper existing. Gating it on `-f scripts/falsifiability.py` would fail open
+# in exactly the situation that matters most: a proof leaves a mutation behind
+# and the helper is then deleted, renamed or missing from the checkout.
+SIDECARS=$(find . -name '*.falsifiability-bak' -not -path './node_modules/*' \
+                  -not -path './.git/*' 2>/dev/null)
+if [ -n "$SIDECARS" ]; then
+  echo ""
+  echo "=========================================="
+  echo "  PUSH REJECTED — a planted defect is still on disk"
+  echo "=========================================="
+  echo "$SIDECARS"
+  echo ""
+  echo "  A falsifiability proof died before restoring its plant."
+  echo "  Restore it: python scripts/falsifiability.py --recover"
+  exit 1
+fi
 
 # ── Advisory: warn if changed files overlap an open PR (non-blocking) ────────
 # Catches accidental duplication of in-flight work that code guards can't see.
