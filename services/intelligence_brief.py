@@ -739,24 +739,29 @@ class ClimateHazardOutput(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
     hazard: Optional[str] = None
-    raw_score: Optional[float] = None
-    weight: Optional[float] = None
-    weighted_score: Optional[float] = None
     present: Optional[bool] = None
     detail: Optional[str] = None
     confidence: Optional[str] = None
+    confidence_reason: Optional[str] = None
     data_source: Optional[str] = None
     available: Optional[bool] = None
+    # raw_score / weight / weighted_score are deliberately absent: they are the
+    # composite model's arithmetic, no surface renders them, and weight plus
+    # weighted_score make the composite reconstructible. climate_risk_score
+    # .to_dict() no longer serialises them.
 
 
 class ClimateRiskServiceOutput(BaseModel):
-    """S2 typed contract for ``climate_risk_score(...).to_dict()`` at the brief seam."""
+    """S2 typed contract for ``climate_risk_score(...).to_dict()`` at the brief seam.
+
+    ``score``/``band``/``interaction_bonus`` are absent by design — the composite
+    is unvalidatable and #699 bars it from customer surfaces. ``ClimateDisclosure
+    Profile`` never carried them either (pinned by
+    ``tests/test_satellite_integration.py``), so nothing downstream loses data.
+    """
 
     model_config = ConfigDict(extra="ignore")
-    score: Optional[int] = None
-    band: Optional[str] = None
     hazards: list[ClimateHazardOutput] = []
-    interaction_bonus: Optional[float] = None
     methodology_version: Optional[str] = None
     data_date: Optional[str] = None
     disclaimer: Optional[str] = None

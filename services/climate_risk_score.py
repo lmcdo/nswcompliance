@@ -113,36 +113,83 @@ class HazardScore:
     confidence_reason: str = ""
 
 
+# ── Version — ONE source of truth ─────────────────────────────────────────────
+# The version was previously stated twice with two different values: this
+# dataclass said methodology_version = "1.1" while the disclaimer string opened
+# "Climate Risk Awareness Score v1.0". The tool card renders both on one screen
+# (ClimateRiskResultCard.tsx), so a customer saw "v1.1" beside a "v1.0"
+# disclaimer. Anything that needs the version reads METHODOLOGY_VERSION; the
+# disclaimer is built from it, so the two cannot drift apart again.
+#
+# Note: docs/CLIMATE_RISK_METHODOLOGY.md carries its own "Version: 1.0" — that is
+# the DOCUMENT's version and is legitimately independent of the code's.
+METHODOLOGY_VERSION = "1.1"
+DATA_DATE = "2026-05-18"
+
+
+def build_disclaimer(version: str = METHODOLOGY_VERSION) -> str:
+    """The served disclaimer, with the version interpolated from one constant."""
+    return (
+        f"Climate Risk Awareness Score v{version}. Based on government-authoritative "
+        "spatial data and NARCliM 2.0 climate projections. This is not financial, "
+        "insurance, or property advice. Does not account for property-specific "
+        "construction, mitigation works, or individual vulnerability. Not a "
+        "guarantee of future conditions."
+    )
+
+
 @dataclass
 class ClimateRiskResult:
-    """Complete climate risk assessment for a property."""
-    score: int                          # 1-100 composite
-    band: str                           # Low/Moderate/High/Very High/Extreme
+    """Complete climate risk assessment for a property.
+
+    ``score``, ``band`` and ``interaction_bonus`` are the composite model. They
+    are computed here and deliberately NOT serialised — see ``to_dict``.
+    """
+    score: int                          # 1-100 composite — not serialised
+    band: str                           # Low/Moderate/High/Very High/Extreme — not serialised
     lat: float
     lng: float
     hazards: list[HazardScore] = field(default_factory=list)
-    interaction_bonus: float = 0.0
-    methodology_version: str = "1.1"
-    data_date: str = "2026-05-18"
-    disclaimer: str = (
-        "Climate Risk Awareness Score v1.0. Based on government-authoritative spatial data "
-        "and NARCliM 2.0 climate projections. This is not financial, insurance, or property "
-        "advice. Does not account for property-specific construction, mitigation works, or "
-        "individual vulnerability. Not a guarantee of future conditions."
-    )
+    interaction_bonus: float = 0.0      # not serialised
+    methodology_version: str = METHODOLOGY_VERSION
+    data_date: str = DATA_DATE
+    disclaimer: str = ""
+
+    def __post_init__(self) -> None:
+        # Derive the disclaimer from this instance's version rather than a second
+        # hardcoded literal. An explicitly supplied disclaimer is left alone.
+        if not self.disclaimer:
+            self.disclaimer = build_disclaimer(self.methodology_version)
 
     def to_dict(self) -> dict:
+        """Serialise for transport. Excludes the composite model deliberately.
+
+        ``score``, ``band``, ``interaction_bonus`` and the per-hazard weight
+        arithmetic (``raw_score``, ``weight``, ``weighted_score``) stay on the
+        dataclass — they ARE the computation and the unit tests still assert on
+        them there. They are not serialised.
+
+        Why the exclusion lives here and not at the endpoint: the composite
+        cannot be validated against any available reference (see
+        ``docs/CLIMATE_RISK_METHODOLOGY.md`` → Validation status) and #699 bars it
+        from every customer-facing surface. It nevertheless reached the API
+        response, because ``climate_risk_pipeline`` spreads ``**to_dict()``. This
+        method is the serialisation boundary, so excluding it here is what stops
+        the next consumer that spreads the dict from re-opening the leak.
+
+        Per-hazard weights go too: nothing renders them, and ``weight`` plus
+        ``weighted_score`` make the composite trivially reconstructible, so
+        dropping only ``score``/``band`` would be a half-measure.
+
+        Absence is pinned by ``tests/test_climate_risk_score.py`` — if you are
+        adding a field back, that test is the one telling you not to.
+        """
         return {
-            "score": self.score,
-            "band": self.band,
             "lat": self.lat,
             "lng": self.lng,
             "hazards": [
                 {
                     "hazard": h.hazard,
-                    "raw_score": h.raw_score,
-                    "weight": h.weight,
-                    "weighted_score": h.weighted_score,
                     "present": h.present,
                     "detail": h.detail,
                     "confidence": h.confidence,
@@ -152,7 +199,6 @@ class ClimateRiskResult:
                 }
                 for h in self.hazards
             ],
-            "interaction_bonus": self.interaction_bonus,
             "methodology_version": self.methodology_version,
             "data_date": self.data_date,
             "disclaimer": self.disclaimer,

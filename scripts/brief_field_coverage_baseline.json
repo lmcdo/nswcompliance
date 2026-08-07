@@ -66,23 +66,18 @@
   "ClimateHazardOutput": [
     "available",
     "confidence",
+    "confidence_reason",
     "data_source",
     "detail",
     "hazard",
-    "present",
-    "raw_score",
-    "weight",
-    "weighted_score"
+    "present"
   ],
   "ClimateRiskServiceOutput": [
-    "band",
     "data_date",
     "disclaimer",
     "hazards",
-    "interaction_bonus",
     "methodology_version",
-    "narclim",
-    "score"
+    "narclim"
   ],
   "ComparableAnalysis": [
     "assessment_signal",

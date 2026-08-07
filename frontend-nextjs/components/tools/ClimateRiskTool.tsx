@@ -40,11 +40,13 @@ export function ClimateRiskTool() {
       if (!res.ok) throw new Error(json.error || 'Climate risk check failed');
       setResult(json);
       setState('complete');
+      // No result_score / result_band. The composite is unvalidatable and #699
+      // bars it from customer surfaces, so exporting it to a third-party
+      // analytics service is the same claim by another route — and it is no
+      // longer in the response, so both properties would now always be null.
       posthog.capture('tool_run', {
         tool: 'climate-risk',
         source: 'direct',
-        result_score: json.outputs?.score ?? null,
-        result_band: json.outputs?.band ?? null,
       });
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Unknown error');

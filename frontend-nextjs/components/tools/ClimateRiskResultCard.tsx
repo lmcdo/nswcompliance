@@ -8,15 +8,17 @@
 // metrics, each with source and date; the composite index is retired from the
 // headline, matching the brief's Climate Disclosure Profile.
 
+// raw_score / weight / weighted_score are NOT in the API response — they are the
+// composite model's arithmetic and nothing renders them. See
+// services/climate_risk_score.py → to_dict.
 interface HazardScore {
   hazard: string
-  raw_score: number
-  weight: number
-  weighted_score: number
   present: boolean
   detail: string
   confidence: string
+  confidence_reason?: string
   data_source: string
+  available?: boolean
 }
 
 interface NARCliMSummary {
@@ -37,11 +39,11 @@ interface NARCliMSummary {
   [key: string]: number | undefined
 }
 
+// The composite score, its band and the interaction bonus are deliberately not
+// part of this contract. The card never rendered them (see the legal posture note
+// at the top of this file) and they are no longer served at all.
 interface ClimateRiskOutputs {
-  score: number
-  band: string
   hazards: HazardScore[]
-  interaction_bonus: number
   methodology_version: string
   data_date: string
   disclaimer: string

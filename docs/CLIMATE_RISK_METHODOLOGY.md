@@ -1,15 +1,31 @@
 # Climate Risk Awareness Score — Methodology Document
 
-**Version:** 1.0 (this document)
+**Version:** 1.0 (this document — independent of the code's version)
 **Date:** 2026-05-15, validation status appended 2026-08-07
-**Status:** Computed and returned by the API. NOT rendered as a score on any
-customer-facing surface — see [Validation status](#validation-status).
+**Status:** Computed internally. **No longer returned by the API** — the composite
+score, its band, the interaction bonus and the per-hazard weight arithmetic are
+excluded from `to_dict()` as of 2026-08-07. See [Validation status](#validation-status).
 
-> **⚠ This document lags the code.** `services/climate_risk_score.py` is at
-> `methodology_version = "1.1"` with a v1.2 changelog entry. The sections below
-> marked **[corrected 2026-08-07]** were measured against the running code; the
-> rest has not been re-checked. Where this document and the code disagree, the
-> code is authoritative.
+> **⚠ CORRECTION 2026-08-07 — there is no v1.2.** An earlier revision of this
+> banner said the code was at `methodology_version = "1.1"` **"with a v1.2
+> changelog entry"**. No such entry exists: the changelog in
+> `services/climate_risk_score.py` has a single `1.1 (2026-05-18)` entry, and
+> `git grep "1\.2"` over this document and the module returns nothing. The claim
+> was written into this file, repeated in `.qa_report.json`, and from there into
+> a dispatch brief — the fourth false premise in two days to originate in one of
+> our own documents rather than in the code. A version number in a document is a
+> greppable, falsifiable claim; this one was never grepped.
+>
+> **The real defect was narrower and is now fixed.** Two version strings
+> disagreed *and both rendered*: `methodology_version = "1.1"` displayed as
+> "v1.1" on the tool card while the served disclaimer text opened "Climate Risk
+> Awareness Score v1.0" — on the same screen. `METHODOLOGY_VERSION` is now the
+> single source and the disclaimer interpolates from it.
+>
+> **This document still lags the code.** Sections marked
+> **[corrected 2026-08-07]** were measured against the running code; the rest has
+> not been re-checked. Where this document and the code disagree, the code is
+> authoritative.
 
 ---
 
