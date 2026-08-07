@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Calibration Lane 3 (climate). Dispatched at critical tier because the subject is a served composite score on a paid surface. The measurement found the score is NOT rendered on any customer-facing surface, and the delivered change is consequently documentation plus one new read-only measurement script — no served output, no scoring logic, no DB write, no new gate. Tier retained as dispatched rather than downgraded, because the CONCLUSION (that the composite has never been validated and cannot be with available data) is the load-bearing artefact and must not ship on a weak check.",
-  "commit_hash": "ad0f350d",
+  "commit_hash": "26c74e15",
   "files": [
     "docs/CLIMATE_RISK_METHODOLOGY.md",
     "scripts/measure_climate_reference_availability.py",
