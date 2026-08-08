@@ -1,0 +1,505 @@
+{
+  "n_sampled": 50,
+  "n_scored": 41,
+  "hits": 40,
+  "recall": 0.975609756097561,
+  "wilson_lo": 0.8740465298832192,
+  "wilson_hi": 0.9956815797292835,
+  "pass_mark": 0.9,
+  "verdict": "INDISTINGUISHABLE FROM THE MARK",
+  "out_of_scope": 9,
+  "seed": 20220228,
+  "results": [
+    {
+      "act": "EMSR567",
+      "aoi": "AOI01",
+      "lat": -26.197889,
+      "lng": 152.690817,
+      "error": "422: Flood screening could not be determined: latitude -26.197889 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI02",
+      "lat": -27.522825,
+      "lng": 152.325062,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI03",
+      "lat": -27.470241,
+      "lng": 153.006607,
+      "error": "422: Flood screening could not be determined: latitude -27.470241 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI04",
+      "lat": -27.55975,
+      "lng": 152.136365,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI05",
+      "lat": -27.367905,
+      "lng": 152.648627,
+      "error": "422: Flood screening could not be determined: latitude -27.367905 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI06",
+      "lat": -25.561729,
+      "lng": 152.720886,
+      "error": "422: Flood screening could not be determined: latitude -25.561729 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI07",
+      "lat": -28.835851,
+      "lng": 153.266716,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI08",
+      "lat": -29.486022,
+      "lng": 153.087258,
+      "flood_signal": "elevated",
+      "in_100yr": true,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI09",
+      "lat": -28.85759,
+      "lng": 153.532998,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI10",
+      "lat": -32.63722,
+      "lng": 151.7437,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI12",
+      "lat": -33.935059,
+      "lng": 150.970326,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI13",
+      "lat": -33.524833,
+      "lng": 150.906451,
+      "flood_signal": "elevated",
+      "in_100yr": null,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI14",
+      "lat": -34.904168,
+      "lng": 150.682254,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI15",
+      "lat": -32.565919,
+      "lng": 151.108039,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI16",
+      "lat": -34.115562,
+      "lng": 150.747762,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR570",
+      "aoi": "AOI01",
+      "lat": -28.989923,
+      "lng": 153.351808,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR570",
+      "aoi": "AOI02",
+      "lat": -28.746142,
+      "lng": 153.378725,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI01",
+      "lat": -34.106092,
+      "lng": 150.738817,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI02",
+      "lat": -33.753035,
+      "lng": 150.794969,
+      "flood_signal": "elevated",
+      "in_100yr": null,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI03",
+      "lat": -33.455532,
+      "lng": 151.073202,
+      "flood_signal": "elevated",
+      "in_100yr": null,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI04",
+      "lat": -33.181682,
+      "lng": 151.360485,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI05",
+      "lat": -32.62911,
+      "lng": 151.221221,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI06",
+      "lat": -32.791008,
+      "lng": 151.695915,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI01",
+      "lat": -26.191186,
+      "lng": 152.620024,
+      "error": "422: Flood screening could not be determined: latitude -26.191186 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI02",
+      "lat": -27.583258,
+      "lng": 152.338493,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI03",
+      "lat": -27.506704,
+      "lng": 153.008627,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI04",
+      "lat": -27.570801,
+      "lng": 152.147097,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI05",
+      "lat": -27.367956,
+      "lng": 152.648035,
+      "error": "422: Flood screening could not be determined: latitude -27.367956 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI06",
+      "lat": -25.536744,
+      "lng": 152.633917,
+      "error": "422: Flood screening could not be determined: latitude -25.536744 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI07",
+      "lat": -28.848941,
+      "lng": 153.268325,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI08",
+      "lat": -29.632339,
+      "lng": 153.039171,
+      "flood_signal": "elevated",
+      "in_100yr": true,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI09",
+      "lat": -28.851318,
+      "lng": 153.495269,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI10",
+      "lat": -32.805532,
+      "lng": 151.663332,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI12",
+      "lat": -33.938883,
+      "lng": 150.970409,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI13",
+      "lat": -33.615214,
+      "lng": 150.860532,
+      "flood_signal": "elevated",
+      "in_100yr": null,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI14",
+      "lat": -34.906108,
+      "lng": 150.698689,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI15",
+      "lat": -32.578917,
+      "lng": 151.215431,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI16",
+      "lat": -34.111459,
+      "lng": 150.748254,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR570",
+      "aoi": "AOI01",
+      "lat": -29.019576,
+      "lng": 153.221912,
+      "flood_signal": "none",
+      "in_100yr": false,
+      "ses": false,
+      "hit": false
+    },
+    {
+      "act": "EMSR570",
+      "aoi": "AOI02",
+      "lat": -28.860185,
+      "lng": 153.264356,
+      "flood_signal": "elevated",
+      "in_100yr": false,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI01",
+      "lat": -33.959,
+      "lng": 150.638472,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI02",
+      "lat": -33.706161,
+      "lng": 150.779068,
+      "flood_signal": "elevated",
+      "in_100yr": true,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI03",
+      "lat": -33.374516,
+      "lng": 150.980306,
+      "flood_signal": "elevated",
+      "in_100yr": null,
+      "ses": true,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI04",
+      "lat": -33.268626,
+      "lng": 151.355704,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI05",
+      "lat": -32.607895,
+      "lng": 151.256314,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR586",
+      "aoi": "AOI06",
+      "lat": -32.850971,
+      "lng": 151.623634,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI01",
+      "lat": -26.209958,
+      "lng": 152.630549,
+      "error": "422: Flood screening could not be determined: latitude -26.209958 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI02",
+      "lat": -27.542593,
+      "lng": 152.270461,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI03",
+      "lat": -27.467864,
+      "lng": 153.009279,
+      "error": "422: Flood screening could not be determined: latitude -27.467864 outside the NSW envelope [-38.0, -27.5]",
+      "hit": null,
+      "out_of_scope": true
+    },
+    {
+      "act": "EMSR567",
+      "aoi": "AOI04",
+      "lat": -27.579426,
+      "lng": 152.209873,
+      "flood_signal": "moderate",
+      "in_100yr": false,
+      "ses": false,
+      "hit": true
+    }
+  ]
+}

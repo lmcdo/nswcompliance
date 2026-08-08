@@ -425,6 +425,9 @@ scripts/*
 # Untracked here means every container starts without them, which is the
 # defect this script exists to end.
 !scripts/download_tweed_wollongong_rasters.py
+# The 2022 flood calibration runner. Committed so the number in
+# docs/qa/flood-calibration-2022-result.md can be reproduced, seed and all.
+!scripts/run_flood_calibration_2022.py
 # Falsifiability plant-restore harness + the doc-claim checker. Both are
 # imported by tests and invoked from .githooks/pre-push, so an untracked copy
 # breaks every fresh clone — which is exactly the trap this line block warns
