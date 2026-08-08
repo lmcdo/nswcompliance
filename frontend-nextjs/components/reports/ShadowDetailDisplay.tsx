@@ -5,7 +5,7 @@
 import { cn } from '@/lib/utils';
 import {
   SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
-} from '@/lib/shadow-scenario-availability';
+} from '@/lib/not-assessed';
 
 export interface ShadowScenarioRow {
   date_label?: string;

@@ -1,61 +1,134 @@
 {
-  "tier": "standard",
-  "justification": "Two lines of test dependencies plus documentation. No product code, no served output, no database. Not Minor, because it changes WHAT CI RUNS: 45 tests that never executed in CI now do, and the dependency-skip ratchet floor drops to zero, so a future regression in any of those 45 becomes a red build instead of nothing. A change that alters the gate's coverage deserves the tier the gate itself is held to.",
-  "commit_hash": "67f3bb82",
+  "tier": "critical",
+  "justification": "This changes the single most consequential sentence in a property report. `in_100yr_flood_zone` drives insurance, price and whether a buyer proceeds, and it started life as False with only four positive signals able to move it — so a source that could not be consulted served a confident 'not in a flood zone'. That is not an absence dressed up as a result, the class this campaign has been deleting; it is an active statement in the direction that causes harm, on the field a buyer is most likely to rely on. Measured against production: 12 of the 142 stored reports that served 'No' had never established it, among them addresses in Lismore, Murwillumbah and Telarah.",
+  "commit_hash": "1658a0fc",
   "files": [
-    "requirements-test.txt",
-    "dependency-skip-baseline.json",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    "services/flood_truth.py",
+    "frontend-nextjs/lib/not-assessed.ts",
+    "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
+    "frontend-nextjs/app/api/reports/flood/generate/route.ts",
+    "frontend-nextjs/app/reports/flood/[report_id]/page.tsx",
+    "frontend-nextjs/components/reports/SharedReportPage.tsx",
+    "frontend-nextjs/components/reports/ShadowDetailDisplay.tsx",
+    "frontend-nextjs/components/tools/ShadowTool.tsx",
+    "frontend-nextjs/lib/pdf/shadow-report.tsx",
+    "frontend-nextjs/__tests__/lib/flood-zone-three-state.test.ts",
+    "scripts/measure_flood_zone_unassessed.py",
+    "tests/test_flood_normalise.py",
+    "tests/test_flood_truth.py"
   ],
   "falsifiable_check": {
-    "command": "python -m pytest tests/ -q  AND  python scripts/check_dependency_skips.py",
-    "fails_when": "The suite goes from 3925 passed / 20 skipped to 3970 passed / 2 skipped, and the ratchet reports 0 against a baseline of 0. It goes red three ways. (1) If either library fails to install in CI, the 40 shapely-dependent and 5 matplotlib-dependent tests revert to skipping or vanishing from collection, the census counts them, and check_dependency_skips.py fails because the baseline now says zero and it enforces EXACTLY in both directions. (2) If any of the 45 recovered tests actually fails, pytest is red -- and CI no longer runs with -x, so it reports all of them rather than stopping at the first. (3) If a NEW dependency-driven skip appears anywhere, the ratchet fails on the unknown key. The absence of the libraries was proven to be the cause, not assumed: injecting a PYTHONPATH stub whose shapely.py and matplotlib.py raise ImportError reproduces the old numbers exactly (3925/20, 3944 selected), and removing the stub reproduces the new ones (3970/2, 3972 selected). That 28-test difference in SELECTED count is the finding described in residual_risk.",
-    "external_authority": "pip's resolution of shapely==2.1.2 and matplotlib==3.11.0 from PyPI decides whether the libraries are present; the pytest collector decides how many tests exist. Neither is produced by this repo, and the before/after was measured by simulating absence rather than by re-reading the baseline this change wrote."
+    "command": "python -m pytest tests/test_flood_normalise.py tests/test_flood_truth.py -q AND cd frontend-nextjs && npx jest __tests__/lib/flood-zone-three-state.test.ts AND python scripts/measure_flood_zone_unassessed.py",
+    "fails_when": "Six tests in TestIn100yrFloodZone asserted `is False` for fixtures where a source was never consulted — they were pinning the defect, and they now assert `is None`. Reverting the derivation to its old form turns them red. The specific mutants and what each costs: making the verdict `True if in_100yr else False` (the old line) reds 6; dropping the `flood_studies_absent` recording so a configured-but-missing study skips silently reds test_configured_study_missing_from_this_host_is_unknown; treating a positive as unknown when another source is down (returning None before checking in_100yr) reds test_positive_wins_even_when_another_source_is_unreachable, which is the case that must NOT change — a real flood finding must never become a shrug because an unrelated service was slow. On the frontend, restoring `Boolean(raw.in_100yr_flood_zone ?? false)` at the API boundary reds the it.each mapping block; restoring the truthiness ternary on the report page reds 'renders a null as Not assessed, never as No'; deleting the PDF's third branch reds 'emits a finding for a null instead of omitting it'. `isFloodZoneNotAssessed` is pinned against a truthiness implementation directly, because `!false === true` is the exact collapse being prevented. The production census is the external check: it re-derives all 151 stored rows through both the old and new logic from the SAME stored source outputs, so the 12-row difference is measured, not asserted.",
+    "external_authority": "The stored raw outputs in property_reports were written by past runs and are not produced by this change; the census reads them and replays both derivations over them. Whether each source answered is decided by what those runs recorded — epi_flood_class, data_currency, ses_in_flood_planning_area — not by any new field this change invents."
   },
   "pre_impl": {
-    "existing_data": "dependency-skip-baseline.json, written by #879, is the authoritative record of what CI actually skips: shapely 13, numpy+matplotlib+PIL 5, total 20, classified 18. It also already named the fix -- 'shapely ships manylinux wheels; most likely genuinely installable, so these 13 are the cheapest to win back' -- and identified matplotlib as the only missing member of its group, with numpy and pillow already in CI's transitive closure. #879's PyMuPDF entry in requirements-test.txt is the pattern followed here: pin to the version requirements.txt already carries, and say in a comment which tests were dark and why.",
-    "assumption_mismatch": "PR #890 reported SIX packages that tests import but CI never installs. Only TWO are real. pandas, pillow and requests are present in CI's transitive closure (pvlib pulls pandas; the baseline states numpy and pillow are already there) and cause no skip; whitebox is deliberately replaced with a MagicMock at tests/conftest_mocks.py:120-124 when absent, so nothing skips on it either. scripts/doc_claims.py reasons about DECLARED packages and cannot see a transitive install closure, so it over-reports. That is a 4-in-6 false-positive rate on the dependency check specifically, materially worse than the ~2.4 percent floor PR #890 quoted for the path check, and the two must not be quoted as one number. The tool still earned its keep: shapely and matplotlib are genuine, and finding them is what exposed the 28 uncollected tests.",
-    "new_vs_existing": "No new machinery. Two pins added to the file CI installs, and the existing ratchet's baseline lowered to match -- the ratchet was built for exactly this and enforces both directions, so lowering it is what locks the recovery in. The tracker entries are logged, not fixed: DQ-54 (git-hook variables) and DQ-55 (documented-but-absent workflows) are recorded as open with their evidence, because a swept finding that lives only in a chat message is the doc-decay failure this campaign exists to stop."
+    "existing_data": "151 flood rows in property_reports. The verdict is DERIVED ON READ — the cache-hit path re-runs _normalise_outputs over the stored outputs (flood_truth.py:1985) — so no row stores it and the fix reaches every existing report with no data repair FOR THE EPI AND SES GAPS. It does NOT reach a legacy row whose council study was silently skipped: flood_studies_absent did not exist when those rows were written and FLOOD_STUDIES carries no bounds field, so whether an absent study covered that point is unknowable without the raster we do not have. Re-running the report resolves it. Sol caught this over-claim; the limit is now stated in the derivation, in the census output and here. That was measured, not assumed: a first version of the census looked for the key in stored outputs and found it absent in all 151, which is what revealed the derive-on-read path. Prior art extended rather than duplicated: flood_signal in the same module has had an explicit 'unavailable' member since #872 with an icontract postcondition enforcing it, and _build_data_gap_reasons already returns structured per-source unavailability reasons. This field was simply missed in that pass. The absence copy extends lib/shadow-scenario-availability.ts from #885 — renamed to lib/not-assessed.ts and shared, rather than a second flood module.",
+    "assumption_mismatch": "Two things the brief and I both had wrong. First, `_sample_raster` returning None was not the whole defect: the study loop above it already guarded on a missing file, logged 'rasters not present — skipping' and continued. The defect is that the skip was invisible downstream, so an unconsultable study and a point outside the study extent produced identical results. Second, the local run of the new startup check reports FOUR absent studies, not two — hawkesbury and redbank are also absent from this developer machine because they are fetched at container start. In production only tweed and wollongong are permanently absent, since they alone have no download script. The warning is correct in both environments; the count differs by environment, and a reader of the log must not take four as the production figure.",
+    "new_vs_existing": "No new state model. The three-state shape, the 'unavailable' vocabulary, the structured gap reasons and the absence-copy module all already existed for other fields and other products; this joins them. One genuinely new thing: flood_study_raster_availability() plus an import-time warning, which makes a configured-but-undeliverable study loud instead of a log line. That is the #880 shape — a capability declared where it cannot be delivered, degrading silently — and it is what stops the next council being half-configured without anyone noticing.",
+    "external_source_error": "The EPI WFS and the spatial_overlays query are the two external sources that can answer the 1% question, and both already have typed failure markers this change consumes rather than invents: data_currency == 'query_failed' for an EPI service that did not respond, and a null ses_in_flood_planning_area, which flood_truth.py already documents as 'table empty or unavailable (distinct from False = no match)'. Before this change either failure produced a served 'not in a flood zone'; now either produces None and names the source in the copy. A raster read that throws is caught per-file and returns None, and the study is treated as unconsultable rather than as a point outside its extent.",
+    "frontend_type": "Three boundaries, each a place null could silently become false. The API route parses the stored JSON, where the value arrives as a JS boolean or null; it now maps only an explicit true/false and sends null otherwise, and also forwards in_100yr_flood_zone_unconsulted as string[]. The PDF interface field was typed `boolean | undefined`, which made a null unrepresentable in the type while occurring in the data — it is now `boolean | null` with the array beside it. The report page reads from an untyped outputs bag, so both reads are cast at the call site and routed through isFloodZoneNotAssessed rather than a truthiness check.",
+    "user_failure_mode": "A buyer reads 'No' against '100-year flood zone', or a green PDF finding labelled 'Council flood study raster' asserting that flood modelling was consulted, and proceeds to exchange without obtaining a Section 10.7(2) certificate or a flood insurance quote. Nothing on either surface told them the question had not been answered, and the PDF's label named a source that had not been read. After this change the same run shows 'Not assessed' at medium severity with an amber explanation naming the unreachable sources and pointing at the 10.7(2) certificate, and the PDF carries an amber finding rather than omitting the row entirely."
   },
-  "functions": "N/A — no functions are added or modified. The change is two dependency pins, one baseline file, and documentation.",
-  "values": "N/A — no database or API values are read.",
-  "queries": "N/A — no SQL is executed.",
-  "break_it": [
+  "functions": [
     {
-      "scenario": "shapely or matplotlib fails to build on CI's runner image, so the install step succeeds partially or the import still fails at test time.",
-      "what_happens": "The affected tests revert to skipping, the census counts them, and check_dependency_skips.py fails the build because the baseline is now zero and it enforces exactly in both directions. The build goes red rather than quietly returning to the old state.",
-      "mitigated": true,
-      "how": "Both are pinned to the versions requirements.txt already carries and both ship manylinux wheels for CI's Python 3.12, so no system libraries are needed; the ratchet catches it regardless of the reason.",
-      "repro": "pip uninstall -y shapely matplotlib && python -m pytest tests/ -q && python scripts/check_dependency_skips.py"
+      "name": "_unconsulted_1pct_sources",
+      "file_line": "services/flood_truth.py:1529",
+      "input": "the normalised outputs and the raw stored outputs for one run",
+      "output": "customer-neutral names of the sources that could have answered the 1% AEP question and were not reachable; an empty list means every one was asked",
+      "if_none": "an empty list is the only thing that permits a False, so the absence of gaps is load-bearing rather than incidental"
     },
     {
-      "scenario": "A future change breaks one of the 45 newly-running tests, and someone silences it with a module-level pytest.importorskip rather than fixing it.",
-      "what_happens": "The whole file leaves COLLECTION rather than registering a skip, so the census reads zero and the ratchet stays green while the tests cease to exist. This is not hypothetical -- it is exactly how tests/test_sydney_water_gsp_ingest.py hid 28 tests until now.",
-      "mitigated": false,
-      "how": "Recorded in the baseline under _ratchet_blind_spot with the mechanism and the number that would catch it (the collected-test total, not the skip count). Deliberately not fixed here: adding a collected-count ratchet is its own change with its own false-positive profile, and bundling it into a dependency PR is how a gate arrives unreviewed.",
-      "repro": "python -m pytest tests/ -q --collect-only -o addopts= | tail -1   # 3991 collected; a module-level importorskip drops it silently"
+      "name": "flood_study_raster_availability",
+      "file_line": "services/flood_truth.py:342",
+      "input": "no arguments; reads the FLOOD_STUDIES config against this host's filesystem",
+      "output": "study_key to whether its rasters are actually present, so a declaration in code can be compared with what the host can deliver",
+      "if_none": "a study with no readable raster reports False and is named in an import-time warning; it is never silently dropped from the config"
     },
     {
-      "scenario": "The Sydney Water ingest tests, dark since they were written, turn out to have been failing all along -- they cover the price parse, the status derivation that drives user-facing serviceability wording, and the geometry coercion.",
-      "what_happens": "They pass. All 28 collected and 28 passed, and the full suite is 3970 passed / 2 skipped with zero failures. A failure here would have been a FINDING about served serviceability wording, not a regression to paper over, so it was checked before the baseline was lowered rather than after.",
-      "mitigated": true,
-      "how": "Measured with the libraries installed locally at the same pinned versions before any file was edited; the absence was reproduced with a PYTHONPATH stub to confirm the libraries were the only variable.",
-      "repro": "python -m pytest tests/test_sydney_water_gsp_ingest.py tests/test_hillshade_render.py -q"
+      "name": "_normalise_outputs",
+      "file_line": "services/flood_truth.py:1680",
+      "input": "the stored or freshly computed raw outputs for one flood run",
+      "output": "the served contract, in which in_100yr_flood_zone is now True, False or None and is accompanied by in_100yr_flood_zone_unconsulted",
+      "if_none": "None is the verdict when no positive signal fired and at least one source was unreachable; it is never a default and never rendered as No"
     },
     {
-      "scenario": "Someone reads the new baseline of zero as 'no tests are dark' and stops looking.",
-      "what_happens": "Zero means no test SKIPPED for a missing import. It does not mean every test runs: a module-level importorskip, a conftest collect_ignore entry, and a test that never got written all read as zero. The two remaining skips are deliberate env-gated live Gemini smoke tests.",
-      "mitigated": true,
-      "how": "The _ratchet_blind_spot key in dependency-skip-baseline.json states the limit in the file a reader has open when they form the belief, rather than in a PR body they will never see again.",
-      "repro": "cat dependency-skip-baseline.json"
+      "name": "_build_data_gap_reasons",
+      "file_line": "services/flood_truth.py:1588",
+      "input": "the internal outputs for one run, including the new flood_studies_absent list of configured studies whose rasters this host cannot read",
+      "output": "per-source reasons, now distinguishing a study absent from this host from a council that restricts access",
+      "if_none": "the consultant-IP explanation is no longer given for a study whose data is simply missing here, because that reason was false"
     }
   ],
-  "mutation_analysis": "The change is two dependency pins, so classical mutation testing does not apply -- there is no branch to invert. The equivalent was done by simulating the mutation that matters: making the libraries absent via a PYTHONPATH stub that raises ImportError. That reproduces the pre-change numbers exactly (3925 passed, 20 skipped, 3944 selected) and turns the ratchet red against the new baseline, which is the only way this change can regress. The three tracker entries were verified rather than asserted: DQ-53b by re-running #883's five cases through the hardened helper at both current main and commit a7edd825; DQ-54 by probing hook environments in throwaway repos (plain and worktree) and then demonstrating a wrong-repository answer live; DQ-55 by reading each citing document to separate a migration table from a live-infrastructure table, which reduced the count from the 13 filenames the tool flagged to the 3 documents that actually make a false current-state claim. Sol found the one arithmetic error in this report and it is corrected rather than rounded: the census's 'shapely: 13' is 12 TESTS (all in tests/test_solar_yield.py) plus ONE entry whose id is a FILE, tests/test_sydney_water_gsp_ingest.py, because a module-level importorskip records the module and collects nothing. So the recovery reconciles exactly as 12 + 5 + 28 = 45, matching the 3925 -> 3970 delta; the earlier reading of 13 + 5 + 28 = 46 double-counted that file as both a skip and its own 28 tests.",
-  "residual_risk": "The 45 recovered tests are 45 tests nobody has watched fail. They pass today, but they have never guarded anything, so their real value is unproven until one of them catches something. Related and larger: 28 of the 45 were not skipped, they were never COLLECTED, because tests/test_sydney_water_gsp_ingest.py calls pytest.importorskip('shapely') at module level. The ratchet did not miss the file entirely -- it counted it as ONE skip, so 28 dark tests were logged with the weight of one, under-reported 28-fold by the guard built specifically to make dark tests visible -- and they were only found because doc_claims.py flagged shapely as declared in a file CI never installs. Counting skips is necessary and not sufficient; the collected-test total is the number that would have caught it, and no ratchet watches it. Logged in the baseline, not fixed here. Also unfixed by choice: DQ-54's three exposed scripts (cross_review.py, validate_schema_contract.py:408, qa_gate.py:1385) are swept and logged but untouched, on instruction to report only -- validate_schema_contract.py is the one worth doing first, because it uses git to locate the .env that supplies DATABASE_URL, so a wrong answer means the wrong credentials. And DQ-55's three stale documents are logged, not rewritten; one of them was already flagged as stale in June by another document and stayed stale, which is evidence that logging alone does not fix docs.",
+  "values": [
+    {
+      "value": "151 stored flood reports; 9 served True, 142 served False; 12 of the 142 now read Not assessed",
+      "read_at": "production property_reports via scripts/measure_flood_zone_unassessed.py, 2026-08-08",
+      "if_missing": "the script prints UNKNOWABLE and exits 2 rather than reporting zero, because no database reachable is not the same as no damage"
+    },
+    {
+      "value": "Council/SES flood study extent unreachable on 12 rows; NSW EPI flood overlay unreachable on 5 (they overlap)",
+      "read_at": "same census, derived from each row's stored epi_flood_class / data_currency / ses_in_flood_planning_area",
+      "if_missing": "a row whose outputs cannot be parsed is skipped and therefore excluded from the numerator, which biases the count DOWN"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "count how many stored flood reports served an unestablished not-in-a-flood-zone verdict",
+      "file_line": "scripts/measure_flood_zone_unassessed.py:97",
+      "where_clause": "WHERE product = 'flood' — read-only SELECT, no UPDATE/INSERT/DELETE anywhere in the script, statement_timeout 30s"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A future consumer reads the field with a truthiness check — if (outputs.in_100yr_flood_zone) or !value — because null is falsy in TypeScript and None is falsy in Python.",
+      "what_happens": "The third state collapses straight back to 'not in a flood zone', now with a correct-looking data model on top of it. This is the defect re-applied and it would be invisible in review.",
+      "mitigated": true,
+      "how": "isFloodZoneNotAssessed tests null and undefined explicitly and never negates the value, and a test asserts that a truthiness implementation would give the opposite answer for false. Every one of the three collapsing sites is reproduced in __tests__/lib/flood-zone-three-state.test.ts so restoring any of them goes red.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/flood-zone-three-state.test.ts"
+    },
+    {
+      "scenario": "One source is unreachable while another positively places the property inside the 1% AEP extent — a real flood finding arriving alongside a service outage.",
+      "what_happens": "The verdict stays True. Making it None would turn a genuine flood finding into a shrug, which is the opposite failure and every bit as harmful to the reader.",
+      "mitigated": true,
+      "how": "The derivation checks the positive signals first and only consults the gap list for the negative branch; test_positive_wins_even_when_another_source_is_unreachable pins it with both a null SES flag and an absent study present at once.",
+      "repro": "python -m pytest tests/test_flood_normalise.py -q -k positive_wins"
+    },
+    {
+      "scenario": "A new council flood study is added to FLOOD_STUDIES and its rasters are never shipped, exactly as happened with Tweed and Wollongong.",
+      "what_happens": "flood_study_raster_availability reports it absent, an import-time warning names it, and every 1% answer for that area is 'not assessed' rather than 'no'. It cannot be half-configured silently.",
+      "mitigated": true,
+      "how": "The check runs at module import, so it fires wherever the service starts rather than only when a matching address is requested; the per-run list feeds the served verdict as well.",
+      "repro": "python -c \"import sys; sys.path[:0]=['.','services']; import services.flood_truth as f; print(f.flood_study_raster_availability())\""
+    },
+    {
+      "scenario": "The PDF and the report page disagree, because one was updated and the other was not — the shape of the shadow defect #885 fixed, where a bearing rendered beside a non-result.",
+      "what_happens": "They cannot: both import their wording from lib/not-assessed.ts, the single module #885 created and this change renamed rather than duplicated. Three shadow surfaces already import it and were repointed in the same commit.",
+      "mitigated": true,
+      "how": "One exported label and one exported message builder per state. A second wording would have to be written deliberately, and the module header says why not to.",
+      "repro": "git grep -l \"from '@/lib/not-assessed'\" frontend-nextjs/"
+    },
+    {
+      "scenario": "Someone reads the 12-row census figure as the total harm.",
+      "what_happens": "It is a floor. flood_studies_absent did not exist when those rows were written, so a silently-skipped Tweed or Wollongong study is unrecoverable from stored data and cannot be counted; only EPI and SES gaps are visible retrospectively.",
+      "mitigated": true,
+      "how": "The script's docstring states the limit and the output labels the figure a floor, rather than leaving a reader to infer completeness from a confident number.",
+      "repro": "python scripts/measure_flood_zone_unassessed.py"
+    },
+    {
+      "scenario": "The four-absent-studies warning from a developer machine is quoted as the production figure.",
+      "what_happens": "It would overstate: hawkesbury and redbank are absent locally only because they download at container start. In production the permanently absent pair is tweed and wollongong, which alone have no download script.",
+      "mitigated": true,
+      "how": "Recorded in pre_impl.assumption_mismatch and in the PR body. The warning text names the studies rather than only a count, so the reader can tell which environment they are looking at.",
+      "repro": "ls scripts/download_*rasters*.py   # hawkesbury, redbank, narclim — no tweed, no wollongong"
+    }
+  ],
+  "mutation_analysis": "The six tests that changed are the mutation analysis in its purest form: they asserted the defect, so the defect is exactly what reverting them restores. Reinstating the old one-line derivation (`normalised[...] = in_100yr`) turns all six red. Beyond that: removing the flood_studies_absent recording kills the configured-study test; short-circuiting the positive branch kills the positive-wins test; restoring the API coercion, the page ternary or deleting the PDF branch each kill their named frontend test. Not covered by tests and stated rather than implied: the import-time warning's text, and whether the amber block renders legibly in the generated PDF — react-pdf layout is not exercised by jest and node_modules is absent in this bare worktree, so both are verified by CI and by reading the generated document, not here. Sol raised seven findings on the diff and six were real. Fixed: the availability check accepted ANY design raster, so a study holding its 5% grid but not its 1% grid counted as consultable and contributed a confident negative to the one question it could not answer — now the 1% grid specifically, pinned by three new tests; FloodOutputs omitted in_100yr_flood_zone_unconsulted, so pydantic would have dropped the source list at that boundary and left the frontend an absence it could not explain; the PDF's amber finding was headed 'Council flood study raster' even when the unreachable source was EPI, which names a specific falsehood about what failed, now the neutral '1% AEP flood extent'; the census silently swallowed rows whose normalisation raised, which understates the count, and now reports them and exits 2; and the legacy-row limit above. The seventh — add `is_active = TRUE` to the census query — is a FALSE POSITIVE: property_reports has twelve columns and none of them is is_active, verified against information_schema. Sol applied the project's generic pre-PR rule to a table that has no such column. A second Sol round on the fixed diff raised two more HIGHs, both real and both fixed. The first was mine and it was the opposite failure to the one being repaired: an absent Tweed raster marked EVERY coordinate unconsulted, so a Sydney property with good EPI and SES data would have served 'Not assessed' citing Tweed — a correct, established negative turned into a shrug. Absence is now scoped to the address's own council, decided in the derivation where ses_study_lga is known rather than in the raster query where it is not, and pinned in both directions including the deliberate under-report when the council is unknown. The second: the report page cast an untyped JSON value to `boolean | null`, a promise the compiler cannot keep — a legacy row holding the string 'false' would satisfy the type, fail `=== true` and render 'No'. isFloodZoneNotAssessed now takes unknown and only the two real booleans are answers, with readFloodZoneVerdict as the validator the page uses; eight non-boolean shapes are pinned. Same class as the Number('') === 0 bug #881 fixed. A third round found the gap between the two: flood_study_raster_availability() was tightened to the 1% grid, but the run loop still chose its BOUNDS proxy from the PMF grid first, so a study holding its PMF and not its 1% file passed the proxy check, sampled None, and read as 'outside the extent'. The loop now consults the same 1%-specific function, so the two cannot disagree.",
+  "residual_risk": "The census figure of 12 is a floor for the reason above, and it counts only what the stored rows can still prove. Three of the twelve are in Lismore, Murwillumbah and Telarah — towns at the centre of the 2022 floods — which is a strong hint that the unestablished answers were also wrong answers, but this change cannot show that and does not claim it: it establishes that we said no without checking, not that the true answer was yes. The retroactive fix is partial in one direction, which is the honest version of the headline: a stored report whose council study was silently skipped keeps whatever EPI and SES established, because nothing in the row records the skip. Only a re-run fixes those. Nothing here ships the Tweed or Wollongong rasters, so those two areas will now correctly report 'not assessed' instead of incorrectly reporting 'no' — better, but still not an answer, and that is the next approved piece of work. The startup warning is a log line, not a failed boot: making an absent study fatal would take the whole flood product down in an environment where one council's files are late, which is a worse trade for a service that answers for many councils. That choice is deliberate and is the weakest link in the loud-not-silent chain. Finally, the report page's amber explanation is new UI in a shared component used by every product's report page; the detail field is optional and unset everywhere else, so no other product's layout changes, but that is a same-file blast radius worth a reviewer's eye. One direction is deliberately weaker: when a report carries no council name, an absent study is NOT reported as unconsulted. That under-reports rather than over-reports, because a false 'not assessed' on every address in the state would destroy the signal the change exists to create. It is pinned by a test so the choice is visible rather than incidental. Sol's remaining finding is the deliberate trade-off, not a defect to fix here: a Tweed property whose SES query returned no council name keeps a False even though the Tweed study was absent. The alternative — reporting the absence when the council is unknown — taints every address in the state, which is the same failure inverted and destroys the signal. Neither is right; the actual resolution is shipping the Tweed and Wollongong rasters, which is the next approved piece of work and makes flood_studies_absent empty in production, at which point the scoping question disappears entirely. Until then this change is strictly better than what it replaces and never worse.",
   "post_merge": {
-    "db_reset": "No. Nothing here reads or writes any database.",
-    "secrets": "No credentials are read, written or logged.",
+    "db_reset": "No. The census is read-only and no repair is required — the verdict is derived on read, so all 151 stored reports pick the fix up on their next request with no write.",
+    "secrets": "No. The census reads DATABASE_URL from the existing .env and logs no credential.",
     "other_repo": "No. Single repository.",
-    "manual_verify": "Yes. Confirm the first CI run after merge reports 3970 passed / 2 skipped and that the dependency-skip step prints 0 against a baseline of 0. If either library fails to install on the runner, the ratchet will say so rather than reverting quietly."
+    "manual_verify": "Yes. After deploy, re-run scripts/measure_flood_zone_unassessed.py against production and confirm the served split matches 9 True / 130 False / 12 Not assessed, then open one of the three named reports and confirm the page shows 'Not assessed' with the amber explanation and the PDF carries the amber finding rather than omitting the row. Also check the service log at boot for the FLOOD STUDY CONFIG/DATA MISMATCH line and confirm it names tweed and wollongong only."
   }
 }

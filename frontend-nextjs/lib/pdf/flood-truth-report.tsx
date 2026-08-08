@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { floodZoneUnavailableMessage } from '@/lib/not-assessed';
 import {
   Document,
   Page,
@@ -86,7 +87,10 @@ export interface FloodReportData {
   hawkesbury_flood_study?: string | null;
   // Generalised flood study rasters + DEM elevation
   ground_elevation_m_ahd?: number | null;
-  in_100yr_flood_zone?: boolean;
+  // null / undefined = NOT ASSESSED. Typed explicitly so a reader of this
+  // interface cannot assume two states, and so `=== false` stays meaningful.
+  in_100yr_flood_zone?: boolean | null;
+  in_100yr_flood_zone_unconsulted?: string[] | null;
   flood_studies?: FloodStudyResult[];
   s1_gap_warning: string | null;
   data_currency: string;
@@ -314,6 +318,25 @@ function buildFindings(data: FloodReportData): Finding[] {
       value: 'Not in 1-in-100 year flood zone',
       detail: 'Flood modelling does not place this property within the 1% AEP flood extent. Ground elevation provides additional clearance from modelled levels.',
       severity: 'green',
+    });
+  } else {
+    // THE THIRD STATE. Before 2026-08-08 this branch did not exist: a null
+    // fell through both === comparisons and the finding vanished from the PDF
+    // altogether, while the report page rendered the same null as a green
+    // 'No'. Neither said that the question had not been answered.
+    //
+    // It must appear, and it must be amber. A missing row reads as "nothing to
+    // report here", which for the flood question is the same lie in quieter
+    // clothing.
+    findings.push({
+      // Source-NEUTRAL label. 'Council flood study raster' would name the
+      // wrong source whenever the unreachable one was EPI or the SES overlay
+      // — telling the reader a specific falsehood about what failed. The
+      // detail sentence names the actual sources.
+      label: '1% AEP flood extent',
+      value: 'Not assessed — no answer either way',
+      detail: floodZoneUnavailableMessage(data.in_100yr_flood_zone_unconsulted),
+      severity: 'amber',
     });
   }
 

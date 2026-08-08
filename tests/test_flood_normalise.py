@@ -441,13 +441,33 @@ class TestFloodStudies:
 # _normalise_outputs — in_100yr_flood_zone derivation
 # ===========================================================================
 
-class TestIn100yrFloodZone:
-    """Multiple sources can set in_100yr_flood_zone to True."""
+def _fully_consulted_raw(**overrides):
+    """A raw dict where every source that can answer the 1% question WAS asked.
 
-    def test_false_when_no_indicators(self):
-        raw = _minimal_raw(epi_flood_class="none")
-        result = _normalise_outputs(raw)
-        assert result["in_100yr_flood_zone"] is False
+    Only then is a False defensible. EPI answered "none", the council/SES
+    extent was queried and the point is outside it, and no configured flood
+    study is missing from this host.
+    """
+    base = dict(
+        epi_flood_class="none",
+        ses_in_flood_planning_area=False,
+        flood_studies_absent=[],
+    )
+    base.update(overrides)
+    return _minimal_raw(**base)
+
+
+class TestIn100yrFloodZone:
+    """THREE states. A False must be earned; it is never a default.
+
+    Before 2026-08-08 this field started at False and only four positive
+    signals could move it, so a source that could not be consulted produced a
+    confident "not in a flood zone" — the sentence a buyer acts on, in the
+    direction that causes harm. Six tests in this class asserted exactly that
+    behaviour and were pinning the defect; they now assert None.
+    """
+
+    # ── True: a positive finding stands alone ───────────────────────────────
 
     def test_true_from_epi_class(self):
         raw = _minimal_raw(epi_flood_class="flood_planning_area", epi_flood_label="Flood Planning Area")
@@ -459,11 +479,12 @@ class TestIn100yrFloodZone:
         result = _normalise_outputs(raw)
         assert result["in_100yr_flood_zone"] is True
 
-    def test_false_from_epi_empty_string(self):
-        """Empty string epi_class is in the exclusion list."""
+    def test_empty_string_epi_is_not_a_positive(self):
+        """Empty string epi_class is in the exclusion list — but the SES extent
+        was still never queried, so the answer is unknown, not 'no'."""
         raw = _minimal_raw(epi_flood_class="")
         result = _normalise_outputs(raw)
-        assert result["in_100yr_flood_zone"] is False
+        assert result["in_100yr_flood_zone"] is None
 
     def test_true_from_ses_1pct(self):
         raw = _minimal_raw(ses_flood_class="1% AEP Flood Extent")
@@ -480,10 +501,12 @@ class TestIn100yrFloodZone:
         result = _normalise_outputs(raw)
         assert result["in_100yr_flood_zone"] is True
 
-    def test_false_from_ses_5pct(self):
+    def test_ses_5pct_is_not_a_1pct_positive(self):
+        """A 5% AEP class is not a 1% finding. The SES extent flag is still
+        None here, so the verdict is unknown rather than 'no'."""
         raw = _minimal_raw(ses_flood_class="5% AEP")
         result = _normalise_outputs(raw)
-        assert result["in_100yr_flood_zone"] is False
+        assert result["in_100yr_flood_zone"] is None
 
     def test_true_from_flood_study_1pct(self):
         studies = [{"study_name": "Test", "design": {"1pct": {"level_m_ahd": 12.0}}}]
@@ -491,27 +514,89 @@ class TestIn100yrFloodZone:
         result = _normalise_outputs(raw)
         assert result["in_100yr_flood_zone"] is True
 
-    def test_false_from_flood_study_5pct_only(self):
+    def test_flood_study_5pct_only_is_not_a_1pct_positive(self):
         studies = [{"study_name": "Test", "design": {"5pct": {"level_m_ahd": 12.0}}}]
         raw = _minimal_raw(flood_studies=studies)
         result = _normalise_outputs(raw)
-        assert result["in_100yr_flood_zone"] is False
+        assert result["in_100yr_flood_zone"] is None
 
     def test_true_from_hawkesbury_100aep(self):
         raw = _minimal_raw(**{"hawkesbury_flood_level_100aep": 17.3})
         result = _normalise_outputs(raw)
         assert result["in_100yr_flood_zone"] is True
 
-    def test_false_from_hawkesbury_200aep_only(self):
+    def test_hawkesbury_200aep_alone_is_not_a_1pct_positive(self):
         """200aep alone does not trigger in_100yr."""
         raw = _minimal_raw(**{"hawkesbury_flood_level_200aep": 20.0})
         result = _normalise_outputs(raw)
-        assert result["in_100yr_flood_zone"] is False
+        assert result["in_100yr_flood_zone"] is None
 
-    def test_epi_none_class_not_in_100yr(self):
+    # ── None: the source could not be asked ─────────────────────────────────
+
+    def test_epi_absent_is_unknown_not_a_clearance(self):
+        """THE defect, in miniature. EPI returning nothing means we did not
+        find out — it never meant 'not in a flood zone'. This test asserted
+        False until 2026-08-08."""
         raw = _minimal_raw(epi_flood_class=None)
         result = _normalise_outputs(raw)
+        assert result["in_100yr_flood_zone"] is None
+        assert "NSW EPI flood overlay" in result["in_100yr_flood_zone_unconsulted"]
+
+    def test_configured_study_missing_from_this_host_is_unknown(self):
+        """Tweed and Wollongong: declared available in FLOOD_STUDIES, their
+        rasters can never be in the container. Used to serve a bare False."""
+        raw = _fully_consulted_raw(
+            flood_studies_absent=["tweed"], ses_study_lga="Tweed Shire Council"
+        )
+        result = _normalise_outputs(raw)
+        assert result["in_100yr_flood_zone"] is None
+        assert result["in_100yr_flood_zone_unconsulted"]
+
+    def test_an_absent_study_for_a_DIFFERENT_council_does_not_taint_the_answer(self):
+        """A missing Tweed raster says nothing about a Sydney property. Flagging
+        it statewide would turn every correct negative into a shrug — the
+        opposite failure, and just as bad for the reader."""
+        raw = _fully_consulted_raw(
+            flood_studies_absent=["tweed", "wollongong"],
+            ses_study_lga="Blacktown City Council",
+        )
+        result = _normalise_outputs(raw)
         assert result["in_100yr_flood_zone"] is False
+        assert result["in_100yr_flood_zone_unconsulted"] == []
+
+    def test_unknown_council_under_reports_rather_than_flagging_everything(self):
+        """Deliberate direction: with no council we cannot tell whether the
+        absent study covers this point, and a false 'not assessed' on every
+        address destroys the signal. Documented, not accidental."""
+        raw = _fully_consulted_raw(flood_studies_absent=["tweed"], ses_study_lga=None)
+        result = _normalise_outputs(raw)
+        assert result["in_100yr_flood_zone"] is False
+
+    def test_ses_extent_never_queried_is_unknown(self):
+        raw = _fully_consulted_raw(ses_in_flood_planning_area=None)
+        result = _normalise_outputs(raw)
+        assert result["in_100yr_flood_zone"] is None
+
+    # ── False: earned, because every source was actually asked ──────────────
+
+    def test_false_when_every_source_was_consulted_and_none_fired(self):
+        result = _normalise_outputs(_fully_consulted_raw())
+        assert result["in_100yr_flood_zone"] is False
+        assert result["in_100yr_flood_zone_unconsulted"] == []
+
+    # ── A positive is never weakened by an unrelated gap ─────────────────────
+
+    def test_positive_wins_even_when_another_source_is_unreachable(self):
+        """One source placing the point inside the 1% extent is an answer. It
+        does not become 'unknown' because a different source was down —
+        that would turn a real flood finding into a shrug."""
+        raw = _minimal_raw(
+            epi_flood_class="flood_planning_area",
+            ses_in_flood_planning_area=None,
+            flood_studies_absent=["wollongong"],
+        )
+        result = _normalise_outputs(raw)
+        assert result["in_100yr_flood_zone"] is True
 
 
 # ===========================================================================
@@ -721,3 +806,52 @@ class TestWriteReport:
 
         mock_conf.assert_called_once_with(internal)
         mock_sources.assert_called_once_with(internal)
+
+
+# ===========================================================================
+# flood_study_raster_availability — a HALF-delivered study is not available
+# ===========================================================================
+
+class TestFloodStudyRasterAvailability:
+    """A study is only consultable if the 1% AEP grid itself is readable.
+
+    Sol caught this: accepting "any design raster exists" meant a study holding
+    its 5% file but not its 1% file counted as present, was left out of
+    flood_studies_absent, and so contributed a confident negative to the very
+    question it could not answer — the same defect one level down.
+    """
+
+    def test_missing_1pct_grid_is_unavailable_even_with_other_grids(self, tmp_path, monkeypatch):
+        from services import flood_truth
+        study_dir = tmp_path / "half"
+        study_dir.mkdir()
+        (study_dir / "X_5pct_h_Max.tif").write_bytes(b"not empty")
+        monkeypatch.setitem(flood_truth.FLOOD_STUDIES, "half", {
+            "name": "Half Study", "source": "test", "dir": str(study_dir),
+            "crs": "EPSG:7856", "nodata": -999.0, "has_depth": False,
+            "design": {"5pct": "X_5pct_{type}_Max.tif", "1pct": "X_1pct_{type}_Max.tif"},
+        })
+        assert flood_truth.flood_study_raster_availability()["half"] is False
+
+    def test_present_when_the_1pct_grid_is_there(self, tmp_path, monkeypatch):
+        from services import flood_truth
+        study_dir = tmp_path / "whole"
+        study_dir.mkdir()
+        (study_dir / "X_1pct_h_Max.tif").write_bytes(b"not empty")
+        monkeypatch.setitem(flood_truth.FLOOD_STUDIES, "whole", {
+            "name": "Whole Study", "source": "test", "dir": str(study_dir),
+            "crs": "EPSG:7856", "nodata": -999.0, "has_depth": False,
+            "design": {"1pct": "X_1pct_{type}_Max.tif"},
+        })
+        assert flood_truth.flood_study_raster_availability()["whole"] is True
+
+    def test_study_with_no_1pct_configured_at_all_is_unavailable(self, tmp_path, monkeypatch):
+        from services import flood_truth
+        study_dir = tmp_path / "nodesign"
+        study_dir.mkdir()
+        monkeypatch.setitem(flood_truth.FLOOD_STUDIES, "nodesign", {
+            "name": "No 1pct", "source": "test", "dir": str(study_dir),
+            "crs": "EPSG:7856", "nodata": -999.0, "has_depth": False,
+            "design": {"5pct": "only_5pct.tif"},
+        })
+        assert flood_truth.flood_study_raster_availability()["nodesign"] is False

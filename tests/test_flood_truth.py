@@ -1520,6 +1520,10 @@ _EXPECTED_OUTPUT_KEYS = {
     "hawkesbury_flood_level_200aep", "hawkesbury_flood_level_500aep",
     "hawkesbury_flood_level_pmf", "hawkesbury_flood_study",
     "flood_studies", "ground_elevation_m_ahd", "in_100yr_flood_zone",
+    # Names the sources that could have answered the 1% AEP question and were
+    # not reachable. Required by the "not assessed" copy, which has to say what
+    # was tried — an unexplained absence reads as evasion.
+    "in_100yr_flood_zone_unconsulted",
     "compound_heritage", "compound_riparian", "compound_wetlands", "compound_landslide",
     "compound_risk_layers", "compound_risk_notes", "flood_signal",
 }
