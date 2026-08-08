@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Rewrites the public, search-indexed blog page that describes how this platform validates its own data. The page is syndicated into the sitemap, RSS and JSON-LD via lib/blog-articles.ts and is linked from /how-it-works, so it is served marketing copy making liability-relevant representations under ACL s18. Five of its claims were absolute ('if a source is listed, it was queried'; 'never a false positive or silent failure'; 'you will never see a false all clear'; 'we can produce the exact response'; 'an automated daily monitor... we know within 24 hours') and each was measurably false against this codebase and database on 2026-08-08. Standard rather than minor: only one substantive file changes, but the change is entirely to representations a customer may rely on, which is the class the liability scanner and Sol gate exist for. No logic, no data, no schema.",
-  "commit_hash": "PENDING",
+  "commit_hash": "bfe172aa",
   "files": [
     "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx",
     ".qa_report.json"
@@ -42,22 +42,26 @@
     {
       "value": "143 cached flood results, 131 inside the serving window",
       "read_at": ".claude/DATA_QUALITY_TRACKER.md DQ-50",
-      "why": "the concrete number behind the corrected source-attribution claim; quoted rather than rounded so a reader can check it"
+      "why": "the concrete number behind the corrected source-attribution claim; quoted rather than rounded so a reader can check it",
+      "if_missing": "If the DQ-50 count were absent we would not know the scale of the cached-source problem, and the correction would have to say 'some reports' instead of 143/131 -- vaguer, and unfalsifiable by a reader."
     },
     {
       "value": "538 of 538 attempts returned no usable reading",
       "read_at": "~/.claude/plans/ce-calibration-execution-plan-2026-08.md sections 4h and 4i",
-      "why": "the neighbouring-land check that produced a confident negative every time; the clearest counter-example to the removed 'never a false all clear' promise"
+      "why": "the neighbouring-land check that produced a confident negative every time; the clearest counter-example to the removed 'never a false all clear' promise",
+      "if_missing": "If this were absent the strongest counter-example to 'you will never see a false all clear' disappears, and pass 3's correction would rest on the two weaker cases alone."
     },
     {
       "value": "0.21 degrees agreement against an independent astronomical model",
       "read_at": "tests/test_shadow_calibration.py, pass mark 0.50 committed before the run",
-      "why": "the one external comparison the platform can honestly claim; stated with its tolerance so it cannot be read as a general accuracy claim"
+      "why": "the one external comparison the platform can honestly claim; stated with its tolerance so it cannot be read as a general accuracy claim",
+      "if_missing": "If absent, the page could make no external-comparison claim at all and the 'what this means for you' item would have to say only that nothing has been externally compared."
     },
     {
       "value": "15 data sources, most recent monitor round 2026-08-03",
       "read_at": "live query against the data-source health-check history, 2026-08-08",
-      "why": "replaces the unsupported 'daily' and '24 hours' claims with what the run history actually shows"
+      "why": "replaces the unsupported 'daily' and '24 hours' claims with what the run history actually shows",
+      "if_missing": "If the health-check history were empty we could not state a cadence at all; the honest fallback would be 'we do not currently know how often this runs', which is worse for the reader but still better than the removed 24-hour promise."
     }
   ],
   "break_it": [
@@ -65,31 +69,36 @@
       "scenario": "A future edit reintroduces an absolute promise -- 'never', 'always', 'verified', 'every source' -- and the page drifts back to overclaiming.",
       "what_happens": "The page returns to asserting guarantees the system does not deliver, on the one page whose entire subject is how trustworthy the platform is. That is the ACL s18 exposure this change exists to remove, and it would be worse the second time because the August section would sit beside it contradicting it.",
       "mitigated": true,
-      "how": "scripts/liability_language_check.py runs in the pre-push hook and in CI. Proven to fire: the original 'never a false positive... every result is verified' sentence was planted back in and the scanner went red, then the file was restored byte-identically. Note the limit recorded in falsifiable_check -- a false sentence built from permitted words is not caught."
+      "how": "scripts/liability_language_check.py runs in the pre-push hook and in CI. Proven to fire: the original 'never a false positive... every result is verified' sentence was planted back in and the scanner went red, then the file was restored byte-identically. Note the limit recorded in falsifiable_check -- a false sentence built from permitted words is not caught.",
+      "repro": "Edit the page, change any pass detail back to an absolute (e.g. insert 'every result is verified'), then run: python scripts/liability_language_check.py --full frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx -- it exits 1. This exact plant was performed and reverted; md5 210a4e198ce03e01f96d52e97441122d before and after."
     },
     {
       "scenario": "The five corrections themselves go stale. The monitor is put on a real daily schedule, or the cached-source repair lands, and the page keeps describing them as open problems.",
       "what_happens": "The page understates the platform -- the mirror image of the original fault, and it would erode trust in the update section itself, which is the part doing the work.",
       "mitigated": true,
-      "how": "Every correction is dated 'August 2026' and phrased as a finding at a point in time rather than a permanent property, so a later reader can see it is a snapshot. The monitor paragraph explicitly names putting it on a dependable schedule as outstanding work, which is the trigger to come back and revise this page."
+      "how": "Every correction is dated 'August 2026' and phrased as a finding at a point in time rather than a permanent property, so a later reader can see it is a snapshot. The monitor paragraph explicitly names putting it on a dependable schedule as outstanding work, which is the trigger to come back and revise this page.",
+      "repro": "Query the data-source health-check history for max(checked_at). If it returns a date within the last 24 hours, the monitor paragraph on this page is now understating the cadence and should be revised. At time of writing it returned 2026-08-03."
     },
     {
       "scenario": "A reader takes the update section as evidence the platform is now fully checked, because it is detailed and confident in tone.",
       "what_happens": "The page would create a new, subtler overclaim: 'they found their problems, therefore the problems are gone.' Four of the five items are fixed but the fifth (cached source attribution) is a data repair still outstanding, and no amount of self-audit substitutes for external comparison.",
       "mitigated": true,
-      "how": "The section closes by stating that a validation process running green is evidence the checks passed, not proof the output is true. Separately, the 'what this means for you' list now states explicitly that exactly one tool has been compared against an external reference and that this says nothing about whether the others are wrong."
+      "how": "The section closes by stating that a validation process running green is evidence the checks passed, not proof the output is true. Separately, the 'what this means for you' list now states explicitly that exactly one tool has been compared against an external reference and that this says nothing about whether the others are wrong.",
+      "repro": "Read the 'Update, August 2026' section end-to-end and check the closing paragraph is still present -- it is the sentence that stops the section reading as 'therefore we are now fully checked'. Removing that paragraph reproduces the failure."
     },
     {
       "scenario": "The rewritten JSX fails to compile or renders broken, taking down a search-indexed page.",
       "what_happens": "A page currently ranking for validation and data-accuracy queries returns a build error, and the deploy fails or serves a broken route.",
       "mitigated": true,
-      "how": "Tag balance verified across the whole file after editing (div 11/11, p 28/28, ul 4/4, li 16/16, strong 11/11, em 3/3, article 1/1, h2 8/8). No raw apostrophes or quotes were introduced into JSX text, so react/no-unescaped-entities cannot fire. NOT verified locally: this worktree has no node_modules, so npx pulled an unconfigured Jest 30 and the local test and typecheck runs were meaningless -- reported rather than counted as a pass. CI is the real gate here and must be green before merge."
+      "how": "Tag balance verified across the whole file after editing (div 11/11, p 28/28, ul 4/4, li 16/16, strong 11/11, em 3/3, article 1/1, h2 8/8). No raw apostrophes or quotes were introduced into JSX text, so react/no-unescaped-entities cannot fire. NOT verified locally: this worktree has no node_modules, so npx pulled an unconfigured Jest 30 and the local test and typecheck runs were meaningless -- reported rather than counted as a pass. CI is the real gate here and must be green before merge.",
+      "repro": "Run: cd frontend-nextjs && npm ci && npx tsc --noEmit && npx next build. A JSX imbalance or unescaped entity fails the build. NOTE: this was NOT run locally (no node_modules in this worktree); CI must be green before merge."
     },
     {
       "scenario": "Naming specific internal defects publicly reveals pipeline internals the blog IP rule forbids.",
       "what_happens": "Internal product names, algorithm names or table names leak into a public, indexed page, contrary to .claude/rules/blog-content.md.",
       "mitigated": true,
-      "how": "Checked after writing: zero matches for the banned internal pipeline names, algorithm names, table names and DQ identifiers. All five corrections are described generically -- 'shadow analysis', 'secondary dwelling reports', 'a surface-change check on neighbouring land', 'flood screening results'."
+      "how": "Checked after writing: zero matches for the banned internal pipeline names, algorithm names, table names and DQ identifiers. All five corrections are described generically -- 'shadow analysis', 'secondary dwelling reports', 'a surface-change check on neighbouring land', 'flood screening results'.",
+      "repro": "Run: grep -icE 'Flood Truth Engine|Threat Radar|Shadow Ambush|Granny Flat Yield|Solar Yield Underwriter|spatial_overlays|property_reports|audit_trail|DQ-[0-9]' frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx -- must return 0. It returns 0 on this commit."
     }
   ],
   "mutation_analysis": "The check that matters here is not a unit test but the liability scanner, so mutation was done directly against it: planting the removed absolute sentence turns it red, and restoring returns it to green with an identical md5. A weaker version of this change -- softening the wording without the dated correction section -- would still pass the scanner, which is precisely why the scanner is not sufficient on its own and why the corrections were derived from code reads and live queries instead.",
