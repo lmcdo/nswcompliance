@@ -24,6 +24,15 @@ interface Highlight {
   label: string;
   value: string;
   severity?: 'high' | 'medium' | 'low';
+  /**
+   * Why there is no answer, for a highlight that could not be established.
+   *
+   * A badge alone cannot carry an absence: "Not assessed" in a pill next to
+   * eight real findings still reads as a mild result. When this is set the row
+   * renders the sentence underneath, so the reader is told what was tried and
+   * that it is neither a pass nor a fail. Copy comes from lib/not-assessed.ts.
+   */
+  detail?: string;
 }
 
 interface Props {
@@ -81,15 +90,22 @@ export function SharedReportPage({
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Key findings</h2>
         <div className="space-y-3">
           {highlights.map((h) => (
-            <div key={h.label} className="flex items-start justify-between gap-4">
-              <span className="text-sm text-gray-600">{h.label}</span>
-              <span
-                className={`text-sm font-medium px-2.5 py-0.5 rounded-full border ${
-                  h.severity ? SEVERITY_COLORS[h.severity] : 'text-gray-700 bg-gray-50 border-gray-200'
-                }`}
-              >
-                {h.value}
-              </span>
+            <div key={h.label}>
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-sm text-gray-600">{h.label}</span>
+                <span
+                  className={`text-sm font-medium px-2.5 py-0.5 rounded-full border ${
+                    h.severity ? SEVERITY_COLORS[h.severity] : 'text-gray-700 bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  {h.value}
+                </span>
+              </div>
+              {h.detail && (
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                  {h.detail}
+                </p>
+              )}
             </div>
           ))}
         </div>
