@@ -418,6 +418,12 @@ scripts/*
 # for every existing report). Committed so the claims can cite a command.
 !scripts/measure_granny_confidence_states.py
 !scripts/measure_climate_reference_availability.py
+# Falsifiability plant-restore harness + the doc-claim checker. Both are
+# imported by tests and invoked from .githooks/pre-push, so an untracked copy
+# breaks every fresh clone — which is exactly the trap this line block warns
+# about four comments above.
+!scripts/falsifiability.py
+!scripts/doc_claims.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py

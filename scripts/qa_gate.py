@@ -1159,6 +1159,99 @@ def scan_diff_for_untyped_method_calls(
     return errors
 
 
+# ─── Layer 10: Doc-claim check (OBSERVATION MODE — reports, blocks nothing) ──
+#
+# ORIGIN: 2026-08-07/08. Four times in two days a session acted on a false
+# premise that came from a DOCUMENT, not from code: services/CLAUDE.md's Threat
+# Radar claim, "13/16 human confirmations" that were zero, a pre-written APRA
+# test that never existed, and a v1.2 changelog entry for a module whose only
+# version is 1.1. Every layer above this one checks CODE. Nothing checked the
+# documents describing it.
+#
+# Scope is the tractable half only — a resolvable path, a version literal
+# attributed to a code constant, a dependency that is actually installed. It
+# cannot decide "Threat Radar uses this pipeline" or "13 people confirmed", and
+# the messages say so rather than implying broader cover.
+#
+# OBSERVATION MODE, deliberately. Findings print; `passed` is untouched. This
+# project's own incident log holds a lint that blocked a routine merge on day
+# one (DQ-34, alarm fatigue), so blocking is earned with an observed
+# false-positive rate, not assumed. See the PR body for what would earn it.
+
+
+def _load_doc_claims():
+    """Load the sibling module by path.
+
+    qa_gate.py is executed both as a script (scripts/ on sys.path) and via
+    importlib.util.spec_from_file_location from tests (scripts/ NOT on
+    sys.path), so a plain `import doc_claims` works in one case and not the
+    other. Returning None on failure is correct here and only here: an
+    observation-mode check that cannot load must not break the gate that
+    surrounds it.
+    """
+    try:
+        import importlib.util
+
+        path = Path(__file__).resolve().parent / "doc_claims.py"
+        spec = importlib.util.spec_from_file_location("qa_gate_doc_claims", path)
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        return module
+    except Exception:  # noqa: BLE001 — observation mode never breaks the gate
+        return None
+
+
+def observe_doc_claims(
+    report_path: str | None, diff_files: list[str] | None, project_dir: str | None
+) -> list[str]:
+    """Return human-readable observations. NEVER returns blocking errors."""
+    if not project_dir:
+        return ["doc-claim check: SKIPPED — no project dir (unknowable, not a pass)"]
+
+    module = _load_doc_claims()
+    if module is None:
+        return [
+            "doc-claim check: SKIPPED — scripts/doc_claims.py could not be loaded "
+            "(unknowable, not a pass)"
+        ]
+
+    # Diff-scoped, like every other file scanner here: the whole 124-doc corpus
+    # carries inherited findings, and re-printing them on an unrelated change is
+    # how a check gets ignored.
+    docs = sorted({f for f in (diff_files or []) if f.endswith(".md")})
+    reports = [report_path] if report_path else []
+    if not docs and not reports:
+        return []
+
+    try:
+        result = module.scan(project_dir, docs=docs, reports=reports)
+    except Exception as exc:  # noqa: BLE001
+        return [f"doc-claim check: SKIPPED — scan raised {type(exc).__name__}: {exc}"]
+
+    baseline = module.load_baseline(Path(project_dir))
+    known = set(baseline.get("fingerprints") or []) if baseline else set()
+    fresh = [v for v in result.violations if v.fingerprint() not in known]
+
+    out: list[str] = []
+    for v in fresh:
+        out.append(f"doc-claim {v.render()}")  # render() already carries the kind
+    for note in result.notes:
+        out.append(f"doc-claim ? {note}")
+    if fresh:
+        carried = len(result.violations) - len(fresh)
+        out.append(
+            f"doc-claim: {len(fresh)} new finding(s), {carried} already in the "
+            f"baseline. Observation mode — nothing is blocked. Scope is paths, "
+            f"version literals and dependency declarations only; a semantic "
+            f"claim about behaviour is NOT checked and a clean run does not mean "
+            f"the doc is true."
+        )
+    return out
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -1424,6 +1517,15 @@ def main():
         sys.exit(1)
 
     passed, errors, summary = validate_report(report, diff_files, project_dir)
+
+    # Observation mode. Printed before the verdict so it is visible on a pass
+    # too, and deliberately NOT folded into `passed` or `errors`.
+    observations = observe_doc_claims(report_path, diff_files, project_dir)
+    if observations:
+        print("QA-GATE: doc-claim observations (not blocking):")
+        for note in observations:
+            print(f"  ~ {note}")
+        print()
 
     if passed:
         print("QA-GATE: PASSED")
