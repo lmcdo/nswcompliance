@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "This changes the single most consequential sentence in a property report. `in_100yr_flood_zone` drives insurance, price and whether a buyer proceeds, and it started life as False with only four positive signals able to move it — so a source that could not be consulted served a confident 'not in a flood zone'. That is not an absence dressed up as a result, the class this campaign has been deleting; it is an active statement in the direction that causes harm, on the field a buyer is most likely to rely on. Measured against production: 12 of the 142 stored reports that served 'No' had never established it, among them addresses in Lismore, Murwillumbah and Telarah.",
-  "commit_hash": "1658a0fc",
+  "commit_hash": "73293fae",
   "files": [
     "services/flood_truth.py",
     "frontend-nextjs/lib/not-assessed.ts",
