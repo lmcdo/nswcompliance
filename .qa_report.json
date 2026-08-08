@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Developer tooling only. No product code, no served output, no database read or write, no migration. Two new scripts plus an observation-mode reporting block in scripts/qa_gate.py that never touches the passed/failed verdict, and one blocking line in .githooks/pre-push whose trigger condition cannot false-positive. Not Minor, because scripts/falsifiability.py is now the thing every falsifiability claim in this campaign rests on, and a defect in it makes every downstream proof worthless; not Critical, because nothing here can reach a customer, a report or a row.",
-  "commit_hash": "463ed60e",
+  "commit_hash": "339c7090",
   "files": [
     "scripts/falsifiability.py",
     "scripts/doc_claims.py",
