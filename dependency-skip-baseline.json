@@ -1,15 +1,13 @@
 {
  "_why": "Tests that never run because an import is missing. Baselined 2026-08-06 while fixing the three-day red main, NOT blessed: a skipped test is not a passing test. This number may only go DOWN. scripts/check_dependency_skips.py fails the build if it rises or if a new dependency joins the list.",
  "_recovering_these": {
-  "shapely": "In requirements.txt (2.1.2) but not requirements-test.txt. Ships manylinux wheels; most likely genuinely installable, so these 13 are the cheapest to win back.",
-  "numpy + matplotlib + PIL": "matplotlib is the missing one (numpy and pillow are already in the CI closure). requirements.txt pins 3.11.0.",
+  "shapely (RECOVERED 2026-08-08)": "Was 13. Now 0 — shapely==2.1.2 pinned in requirements-test.txt, the file CI installs. Recovering it also restored 28 tests in tests/test_sydney_water_gsp_ingest.py that were never COLLECTED, because that module calls pytest.importorskip('shapely') at module level. All 41 pass.",
+  "numpy + matplotlib + PIL (RECOVERED 2026-08-08)": "Was 5. Now 0 — matplotlib==3.11.0 pinned in requirements-test.txt. numpy and pillow were already in CI's transitive closure; matplotlib was the missing one. All 5 hillshade render tests pass.",
   "icontract (RECOVERED 2026-08-07)": "Was 5. Now 0 — icontract is pinned in services/requirements.txt (what the container installs) and requirements-test.txt, so the four flood postconditions are live in production for the first time and the fifth (_compute_flood_signal) exists at all for the first time. The tests now FAIL rather than skip when the library is present and a decorator is missing."
  },
  "_total_note": "total_skipped covers EVERY skip, including the 2 deliberate env-gated ones (live Gemini smoke) and any skip whose reason no pattern recognises. Enforced exactly, both directions, so a rephrased skip reason cannot slip past the dependency classifier.",
- "total_skipped": 20,
- "count": 18,
- "dependencies": {
-  "numpy + matplotlib + PIL": 5,
-  "shapely": 13
- }
+ "_ratchet_blind_spot": "A module-level pytest.importorskip records ONE skip whose id is the FILE, not a test, and the file's tests are never collected at all. So this census counted tests/test_sydney_water_gsp_ingest.py as a single skip while 28 tests did not exist — under-reported 28-fold. Of the 13 skips previously attributed to shapely, only 12 were tests (all in tests/test_solar_yield.py); the thirteenth was that file. The arithmetic of the 2026-08-08 recovery: 12 + 5 + 28 = 45 newly passing, which is exactly the 3925 -> 3970 delta. They were only found because scripts/doc_claims.py flagged shapely as declared in a file CI never installs. Counting skips is necessary and not sufficient; the COLLECTED-TEST TOTAL is the number that would have caught this, and nothing ratchets it.",
+ "total_skipped": 2,
+ "count": 0,
+ "dependencies": {}
 }

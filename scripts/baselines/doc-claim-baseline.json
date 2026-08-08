@@ -1,15 +1,15 @@
 {
-  "generated_against": "463ed60e",
+  "generated_against": "9d6fba3d",
   "mode": "observation",
   "excluded_from_baseline": [
     ".qa_report.json"
   ],
   "counts": {
-    "path": 127,
+    "path": 133,
     "version": 1,
-    "dependency": 9
+    "dependency": 7
   },
-  "excluded_report_findings": 8,
+  "excluded_report_findings": 2,
   "docs_scanned": 124,
   "notes": [
     "unknowable: 1 version identifier(s) hold different values in different modules, so a doc naming one of the OTHER module's values is accepted without being verified: [\"methodology_version=['1.1', '2.0']\"]",
@@ -23,9 +23,9 @@
     "dependency|tests/conftest_mocks.py|whitebox",
     "dependency|tests/root_tests/test_api_zones.py|requests",
     "dependency|tests/test_execution_manifests.py|pillow",
-    "dependency|tests/test_hillshade_render.py|matplotlib",
     "dependency|tests/test_shadow_calibration.py|pandas",
-    "dependency|tests/test_solar_yield.py|shapely",
+    "path|.claude/DATA_QUALITY_TRACKER.md|.github/workflows/dcp-monitor.yml",
+    "path|.claude/DATA_QUALITY_TRACKER.md|.github/workflows/satellite-freshness-monitor.yml",
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ14_leichhardt_pdf_urls.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ14b_fix_part_g_urls.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ18_fix_by_section_number.py",
@@ -33,6 +33,10 @@
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ18_fix_marrickville_page_numbers.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ18_fix_part41_direct.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ18_revert_marrickville_pages.py",
+    "path|.claude/DATA_QUALITY_TRACKER.md|dcp-commit.yml",
+    "path|.claude/DATA_QUALITY_TRACKER.md|dcp-extract.yml",
+    "path|.claude/DATA_QUALITY_TRACKER.md|dcp-extract.yml",
+    "path|.claude/DATA_QUALITY_TRACKER.md|dcp-watchdog.yml",
     "path|.claude/DATA_QUALITY_TRACKER.md|extract_missing_part_g.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|extract_missing_pdf_pages.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|landing/data/shadow.ts:57",
@@ -200,197 +204,225 @@
     },
     {
       "kind": "dependency",
-      "doc": "tests/test_hillshade_render.py",
-      "line": 0,
-      "claim": "matplotlib",
-      "detail": "imported by tests but declared only in ['requirements.txt'], none of which CI installs -- the test skips, and a skip is green"
-    },
-    {
-      "kind": "dependency",
       "doc": "tests/test_shadow_calibration.py",
       "line": 0,
       "claim": "pandas",
       "detail": "imported by tests but declared only in ['requirements-latentscope.txt', 'requirements.txt'], none of which CI installs -- the test skips, and a skip is green"
     },
     {
-      "kind": "dependency",
-      "doc": "tests/test_solar_yield.py",
-      "line": 0,
-      "claim": "shapely",
-      "detail": "imported by tests but declared only in ['requirements.txt', 'services/requirements.txt'], none of which CI installs -- the test skips, and a skip is green"
-    },
-    {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1715,
-      "claim": "DQ14_leichhardt_pdf_urls.py",
+      "line": 14,
+      "claim": ".github/workflows/dcp-monitor.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1717,
-      "claim": "DQ14b_fix_part_g_urls.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1898,
-      "claim": "DQ18_fix_by_section_number.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1899,
-      "claim": "DQ18_fix_exclude_toc.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1885,
-      "claim": "DQ18_fix_marrickville_page_numbers.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1900,
-      "claim": "DQ18_fix_part41_direct.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1887,
-      "claim": "DQ18_revert_marrickville_pages.py",
+      "line": 14,
+      "claim": ".github/workflows/satellite-freshness-monitor.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
       "line": 1718,
+      "claim": "DQ14_leichhardt_pdf_urls.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 1720,
+      "claim": "DQ14b_fix_part_g_urls.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 1901,
+      "claim": "DQ18_fix_by_section_number.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 1902,
+      "claim": "DQ18_fix_exclude_toc.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 1888,
+      "claim": "DQ18_fix_marrickville_page_numbers.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 1903,
+      "claim": "DQ18_fix_part41_direct.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 1890,
+      "claim": "DQ18_revert_marrickville_pages.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 14,
+      "claim": "dcp-commit.yml",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 14,
+      "claim": "dcp-extract.yml",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 14,
+      "claim": "dcp-extract.yml",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 14,
+      "claim": "dcp-watchdog.yml",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 1721,
       "claim": "extract_missing_part_g.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1716,
+      "line": 1719,
       "claim": "extract_missing_pdf_pages.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 14,
+      "line": 17,
       "claim": "landing/data/shadow.ts:57",
       "detail": "frontend-nextjs/components/reports/landing/data/shadow.ts has only 55 lines -- the cited line does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 2010,
+      "line": 2013,
       "claim": "scripts/fix_marrickville_latex.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1679,
+      "line": 1682,
       "claim": "scripts/fixes/DQ11_heritage_categorization.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1701,
+      "line": 1704,
       "claim": "scripts/fixes/DQ13_leichhardt_fixes.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1731,
+      "line": 1734,
       "claim": "scripts/fixes/DQ14_leichhardt_pdf_urls.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1731,
+      "line": 1734,
       "claim": "scripts/fixes/DQ14b_fix_part_g_urls.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1750,
+      "line": 1753,
       "claim": "scripts/fixes/DQ15_normalize_topic_case.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1369,
+      "line": 1372,
       "claim": "scripts/fixes/DQ2_fix_topic_classification.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1378,
+      "line": 1381,
       "claim": "scripts/fixes/DQ3_fix_toc_entries.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 980,
+      "line": 983,
       "claim": "scripts/generate_zone_taxonomy.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 14,
+      "line": 17,
       "claim": "services/sentinel2.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1603,
+      "line": 1606,
       "claim": "test_comprehensive_professional.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1603,
+      "line": 1606,
       "claim": "test_tailored_filters.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1440,
+      "line": 1443,
       "claim": "test_workflow_quality.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1451,
+      "line": 1454,
       "claim": "test_workflow_quality.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1461,
+      "line": 1464,
       "claim": "test_workflow_quality.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
