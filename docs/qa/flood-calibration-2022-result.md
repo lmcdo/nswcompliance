@@ -1,83 +1,94 @@
 # Flood calibration against the 2022 NSW floods — result
 
 **Run:** 2026-08-08. Pass mark committed in `flood-calibration-2022-precommit.md` at commit
-`fb0a44f7`, before any point was sampled. Raw per-point output: `flood-calibration-2022-result.json`.
+`fb0a44f7`, before any point was sampled. Raw per-point output:
+`flood-calibration-2022-result.json`. Runner: `scripts/run_flood_calibration_2022.py`, seed 20220228.
 
 ## Verdict
 
-> **RECALL 0.976 — 40 of 41 scored points. Wilson 95% CI 0.874 – 0.996. Pass mark 0.90.**
-> **VERDICT: INDISTINGUISHABLE FROM THE MARK. Not a pass.**
+> **RECALL 0.857 — 6 of 7 scored points. Wilson 95% CI 0.487 – 0.974. Pass mark 0.90.**
+> **VERDICT: INDISTINGUISHABLE FROM THE MARK. Not a pass, and not a fail.**
 
-The point estimate is above 0.90 and the interval contains it, so at this sample size the result
-cannot be told apart from the mark in either direction.
+Seven points is far too few to decide anything. The interval spans from "half the time" to "almost
+always", and it contains the mark, so the honest reading is that this run did not establish whether
+the product clears 0.90 or not. That is the third state, and it is the answer.
 
-This was nearly reported as a clean pass. The first version used a Wald interval, which put the
-lower bound at 0.929 — above the mark — and printed PASS. Wald is invalid at a proportion this close
-to 1. The Wilson interval puts the lower bound at **0.874**, below the mark, and the pre-commit
-written before the run says in terms: *"a result within it of the mark is reported as
-indistinguishable from the mark, not as a pass."* That is the stricter rule, it was written before
-the number was known, and it is the one that applies. Caught by the cross-review, not by me.
+## How the number got smaller three times
 
-**What would settle it:** more points. At this recall, roughly 150 scored points would put the
-Wilson lower bound above 0.90. The sample is small because each point is a live pipeline run.
+Reported plainly, because each correction moved it down and the first version would have been
+published as a pass.
+
+| Version | Recall | Interval | What was wrong |
+|---|---|---|---|
+| first run | — | — | every report_id was an invalid UUID; 0 of 50 scored, and the harness printed **FAIL** from a 0/0 division. Discarded — a harness that could not run has measured nothing |
+| second | 0.976 (40/41) | Wald ±0.047 → lower 0.929 | reported **PASS**. Wald is invalid at a proportion this close to 1 |
+| third | 0.976 (40/41) | Wilson 0.874–0.996 | lower bound below the mark, so **indistinguishable**, per the rule written before the run |
+| **final** | **0.857 (6/7)** | **Wilson 0.487–0.974** | the denominator was wrong: 34 of the 41 were outside the product's council coverage, several in south-east Queensland, and `flood_signal='unavailable'` was being counted as a flood indicator |
+
+Every one of those corrections came from the cross-review, not from me.
 
 ## What was run
 
-50 points sampled with a fixed seed (`20220228`) from inside Copernicus EMS `observedEventA`
-polygons — 11,353 observed flood polygons across 15 AOIs in activations EMSR567, EMSR570 and
-EMSR586 — stratified round-robin across activation/AOI pairs so no single event dominates. Each
-point was put through the live served pipeline (`run_flood`), and counted as a hit if it returned
-any of: a `flood_signal` other than `none`, `in_100yr_flood_zone` true, or a council/SES flood
-extent match.
+26,569 observed flood polygons across 47 Copernicus EMS archives (EMSR567, EMSR570, EMSR586). 50
+points sampled with a fixed seed, stratified round-robin across 23 activation/AOI pairs.
 
-**9 of the 50 were not scored, and that is the product behaving correctly.** Only an explicit
-outside-NSW refusal is treated as out of scope — every one of the nine carried
-`422: latitude … outside NSW`, checked individually. Any other failure now counts as a miss, because
-dropping an in-scope error from the denominator would let ten database failures read as 100% recall
-on the forty points that worked. EMSR567 covered
-south-east Queensland as well as northern NSW, and the pipeline refused those points outright —
-`422: latitude … outside NSW`. A refusal is not a miss; a NSW product declining to answer for
-Queensland is the right answer, and those points are excluded rather than counted either way.
+**Scope filter:** each point tested against the product's own NSW council coverage via
+`lookup_lga`. **7 of 50 passed.** The other 43 are outside it — EMSR567 mapped south-east
+Queensland as well as northern NSW, and the pipeline's own latitude envelope is coarse enough to
+accept Brisbane-area points, which is how the earlier 41-point denominator came about. Scoring a
+Queensland observation as NSW recall measures the wrong thing.
+
+**Hit definition:** an allowlist — `flood_signal` in `low`/`moderate`/`elevated`, or
+`in_100yr_flood_zone` true, or a council/SES extent match. `unavailable` is explicitly **not** a
+hit: it means the sources could not be consulted, so the product supplied no flood indicator.
+Counting it as one would be the absence-as-answer error this whole campaign is about, committed
+inside the instrument measuring it.
+
+**Reference integrity:** the runner aborts if any archive will not open. It did — one truncated
+download — and the file was re-fetched before the run that produced this number. An AOI silently
+missing from the sample can only flatter the result.
 
 ## The one miss
 
 ```
-EMSR570 / AOI01   -29.019576, 153.221912
-flood_signal = none    in_100yr_flood_zone = False    ses_in_flood_planning_area = False
+EMSR570 / AOI01   -29.0424, 153.2542
+flood_signal = none   in_100yr_flood_zone = False   ses_in_flood_planning_area = False
 ```
 
-Northern Rivers, in the March–April 2022 second wave. The product returned `none` at a location the
-European Commission mapped as inundated. One miss in 41 is inside the committed mark, but it is a
-real miss on the record and is not being smoothed away.
+Northern Rivers, March–April 2022 second wave. The product returned `none` at a location the
+European Commission mapped as inundated.
 
-## What this result does and does not license
+## What this licenses
 
 **Licensed:** *"checked against the Copernicus EMS observed extents of the 2022 NSW floods — the
-served screen returned a flood indicator at 40 of 41 sampled points (97.6%, Wilson 95% CI
-0.874–0.996). At N=41 that is indistinguishable from the 0.90 mark committed before the run."*
+served screen returned a flood indicator at 6 of 7 points inside our council coverage (Wilson 95% CI
+0.49–0.97). At N=7 this does not establish whether the product meets the 0.90 mark committed before
+the run."*
 
-**Not licensed, and stated before the run rather than after:**
+**Not licensed:**
 
-- **Not "validated".** The word is banned in this project and this result does not earn it.
-- **Nothing about the 1% AEP verdict.** It was deliberately excluded from the test. The 2022 events
-  exceeded the 1% design event in several catchments — Lismore peaked at 14.4 m, a record by about
-  two metres — so a point flooded in 2022 can legitimately sit outside the mapped 1% extent.
-  Comparing them would measure construct mismatch, not product error. The raw output shows exactly
-  this: many hits carry `in_100yr = False` while the ground was demonstrably under water.
-- **Nothing about specificity.** A flag outside the 2022 extent may be a correct 1% mapping of
-  ground that simply did not flood that year. The two cannot be separated with this data, so no
-  false-positive rate is reported.
-- **Nothing about depth or extent.** Only whether the product said something.
+- **Not "validated".** Nowhere near it.
+- **Not a pass.** The point estimate is below the mark and the interval contains it.
+- **Nothing about the 1% AEP verdict** — deliberately excluded. 2022 exceeded the 1% design event in
+  several catchments (Lismore peaked 14.4 m, a record by ~2 m), so comparing them measures construct
+  mismatch, not product error. Visible in the raw output: hits carry `in_100yr = False` on ground
+  that was demonstrably under water.
+- **Nothing about specificity.** A flag outside the 2022 extent may be a correct 1% mapping of ground
+  that did not flood that year; the two cannot be separated with this data.
 
-## Limits of the sample, as committed in advance
+## What would settle it
 
-- **Recall is biased UP.** Copernicus maps the areas the EU was asked to map — the worst-hit places,
-  which are also the most likely to carry an EPI or council flood layer. This is a best case, not an
-  average case, and it says nothing about recall in an unmapped catchment.
-- **Permanent water is not excluded.** The reference labels its polygons only "Riverine flood"
-  (11,081) and "Flash flood" (628); there is no permanent-water class. A point falling in a river
-  channel is trivially wet, and some proportion of the sample will be exactly that. The contamination
-  is real, unquantified, and inflates recall.
-- **N=41 scored.** Small. The interval is reported with the figure.
-- **Councils covered** are those the sampled AOIs fall in — the Northern Rivers, Hawkesbury-Nepean
-  and Hunter. The result does not extend to councils with no sampled point.
+More points inside council coverage. At this recall roughly 150 scored points would put the Wilson
+lower bound above 0.90. The binding constraint is not compute — it is that Copernicus mapped only
+the areas the EU was asked to map, and only a fraction of those fall in councils this product
+covers. Widening either the council coverage or the reference set is the work.
+
+## Limits, as committed in advance
+
+- **Recall here is biased UP.** Copernicus maps the worst-hit ground, which is also the most likely
+  to carry an EPI or council flood layer. Best case, not average case.
+- **Permanent water is not excluded.** The reference labels only "Riverine flood" (11,081) and
+  "Flash flood" (628); there is no permanent-water class, so some sampled points may be river
+  channel. Unquantified, and it inflates recall.
+- **Councils covered:** the sampled points fall in the Northern Rivers, south-western Sydney and the
+  Hawkesbury. Nothing here extends to a council with no sampled point.
