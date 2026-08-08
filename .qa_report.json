@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Two lines of test dependencies plus documentation. No product code, no served output, no database. Not Minor, because it changes WHAT CI RUNS: 45 tests that never executed in CI now do, and the dependency-skip ratchet floor drops to zero, so a future regression in any of those 45 becomes a red build instead of nothing. A change that alters the gate's coverage deserves the tier the gate itself is held to.",
-  "commit_hash": "9a0b5f56",
+  "commit_hash": "67f3bb82",
   "files": [
     "requirements-test.txt",
     "dependency-skip-baseline.json",
