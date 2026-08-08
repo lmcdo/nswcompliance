@@ -24,9 +24,14 @@
 // visible error, never zeros.
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { resolveGrannyReviewState } from '@/lib/granny-flat-review-state';
 
 // Detected structure row from the granny-flat detection service.
 export interface DetectedStructureRow {
+  // services.granny_flat.DetectedStructure.index — the identity a
+  // per-structure answer is stored against. Optional here because rows
+  // written before the field was surfaced do not carry it.
+  index?: number;
   matched_prompt?: string;
   area_m2?: number | null;
   is_main_dwelling?: boolean;
@@ -60,6 +65,9 @@ export interface GfYieldResult {
   assumed_build_cost_aud?: number | null;
   confidence?: string | null;
   confidence_reason?: string | null;
+  review_state?: string | null;
+  review_state_label?: string | null;
+  review_state_detail?: string | null;
 }
 
 type ConfirmState =
@@ -96,8 +104,9 @@ function money(v: number | null | undefined): string {
 }
 
 // Yield block — the confirm/calculate outputs, labelled as computed estimates.
-// confidence + confidence_reason are surfaced verbatim from the response.
+// The structure list carries its review STATE (what happened), not a grade.
 function YieldBlock({ result }: { result: GfYieldResult }) {
+  const reviewState = resolveGrannyReviewState(result as unknown as Record<string, unknown>);
   const rows: { label: string; value: string }[] = [
     {
       label: 'Buildable floor area',
@@ -134,12 +143,16 @@ function YieldBlock({ result }: { result: GfYieldResult }) {
           </div>
         ))}
       </dl>
-      {(result.confidence || result.confidence_reason) && (
-        <p className="mt-2 text-xs text-slate-500">
-          {result.confidence ? <>Confidence: <span className="font-medium">{result.confidence}</span></> : null}
-          {result.confidence && result.confidence_reason ? ' — ' : null}
-          {result.confidence_reason}
-        </p>
+      {/* What happened to the structure list, not a grade. "Confidence:
+          medium" told someone whose scan found nothing that we were middlingly
+          sure — when nothing had been checked against anything. */}
+      <p className="mt-2 text-xs text-slate-500">
+        <span className="font-medium text-slate-600">{reviewState.label}</span>
+        {' — '}
+        {reviewState.detail}
+      </p>
+      {result.confidence_reason && !reviewState.derived && (
+        <p className="mt-1 text-xs text-slate-500">{result.confidence_reason}</p>
       )}
       <p className="mt-2 text-xs text-slate-400">
         Computed estimates from aerial detection, SEPP (Housing) 2021 standards and NSW rental bond data — indicative only, not advice.
@@ -220,6 +233,42 @@ export function GrannyFlatBriefCard({ address, active, lotAreaM2 }: { address?: 
     const selectedCount = structures.length > 0
       ? structures.filter((_, i) => !deselected[i]).length
       : (detect.count ?? 0);
+    // A deselect is a human saying "that is not a separate building" — the
+    // judgement, bound to the structure it was made about. It used to
+    // collapse into a bare count and the per-structure decision was lost.
+    // `index` mirrors detected_structures[].index so the answer joins back to
+    // the bbox the person was looking at; fall back to array position for the
+    // (older) rows that carry no index field.
+    //
+    // Only structures the person actually TOUCHED are reported. Everything
+    // arrives pre-selected, so emitting an answer for an untouched structure
+    // would turn "did not interact" into "kept" — manufacturing the human
+    // judgement this whole change exists to stop manufacturing.
+    // 'kept', not a building type: this card only asks keep-or-reject, so
+    // recording a type here would invent a classification nobody gave.
+    const structureTypesPayload = structures
+      .map((s, i) => ({ s, i }))
+      .filter(({ i }) => i in deselected)
+      .map(({ s, i }) => ({
+        index: typeof s.index === 'number' ? s.index : i,
+        answer: deselected[i] ? 'rejected' : 'kept',
+      }));
+    // …and 'secondary_detections_classified' is claimed only once every structure has
+    // been touched. Clicking Calculate with the defaults untouched is silence,
+    // not a judgement. The value is named for what this card can observe:
+    // the person went through the detections. It cannot cover a building the
+    // scan missed, because there is nothing here to click for one.
+    // Only the SECONDARY structures need touching — the detector designates
+    // the principal dwelling and the backend's coverage rule ignores it.
+    // Requiring it too under-credited a genuine review: a lot with one shed,
+    // properly classified, was recorded as machine_default because the
+    // preselected main dwelling had not been clicked.
+    const secondaryIdx = structures
+      .map((s, i) => ({ s, i }))
+      .filter(({ s }) => !s.is_main_dwelling)
+      .map(({ i }) => i);
+    const allTouched = secondaryIdx.length > 0 && secondaryIdx.every((i) => i in deselected);
+    const countSource = allTouched ? 'secondary_detections_classified' : 'machine_default';
     setConfirm({ kind: 'submitting' });
     try {
       const res = await fetch('/api/satellite/granny-flat', {
@@ -230,6 +279,8 @@ export function GrannyFlatBriefCard({ address, active, lotAreaM2 }: { address?: 
           action: 'confirm',
           detect_id: detect.detectId,
           confirmed_structure_count: selectedCount,
+          confirmed_count_source: countSource,
+          structure_types: structureTypesPayload,
           samgeo_structure_count: detect.samgeoCount ?? null,
           postcode: address.match(/\b(\d{4})\b/)?.[1] || null,
           existing_secondary_dwelling: existingGf,

@@ -28,6 +28,12 @@ from services.portal_constraints import (
 
 logger = logging.getLogger(__name__)
 
+# DQ-30 (.claude/DATA_QUALITY_TRACKER.md): confirmed R1-R4 (no R5, no RU5) is
+# the correct, intentional scope here — matches HOUSING_SEPP_LMR.ELIGIBLE_ZONES
+# in frontend-nextjs/lib/regulatory-constants.ts exactly. Do not widen to match
+# NSW_STANDARD_ZONES.RESIDENTIAL (R1-R5+RU5) in that same file — that's a
+# different, broader scope (the general SEPP Housing 2021 cl 49 "residential
+# zone" definition), not this module's LMR-specific eligibility gate.
 RESIDENTIAL_ZONES = {"R1", "R2", "R3", "R4"}
 
 # Low-density / base residential forms that are legitimately permitted without an LMR

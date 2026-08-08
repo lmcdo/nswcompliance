@@ -147,14 +147,35 @@ def fetch_tile_for_location(
     return canvas, LICENCE, bbox
 
 
+# prior-art-checked: this module's own fetch gains a tile-identity meta return
+# for item-4 execution manifests — the z/x/y values already exist transiently
+# here and are simply no longer discarded; no new source is added.
+def _tile_meta(lat: float, lng: float, grid: int, zoom: int,
+               cached_file: bool) -> dict:
+    """Tile identity for execution manifests (campaign item 4), derived from
+    the values this fetch actually used. The LPI 'Best' mosaic publishes no
+    capture date — recorded explicitly rather than implied."""
+    cx, cy = _lat_lng_to_tile(lat, lng, zoom)
+    return {
+        "provider": "NSW SIX Maps LPI_Imagery_Best",
+        "tile_url_template": TILE_URL,
+        "zoom": zoom,
+        "grid": grid,
+        "centre_tile_xy": [cx, cy],
+        "served_from_disk_cache": cached_file,
+        "capture_date_published": False,
+    }
+
+
 def fetch_tile_to_file(
     lat: float,
     lng: float,
     output_path: Optional[str] = None,
     grid: int = 3,
-) -> tuple[str, str, dict]:
+) -> tuple[str, str, dict, dict]:
     """
-    Fetch tile and save to a file. Returns (file_path, licence, bbox).
+    Fetch tile and save to a file. Returns (file_path, licence, bbox, meta) —
+    meta is the tile identity for execution manifests.
     If output_path is None, saves to /tmp keyed by lat/lng.
     """
     if output_path is None:
@@ -173,7 +194,8 @@ def fetch_tile_to_file(
         except Exception:
             pass
         _, licence, bbox = _compute_bbox_only(lat, lng, grid, cached_zoom)
-        return output_path, licence, bbox
+        return (output_path, licence, bbox,
+                _tile_meta(lat, lng, grid, cached_zoom, cached_file=True))
 
     import numpy as np
 
@@ -205,7 +227,8 @@ def fetch_tile_to_file(
         image.save(output_path)
         Path(zoom_sidecar).write_text(str(zoom))
         logger.info(f"Saved {grid}x{grid} tile grid to {output_path} — {image.size[0]}x{image.size[1]}px (zoom {zoom})")
-        return output_path, licence, bbox
+        return (output_path, licence, bbox,
+                _tile_meta(lat, lng, grid, zoom, cached_file=False))
 
     raise RuntimeError(
         f"SIX Maps center tile unavailable for ({lat:.5f}, {lng:.5f}) at zooms "

@@ -127,4 +127,34 @@ if [ "$FAILSOFT_EXIT" -ne 0 ]; then
 fi
 echo "✅ Brief fail-soft lint passed"
 
+# ── 8. Hardcoded zone-code lint ──────────────────────────────────────────────
+echo ""
+echo "🔍 Running zone-code lint on staged .py/.ts/.tsx changes..."
+python scripts/lint_hardcoded_zone_codes.py
+ZONECODE_EXIT=$?
+if [ "$ZONECODE_EXIT" -ne 0 ]; then
+  echo ""
+  echo "❌ Zone-code lint FAILED — new hardcoded NSW zone-code list in staged changes."
+  echo "   Import from shared/zone-taxonomy.json instead (via"
+  echo "   frontend-nextjs/lib/zone-translation.ts or"
+  echo "   enrichment/config/zone_taxonomy.py), or suppress with  # noqa: zone-codes"
+  echo "   if this genuinely isn't a zone code (e.g. a DCP Part/Chapter key)."
+  exit 1
+fi
+echo "✅ Zone-code lint passed"
+
+echo ""
+echo "🔍 Running fabricated-verdict lint on report surfaces..."
+python scripts/lint_fabricated_verdicts.py --quiet
+VERDICT_RESULT=$?
+if [ $VERDICT_RESULT -ne 0 ]; then
+  echo ""
+  echo "   A report asserted a verdict about a property using data it does not have."
+  echo "   State what was actually assessed instead, or annotate with a reason:"
+  echo "     {/* verdict-ok: <why this is not fabricated> */}"
+  echo "   Detail: python scripts/lint_fabricated_verdicts.py"
+  exit 1
+fi
+echo "✅ Fabricated-verdict lint passed"
+
 echo "✅ Pre-commit checks complete"

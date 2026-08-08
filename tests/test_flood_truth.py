@@ -350,11 +350,16 @@ def test_s1_gap_warning_without_ems_detected_false_mentions_ingest():
 # _build_data_sources
 # ---------------------------------------------------------------------------
 
-def test_data_sources_always_includes_epi_and_s1():
+def test_data_sources_epi_always_s1_only_with_result():
+    """FLIPPED 2026-08-03 (campaign item 4 / DQ-44): previously pinned the S1
+    source as unconditional, but no S1 query has ever run — a served source
+    claim with no query behind it. S1 appears only with a SAR result."""
     out = _outputs()
     sources = _build_data_sources(out)
     assert "NSW SEED EPI WFS" in sources
-    assert "Microsoft Planetary Computer S1 RTC" in sources
+    assert "Microsoft Planetary Computer S1 RTC" not in sources
+    with_sar = _outputs(sar_flood_detected=True)
+    assert "Microsoft Planetary Computer S1 RTC" in _build_data_sources(with_sar)
 
 
 def test_data_sources_includes_ems_when_available():
@@ -1515,6 +1520,10 @@ _EXPECTED_OUTPUT_KEYS = {
     "hawkesbury_flood_level_200aep", "hawkesbury_flood_level_500aep",
     "hawkesbury_flood_level_pmf", "hawkesbury_flood_study",
     "flood_studies", "ground_elevation_m_ahd", "in_100yr_flood_zone",
+    # Names the sources that could have answered the 1% AEP question and were
+    # not reachable. Required by the "not assessed" copy, which has to say what
+    # was tried — an unexplained absence reads as evasion.
+    "in_100yr_flood_zone_unconsulted",
     "compound_heritage", "compound_riparian", "compound_wetlands", "compound_landslide",
     "compound_risk_layers", "compound_risk_notes", "flood_signal",
 }
@@ -1942,17 +1951,23 @@ def test_db_contract_write_report_columns():
 
 
 def test_db_contract_cache_read_columns():
-    """Cache lookup SELECT must read outputs, confidence, data_sources — the 3 fields
-    that run_flood uses from the cached row."""
+    """Cache lookup SELECT must read outputs, confidence, data_sources AND
+    run_date — run_date is load-bearing since output-grounding fix 2: the
+    cached row's ORIGINAL run_date is served and re-written, never re-stamped
+    with today. The regex tolerates the quote-join of adjacent string
+    literals in the multi-line SQL."""
     from services import flood_truth
     src = inspect.getsource(flood_truth.run_flood)
-    match = re.search(r"SELECT\s+([\w\s,]+)\s+FROM\s+property_reports", src)
+    match = re.search(r"SELECT\s+([\w\s,\"]+?)FROM\s+property_reports", src)
     assert match, "run_flood must contain SELECT ... FROM property_reports"
-    columns = {c.strip() for c in match.group(1).split(",")}
-    required = {"outputs", "confidence", "data_sources"}
+    columns = {c.strip() for c in match.group(1).replace('"', " ").split(",")}
+    required = {"outputs", "confidence", "data_sources", "run_date"}
     assert required <= columns, (
         f"Cache query missing columns: {required - columns}"
     )
+    # The age policy is part of the read contract (fix 2): rows older than the
+    # max age are recomputed, not served.
+    assert "90 days" in src, "cache read must carry the 90-day max-age filter"
 
 
 def test_db_contract_normalise_roundtrip():
@@ -2046,14 +2061,34 @@ def test_icontract_signal_contract_active():
 
 
 def _check_postcondition(func, name):
-    """Helper: assert icontract postcondition exists.
+    """Assert the icontract postcondition is actually attached to `func`.
 
-    Skips if icontract isn't installed or if the conftest mock chain prevents
-    icontract from setting __postconditions__ (known WSL + conftest_mocks issue).
-    In CI (GitHub Actions), icontract is installed cleanly and these tests run.
+    This used to skip whenever `__postconditions__` was absent — which is the
+    same observable state as THE DECORATOR HAVING BEEN DELETED, the exact
+    mutant each caller below claims to kill. So the check could never fail,
+    and it never did: it skipped in every environment from the day it was
+    written, because icontract was declared only in
+    scripts/requirements-maintenance.txt and so was never installed anywhere.
+    That also concealed a real defect — `_compute_flood_signal` had no
+    decorator at all, in any commit that ever touched it.
+
+    The old docstring asserted "In CI (GitHub Actions), icontract is installed
+    cleanly and these tests run." That was untrue, and it is why nobody chased
+    the skip for as long as it existed.
+
+    Now: if icontract is importable, a missing postcondition is a FAILURE.
+    Only a genuinely absent library skips, and scripts/check_dependency_skips.py
+    counts that so it cannot go unnoticed either.
     """
-    if not hasattr(func, '__postconditions__'):
-        pytest.skip(f"icontract postconditions not active on {name} (env issue or not installed)")
+    try:
+        import icontract  # noqa: F401
+    except ImportError:
+        pytest.skip(
+            f"icontract not installed, so {name}'s postcondition cannot be checked "
+            "(it is pinned in services/requirements.txt and requirements-test.txt)")
+    assert hasattr(func, '__postconditions__'), (
+        f"{name} has no __postconditions__. icontract IS installed, so the "
+        "@icontract.ensure decorator has been removed or was never added.")
     assert len(func.__postconditions__) > 0, \
         f"{name} must have at least one postcondition"
 

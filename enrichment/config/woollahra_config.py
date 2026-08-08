@@ -10,9 +10,15 @@ Layer assignment:
   use_specific — applies to specific zones or development types
   condition    — only applies when a site condition flag is set (heritage, flood, etc.)
 
-Zone mapping:
-  Woollahra LEP 2014 zones: R2, R3, B1, B2, B4, SP2, RE1, RE2, E2, E3.
-  No R1/R4/R5, no B3/B5-B7. Zone assignments below reflect the LEP zoning map.
+Zone mapping (DQ-30, .claude/DATA_QUALITY_TRACKER.md — updated to current
+zone codes; the previous "LEP 2014" B-zone list below was retired by the
+26 April 2023 NSW Employment Zones Reform):
+  Woollahra's real current zones, confirmed against lep_zone_coverage:
+  C1, C2, E1, MU1, R2, R3, RE1, RE2, SP2, SP3 — ZERO B-zones.
+  Zone assignments below use each retired code's current equivalent (see
+  enrichment/config/zone_taxonomy.py): B1,B2->E1; B4->MU1.
+  (Historical note, no longer accurate: this file previously said
+  "Woollahra LEP 2014 zones: R2, R3, B1, B2, B4, SP2, RE1, RE2, E2, E3.")
 
 Source: https://www.woollahra.nsw.gov.au/Building-and-development/Development-rules
 
@@ -107,7 +113,7 @@ WOOLLAHRA_CONFIG = {
         "D1": {
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["B1"],
+            "applicable_zones": ["E1"],
             "applicable_dev_types": [
                 "commercial_premises", "retail_premises", "office_premises",
                 "food_and_drink_premises",
@@ -116,7 +122,7 @@ WOOLLAHRA_CONFIG = {
         "D2": {
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["B4"],
+            "applicable_zones": ["MU1"],
             "applicable_dev_types": [
                 "commercial_premises", "shop_top_housing",
                 "residential_flat_building",
@@ -125,13 +131,13 @@ WOOLLAHRA_CONFIG = {
         "D3": {
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["B1", "B2", "B4"],
+            "applicable_zones": ["E1", "MU1"],
             "applicable_dev_types": ["ALL"],
         },
         "D4": {
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["B4"],
+            "applicable_zones": ["MU1"],
             "applicable_dev_types": [
                 "commercial_premises", "shop_top_housing",
                 "residential_flat_building",
@@ -140,7 +146,7 @@ WOOLLAHRA_CONFIG = {
         "D5": {
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["B2"],
+            "applicable_zones": ["E1"],
             "applicable_dev_types": [
                 "commercial_premises", "retail_premises", "office_premises",
             ],
@@ -148,7 +154,7 @@ WOOLLAHRA_CONFIG = {
         "D6": {
             "layer": "use_specific",
             "topic": "commercial",
-            "applicable_zones": ["B1"],
+            "applicable_zones": ["E1"],
             "applicable_dev_types": [
                 "commercial_premises", "retail_premises",
                 "food_and_drink_premises",
@@ -217,7 +223,7 @@ WOOLLAHRA_CONFIG = {
         "F3": {
             "layer": "use_specific",
             "topic": "licensed_premises",
-            "applicable_zones": ["B1", "B2", "B4"],
+            "applicable_zones": ["E1", "MU1"],
             "applicable_dev_types": ["food_and_drink_premises"],
         },
     },

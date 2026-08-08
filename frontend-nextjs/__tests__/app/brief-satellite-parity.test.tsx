@@ -81,8 +81,6 @@ const KINCUMBER_SHADOW: ShadowData = {
   adg_compliant: true,
   worst_case_scenario: 'jun21_3pm',
   confidence: 'low',
-  construction_change_detected: false,
-  construction_change_note: 'Sentinel-2 timeout',
   scenarios: [
     { date_label: 'ADG worst case 9am Jun 21', time_label: '09:00', shadow_length_m: 19.0, overlap_pct: 9.5, overlaps_subject_lot: false },
     { date_label: 'ADG worst case noon Jun 21', time_label: '12:00', shadow_length_m: 13.8, overlap_pct: 6.3, overlaps_subject_lot: false },
@@ -117,17 +115,15 @@ describe('ShadowDisplay — full scenario table + confidence caveats', () => {
     expect(screen.getByText(/Run confidence:/)).toBeInTheDocument();
   });
 
-  it('renders the construction-change note instead of a false clear reading', () => {
-    render(<ShadowDisplay data={KINCUMBER_SHADOW} />);
-    expect(screen.getByText(/Construction change check: Sentinel-2 timeout/)).toBeInTheDocument();
-    expect(screen.queryByText(/No construction-scale surface change/)).toBeNull();
-  });
-
-  it('states the checked-clear reading when the change check completed without a note', () => {
-    render(<ShadowDisplay data={{ ...KINCUMBER_SHADOW, construction_change_note: null }} />);
-    expect(screen.getByText(/No construction-scale surface change detected/)).toBeInTheDocument();
-  });
-
+  // REMOVED 2026-08-07 (§4h): four tests pinned the Sentinel-2 surface-change
+  // three-state wording — "renders the surface-change note instead of a false
+  // clear reading", "states the clear reading only when a real score came
+  // back", "does NOT claim a clear reading from the legacy no-data score of
+  // exactly 0.0", and "never attributes surface change to a named neighbouring
+  // lot". They were correct against the old doctrine and are deleted with the
+  // feature, not weakened: the check returned a reading in 0 of 538 attempts
+  // and cannot resolve a single lot at 20 m SWIR, so the whole section is gone
+  // rather than reworded. Nothing renders the state they asserted.
   it('omits the caveat when the height came from a mapped LEP control', () => {
     render(<ShadowDisplay data={{ ...KINCUMBER_SHADOW, height_source: 'spatial_overlays', confidence: 'medium' }} />);
     expect(screen.queryByText(/standard two-storey height — confidence low/)).toBeNull();
@@ -156,5 +152,68 @@ describe('page source — new satellite rows are wired', () => {
     expect(PAGE_SRC).toContain('best_azimuth_deg');
     expect(PAGE_SRC).toContain('is_commercial_scale');
     expect(PAGE_SRC).toContain('Best roof segment');
+  });
+});
+
+describe('ShadowDisplay — a scenario with no result must not read as a clear one', () => {
+  const UNAVAILABLE_SCENARIO = {
+    date_label: '21 Jun',
+    time_label: '12:00',
+    shadow_length_m: null,
+    overlap_pct: null,
+    overlaps_subject_lot: null,
+    status: 'unavailable',
+    error_note: 'the shadow could not be intersected with this lot\'s boundary — no overlap was measured',
+  };
+
+  it('says what was tried, why there is no answer, and that it is neither a pass nor a fail', () => {
+    render(<ShadowDisplay data={{ ...KINCUMBER_SHADOW, scenarios: [UNAVAILABLE_SCENARIO] }} />);
+    expect(screen.getByText(/Not assessed/)).toBeInTheDocument();
+    // (1) why there is no answer — named in plain words, not internals
+    expect(screen.getByText(/recorded lot boundary is incomplete/)).toBeInTheDocument();
+    // (2) explicitly not a verdict in either direction
+    expect(screen.getByText(/not a result/)).toBeInTheDocument();
+    expect(screen.getByText(/neither a pass nor a fail/)).toBeInTheDocument();
+    // (3) what the reader can do about it
+    expect(screen.getByText(/ask the council/)).toBeInTheDocument();
+  });
+
+  it('does NOT render the operator-facing internals to the reader', () => {
+    render(<ShadowDisplay data={{ ...KINCUMBER_SHADOW, scenarios: [UNAVAILABLE_SCENARIO] }} />);
+    expect(screen.queryByText(/could not be intersected/)).toBeNull();
+    expect(screen.queryByText(/no overlap was measured/)).toBeNull();
+  });
+
+  it('does not fall back to an em dash or a zero for the missing measurements', () => {
+    const { container } = render(
+      <ShadowDisplay data={{ ...KINCUMBER_SHADOW, scenarios: [UNAVAILABLE_SCENARIO] }} />
+    );
+    const row = container.querySelector('tbody tr');
+    expect(row).not.toBeNull();
+    // An empty cell reads as "fine" to someone skimming — that is the defect.
+    expect(row!.textContent).not.toMatch(/0 m|0%|—\s*—/);
+    expect(row!.className).toContain('amber');
+  });
+
+  it('a computed scenario is unaffected — the amber state must not leak', () => {
+    const { container } = render(<ShadowDisplay data={{
+      ...KINCUMBER_SHADOW,
+      scenarios: [{ date_label: '21 Jun', time_label: '12:00', shadow_length_m: 14,
+                    overlap_pct: 30, overlaps_subject_lot: true, status: 'computed' }],
+    }} />);
+    const row = container.querySelector('tbody tr');
+    expect(row!.textContent).toContain('14 m');
+    expect(row!.className).not.toContain('amber');
+    expect(screen.queryByText(/Not assessed/)).toBeNull();
+  });
+
+  it('legacy rows with no status field still render as computed results', () => {
+    const { container } = render(<ShadowDisplay data={{
+      ...KINCUMBER_SHADOW,
+      scenarios: [{ date_label: '21 Jun', time_label: '12:00', shadow_length_m: 14,
+                    overlap_pct: 30, overlaps_subject_lot: true }],
+    }} />);
+    expect(container.querySelector('tbody tr')!.textContent).toContain('14 m');
+    expect(screen.queryByText(/Not assessed/)).toBeNull();
   });
 });

@@ -2,6 +2,11 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { SharedReportPage } from '@/components/reports/SharedReportPage';
 import { getAdminClient } from '@/lib/supabase/admin';
+import {
+  FLOOD_ZONE_NOT_ASSESSED_LABEL,
+  floodZoneUnavailableMessage,
+  readFloodZoneVerdict,
+} from '@/lib/not-assessed';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,11 +53,28 @@ export default async function FloodReportPage(
       confidence={row.confidence}
       generatePath="/api/reports/flood/generate"
       highlights={[
-        {
-          label: '100-year flood zone',
-          value: outputs.in_100yr_flood_zone ? 'Yes — in flood zone' : 'No',
-          severity: outputs.in_100yr_flood_zone ? 'high' : 'low',
-        },
+        // THREE states, read through a validator rather than a cast. A
+        // truthiness ternary stood here and rendered every unanswered case as
+        // 'No' at severity 'low' — the reassuring end of the scale, for a
+        // question nobody had answered.
+        ...(() => {
+          const verdict = readFloodZoneVerdict(outputs.in_100yr_flood_zone);
+          return [{
+            label: '100-year flood zone',
+            value: verdict == null
+              ? FLOOD_ZONE_NOT_ASSESSED_LABEL
+              : verdict ? 'Yes — in flood zone' : 'No',
+            severity: (verdict == null ? 'medium' : verdict ? 'high' : 'low') as
+              'high' | 'medium' | 'low',
+            detail: verdict == null
+              ? floodZoneUnavailableMessage(
+                  Array.isArray(outputs.in_100yr_flood_zone_unconsulted)
+                    ? (outputs.in_100yr_flood_zone_unconsulted as string[])
+                    : null,
+                )
+              : undefined,
+          }];
+        })(),
         {
           label: 'EPI flood classification',
           value: (outputs.epi_flood_label as string) ?? 'Not classified',

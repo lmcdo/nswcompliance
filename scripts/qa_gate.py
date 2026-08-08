@@ -34,6 +34,7 @@ TIER_REQUIREMENTS = {
         "min_break_it": 5,
         "min_words_per_field": 8,
         "sections_required": [1, 2, 3, 4, 5, 6, 7],
+        "require_falsifiable_check": True,
     },
     "standard": {
         "pre_impl_fields": ["existing_data", "assumption_mismatch", "new_vs_existing"],
@@ -41,6 +42,7 @@ TIER_REQUIREMENTS = {
         "min_break_it": 3,
         "min_words_per_field": 5,
         "sections_required": [1, 2, 3, 4, 5, 6, 7],
+        "require_falsifiable_check": True,
     },
     "minor": {
         "pre_impl_fields": [],
@@ -48,8 +50,107 @@ TIER_REQUIREMENTS = {
         "min_break_it": 1,
         "min_words_per_field": 3,
         "sections_required": [1, 6, 7],
+        # Deliberately NOT required at minor tier: a copy tweak has no meaningful
+        # falsifiable check, and a gate that fires on every trivial change gets
+        # dismissed by muscle memory within a week (DQ-34's alarm-fatigue lesson).
+        # Rare and meaningful, or it protects nothing.
+        "require_falsifiable_check": False,
     },
 }
+
+# ─── Falsifiability gate ─────────────────────────────────────────────────────
+# ORIGIN: 2026-08-01. DQ-30 was marked "Fixed" on a "0% drift" check, which
+# re-ran the tagger and compared its output to the stored value. That is a
+# SELF-COMPARISON: when the code itself is wrong, drift is 0% and the data is
+# still broken. It could not fail. 241 rows — 112 live and served — survived it.
+# The project already had the rule in writing ("a completion check must be able
+# to fail"); it did not prevent this, because a rule in a document is not
+# enforcement. This is the enforcement.
+#
+# It asks the one question a tautological check cannot answer:
+#   WHAT COMMAND, AND WHAT MAKES IT GO RED?
+
+_SELF_COMPARISON_RE = re.compile(
+    # 1. The word itself.
+    r"\bdrift\b"
+    # 2. Comparing output explicitly to itself.
+    r"|compare[sd]?\s+(?:the\s+)?(?:code|output|result)s?\s+(?:to|against|with)\s+"
+    r"(?:it|its|itself|the\s+same)"
+    r"|matches?\s+(?:the\s+)?(?:current|existing)\s+(?:code|output)"
+    # 3. The DESCRIBED form, which the first version missed and a test caught:
+    #    re-run / recompute, then compare the result to what is already stored.
+    #    Note this deliberately requires a re-derivation verb — comparing STORED
+    #    data against an external AUTHORITY ("stored zone codes absent from
+    #    lep_zone_coverage") is the correct pattern and must not be flagged.
+    r"|(?:re-?run|re-?comput\w*|re-?generat\w*|re-?derive\w*)"
+    r".{0,60}?(?:compare\w*|differs?|diff\b|match\w*|same)"
+    r".{0,40}?(?:stored|existing|previous|current|already)",
+    re.I | re.S,
+)
+
+_LOOKS_RUNNABLE_RE = re.compile(
+    r"(python|pytest|npx|npm|psql|bash|\./|SELECT\b|\.py\b|\.sh\b|\.ts\b)", re.I
+)
+
+
+def check_falsifiable(report: dict, reqs: dict) -> list[str]:
+    """Require a named check plus the condition under which it FAILS.
+
+    This is NOT a tautology detector — that is undecidable in general. It
+    enforces the two things whose absence let the original defect through: a
+    runnable command, and an explicit red condition stated separately from the
+    command itself.
+    """
+    errors: list[str] = []
+    if not reqs.get("require_falsifiable_check"):
+        return errors
+
+    fc = report.get("falsifiable_check")
+    if not isinstance(fc, dict) or not fc:
+        return [
+            "Section 1 falsifiable_check: MISSING. Add "
+            '"falsifiable_check": {"command": "<what you ran>", '
+            '"fails_when": "<what makes it go red>"}. '
+            "Ask: if the bug were still present, would this go red? If not, it is "
+            "not a verification. (Origin: DQ-30 was marked Fixed on a check that "
+            "could not fail.)"
+        ]
+
+    command = str(fc.get("command", "")).strip()
+    fails_when = str(fc.get("fails_when", "")).strip()
+
+    errors.extend(validate_non_empty(command, "Section 1 falsifiable_check.command"))
+    errors.extend(validate_non_empty(fails_when, "Section 1 falsifiable_check.fails_when"))
+    if not command or not fails_when:
+        return errors
+
+    if not _LOOKS_RUNNABLE_RE.search(command):
+        errors.append(
+            f"Section 1 falsifiable_check.command ('{command[:60]}') does not look "
+            "runnable. Name the actual command or query, not a description of one — "
+            "a check nobody can execute is not a check."
+        )
+
+    errors.extend(validate_min_words(
+        fails_when, "Section 1 falsifiable_check.fails_when", reqs["min_words_per_field"]
+    ))
+
+    if _SELF_COMPARISON_RE.search(command) or _SELF_COMPARISON_RE.search(fails_when):
+        errors.append(
+            "Section 1 falsifiable_check: reads as a SELF-COMPARISON (re-running the "
+            "code and checking it agrees with itself). That cannot fail when the code "
+            "is wrong — exactly how DQ-30 was marked Fixed while 112 live rows stayed "
+            "broken. Compare against an external authority instead (e.g. "
+            "lep_zone_coverage for zone codes), or state why this is not self-referential."
+        )
+
+    if fails_when.strip().lower() == command.strip().lower():
+        errors.append(
+            "Section 1 falsifiable_check: fails_when merely repeats command. State the "
+            "CONDITION that turns it red, not the command again."
+        )
+
+    return errors
 
 FILE_LINE_PATTERN = re.compile(r'([\w/\\._-]+):(\d+)')
 
@@ -1058,6 +1159,99 @@ def scan_diff_for_untyped_method_calls(
     return errors
 
 
+# ─── Layer 10: Doc-claim check (OBSERVATION MODE — reports, blocks nothing) ──
+#
+# ORIGIN: 2026-08-07/08. Four times in two days a session acted on a false
+# premise that came from a DOCUMENT, not from code: services/CLAUDE.md's Threat
+# Radar claim, "13/16 human confirmations" that were zero, a pre-written APRA
+# test that never existed, and a v1.2 changelog entry for a module whose only
+# version is 1.1. Every layer above this one checks CODE. Nothing checked the
+# documents describing it.
+#
+# Scope is the tractable half only — a resolvable path, a version literal
+# attributed to a code constant, a dependency that is actually installed. It
+# cannot decide "Threat Radar uses this pipeline" or "13 people confirmed", and
+# the messages say so rather than implying broader cover.
+#
+# OBSERVATION MODE, deliberately. Findings print; `passed` is untouched. This
+# project's own incident log holds a lint that blocked a routine merge on day
+# one (DQ-34, alarm fatigue), so blocking is earned with an observed
+# false-positive rate, not assumed. See the PR body for what would earn it.
+
+
+def _load_doc_claims():
+    """Load the sibling module by path.
+
+    qa_gate.py is executed both as a script (scripts/ on sys.path) and via
+    importlib.util.spec_from_file_location from tests (scripts/ NOT on
+    sys.path), so a plain `import doc_claims` works in one case and not the
+    other. Returning None on failure is correct here and only here: an
+    observation-mode check that cannot load must not break the gate that
+    surrounds it.
+    """
+    try:
+        import importlib.util
+
+        path = Path(__file__).resolve().parent / "doc_claims.py"
+        spec = importlib.util.spec_from_file_location("qa_gate_doc_claims", path)
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        return module
+    except Exception:  # noqa: BLE001 — observation mode never breaks the gate
+        return None
+
+
+def observe_doc_claims(
+    report_path: str | None, diff_files: list[str] | None, project_dir: str | None
+) -> list[str]:
+    """Return human-readable observations. NEVER returns blocking errors."""
+    if not project_dir:
+        return ["doc-claim check: SKIPPED — no project dir (unknowable, not a pass)"]
+
+    module = _load_doc_claims()
+    if module is None:
+        return [
+            "doc-claim check: SKIPPED — scripts/doc_claims.py could not be loaded "
+            "(unknowable, not a pass)"
+        ]
+
+    # Diff-scoped, like every other file scanner here: the whole 124-doc corpus
+    # carries inherited findings, and re-printing them on an unrelated change is
+    # how a check gets ignored.
+    docs = sorted({f for f in (diff_files or []) if f.endswith(".md")})
+    reports = [report_path] if report_path else []
+    if not docs and not reports:
+        return []
+
+    try:
+        result = module.scan(project_dir, docs=docs, reports=reports)
+    except Exception as exc:  # noqa: BLE001
+        return [f"doc-claim check: SKIPPED — scan raised {type(exc).__name__}: {exc}"]
+
+    baseline = module.load_baseline(Path(project_dir))
+    known = set(baseline.get("fingerprints") or []) if baseline else set()
+    fresh = [v for v in result.violations if v.fingerprint() not in known]
+
+    out: list[str] = []
+    for v in fresh:
+        out.append(f"doc-claim {v.render()}")  # render() already carries the kind
+    for note in result.notes:
+        out.append(f"doc-claim ? {note}")
+    if fresh:
+        carried = len(result.violations) - len(fresh)
+        out.append(
+            f"doc-claim: {len(fresh)} new finding(s), {carried} already in the "
+            f"baseline. Observation mode — nothing is blocked. Scope is paths, "
+            f"version literals and dependency declarations only; a semantic "
+            f"claim about behaviour is NOT checked and a clean run does not mean "
+            f"the doc is true."
+        )
+    return out
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -1087,6 +1281,8 @@ def validate_report(
         errors.append("Section 1: missing tier justification")
     if not files:
         errors.append("Section 1: no files listed")
+
+    errors.extend(check_falsifiable(report, reqs))
 
     # --- Section 2: Pre-implementation ---
     if 2 in reqs["sections_required"]:
@@ -1321,6 +1517,15 @@ def main():
         sys.exit(1)
 
     passed, errors, summary = validate_report(report, diff_files, project_dir)
+
+    # Observation mode. Printed before the verdict so it is visible on a pass
+    # too, and deliberately NOT folded into `passed` or `errors`.
+    observations = observe_doc_claims(report_path, diff_files, project_dir)
+    if observations:
+        print("QA-GATE: doc-claim observations (not blocking):")
+        for note in observations:
+            print(f"  ~ {note}")
+        print()
 
     if passed:
         print("QA-GATE: PASSED")

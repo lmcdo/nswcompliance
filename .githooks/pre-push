@@ -4,6 +4,7 @@
 #
 # Checks:
 #   0. Push-to-main guard
+#   0b. Planted-defect guard (a falsifiability proof left a mutation on disk)
 #   1. Python unit tests (1794+ tests)
 #   1b. Mutation test count baselines (ratchet — counts never drop)
 #   2. Frontend Jest tests (615+ tests)
@@ -23,6 +24,35 @@ while read local_ref local_sha remote_ref remote_sha; do
 done
 
 set -e
+
+# ── 0b. Planted-defect guard ────────────────────────────────────────────────
+# A falsifiability proof plants a defect, confirms the check goes red, and
+# restores. On 2026-08-07 one of those scripts died before its restore line and
+# left the planted defect in the working tree; it was caught by a later grep and
+# could have shipped. scripts/falsifiability.py writes a sidecar before every
+# plant and deletes it only after a verified restore, so a surviving sidecar is
+# proof that a run died mid-plant.
+#
+# This one BLOCKS rather than warning, and unlike a lint it cannot false-positive:
+# the sidecar exists only if a plant was started and not verifiably undone.
+#
+# The sidecar search runs in SHELL, not in Python, and does not depend on the
+# helper existing. Gating it on `-f scripts/falsifiability.py` would fail open
+# in exactly the situation that matters most: a proof leaves a mutation behind
+# and the helper is then deleted, renamed or missing from the checkout.
+SIDECARS=$(find . -name '*.falsifiability-bak' -not -path './node_modules/*' \
+                  -not -path './.git/*' 2>/dev/null)
+if [ -n "$SIDECARS" ]; then
+  echo ""
+  echo "=========================================="
+  echo "  PUSH REJECTED — a planted defect is still on disk"
+  echo "=========================================="
+  echo "$SIDECARS"
+  echo ""
+  echo "  A falsifiability proof died before restoring its plant."
+  echo "  Restore it: python scripts/falsifiability.py --recover"
+  exit 1
+fi
 
 # ── Advisory: warn if changed files overlap an open PR (non-blocking) ────────
 # Catches accidental duplication of in-flight work that code guards can't see.
@@ -69,6 +99,87 @@ if [ -f scripts/brief_field_coverage_ratchet.py ]; then
   fi
 else
   echo "  Skipping (no ratchet script)."
+fi
+echo ""
+
+# ── 1d. Schema contract — code's SQL identifiers vs the live catalog ─────────
+# Catches a table/column that was renamed or dropped out from under a query.
+# Nothing else does: SQL identifiers sit inside template literals and Python
+# strings, invisible to tsc and to every test that avoids a real database.
+#
+# Needs DATABASE_URL. When it is absent (bare worktree, no .env) the check is
+# SKIPPED and says so — it is not reported as a pass, and CI (.github/workflows/
+# gates.yml) runs it unconditionally on every PR, so nothing relies on this
+# local run having happened.
+
+echo "=== [1d/5] Schema contract (SQL identifiers vs live catalog) ==="
+if [ -f scripts/validate_schema_contract.py ]; then
+  # `|| SCHEMA_RESULT=$?` keeps this exempt from the `set -e` above; a bare
+  # invocation would abort the hook on exit 2 and block the push for the one
+  # case that is meant to be a skip.
+  SCHEMA_RESULT=0
+  python scripts/validate_schema_contract.py --quiet 2>&1 || SCHEMA_RESULT=$?
+  if [ $SCHEMA_RESULT -eq 2 ]; then
+    echo "⏭  Skipped: no DATABASE_URL reachable — NOT verified locally. CI enforces this."
+  elif [ $SCHEMA_RESULT -ne 0 ]; then
+    echo ""
+    echo "Schema contract FAILED. Push blocked."
+    echo "A NEW query references a table/column the database does not have,"
+    echo "or a baseline entry is now fixed and must be deleted."
+    echo "Detail: python scripts/validate_schema_contract.py"
+    exit 1
+  fi
+else
+  echo "  Skipping (no schema contract script)."
+fi
+
+echo "=== [1e/5] Controls provenance (every numeric control accounted for) ==="
+if [ -f scripts/validate_controls_provenance.py ]; then
+  # Same `|| RESULT=$?` shape as [1d]: exit 2 means no DATABASE_URL, which is a
+  # skip, and a bare invocation would abort the hook under `set -e`.
+  PROV_RESULT=0
+  python scripts/validate_controls_provenance.py --quiet 2>&1 || PROV_RESULT=$?
+  if [ $PROV_RESULT -eq 2 ]; then
+    echo "⏭  Skipped: no DATABASE_URL reachable — NOT verified locally. CI enforces this."
+  elif [ $PROV_RESULT -ne 0 ]; then
+    echo ""
+    echo "Controls provenance FAILED. Push blocked."
+    echo "Scope note: this covers all 1,069 rows regardless of is_current — an"
+    echo "unattributable control is a defect whether or not it is currently served."
+    echo "A row in dcp_setback_controls has no provenance of any kind: no committed"
+    echo "script regenerates it and it carries no source_text + section_ref to"
+    echo "re-check it against. An unattributable control is indistinguishable from"
+    echo "a guess, which is the whole differentiator this table represents."
+    echo "Detail: python scripts/validate_controls_provenance.py"
+    exit 1
+  fi
+else
+  echo "  Skipping (no controls provenance script)."
+fi
+
+echo "=== [1f/5] Control values vs their own source_text ==="
+if [ -f scripts/validate_control_source_values.py ]; then
+  # Same `|| RESULT=$?` shape as [1d]/[1e]: 2 is "no DATABASE_URL" (a skip), 1 is
+  # a real finding. Unlike provenance, this one covers all 1,069 rows rather than
+  # the 42 the corpus can reach, because it compares each number to the quote
+  # stored beside it instead of to the provisions corpus.
+  SRCVAL_RESULT=0
+  python scripts/validate_control_source_values.py 2>&1 || SRCVAL_RESULT=$?
+  if [ $SRCVAL_RESULT -eq 2 ]; then
+    echo "⏭  Skipped: no DATABASE_URL reachable — NOT verified locally. CI enforces this."
+  elif [ $SRCVAL_RESULT -ne 0 ]; then
+    echo ""
+    echo "Control source-value check FAILED. Push blocked."
+    echo "Either a control's stored number is not derivable from its own quoted"
+    echo "source_text by any named rule and is not in the accepted baseline, or a"
+    echo "SERVED control carries a value its own note admits was assumed."
+    echo "Either correct the value, correct the quote, or add the rule that names"
+    echo "the derivation. Widening the baseline to make this pass defeats it."
+    echo "Detail: python scripts/validate_control_source_values.py --show-evidence"
+    exit 1
+  fi
+else
+  echo "  Skipping (no control source-value script)."
 fi
 echo ""
 
@@ -227,21 +338,55 @@ else
   echo "node not available — skipping duplication ratchet."
 fi
 
-# ── [7] Advisory: GPT-5.6 Sol cross-review (non-blocking) ────────────────────
+# ── [7] GPT-5.6 Sol cross-review — BLOCKING on HIGH for served/printed output ─
 # A different-model-family (OpenAI) second opinion on the pushed diff, scored
-# against .claude/rules/pre-pr-review.md. Findings are CANDIDATES to verify by
-# hand — Sol can be confidently wrong (it once returned a 0.91 HIGH that was a
-# false positive), so this NEVER blocks a push and is NOT a merge gate.
-# Runs automatically when source code changed and an OpenAI key is available
-# (OPENAI_API_KEY env or a repo .env / .env.local). Costs ~$0.30 + ~20s.
-# Disable:  export SOL_REVIEW=0    Force on:  export SOL_REVIEW=1 (default)
+# against .claude/rules/pre-pr-review.md.
+#
+# Why it blocks at all: it found a real defect on both PRs it was run against
+# (2026-08-01) — an unreachable-code regression that made two Marrickville DCP
+# parts fall through to ALL, and a null-guard that printed a definitive "does not
+# apply" from missing zone data. The full gate stack passed both times. An
+# advisory line that scrolls past the end of a push is not a control.
+#
+# Why it blocks NARROWLY: roughly one finding in three has been invalid. Blocking
+# on everything would train people to bypass it, which is worse than not having
+# it. So: HIGH severity AND the diff touches output a customer reads. Everything
+# else stays advisory.
+SOL_SCOPED_PATHS='^(frontend-nextjs/(app/api|components/pdf|lib/pdf)/|scripts/generate_conveyancing_report\.py|scripts/conveyancing_db\.py|services/conveyancing\.py)'
+SOL_TOUCHES_OUTPUT=$(echo "$CHANGED_CODE" | grep -E "$SOL_SCOPED_PATHS" || true)
+
 if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$CHANGED_CODE" ] && [ -f scripts/cross_review.py ]; then
   echo ""
-  echo "=== [7] Sol cross-review (advisory, non-blocking) ==="
-  # `|| true` guarantees a clean exit even on findings, missing key, or API error
-  # (set -e is active above) — a review outage must never stop a push.
-  python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 || true
-  echo "(advisory only — verify each finding against the code; never a merge gate)"
+  if [ -n "$SOL_TOUCHES_OUTPUT" ]; then
+    echo "=== [7] Sol cross-review (BLOCKING on HIGH — diff touches served/printed output) ==="
+    SOL_RC=0
+    python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 --fail-on high || SOL_RC=$?
+    if [ "$SOL_RC" -ne 0 ]; then
+      # A HIGH finding can still be wrong. The escape is deliberate and costs a
+      # sentence: verify it, and if it is a false positive say why in one line.
+      if [ -n "$SOL_OVERRIDE" ] && [ ${#SOL_OVERRIDE} -ge 15 ]; then
+        echo ""
+        echo "⚠  Sol HIGH finding overridden: $SOL_OVERRIDE"
+        echo "   (recorded here only — repeat it in the PR body)"
+      else
+        echo ""
+        echo "Sol reported a HIGH finding on output a customer reads. Push blocked."
+        echo ""
+        echo "  1. Verify the finding against the code. It is wrong roughly 1 time in 3."
+        echo "  2. If it is REAL   — fix it."
+        echo "  3. If it is WRONG  — re-push with a one-line reason, e.g."
+        echo "       SOL_OVERRIDE=\"finding assumes X, but Y guards it at line N\" git push"
+        echo ""
+        echo "  Emergency bypass (leaves no reason on record): git push --no-verify"
+        exit 1
+      fi
+    fi
+  else
+    echo "=== [7] Sol cross-review (advisory — diff does not touch served/printed output) ==="
+    # `|| true`: set -e is active, and a review outage must never stop a push.
+    python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 || true
+    echo "(advisory only — verify each finding against the code; never a merge gate)"
+  fi
 fi
 
 echo ""

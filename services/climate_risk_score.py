@@ -27,6 +27,12 @@ Version: 1.1
 Date: 2026-05-18
 
 Changelog:
+    1.2 (2026-08-03): Every HazardScore carries confidence_reason (a displayed
+        badge is a representation; output-grounding item 1). Bushfire no-data
+        path fixed: an RFS live-fallback failure now yields available=False /
+        confidence "low" / "could not be determined" instead of a confident
+        "No" at "high" — the composite excludes it from the denominator, the
+        same treatment _normalize_heat already gave missing NARCliM data.
     1.1 (2026-05-18): Added landslide as 6th hazard. Weights redistributed
         from 0.20x5 to ~0.167x6. Landslide data was already ingested in
         spatial_overlays but not wired into scoring.
@@ -97,9 +103,14 @@ class HazardScore:
     weighted_score: float     # raw_score × weight
     present: bool             # Whether any exposure detected
     detail: str               # Human-readable explanation
-    confidence: str           # "high" (spatial overlay) or "medium" (projection)
+    confidence: str           # "high" / "medium" / "low"
     data_source: str
     available: bool = True    # False when data source unavailable (not same as no-risk)
+    # Every confidence value must carry its reason — a displayed badge is a
+    # representation, and a badge without a stated basis cannot be told apart
+    # from a hardcoded one (granny_flat's confidence_reason pattern; output-
+    # grounding item 1, 2026-08-03). Never leave this empty.
+    confidence_reason: str = ""
 
 
 @dataclass
@@ -135,6 +146,7 @@ class ClimateRiskResult:
                     "present": h.present,
                     "detail": h.detail,
                     "confidence": h.confidence,
+                    "confidence_reason": h.confidence_reason,
                     "data_source": h.data_source,
                     "available": h.available,
                 }
@@ -211,6 +223,14 @@ def _normalize_flood(overlays: dict[str, list[dict]]) -> HazardScore:
         present=present,
         detail=f"Flood planning layer: {'Yes' if present else 'No'}",
         confidence="high",
+        confidence_reason=(
+            "Point intersects the ingested EPI flood overlay."
+            if present else
+            "No intersection in the ingested EPI flood overlay. Overlay "
+            "ingest is geographically partial, so absence here does not "
+            "distinguish unmapped-at-point from layer-not-ingested (absence "
+            "census S1/S3); no secondary source disambiguates flood."
+        ),
         data_source="NSW Planning Portal EPI Flood layers via spatial_overlays",
     )
 
@@ -223,28 +243,72 @@ def _normalize_bushfire(
     """Bushfire: binary presence in bushfire prone land.
 
     Falls back to RFS BFPL live API when spatial_overlays has no bushfire data
-    (historical ingest was bbox-limited to Greater Sydney).
+    (historical ingest was bbox-limited to Greater Sydney). The fallback OUTCOME
+    decides the confidence: an empty overlay alone cannot distinguish "not
+    prone" from "not ingested here" (absence census S1/S3), so the live RFS
+    check is the disambiguator — and when it fails or cannot run, nothing
+    disambiguates, and the honest state is unavailable (the _normalize_heat
+    shape), never a confident "No".
+
+    Before 2026-08-03 the no-data path was `confidence="high" if hits else
+    ("medium" if present else "high")` — an RFS failure was swallowed and the
+    hazard served "Bushfire Prone Land: No" at "high" (output-grounding item 1;
+    the DQ-36 class: a verdict about data the check never received).
     """
     hits = overlays.get("bushfire", [])
     present = len(hits) > 0
     source = "NSW RFS Bushfire Prone Land Map via spatial_overlays"
 
-    # Fallback: query RFS live API when PostGIS has no data and coords available
+    # rfs_state: "not_needed" (overlay hit) | "prone" | "clear" | "failed" |
+    # "skipped" (no coords to query with)
+    rfs_state = "not_needed" if present else "skipped"
     if not present and lat is not None and lng is not None:
         try:
             rfs_result = _query_rfs_bfpl(lat, lng)
             if rfs_result and rfs_result.get("is_bushfire_prone") is True:
                 present = True
+                rfs_state = "prone"
                 source = "NSW RFS Bushfire Prone Land Map (live API fallback)"
                 logger.info(
                     "Bushfire: spatial_overlays empty, RFS live API returned prone "
                     "for (%.4f, %.4f)", lat, lng,
                 )
+            else:
+                rfs_state = "clear"
         except Exception:
+            rfs_state = "failed"
             logger.warning(
                 "Bushfire RFS live API fallback failed for (%.4f, %.4f)",
                 lat, lng, exc_info=True,
             )
+
+    if rfs_state == "not_needed":
+        confidence, reason, available = "high", (
+            "Point intersects the ingested RFS Bushfire Prone Land overlay."
+        ), True
+        detail = "Bushfire Prone Land: Yes"
+    elif rfs_state == "prone":
+        confidence, reason, available = "medium", (
+            "Live RFS point query returned prone; the point is outside our "
+            "ingested overlay extent."
+        ), True
+        detail = "Bushfire Prone Land: Yes"
+    elif rfs_state == "clear":
+        confidence, reason, available = "high", (
+            "Ingested overlay has no intersection and the live RFS point "
+            "query agrees: not mapped as bushfire prone."
+        ), True
+        detail = "Bushfire Prone Land: No"
+    else:  # "failed" or "skipped" — nothing disambiguates the empty overlay
+        confidence, reason, available = "low", (
+            "Ingested overlay has no intersection here, and the live RFS "
+            "check "
+            + ("failed" if rfs_state == "failed" else "could not run (no coordinates)")
+            + " — bushfire exposure could not be determined (overlay ingest "
+            "is geographically partial)."
+        ), False
+        detail = "Bushfire Prone Land: could not be determined"
+        source = "NSW RFS Bushfire Prone Land Map — unavailable"
 
     raw = 1.0 if present else 0.0
     return HazardScore(
@@ -253,9 +317,11 @@ def _normalize_bushfire(
         weight=WEIGHTS["bushfire"],
         weighted_score=raw * WEIGHTS["bushfire"],
         present=present,
-        detail=f"Bushfire Prone Land: {'Yes' if present else 'No'}",
-        confidence="high" if hits else ("medium" if present else "high"),
+        detail=detail,
+        confidence=confidence,
+        confidence_reason=reason,
         data_source=source,
+        available=available,
     )
 
 
@@ -295,6 +361,13 @@ def _normalize_coastal(overlays: dict[str, list[dict]]) -> HazardScore:
         present=present,
         detail=f"Coastal hazard layers: {detail_layers}",
         confidence="high",
+        confidence_reason=(
+            "Point intersects ingested SEPP R&H coastal hazard layer(s): "
+            f"{detail_layers}."
+            if present else
+            "No intersection in the ingested SEPP R&H coastal layers; ingest "
+            "is geographically partial (absence census S1/S3)."
+        ),
         data_source="SEPP (Resilience and Hazards) 2021 via spatial_overlays",
     )
 
@@ -312,6 +385,12 @@ def _normalize_landslide(overlays: dict[str, list[dict]]) -> HazardScore:
         present=present,
         detail=f"Landslide risk area: {'Yes' if present else 'No'}",
         confidence="high",
+        confidence_reason=(
+            "Point intersects the ingested EPI landslide overlay."
+            if present else
+            "No intersection in the ingested EPI landslide overlay; ingest "
+            "is geographically partial (absence census S1/S3)."
+        ),
         data_source="NSW Planning Portal EPI Landslide Risk via spatial_overlays",
     )
 
@@ -330,6 +409,13 @@ def _normalize_fire_history(overlays: dict[str, list[dict]]) -> HazardScore:
         present=present,
         detail=f"Historical fire events at location: {len(hits)}",
         confidence="high",
+        confidence_reason=(
+            f"{len(hits)} fire-history polygon(s) intersect the point in the "
+            "ingested NPWS layer."
+            if present else
+            "No fire-history intersection in the ingested NPWS layer; ingest "
+            "is geographically partial (absence census S1/S3)."
+        ),
         data_source="NPWS Fire History via spatial_overlays",
     )
 
@@ -347,6 +433,11 @@ def _normalize_heat(narclim_summary: dict) -> HazardScore:
             present=False,
             detail="NARCliM data not available for this location",
             confidence="low",
+            confidence_reason=(
+                "NARCliM raster returned no value — outside the model domain "
+                "or grid files not present; heat trajectory could not be "
+                "determined."
+            ),
             data_source="NARCliM 2.0 (AdaptNSW) — unavailable",
             available=False,
         )
@@ -363,6 +454,10 @@ def _normalize_heat(narclim_summary: dict) -> HazardScore:
         present=delta > 0,
         detail=f"Hot days (>=35°C): {baseline}/yr baseline → {late}/yr by 2090 (SSP3-7.0), Δ={delta:+.1f} days",
         confidence="medium",
+        confidence_reason=(
+            "Value read from the NARCliM 2.0 projection raster — a single-GCM "
+            "model projection, not an observation."
+        ),
         data_source="NARCliM 2.0 (AdaptNSW), ACCESS-ESM1.5, SSP3-7.0, 4km resolution",
     )
 

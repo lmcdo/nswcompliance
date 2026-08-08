@@ -48,7 +48,10 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "data_currency": str,
     "flood_signal": "none" | "low" | "moderate" | "elevated" | "unavailable",
     "ground_elevation_m_ahd": float | null,       # NSW 5m DEM (SIX Maps ImageServer)
-    "in_100yr_flood_zone": bool,                   # derived from EPI + SES + study rasters
+    "in_100yr_flood_zone": bool | null,            # True/False/None — None = NOT ASSESSED,
+                                                   # a source that could have said yes was
+                                                   # unreachable. Never render None as "no".
+    "in_100yr_flood_zone_unconsulted": list[str],  # which sources were unreachable
     "flood_studies": list[{study_key, study_name, source, design: {aep: {depth_m, level_m_ahd}}, historical: {year: {depth_m, level_m_ahd}}}]
   },
   "confidence": str,
@@ -72,8 +75,24 @@ from pyproj import Transformer
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 
+# prior-art-checked: shared item-4 modules created this session — extending
+# this pipeline's own envelope, not adding a parallel data source.
+try:
+    from services.execution_manifest import MANIFEST_KEY, build_manifest
+    from services.geometry_checks import check_point_nsw
+except ImportError:
+    from execution_manifest import MANIFEST_KEY, build_manifest
+    from geometry_checks import check_point_nsw
+
 # icontract: runtime postcondition assertions for liability-critical functions.
-# Gracefully degrade if not installed (production may not have it yet).
+# Declared in services/requirements.txt (what the container installs) and in
+# requirements-test.txt since 2026-08-06. Before that it was declared only in
+# scripts/requirements-maintenance.txt, so THIS FALLBACK is what ran in
+# production, CI and local checkouts alike, and every contract below was a
+# no-op from the day it was written.
+# The fallback stays for genuinely minimal environments, but it is no longer
+# the normal case — and tests/test_flood_truth.py now FAILS rather than skips
+# when icontract is importable and a decorator has gone missing.
 try:
     import icontract
 except ImportError:
@@ -97,8 +116,16 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 # Canonical signal enum — used by icontract postconditions AND Hypothesis invariants.
 _VALID_FLOOD_SIGNALS = {"none", "low", "moderate", "elevated", "unavailable"}
 
-PC_CATALOG = "https://planetarycomputer.microsoft.com/api/stac/v1"
-S1_COLLECTION = "sentinel-1-rtc"
+# Sentinel-1 SAR is NOT implemented here. The Planetary Computer STAC catalogue
+# address, the `sentinel-1-rtc` collection id and the VH change-detection
+# threshold (FLOOD_RATIO = 1.25) used to sit in this file with ZERO call sites —
+# no pystac_client/planetary_computer import, no query, no consumer. They were
+# deleted 2026-08-06 (calibration Lane 1, decision D2) because a named
+# threshold and endpoint that nothing executes reads as a shipped detector.
+# The honest state is recorded where it is actually served: the on-demand path
+# nulls every sar_* field and the execution manifest records
+# sentinel1_sar.queried = False. When Phase 3B is built, take the constants from
+# that build's own design — not from a stub that was never run.
 # ArcGIS REST API — Layer 0 is broken server-side (returns 400 for all queries).
 # Layer 1 ("Flood Planning") works but covers only ~11 LGAs that have uploaded polygon data.
 # Addresses in uncovered LGAs return 0 features → epi_flood_class: "none" (correct, not an error).
@@ -108,11 +135,15 @@ BOM_SOS2 = "https://www.bom.gov.au/waterdata/services"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
 
+# Algorithm revision for execution manifests (campaign item 4): the
+# multi-source screening method + signal fusion. Bump on method change, not
+# per deploy (deploy identity = execution_manifest.deploy_sha).
+ALGORITHM_VERSION = "flood-multisource-screen-1.0"
+
 DEA_WCS_BASE = "https://ows.dea.ga.gov.au/wcs"
 DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"   # multi-year composite, 1987–present, no time param required
 _DATA_SOURCE_DEA = "DEA Water Observations (WOfS, Landsat 1987–present)"
 
-FLOOD_RATIO = 1.25
 S1B_GAP_START = date(2021, 12, 23)
 S1B_GAP_END   = date(2025, 3, 4)
 
@@ -193,6 +224,10 @@ _FLOOD_STUDIES_BASE = os.path.join(os.path.dirname(__file__), "..", "data", "flo
 FLOOD_STUDIES: dict[str, dict] = {
     "hawkesbury": {
         "name": "Hawkesbury FRMSP 2025",
+        # Which council area this study covers. Used ONLY to decide whether
+        # its ABSENCE is relevant to a given address — never to answer the
+        # flood question itself.
+        "lga": "Hawkesbury",
         "source": "NSW Reconstruction Authority",
         "dir": os.environ.get(
             "HAWKESBURY_RASTER_DIR",
@@ -218,6 +253,10 @@ FLOOD_STUDIES: dict[str, dict] = {
     },
     "tweed": {
         "name": "Tweed Valley Flood Study Update 2024",
+        # Which council area this study covers. Used ONLY to decide whether
+        # its ABSENCE is relevant to a given address — never to answer the
+        # flood question itself.
+        "lga": "Tweed",
         "source": "Tweed Shire Council / BMT",
         "dir": os.path.join(_FLOOD_STUDIES_BASE, "tweed"),
         "crs": "EPSG:28356",  # GDA94 MGA56 — missing from TIF metadata
@@ -239,6 +278,10 @@ FLOOD_STUDIES: dict[str, dict] = {
     },
     "wollongong": {
         "name": "Wollongong City Flood Study 2024",
+        # Which council area this study covers. Used ONLY to decide whether
+        # its ABSENCE is relevant to a given address — never to answer the
+        # flood question itself.
+        "lga": "Wollongong",
         "source": "Wollongong City Council / Jacobs",
         "dir": os.path.join(_FLOOD_STUDIES_BASE, "wollongong"),
         "crs": "EPSG:7856",  # GDA2020 MGA56 — missing from ASC metadata
@@ -257,6 +300,10 @@ FLOOD_STUDIES: dict[str, dict] = {
     },
     "redbank": {
         "name": "Redbank Creek Flood Study 2025",
+        # Which council area this study covers. Used ONLY to decide whether
+        # its ABSENCE is relevant to a given address — never to answer the
+        # flood question itself.
+        "lga": "Redbank",
         "source": "Hawkesbury City Council",
         "dir": os.environ.get(
             "REDBANK_RASTER_DIR",
@@ -291,6 +338,59 @@ FLOOD_STUDIES: dict[str, dict] = {
         },
     },
 }
+
+def flood_study_raster_availability() -> dict[str, bool]:
+    """study_key -> whether this host actually holds that study's rasters.
+
+    A study in FLOOD_STUDIES is a DECLARATION that this service can answer the
+    flood question for that area. Tweed and Wollongong were declared and their
+    files can never be present in the container: data/flood_studies is
+    untracked, Dockerfile.python does not copy data/, and unlike Hawkesbury and
+    Redbank there is no download script for them. The runtime noticed and wrote
+    a log line nobody reads.
+
+    Same class as #880 — a capability declared where it cannot be delivered,
+    degrading silently. Reported loudly at import (see below) and consulted per
+    run so the served verdict says "not assessed" rather than "no".
+    """
+    status: dict[str, bool] = {}
+    for study_key, cfg in FLOOD_STUDIES.items():
+        study_dir = cfg["dir"]  # noqa: bracket-access — internal FLOOD_STUDIES config
+        design = cfg["design"]  # noqa: bracket-access — internal FLOOD_STUDIES config
+        has_depth = cfg["has_depth"]  # noqa: bracket-access — internal FLOOD_STUDIES config
+        # The 1% AEP grid SPECIFICALLY, not "any design grid". A study holding
+        # its 5% file but not its 1% file cannot answer the question this field
+        # asks, and counting it as present would let a half-delivered study
+        # produce a confident negative — the same defect one level down.
+        template = design.get("1pct")
+        if template is None:
+            status[study_key] = False
+            continue
+        if "{type}" in template:
+            candidate = os.path.join(
+                study_dir, template.format(type="d" if has_depth else "h")
+            )
+        else:
+            candidate = os.path.join(study_dir, template)
+        status[study_key] = os.path.exists(candidate)
+    return status
+
+
+def _warn_on_absent_flood_studies() -> list[str]:
+    """Announce configured-but-undeliverable studies at import. Never silent."""
+    absent = [k for k, present in flood_study_raster_availability().items() if not present]
+    if absent:
+        logger.warning(
+            "FLOOD STUDY CONFIG/DATA MISMATCH: %s configured but their rasters are "
+            "not on this host: %s. Every 1%% AEP answer for those areas is 'not "
+            "assessed', never 'no'. Ship the rasters (R2 + a download script, the "
+            "Hawkesbury/Redbank pattern) or remove them from FLOOD_STUDIES.",
+            len(absent), ", ".join(sorted(absent)),
+        )
+    return absent
+
+
+_ABSENT_FLOOD_STUDIES_AT_IMPORT = _warn_on_absent_flood_studies()
 
 # Pre-build CRS transformers (WGS84 → study CRS) — one per unique CRS
 _STUDY_TRANSFORMERS: dict[str, Transformer] = {}
@@ -1028,9 +1128,19 @@ def _query_flood_study_rasters(lat: float, lng: float) -> dict:
         import rasterio  # noqa: F401
     except ImportError:
         logger.warning("rasterio not installed — flood study raster sampling unavailable")
-        return {"flood_studies": []}
+        # Every configured study is unconsultable, not "no study covers this
+        # point". Without this the missing library reads as a clean negative.
+        return {
+            "flood_studies": [],
+            "flood_studies_absent": sorted(FLOOD_STUDIES.keys()),
+        }
 
     matched_studies: list[dict] = []
+    # Studies this host CANNOT consult because their rasters are not on disk.
+    # Distinct from "the point falls outside the study extent", which is a real
+    # answer. Collapsing the two is what let a configured-but-absent study
+    # produce a confident "not in a flood zone".
+    absent_studies: list[str] = []
 
     for study_key, cfg in FLOOD_STUDIES.items():
         study_dir = cfg["dir"]
@@ -1058,8 +1168,35 @@ def _query_flood_study_rasters(lat: float, lng: float) -> dict:
                 proxy_path = candidate
                 break
 
+        # The 1% grid SPECIFICALLY decides whether this study can answer the
+        # question the verdict asks. The proxy above is a BOUNDS proxy and
+        # prefers the PMF grid, so a study holding its PMF but not its 1% file
+        # would pass the proxy check, sample None for 1pct, and be read as
+        # "outside the extent" — a confident negative from a file that does not
+        # exist. Closes the gap Sol found between this loop and
+        # flood_study_raster_availability(), which was already 1%-specific.
+        if not flood_study_raster_availability().get(study_key, False):
+            logger.warning(
+                f"Flood study {study_key}: its 1% AEP grid is not readable on "
+                f"this host — the 1% question cannot be answered from it"
+            )
+            absent_studies.append(study_key)
+            continue
+
         if proxy_path is None:
-            logger.info(f"Flood study {study_key} rasters not present — skipping")
+            # NOT a silent skip. The study is configured, so this host is
+            # supposed to be able to answer for it; it cannot. Recorded so the
+            # verdict downstream can say "not assessed" instead of "no".
+            # Recorded unscoped here on purpose: this is a FACT about the host
+            # ("these studies cannot be read"), not yet a judgement about this
+            # address. Whether the absence matters is decided in
+            # _unconsulted_1pct_sources, where the council IS known.
+            logger.warning(
+                f"Flood study {study_key} is configured but its rasters are not "
+                f"on this host ({study_dir}) — the 1% AEP question cannot be "
+                f"answered from this study"
+            )
+            absent_studies.append(study_key)
             continue
 
         # Quick bounds check
@@ -1125,7 +1262,10 @@ def _query_flood_study_rasters(lat: float, lng: float) -> dict:
             })
 
     # Build result dict
-    result: dict = {"flood_studies": matched_studies}
+    result: dict = {
+        "flood_studies": matched_studies,
+        "flood_studies_absent": absent_studies,
+    }
 
     # Backward-compat: flat hawkesbury_flood_level_* fields
     hawk = next((s for s in matched_studies if s["study_key"] == "hawkesbury"), None)
@@ -1182,6 +1322,12 @@ def _query_ground_elevation(lat: float, lng: float) -> dict:
         logger.warning(f"DEM identify: {e}")
         return {"ground_elevation_m_ahd": None}
 
+@icontract.ensure(
+    lambda result: result in _VALID_FLOOD_SIGNALS,
+    description="Flood signal must be one of none/low/moderate/elevated/unavailable — "
+                "the frontend and PDF both render a badge straight from this value, so an "
+                "unrecognised string shows as blank rather than as an error.",
+)
 def _compute_flood_signal(internal_outputs: dict) -> str:
     """
     Multi-source convergence signal for B2B/UI consumption.
@@ -1338,7 +1484,13 @@ def _build_data_sources(internal_outputs: dict) -> list:
     for lt in _COMPOUND_LAYER_TYPES:
         if internal_outputs.get(f"compound_{lt}") is not None:
             sources.append(f"NSW ePlanning spatial_overlays ({lt})")
-    sources.append("Microsoft Planetary Computer S1 RTC")
+    # Only claim the S1 source when a SAR result actually exists. The
+    # unconditional append served "Microsoft Planetary Computer S1 RTC" on
+    # every report while no S1 query has ever run (sar_flood_detected is
+    # hard-nulled; batch is a Phase-3B stub) — a named source that was never
+    # queried (DQ-44, campaign item 4 census).
+    if internal_outputs.get("sar_flood_detected") is not None:
+        sources.append("Microsoft Planetary Computer S1 RTC")
     return sources
 
 
@@ -1372,6 +1524,56 @@ _SOURCE_AVAILABILITY_CHECKS: list[tuple[str, object]] = [
 def _count_available_sources(internal_outputs: dict) -> int:
     """Count how many of the 9 data source groups returned usable data."""
     return sum(1 for _, check in _SOURCE_AVAILABILITY_CHECKS if check(internal_outputs))
+
+
+def _unconsulted_1pct_sources(normalised: dict, raw: dict) -> list[str]:
+    """Sources that could have answered the 1% AEP question and were not asked.
+
+    Only sources that can produce a POSITIVE 1% finding count. The DEM, the
+    satellite water history and the BOM gauges cannot place a point inside a
+    1% AEP extent, so their absence does not make the answer unknown — it just
+    makes the report thinner.
+
+    Returned as customer-neutral source names because they are rendered.
+    """
+    unconsulted: list[str] = []
+
+    # EPI. `data_currency == "query_failed"` is the module's existing marker for
+    # a service that did not respond (see _build_data_gap_reasons). A genuine
+    # "none" is an answer; a failure is not.
+    if raw.get("data_currency") == "query_failed" or normalised.get("epi_flood_class") is None:
+        unconsulted.append("NSW EPI flood overlay")
+
+    # SES / council flood study extent in spatial_overlays. The module already
+    # documents None as "table empty or unavailable (distinct from False = no
+    # match)" — so None here is precisely "not asked".
+    if normalised.get("ses_in_flood_planning_area") is None:
+        unconsulted.append("Council/SES flood study extent")
+
+    # Flood study rasters configured for this deployment but absent from it.
+    # This is the Tweed and Wollongong case: declared available in code, the
+    # files can never be in the container, and the run used to skip silently.
+    #
+    # LIMIT, stated because it bounds the retroactive fix: a row written
+    # BEFORE this key existed carries no marker, and FLOOD_STUDIES has no LGA
+    # or bounds field, so we cannot tell whether an absent study would have
+    # covered that point without the raster we do not have. Such rows keep
+    # whatever EPI and SES established. Re-running the report resolves it;
+    # the census reports them separately rather than counting them as clean.
+    # SCOPED to this address's council. A missing Tweed raster says nothing
+    # about a Sydney property, and reporting it there would turn a correct,
+    # established negative into a shrug — the opposite failure, and just as bad
+    # for the reader. When the council is unknown the absence is NOT reported:
+    # this under-reports rather than over-reports, deliberately, because a
+    # false "not assessed" on every address in the state destroys the signal.
+    council = str(normalised.get("ses_study_lga") or raw.get("lga_name") or "").lower()
+    for study_key in raw.get("flood_studies_absent") or []:
+        cfg = FLOOD_STUDIES.get(study_key) or {}
+        study_lga = str(cfg.get("lga") or "").lower()
+        if council and study_lga and study_lga in council:
+            unconsulted.append(str(cfg.get("name") or study_key))
+
+    return unconsulted
 
 
 @icontract.ensure(
@@ -1443,8 +1645,23 @@ def _build_data_gap_reasons(internal_outputs: dict) -> list[dict]:
         if internal_outputs.get(field) is None:
             gaps.append({"source": source, "reason": reason})
 
-    # Flood study rasters
-    if not has_studies:
+    # Flood study rasters. Two DIFFERENT reasons, and they were previously
+    # collapsed into the consultant-IP one — which is a false explanation when
+    # the truth is that the file is missing from the host we are running on.
+    absent = internal_outputs.get("flood_studies_absent") or []
+    if absent:
+        names = ", ".join(
+            str((FLOOD_STUDIES.get(k) or {}).get("name") or k) for k in absent
+        )
+        gaps.append({
+            "source": "Council flood study rasters",
+            "reason": (
+                f"A council flood study is configured for this service "
+                f"({names}) but its data is not available to it, so the "
+                f"1% AEP question could not be answered from that study."
+            ),
+        })
+    elif not has_studies:
         gaps.append({
             "source": "Council flood study rasters",
             "reason": (
@@ -1515,7 +1732,23 @@ def _normalise_outputs(raw: dict) -> dict:
     normalised["flood_studies"] = raw.get("flood_studies") or []
     normalised["ground_elevation_m_ahd"] = raw.get("ground_elevation_m_ahd")
 
-    # Derive in_100yr_flood_zone from all available sources
+    # Derive in_100yr_flood_zone. THREE states, never two.
+    #
+    # This field is the single most consequential sentence in the report — it
+    # drives insurance, price and whether a buyer proceeds. It used to start at
+    # False and only four positive signals could move it, so a source that
+    # could not be consulted produced a confident "not in a flood zone". That
+    # is an active statement in the direction that causes harm, which is worse
+    # than the absences this campaign has been deleting.
+    #
+    #   True  — at least one source places the point inside a 1% AEP extent
+    #   False — no source did, AND every source that could have said yes was
+    #           actually consulted
+    #   None  — no source did, AND at least one was unreachable, so we do not
+    #           know. Rendered as "not assessed": not a pass and not a fail.
+    #
+    # Mirrors flood_signal in this module, which has had an explicit
+    # "unavailable" member since #872. This field was missed in that pass.
     in_100yr = False
     # 1. EPI flood planning area = 1% AEP extent by NSW planning definition
     if epi_class and epi_class not in ("none", ""):
@@ -1532,7 +1765,13 @@ def _normalise_outputs(raw: dict) -> dict:
     # 4. Hawkesbury backward-compat
     if normalised.get("hawkesbury_flood_level_100aep") is not None:
         in_100yr = True
-    normalised["in_100yr_flood_zone"] = in_100yr
+
+    unconsulted = _unconsulted_1pct_sources(normalised, raw)
+    normalised["in_100yr_flood_zone_unconsulted"] = unconsulted
+    # A positive finding stands on its own: one source saying "inside the 1%
+    # extent" is not weakened by another source being unreachable. Only the
+    # NEGATIVE needs every source to have been asked.
+    normalised["in_100yr_flood_zone"] = True if in_100yr else (None if unconsulted else False)
 
     # Compute flood depth from study raster + DEM where both available
     ground_elev = normalised["ground_elevation_m_ahd"]
@@ -1585,7 +1824,12 @@ def _first_valid_cached_row(rows):
     return None
 
 
-def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs):
+def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs,
+                  run_date=None):
+    """run_date: the date the analysis was actually COMPUTED. Defaults to today
+    for fresh runs; the cache-hit path passes the original row's run_date so a
+    stale result never wears today's date (output-grounding fix 2 — re-stamping
+    was a freshness lie)."""
     confidence   = _compute_confidence(internal_outputs)
     data_sources = _build_data_sources(internal_outputs)
     sql = """
@@ -1599,7 +1843,7 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_output
         conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(sql, (
-                report_id, address, lat, lng, prop_id, date.today(),
+                report_id, address, lat, lng, prop_id, run_date or date.today(),
                 psycopg2.extras.Json(inputs),
                 psycopg2.extras.Json(internal_outputs),
                 confidence,
@@ -1662,7 +1906,14 @@ class FloodOutputs(BaseModel):
     data_currency: str = "unknown"
     flood_signal: Literal["none", "low", "moderate", "elevated", "unavailable"]
     ground_elevation_m_ahd: Optional[float] = None
-    in_100yr_flood_zone: bool = False
+    # None = not assessed. NOT the same as False, and the default is None
+    # because a response object that was never populated has not established
+    # that a property is outside the 1% AEP extent.
+    in_100yr_flood_zone: Optional[bool] = None
+    # Must be declared here too. Without it pydantic drops the list at this
+    # boundary and the frontend gets an absence it cannot explain — the
+    # 'what we tried' half of the no-result standard, silently deleted.
+    in_100yr_flood_zone_unconsulted: list = []
     flood_studies: list = []
     compound_heritage: Optional[bool] = None
     compound_riparian: Optional[bool] = None
@@ -1710,14 +1961,37 @@ def run_flood(req: FloodRequest):
                + SES council flood studies (PostGIS) + DEA WOfS (WCS).
     SAR analysis is batch-only (Phase 3B).
     """
+    # Units/CRS entry check (campaign item 4): a swapped or projected
+    # coordinate reproduces identically on every recompute — this is the only
+    # defence. Typed unavailable, never a screening from wrong-CRS input.
+    coord_reason = check_point_nsw(req.lat, req.lng)
+    if coord_reason:
+        raise HTTPException(
+            422, f"Flood screening could not be determined: {coord_reason}")
+
     conn = None
     try:
         conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # Max age 90 days (output-grounding fix 2): flood inputs move on
+            # seasonal/quarterly cadences (EPI overlay refreshes, wet-season
+            # SAR batches, BOM history), so a quarter bounds staleness while
+            # keeping the cache's point — skipping a ~60s recompute on repeat
+            # lookups. Older rows are recomputed, not served.
+            # prior-art-checked: this module's own cache read gains the
+            # stored `inputs` column (so the original execution manifest can
+            # ride the cache-copy like run_date) and a ~50m coordinate
+            # proximity bound — address text alone could hand parcel A's
+            # outputs to a same-address request that geocoded to parcel B
+            # (Sol finding, 2026-08-03). No new source.
             cur.execute(
-                "SELECT outputs, confidence, data_sources FROM property_reports "
-                "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 5",
-                (req.address,)
+                "SELECT outputs, confidence, data_sources, run_date, inputs "
+                "FROM property_reports "
+                "WHERE product='flood' AND address=%s "
+                "  AND abs(lat - %s) < 0.0005 AND abs(lng - %s) < 0.0005 "
+                "  AND run_date > CURRENT_DATE - INTERVAL '90 days' "
+                "ORDER BY run_date DESC LIMIT 5",
+                (req.address, req.lat, req.lng)
             )
             # #762 (prior-art-checked: same cache read hardened in place, no
             # new source): skip poisoned rows — another product's outputs
@@ -1725,11 +1999,28 @@ def run_flood(req: FloodRequest):
             # the newest.
             cached = _first_valid_cached_row(cur.fetchall())
         if cached:
-            # Write a row for the new report_id so PDF generation can find it
+            # Write a row for the new report_id so PDF generation can find it.
+            # The ORIGINAL run_date is carried over — this row is a copy of an
+            # older computation, and stamping it with today would relabel a
+            # stale result as fresh (fix 2).
+            # The ORIGINAL inputs (incl. the execution manifest) ride along
+            # exactly like run_date: this row is a COPY of an older
+            # computation, and a re-derived manifest would claim inputs the
+            # cached numbers never came from (campaign item 4 cache rule).
             _write_report(
                 req.report_id, req.address, req.lat, req.lng,
-                req.prop_id, {"lat": req.lat, "lng": req.lng},
+                req.prop_id,
+                cached.get("inputs") or {
+                    "lat": req.lat, "lng": req.lng,
+                    # A pre-manifest row recorded no inputs — say so rather
+                    # than presenting the new request's coordinates as the
+                    # original computation's record (they are proximity-
+                    # bounded to ~50m by the cache SELECT).
+                    "inputs_provenance": "original inputs not recorded "
+                                         "(pre-manifest report)",
+                },
                 cached["outputs"] or {},
+                run_date=cached.get("run_date"),
             )
             log_audit_trail(
                 report_id=req.report_id,
@@ -1740,9 +2031,15 @@ def run_flood(req: FloodRequest):
                 disclaimer_version=get_current_disclaimer_version("flood"),
                 intermediate_calculations={"cache_hit": True},
             )
+            _orig_run_date = cached.get("run_date")
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
-                "run_date": date.today().isoformat(),
+                # The date the analysis was COMPUTED, not the date it was
+                # re-served — a cached result wearing today's date was a
+                # freshness lie (output-grounding fix 2).
+                "run_date": (_orig_run_date.isoformat() if _orig_run_date
+                             else date.today().isoformat()),
+                "cache_hit": True,
                 "outputs": _normalise_outputs(cached["outputs"] or {}),
                 "confidence": cached["confidence"],
                 "data_sources": cached["data_sources"] or _DATA_SOURCES_BASE,
@@ -1809,7 +2106,43 @@ def run_flood(req: FloodRequest):
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
-    inputs = {"lat": req.lat, "lng": req.lng}
+    # Execution manifest (campaign item 4): every identity below is read from
+    # the dicts the source queries THEMSELVES returned this run (epi/ems/...),
+    # never a parallel lookup. SAR is recorded as not-queried — the honest
+    # state until Phase 3B exists.
+    manifest = build_manifest(
+        product="flood",
+        algorithm_version=ALGORITHM_VERSION,
+        inputs={
+            "epi_overlay": {"flood_class": epi.get("epi_flood_class"),
+                            "data_currency": epi.get("data_currency"),
+                            "study_name": epi.get("flood_study_name"),
+                            "study_date": epi.get("flood_study_date")},
+            "copernicus_ems": {"activations": [
+                a.get("activation_id") if isinstance(a, dict) else a
+                for a in (ems.get("ems_activations") or [])]},
+            "jrc_surface_water": {"tile_url": _jrc_tile_url(req.lat, req.lng),
+                                  "dataset_year": jrc.get("jrc_data_year")},
+            "dea_wofs": {"layer": DEA_WOFS_LAYER,
+                         "value_pct": wofs.get("dea_wofs_frequency_pct")},
+            "bom_gauge": {"name": bom.get("bom_gauge_name"),
+                          "distance_km": bom.get("bom_gauge_distance_km")},
+            "ses_study": {"name": ses.get("ses_study_name"),
+                          "lga": ses.get("ses_study_lga")},
+            "flood_study_rasters": [
+                {"key": s.get("study_key"), "name": s.get("study_name")}
+                for s in (studies.get("flood_studies") or [])
+                if isinstance(s, dict)],
+            "dem": {"ground_elevation_m_ahd": dem.get("ground_elevation_m_ahd")},
+            "sentinel1_sar": {"queried": False,
+                              "note": "S1 VH analysis is batch-only (Phase 3B); "
+                                      "no SAR observation feeds this report"},
+        },
+        query_params={"lat": req.lat, "lng": req.lng},
+        parcel_identity={"prop_id": req.prop_id},
+    )
+
+    inputs = {"lat": req.lat, "lng": req.lng, MANIFEST_KEY: manifest}
 
     # --- Minimum viable screening: refuse if too few sources responded ---
     available_count = _count_available_sources(internal_outputs)

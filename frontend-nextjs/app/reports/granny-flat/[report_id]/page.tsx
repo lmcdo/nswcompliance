@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { SharedReportPage } from '@/components/reports/SharedReportPage';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { resolveGrannyReviewState } from '@/lib/granny-flat-review-state';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,10 @@ export default async function GrannyFlatReportPage(
   if (!row) notFound();
 
   const outputs = (row.outputs ?? {}) as Record<string, unknown>;
+  const inputs = (row.inputs ?? {}) as Record<string, unknown>;
+  // Say what was checked, not how confident we are. The grade this replaces
+  // called an unchecked lot "medium".
+  const review = resolveGrannyReviewState(outputs, inputs);
 
   return (
     <SharedReportPage
@@ -45,7 +50,8 @@ export default async function GrannyFlatReportPage(
       product="granny-flat"
       address={row.address}
       runDate={row.run_date}
-      confidence={row.confidence}
+      stateLabel={review.label}
+      stateDetail={review.detail}
       generatePath="/api/reports/granny-flat/generate"
       highlights={[
         {

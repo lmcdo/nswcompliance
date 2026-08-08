@@ -190,6 +190,7 @@ diagnose_*.py
 !package.json
 !tsconfig.json
 !mutation-baselines.json
+!dependency-skip-baseline.json
 
 # Database backups (large binary files)
 backups/
@@ -214,6 +215,7 @@ enrichment/
 !enrichment/config/city_of_sydney_config.py
 !enrichment/config/ku_ring_gai_config.py
 !enrichment/config/structural_categories.py
+!enrichment/config/zone_taxonomy.py
 !enrichment/extractors/
 !enrichment/extractors/__init__.py
 !enrichment/extractors/layer_topic_tagger.py
@@ -398,8 +400,12 @@ frontend-nextjs/public/pdfjs/
 # Frontend misc
 # vercel.json needs to be in git for region config
 
-# Scripts directory (working scripts) - EXCEPT Phase 3+ SEPP utilities
-scripts/
+# Scripts directory (working scripts) - EXCEPT the explicitly named ones below.
+# MUST be `scripts/*`, not `scripts/`: git cannot re-include a file whose PARENT
+# DIRECTORY is excluded, so with `scripts/` every `!scripts/...` line below was
+# inert and new files were silently untracked. The already-tracked ones survived
+# only because gitignore does not apply to files already in the index.
+scripts/*
 !scripts/pr_overlap_guard.py
 !scripts/r2_pdf_uploader.py
 # Cross-reference resolution pre-task artifacts (permanent QA artifacts)
@@ -407,6 +413,20 @@ scripts/
 !scripts/xref_detection_audit.py
 # Precinct boundary health check (run before/after every boundary import)
 !scripts/verify_precinct_boundaries.py
+# Granny-flat review-state measurement — the read-only query behind the badge
+# change (which states are DISTINGUISHABLE in stored rows, and the before/after
+# for every existing report). Committed so the claims can cite a command.
+!scripts/measure_granny_confidence_states.py
+!scripts/measure_climate_reference_availability.py
+# Read-only census behind the flood three-state change: how many stored
+# reports served a 'not in a flood zone' that was never established.
+!scripts/measure_flood_zone_unassessed.py
+# Falsifiability plant-restore harness + the doc-claim checker. Both are
+# imported by tests and invoked from .githooks/pre-push, so an untracked copy
+# breaks every fresh clone — which is exactly the trap this line block warns
+# about four comments above.
+!scripts/falsifiability.py
+!scripts/doc_claims.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py
@@ -426,6 +446,12 @@ scripts/
 !scripts/populate_ku_ring_gai_registry.py
 !scripts/survey_dcp.py
 !scripts/check_registry.py
+# DQ-30 guards — the pre-commit hook invokes the lint; if it is not tracked,
+# every commit in a fresh clone fails on a missing file.
+!scripts/lint_hardcoded_zone_codes.py
+!scripts/lint_hardcoded_confidence.py
+!scripts/validate_zone_code_validity.py
+!scripts/backfill_invalid_zone_codes.py
 !scripts/requirements-monitor.txt
 !scripts/requirements-stats.txt
 !scripts/secondary_dwelling_stats.py
@@ -508,6 +534,7 @@ scripts/
 !scripts/qa_gate.py
 !scripts/qa_report_template.json
 !scripts/check_test_baselines.py
+!scripts/check_dependency_skips.py
 !scripts/satellite_freshness_monitor.py
 !scripts/run_monitors.py
 !scripts/run_alerts_dispatch.py
@@ -587,3 +614,45 @@ latent-scope-data/
 !scripts/ingest_sydney_water_gsp.py
 !docs/servicing/
 !docs/servicing/**
+
+# QA evidence docs — docs/ is whitelist-only (line 371), so a new file here is
+# silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
+!docs/qa/
+!docs/qa/**
+
+# Schema-contract gate — scripts/ is whitelist-only (line 402), so a new file here
+# is silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
+!scripts/validate_schema_contract.py
+!scripts/schema_contract_baseline.json
+!scripts/lint_fabricated_verdicts.py
+!scripts/retag_applicability_slug_docids.py
+!scripts/validate_controls_provenance.py
+!scripts/link_controls_to_provisions.py
+!scripts/measure_control_quote_gap.py
+!scripts/validate_control_source_values.py
+!scripts/control_source_values_baseline.json
+!scripts/repair_camden_front_setbacks.py
+!scripts/refile_secondary_street_setbacks.py
+!scripts/measure_control_type_mismatch.py
+!scripts/repair_canada_bay_rear_setback.py
+!scripts/repair_missing_primary_controls.py
+!scripts/repair_authorized_held_rows.py
+
+# Output-grounding item 3 — per-source "as at" dates (dcp_plan_as_at)
+!scripts/fetch_dcp_as_at_dates.py
+!scripts/extract_dcp_stated_dates.py
+!scripts/check_dcp_as_at_coverage.py
+!scripts/repair_dq41_null_label_derived_dates.py
+
+# Output-grounding item 4 — execution manifests + units/CRS checks
+!scripts/check_satellite_manifests.py
+
+# Output-grounding item 5 — TS direct-reader consolidation
+!scripts/check_ts_dcp_readers.py
+# Shadow calibration damage census (read-only; repair is a separate pass).
+!scripts/measure_shadow_calibration_damage.py
+# The authorized repair for the 19 impossible-reach reports — regenerates them
+# through the pipeline's own functions, with backup/predict/guard/verify/
+# idempotence/rollback. Committed so the production write can be audited and
+# rolled back from the repo rather than from memory.
+!scripts/repair_shadow_reports.py

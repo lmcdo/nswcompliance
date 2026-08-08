@@ -69,12 +69,11 @@ const TOOLS = [
     name: 'Shadow Analysis',
     href: '/reports/shadow',
     sources: [
-      { name: 'ESA Sentinel-2 satellite imagery (via Element84)', use: 'Spectral change detection to identify recent construction near the property' },
       { name: 'NSW Planning Portal (lot API)', use: 'Cadastral lot boundary for the subject property' },
-      { name: 'Solar position algorithm (pvlib)', use: 'Sun angle at 9 am, noon, and 3 pm on June 21 (winter solstice — worst case)' },
+      { name: 'pybdshadow shadow-casting model', use: 'Shadow geometry at 9 am, noon, and 3 pm on June 21 (winter solstice — worst case), with sun position derived from the modelled date and time' },
       { name: 'LEP height limit controls', use: 'Maximum permitted building height from LEP and DCP to model worst-case neighbour shadow' },
     ],
-    cadence: 'Solar position calculations are deterministic. Satellite imagery uses the most recent available Sentinel-2 pass. LEP height controls are queried live.',
+    cadence: 'Solar position calculations are deterministic. LEP height controls are queried live.',
     limitations: 'Shadow analysis is computed for the winter solstice as the worst-case scenario. Height estimates use LEP-permitted maximums, not actual building heights. Results are an estimate — council-submitted shadow diagrams require a licensed surveyor or certifier.',
   },
   {

@@ -119,24 +119,40 @@ class TestMarrickvilleStructuralInheritance:
         assert 'multi_dwelling_housing' in dev_types or 'residential_flat_building' in dev_types
 
     def test_part5_commercial(self):
-        """Part 5 applies to B zones and commercial dev types."""
+        """Part 5 applies to commercial/mixed-use zones and commercial dev types.
+
+        DQ-30 regression: previously asserted against retired Business-zone
+        codes, which would have kept passing even if the tagger regressed
+        to hardcoding defunct zones. The real current equivalents are E1
+        (formerly two of the retired Business codes) and MU1 (formerly
+        another). See .claude/DATA_QUALITY_TRACKER.md.
+        """
         zones, dev_types = self.tagger.tag(
             "Commercial controls.",
             "Marrickville__DCP__2011__-__5_0__Commercial"
         )
-        business_zones = {'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'MU1'}
-        assert len(set(zones) & business_zones) > 0, f"Expected B zones, got {zones}"
+        current_commercial_zones = {'E1', 'E2', 'MU1'}  # noqa: zone-codes -- test assertion literal, not a shared constant
+        assert len(set(zones) & current_commercial_zones) > 0, f"Expected current commercial/mixed-use zones, got {zones}"
+        assert not (set(zones) & {'B1', 'B2', 'B3', 'B4'}), f"Got retired B-zone codes: {zones}"  # noqa: zone-codes -- test assertion literal, not a shared constant
         commercial_types = {'commercial_premises', 'retail_premises', 'office_premises', 'shop_top_housing'}
         assert len(set(dev_types) & commercial_types) > 0, f"Expected commercial types, got {dev_types}"
 
     def test_part6_industrial(self):
-        """Part 6 applies to IN zones and industrial dev types."""
+        """Part 6 applies to industrial zones and industrial dev types.
+
+        DQ-30 regression: previously asserted against retired IN-zone codes
+        only — this was the most severe DQ-30 finding, since with the old
+        hardcode and no fallback, these provisions matched zero real
+        properties (Inner West has had no IN-zones since the April 2023
+        reform). Real current equivalent is E4. See
+        .claude/DATA_QUALITY_TRACKER.md.
+        """
         zones, dev_types = self.tagger.tag(
             "Industrial controls.",
             "Marrickville__DCP__2011__-__6_0__Industrial"
         )
-        industrial_zones = {'IN1', 'IN2', 'IN3', 'IN4'}
-        assert len(set(zones) & industrial_zones) > 0, f"Expected IN zones, got {zones}"
+        assert 'E4' in zones, f"Expected current industrial zone E4, got {zones}"
+        assert not (set(zones) & {'IN1', 'IN2', 'IN3', 'IN4'}), f"Got retired IN-zone codes: {zones}"  # noqa: zone-codes -- test assertion literal, not a shared constant
         industrial_types = {'industrial_development', 'warehouse', 'light_industry'}
         assert len(set(dev_types) & industrial_types) > 0, f"Expected industrial types, got {dev_types}"
 
@@ -157,6 +173,196 @@ class TestMarrickvilleStructuralInheritance:
         )
         # Precincts use location filtering, not zone filtering
         assert 'ALL' in zones or len(zones) > 0
+
+    def test_part4_3_boarding_houses_matches_config(self):
+        """Part 4.3 (Boarding Houses) zones come from MARRICKVILLE_CONFIG,
+        not a separately-hardcoded copy that had drifted from it.
+
+        DQ-30 regression: ApplicabilityTagger._get_marrickville_config()
+        previously hardcoded its own inline zone list for every Part 4-9
+        branch instead of reading MARRICKVILLE_CONFIG['parts'], and had
+        drifted from it — this branch specifically returned ['ALL'] while
+        the config file said residential+commercial zones only. Reading the
+        config directly (as of this fix) makes that kind of drift
+        structurally impossible: there's exactly one place the value is
+        authored. See .claude/DATA_QUALITY_TRACKER.md.
+        """
+        from enrichment.config.marrickville_config import MARRICKVILLE_CONFIG
+
+        zones, dev_types = self.tagger.tag(
+            "Boarding house standards.",
+            "Marrickville__DCP__2011__-__4_3__Boarding__Houses"
+        )
+        assert set(zones) == set(MARRICKVILLE_CONFIG['parts']['4.3']['applicable_zones']), (
+            f"Tagger output {zones} has drifted from MARRICKVILLE_CONFIG['parts']['4.3']"
+        )
+        assert zones != ['ALL'], "Regressed to the old hardcoded ALL/ALL"
+        assert 'boarding_house' in dev_types
+
+
+class TestAshfieldStructuralInheritance:
+    """Test Ashfield DCP structure-based applicability."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.tagger = ApplicabilityTagger()
+
+    def test_chapter_f_part_10_not_confused_with_part_1(self):
+        """Chapter F Part 10 (Other Development, ALL/ALL) must not be
+        mistagged as Part 1 (Dwelling Houses, residential-only).
+
+        DQ-30 regression: _get_ashfield_config()'s chapter_f_parts lookup did
+        unanchored substring matching (f'Part_{part_num}' in document_id),
+        so "Part_1" matched inside "Part_10" — dict iteration order meant
+        Part_1 (checked first) always won for any Part_10 document. No such
+        document existed in the DB when found (latent, not live), but the
+        bug is real and this pins the fix. See
+        .claude/DATA_QUALITY_TRACKER.md.
+        """
+        zones, dev_types = self.tagger.tag(
+            "Other development standards.",
+            "Ashfield_DCP_2016_Chapter_F_Part_10"
+        )
+        assert dev_types != ['dwelling_house', 'secondary_dwelling'], (
+            "Part_10 was mistagged as Part_1 (Dwelling Houses)"
+        )
+        assert 'ALL' in zones
+        assert 'ALL' in dev_types
+
+    def test_chapter_f_part_1_still_matches_itself(self):
+        """Sanity check the Part_10 fix didn't break Part_1's own matching."""
+        zones, dev_types = self.tagger.tag(
+            "Dwelling house standards.",
+            "Ashfield_DCP_2016_Chapter_F_Part_1"
+        )
+        assert 'dwelling_house' in dev_types
+        assert 'secondary_dwelling' in dev_types
+
+
+class TestWaverleyStructuralInheritance:
+    """Test Waverley DCP structure-based applicability.
+
+    DQ-30 regression: WAVERLEY_CONFIG['parts'] previously had one "C" entry
+    and one "D" entry, collapsing the distinction this file's own header has
+    always documented — Low Density vs Medium-High Density Residential
+    sub-parts, and Commercial vs Mixed Use sub-parts — so a Low Density
+    provision (should be a single residential zone only) was tagged with
+    additional residential zones too, and vice versa. See
+    .claude/DATA_QUALITY_TRACKER.md.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.tagger = ApplicabilityTagger()
+
+    def test_c1_low_density_is_r2_only(self):
+        zones, _ = self.tagger.tag(
+            "# C1.2 Front Setback\n\nMinimum 6m.",
+            "Waverley_DCP_2022__waverley_dcp_2022"
+        )
+        assert zones == ['R2'], f"C1 (Low Density) should be R2-only, got {zones}"  # noqa: zone-codes -- test assertion literal, not a shared constant
+
+    def test_c2_medium_high_density_excludes_r2(self):
+        zones, _ = self.tagger.tag(
+            "# C2.1 Building Height\n\nMaximum 3 storeys.",
+            "Waverley_DCP_2022__waverley_dcp_2022"
+        )
+        assert 'R2' not in zones, f"C2 (Medium-High Density) wrongly included R2: {zones}"  # noqa: zone-codes -- test assertion literal, not a shared constant
+        assert set(zones) == {'R3', 'R4'}  # noqa: zone-codes -- test assertion literal, not a shared constant
+
+    def test_d2_mixed_use_is_mu1_only(self):
+        zones, _ = self.tagger.tag(
+            "# D2.3 Active Frontages\n\nActive uses at ground level.",
+            "Waverley_DCP_2022__waverley_dcp_2022"
+        )
+        assert zones == ['MU1'], f"D2 (Mixed Use) should be MU1-only, got {zones}"
+
+    def test_d1_commercial_uses_current_zones(self):
+        zones, _ = self.tagger.tag(
+            "# D1.1 Parking\n\nOne space per 40sqm.",
+            "Waverley_DCP_2022__waverley_dcp_2022"
+        )
+        assert not (set(zones) & {'B1', 'B2', 'B3', 'B4'}), f"Got retired B-zone codes: {zones}"  # noqa: zone-codes -- test assertion literal, not a shared constant
+
+    def test_b8_heritage_unaffected_by_c_d_split(self):
+        """Sanity check the progressive-strip match for B8 (single strip
+        step to "B8") wasn't broken by adding the new Waverley C/D
+        sub-part splits (which also rely on progressive strip)."""
+        zones, dev_types = self.tagger.tag(
+            "# B8.2 Heritage Items\n\nConservation requirements.",
+            "Waverley_DCP_2022__waverley_dcp_2022"
+        )
+        assert 'ALL' in zones
+
+
+class TestKuRingGaiStructuralInheritance:
+    """Test Ku-ring-gai DCP structure-based applicability.
+
+    DQ-30 regression: chapter_topics entries labelled "use_specific" never
+    set applicable_dev_types, so _get_config_driven() silently defaulted
+    every one to ALL/ALL — genuinely dev-type-specific rules showed for
+    every dev type. See .claude/DATA_QUALITY_TRACKER.md.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.tagger = ApplicabilityTagger()
+
+    def test_part_4_dwelling_houses_is_dev_type_specific(self):
+        zones, dev_types = self.tagger.tag(
+            "Some control text.",
+            "Ku-ring-gai_DCP_2024__section_a_part_4_dwelling_houses"
+        )
+        assert dev_types == ['dwelling_house'], f"Expected dwelling_house only, got {dev_types}"
+
+    def test_part_4_1_secondary_dwellings_not_confused_with_part_4(self):
+        """Part 4.1 must resolve to its own entry, not fall through to
+        part_4's (substring-collision safe per the file's own key ordering
+        note)."""
+        zones, dev_types = self.tagger.tag(
+            "Some control text.",
+            "Ku-ring-gai_DCP_2024__section_a_part_4_1_secondary_dwellings"
+        )
+        assert dev_types == ['secondary_dwelling'], f"Expected secondary_dwelling only, got {dev_types}"
+
+
+class TestWoollahraStructuralInheritance:
+    """Test Woollahra DCP structure-based applicability.
+
+    DQ-30 regression: WOOLLAHRA_CONFIG['parts'] Part D (Business & Mixed Use
+    Centres) and F3 entries hardcoded retired Business-zone codes directly
+    as literals (not via a shared constant) — Woollahra's real current
+    zones (confirmed against lep_zone_coverage) have zero of those
+    retired codes. See .claude/DATA_QUALITY_TRACKER.md.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.tagger = ApplicabilityTagger()
+
+    def test_d1_neighbourhood_centres_uses_current_zone(self):
+        zones, _ = self.tagger.tag(
+            "# D1 Neighbourhood Centres\n\nCommercial controls.",
+            "Woollahra_DCP_2015__chapter_d1_neighbourhood_centres"
+        )
+        assert zones == ['E1'], f"Expected E1 only, got {zones}"
+
+    def test_d2_mixed_use_centres_uses_current_zone(self):
+        zones, _ = self.tagger.tag(
+            "# D2 Mixed Use Centres\n\nMixed use controls.",
+            "Woollahra_DCP_2015__chapter_d2_mixed_use_centres"
+        )
+        assert zones == ['MU1'], f"Expected MU1 only, got {zones}"
+
+    def test_no_woollahra_part_returns_retired_b_zones(self):
+        """No Woollahra section code should ever produce a retired B-zone —
+        the whole point of DQ-30."""
+        from enrichment.config.woollahra_config import WOOLLAHRA_CONFIG
+
+        retired = {'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8'}  # noqa: zone-codes -- test assertion literal, not a shared constant
+        for code, entry in WOOLLAHRA_CONFIG['parts'].items():
+            zones = set(entry.get('applicable_zones', []))
+            assert not (zones & retired), f"Part {code} still has retired zones: {zones & retired}"
 
 
 class TestTextBasedExtraction:

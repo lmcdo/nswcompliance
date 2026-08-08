@@ -6,6 +6,7 @@
  */
 
 import { Pool } from 'pg';
+import { PATTERN_BOOK_CDC } from '../regulatory-constants';
 
 export interface PropertyConstraints {
   // From PropertyData.heritage
@@ -201,6 +202,5 @@ export async function checkExclusions(
  */
 export function isZoneEligible(zone?: string): boolean {
   if (!zone) return false;
-  const eligibleZones = ['R1', 'R2', 'R3'];
-  return eligibleZones.some(z => zone.toUpperCase().includes(z));
+  return PATTERN_BOOK_CDC.ELIGIBLE_ZONES.some(z => zone.toUpperCase().includes(z));
 }

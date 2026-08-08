@@ -14,6 +14,7 @@ import {
   Image,
 } from '@react-pdf/renderer';
 import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { solarImageryCurrency } from './imagery-currency';
 import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
@@ -570,7 +571,10 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
 
         {isPaid && (
           <DataCurrencyTable rows={[
-            { source: 'Google Solar API', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            // imagery_date was written to the envelope by the backend but
+            // never rendered (campaign item 4 census) — the imagery month is
+            // the currency that matters for a roof assessment.
+            { source: 'Google Solar API (aerial imagery + roof model)', type: 'Satellite/aerial imagery', currency: solarImageryCurrency(data.imagery_date, data.run_date) },
             { source: 'NSW Heritage Register (spatial_overlays)', type: 'PostGIS query', currency: `Queried ${data.run_date}` },
             { source: 'LEP Height of Buildings (spatial_overlays)', type: 'PostGIS query', currency: `Queried ${data.run_date}` },
           ]} />

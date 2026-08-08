@@ -24,10 +24,16 @@ import rasterio
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+# prior-art-checked: adds the provider-returning DEM variant plus the shared
+# item-4 modules created this session — extending this pipeline's own path.
 try:
-    from dem_service import fetch_dem_region
+    from dem_service import fetch_dem_region_with_provider
+    from execution_manifest import build_manifest
+    from geometry_checks import check_point_nsw
 except ImportError:
-    from services.dem_service import fetch_dem_region
+    from services.dem_service import fetch_dem_region_with_provider
+    from services.execution_manifest import build_manifest
+    from services.geometry_checks import check_point_nsw
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +48,10 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 # elevation and ruggedness must be read from the LOT, not the neighbourhood —
 # see _site_values and SITE_WINDOW_M.
 TERRAIN_BUFFER_M = 500.0
+
+# Algorithm revision for execution manifests (campaign item 4): whitebox-tools
+# chain + interpretation thresholds. Bump on method change, not per deploy.
+ALGORITHM_VERSION = "terrain-wbt-geomorph-1.0"
 
 # Side length (metres) of the square, centred on the property, used for the
 # gradient / elevation / ruggedness findings. ~90m comfortably covers a typical
@@ -164,7 +174,7 @@ class TerrainInterpretation(BaseModel):
     """Structured interpretation of terrain analysis for professional users."""
     findings: list[TerrainFinding]
     data_source: str = (
-        "Geoscience Australia 5m DEM (SRTM-derived, ±5m vertical accuracy)"
+        "Elevation model (provider not recorded for this run)"
     )
     methodology_note: str = (
         "Terrain metrics derived from whitebox-tools geomorphometric analysis. Landform, "
@@ -189,6 +199,8 @@ class TerrainResponse(BaseModel):
     interpretation: Optional[TerrainInterpretation] = None
     flood_susceptibility: Optional[FloodSusceptibilityDetail] = None
     error: Optional[str] = None
+    # Campaign item 4: identity of the DEM/config this run actually consumed.
+    execution_manifest: Optional[dict] = None
 
 
 # ---------------------------------------------------------------------------
@@ -987,7 +999,21 @@ def _build_terrain_interpretation(terrain_dict: dict) -> Optional[TerrainInterpr
     if terrain_dict.get("terrain_ruggedness") is not None:
         findings.append(_interpret_ruggedness(terrain_dict))
 
-    return TerrainInterpretation(findings=findings)
+    # data_source reflects the provider that ACTUALLY served the DEM — the
+    # static GA claim used to be asserted even when the SIX Maps photogrammetry
+    # fallback served the raster (campaign item 4 census, DQ-46).
+    provider = terrain_dict.get("dem_provider")
+    if provider == "six_maps_elevation":
+        source = "NSW SIX Maps Elevation service (5m elevation model)"
+    elif provider == "ga_wcs_5m":
+        # No lineage/accuracy parenthetical: the previous "(SRTM-derived,
+        # ±5m vertical accuracy)" asserted sensor lineage and an accuracy
+        # figure not derived from the returned dataset (Sol finding,
+        # 2026-08-03) — state only the provider and product scale.
+        source = "Geoscience Australia 5m DEM (GA elevation service)"
+    else:
+        source = "Elevation model (provider not recorded for this run)"
+    return TerrainInterpretation(findings=findings, data_source=source)
 
 
 # ---------------------------------------------------------------------------
@@ -1244,8 +1270,10 @@ def run_terrain_analysis(
         plus optional FloodSusceptibilityDetail fields under "flood_susceptibility".
     """
     with tempfile.TemporaryDirectory(prefix="wbt_") as work_dir:
-        # Fetch DEM and write to work_dir
-        dem_bytes = fetch_dem_region(lat, lng, buffer_m=TERRAIN_BUFFER_M)
+        # Fetch DEM and write to work_dir — recording WHICH provider actually
+        # served it (GA WCS vs SIX Maps fallback; campaign item 4).
+        dem_bytes, dem_provider = fetch_dem_region_with_provider(
+            lat, lng, buffer_m=TERRAIN_BUFFER_M)
         dem_path = os.path.join(work_dir, "dem.tif")
 
         with rasterio.open(dem_bytes) as src:
@@ -1257,6 +1285,15 @@ def run_terrain_analysis(
         # Terrain analysis: landform/aspect/solar use the full buffer; gradient/
         # elevation/ruggedness are scoped to the lot window (see _site_values).
         result = _run_terrain_chain(work_dir, lat=lat, lng=lng, buffer_m=TERRAIN_BUFFER_M)
+        result["dem_provider"] = dem_provider
+        result["execution_manifest"] = build_manifest(
+            product="terrain",
+            algorithm_version=ALGORITHM_VERSION,
+            inputs={"dem": {"provider": dem_provider,
+                            "buffer_m": TERRAIN_BUFFER_M,
+                            "capture_date_published": False}},
+            query_params={"lat": lat, "lng": lng},
+        )
 
         # Structured interpretation (professional findings with methodology) —
         # fail-safe: a narrative failure must never blank the terrain metrics.
@@ -1270,7 +1307,17 @@ def run_terrain_analysis(
         # Flood susceptibility (larger buffer for catchment context)
         if include_flood:
             flood_dir = tempfile.mkdtemp(prefix="wbt_flood_", dir=work_dir)
-            dem_bytes_lg = fetch_dem_region(lat, lng, buffer_m=5000)
+            dem_bytes_lg, flood_dem_provider = fetch_dem_region_with_provider(
+                lat, lng, buffer_m=5000)
+            # The flood-susceptibility DEM is a SEPARATE fetch and can be
+            # served by a different provider than the terrain DEM — record it
+            # or the manifest gives incomplete provenance for the flood
+            # values (Sol finding, 2026-08-03).
+            result["execution_manifest"]["inputs"]["flood_dem"] = {
+                "provider": flood_dem_provider,
+                "buffer_m": 5000,
+                "capture_date_published": False,
+            }
             dem_flood_path = os.path.join(flood_dir, "dem.tif")
 
             with rasterio.open(dem_bytes_lg) as src:
@@ -1303,6 +1350,13 @@ def terrain_analysis_endpoint(req: TerrainRequest):
     Returns slope, aspect, elevation, drainage direction, and ruggedness.
     Optionally includes flood susceptibility (HAND + ponding + TWI).
     """
+    # Units/CRS entry check (campaign item 4): typed unavailable via the
+    # response's own error field — never metrics computed for the wrong place.
+    coord_reason = check_point_nsw(req.lat, req.lng)
+    if coord_reason:
+        return TerrainResponse(
+            error=f"Terrain analysis could not be determined: {coord_reason}")
+
     try:
         result = run_terrain_analysis(
             req.lat, req.lng, include_flood=req.include_flood_susceptibility,
@@ -1320,6 +1374,7 @@ def terrain_analysis_endpoint(req: TerrainRequest):
             terrain=terrain,
             interpretation=interpretation,
             flood_susceptibility=flood,
+            execution_manifest=result.get("execution_manifest"),
         )
     except Exception as e:
         logger.exception("Terrain analysis failed for (%.4f, %.4f): %s", req.lat, req.lng, e)
