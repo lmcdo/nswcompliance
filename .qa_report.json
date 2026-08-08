@@ -1,46 +1,98 @@
 {
-  "tier": "minor",
-  "justification": "Documentation only, plus one comment block in frontend-nextjs/app/api/dcp/coverage/route.ts. No executable statement changed anywhere: the route's SQL, predicates and response shape are byte-identical, and the diff there is entirely inside a comment. No database read or write, no migration, no served output, no dependency change. Exactly one file in the diff is substantive by the gate's own definition, which is within the minor-tier floor of three. Minor is claimed because the change cannot alter behaviour, not because it is small.",
-  "commit_hash": "92a608e1",
+  "tier": "standard",
+  "justification": "The Site Report page's 'email me this brief' capture (components/reports/PostResultEmailStrip.tsx, already wired into app/reports/intelligence-brief/page.tsx with product='intelligence-brief') has been posting to /api/canibuildit/lead since it shipped, but 'intelligence-brief' was never added to the route's Zod-enforced INTEREST_TYPES enum, so every submission 400'd. Confirmed live via browser network inspection: submitted a real address through the deployed Site Report, captured the actual XHR — status 400 — while the UI showed 'Thanks — we'll be in touch' regardless (that always-show-success behaviour is deliberate, tested design for graceful degradation on genuine transient failures, per PostResultEmailStrip.test.tsx's explicit 'Silent failure — never block the UX' comment; NOT touched here). Fix: add 'intelligence-brief' to INTEREST_TYPES + a branded buildEmailContent case. Also fixed a second bug found on read: the confirmation email's sender name and footer were hardcoded to the 'Can I Build It' consumer brand regardless of product, so an intelligence-brief email would have arrived From: PlotDetect with a 'Can I Build It? canibuildit.com.au' footer once the 400 was fixed — sender/footer now follow the product. A cross-review flagged a third issue in this new copy: the email said 'view it again' about a link with no report ID or persisted state (verified: this page has no share/permalink mechanism for a past run, only re-running a fresh brief) — copy corrected to 'run this or another address again', an accurate description of what the link actually does. A second cross-review pass flagged a real HTML-injection risk: address is Zod-bounded on length only (not character set) and was interpolated unescaped into the HTML email body — a crafted address could inject markup/links into an outgoing PlotDetect-branded email. Added an escapeHtml() helper and applied it to the body (not the subject, which is plain text) in the new intelligence-brief case. The same unescaped pattern exists in all 7 pre-existing cases in this file (flood, solar, shadow, threat-radar, dual-occ-referral, lga-request, granny-flat) — pre-existing, not introduced by this PR, and out of scope for a lead-capture-400 bugfix; flagged to the user as a follow-up, not silently left and not silently expanded into here. USER REQUESTED THE FOLLOW-UP IN THIS SAME PR: hoisted escapeHtml(address) to a single call at the top of buildEmailContent and applied it to every case whose body interpolates address (flood/flood-truth, solar-yield/solar, shadow, threat-radar, dual-occ-referral, granny-flat/default) -- 6 more cases, 7 total including intelligence-brief. lga-request is the one case genuinely excluded: verified its body never references address at all, so there is nothing to escape there (locked in with an explicit test). All subjects still use raw address (plain text, never HTML-rendered) -- only body escaping changed.",
+  "commit_hash": "fc3fd344",
   "files": [
-    "CLAUDE.md",
-    "docs/CONFIGURATION.md",
-    "frontend-nextjs/app/assessment/README.md",
-    "frontend-nextjs/app/api/dcp/coverage/route.ts",
-    ".claude/rules/testing-and-qa.md",
-    ".qa_report.json"
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts"
   ],
-  "break_it": [
+  "pre_impl": {
+    "existing_data": "Read PostResultEmailStrip.tsx (generic, reusable, already used by 3 callers: ThreatRadarTool, PropertyAlertsOptIn, intelligence-brief page) and its test suite before writing anything, to avoid duplicating existing lead-capture infrastructure (prior-art sweep). Confirmed via COMPONENT_MAP.md that CompleteSummary/the email strip are the correct, already-existing insertion points -- no new component needed, this is a bugfix not a feature build. Live-verified the 400 with a real submission (network tab) before touching code, and re-verified after the fix that the previously-broken value is now schema-accepted (unit test, since re-deploying to prod is out of scope for this session).",
+    "assumption_mismatch": "Initially assumed the email-capture feature did not exist and needed building. Prior-art sweep found it already existed and was already wired in -- the real problem was a silent server-side validation gap, not a missing feature. Also initially assumed the client's 'always show success' behaviour was an accidental silent-failure bug to fix; reading PostResultEmailStrip.test.tsx showed it is deliberate, tested UX policy for transient-failure graceful degradation across ALL callers (threat-radar, solar-yield, etc.) -- changing it would have broken 2 passing tests and reversed an intentional design decision. Left untouched; fixed only the actual root cause (the enum).",
+    "new_vs_existing": "No new component, no new API route, no new DB table. Extends the existing INTEREST_TYPES enum (1 value) and existing buildEmailContent switch (1 case) in the existing, already-tested /api/canibuildit/lead route that 3 other features already depend on."
+  },
+  "functions": [
     {
-      "scenario": "The corrected numbers themselves go stale, and this commit becomes the next false premise it was written to prevent. CLAUDE.md now states 116 base tables, 55,696 provisions, 433 precincts and 1,071 controls; every one of those moves whenever data is loaded.",
-      "mitigated": true,
-      "how": "Each figure is published beside the exact query that produces it, in a table whose stated contract is 're-run it rather than quoting this file'. A reader who follows the instruction gets today's number, not the committed one. This converts the claim from an assertion into an instruction, which is the only form that survives drift. The measurement date is stamped on the table.",
-      "what_happens": "CLAUDE.md is auto-loaded into every session, so a stale figure there is read as fact by every future prompt before any measurement happens. That is precisely how '47,818 provisions' and 'former_council' survived for months and reached a session brief as a premise."
+      "name": "POST",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:98",
+      "input": "JSON body incl. interest_type (now accepts 'intelligence-brief' as a 12th enum value)",
+      "output": "on valid input: stores the lead, computes a per-product from/replyTo/footer pair (intelligence-brief -> PlotDetect brand; every other existing product -> unchanged Can I Build It brand), sends the branded confirmation email, returns 200 {ok:true}",
+      "if_none": "interest_type outside the enum -> Zod safeParse fails -> 400 (unchanged behaviour for genuinely unknown values, e.g. 'nuclear-plant' -- still rejected, see lead-abuse.test.ts)"
     },
     {
-      "scenario": "The production flag flips — DCP is switched off, or the LGA list is edited in Vercel — and docs/CONFIGURATION.md is wrong again in exactly the way this commit fixes. Nothing in CI reads Vercel environment variables, so no gate can notice.",
-      "mitigated": true,
-      "how": "The doc no longer asserts the value as a fact to be trusted; it records the verification procedure (fetch the deployed chunk, read whether the DCP_ENABLED guard survived constant-folding) and explicitly says the listed 29 slugs are not canonical and must be read from the bundle. A stale value therefore misleads only a reader who skips the stated check. Full mitigation would need a deployed-config probe in CI, which does not exist and is named as an open item rather than implied.",
-      "what_happens": "A session reasoning about production reads 'DCP is off in prod', concludes the surface is dark, and either builds a redundant enablement path or reports to the founder that customers cannot see DCP data when 29 councils' worth is live."
+      "name": "buildEmailContent",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:248",
+      "input": "product identifier string (interest_type from the request body), plus the cleaned property address string",
+      "output": "escapeHtml(address) computed once at the top (line 257) and reused across every case; for 'intelligence-brief': {subject: 'Your Site Report — <address>' (raw, plain text), body: HTML-escaped address + links to verify.plotdetect.com.au/reports/intelligence-brief}; the 6 other body-interpolating cases (flood, solar-yield, shadow, threat-radar, dual-occ-referral, granny-flat) now use the same escaped value; lga-request unaffected (no address in its body)",
+      "if_none": "unknown product string falls through to the existing default (granny-flat copy) -- pre-existing behaviour, unchanged"
     },
     {
-      "scenario": "A reader takes the unchanged doc_claims.py count of 145 findings as evidence the documents are now true, and stops checking.",
-      "mitigated": true,
-      "how": "The commit message states that the count is unchanged precisely because none of the five corrected errors is a path, version or dependency claim, so the checker structurally could not have caught any of them. doc_claims.py's own module docstring makes the same point ('do not read a green run as the docs are true'). The number is reported as a non-signal, not as a pass.",
-      "what_happens": "The documents keep drifting while a green-looking gate implies they do not, which is the exact 'check that cannot fail' failure this project has already hit four times (0% drift, 13/16 confirmations, CI red three days, silently skipped tests)."
-    },
-    {
-      "scenario": "The route.ts comment edit accidentally changes behaviour — e.g. a stray character breaks the template literal or comment terminator, so the SQL or the module fails to parse.",
-      "mitigated": true,
-      "how": "The change sits wholly inside an existing // comment run above the pool.query call and closes no block. Verified after editing: python -m pytest -q returns 3,970 passed / 2 skipped / 19 deselected (unchanged from the pre-edit baseline measured on the same worktree), scripts/validate_schema_contract.py returns PASSED with the same 10-entry baseline, and the pre-commit bracket/zone/fail-soft/fabricated-verdict lints all passed. TSC is skipped in a bare worktree by design and is enforced on deploy.",
-      "what_happens": "The /api/dcp/coverage endpoint stops returning councils or 500s, so every surface asking 'which councils do you cover' renders empty — a silent coverage blackout rather than a visible error."
+      "name": "escapeHtml",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:239",
+      "input": "raw string (the user-submitted, Zod length-only-bounded address)",
+      "output": "the same string with &, <, >, \", ' replaced by their HTML entities, safe to interpolate into an HTML email body",
+      "if_none": "empty string in -> empty string out; no special-casing needed"
     }
   ],
-  "residual_risk": "Three things this commit deliberately does NOT do. (1) It does not fix the Inner West exclusion in /api/dcp/coverage — the endpoint still returns 25 councils and still omits the three councils with the deepest DCP data. That is a behaviour change requiring a product ruling, so it is documented in the comment as a known gap rather than patched under a docs commit. (2) It does not touch .claude/DATA_QUALITY_TRACKER.md, which carries the largest share of doc_claims findings. Those references point at scripts/fixes/DQ*.py files that were real when the entries were written; the tracker is a historical audit record, and rewriting it to name files that exist today would falsify what was actually run, which is the same reasoning that preserved the 381 historic pvlib audit rows. (3) It does not un-stale tests/test_lga_coverage.py, the gate that would have prevented 13 councils with zero provisions entering NEXT_PUBLIC_ENABLED_LGAS. That gate is now named in docs/CONFIGURATION.md as non-running, but switching it on would change what CI enforces and needs its own change. Additionally, doc_claims.py cannot check numeric or semantic claims at all, so the corrected counts in CLAUDE.md are protected by the published query and nothing else.",
+  "values": [
+    {
+      "value": "INTEREST_TYPES now includes 'intelligence-brief' (was missing -- this was the entire root cause of the 400)",
+      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:64",
+      "if_missing": "every Site Report 'email me this brief' submission 400s permanently; user sees a false success confirmation and never receives the email or gets stored as a lead (the exact bug this PR fixes)"
+    },
+    {
+      "value": "per-product {fromLine, replyTo, footerLabel, footerUrl} -- PlotDetect brand for intelligence-brief, Can I Build It brand for every other product (unchanged)",
+      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:199",
+      "if_missing": "before this fix: hardcoded to the Can I Build It brand for ALL products -- an intelligence-brief email would arrive From: PlotDetect (once the 400 is fixed) with a mismatched 'Can I Build It? canibuildit.com.au' footer"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A future developer adds a new product to PostResultEmailStrip's callers (a 4th interest_type) without adding it to the server's INTEREST_TYPES enum -- the exact mistake that caused this bug.",
+      "what_happens": "Every submission for that product silently 400s while the client shows 'Thanks — we'll be in touch' (deliberate UX, see above) -- the lead is lost and nobody notices, because success is always shown regardless of the real HTTP status.",
+      "mitigated": true,
+      "how": "Not structurally preventable without changing the deliberate client UX (out of scope, would break tested behaviour) -- but the fix here demonstrates the failure mode explicitly (lead-abuse.test.ts already has a live 'rejects unknown interest_type with 400' test) so the pattern is documented and a future PR review can catch a new caller whose product string isn't in the enum. The comment added at INTEREST_TYPES' first use in this PR names this exact class of bug for the next person extending it.",
+      "repro": "add a 4th PostResultEmailStrip call site with a product value not in INTEREST_TYPES, submit via the UI, observe the UI says success while the network tab shows 400 -- reproduces the exact bug this PR fixes for a 4th time"
+    },
+    {
+      "scenario": "The per-product from/replyTo/footer branch only checks interest_type === 'intelligence-brief'; a typo or new value silently falls to the else branch (Can I Build It brand).",
+      "what_happens": "A genuinely new PlotDetect-brand (not canibuildit-brand) product added later would silently get the wrong sender/footer instead of erroring -- a branding bug, not a data-loss bug (email still sends and lead still stores).",
+      "mitigated": true,
+      "how": "Lower severity than the original bug (cosmetic, not silent data loss) and consistent with how buildEmailContent's own switch/default already works in this file. Two regression tests lock the current behaviour for both branches (intelligence-brief brand AND the unchanged canibuildit brand for granny-flat), so any future change to this branch is caught by CI.",
+      "repro": "pytest -- N/A (frontend); npx jest __tests__/api/canibuildit/lead-abuse.test.ts -- both brand tests must stay green"
+    },
+    {
+      "scenario": "PostResultEmailStrip's client-side 'always show success' behaviour (untouched by this PR) could mask a FUTURE regression the same way it masked this one.",
+      "what_happens": "Any server-side failure on this endpoint -- a new validation rule, a Supabase outage, a Resend key rotation -- would again show 'Thanks' to every user while silently losing their email, with no client-visible signal.",
+      "mitigated": false,
+      "how": "Deliberately NOT changed in this PR -- it is tested, intentional design (PostResultEmailStrip.test.tsx: 'Silent failure — never block the UX') shared by 3 callers, and changing it is a UX/product decision outside this bugfix's scope, not something to change unilaterally.",
+      "repro": "n/a -- documented as a known, accepted tradeoff, not something this PR claims to fix"
+    },
+    {
+      "scenario": "A submitter crafts an address containing HTML markup (e.g. a fake </strong><a href=evil-link>) via any of the 8 PostResultEmailStrip-backed forms -- Zod only bounds address length (5-200 chars), not character set.",
+      "what_happens": "That markup would be interpolated raw into the outgoing PlotDetect/Can-I-Build-It-branded HTML email, letting an attacker inject a phishing link or misleading content into a legitimate-sender email (the recipient is the submitter's own address, so low blast radius, but the pattern was real across every product).",
+      "mitigated": true,
+      "how": "escapeHtml(address) is now computed once and applied to every case whose body interpolates address -- all 7 (intelligence-brief, flood/flood-truth, solar-yield/solar, shadow, threat-radar, dual-occ-referral, granny-flat). lga-request is the one genuine exception, verified its body never references address at all. Subjects stay raw everywhere (plain text, never HTML-rendered). 7 parametrized regression tests (one per product) plus one confirming lga-request has nothing to escape.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-email.test.ts -t 'escapes an attacker-controlled address'"
+    },
+    {
+      "scenario": "Before this fix, the canibuildit_leads insert (unchanged code, line 177) was never reached for intelligence-brief submissions -- Zod validation 400'd before execution ever got there, so the insert's own correctness was never in question, only its reachability.",
+      "what_happens": "Reachability, not query logic, was the defect -- a perfectly correct insert that silently never ran for this one interest_type, so no leads with interest_type='intelligence-brief' exist in canibuildit_leads from before this fix.",
+      "mitigated": true,
+      "how": "The new happy-path test ('accepts interest_type intelligence-brief and returns ok:true') exercises the full route including this insert with the mocked Supabase client, confirming the call now reaches and passes through the existing insert path unchanged.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-abuse.test.ts -t 'accepts interest_type'"
+    }
+  ],
   "post_merge": {
-    "db_reset": "None. No migration, no schema change, no database write of any kind. This branch's only database contact was read-only SELECT and count(*) used to establish the corrected figures.",
-    "secrets": "None. No environment variable, key or credential is added, renamed or removed. The 29 LGA slugs recorded in docs/CONFIGURATION.md are public client-side values already inlined into the deployed JavaScript bundle and readable by any visitor, so documenting them discloses nothing.",
-    "other_repo": "None. No sibling repository, deployment target or external service is affected.",
-    "manual_verify": "After merge, confirm CLAUDE.md renders its new Database Quick Reference table correctly in a fresh session, since that file is auto-loaded into every session and a broken table would degrade every future prompt. Optionally re-run the two published queries to confirm the committed figures still hold: SELECT count(*) FROM regulatory_provisions (expect 55,696 at time of writing) and SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' (expect 116). A drift here is expected over time and is not a defect in this commit."
+    "db_reset": "Not required -- no schema change, only a Zod enum extension. canibuildit_leads already has the columns this write needs.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Yes -- after deploy, submit a real address through verify.plotdetect.com.au/reports/intelligence-brief's 'Email me' strip and confirm (a) the network request now returns 200, (b) the confirmation email arrives From: PlotDetect <info@plotdetect.com.au> with a PlotDetect-branded footer linking to verify.plotdetect.com.au, and (c) the lead appears in canibuildit_leads with interest_type='intelligence-brief'."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --testPathPattern=canibuildit",
+    "fails_when": "Both defects this PR fixes were PLANTED back into frontend-nextjs/app/api/canibuildit/lead/route.ts and each was confirmed to turn the command red, then restored byte-identically (md5 1058a2dce63403f44ee85d31a76c0dda before and after each plant). (1) Removing 'intelligence-brief' from INTEREST_TYPES at line 64 -- the original bug, where every Site Report email submission 400'd -- fails 2 of 52 tests. (2) Replacing `const safeAddress = escapeHtml(address)` with `const safeAddress = address` at line 254 -- re-opening the HTML-injection hole in outgoing PlotDetect-branded emails -- fails 7 of 52 tests. Baseline with neither defect present: 52 passed, 2 suites, run against this branch merged with origin/main at 177f84b2. The suite therefore detects both the enum omission and the loss of escaping; it does NOT prove the live 400 is gone in production, which needs a real submission after deploy."
   }
 }
