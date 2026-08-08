@@ -258,7 +258,10 @@ FLOOD_STUDIES: dict[str, dict] = {
         # flood question itself.
         "lga": "Tweed",
         "source": "Tweed Shire Council / BMT",
-        "dir": os.path.join(_FLOOD_STUDIES_BASE, "tweed"),
+        "dir": os.environ.get(
+            "TWEED_RASTER_DIR",
+            os.path.join(_FLOOD_STUDIES_BASE, "tweed"),
+        ),
         "crs": "EPSG:28356",  # GDA94 MGA56 — missing from TIF metadata
         "nodata": -999.0,
         "has_depth": True,
@@ -283,7 +286,10 @@ FLOOD_STUDIES: dict[str, dict] = {
         # flood question itself.
         "lga": "Wollongong",
         "source": "Wollongong City Council / Jacobs",
-        "dir": os.path.join(_FLOOD_STUDIES_BASE, "wollongong"),
+        "dir": os.environ.get(
+            "WOLLONGONG_RASTER_DIR",
+            os.path.join(_FLOOD_STUDIES_BASE, "wollongong"),
+        ),
         "crs": "EPSG:7856",  # GDA2020 MGA56 — missing from ASC metadata
         "nodata": -999.0,
         "has_depth": True,
@@ -871,6 +877,38 @@ _AEP_FREQUENCY_RANK: dict[str, int] = {
     "Flood Prone Area 1":         7,
     "Probable Maximum Flood":     8,
 }
+
+
+def _query_address_council(lat: float, lng: float) -> str | None:
+    """The council this address sits in, for scoping an absent flood study.
+
+    NOT ses_study_lga, which #892 used and which measurement showed is the
+    wrong signal: it is the LGA of a MATCHED flood study, so it is null in 80%
+    of stored reports and null in 100% of the rows that were queried and fell
+    outside every study extent — exactly the case where a missing study
+    matters. Scoping on it made the check close to inert.
+
+    This resolves the council itself, from the same spatial_overlays table the
+    rest of the module already queries. Returns None when the lookup cannot
+    answer, and None means unknown, never "no council".
+    """
+    conn = None
+    try:
+        # Imported here, not at module scope: services/ import each other by bare
+        # name (the container's working dir) and the test suite resolves those
+        # with explicit sys.modules stubs. A local import keeps this module
+        # importable without stubbing the very function being wired in.
+        from lga_lookup import lookup_lga
+
+        conn = _get_conn()
+        result = lookup_lga(lat, lng, conn)
+        return result.get("lga_name")
+    except Exception as e:  # noqa: BLE001 — a failed lookup is unknown, not fatal
+        logger.warning(f"Council lookup for flood study scoping failed: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
 
 
 def _query_ses_flood_study(lat: float, lng: float) -> dict:
@@ -1566,7 +1604,12 @@ def _unconsulted_1pct_sources(normalised: dict, raw: dict) -> list[str]:
     # for the reader. When the council is unknown the absence is NOT reported:
     # this under-reports rather than over-reports, deliberately, because a
     # false "not assessed" on every address in the state destroys the signal.
-    council = str(normalised.get("ses_study_lga") or raw.get("lga_name") or "").lower()
+    council = str(
+        raw.get("address_council")
+        or normalised.get("ses_study_lga")
+        or raw.get("lga_name")
+        or ""
+    ).lower()
     for study_key in raw.get("flood_studies_absent") or []:
         cfg = FLOOD_STUDIES.get(study_key) or {}
         study_lga = str(cfg.get("lga") or "").lower()
@@ -2071,6 +2114,7 @@ def run_flood(req: FloodRequest):
         f_ses  = pool.submit(_query_ses_flood_study, req.lat, req.lng)
         f_wofs = pool.submit(_query_dea_wofs, req.lat, req.lng)
         f_studies = pool.submit(_query_flood_study_rasters, req.lat, req.lng)
+        f_council = pool.submit(_query_address_council, req.lat, req.lng)
         f_dem  = pool.submit(_query_ground_elevation, req.lat, req.lng)
         f_compound = pool.submit(_query_compound_risk_layers, req.lat, req.lng)
         epi  = f_epi.result()
@@ -2080,6 +2124,10 @@ def run_flood(req: FloodRequest):
         ses  = f_ses.result()
         wofs = f_wofs.result()
         studies = f_studies.result()
+        # The council this address is IN, for scoping an absent study.
+        # ses_study_lga is the council of a MATCHED study and is null in
+        # 80% of reports — null exactly when a missing study matters.
+        studies["address_council"] = f_council.result()
         dem  = f_dem.result()
         compound = f_compound.result()
 

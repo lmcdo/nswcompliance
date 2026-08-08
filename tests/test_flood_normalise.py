@@ -855,3 +855,40 @@ class TestFloodStudyRasterAvailability:
             "design": {"5pct": "only_5pct.tif"},
         })
         assert flood_truth.flood_study_raster_availability()["nodesign"] is False
+
+
+class TestCouncilScopingUsesTheRightSignal:
+    """#892 scoped an absent study on ses_study_lga. Measurement showed that is
+    the council of a MATCHED study — null in 80% of stored reports, and null in
+    100% of the rows queried-and-outside-every-extent, which is exactly when a
+    missing study matters. address_council comes from lookup_lga and answers
+    the question actually being asked.
+    """
+
+    def test_resolved_council_scopes_the_absence(self):
+        raw = _fully_consulted_raw(
+            flood_studies_absent=["tweed"],
+            address_council="Tweed Shire Council",
+            ses_study_lga=None,          # the old signal is absent, as it usually is
+        )
+        result = _normalise_outputs(raw)
+        assert result["in_100yr_flood_zone"] is None
+        assert result["in_100yr_flood_zone_unconsulted"]
+
+    def test_resolved_council_still_protects_a_different_area(self):
+        raw = _fully_consulted_raw(
+            flood_studies_absent=["tweed"],
+            address_council="Blacktown City Council",
+            ses_study_lga=None,
+        )
+        result = _normalise_outputs(raw)
+        assert result["in_100yr_flood_zone"] is False
+
+    def test_resolved_council_wins_over_the_study_match(self):
+        """Both present and disagreeing: the address's own council decides."""
+        raw = _fully_consulted_raw(
+            flood_studies_absent=["tweed"],
+            address_council="Tweed Shire Council",
+            ses_study_lga="Blacktown City Council",
+        )
+        assert _normalise_outputs(raw)["in_100yr_flood_zone"] is None
