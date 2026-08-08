@@ -10,10 +10,12 @@ globs:
 # Testing & QA
 
 ## Running Tests
-- `python -m pytest` — all active Python tests (~1794 tests, <1s)
+> Counts measured 2026-08-08 at `origin/main` f5acb080. **Re-run rather than quote** —
+> `python -m pytest --collect-only -q | tail -1` prints the current number.
+- `python -m pytest` — all active Python tests (**3,970 passed, 2 skipped, 19 deselected, ~91s**)
 - `python -m pytest tests/test_flood_truth.py -v` — single file
 - `python -m pytest -m database` — DB-dependent tests (needs DATABASE_URL)
-- `cd frontend-nextjs && npx jest` — all frontend Jest tests (~615 tests, ~6s)
+- `cd frontend-nextjs && npx jest` — all frontend Jest tests (**80 suites, 1,034 tests**)
 - `cd frontend-nextjs && npx jest --testPathPattern=council-config` — single test file
 - Test deps: `pip install -r requirements-test.txt` (pytest, pydantic, fastapi)
 - Mock injection: `tests/conftest_mocks.py` stubs psycopg2/requests/pyproj so pure-logic tests run without native deps
