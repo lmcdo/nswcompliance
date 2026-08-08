@@ -1610,7 +1610,18 @@ def _unconsulted_1pct_sources(normalised: dict, raw: dict) -> list[str]:
         or raw.get("lga_name")
         or ""
     ).lower()
-    for study_key in raw.get("flood_studies_absent") or []:
+    absent = list(raw.get("flood_studies_absent") or [])
+    if absent and not council:
+        # A study is missing AND we could not work out whose council this is,
+        # so we cannot tell whether it covered this point. That is unknown, not
+        # clear. Treating it as clear was the previous behaviour and it is the
+        # same fail-open the three-state change exists to remove — the scoping
+        # must not become a new way to reach a confident "no".
+        unconsulted.append(
+            "A council flood study is unavailable and the council for this "
+            "address could not be resolved"
+        )
+    for study_key in absent:
         cfg = FLOOD_STUDIES.get(study_key) or {}
         study_lga = str(cfg.get("lga") or "").lower()
         if council and study_lga and study_lga in council:
