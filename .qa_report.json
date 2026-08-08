@@ -1,98 +1,103 @@
 {
   "tier": "standard",
-  "justification": "The Site Report page's 'email me this brief' capture (components/reports/PostResultEmailStrip.tsx, already wired into app/reports/intelligence-brief/page.tsx with product='intelligence-brief') has been posting to /api/canibuildit/lead since it shipped, but 'intelligence-brief' was never added to the route's Zod-enforced INTEREST_TYPES enum, so every submission 400'd. Confirmed live via browser network inspection: submitted a real address through the deployed Site Report, captured the actual XHR — status 400 — while the UI showed 'Thanks — we'll be in touch' regardless (that always-show-success behaviour is deliberate, tested design for graceful degradation on genuine transient failures, per PostResultEmailStrip.test.tsx's explicit 'Silent failure — never block the UX' comment; NOT touched here). Fix: add 'intelligence-brief' to INTEREST_TYPES + a branded buildEmailContent case. Also fixed a second bug found on read: the confirmation email's sender name and footer were hardcoded to the 'Can I Build It' consumer brand regardless of product, so an intelligence-brief email would have arrived From: PlotDetect with a 'Can I Build It? canibuildit.com.au' footer once the 400 was fixed — sender/footer now follow the product. A cross-review flagged a third issue in this new copy: the email said 'view it again' about a link with no report ID or persisted state (verified: this page has no share/permalink mechanism for a past run, only re-running a fresh brief) — copy corrected to 'run this or another address again', an accurate description of what the link actually does. A second cross-review pass flagged a real HTML-injection risk: address is Zod-bounded on length only (not character set) and was interpolated unescaped into the HTML email body — a crafted address could inject markup/links into an outgoing PlotDetect-branded email. Added an escapeHtml() helper and applied it to the body (not the subject, which is plain text) in the new intelligence-brief case. The same unescaped pattern exists in all 7 pre-existing cases in this file (flood, solar, shadow, threat-radar, dual-occ-referral, lga-request, granny-flat) — pre-existing, not introduced by this PR, and out of scope for a lead-capture-400 bugfix; flagged to the user as a follow-up, not silently left and not silently expanded into here. USER REQUESTED THE FOLLOW-UP IN THIS SAME PR: hoisted escapeHtml(address) to a single call at the top of buildEmailContent and applied it to every case whose body interpolates address (flood/flood-truth, solar-yield/solar, shadow, threat-radar, dual-occ-referral, granny-flat/default) -- 6 more cases, 7 total including intelligence-brief. lga-request is the one case genuinely excluded: verified its body never references address at all, so there is nothing to escape there (locked in with an explicit test). All subjects still use raw address (plain text, never HTML-rendered) -- only body escaping changed.",
-  "commit_hash": "fc3fd344",
+  "justification": "Rewrites the public, search-indexed blog page that describes how this platform validates its own data. The page is syndicated into the sitemap, RSS and JSON-LD via lib/blog-articles.ts and is linked from /how-it-works, so it is served marketing copy making liability-relevant representations under ACL s18. Five of its claims were absolute ('if a source is listed, it was queried'; 'never a false positive or silent failure'; 'you will never see a false all clear'; 'we can produce the exact response'; 'an automated daily monitor... we know within 24 hours') and each was measurably false against this codebase and database on 2026-08-08. Standard rather than minor: only one substantive file changes, but the change is entirely to representations a customer may rely on, which is the class the liability scanner and Sol gate exist for. No logic, no data, no schema.",
+  "commit_hash": "PENDING",
   "files": [
-    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
-    "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
-    "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts"
+    "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx",
+    ".qa_report.json"
   ],
+  "falsifiable_check": {
+    "command": "python scripts/liability_language_check.py --full frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx",
+    "fails_when": "PROVEN by planting, not asserted. Baseline on the rewritten page: PASSED, 0 flagged terms. Planted defect: restored the original absolute promise ('Missing data produces a clear \"unavailable\" indicator - never a false positive, and every result is verified.') into pass 3, which is the exact sentence class this PR removes. The scanner went red and printed its remediation block. File restored byte-identically afterwards: md5 210a4e198ce03e01f96d52e97441122d before and after. LIMIT OF THIS CHECK, stated because it matters: the scanner matches a fixed word list, so it catches 'verified' / 'never' / 'accurate' style overclaims but CANNOT detect a factually false sentence written in permitted words -- e.g. 'the monitor runs every day' contains no flagged term. Those five corrections were found by reading the code and querying the database, and only a human or a query can find the next one. A green run means no banned word is present, never that the page is true."
+  },
   "pre_impl": {
-    "existing_data": "Read PostResultEmailStrip.tsx (generic, reusable, already used by 3 callers: ThreatRadarTool, PropertyAlertsOptIn, intelligence-brief page) and its test suite before writing anything, to avoid duplicating existing lead-capture infrastructure (prior-art sweep). Confirmed via COMPONENT_MAP.md that CompleteSummary/the email strip are the correct, already-existing insertion points -- no new component needed, this is a bugfix not a feature build. Live-verified the 400 with a real submission (network tab) before touching code, and re-verified after the fix that the previously-broken value is now schema-accepted (unit test, since re-deploying to prod is out of scope for this session).",
-    "assumption_mismatch": "Initially assumed the email-capture feature did not exist and needed building. Prior-art sweep found it already existed and was already wired in -- the real problem was a silent server-side validation gap, not a missing feature. Also initially assumed the client's 'always show success' behaviour was an accidental silent-failure bug to fix; reading PostResultEmailStrip.test.tsx showed it is deliberate, tested UX policy for transient-failure graceful degradation across ALL callers (threat-radar, solar-yield, etc.) -- changing it would have broken 2 passing tests and reversed an intentional design decision. Left untouched; fixed only the actual root cause (the enum).",
-    "new_vs_existing": "No new component, no new API route, no new DB table. Extends the existing INTEREST_TYPES enum (1 value) and existing buildEmailContent switch (1 case) in the existing, already-tested /api/canibuildit/lead route that 3 other features already depend on."
+    "existing_data": "Verified each claim against the running system rather than against any document. (1) Source-attribution claim: DQ-50 records 143 cached flood results naming a satellite source the code never queried, 131 inside the serving window. (2) 'Never a false all clear': three counter-examples on record -- shadow geometry failure rendered as 0% overshadowed, secondary-dwelling 'high confidence' on a scan that produced no count, and a neighbouring-land check that returned no usable reading in 538 of 538 attempts while every report displayed a confident negative. (3) 'We can produce the exact response': read services/audit_trail.py:77-102 -- it stores sha256(response_body) and never the body, so the claim overstates what the record can do. (4) 'Automated daily monitor... within 24 hours': queried the health-check history live -- 240 checks over 15 sources, most recent round 2026-08-03, five days before this change, so the schedule does not support a 24-hour promise. (5) Test count 'over 200' is now roughly 5,000.",
+    "assumption_mismatch": "Assumed the fix was to soften wording. Reading the page showed that softening alone would leave a reader unable to tell which parts had been wrong, and the page's whole subject is trustworthiness -- so quiet softening would itself be the misleading act. Changed approach to an explicit dated 'what this page got wrong' section that names all five, which is also consistent with this project's existing practice of preserving rather than rewriting its own record. Second mismatch: assumed the daily monitor did not exist; a four-sweep check found it does exist and runs, just not daily -- so the correction is about cadence, not existence, and the page now says so.",
+    "new_vs_existing": "No new component, route, dependency or data. Edits the copy inside three existing presentational components on one existing page (ValidationPipeline, RecurringPatterns, and the page body), and adds one new prose section plus two list items. No imports added."
   },
   "functions": [
     {
-      "name": "POST",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:98",
-      "input": "JSON body incl. interest_type (now accepts 'intelligence-brief' as a 12th enum value)",
-      "output": "on valid input: stores the lead, computes a per-product from/replyTo/footer pair (intelligence-brief -> PlotDetect brand; every other existing product -> unchanged Can I Build It brand), sends the branded confirmation email, returns 200 {ok:true}",
-      "if_none": "interest_type outside the enum -> Zod safeParse fails -> 400 (unchanged behaviour for genuinely unknown values, e.g. 'nuclear-plant' -- still rejected, see lead-abuse.test.ts)"
+      "name": "ValidationPipeline",
+      "file_line": "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx:27",
+      "input": "no props; renders a hardcoded array of five validation passes",
+      "output": "the same five passes, with passes 1, 2 and 3 rewritten so none states an absolute guarantee, and each pointing to the August 2026 update where it was found wanting",
+      "if_none": "not applicable -- the array is a literal, cannot be empty, and no data is fetched"
     },
     {
-      "name": "buildEmailContent",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:248",
-      "input": "product identifier string (interest_type from the request body), plus the cleaned property address string",
-      "output": "escapeHtml(address) computed once at the top (line 257) and reused across every case; for 'intelligence-brief': {subject: 'Your Site Report — <address>' (raw, plain text), body: HTML-escaped address + links to verify.plotdetect.com.au/reports/intelligence-brief}; the 6 other body-interpolating cases (flood, solar-yield, shadow, threat-radar, dual-occ-referral, granny-flat) now use the same escaped value; lga-request unaffected (no address in its body)",
-      "if_none": "unknown product string falls through to the existing default (granny-flat copy) -- pre-existing behaviour, unchanged"
+      "name": "RecurringPatterns",
+      "file_line": "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx:149",
+      "input": "no props; hardcoded array of three recurring bug patterns",
+      "output": "the false-source-attribution entry no longer claims the problem was solved; it records that the May fix corrected new reports and did not reach cached ones",
+      "if_none": "not applicable -- literal array"
     },
     {
-      "name": "escapeHtml",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:239",
-      "input": "raw string (the user-submitted, Zod length-only-bounded address)",
-      "output": "the same string with &, <, >, \", ' replaced by their HTML entities, safe to interpolate into an HTML email body",
-      "if_none": "empty string in -> empty string out; no special-casing needed"
+      "name": "HowWeValidatePage",
+      "file_line": "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx:190",
+      "input": "no props; static server component",
+      "output": "adds an 'Update, August 2026: what this page got wrong' section listing five specific corrections; corrects the audit-trail paragraph to state that a hash cannot reproduce a response body; replaces the daily-monitor and 24-hour claims with the measured cadence; adds an explicit statement of which single tool has been compared against an external reference",
+      "if_none": "not applicable -- no data dependency; the page renders identically for every visitor"
     }
   ],
   "values": [
     {
-      "value": "INTEREST_TYPES now includes 'intelligence-brief' (was missing -- this was the entire root cause of the 400)",
-      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:64",
-      "if_missing": "every Site Report 'email me this brief' submission 400s permanently; user sees a false success confirmation and never receives the email or gets stored as a lead (the exact bug this PR fixes)"
+      "value": "143 cached flood results, 131 inside the serving window",
+      "read_at": ".claude/DATA_QUALITY_TRACKER.md DQ-50",
+      "why": "the concrete number behind the corrected source-attribution claim; quoted rather than rounded so a reader can check it"
     },
     {
-      "value": "per-product {fromLine, replyTo, footerLabel, footerUrl} -- PlotDetect brand for intelligence-brief, Can I Build It brand for every other product (unchanged)",
-      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:199",
-      "if_missing": "before this fix: hardcoded to the Can I Build It brand for ALL products -- an intelligence-brief email would arrive From: PlotDetect (once the 400 is fixed) with a mismatched 'Can I Build It? canibuildit.com.au' footer"
+      "value": "538 of 538 attempts returned no usable reading",
+      "read_at": "~/.claude/plans/ce-calibration-execution-plan-2026-08.md sections 4h and 4i",
+      "why": "the neighbouring-land check that produced a confident negative every time; the clearest counter-example to the removed 'never a false all clear' promise"
+    },
+    {
+      "value": "0.21 degrees agreement against an independent astronomical model",
+      "read_at": "tests/test_shadow_calibration.py, pass mark 0.50 committed before the run",
+      "why": "the one external comparison the platform can honestly claim; stated with its tolerance so it cannot be read as a general accuracy claim"
+    },
+    {
+      "value": "15 data sources, most recent monitor round 2026-08-03",
+      "read_at": "live query against the data-source health-check history, 2026-08-08",
+      "why": "replaces the unsupported 'daily' and '24 hours' claims with what the run history actually shows"
     }
   ],
-  "queries": [],
   "break_it": [
     {
-      "scenario": "A future developer adds a new product to PostResultEmailStrip's callers (a 4th interest_type) without adding it to the server's INTEREST_TYPES enum -- the exact mistake that caused this bug.",
-      "what_happens": "Every submission for that product silently 400s while the client shows 'Thanks — we'll be in touch' (deliberate UX, see above) -- the lead is lost and nobody notices, because success is always shown regardless of the real HTTP status.",
+      "scenario": "A future edit reintroduces an absolute promise -- 'never', 'always', 'verified', 'every source' -- and the page drifts back to overclaiming.",
+      "what_happens": "The page returns to asserting guarantees the system does not deliver, on the one page whose entire subject is how trustworthy the platform is. That is the ACL s18 exposure this change exists to remove, and it would be worse the second time because the August section would sit beside it contradicting it.",
       "mitigated": true,
-      "how": "Not structurally preventable without changing the deliberate client UX (out of scope, would break tested behaviour) -- but the fix here demonstrates the failure mode explicitly (lead-abuse.test.ts already has a live 'rejects unknown interest_type with 400' test) so the pattern is documented and a future PR review can catch a new caller whose product string isn't in the enum. The comment added at INTEREST_TYPES' first use in this PR names this exact class of bug for the next person extending it.",
-      "repro": "add a 4th PostResultEmailStrip call site with a product value not in INTEREST_TYPES, submit via the UI, observe the UI says success while the network tab shows 400 -- reproduces the exact bug this PR fixes for a 4th time"
+      "how": "scripts/liability_language_check.py runs in the pre-push hook and in CI. Proven to fire: the original 'never a false positive... every result is verified' sentence was planted back in and the scanner went red, then the file was restored byte-identically. Note the limit recorded in falsifiable_check -- a false sentence built from permitted words is not caught."
     },
     {
-      "scenario": "The per-product from/replyTo/footer branch only checks interest_type === 'intelligence-brief'; a typo or new value silently falls to the else branch (Can I Build It brand).",
-      "what_happens": "A genuinely new PlotDetect-brand (not canibuildit-brand) product added later would silently get the wrong sender/footer instead of erroring -- a branding bug, not a data-loss bug (email still sends and lead still stores).",
+      "scenario": "The five corrections themselves go stale. The monitor is put on a real daily schedule, or the cached-source repair lands, and the page keeps describing them as open problems.",
+      "what_happens": "The page understates the platform -- the mirror image of the original fault, and it would erode trust in the update section itself, which is the part doing the work.",
       "mitigated": true,
-      "how": "Lower severity than the original bug (cosmetic, not silent data loss) and consistent with how buildEmailContent's own switch/default already works in this file. Two regression tests lock the current behaviour for both branches (intelligence-brief brand AND the unchanged canibuildit brand for granny-flat), so any future change to this branch is caught by CI.",
-      "repro": "pytest -- N/A (frontend); npx jest __tests__/api/canibuildit/lead-abuse.test.ts -- both brand tests must stay green"
+      "how": "Every correction is dated 'August 2026' and phrased as a finding at a point in time rather than a permanent property, so a later reader can see it is a snapshot. The monitor paragraph explicitly names putting it on a dependable schedule as outstanding work, which is the trigger to come back and revise this page."
     },
     {
-      "scenario": "PostResultEmailStrip's client-side 'always show success' behaviour (untouched by this PR) could mask a FUTURE regression the same way it masked this one.",
-      "what_happens": "Any server-side failure on this endpoint -- a new validation rule, a Supabase outage, a Resend key rotation -- would again show 'Thanks' to every user while silently losing their email, with no client-visible signal.",
-      "mitigated": false,
-      "how": "Deliberately NOT changed in this PR -- it is tested, intentional design (PostResultEmailStrip.test.tsx: 'Silent failure — never block the UX') shared by 3 callers, and changing it is a UX/product decision outside this bugfix's scope, not something to change unilaterally.",
-      "repro": "n/a -- documented as a known, accepted tradeoff, not something this PR claims to fix"
+      "scenario": "A reader takes the update section as evidence the platform is now fully checked, because it is detailed and confident in tone.",
+      "what_happens": "The page would create a new, subtler overclaim: 'they found their problems, therefore the problems are gone.' Four of the five items are fixed but the fifth (cached source attribution) is a data repair still outstanding, and no amount of self-audit substitutes for external comparison.",
+      "mitigated": true,
+      "how": "The section closes by stating that a validation process running green is evidence the checks passed, not proof the output is true. Separately, the 'what this means for you' list now states explicitly that exactly one tool has been compared against an external reference and that this says nothing about whether the others are wrong."
     },
     {
-      "scenario": "A submitter crafts an address containing HTML markup (e.g. a fake </strong><a href=evil-link>) via any of the 8 PostResultEmailStrip-backed forms -- Zod only bounds address length (5-200 chars), not character set.",
-      "what_happens": "That markup would be interpolated raw into the outgoing PlotDetect/Can-I-Build-It-branded HTML email, letting an attacker inject a phishing link or misleading content into a legitimate-sender email (the recipient is the submitter's own address, so low blast radius, but the pattern was real across every product).",
+      "scenario": "The rewritten JSX fails to compile or renders broken, taking down a search-indexed page.",
+      "what_happens": "A page currently ranking for validation and data-accuracy queries returns a build error, and the deploy fails or serves a broken route.",
       "mitigated": true,
-      "how": "escapeHtml(address) is now computed once and applied to every case whose body interpolates address -- all 7 (intelligence-brief, flood/flood-truth, solar-yield/solar, shadow, threat-radar, dual-occ-referral, granny-flat). lga-request is the one genuine exception, verified its body never references address at all. Subjects stay raw everywhere (plain text, never HTML-rendered). 7 parametrized regression tests (one per product) plus one confirming lga-request has nothing to escape.",
-      "repro": "npx jest __tests__/api/canibuildit/lead-email.test.ts -t 'escapes an attacker-controlled address'"
+      "how": "Tag balance verified across the whole file after editing (div 11/11, p 28/28, ul 4/4, li 16/16, strong 11/11, em 3/3, article 1/1, h2 8/8). No raw apostrophes or quotes were introduced into JSX text, so react/no-unescaped-entities cannot fire. NOT verified locally: this worktree has no node_modules, so npx pulled an unconfigured Jest 30 and the local test and typecheck runs were meaningless -- reported rather than counted as a pass. CI is the real gate here and must be green before merge."
     },
     {
-      "scenario": "Before this fix, the canibuildit_leads insert (unchanged code, line 177) was never reached for intelligence-brief submissions -- Zod validation 400'd before execution ever got there, so the insert's own correctness was never in question, only its reachability.",
-      "what_happens": "Reachability, not query logic, was the defect -- a perfectly correct insert that silently never ran for this one interest_type, so no leads with interest_type='intelligence-brief' exist in canibuildit_leads from before this fix.",
+      "scenario": "Naming specific internal defects publicly reveals pipeline internals the blog IP rule forbids.",
+      "what_happens": "Internal product names, algorithm names or table names leak into a public, indexed page, contrary to .claude/rules/blog-content.md.",
       "mitigated": true,
-      "how": "The new happy-path test ('accepts interest_type intelligence-brief and returns ok:true') exercises the full route including this insert with the mocked Supabase client, confirming the call now reaches and passes through the existing insert path unchanged.",
-      "repro": "npx jest __tests__/api/canibuildit/lead-abuse.test.ts -t 'accepts interest_type'"
+      "how": "Checked after writing: zero matches for the banned internal pipeline names, algorithm names, table names and DQ identifiers. All five corrections are described generically -- 'shadow analysis', 'secondary dwelling reports', 'a surface-change check on neighbouring land', 'flood screening results'."
     }
   ],
+  "mutation_analysis": "The check that matters here is not a unit test but the liability scanner, so mutation was done directly against it: planting the removed absolute sentence turns it red, and restoring returns it to green with an identical md5. A weaker version of this change -- softening the wording without the dated correction section -- would still pass the scanner, which is precisely why the scanner is not sufficient on its own and why the corrections were derived from code reads and live queries instead.",
+  "residual_risk": "Three things this change does NOT do. (1) It does not repair the 143 cached results that still name an unqueried source. The page now discloses this honestly, but disclosure is not repair, and a cache hit today can still serve the original text. That is a separate data-repair job. (2) It does not put the data-source monitor on a dependable schedule; the page states the cadence is not daily rather than fixing it. (3) It corrects one page. The same absolute-promise style may exist on /how-it-works, /what-you-get, /authoritative, the eight product landing files and the PDF templates -- a full-corpus scanner pass has not been run, and the scanner only inspects changed lines by default, so nothing written before it existed has ever been checked. Scoping that full audit is the follow-on. Additionally, the claim 'around 5,000 automated tests' is accurate today but is the kind of number that drifts; it is deliberately written as an approximation rather than an exact figure.",
   "post_merge": {
-    "db_reset": "Not required -- no schema change, only a Zod enum extension. canibuildit_leads already has the columns this write needs.",
-    "secrets": "None.",
-    "other_repo": "None.",
-    "manual_verify": "Yes -- after deploy, submit a real address through verify.plotdetect.com.au/reports/intelligence-brief's 'Email me' strip and confirm (a) the network request now returns 200, (b) the confirmation email arrives From: PlotDetect <info@plotdetect.com.au> with a PlotDetect-branded footer linking to verify.plotdetect.com.au, and (c) the lead appears in canibuildit_leads with interest_type='intelligence-brief'."
-  },
-  "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest --testPathPattern=canibuildit",
-    "fails_when": "Both defects this PR fixes were PLANTED back into frontend-nextjs/app/api/canibuildit/lead/route.ts and each was confirmed to turn the command red, then restored byte-identically (md5 1058a2dce63403f44ee85d31a76c0dda before and after each plant). (1) Removing 'intelligence-brief' from INTEREST_TYPES at line 64 -- the original bug, where every Site Report email submission 400'd -- fails 2 of 52 tests. (2) Replacing `const safeAddress = escapeHtml(address)` with `const safeAddress = address` at line 254 -- re-opening the HTML-injection hole in outgoing PlotDetect-branded emails -- fails 7 of 52 tests. Baseline with neither defect present: 52 passed, 2 suites, run against this branch merged with origin/main at 177f84b2. The suite therefore detects both the enum omission and the loss of escaping; it does NOT prove the live 400 is gone in production, which needs a real submission after deploy."
+    "db_reset": "None. No migration, no schema change, no database write. The only database contact was a read-only query of the data-source health-check history to establish the monitor's real cadence.",
+    "secrets": "None. No environment variable, key or credential added, renamed or read. No new external service.",
+    "other_repo": "None. No sibling repository or deployment target affected. The page is served by the existing Next.js app.",
+    "manual_verify": "After deploy, load /blog/how-we-validate-property-data-nsw and confirm the 'Update, August 2026' section renders with its amber callout and that the five list items display. Because the page is syndicated into the sitemap, RSS and JSON-LD, also confirm the feed still builds. Then decide the follow-on: whether to run the liability scanner in --full mode across every user-facing page, since by design it has never inspected any text written before it existed."
   }
 }
