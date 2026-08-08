@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Finishes the flood lane: three hazard flags that served a never-resolved overlay as a clean negative, the scoping signal for #892's three-state verdict replaced with one that exists, 1.6 GB of council flood grids shipped so two councils can answer at all, and the first calibration of a served flood verdict against an independent observed reference. Critical because it changes served output on the field a buyer relies on most and because the calibration result will be quoted externally.",
-  "commit_hash": "f83f9d08",
+  "commit_hash": "25e8870a",
   "files": [
     "services/flood_truth.py",
     "frontend-nextjs/app/api/lot-search/route.ts",
@@ -17,7 +17,7 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_flood_normalise.py -q  AND  the calibration in docs/qa/flood-calibration-2022-result.md",
-    "fails_when": "The calibration is the external check and it was pre-committed: recall >= 0.90 written down at commit fb0a44f7 before any point was sampled, measured 0.976 (40/41, 95% CI +/- 0.047, lower bound 0.929). It CAN fail and it did fail once — the first run scored 0 of 50 because every report_id was an invalid UUID, and the harness printed VERDICT: FAIL from a 0/0 division. That output was discarded, not reported: a harness that could not run has measured nothing, and reporting 0.000 would have been exactly the fabricated finding this campaign exists to remove. The harness now exits 2 with UNKNOWABLE when nothing scores. On the code: three tests pin that the resolved council scopes an absent study, that a different council does not, and that the resolved council beats the stale ses_study_lga; reverting to ses_study_lga reds all three. The lot-search test asserted `toBe(false)` for null hazard flags and now asserts `toBeNull()`.",
+    "fails_when": "The calibration is the external check, pre-committed at fb0a44f7 before any point was sampled, and it does NOT clear its own mark: recall 0.857 (6/7), Wilson 95% CI 0.487-0.974, verdict INDISTINGUISHABLE FROM THE MARK. It moved down four times, every correction from the cross-review: an invalid UUID scored 0/50 and printed FAIL from a 0/0 division (discarded — a harness that could not run measured nothing); a Wald interval put the lower bound at 0.929 and printed PASS (invalid at p near 1; Wilson says 0.874); the denominator counted 34 points outside the product council coverage including SE Queensland; and flood_signal=unavailable was counted as a flood indicator, which is the absence-as-answer error inside the instrument measuring it. On the code: three tests pin that the resolved council scopes an absent study, that a different council does not, and that a missing study plus an unresolvable council is unknown rather than False.",
     "external_authority": "Copernicus EMS rapid-mapping observedEventA polygons, produced by the European Commission from satellite imagery of the 2022 NSW floods — 11,353 polygons across 15 AOIs, downloaded from cems-mapping-website.s3.eu-west-1.amazonaws.com, an authority this project neither produces nor influences."
   },
   "pre_impl": {

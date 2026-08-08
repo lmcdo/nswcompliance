@@ -30,15 +30,17 @@ from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
 CORP = ROOT / "data/flood_calibration/copernicus"
-N = 50
+N = 150   # NSW-scoped target; the raw sample is drawn much larger, see below
 SEED = 20220228  # the date the Northern Rivers flood peaked. Fixed, so the run repeats.
 
 def polygons():
     """(aoi, activation, ring) for every observed flood polygon."""
     out = []
+    bad = []
     for z in sorted(glob.glob(str(CORP / "*.zip"))):
         try: zf = zipfile.ZipFile(z)
-        except Exception: continue
+        except Exception as e:
+            bad.append((Path(z).name, f"zip: {e}")); continue
         # partition, not split()[n]: a file named without underscores would
         # IndexError and take the whole calibration down mid-run.
         parts = Path(z).name.split("_")
@@ -47,14 +49,31 @@ def polygons():
         for n in zf.namelist():
             if not (n.endswith(".json") and "observedEvent" in n): continue
             try: g = json.loads(zf.read(n))
-            except Exception: continue
+            except Exception as e:
+                bad.append((n, f"json: {e}")); continue
             for f in g.get("features") or []:
                 geom = f.get("geometry") or {}
                 t, c = geom.get("type"), geom.get("coordinates")
                 if not c: continue
                 rings = [c[0]] if t == "Polygon" else [p[0] for p in c] if t == "MultiPolygon" else []
                 for r in rings:
-                    if r and len(r) >= 4: out.append((aoi, act, r))
+                    if not (r and len(r) >= 4): continue
+                    # Cheap pre-filter to the NSW side. EMSR567 mapped the
+                    # south-east Queensland floods too, and without this the
+                    # stratified walk spends most of its draws there — the
+                    # first corrected run got 7 NSW points out of 50, an
+                    # interval of 0.49-0.97, which says nothing. The
+                    # authoritative test is still lookup_lga below; this only
+                    # stops the sample being wasted.
+                    lats = [q[1] for q in r if len(q) > 1]
+                    if not lats or (sum(lats) / len(lats)) > -28.1: continue
+                    out.append((aoi, act, r))
+    if bad:
+        # A reference archive that will not open is a hole in the AUTHORITY, and
+        # an AOI silently missing from the sample can only flatter the result.
+        print("REFERENCE DATA UNREADABLE — calibration aborted:", flush=True)
+        for name, err in bad[:10]: print(f"   {name}: {err}", flush=True)
+        raise SystemExit(2)
     return out
 
 def point_in_ring(x, y, ring):
@@ -93,8 +112,35 @@ print(f"sampled points: {len(pts)} across {len(set((a,b) for a,b,_,_ in pts))} a
 if not pts:
     print("NO POINTS — cannot calibrate. UNKNOWABLE, not a pass."); raise SystemExit(2)
 
-from flood_truth import run_flood, FloodRequest
+from flood_truth import run_flood, FloodRequest, _get_conn
+from lga_lookup import lookup_lga
 import uuid
+
+def in_nsw(lat, lng, _cache={}):
+    """Authoritative-for-this-product scope test: does NSW LGA coverage
+    contain the point? The pipeline's latitude envelope is coarse and admits
+    south-east Queensland — EMSR567 mapped both states, and scoring a Brisbane
+    point as NSW recall is measuring the wrong thing."""
+    key = (round(lat, 4), round(lng, 4))
+    if key in _cache: return _cache[key]
+    conn = None
+    try:
+        conn = _get_conn()
+        got = bool((lookup_lga(lat, lng, conn) or {}).get("lga_name"))
+    except Exception:
+        got = None          # unknown scope, not "in scope"
+    finally:
+        if conn: conn.close()
+    _cache[key] = got
+    return got
+
+scoped = []
+for act, aoi, lat, lng in pts:
+    ok = in_nsw(lat, lng)
+    if ok is True: scoped.append((act, aoi, lat, lng))
+print(f"in NSW LGA coverage: {len(scoped)} of {len(pts)} sampled "
+      f"({len(pts)-len(scoped)} outside — EMSR567 mapped SE Queensland too)", flush=True)
+pts = scoped
 
 said_something = 0; results = []
 t0 = time.time()
@@ -104,7 +150,10 @@ for i, (act, aoi, lat, lng) in enumerate(pts, 1):
                                    report_id=str(uuid.uuid4())))
         o = (r or {}).get("outputs") or {}
         sig = o.get("flood_signal"); z = o.get("in_100yr_flood_zone"); ses = o.get("ses_in_flood_planning_area")
-        hit = (sig not in (None, "none")) or (z is True) or (ses is True)
+        # ALLOWLIST. `unavailable` means the sources could not be consulted —
+        # the product supplied no flood indicator, so it is not a hit. Counting
+        # it as one is exactly the absence-as-answer error being hunted.
+        hit = (sig in ("low", "moderate", "elevated")) or (z is True) or (ses is True)
         said_something += 1 if hit else 0
         results.append({"act": act, "aoi": aoi, "lat": lat, "lng": lng,
                         "flood_signal": sig, "in_100yr": z, "ses": ses, "hit": hit})
