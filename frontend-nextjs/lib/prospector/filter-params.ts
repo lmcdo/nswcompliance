@@ -204,9 +204,12 @@ export interface LotResult {
   lot_area_m2: number | null;
   lep_height_m: number | null;
   lep_fsr: number | null;
-  heritage: boolean;
-  flood_prone: boolean;
-  bushfire_prone: boolean;
+  // null = the overlay was never resolved for this lot. NOT "no heritage",
+  // "not flood prone" or "not bushfire prone". Typed so a consumer cannot
+  // assume two states, and so `=== false` keeps meaning something.
+  heritage: boolean | null;
+  flood_prone: boolean | null;
+  bushfire_prone: boolean | null;
   bushfire_category: string | null;
   ca_dev_type: string | null;
   ca_realistic_gfa_m2: number | null;
