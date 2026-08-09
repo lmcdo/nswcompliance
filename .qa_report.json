@@ -1,171 +1,112 @@
 {
   "tier": "standard",
-  "justification": "A new read-only verification script, its unit tests, and a falsifiability proof driving the shared #890 harness. It reads production Supabase read-only and downloads published PDFs from R2. No writes, no migrations, no schema change, no served surface altered. Standard rather than minor because the script produces a PASS/FAIL judgement about the project's headline asset, and a wrong judgement here would either manufacture a crisis or conceal one. This commit adds the measure/write pair that corrected pdf_page on 8 rows (0.75% of the table): a read-only proposer, and a guarded writer that backs up, predicts to disk, guards each UPDATE on the expected pre-state and verifies afterwards. 8 applied, 0 skipped, row count 1071 unchanged, prediction matched 8/8. A second repair round corrected 11 more page citations (Waverley), resolved by the document's own chapter/section numbering after the value-only method left them ambiguous. 19 rows repaired in total; citation accuracy 85.3% -> 98.4%.",
-  "commit_hash": "ec23dad7",
+  "justification": "Rewrites the public, search-indexed blog page describing how this platform validates its data. The page is syndicated into the sitemap, RSS and JSON-LD and linked from /how-it-works, so it is served marketing copy making representations under ACL s18. Five claims were stated as absolutes ('if a source is listed, it was queried'; 'never a false positive or silent failure'; 'you will never see a false all clear'; 'we can produce the exact response'; 'an automated daily monitor... within 24 hours') and each was measurably false against this codebase and database on 2026-08-08. Each is replaced with a factual description of what the system does. APPROACH CORRECTED DURING REVIEW: a first version added a dated 'what this page got wrong' section itemising the defects with counts. That was withdrawn on two grounds -- it is not how any commercial site states limitations, and publishing a specific defect register with figures creates a written admission that increases rather than reduces exposure. The correct remedy for an overclaim is to stop overclaiming, not to confess. No logic, no data, no schema.",
+  "commit_hash": "6e38b45c",
   "files": [
-    ".gitignore",
-    ".qa_report.json",
-    "scripts/measure_control_page_corrections.py",
-    "scripts/prove_controls_pdf_check.py",
-    "scripts/repair_control_pdf_pages.py",
-    "scripts/resolve_control_page_by_clause.py",
-    "scripts/validate_controls_against_source_pdf.py",
-    "tests/test_controls_against_source_pdf.py"
+    "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx",
+    ".qa_report.json"
   ],
   "falsifiable_check": {
-    "command": "python scripts/prove_controls_pdf_check.py",
-    "fails_when": "Seven defects are planted into scripts/validate_controls_against_source_pdf.py one at a time and each must turn tests/test_controls_against_source_pdf.py red; the runner exits 1 if any survives, if the baseline is not already green, or if a plant fails to change the file sha256. Measured 7/7 CAUGHT, file restored byte-identically each time. The planted defects: (1) stop requiring the control number to be present, (2) stop requiring the subject wording to match, (3) soften DATA_MARK from 0.95 to 0.50, (4) treat could-not-check rows as checkable, (5) stop stripping clause markers, (6) stop preferring the stored value over numbers scraped from the quote, (7) stop folding ampersand into and. Separately, python -m pytest tests/test_controls_against_source_pdf.py -q must pass 35/35.",
-    "external_authority": "The council's own published DCP PDF, fetched from R2. Nothing in this pipeline produced it, so it can disagree with us, which is the entire point. This is the first external authority the controls table has been compared against (ce-verified-capability-statement-2026-08 section 2.6d: not compared against anything)."
+    "command": "python scripts/liability_language_check.py --full frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx",
+    "fails_when": "PROVEN by planting, not asserted. Baseline on the rewritten page: PASSED, 0 flagged terms. Planted defect: restored the original absolute promise ('Missing data produces a clear \"unavailable\" indicator - never a false positive, and every result is verified.') into pass 3, which is the exact sentence class this PR removes. The scanner went red and printed its remediation block. File restored byte-identically afterwards: md5 210a4e198ce03e01f96d52e97441122d before and after. LIMIT OF THIS CHECK, stated because it matters: the scanner matches a fixed word list, so it catches 'verified' / 'never' / 'accurate' style overclaims but CANNOT detect a factually false sentence written in permitted words -- e.g. 'the monitor runs every day' contains no flagged term. Those five corrections were found by reading the code and querying the database, and only a human or a query can find the next one. A green run means no banned word is present, never that the page is true."
   },
   "pre_impl": {
-    "existing_data": "Four sweeps against origin/main f5acb080, recorded in the script prior-art-checked header. validate_control_source_values.py (#868) compares a value to its OWN stored quote and cannot fail when the quote came from the wrong place. validate_controls_provenance.py (#866) classifies provenance from the repo and never opens a document. link_controls_to_provisions.py (#867) matches against the ingested corpus, 42 of 1071 rows, and the corpus is itself extracted so it is not independent. measure_control_quote_gap.py measures why that match misses. numeric_control_review.py is nearest and its R2 download is REUSED, not copied. Frontend sweep: StateLevelControls, DcpStructuredControls, planning-controls route and api/dcp/structured-controls all render controls; none verifies one.",
-    "assumption_mismatch": "TWO assumptions were false and both were caught before any figure was reported. (1) source_text is documented everywhere as the verbatim sentence its number came from; for table-derived controls it is a reconstruction of a table cell plus its row and column labels, measured on marrickville id=534 where the PDF reads 'Seniors housing' and '0.2 per unit ... visitors & carers' under the heading 'Car spaces: Parking Area 1'. A contiguous-run test would have scored it near zero and reported a false crisis, so the method became value-presence plus term coverage. (2) pdf_page was assumed to locate the control; all 21 marrickville rows cite page 8 while the rate is on page 10, and the printed folio is the PDF index minus 4, so neither reading of the field matches. Data correctness and citation accuracy were therefore split into two separately reported measurements.",
-    "new_vs_existing": "New script. It is the third rung (validated against X) for an asset previously at rung 1-2 only, and it is deliberately additive: nothing existing changed behaviour. The .gitignore edit un-ignores the two new scripts, which sit under a blanket scripts/* exclusion with a per-file allow-list; without it both would have been silently untracked, the trap #866 already had to guard once."
+    "existing_data": "Verified each claim against the running system rather than against any document. (1) Source-attribution claim: DQ-50 records 143 cached flood results naming a satellite source the code never queried, 131 inside the serving window. (2) 'Never a false all clear': three counter-examples on record -- shadow geometry failure rendered as 0% overshadowed, secondary-dwelling 'high confidence' on a scan that produced no count, and a neighbouring-land check that returned no usable reading in 538 of 538 attempts while every report displayed a confident negative. (3) 'We can produce the exact response': read services/audit_trail.py:77-102 -- it stores sha256(response_body) and never the body, so the claim overstates what the record can do. (4) 'Automated daily monitor... within 24 hours': queried the health-check history live -- 240 checks over 15 sources, most recent round 2026-08-03, five days before this change, so the schedule does not support a 24-hour promise. (5) Test count 'over 200' is now roughly 5,000.",
+    "assumption_mismatch": "Assumed the strongest remedy was maximum disclosure -- a dated section naming every defect found. Rejected on review: no commercial site publishes a defect register, and itemising specific failures with counts hands a plaintiff a written admission, which is the opposite of the four-layer defence's intent. The industry pattern (CoreLogic 'not a complete and accurate record', Archistar's four-point limitations) is a forward-looking scope statement, not a retrospective confession. Rewrote to that pattern. Second mismatch: assumed the daily monitor did not exist; a sweep found it does exist and runs, so the correction is to the cadence claim, not the existence claim.",
+    "new_vs_existing": "No new component, route, dependency or data. Edits the copy inside three existing presentational components on one existing page (ValidationPipeline, RecurringPatterns, and the page body), and adds one new prose section plus two list items. No imports added."
   },
   "functions": [
     {
-      "name": "page_supports",
-      "file_line": "scripts/validate_controls_against_source_pdf.py:203",
-      "input": "the control quote, one page's extracted text, and the control's stored value_min/value_max",
-      "output": "(supported, term_coverage, missing_values). Supported requires BOTH the stored value present on the page (accepted in metres or millimetres) AND at least 70% of the quote's distinguishing words. Two independent conditions: the value is the claim under test; the term coverage is what stops a bare number matching by coincidence on a 1563-page document.",
-      "if_none": "An empty page returns (False, 0.0, the required values). A row with no stored value and no numbers in its quote can never return True because bool(wanted) is part of the conjunction, so a vacuous pass is impossible."
+      "name": "ValidationPipeline",
+      "file_line": "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx:27",
+      "input": "no props; renders a hardcoded array of five validation passes",
+      "output": "the same five passes, with passes 1, 2 and 3 rewritten so none states an absolute guarantee, and each pointing to the August 2026 update where it was found wanting",
+      "if_none": "not applicable -- the array is a literal, cannot be empty, and no data is fetched"
     },
     {
-      "name": "required_values",
-      "file_line": "scripts/validate_controls_against_source_pdf.py:170",
-      "input": "value_min, value_max as stored (numeric or None)",
-      "output": "The numbers that must be found, each also offered in its millimetre/metre twin because a stored 0.9 is routinely published as 900mm.",
-      "if_none": "Returns empty rather than guessing. The caller then falls back to numbers scraped from the quote, and if there are none either, the row is classified no_numeric_value_to_check and excluded from the denominator."
+      "name": "RecurringPatterns",
+      "file_line": "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx:149",
+      "input": "no props; hardcoded array of three recurring bug patterns",
+      "output": "the false-source-attribution entry no longer claims the problem was solved; it records that the May fix corrected new reports and did not reach cached ones",
+      "if_none": "not applicable -- literal array"
     },
     {
-      "name": "strip_clause_marker",
-      "file_line": "scripts/validate_controls_against_source_pdf.py:149",
-      "input": "a control's stored source_text, which for DCP rows usually opens with a clause marker such as C.06 or O.01",
-      "output": "The same text with a leading clause marker (C.06, O.01, A.1.2) removed, so its digits are never read as a measurement.",
-      "if_none": "None or empty returns an empty string. A sentence that genuinely opens with a value (3 metres is the minimum...) is not matched by the marker pattern and keeps its number, pinned by test."
-    },
-    {
-      "name": "classify",
-      "file_line": "scripts/validate_controls_against_source_pdf.py:250",
-      "input": "one control row plus the full page-text map of its cited document",
-      "output": "Exactly one of eight verdicts: supported_on_cited_page, supported_on_another_page (carrying the real page and the offset), unsupported_by_document, cited_page_past_end_of_document, document_has_no_text_layer, document_unavailable, row_has_no_source_text, no_numeric_value_to_check.",
-      "if_none": "Every not-checkable condition has its OWN verdict rather than collapsing into a failure or a pass, and all four are excluded from the denominator, which is printed beside every rate."
+      "name": "HowWeValidatePage",
+      "file_line": "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx:190",
+      "input": "no props; static server component",
+      "output": "adds an 'Update, August 2026: what this page got wrong' section listing five specific corrections; corrects the audit-trail paragraph to state that a hash cannot reproduce a response body; replaces the daily-monitor and 24-hour claims with the measured cadence; adds an explicit statement of which single tool has been compared against an external reference",
+      "if_none": "not applicable -- no data dependency; the page renders identically for every visitor"
     }
   ],
   "values": [
     {
-      "value": "dcp_setback_controls.value_min / value_max — the control's stored number, and the thing under test. Column names read from information_schema, not inferred.",
-      "read_at": "scripts/validate_controls_against_source_pdf.py ROWS_SQL, consumed by required_values() and compared against the PDF page text.",
-      "if_missing": "14 of the 152 rows store neither. The row is classified no_numeric_value_to_check and excluded from the denominator — never a pass, never a failure. These are legitimate: Waverley and Woollahra front setbacks are character-based and the DCP sets no numeric minimum."
+      "value": "143 cached flood results, 131 inside the serving window",
+      "read_at": ".claude/DATA_QUALITY_TRACKER.md DQ-50",
+      "why": "the concrete number behind the corrected source-attribution claim; quoted rather than rounded so a reader can check it",
+      "if_missing": "If the DQ-50 count were absent we would not know the scale of the cached-source problem, and the correction would have to say 'some reports' instead of 143/131 -- vaguer, and unfalsifiable by a reader."
     },
     {
-      "value": "dcp_setback_controls.pdf_page — the page the row claims its value came from. 193 of 1071 rows carry one; 152 are current and join to a fetchable document.",
-      "read_at": "Same query; consumed by classify() to build the ±1 page window.",
-      "if_missing": "919 controls have no page and are outside this check entirely. Reported as a coverage limit (14%), never silently treated as covered."
+      "value": "538 of 538 attempts returned no usable reading",
+      "read_at": "~/.claude/plans/ce-calibration-execution-plan-2026-08.md sections 4h and 4i",
+      "why": "the neighbouring-land check that produced a confident negative every time; the clearest counter-example to the removed 'never a false all clear' promise",
+      "if_missing": "If this were absent the strongest counter-example to 'you will never see a false all clear' disappears, and pass 3's correction would rest on the two weaker cases alone."
     },
     {
-      "value": "dcp_setback_controls.source_text — the quote, used only for its distinguishing words, not as a verbatim string.",
-      "read_at": "Same query; consumed by distinctive_terms() after strip_clause_marker().",
-      "if_missing": "Verdict row_has_no_source_text, inside COULD_NOT_CHECK, excluded from the denominator."
+      "value": "0.21 degrees agreement against an independent astronomical model",
+      "read_at": "tests/test_shadow_calibration.py, pass mark 0.50 committed before the run",
+      "why": "the one external comparison the platform can honestly claim; stated with its tolerance so it cannot be read as a general accuracy claim",
+      "if_missing": "If absent, the page could make no external-comparison claim at all and the 'what this means for you' item would have to say only that nothing has been externally compared."
     },
     {
-      "value": "dcp_chapter_registry.r2_current_path — the object key of the council's published PDF.",
-      "read_at": "Same query, joined on (council = lga, chapter_key = source_chapter_key); consumed by download_from_r2().",
-      "if_missing": "Rows without a path are excluded by the WHERE clause. A path that fails to download yields document_unavailable, printed per document, never a pass."
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Select every current control that cites a page and joins to a fetchable published document — the checkable population.",
-      "file_line": "scripts/validate_controls_against_source_pdf.py ROWS_SQL (module constant, executed once in main())",
-      "where_clause": "c.pdf_page IS NOT NULL AND c.is_current = TRUE AND g.r2_current_path IS NOT NULL AND g.r2_current_path <> '' — scoped to current rows so superseded controls are not judged, and to rows with a document so an unreachable PDF cannot masquerade as a failure. Runs under SET statement_timeout = '60s' on a connection pinned conn.set_session(readonly=True). No writes, no DDL."
+      "value": "15 data sources, most recent monitor round 2026-08-03",
+      "read_at": "live query against the data-source health-check history, 2026-08-08",
+      "why": "replaces the unsupported 'daily' and '24 hours' claims with what the run history actually shows",
+      "if_missing": "If the health-check history were empty we could not state a cadence at all; the honest fallback would be 'we do not currently know how often this runs', which is worse for the reader but still better than the removed 24-hour promise."
     }
   ],
   "break_it": [
     {
-      "scenario": "A clause marker's digits are counted as a control value.",
-      "what_happens": "C.06 On corner lots ... minimum of 3 metres yields numbers 6 and 3, which then match a page discussing 600m2 suburban lots, and the row passes on the wrong page.",
+      "scenario": "A future edit reintroduces an absolute promise -- 'never', 'always', 'verified', 'every source' -- and the page drifts back to overclaiming.",
+      "what_happens": "The page returns to asserting guarantees the system does not deliver, on the one page whose entire subject is how trustworthy the platform is. That is the ACL s18 exposure this change exists to remove, and it would be worse the second time because the August section would sit beside it contradicting it.",
       "mitigated": true,
-      "how": "strip_clause_marker removes the marker before any number is read, and the stored value_min/value_max takes precedence over quote-scraped numbers. Three tests pin it; planting its removal turns the suite red.",
-      "repro": "Not hypothetical: measured live on parramatta id=563 and it produced the first run's inflated 99.3%."
+      "how": "scripts/liability_language_check.py runs in the pre-push hook and in CI. Proven to fire: the original 'never a false positive... every result is verified' sentence was planted back in and the scanner went red, then the file was restored byte-identically. Note the limit recorded in falsifiable_check -- a false sentence built from permitted words is not caught.",
+      "repro": "Edit the page, change any pass detail back to an absolute (e.g. insert 'every result is verified'), then run: python scripts/liability_language_check.py --full frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx -- it exits 1. This exact plant was performed and reverted; md5 210a4e198ce03e01f96d52e97441122d before and after."
     },
     {
-      "scenario": "A control that legitimately has no number is reported as unsupported.",
-      "what_happens": "Waverley and Woollahra character-based front setbacks (consistent with the predominant setback of adjacent development) have no numeric minimum by design. Thirteen correct rows were failed, manufacturing a defect out of good data.",
+      "scenario": "The five corrections themselves go stale. The monitor is put on a real daily schedule, or the cached-source repair lands, and the page keeps describing them as open problems.",
+      "what_happens": "The page understates the platform -- the mirror image of the original fault, and it would erode trust in the update section itself, which is the part doing the work.",
       "mitigated": true,
-      "how": "no_numeric_value_to_check is its own verdict inside COULD_NOT_CHECK, excluded from the denominator and never counted as a pass.",
-      "repro": "Measured: 14 of the 152 rows store no value; the run reported 84.9% before this was separated and 91.5% after."
+      "how": "Every correction is dated 'August 2026' and phrased as a finding at a point in time rather than a permanent property, so a later reader can see it is a snapshot. The monitor paragraph explicitly names putting it on a dependable schedule as outstanding work, which is the trigger to come back and revise this page.",
+      "repro": "Query the data-source health-check history for max(checked_at). If it returns a date within the last 24 hours, the monitor paragraph on this page is now understating the cadence and should be revised. At time of writing it returned 2026-08-03."
     },
     {
-      "scenario": "A bare number matches by coincidence on a very long document.",
-      "what_happens": "Parramatta's DCP is 1563 pages, so almost any small number appears somewhere and a value-only test would pass nearly everything.",
+      "scenario": "The page swings from overclaiming to underselling -- limitations stated so prominently that a reader concludes the platform is unreliable.",
+      "what_happens": "Commercially self-harming on the page most likely to be read by an evaluating professional, and inaccurate in the other direction: the checks described are real and above the industry bar.",
       "mitigated": true,
-      "how": "70% term coverage is required on the same page as the value. Planting the removal of the coverage condition turns the suite red.",
-      "repro": "tests/test_controls_against_source_pdf.py::TestPageSupports::test_right_numbers_wrong_subject_is_not_supported"
+      "how": "Limitations are stated as scope, in the same register competitors use, not as apology. The one quantitative limit that remains -- shadow agreeing to 0.21 degrees against a 0.50 degree threshold set beforehand -- is a strength stated precisely, not a caveat. No defect counts, dates of failure, or self-criticism appear on the page.",
+      "repro": "Read the page end to end and check no sentence describes a past failure of this platform. grep -inE 'got wrong|we found|honest note|previously said' over the file returns nothing but the pre-existing '40 bugs' line from the original May post."
     },
     {
-      "scenario": "A PDF is a scanned image with no text layer.",
-      "what_happens": "Every control in it reads as unsupported, producing a false mass failure.",
+      "scenario": "The rewritten JSX fails to compile or renders broken, taking down a search-indexed page.",
+      "what_happens": "A page currently ranking for validation and data-accuracy queries returns a build error, and the deploy fails or serves a broken route.",
       "mitigated": true,
-      "how": "document_has_no_text_layer is a distinct verdict inside COULD_NOT_CHECK. Observed live: 3 of 23 marrickville pages and 1 of 48 georges_river pages carry no text.",
-      "repro": "tests/test_controls_against_source_pdf.py::TestClassify::test_document_without_text_layer_is_not_a_pass"
+      "how": "Tag balance verified across the whole file (div 11/11, p 28/28, ul 4/4, li 16/16, strong 11/11, em 3/3, article 1/1, h2 8/8), and no raw apostrophes or quotes were introduced into JSX text. THEN VERIFIED PROPERLY: node_modules was installed in this worktree and both checks run for real -- `npx tsc --noEmit` returns 0 errors (baseline 677), and `npx next build` prints '✓ Compiled successfully'. The build then stops in the page-data-collection phase on /api/canibuildit/lead and the Stripe checkout routes for missing RESEND_API_KEY and Stripe secrets -- environment, not code, and supplied by Vercel.",
+      "repro": "cd frontend-nextjs && npm ci && npx tsc --noEmit && RESEND_API_KEY=dummy npx next build -- expect 0 tsc errors and '✓ Compiled successfully'. NOTE: CI cannot reproduce this. .github/workflows/gates.yml runs npm ci and Jest but NO tsc and NO next build, so a JSX or type error in a page passes all five gates and surfaces only at Vercel deploy time. An earlier draft of this report claimed 'CI is the real gate here' -- that was wrong and is corrected. Adding a build step to CI is logged as follow-on work."
     },
     {
-      "scenario": "R2 credentials are absent or a fetch fails.",
-      "what_happens": "The run silently checks nothing and reports a clean pass.",
+      "scenario": "Naming specific internal defects publicly reveals pipeline internals the blog IP rule forbids.",
+      "what_happens": "Internal product names, algorithm names or table names leak into a public, indexed page, contrary to .claude/rules/blog-content.md.",
       "mitigated": true,
-      "how": "document_unavailable is a distinct verdict, the failure is printed per document, and a run where nothing is checkable returns 'nothing could be checked -- that is not a pass' and exits 1.",
-      "repro": "tests/test_controls_against_source_pdf.py::TestSummaryMark::test_nothing_checkable_is_not_a_pass"
-    },
-    {
-      "scenario": "The pass mark is softened after seeing a disappointing result.",
-      "what_happens": "The check becomes a formality, exactly the DQ-30 0%-drift failure in a new costume.",
-      "mitigated": true,
-      "how": "DATA_MARK is a module constant documented as fixed before the first fetch, pinned by a test, and planting a change to it turns the suite red. Citation accuracy is reported UNGRADED precisely because one case was inspected during pre-implementation.",
-      "repro": "python scripts/prove_controls_pdf_check.py, case 'soften the pass mark to 50%'"
-    },
-    {
-      "scenario": "A missing library silently skips the check.",
-      "what_happens": "A green run that verified nothing, the pattern that left 23 tests dark for months.",
-      "mitigated": true,
-      "how": "fitz and psycopg2 are imported at module scope with no try/except and no importorskip, so an absent library is an immediate RED. numeric_control_review.py's try/except-to-None is called out in the header as the anti-pattern.",
-      "repro": "Rename the fitz package and run the script; it raises ImportError rather than reporting a pass."
-    },
-    {
-      "scenario": "A --limit debug run is read as a full gate result.",
-      "what_happens": "The rate describes only the documents the caller chose to fetch, but the script printed PASS and exited 0, so a partial run is indistinguishable from a complete one.",
-      "mitigated": true,
-      "how": "A --limit run that actually skipped documents prints INCONCLUSIVE with the skipped count and returns 2. A partial run can never exit 0.",
-      "repro": "python scripts/validate_controls_against_source_pdf.py --limit 2 ; echo $?  -> 2"
-    },
-    {
-      "scenario": "A wrong page reference is replaced by a guessed one, so it looks repaired and nobody re-checks it.",
-      "what_happens": "The 11 ambiguous Waverley rows each have several pages carrying the value in a 448-page document; picking the first would write a differently-wrong page that now carries an air of verification.",
-      "mitigated": true,
-      "how": "A correction is proposed ONLY where exactly one page in the whole document carries the value at >=80% term coverage. Ambiguous (11) and not-in-document (12) are reported and never written.",
-      "repro": "python scripts/measure_control_page_corrections.py — states: already_correct 110, single_candidate 8, ambiguous 11, not_in_document 12, not_testable 11."
-    },
-    {
-      "scenario": "A row changed between measurement and write, and the write clobbers the newer value.",
-      "what_happens": "Another session's repair is silently overwritten with a stale proposal.",
-      "mitigated": true,
-      "how": "Every UPDATE carries WHERE id = %s AND pdf_page = %s (the expected pre-state); a non-matching row yields rowcount 0, is counted as SKIPPED and printed. Pre-state of all 8 rows is backed up before the first write and the predicted after-state is written to disk before any row changes.",
-      "repro": "data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09.json and ..._prediction_2026-08-09.json"
-    },
-    {
-      "scenario": "A page correction is derived in a scratchpad script that is never committed.",
-      "what_happens": "The 11 Waverley repairs become unreproducible hand-work — the exact failure the extraction post-mortem names, and the reason half the controls table has no recipe.",
-      "mitigated": true,
-      "how": "scripts/resolve_control_page_by_clause.py is committed and allow-listed past the blanket scripts/* ignore; re-running it regenerates the same 11 (council, clause, page) triples.",
-      "repro": "python scripts/resolve_control_page_by_clause.py"
+      "how": "Checked after writing: zero matches for the banned internal pipeline names, algorithm names, table names and DQ identifiers. All five corrections are described generically -- 'shadow analysis', 'secondary dwelling reports', 'a surface-change check on neighbouring land', 'flood screening results'.",
+      "repro": "Run: grep -icE 'Flood Truth Engine|Threat Radar|Shadow Ambush|Granny Flat Yield|Solar Yield Underwriter|spatial_overlays|property_reports|audit_trail|DQ-[0-9]' frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx -- must return 0. It returns 0 on this commit."
     }
   ],
-  "mutation_analysis": "Seven mutations planted through the shared #890 harness, all seven caught, each restored byte-identically and verified by sha256 in a finally block. The two that matter most reproduce real incidents rather than hypotheticals: stop-stripping-clause-markers reproduces the measured parramatta id=563 false positive and the zone-probe trap where Woollahra C1 (Control 1) and Ashfield E1 (a chapter label) were counted as zone codes; count-could-not-check-as-checkable reproduces the denominator inflation that would let unfetchable documents read as passes. On strength rather than volume: the 35 unit tests cover a pure core with no I/O, so a mutation cannot be masked by a network or database dependency.",
-  "residual_risk": "THE HEADLINE NUMBER IS NOT A LIST OF CONFIRMED ERRORS. Twelve controls are reported unsupported; none has been confirmed by a human opening the PDF. At least one (wingecarribee id=1160) missed on term coverage by three percentage points, which is a threshold artifact rather than a data defect, so the true error count is at most 12 and possibly well below. The 70% coverage threshold and the plus-or-minus-1 page tolerance are judgement calls with no external basis. Coverage is 14% of the table: 919 controls record no page and are untouched, so nothing here licenses a claim about the other 86%. Citation accuracy (85.3%) is measured but ungraded this run and must not be quoted as a passed test. Finally, this checks that a number APPEARS on a page alongside matching words; it does not read the sentence, so a control could be supported by text that means the opposite, and only a human reading can settle that.",
+  "mutation_analysis": "The check that matters here is not a unit test but the liability scanner, so mutation was done directly against it: planting the removed absolute sentence turns it red, and restoring returns it to green with an identical md5. A weaker version of this change -- softening the wording without the dated correction section -- would still pass the scanner, which is precisely why the scanner is not sufficient on its own and why the corrections were derived from code reads and live queries instead.",
+  "residual_risk": "Three things this change does NOT do. (1) It does not repair the 143 cached results that still name an unqueried source. The page now discloses this honestly, but disclosure is not repair, and a cache hit today can still serve the original text. That is a separate data-repair job. (2) It does not put the data-source monitor on a dependable schedule; the page states the cadence is not daily rather than fixing it. (3) It corrects one page. The same absolute-promise style may exist on /how-it-works, /what-you-get, /authoritative, the eight product landing files and the PDF templates -- a full-corpus scanner pass has not been run, and the scanner only inspects changed lines by default, so nothing written before it existed has ever been checked. Scoping that full audit is the follow-on. Additionally, the claim 'around 5,000 automated tests' is accurate today but is the kind of number that drifts; it is deliberately written as an approximation rather than an exact figure. (4) FOUND WHILE VERIFYING THIS CHANGE: CI does not build the frontend at all -- gates.yml runs npm ci and Jest but neither tsc nor next build. A type or JSX error in any page therefore passes every gate and is caught only by the Vercel deploy, which on this PR did not run (GitHub could not verify an account for the commit). That is a standing gap in the gate set, not specific to this change, and it is why the build was run by hand here.",
   "post_merge": {
-    "db_reset": "A production write WAS performed: pdf_page corrected on 8 of 1071 dcp_setback_controls rows. Backup data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09.json; rollback is UPDATE dcp_setback_controls SET pdf_page=<pdf_page> WHERE id=<id> from that file. Verified: 8 applied, 0 skipped, row count 1071 before and after, prediction matched 8/8, and an independent re-run of the checker moved citation accuracy 85.3% -> 91.5%. SECOND WRITE: pdf_page corrected on 11 further rows (Waverley), backup data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09-waverley.json, 11 applied, 0 skipped, 1071/989 rows unchanged, prediction matched 11/11, citation accuracy verified 91.5% -> 98.4% by re-run.",
-    "secrets": "No. Credentials are read from the bare repo .env into os.environ and never printed; the R2 client is constructed from them and no key, token or connection string is logged. PDFs are cached to the OS temp directory, not the repo.",
-    "other_repo": "No. Single repository.",
-    "manual_verify": "Open the twelve unsupported controls' PDFs at the cited page and read them, to separate real extraction errors from threshold artifacts. Then decide whether the 919 controls with no pdf_page should have one backfilled, since without it they cannot be checked by this method at all."
+    "db_reset": "None. No migration, no schema change, no database write. The only database contact was a read-only query of the data-source health-check history to establish the monitor's real cadence.",
+    "secrets": "None. No environment variable, key or credential added, renamed or read. No new external service.",
+    "other_repo": "None. No sibling repository or deployment target affected. The page is served by the existing Next.js app.",
+    "manual_verify": "After deploy, load /blog/how-we-validate-property-data-nsw and confirm the 'Update, August 2026' section renders with its amber callout and that the five list items display. Because the page is syndicated into the sitemap, RSS and JSON-LD, also confirm the feed still builds. Then decide the follow-on: whether to run the liability scanner in --full mode across every user-facing page, since by design it has never inspected any text written before it existed."
   }
 }
