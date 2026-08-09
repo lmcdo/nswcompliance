@@ -96,7 +96,11 @@ def load_baseline() -> dict[str, dict]:
     if not BASELINE.exists():
         return {}
     data = json.loads(BASELINE.read_text(encoding="utf-8"))
-    return {e["file"]: e for e in data.get("entries", [])}
+    # `or []` rather than a .get default: "entries": null is present-but-empty
+    # and the default would not apply, so iteration would raise and the whole
+    # gate would error out instead of reporting every file as new debt. Failing
+    # open on a malformed baseline is the wrong direction for a check like this.
+    return {e["file"]: e for e in (data.get("entries") or [])}
 
 
 def run_one(path: str) -> tuple[bool, str]:

@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Releases six test files from quarantine (43 tests that already passed), fixes two files that the original quarantining itself broke, and replaces an invisible permanent exemption list with a shrink-only ratchet wired into CI. No product code changes: the only non-test edits are conftest collection config, a CI step, a new checker script and docs. Standard rather than minor because it changes what the test gates enforce for every future change, and because two of the files it touches (test_lga_coverage.py) guard an LGA-onboarding rule whose absence is already implicated in 13 councils going live without data.",
-  "commit_hash": "PENDING",
+  "commit_hash": "6417ed37",
   "files": [
     "tests/conftest.py",
     "tests/quarantine-baseline.json",
@@ -32,22 +32,22 @@
   "functions": [
     {
       "name": "quarantined_test_files",
-      "file_line": "scripts/check_test_quarantine.py:76",
+      "file_line": "scripts/check_test_quarantine.py:72",
       "input": "no arguments; parses tests/conftest.py from disk",
       "output": "sorted list of collect_ignore entries beginning with test_, read via ast rather than by importing conftest (importing would trigger its mock-injection side effects)",
       "if_none": "returns an empty list when collect_ignore is absent or holds no test files, which the caller treats as zero debt rather than as an error"
     },
     {
       "name": "run_one",
-      "file_line": "scripts/check_test_quarantine.py:110",
+      "file_line": "scripts/check_test_quarantine.py:106",
       "input": "one test filename relative to tests/",
       "output": "(passes_cleanly, summary). Runs pytest with -o addopts= so the ini's default deselection cannot hide the file from the check written to look at it",
       "if_none": "a file that only skips, contains no tests, or errors on collection is NOT clean -- an all-skipped file protects nothing and promoting it would be the same self-deception one layer up"
     },
     {
       "name": "load_baseline",
-      "file_line": "scripts/check_test_quarantine.py:99",
-      "input": "no arguments; reads tests/quarantine-baseline.json",
+      "file_line": "scripts/check_test_quarantine.py:95",
+      "input": "no arguments; reads and parses the JSON at tests/quarantine-baseline.json from disk",
       "output": "dict keyed by filename, each carrying status, measured, error and cause",
       "if_none": "a missing baseline file returns an empty dict, so every quarantined file then reports as new debt rather than being silently accepted"
     },
@@ -120,6 +120,13 @@
       "mitigated": true,
       "how": "Partially, and the residual is stated. All six were run individually AND in the full suite: 4,024 passed, 2 skipped, 0 failed. Four of the six carry their own DATABASE_URL guards and skip cleanly without it, which is why the CI environment does not need to change. NOT established: behaviour over time. If one proves flaky, the correct response is to fix or re-quarantine it WITH a baseline entry recording why — which the ratchet now forces, so even a regression leaves evidence.",
       "repro": "python -m pytest -q with and without DATABASE_URL set; both must be green."
+    },
+    {
+      "scenario": "A malformed baseline file makes the gate error out instead of reporting, so a broken checker reads as an infrastructure problem rather than as unrecorded debt.",
+      "what_happens": "load_baseline used .get('entries', []); with \"entries\": null present, the default does not apply and iteration raises. CI would show a crashed step, which gets triaged as flaky tooling and skipped, and the quarantine list stops being checked at all — the original failure, restored.",
+      "mitigated": true,
+      "how": "Uses (data.get('entries') or []) so a null or malformed entries block degrades to an empty baseline. That makes every quarantined file report as NEW debt and fails loudly, which is the correct direction for a gate: a broken baseline must not fail open. Caught by the qa_gate Python-adversarial check, not by me.",
+      "repro": "Set \"entries\": null in tests/quarantine-baseline.json and run scripts/check_test_quarantine.py -- it must report every quarantined file as new debt and exit 1, not raise TypeError."
     }
   ],
   "mutation_analysis": "Both enforcement rules were planted and each fired with a specific message; conftest.py restored byte-identically (md5 identical). A third rule fired unplanned against a genuine error of my own -- a failed cleanup left a stale baseline entry and the checker demanded its deletion. The ratchet's own 11 tests were written to cover the cases most likely to be quietly weakened later: the all-skip case, the no-tests case, and the marker-hiding case. Weak assertions avoided: the tests assert on the clean/not-clean decision and the summary text rather than on exit codes alone, because an exit code cannot distinguish 'no tests ran' from 'all skipped', and those two need different responses.",
