@@ -3,7 +3,7 @@
 Pass mark committed BEFORE this ran, in
 docs/qa/flood-calibration-2022-precommit.md (commit fb0a44f7): recall >= 0.90.
 """
-import glob, json, os, random, sys, time, zipfile
+import glob, hashlib, json, os, random, sys, time, zipfile
 from pathlib import Path
 
 import subprocess as _sp
@@ -49,6 +49,52 @@ N = 150
 # too few points is worse than no number: it looks like evidence.
 MIN_SCORED = 30
 SEED = 20220228  # the date the Northern Rivers flood peaked. Fixed, so the run repeats.
+
+MANIFEST = WT / "docs/qa/flood-calibration-2022-reference-manifest.json"
+
+
+def check_reference_complete():
+    """Abort unless EVERY expected reference archive is present and unchanged.
+
+    The integrity check below only inspects archives the glob actually found,
+    so an archive that is entirely ABSENT was invisible: the glob simply
+    returns fewer files, the run still yields enough points, and it publishes a
+    valid-looking recall from an incomplete reference set.
+
+    That is not hypothetical here. All four misses in the published run came
+    from a single AOI, so losing one archive would remove them and RAISE the
+    score. A reference set that can quietly shrink is not a reference.
+    """
+    if not MANIFEST.exists():
+        print(f"REFERENCE MANIFEST MISSING: {MANIFEST}", flush=True)
+        print("Cannot establish the reference set is complete. Refusing to run.", flush=True)
+        raise SystemExit(2)
+    expected = json.loads(MANIFEST.read_text(encoding="utf-8"))["archives"]
+    present = {Path(z).name for z in glob.glob(str(CORP / "*.zip"))}
+    missing = sorted(set(expected) - present)
+    extra = sorted(present - set(expected))
+    changed = []
+    for name, want in expected.items():
+        f = CORP / name
+        if not f.exists():
+            continue
+        got = hashlib.sha256(f.read_bytes()).hexdigest()[:16]
+        if got != want:
+            changed.append(f"{name} ({want} -> {got})")
+    if missing or changed:
+        print("REFERENCE SET INCOMPLETE OR ALTERED — calibration aborted:", flush=True)
+        for m in missing[:10]: print(f"   MISSING: {m}", flush=True)
+        for c in changed[:10]: print(f"   CHANGED: {c}", flush=True)
+        print("A recall figure from a shrunken reference set can only flatter.", flush=True)
+        raise SystemExit(2)
+    if extra:
+        # Not fatal — a NEW archive widens the reference, which cannot flatter.
+        # Reported so the manifest gets updated deliberately.
+        print(f"note: {len(extra)} archive(s) present but not in the manifest "
+              f"(e.g. {extra[0]}). Widening the reference is safe; update the "
+              f"manifest to record it.", flush=True)
+    print(f"reference set complete: {len(expected)} archives verified", flush=True)
+
 
 def polygons():
     """(aoi, activation, ring) for every observed flood polygon."""
@@ -133,6 +179,7 @@ def sample(polys, n, seed):
             break                # nothing left can yield a point
     return picked[:n]
 
+check_reference_complete()
 polys = polygons()
 print(f"observed flood polygons loaded: {len(polys)}", flush=True)
 pts = sample(polys, N, SEED)
@@ -203,15 +250,26 @@ for i, (act, aoi, lat, lng) in enumerate(pts, 1):
         print(f"[{i}/{len(pts)}] {act}/{aoi} {lat:.4f},{lng:.4f} signal={sig} 1pct={z} ses={ses} -> {'HIT' if hit else 'MISS'}", flush=True)
     except Exception as e:
         msg = str(e)
-        # ONLY an explicit outside-NSW refusal is out of scope. Any other
-        # failure is an in-scope point the product did not answer for, and
-        # dropping it from the denominator would inflate recall silently —
-        # 10 database errors would read as 100% recall on the 40 that worked.
-        out_of_scope = "outside NSW" in msg or "outside the NSW" in msg
+        # EVERY exception here is a failure to answer, scored as a miss.
+        #
+        # This used to treat an "outside NSW" message as out-of-scope and drop
+        # the point from the denominator. But in_nsw() has ALREADY ruled this
+        # point inside coverage, using the authoritative lookup — so run_flood
+        # saying otherwise is two components CONTRADICTING each other, not new
+        # information about scope. Silently believing the second one removed
+        # in-scope points from the denominator and inflated recall.
+        #
+        # Scope is decided once, before scoring, by the authoritative test.
+        # Nothing after that point may re-decide it from an exception string.
+        contradiction = "outside NSW" in msg or "outside the NSW" in msg
+        if contradiction:
+            print(f"   ! SCOPE CONTRADICTION at {lat:.4f},{lng:.4f}: lookup_lga "
+                  f"placed this point IN coverage but run_flood refused it as "
+                  f"outside. Scored as a miss, not excluded.", flush=True)
         results.append({"act": act, "aoi": aoi, "lat": lat, "lng": lng,
                         "error": msg[:140],
-                        "hit": None if out_of_scope else False,
-                        "out_of_scope": out_of_scope})
+                        "hit": False,
+                        "scope_contradiction": contradiction})
         print(f"[{i}/{len(pts)}] {act}/{aoi} ERROR {str(e)[:100]}", flush=True)
 
 scored = [r for r in results if r.get("hit") is not None]
@@ -255,8 +313,12 @@ print(f"said something       : {said_something}", flush=True)
 # before seeing the number, rather than the flattering one available after.
 verdict = ("PASS" if lo >= 0.90 else
            "INDISTINGUISHABLE FROM THE MARK" if hi >= 0.90 else "FAIL")
-oos = sum(1 for r in results if r.get("out_of_scope"))
-print(f"out of scope (refused, outside NSW): {oos}", flush=True)
+# Nothing is out-of-scope at scoring time any more: scope is settled BEFORE
+# the loop by the authoritative test, and every exception after it is a miss.
+# What is worth counting is how often the two components disagreed.
+contradictions = sum(1 for r in results if r.get("scope_contradiction"))
+oos = 0
+print(f"scope contradictions (lookup said in, run_flood said out): {contradictions}", flush=True)
 print(f"RECALL               : {recall:.3f}  (Wilson 95% CI {lo:.3f} - {hi:.3f})", flush=True)
 print(f"PASS MARK            : 0.90, committed before the run", flush=True)
 print(f"VERDICT              : {verdict}", flush=True)
@@ -267,6 +329,7 @@ Path(WT / "docs/qa/flood-calibration-2022-result.json").write_text(
                 "n_scope_unresolved": n_scope_unknown,
                 "n_sampled": len(pts), "n_scored": len(scored), "hits": said_something,
                 "recall": recall, "wilson_lo": lo, "wilson_hi": hi,
-                "pass_mark": 0.90, "verdict": verdict, "out_of_scope": oos,
+                "pass_mark": 0.90, "verdict": verdict, "out_of_scope_at_scoring": oos,
+                "scope_contradictions": contradictions,
                 "seed": SEED, "results": results}, indent=2), encoding="utf-8")
 print("written: docs/qa/flood-calibration-2022-result.json", flush=True)
