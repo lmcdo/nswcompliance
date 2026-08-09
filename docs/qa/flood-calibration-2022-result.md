@@ -6,10 +6,22 @@
 
 ## Verdict
 
-> **RECALL 0.895 — 34 of 38 scored points. Wilson 95% CI 0.759 – 0.958. Pass mark 0.90.**
+> **RECALL 0.946 — 35 of 37 scored points. Wilson 95% CI 0.823 – 0.985. Pass mark 0.90.**
 > **VERDICT: INDISTINGUISHABLE FROM THE MARK. Not a pass, and not a fail.**
 
-> **⚠ CORRECTED 2026-08-09.** This section previously published **0.857 (6 of 7)**, which the
+> **⚠ CORRECTED TWICE. Read both, because the second correction moved the number UP.**
+>
+> **2026-08-10 — the reference contained dry land.** GeoJSON polygon holes were being discarded, so
+> a dry island inside an inundation polygon could be sampled as observed flooding. The product
+> correctly answered "no flood" at those points and was scored as MISSING them. Respecting the
+> holes removed 2 of the 4 misses and moved recall from 0.895 to **0.946**. Also fixed in the same
+> pass: the runner globbed the archive directory instead of reading the committed manifest, so an
+> unmanifested archive could join the reference set and change the result. A number that rises
+> after a fix deserves more scrutiny than one that falls — the check here is that both defects were
+> found by adversarial review rather than by looking for a better figure, and the VERDICT is
+> unchanged.
+>
+> **2026-08-09.** This section previously published **0.857 (6 of 7)**, which the
 > committed runner does not produce. Re-running `scripts/run_flood_calibration_2022.py` at seed
 > 20220228 reproduces `flood-calibration-2022-result.json` byte-identically — 38 sampled, 38 in
 > coverage, 34 hits — so the JSON is the reproducible artifact and the 6-of-7 figure was an
@@ -32,7 +44,8 @@ published as a pass.
 | second | 0.976 (40/41) | Wald ±0.047 → lower 0.929 | reported **PASS**. Wald is invalid at a proportion this close to 1 |
 | third | 0.976 (40/41) | Wilson 0.874–0.996 | lower bound below the mark, so **indistinguishable**, per the rule written before the run |
 | fourth | 0.857 (6/7) | Wilson 0.487–0.974 | an intermediate run. Its denominator excluded all but 7 points as outside council coverage; the committed runner, with a working `lookup_lga`, scopes IN 38 of 38. Not reproducible — superseded |
-| **final** | **0.895 (34/38)** | **Wilson 0.759–0.958** | what `scripts/run_flood_calibration_2022.py` produces at seed 20220228, verified by re-running it and diffing the JSON: identical. `flood_signal='unavailable'` is correctly NOT counted as a flood indicator |
+| fifth | 0.895 (34/38) | Wilson 0.759–0.958 | reproducible, but the reference still contained dry land: polygon holes were discarded, so dry islands inside inundation polygons were sampled as flooded and the product was scored as missing them |
+| **final** | **0.946 (35/37)** | **Wilson 0.823–0.985** | holes respected, and the archive set read from the committed manifest rather than a directory glob. Seed 20220228 unchanged. `flood_signal='unavailable'` is still correctly NOT counted as a flood indicator |
 
 Every one of those corrections came from the cross-review, not from me.
 
@@ -43,7 +56,7 @@ Every one of those corrections came from the cross-review, not from me.
 pairs, per `flood-calibration-2022-amendment-01.md`.
 
 **Scope filter:** each draw tested against the product's own NSW council coverage via `lookup_lga`.
-**150 raw draws → 38 in coverage, 112 outside, 0 unresolved.** An earlier version of this section
+**150 raw draws → 37 in coverage, 113 outside, 0 unresolved.** An earlier version of this section
 said "38 of 38, none excluded", because the artifact recorded only the post-filter count — the 112
 discarded draws were invisible, and any lookup FAILURES among them would have been indistinguishable
 from genuine out-of-coverage points. The three counts are now written separately, and a draw whose
@@ -65,25 +78,24 @@ inside the instrument measuring it.
 download — and the file was re-fetched before the run that produced this number. An AOI silently
 missing from the sample can only flatter the result.
 
-## The four misses — and they are one finding, not four
+## The two misses — and they are one finding, not two
 
-An earlier version of this section reported **one** miss. The artifact records **four**, and
-naming only one understated the failure by a factor of four in a document written to be relied on.
+This section has been wrong twice, in opposite directions. It first reported **one** miss when the
+artifact held four — understating the failure. Then respecting polygon holes showed that **two of
+those four were not misses at all**: they fell on dry islands inside inundation polygons, where the
+product's "no flood" was correct and the reference was wrong.
 
 ```
 AOI01  -29.0424, 153.2542   signal=none  1pct=False  ses=False
-AOI01  -29.0253, 153.1980   signal=none  1pct=False  ses=False
-AOI01  -29.0921, 153.3311   signal=none  1pct=False  ses=False
 AOI01  -29.0660, 153.3032   signal=none  1pct=False  ses=False
 ```
 
-**Every miss is identical and they are all in the same place.** Same AOI, a span of roughly
-7 km × 12 km, and the same signature at all four: nothing from the EPI layer, nothing from the 1%
-AEP verdict, nothing from the council/SES extent. Four independent failures would look different
-from each other. These do not.
+**Both are identical and both are in the same place.** Same AOI, roughly 4 km apart, the same
+signature: nothing from the EPI layer, nothing from the 1% AEP verdict, nothing from the
+council/SES extent. Two independent failures would not look like that.
 
-**Cause, measured rather than inferred.** All four fall in **Richmond Valley** council, and a
-point-in-polygon check returns **zero flood polygons covering any of them**. Compare the
+**Cause, measured rather than inferred, and it survived the correction.** Both fall in **Richmond
+Valley** council, and a point-in-polygon check returns **zero flood polygons covering either**. Compare the
 neighbouring councils in `spatial_overlays`:
 
 | Council | Flood polygons held |
@@ -102,10 +114,12 @@ absence of data rather than an absence of flooding.
 most catastrophic flood in Australian history in 2022. One polygon is unlikely to be its true
 extent, and no point in this sample landed there to test it.
 
-**This changes what the headline number means.** 0.895 is not "the screen misses about one in ten
-flooded places at random". It is closer to "the screen works where flood data has been loaded, and
-returns a confident negative where it has not". Those are very different products, and only the
-second one is dangerous.
+**This changes what the headline number means.** 0.946 is not "the screen misses about one in
+twenty flooded places at random". Both remaining misses come from a single council holding no flood
+data, so it is closer to "the screen works where flood data has been loaded, and returns a
+confident negative where it has not". Those are very different products, and only the second one is
+dangerous. A higher recall does not soften that — it sharpens it, because the failures are now
+entirely explained by a coverage gap rather than spread thinly across the sample.
 
 ## What this licenses
 
@@ -127,35 +141,28 @@ before the run."*
 
 ## What would settle it
 
-> **⚠ CORRECTED 2026-08-10.** This section previously said *"at this recall roughly 150 scored
-> points would put the Wilson lower bound above 0.90"*. **That is impossible.** A Wilson lower
-> bound converges on the point estimate from below and can never exceed it, so at an observed
-> recall of 0.895 no sample size whatsoever lifts the bound past 0.90. Computed:
+> **⚠ CORRECTED TWICE.** This section first claimed *"roughly 150 scored points would put the
+> Wilson lower bound above 0.90"*. At the recall then measured (0.895) that was **impossible** — a
+> Wilson lower bound converges on the point estimate from below and can never exceed it, so no
+> sample size lifted it past 0.90. Once the reference was corrected for polygon holes the measured
+> recall rose to **0.946**, and at that recall the claim becomes true — at **153** scored points,
+> not 150 by coincidence. Recomputed rather than restored:
 
-| Scored points, recall held at 0.895 | Wilson 95% CI | Lower bound ≥ 0.90? |
+| Scored points, recall held at 0.946 | Wilson 95% CI | Lower bound ≥ 0.90? |
 |---|---|---|
-| 38 (this run) | 0.759 – 0.958 | no |
-| 150 | 0.834 – 0.933 | no |
-| 600 | 0.868 – 0.917 | **still no** |
+| 37 (this run) | 0.823 – 0.985 | no |
+| 75 | 0.871 – 0.979 | no |
+| **153** | ~0.900 – 0.974 | **yes — first n that clears it** |
+| 300 | 0.915 – 0.967 | yes |
 
-**More points cannot turn this result into a pass.** They can only do one of two things: reveal
-that the true recall is higher than 0.895 and the small sample understated it, or tighten the
-interval until 0.895 can be declared a **fail** with confidence — which happens somewhere past
-600 scored points.
+**So there is now a concrete, reachable target: about 153 scored points.** At this run's yield —
+37 scored from 150 raw draws, roughly one in four landing inside covered councils — that is on the
+order of **620 raw draws**.
 
-For the bound to clear 0.90 the TRUE recall has to be above it, and then the sample needed is:
-
-| If true recall is | Scored points needed for the lower bound to clear 0.90 |
-|---|---|
-| 0.93 | ~375 |
-| 0.95 | ~130 |
-| 0.97 | ~70 |
-
-So the honest framing is not "we need 150 more points". It is: **on the evidence so far this
-product has not demonstrated 90% recall, and the cheapest way to find out whether it can is to fix
-the Richmond Valley class of coverage gap first** — four of the four misses came from one council
-holding no flood data at all, so the measured recall is currently bounded by data coverage rather
-than by detection.
+Two cautions on reading that. It assumes the true recall really is near 0.946; if the larger sample
+pulls it back toward 0.90 the bound will not clear, and that is the outcome the exercise exists to
+find out. And it would still be recall **inside Copernicus-mapped disaster areas**, which remains a
+best case.
 
 The binding constraint on sample size is not compute — it is that Copernicus mapped only the areas
 the EU was asked to map, and only a fraction of those fall in councils this product covers.

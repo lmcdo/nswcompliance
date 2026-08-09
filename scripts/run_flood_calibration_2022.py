@@ -88,11 +88,15 @@ def check_reference_complete():
         print("A recall figure from a shrunken reference set can only flatter.", flush=True)
         raise SystemExit(2)
     if extra:
-        # Not fatal — a NEW archive widens the reference, which cannot flatter.
-        # Reported so the manifest gets updated deliberately.
-        print(f"note: {len(extra)} archive(s) present but not in the manifest "
-              f"(e.g. {extra[0]}). Widening the reference is safe; update the "
-              f"manifest to record it.", flush=True)
+        # Reported, and NOT relied on. An earlier version called this safe on
+        # the reasoning that widening the reference cannot flatter — wrong: an
+        # extra archive full of easily-detected locations raises recall under
+        # the same seed. polygons() now reads only the manifest, so these files
+        # are ignored entirely; the note exists so the manifest gets updated
+        # deliberately rather than the set drifting.
+        print(f"note: {len(extra)} archive(s) on disk are NOT in the manifest "
+              f"(e.g. {extra[0]}) and are being IGNORED. Add them to the "
+              f"manifest if they belong in the reference set.", flush=True)
     print(f"reference set complete: {len(expected)} archives verified", flush=True)
 
 
@@ -100,7 +104,13 @@ def polygons():
     """(aoi, activation, ring) for every observed flood polygon."""
     out = []
     bad = []
-    for z in sorted(glob.glob(str(CORP / "*.zip"))):
+    # Iterate the MANIFEST, not the glob. An earlier version globbed and merely
+    # NOTED unmanifested archives, on the reasoning that "widening the reference
+    # cannot flatter". That reasoning was wrong: an extra archive full of
+    # easily-detected locations raises recall under the same seed and the same
+    # manifest. The reference set is fixed, so read exactly the fixed list.
+    _expected = json.loads(MANIFEST.read_text(encoding="utf-8"))["archives"]
+    for z in [str(CORP / name) for name in sorted(_expected)]:
         try: zf = zipfile.ZipFile(z)
         except Exception as e:
             bad.append((Path(z).name, f"zip: {e}")); continue
@@ -118,8 +128,20 @@ def polygons():
                 geom = f.get("geometry") or {}
                 t, c = geom.get("type"), geom.get("coordinates")
                 if not c: continue
-                rings = [c[0]] if t == "Polygon" else [p[0] for p in c] if t == "MultiPolygon" else []
-                for r in rings:
+                # (exterior, holes). Only c[0] was taken before, discarding
+                # interior rings — so a dry island inside an inundation polygon
+                # was sampled as observed flooding, and the product correctly
+                # answering "no flood" there was recorded as a MISS. That
+                # direction understates the product rather than flattering it,
+                # which is why it survived review, but it is still a wrong
+                # reference.
+                if t == "Polygon":
+                    shapes = [(c[0], list(c[1:]))]
+                elif t == "MultiPolygon":
+                    shapes = [(poly[0], list(poly[1:])) for poly in c]
+                else:
+                    shapes = []
+                for r, holes in shapes:
                     if not (r and len(r) >= 4): continue
                     # Cheap pre-filter to the NSW side. EMSR567 mapped the
                     # south-east Queensland floods too, and without this the
@@ -130,7 +152,7 @@ def polygons():
                     # stops the sample being wasted.
                     lats = [q[1] for q in r if len(q) > 1]
                     if not lats or (sum(lats) / len(lats)) > -28.1: continue
-                    out.append((aoi, act, r))
+                    out.append((aoi, act, r, holes))
     if bad:
         # A reference archive that will not open is a hole in the AUTHORITY, and
         # an AOI silently missing from the sample can only flatter the result.
@@ -151,7 +173,7 @@ def point_in_ring(x, y, ring):
 def sample(polys, n, seed):
     rnd = random.Random(seed)
     by_aoi = {}
-    for aoi, act, r in polys: by_aoi.setdefault((act, aoi), []).append(r)
+    for aoi, act, r, holes in polys: by_aoi.setdefault((act, aoi), []).append((r, holes))
     keys = sorted(by_aoi); picked = []
     # Stratified: walk the AOIs round-robin so no single activation dominates.
     # `keys` MUST shrink. Previously an AOI that can never yield a lon/lat point
@@ -165,12 +187,16 @@ def sample(polys, n, seed):
             rings = by_aoi[k]
             got_one = False
             for _ in range(200):
-                ring = rnd.choice(rings)
+                ring, holes = rnd.choice(rings)
                 xs = [p[0] for p in ring]; ys = [p[1] for p in ring]
                 if max(xs) > 180 or min(xs) < 110:  # not lon/lat — skip projected products
                     break
                 x = rnd.uniform(min(xs), max(xs)); y = rnd.uniform(min(ys), max(ys))
-                if point_in_ring(x, y, ring):
+                # Inside the exterior AND outside every hole. A point in a dry
+                # island is not observed flooding.
+                if point_in_ring(x, y, ring) and not any(
+                    point_in_ring(x, y, h) for h in holes if h and len(h) >= 4
+                ):
                     picked.append((k[0], k[1], round(y, 6), round(x, 6)))
                     got_one = True; progressed = True; break
             if not got_one:
