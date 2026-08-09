@@ -662,3 +662,12 @@ latent-scope-data/
 # idempotence/rollback. Committed so the production write can be audited and
 # rolled back from the repo rather than from memory.
 !scripts/repair_shadow_reports.py
+
+# Quarantine ratchet. Committed because it carries the enforcement rules --
+# a checker that lives on one machine enforces nothing.
+!scripts/check_test_quarantine.py
+
+# The address fixture for tests/test_address_validation.py. The broad
+# `test_*.json` rule above is aimed at scratch output and silently swallowed
+# it, so the fixture could never be committed and the test could never run.
+!tests/fixtures/test_addresses.json
