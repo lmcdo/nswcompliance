@@ -101,6 +101,9 @@ def check_reference_complete():
 
 
 def polygons():
+    projected: dict = {}
+    filtered_north: dict = {}
+    contributed: dict = {}
     """(aoi, activation, ring) for every observed flood polygon."""
     out = []
     bad = []
@@ -129,12 +132,15 @@ def polygons():
                 t, c = geom.get("type"), geom.get("coordinates")
                 if not c: continue
                 # (exterior, holes). Only c[0] was taken before, discarding
-                # interior rings — so a dry island inside an inundation polygon
-                # was sampled as observed flooding, and the product correctly
-                # answering "no flood" there was recorded as a MISS. That
-                # direction understates the product rather than flattering it,
-                # which is why it survived review, but it is still a wrong
-                # reference.
+                # interior rings — so a point on ground Copernicus did NOT map
+                # as inundated could be drawn into a positive-only reference and
+                # scored as a MISS. (That says nothing about whether the
+                # product's negative there was right: a hole means "not mapped
+                # as inundated", which may be dry ground or terrain the
+                # satellite could not read. It only means the point never
+                # belonged in this denominator.) The direction understates the
+                # product rather than flattering it, which is why it survived
+                # review, but it is still a wrong reference.
                 if t == "Polygon":
                     shapes = [(c[0], list(c[1:]))]
                 elif t == "MultiPolygon":
@@ -151,8 +157,43 @@ def polygons():
                     # authoritative test is still lookup_lga below; this only
                     # stops the sample being wasted.
                     lats = [q[1] for q in r if len(q) > 1]
-                    if not lats or (sum(lats) / len(lats)) > -28.1: continue
+                    lons = [q[0] for q in r if len(q) > 1]
+                    # CRS CHECK BEFORE THE LATITUDE FILTER.
+                    #
+                    # The filter below asks "is the mean latitude south of
+                    # -28.1". Fed projected northings (say 6,700,000) that test
+                    # is not false, it is MEANINGLESS — and it answers "skip".
+                    # A whole archive in a projected CRS would therefore
+                    # contribute nothing, silently, and the run would publish
+                    # recall from a reference set quietly missing an AOI.
+                    # Refuse rather than guess: this script does not reproject.
+                    if lons and (max(abs(v) for v in lons) > 180
+                                 or max(abs(v) for v in lats) > 90):
+                        projected.setdefault(Path(z).name, 0)
+                        projected[Path(z).name] += 1
+                        continue
+                    if not lats or (sum(lats) / len(lats)) > -28.1:
+                        filtered_north[Path(z).name] = filtered_north.get(Path(z).name, 0) + 1
+                        continue
+                    contributed[Path(z).name] = contributed.get(Path(z).name, 0) + 1
                     out.append((aoi, act, r, holes))
+    if projected:
+        print("REFERENCE CRS UNSUPPORTED — calibration aborted:", flush=True)
+        for name, cnt in sorted(projected.items()):
+            print(f"   {name}: {cnt} ring(s) carry projected coordinates, not "
+                  f"lon/lat. This script does not reproject, and the latitude "
+                  f"pre-filter would have discarded them silently.", flush=True)
+        raise SystemExit(2)
+    # Archives contributing nothing are REPORTED, not fatal: EMSR567 mapped the
+    # south-east Queensland floods as well, so an archive whose rings all sit
+    # north of the filter is a legitimate geographic exclusion rather than a
+    # defect. Naming them is what stops that assumption going unchecked.
+    silent = sorted(set(filtered_north) - set(contributed))
+    if silent:
+        print(f"archives contributing no NSW polygons ({len(silent)}, excluded "
+              f"by the latitude pre-filter, not by error):", flush=True)
+        for name in silent:
+            print(f"   {name}: {filtered_north[name]} ring(s) north of -28.1", flush=True)
     if bad:
         # A reference archive that will not open is a hole in the AUTHORITY, and
         # an AOI silently missing from the sample can only flatter the result.
@@ -302,9 +343,22 @@ for act, aoi, lat, lng in pts:
 print(f"raw draws: {n_raw_draws} -> in NSW LGA coverage {len(scoped)}, "
       f"outside {n_out_of_scope}, scope unresolved {n_scope_unknown}", flush=True)
 if n_scope_unknown:
-    # An unresolved lookup is a hole in the scope test, not a clean exclusion.
-    print(f"  ! {n_scope_unknown} draws could not be resolved to an LGA — "
-          f"excluded, but they are unknown scope, not known-outside.", flush=True)
+    # An unresolved lookup is a hole in the scope test, not a clean exclusion,
+    # and it was previously WARNED about and then excluded anyway. That is the
+    # denominator quietly shrinking: the points most likely to fail a lookup
+    # are not random with respect to the answer — a council whose data is
+    # missing is exactly the kind of place this calibration exists to find, and
+    # dropping it leaves the easier points behind and raises recall.
+    #
+    # Scope is decided once, authoritatively, for every sampled point. If it
+    # cannot be decided, the run has not measured what it claims to measure.
+    print("=" * 74, flush=True)
+    print(f"UNKNOWABLE: {n_scope_unknown} of {n_raw_draws} draws could not be "
+          f"resolved to an LGA.", flush=True)
+    print("These are UNKNOWN scope, not known-outside. Excluding them would", flush=True)
+    print("shrink the denominator in a direction that can only flatter the", flush=True)
+    print("result. Fix the lookup and re-run. Not a pass and not a fail.", flush=True)
+    raise SystemExit(2)
 pts = scoped
 
 said_something = 0; results = []
@@ -422,6 +476,35 @@ _c = _z * _z / _n
 _centre = (recall + _c / 2) / (1 + _c)
 _half = _z * math.sqrt(recall * (1 - recall) / _n + _c / (4 * _n)) / (1 + _c)
 lo, hi = max(0.0, _centre - _half), min(1.0, _centre + _half)
+
+# THE INDEPENDENCE ASSUMPTION BEHIND WILSON DOES NOT HOLD HERE.
+#
+# Wilson treats 37 points as 37 independent Bernoulli trials. They are not.
+# Whether a point is found depends almost entirely on whether ITS COUNCIL has a
+# flood overlay loaded — a property shared by every point in that council — so
+# outcomes arrive in blocks, not independently. The published run makes this
+# vivid: seven of eight activation/AOI clusters are 100%, and both misses sit
+# in the same 2-point cluster. Treating that as 37 independent observations
+# reports an interval narrower than the evidence supports.
+#
+# So a cluster bootstrap is computed alongside it, resampling whole AOIs with
+# replacement. It is the conservative number and it is the one the verdict
+# uses. Reported together rather than instead, because a reader comparing this
+# to another study needs the conventional figure too.
+_by_cluster: dict = {}
+for _r in results:
+    _by_cluster.setdefault((_r["act"], _r["aoi"]), []).append(1 if _r.get("hit") else 0)
+_cl_keys = sorted(_by_cluster)
+_boot_rng = random.Random(SEED)
+_boots = []
+for _ in range(20000):
+    _flat = [x for k in (_boot_rng.choice(_cl_keys) for _ in _cl_keys) for x in _by_cluster[k]]
+    if _flat:
+        _boots.append(sum(_flat) / len(_flat))
+_boots.sort()
+cluster_lo = _boots[int(0.025 * len(_boots))] if _boots else 0.0
+cluster_hi = _boots[int(0.975 * len(_boots))] if _boots else 1.0
+n_clusters = len(_cl_keys)
 print("=" * 74, flush=True)
 print(f"scored points        : {len(scored)} (of {len(pts)} sampled)", flush=True)
 print(f"executed cleanly     : {executed}", flush=True)
@@ -433,15 +516,19 @@ print(f"said something       : {said_something}", flush=True)
 # The pre-commit says a result within the interval of the mark is reported as
 # INDISTINGUISHABLE from it, not as a pass. Applying the stricter rule I wrote
 # before seeing the number, rather than the flattering one available after.
-verdict = ("PASS" if lo >= 0.90 else
-           "INDISTINGUISHABLE FROM THE MARK" if hi >= 0.90 else "FAIL")
+# The CLUSTER lower bound governs, not Wilson's. Using the narrower interval
+# would be choosing the assumption that flatters after seeing that it fails.
+verdict = ("PASS" if cluster_lo >= 0.90 else
+           "INDISTINGUISHABLE FROM THE MARK" if cluster_hi >= 0.90 else "FAIL")
 # Nothing is out-of-scope at scoring time any more: scope is settled BEFORE
 # the loop by the authoritative test, and every exception after it is a miss.
 # What is worth counting is how often the two components disagreed.
 contradictions = sum(1 for r in results if r.get("scope_contradiction"))
 oos = 0
 print(f"scope contradictions (lookup said in, run_flood said out): {contradictions}", flush=True)
-print(f"RECALL               : {recall:.3f}  (Wilson 95% CI {lo:.3f} - {hi:.3f})", flush=True)
+print(f"RECALL               : {recall:.3f}", flush=True)
+print(f"  Wilson 95% CI      : {lo:.3f} - {hi:.3f}  (assumes 37 independent trials — they are not)", flush=True)
+print(f"  CLUSTER 95% CI     : {cluster_lo:.3f} - {cluster_hi:.3f}  ({n_clusters} activation/AOI clusters; THIS governs)", flush=True)
 print(f"PASS MARK            : 0.90, committed before the run", flush=True)
 print(f"VERDICT              : {verdict}", flush=True)
 print("=" * 74, flush=True)
@@ -453,6 +540,8 @@ Path(WT / "docs/qa/flood-calibration-2022-result.json").write_text(
                 "n_executed": executed, "n_errored": n_errored,
                 "dropped_groups": DROPPED_GROUPS,
                 "recall": recall, "wilson_lo": lo, "wilson_hi": hi,
+                "cluster_lo": cluster_lo, "cluster_hi": cluster_hi,
+                "n_clusters": n_clusters,
                 "pass_mark": 0.90, "verdict": verdict, "out_of_scope_at_scoring": oos,
                 "scope_contradictions": contradictions,
                 "seed": SEED, "results": results}, indent=2), encoding="utf-8")

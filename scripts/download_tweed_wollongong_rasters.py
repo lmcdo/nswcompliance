@@ -27,6 +27,7 @@ Exits 0 always. A missing raster degrades to "not assessed" in flood_truth.py
 rather than crashing — and, since #892, never to "not in a flood zone".
 """
 import logging
+import base64
 import hashlib
 import os
 from pathlib import Path
@@ -76,6 +77,15 @@ def _local_md5(path: Path) -> str:
     return h.hexdigest()
 
 
+def _local_sha256_b64(path: Path) -> str:
+    """Base64 SHA-256, the encoding S3/R2 uses for ChecksumSHA256."""
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(chunk)
+    return base64.b64encode(h.digest()).decode()
+
+
 def _matches_remote(dest: Path, head: dict, tag: str, rel_path: str) -> bool:
     """Is the local raster the same OBJECT as the remote one?
 
@@ -90,19 +100,44 @@ def _matches_remote(dest: Path, head: dict, tag: str, rel_path: str) -> bool:
     knowing the part size, so it is not comparable — in that case we say so
     rather than pretending the size check verified anything.
     """
-    size_ok = dest.stat().st_size == head["ContentLength"]
-    if not size_ok:
+    if dest.stat().st_size != head["ContentLength"]:
         return False
+
+    # R2 can carry an explicit SHA-256 when the object was uploaded with
+    # additional checksums enabled. Prefer it: it is comparable regardless of
+    # how the object was uploaded.
+    remote_sha = head.get("ChecksumSHA256")
+    if remote_sha:
+        return _local_sha256_b64(dest) == remote_sha
+
     etag = (head.get("ETag") or "").strip('"')
-    if not etag or "-" in etag:
+    if etag and "-" not in etag:
+        # Single-part upload: the ETag IS the MD5.
+        if _local_md5(dest) == etag:
+            return True
         log.warning(
-            f"[{tag}-dl] {rel_path}: remote ETag is multipart or absent, so only "
-            f"SIZE was compared. A same-size stale or corrupt raster would not be "
-            f"detected here."
+            f"[{tag}-dl] {rel_path}: SAME SIZE but MD5 differs from the remote "
+            f"object — local copy is stale or corrupt. Re-downloading."
         )
-        return True
-    if _local_md5(dest) == etag:
-        return True
+        return False
+
+    # Multipart or absent ETag and no checksum: the contents CANNOT be
+    # verified from what R2 told us. Returning true here would have accepted a
+    # same-size stale or corrupt raster and served it as authoritative 1% AEP
+    # flood data — size is not integrity, and a warning is not a check.
+    #
+    # So the local copy is not trusted: it is re-fetched, which at least
+    # guarantees the bytes came from R2 this boot. That does not protect
+    # against R2 itself holding a corrupt object; nothing available here can,
+    # and the honest position is to say so rather than imply the size check
+    # covered it.
+    log.warning(
+        f"[{tag}-dl] {rel_path}: remote ETag is multipart and no ChecksumSHA256 "
+        f"is set, so the local contents cannot be verified. Re-downloading "
+        f"rather than trusting file size. (A corrupt object in R2 would still "
+        f"pass — that is outside what this check can see.)"
+    )
+    return False
     log.warning(
         f"[{tag}-dl] {rel_path}: SAME SIZE but checksum differs from the remote "
         f"object — local copy is stale or corrupt. Re-downloading."
@@ -135,8 +170,19 @@ def _download_study(s3, tag: str, prefix: str, dest_dir: Path, files: list[str])
             # Verify what actually landed, not what we asked for. A truncated
             # or mid-flight-corrupted download is worse than a missing file:
             # missing is visible, wrong is served.
-            if not _matches_remote(dest, head, tag, rel_path):
+            # Verify what actually LANDED. Skipped when the object is
+            # unverifiable by construction (multipart ETag, no checksum) —
+            # otherwise a fresh, correct download would be discarded on every
+            # boot by a check that can never pass.
+            verifiable = bool(head.get("ChecksumSHA256")) or (
+                (head.get("ETag") or "").strip('"') and "-" not in (head.get("ETag") or "")
+            )
+            if verifiable and not _matches_remote(dest, head, tag, rel_path):
                 log.warning(f"[{tag}-dl] {rel_path}: downloaded copy failed verification — discarding")
+                dest.unlink(missing_ok=True)
+                continue
+            if not verifiable and dest.stat().st_size != head["ContentLength"]:
+                log.warning(f"[{tag}-dl] {rel_path}: downloaded copy is the wrong size — discarding")
                 dest.unlink(missing_ok=True)
                 continue
             present += 1

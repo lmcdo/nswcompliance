@@ -87,13 +87,40 @@ def test_headline_interval_matches_the_run(result):
 
     Publishing a wider or narrower one than the run produced misstates exactly
     the thing a reader should be looking at.
+
+    BOTH intervals are pinned, by label. The headline used to carry only
+    Wilson, which assumes 37 independent trials \u2014 an assumption this run
+    disproves, since both misses fall inside one AOI cluster. Leading with the
+    narrower interval would mean publishing the flattering assumption after
+    seeing it fail, so the cluster interval governs and both must be quoted.
     """
     line = _headline(RESULT_MD.read_text(encoding="utf-8"))
-    m = re.search(r"CI\s+(\d+\.\d+)\s*[\u2013-]\s*(\d+\.\d+)", line)
-    assert m, f"no Wilson interval in headline: {line}"
-    lo, hi = float(m.group(1)), float(m.group(2))
-    assert lo == pytest.approx(float(result["wilson_lo"]), abs=0.001)
-    assert hi == pytest.approx(float(result["wilson_hi"]), abs=0.001)
+    for label, lo_key, hi_key in (("Cluster", "cluster_lo", "cluster_hi"),
+                                  ("Wilson", "wilson_lo", "wilson_hi")):
+        m = re.search(
+            rf"{label}\s+95% CI\s+(\d+\.\d+)\s*[\u2013-]\s*(\d+\.\d+)", line)
+        assert m, f"no {label} interval in headline: {line}"
+        assert float(m.group(1)) == pytest.approx(float(result[lo_key]), abs=0.001), (
+            f"{label} lower bound in the headline does not match the run")
+        assert float(m.group(2)) == pytest.approx(float(result[hi_key]), abs=0.001), (
+            f"{label} upper bound in the headline does not match the run")
+
+
+def test_the_governing_interval_is_the_conservative_one(result):
+    """The verdict must not be computed from the narrower interval.
+
+    Wilson is narrower here because it assumes independence. If a future change
+    quietly reverts the verdict to Wilson's bound, a result could be declared a
+    PASS on an assumption the same run disproves.
+    """
+    assert float(result["cluster_lo"]) <= float(result["wilson_lo"]) + 1e-9, (
+        "the cluster lower bound is no longer the conservative one \u2014 check "
+        "whether clustering still reflects how the misses are distributed"
+    )
+    if result["verdict"] == "PASS":
+        assert float(result["cluster_lo"]) >= float(result["pass_mark"]), (
+            "PASS was declared without the CLUSTER lower bound clearing the mark"
+        )
 
 
 def test_pass_mark_matches_the_precommitted_value(result):
