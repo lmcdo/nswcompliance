@@ -11,9 +11,9 @@
 
 > **⚠ CORRECTED TWICE. Read both, because the second correction moved the number UP.**
 >
-> **2026-08-10 — the reference contained dry land.** GeoJSON polygon holes were being discarded, so
-> a dry island inside an inundation polygon could be sampled as observed flooding. The product
-> correctly answered "no flood" at those points and was scored as MISSING them. Respecting the
+> **2026-08-10 — the reference counted holes as flooded.** GeoJSON interior rings were being
+> discarded, so a point inside a hole — ground Copernicus did NOT map as inundated — could be
+> sampled as observed flooding and the product scored as having MISSED it. Respecting the
 > holes removed 2 of the 4 misses and moved recall from 0.895 to **0.946**. Also fixed in the same
 > pass: the runner globbed the archive directory instead of reading the committed manifest, so an
 > unmanifested archive could join the reference set and change the result. A number that rises
@@ -29,7 +29,7 @@
 > the only reason this was a documentation defect rather than a wrong conclusion. Found by the
 > cross-review, which flagged that the markdown and its own cited JSON disagreed.
 
-Thirty-eight points is still too few to decide. The interval spans from "three in four" to "almost
+Thirty-seven points is still too few to decide. The interval spans from "three in four" to "almost
 always", and it contains the mark, so the honest reading is that this run did not establish whether
 the product clears 0.90 or not. That is the third state, and it is the answer.
 
@@ -44,7 +44,7 @@ published as a pass.
 | second | 0.976 (40/41) | Wald ±0.047 → lower 0.929 | reported **PASS**. Wald is invalid at a proportion this close to 1 |
 | third | 0.976 (40/41) | Wilson 0.874–0.996 | lower bound below the mark, so **indistinguishable**, per the rule written before the run |
 | fourth | 0.857 (6/7) | Wilson 0.487–0.974 | an intermediate run. Its denominator excluded all but 7 points as outside council coverage; the committed runner, with a working `lookup_lga`, scopes IN 38 of 38. Not reproducible — superseded |
-| fifth | 0.895 (34/38) | Wilson 0.759–0.958 | reproducible, but the reference still contained dry land: polygon holes were discarded, so dry islands inside inundation polygons were sampled as flooded and the product was scored as missing them |
+| fifth | 0.895 (34/38) | Wilson 0.759–0.958 | reproducible, but the reference counted holes as flooded: interior rings were discarded, so points on ground Copernicus did not map as inundated entered a positive-only reference and were scored as misses |
 | **final** | **0.946 (35/37)** | **Wilson 0.823–0.985** | holes respected, and the archive set read from the committed manifest rather than a directory glob. Seed 20220228 unchanged. `flood_signal='unavailable'` is still correctly NOT counted as a flood indicator |
 
 Every one of those corrections came from the cross-review, not from me.
@@ -82,8 +82,16 @@ missing from the sample can only flatter the result.
 
 This section has been wrong twice, in opposite directions. It first reported **one** miss when the
 artifact held four — understating the failure. Then respecting polygon holes showed that **two of
-those four were not misses at all**: they fell on dry islands inside inundation polygons, where the
-product's "no flood" was correct and the reference was wrong.
+those four could not be scored at all**: they fell inside interior rings — ground the reference
+does not map as inundated — so they never belonged in a recall denominator built from observed
+flooding.
+
+**This is not the same as the product being right about them, and the distinction matters.** A hole
+in a Copernicus polygon means "not mapped as inundated here". It may be genuinely dry ground, or it
+may be terrain the satellite could not read — dense canopy, building shadow, an excluded class.
+This report establishes **no specificity figure**, so nothing here supports a claim that the
+product's negative answer at those points was correct. All that changed is that four points left a
+positive-only reference they should never have entered.
 
 ```
 AOI01  -29.0424, 153.2542   signal=none  1pct=False  ses=False

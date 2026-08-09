@@ -251,3 +251,42 @@ def test_the_harness_actually_ran(result):
         f"!= sampled ({result['n_sampled']}) — the counters do not account for "
         f"every point, which is how an error count of a structural zero hid"
     )
+
+
+_NUMBER_WORDS = {
+    30: "thirty", 31: "thirty-one", 32: "thirty-two", 33: "thirty-three",
+    34: "thirty-four", 35: "thirty-five", 36: "thirty-six", 37: "thirty-seven",
+    38: "thirty-eight", 39: "thirty-nine", 40: "forty",
+}
+
+
+def test_no_superseded_sample_size_in_prose(result):
+    """The sweep above matches 'N of M points'. Prose does not use that form.
+
+    "Thirty-eight points is still too few to decide" survived the corrected run
+    AND the first sweep, because it spells the number out and omits the
+    numerator. A reader taking the sample size from the narrative rather than
+    the headline gets the wrong denominator for a 35-of-37 result.
+
+    So: any 'NN points' or spelled-out 'thirty-eight points' claim outside a
+    correction banner or the history table must be the current scored count.
+    """
+    scored = result["n_scored"]
+    wrong_digits = {n for n in range(20, 60) if n != scored}
+    wrong_words = {w for n, w in _NUMBER_WORDS.items() if n != scored}
+
+    offenders = []
+    for ln, line in enumerate(RESULT_MD.read_text(encoding="utf-8").splitlines(), 1):
+        if _stale_allowed(line):
+            continue
+        low = line.lower()
+        for m in re.finditer(r"\b(\d{2}) (?:scored )?points\b", low):
+            if int(m.group(1)) in wrong_digits:
+                offenders.append(f"  line {ln}: '{m.group(0)}' -- {line.strip()[:80]}")
+        for w in wrong_words:
+            if re.search(rf"\b{w} (?:scored )?points\b", low):
+                offenders.append(f"  line {ln}: '{w} points' -- {line.strip()[:80]}")
+    assert not offenders, (
+        f"sample-size claims in prose disagree with the run ({scored} scored "
+        f"points):\n" + "\n".join(offenders)
+    )
