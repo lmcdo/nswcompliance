@@ -161,3 +161,93 @@ def test_the_report_states_the_true_miss_count(result):
     assert "## the one miss" not in md, (
         f"report still headed 'The one miss' but the artifact records {n}"
     )
+
+
+# --- the gap these tests had themselves -----------------------------------
+#
+# Everything above pins the HEADLINE line. When the reference was corrected for
+# polygon holes and the run moved from 34/38 to 35/37, all of it passed while
+# the "What this licenses" block — the one sentence written to be quoted
+# externally — still published 34 of 38 and CI 0.76-0.96. A guard that checks
+# one line of a document full of quotable numbers is a guard with a hole in it.
+#
+# The fix is not "also pin the licensed block", which would leave the next
+# section unguarded in the same way. It is to sweep the WHOLE document for
+# sample-size claims and allow stale ones only where a stale number is the
+# point: the correction banners and the run-history table.
+
+
+def test_the_licensed_statement_quotes_the_run(result):
+    """The sentence marked for external quotation is the highest-stakes one.
+
+    It is explicitly offered to outside readers, so a superseded figure here
+    travels further than anywhere else in the document.
+    """
+    md = RESULT_MD.read_text(encoding="utf-8")
+    m = re.search(r"\*\*Licensed:\*\*\s*\*\"(.+?)\"\*", md, re.S)
+    assert m, "no '**Licensed:** \"...\"' block found — has it been renamed?"
+    licensed = m.group(1)
+
+    hits, scored = result["hits"], result["n_scored"]
+    assert f"{hits} of {scored} points" in licensed, (
+        f"the licensed statement does not quote the run: expected "
+        f"'{hits} of {scored} points', got:\n{licensed}"
+    )
+    for bound in ("wilson_lo", "wilson_hi"):
+        assert f"{float(result[bound]):.3f}" in licensed, (
+            f"the licensed statement omits or misquotes {bound} "
+            f"({float(result[bound]):.3f}):\n{licensed}"
+        )
+
+
+def _stale_allowed(line: str) -> bool:
+    """Contexts where quoting a superseded figure is the intended content.
+
+    Correction banners (blockquotes) and the run-history table exist precisely
+    to record what the number used to be. Nowhere else may.
+    """
+    stripped = line.lstrip()
+    return stripped.startswith(">") or stripped.startswith("|")
+
+
+def test_no_superseded_sample_size_survives_outside_a_correction(result):
+    """Sweep every 'N of M points' claim in the document.
+
+    This is the test that would have caught the licensed statement, and it
+    catches the next one too — a new section quoting an old figure fails here
+    without anyone remembering to extend the list.
+    """
+    current = f"{result['hits']} of {result['n_scored']} points"
+    offenders = []
+    for n, line in enumerate(RESULT_MD.read_text(encoding="utf-8").splitlines(), 1):
+        if _stale_allowed(line):
+            continue
+        for m in re.finditer(r"\b(\d+) of (\d+) points\b", line):
+            if m.group(0) != current:
+                offenders.append(f"  line {n}: '{m.group(0)}' -- {line.strip()[:90]}")
+    assert not offenders, (
+        f"superseded sample sizes published outside a correction banner or the\n"
+        f"history table (current run is '{current}'):\n" + "\n".join(offenders)
+    )
+
+
+def test_the_harness_actually_ran(result):
+    """A run of all-errors must never be published as recall 0.
+
+    `scored` includes errored points by design (a product that cannot answer
+    has not answered), which meant the `if not scored:` abort was dead code —
+    `False is not None`. A total outage would have published 'recall 0.000,
+    VERDICT FAIL'. The runner now guards on executions, and these fields are
+    what make that visible in the artifact rather than only in the source.
+    """
+    assert "n_executed" in result, (
+        "the result carries no n_executed field, so a reader cannot tell a "
+        "measured zero from a dead harness — the guard has been removed or "
+        "the artifact predates it"
+    )
+    assert result["n_executed"] > 0, "no point executed; this must abort, not publish"
+    assert result["n_executed"] + result["n_errored"] == result["n_sampled"], (
+        f"executions ({result['n_executed']}) + errors ({result['n_errored']}) "
+        f"!= sampled ({result['n_sampled']}) — the counters do not account for "
+        f"every point, which is how an error count of a structural zero hid"
+    )

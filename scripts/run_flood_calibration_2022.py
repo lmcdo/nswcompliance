@@ -259,6 +259,11 @@ if n_scope_unknown:
 pts = scoped
 
 said_something = 0; results = []
+# Counts calls that RETURNED an answer, as distinct from calls that were
+# scored. Every exception is scored (as a miss), so a counter derived from
+# `results` cannot tell a working harness from a dead one — see the guard
+# below for what that cost.
+executed = 0
 t0 = time.time()
 for i, (act, aoi, lat, lng) in enumerate(pts, 1):
     try:
@@ -270,6 +275,7 @@ for i, (act, aoi, lat, lng) in enumerate(pts, 1):
         # the product supplied no flood indicator, so it is not a hit. Counting
         # it as one is exactly the absence-as-answer error being hunted.
         hit = (sig in ("low", "moderate", "elevated")) or (z is True) or (ses is True)
+        executed += 1
         said_something += 1 if hit else 0
         results.append({"act": act, "aoi": aoi, "lat": lat, "lng": lng,
                         "flood_signal": sig, "in_100yr": z, "ses": ses, "hit": hit})
@@ -299,11 +305,33 @@ for i, (act, aoi, lat, lng) in enumerate(pts, 1):
         print(f"[{i}/{len(pts)}] {act}/{aoi} ERROR {str(e)[:100]}", flush=True)
 
 scored = [r for r in results if r.get("hit") is not None]
-if not scored:
+n_errored = sum(1 for r in results if "error" in r)
+
+# THE HARNESS-OUTAGE GUARD.
+#
+# This was previously written as `if not scored:` and was dead code. Every
+# exception branch appends `"hit": False`, and `False is not None`, so errored
+# rows land INSIDE `scored` — the list could only be empty if no point was
+# sampled at all. A total database or API outage would therefore have made all
+# 37 calls raise, scored 37 misses, and published `recall 0.000, VERDICT FAIL`:
+# an infrastructure failure served as a catastrophic product result, with a
+# guard sitting directly above it that read as though it prevented exactly
+# that. The same defect made the "N errored" line print a structural zero.
+#
+# Exceptions still count as misses — a product that cannot answer has not
+# answered, and excluding those points would inflate recall. What changes is
+# that the denominator is no longer allowed to consist entirely of failures.
+# The line is drawn only at the unambiguous case: zero successful executions
+# means the harness demonstrably never ran, which is UNKNOWABLE, not a fail.
+# Anything between is not classified from an exception string — it is reported
+# loudly instead, because this script cannot tell a product that genuinely
+# errors on an address from an outage, and inventing that classifier would be
+# guessing.
+if executed == 0:
     print("=" * 74)
-    print("UNKNOWABLE: every point errored, so the product was never scored.")
-    print("This is NOT a fail — a harness that could not run the check has")
-    print("measured nothing. Fix the harness and re-run.")
+    print(f"UNKNOWABLE: all {len(results)} points errored, so the product was")
+    print("never scored. This is NOT a fail and NOT recall 0 — a harness that")
+    print("could not run has measured nothing. Fix the harness and re-run.")
     for r in results[:3]: print("   ", r.get("error"))
     raise SystemExit(2)
 # The floor from amendment-01, ENFORCED rather than merely declared. Stated in
@@ -332,7 +360,12 @@ _centre = (recall + _c / 2) / (1 + _c)
 _half = _z * math.sqrt(recall * (1 - recall) / _n + _c / (4 * _n)) / (1 + _c)
 lo, hi = max(0.0, _centre - _half), min(1.0, _centre + _half)
 print("=" * 74, flush=True)
-print(f"scored points        : {len(scored)} (of {len(pts)} sampled; {len(pts)-len(scored)} errored)", flush=True)
+print(f"scored points        : {len(scored)} (of {len(pts)} sampled)", flush=True)
+print(f"executed cleanly     : {executed}", flush=True)
+if n_errored:
+    print(f"!! ERRORED           : {n_errored} of {len(pts)} points raised and are "
+          f"counted as MISSES. Read the recall below with that in mind — this "
+          f"script cannot tell a genuine product error from an outage.", flush=True)
 print(f"said something       : {said_something}", flush=True)
 # The pre-commit says a result within the interval of the mark is reported as
 # INDISTINGUISHABLE from it, not as a pass. Applying the stricter rule I wrote
@@ -354,6 +387,7 @@ Path(WT / "docs/qa/flood-calibration-2022-result.json").write_text(
                 "n_out_of_scope_at_scope_test": n_out_of_scope,
                 "n_scope_unresolved": n_scope_unknown,
                 "n_sampled": len(pts), "n_scored": len(scored), "hits": said_something,
+                "n_executed": executed, "n_errored": n_errored,
                 "recall": recall, "wilson_lo": lo, "wilson_hi": hi,
                 "pass_mark": 0.90, "verdict": verdict, "out_of_scope_at_scoring": oos,
                 "scope_contradictions": contradictions,
