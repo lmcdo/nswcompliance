@@ -5,48 +5,33 @@
   "_how_to_clear_an_entry": "Fix the test, run scripts/check_test_quarantine.py, and it will tell you the entry is now passing and must be deleted from this file.",
   "entries": [
     {
-      "file": "test_conveyancing_db.py",
-      "status": "partial",
-      "measured": "27 failed, 50 passed (2026-08-09)",
-      "error": "ValueError: not enough values to unpack (expected 13, got 9)",
-      "cause": "The function under test gained fields; the test still destructures the old arity. Signature drift, not a broken environment.",
-      "note": "The most valuable entry here: 50 tests already pass and are switched off with the 27. Splitting the file would release those 50 immediately."
-    },
-    {
       "file": "test_lga_coverage.py",
-      "status": "skipped",
-      "measured": "12 skipped (2026-08-09, after the import-order fix in this PR)",
-      "error": "Previously SyntaxError: 'from __future__ import annotations' must precede all other statements",
-      "cause": "THE QUARANTINE COMMIT CAUSED THIS. Inserting 'import pytest / pytestmark = ...' at the top of the file pushed the __future__ import below other statements, which is illegal Python. The file was not broken before it was quarantined. Import order is fixed in this PR; the 12 tests now collect and skip on their own guard conditions.",
-      "note": "This is the gate that enforces extract -> tag -> verify coverage -> THEN enable an LGA. It not running is how 13 councils with zero provisions reached NEXT_PUBLIC_ENABLED_LGAS. Releasing it needs its skip guards reviewed -- it collects, but every test currently skips, and a test that always skips protects nothing."
-    },
-    {
-      "file": "test_integration.py",
-      "status": "broken",
-      "measured": "1 collection error (2026-08-09)",
-      "error": "ModuleNotFoundError: No module named 'raganything'",
-      "cause": "Depends on a library the project no longer uses. Either the test is obsolete and should be deleted, or the import should be dropped. Not an environment problem -- the dependency is genuinely gone."
+      "status": "blocked-by-mock",
+      "measured": "12 skipped without DATABASE_URL; WITH one, 12 failed on TypeError MagicMock vs int (2026-08-09)",
+      "error": "TypeError: '>' not supported between instances of 'MagicMock' and 'int'",
+      "cause": "Not a defect in this test. tests/conftest_mocks.py line 35 stubs psycopg2 into sys.modules whenever it has not already been imported -- which at conftest time is always, even when the real library IS installed. So a DB test can never obtain a real connection. Releasing this needs that stub made conditional (importlib.util.find_spec), which changes the import environment for all 4,000+ tests and is its own change with its own blast radius.",
+      "note": "Still the highest-value entry. This is the gate that enforces extract -> tag -> verify coverage -> THEN enable an LGA, and 13 councils with zero provisions are live. It is now one well-scoped infrastructure fix away from running, rather than an unexplained SyntaxError."
     },
     {
       "file": "test_address_validation.py",
-      "status": "broken",
+      "status": "needs-live-server",
       "measured": "1 collection error (2026-08-09)",
       "error": "FileNotFoundError: tests/fixtures/test_addresses.json",
-      "cause": "The fixture file it loads at import time is not in the repository. Either commit the fixture or make the load lazy and skip when absent."
+      "cause": "The fixture file it loads at import time is not in the repository. Either commit the fixture or make the load lazy and skip when absent. MEASURED 2026-08-09: this file targets a local HTTP server (localhost:3007 or :3003) that CI does not start. It is a genuine integration test, not a broken unit test. The honest end state is a skip guard plus an integration marker so it is visible and runnable on demand -- not deletion, and not silent exclusion."
     },
     {
       "file": "test_real_user_flow_with_pp.py",
-      "status": "broken",
+      "status": "needs-live-server",
       "measured": "7 failed (2026-08-09)",
       "error": "TypeError: Object of type MagicMock is not JSON serializable",
-      "cause": "A mock is being passed where a serialisable value is expected. Test-side defect, fixable without touching product code."
+      "cause": "A mock is being passed where a serialisable value is expected. Test-side defect, fixable without touching product code. MEASURED 2026-08-09: this file targets a local HTTP server (localhost:3007 or :3003) that CI does not start. It is a genuine integration test, not a broken unit test. The honest end state is a skip guard plus an integration marker so it is visible and runnable on demand -- not deletion, and not silent exclusion."
     },
     {
       "file": "test_end_to_end_user_flow.py",
-      "status": "not-a-test",
+      "status": "needs-live-server",
       "measured": "no tests ran (2026-08-09)",
       "error": "Contains no pytest test functions",
-      "cause": "A script that reads as a test. It calls a live server at http://localhost:3003. Candidate for deletion rather than repair -- it has never been able to run in CI and does not assert anything pytest can see."
+      "cause": "A script that reads as a test. It calls a live server at http://localhost:3003. Candidate for deletion rather than repair -- it has never been able to run in CI and does not assert anything pytest can see. MEASURED 2026-08-09: this file targets a local HTTP server (localhost:3007 or :3003) that CI does not start. It is a genuine integration test, not a broken unit test. The honest end state is a skip guard plus an integration marker so it is visible and runnable on demand -- not deletion, and not silent exclusion."
     },
     {
       "file": "test_ashfield_marrickville_fix.py",

@@ -52,8 +52,6 @@ collect_ignore = [
     # more were broken BY the quarantining itself, which inserted a marker above
     # a `from __future__` import and made them SyntaxErrors.
     "test_address_validation.py",
-    "test_conveyancing_db.py",
-    "test_integration.py",
     "test_lga_coverage.py",
     "test_end_to_end_user_flow.py",
     "test_ashfield_marrickville_fix.py",

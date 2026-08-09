@@ -74,9 +74,19 @@ def test_every_baseline_entry_records_a_measured_error():
         assert entry.get("error"), f"{name}: no error recorded"
         assert entry.get("cause"), f"{name}: no cause recorded"
         assert entry.get("measured"), f"{name}: no measurement recorded"
-        assert entry.get("status") in {"broken", "partial", "skipped", "not-a-test"}, (
-            f"{name}: unknown status {entry.get('status')!r}"
-        )
+        # The vocabulary is closed on purpose. A free-text status would let
+        # "flaky" or "wontfix" creep in, and those are the words debt hides
+        # behind. Each value here names a DIFFERENT next action:
+        #   broken            — a real defect in the test; fix it
+        #   partial           — some tests pass; split the file to release them
+        #   needs-live-server — a genuine integration test; needs a skip guard
+        #                       and an integration marker, not repair
+        #   blocked-by-mock   — the test is fine; the shared test environment
+        #                       prevents it running
+        #   not-a-test        — contains no test functions; delete or convert
+        assert entry.get("status") in {
+            "broken", "partial", "needs-live-server", "blocked-by-mock", "not-a-test",
+        }, f"{name}: unknown status {entry.get('status')!r}"
 
 
 # --- the pass/fail decision ----------------------------------------------
