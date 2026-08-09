@@ -1,168 +1,92 @@
 {
-  "tier": "standard",
-  "justification": "Takes the quarantined-test list from 16 files to ZERO, and installs a shrink-only ratchet in CI so it cannot silently refill. 3,970 -> 4,101 passing tests. Six files already passed; two were broken BY the quarantining itself; two had drifted behind the code and were repaired; five were not tests at all (1,090 lines, zero assertions) and were deleted; three needed a live server or a real database and now carry skip guards. Standard tier: it changes what the gates enforce for every future change, deletes files, and touches tests/conftest_mocks.py, which every one of the 4,101 tests imports.",
-  "commit_hash": "af459a82",
+  "tier": "minor",
+  "justification": "Developer tooling only. A new author-identity check plus its wiring into the pre-commit hook and one PR-only CI step. No product code, no served output, no database read or write, no migration, no schema change.",
+  "commit_hash": "d9732ad4",
   "files": [
-    ".claude/rules/testing-and-qa.md",
+    "scripts/check_commit_authors.py",
+    ".githooks/pre-commit",
     ".github/workflows/gates.yml",
     ".gitignore",
-    ".qa_report.json",
-    "pytest.ini",
-    "scripts/check_test_quarantine.py",
-    "src/processing/__init__.py",
-    "tests/conftest.py",
-    "tests/conftest_mocks.py",
-    "tests/quarantine-baseline.json",
-    "tests/test_address_validation.py",
-    "tests/test_check_test_quarantine.py",
-    "tests/test_conveyancing_db.py",
-    "tests/test_conveyancing_integration.py",
-    "tests/test_dev_type_filtering.py",
-    "tests/test_end_to_end_validation.py",
-    "tests/test_integration.py",
-    "tests/test_leichhardt_thorough.py",
-    "tests/test_lga_coverage.py",
-    "tests/test_real_user_flow_with_pp.py",
-    "tests/test_version_tracking.py",
-    "tests/test_versioning_api.py"
+    ".qa_report.json"
   ],
   "falsifiable_check": {
-    "command": "python scripts/check_test_quarantine.py && python -m pytest tests/test_check_test_quarantine.py -q",
-    "fails_when": "PROVEN by planting both enforcement rules and confirming each fires, with tests/conftest.py restored byte-identically afterwards (md5 8b180d569b8a0b28e7eabe4660acb8eb before and after both). RULE 1, no new debt: added test_flood_truth.py to collect_ignore with no baseline entry -> 'NEW quarantine, not in the baseline: test_flood_truth.py', exit 1. RULE 2, fixed means released: added test_upzoning_check.py to collect_ignore WITH a fabricated baseline entry -> 'BASELINE ENTRY NOW PASSES: test_upzoning_check.py -- now 13 passed', exit 1. RULE 3 also fired unplanned and caught a real mistake of mine: my plant-2 cleanup failed to revert the untracked baseline file, leaving a stale entry behind, and the check reported 'STALE BASELINE ENTRY ... Delete the entry.' The ratchet caught its own author within minutes of being written.",
-    "limits": "The ratchet proves the quarantine list has not GROWN and that nothing in it has silently started passing. It says nothing about whether the ten remaining files SHOULD be fixed, and it cannot see a test that runs but asserts nothing. It reports that explicitly on every pass rather than printing an unqualified green."
+    "command": "python scripts/check_commit_authors.py --selftest && python scripts/check_commit_authors.py --range e1955be6~1..e1955be6",
+    "fails_when": "The selftest runs nine identities through the rules and exits 1 on any disagreement between expected and actual. The second command exits 1 against e1955be6, the real first t@t commit in this repository's history, so the check is proven against the actual incident rather than a fixture. Both were also demonstrated live: with a local override of t <t@t> set, git commit was REFUSED by the hook and no commit entered the history; with the override removed the same commit succeeded.",
+    "external_authority": "The incident itself: 49 commits authored t@t between 2026-08-08 10:19 and 2026-08-09, and the Vercel deployment list showing every preview Blocked with a blank author while production, re-authored by GitHub's squash merge, shows github/lmcdo and is Ready."
   },
   "pre_impl": {
-    "existing_data": "Measured before changing anything. All 16 quarantined files were run individually against the live database: 5 passed outright (35 tests), 1 was partial (50 pass / 27 fail), 10 were broken. Traced the origin with git log -S: every stale marker was added in ONE commit, 366f2054 on 2026-05-23, titled 'working test infrastructure + pre-push hook + CI' -- the commit that turned the gates on. Confirmed the exemption is invisible: the files sit in collect_ignore so pytest never collects them, they produce no skipped line, and `pytest -m stale` collects ZERO tests, meaning even a deliberate search finds nothing.",
-    "assumption_mismatch": "Assumed these tests were quarantined because they need infrastructure CI does not have (a running server, a live database) and therefore could not be turned on. WRONG for six of sixteen: they pass today with no changes at all. Worse, the assumption that quarantining is harmless was also wrong -- inserting 'import pytest / pytestmark = pytest.mark.stale' at the top of two files pushed 'from __future__ import annotations' below other statements, which is a SyntaxError. The quarantine did not merely hide broken tests, it CREATED two of them. test_lga_coverage.py has been un-runnable ever since for that reason alone.",
-    "new_vs_existing": "The shrink-only baseline pattern is copied deliberately from scripts/schema_contract_baseline.json rather than invented; its comment already states the two rules ('may only SHRINK... an entry that no longer occurs ALSO fails CI'). The CI step sits directly beside check_dependency_skips.py, its sibling for the other way a test stops running. No new pattern, no new dependency, no product code."
+    "existing_data": "Four sweeps 2026-08-09 vs origin/main ca41fcd1. A grep for user.email or author-email patterns over scripts/, .githooks/ and .github/ returns no identity check. .githooks/pre-commit gates branch name, secrets, large files, TSC, bracket lint, fail-soft lint, zone codes and fabricated verdicts, none of them authorship. .githooks/pre-push runs pytest, jest, qa_gate and the liability scan. .github/workflows/gates.yml has five jobs and no identity step. No frontend surface is involved.",
+    "assumption_mismatch": "Two, both caught by the check's own selftest before it was wired anywhere. A minimum local-part length rejected a@b.co, which is a perfectly valid address, and was removed. And the first range test was pointed at main, which is clean by construction because a squash merge re-authors every commit, so it reported success while being incapable of failing; re-aimed at a real t@t commit, it correctly goes red.",
+    "new_vs_existing": "New check. Additive: no existing gate changed behaviour, and the CI step is a new step inside an existing job that already fetches full history for its merge-base diff."
   },
   "functions": [
     {
-      "name": "quarantined_test_files",
-      "file_line": "scripts/check_test_quarantine.py:72",
-      "input": "no arguments; parses tests/conftest.py from disk",
-      "output": "sorted list of collect_ignore entries beginning with test_, read via ast rather than by importing conftest (importing would trigger its mock-injection side effects)",
-      "if_none": "returns an empty list when collect_ignore is absent or holds no test files, which the caller treats as zero debt rather than as an error"
+      "name": "problem_with",
+      "file_line": "scripts/check_commit_authors.py:70",
+      "input": "an author name and email exactly as git would record them on the commit",
+      "output": "A sentence naming why this identity cannot belong to a real person, or None when it is plausible. Structural only: a domain with no dot, a known placeholder domain, a placeholder or single-character name. Bot prefixes are allowed through.",
+      "if_none": "An empty email returns 'no author email is set at all' rather than passing. A real address that simply is not the repo owner's PASSES, deliberately, because this is a placeholder gate and not an authorisation gate; an allow-list of permitted humans would be a roster to maintain and a second thing to get wrong."
     },
     {
-      "name": "run_one",
-      "file_line": "scripts/check_test_quarantine.py:106",
-      "input": "one test filename relative to tests/",
-      "output": "(passes_cleanly, summary). Runs pytest with -o addopts= so the ini's default deselection cannot hide the file from the check written to look at it",
-      "if_none": "a file that only skips, contains no tests, or errors on collection is NOT clean -- an all-skipped file protects nothing and promoting it would be the same self-deception one layer up"
+      "name": "check_staged",
+      "file_line": "scripts/check_commit_authors.py:104",
+      "input": "nothing; it reads the identity the next commit in this repository would actually use",
+      "output": "0 when plausible. On rejection it prints the offending identity, the reason, and both the local and global config values when a repo-local override is present, because that override is the failure and it is invisible unless printed beside the global it is shadowing.",
+      "if_none": "An unset local override is reported as (unset) rather than blank, so the output distinguishes no override from an override set to empty."
     },
     {
-      "name": "load_baseline",
-      "file_line": "scripts/check_test_quarantine.py:95",
-      "input": "no arguments; reads and parses the JSON at tests/quarantine-baseline.json from disk",
-      "output": "dict keyed by filename, each carrying status, measured, error and cause",
-      "if_none": "a missing baseline file returns an empty dict, so every quarantined file then reports as new debt rather than being silently accepted"
-    },
-    {
-      "name": "pytest_report_header",
-      "file_line": "tests/conftest.py:57",
-      "input": "the pytest config object, unused",
-      "output": "one line naming the number of quarantined files, printed at the top of every run",
-      "if_none": "returns None when nothing is quarantined, so the line disappears entirely once the debt reaches zero"
+      "name": "check_range",
+      "file_line": "scripts/check_commit_authors.py:135",
+      "input": "a git revision range, in CI the merge-base of origin/main and the pull request head",
+      "output": "0 when every non-merge commit is plausibly authored, printing the count checked so a vacuous pass is visible. On failure it lists each bad commit with its reason and the rebase command that rewrites them.",
+      "if_none": "An empty range prints that there are no non-merge commits to check and returns 0, stated explicitly rather than reported as a pass over zero commits."
     }
   ],
-  "values": [
-    {
-      "value": "6 files released, 43 tests recovered (3,970 -> 4,013 before this PR's own new tests; 4,024 with them)",
-      "read_at": "measured by running each quarantined file individually against the live database, 2026-08-09",
-      "why": "The concrete answer to 'can we turn them on'. Five needed no changes whatsoever; the sixth needed only the import-order repair.",
-      "if_missing": "Without measuring per file, the honest-sounding assumption -- 'they were quarantined for a reason, leave them' -- would have held, and 43 working tests would have stayed off indefinitely."
-    },
-    {
-      "value": "All 16 quarantined in commit 366f2054, 2026-05-23",
-      "read_at": "git log -S 'pytestmark = pytest.mark.stale' per file",
-      "why": "Changes the diagnosis completely. This is not gradual decay or neglect; it is the one-off cost of switching enforcement on, which nothing ever came back to pay down.",
-      "if_missing": "Without the origin the fix would be framed as discipline ('remember to check'), which is exactly the kind of prose rule this project has already established does not hold."
-    },
-    {
-      "value": "pytest -m stale collects 0 tests",
-      "read_at": "python -m pytest -m stale --collect-only -q, 2026-08-09",
-      "why": "Proves the exemption is invisible rather than merely quiet. The marker is dead weight; collect_ignore is what actually excludes them, and it reports nothing.",
-      "if_missing": "The obvious fix would have been to lean on the marker, which does nothing at all here."
-    },
-    {
-      "value": "2 files were broken BY the quarantining",
-      "read_at": "SyntaxError on 'from __future__ import annotations'; confirmed by restoring the legal import order and re-running -- test_lga_coverage.py then collected 12 tests",
-      "why": "The quarantine did not just conceal broken tests, it manufactured two. That is a much stronger argument for a visible list than mere untidiness.",
-      "if_missing": "These two would have been recorded as legitimately broken and left alone, when the repair was a two-line reordering."
-    }
-  ],
+  "values": "N/A — no database or API values are read. The only inputs are git config values and commit metadata.",
+  "queries": "N/A — no SQL is executed anywhere in this change.",
   "break_it": [
     {
-      "scenario": "The baseline becomes the new hiding place — entries are added and never removed, exactly as collect_ignore was.",
-      "what_happens": "The same failure with more ceremony: a longer list, still unread, still permanent. This is the single most likely way this PR fails to achieve anything.",
+      "scenario": "The check is added only to the git hook.",
+      "what_happens": "Hooks are opt-in per clone and this repository has 15 worktrees; a commit arriving from an environment where nobody enabled core.hooksPath is unaffected, which is the likely origin of this very incident.",
       "mitigated": true,
-      "how": "Rule 2 is the answer and is why this is a ratchet rather than a baseline. A listed file that starts passing FAILS CI, so fixing a test forces its removal from the list. A baseline that only guards against growth would allow permanent amnesty; this one makes entries decay. Proven by planting a passing file with a fabricated entry.",
-      "repro": "Add a known-good file (e.g. test_upzoning_check.py) to collect_ignore with a baseline entry, then run scripts/check_test_quarantine.py -- expect 'BASELINE ENTRY NOW PASSES' and exit 1."
+      "how": "It runs in CI as well, in the qa-and-liability job which already fetches full history. The retrospective's central finding was that every gate here was client-side and skippable; a hook-only check would have repeated it.",
+      "repro": "Commit with --no-verify, push, and the pull request check still fails."
     },
     {
-      "scenario": "A file is quietly added to collect_ignore when it starts failing, instead of being fixed.",
-      "what_happens": "Debt grows invisibly, which is precisely the 15-month pattern this replaces.",
+      "scenario": "The CI step runs on main as well as on pull requests.",
+      "what_happens": "It is trivially green forever. A squash merge re-authors the commit as the merging GitHub account, so main can never contain a bad author; the check would look active while being incapable of failing, which is the DQ-30 zero-percent-drift shape.",
       "mitigated": true,
-      "how": "Rule 1: any collect_ignore entry beginning with test_ that has no baseline entry fails CI with a message naming the file. Proven by planting test_flood_truth.py.",
-      "repro": "Add any test file to collect_ignore without a baseline entry and run the checker -- expect 'NEW quarantine, not in the baseline' and exit 1."
+      "how": "The step is guarded by github.event_name == 'pull_request', matching the QA report step above it, which is gated for exactly the same reason.",
+      "repro": "git log main --author=t@t returns nothing while 49 such commits exist on branches."
     },
     {
-      "scenario": "A released file was only ever passing because every one of its tests skips, so releasing it adds coverage that does not exist.",
-      "what_happens": "The test count rises and protects nothing — a flattering number, which is the failure mode this whole line of work exists to stop.",
+      "scenario": "The rules are strict enough to reject a real person.",
+      "what_happens": "Someone with a short but legitimate address cannot commit, the check gets disabled, and the protection is lost entirely.",
       "mitigated": true,
-      "how": "run_one treats an all-skipped file as NOT clean, so the ratchet will not demand its release and it stays quarantined until it genuinely runs. test_lga_coverage.py is exactly this case: it now collects 12 tests but every one skips, so it remains in the baseline with that recorded as its status rather than being counted as a win.",
-      "repro": "tests/test_check_test_quarantine.py::test_a_file_that_only_skips_is_not_treated_as_clean"
+      "how": "The minimum local-part length was removed after the selftest caught it rejecting a@b.co. What remains cannot reject a deliverable address, because every real domain contains a dot.",
+      "repro": "python scripts/check_commit_authors.py --selftest — the identity 'A B' <a@b.co> must be accepted."
     },
     {
-      "scenario": "The stale marker deselects a quarantined file from the very check meant to inspect it, so the ratchet reports 'no tests ran' regardless of the file's real state.",
-      "what_happens": "The checker would report every quarantined file as still broken forever, including ones that had been fixed — silently defeating rule 2 while appearing to work.",
+      "scenario": "A bot's commit is rejected.",
+      "what_happens": "dependabot and github-actions commits fail CI, and 16 such commits exist in recent history.",
       "mitigated": true,
-      "how": "run_one passes -o addopts= to clear the ini's -m \"not stale and not database\" default. Pinned by a test that builds a pytest.ini with a deselecting addopts and a marked test file, and asserts the result is still seen.",
-      "repro": "tests/test_check_test_quarantine.py::test_the_marker_cannot_hide_a_result_from_the_check"
+      "how": "Bot prefixes are allowed through explicitly, and the selftest pins dependabot's noreply address as accepted.",
+      "repro": "python scripts/check_commit_authors.py --range over a range containing a dependabot commit."
     },
     {
-      "scenario": "Releasing six files destabilises the suite — a released test is flaky, or depends on the live database, and main goes red intermittently.",
-      "what_happens": "Red main, and the likeliest response is to re-quarantine, undoing the PR and reinforcing the original habit.",
+      "scenario": "The check passes locally and fails in CI.",
+      "what_happens": "Exactly what happened on the previous branch: .qa_report.json is tracked, edits to it were never staged, the pre-push hook read the working copy and passed while CI read the committed copy and failed.",
       "mitigated": true,
-      "how": "Partially, and the residual is stated. All six were run individually AND in the full suite: 4,024 passed, 2 skipped, 0 failed. Four of the six carry their own DATABASE_URL guards and skip cleanly without it, which is why the CI environment does not need to change. NOT established: behaviour over time. If one proves flaky, the correct response is to fix or re-quarantine it WITH a baseline entry recording why — which the ratchet now forces, so even a regression leaves evidence.",
-      "repro": "python -m pytest -q with and without DATABASE_URL set; both must be green."
-    },
-    {
-      "scenario": "A malformed baseline file makes the gate error out instead of reporting, so a broken checker reads as an infrastructure problem rather than as unrecorded debt.",
-      "what_happens": "load_baseline used .get('entries', []); with \"entries\": null present, the default does not apply and iteration raises. CI would show a crashed step, which gets triaged as flaky tooling and skipped, and the quarantine list stops being checked at all — the original failure, restored.",
-      "mitigated": true,
-      "how": "Uses (data.get('entries') or []) so a null or malformed entries block degrades to an empty baseline. That makes every quarantined file report as NEW debt and fails loudly, which is the correct direction for a gate: a broken baseline must not fail open. Caught by the qa_gate Python-adversarial check, not by me.",
-      "repro": "Set \"entries\": null in tests/quarantine-baseline.json and run scripts/check_test_quarantine.py -- it must report every quarantined file as new debt and exit 1, not raise TypeError."
-    },
-    {
-      "scenario": "The lazy RAGProcessor import hides a genuinely missing dependency until deep inside a run, or breaks a caller that relied on eager import.",
-      "what_happens": "Someone calling RAGProcessor in one of the two scripts that use it would hit the failure later than before, or `from src.processing import RAGProcessor` would stop working.",
-      "mitigated": true,
-      "how": "PEP 562 module __getattr__ keeps `from src.processing import RAGProcessor` working -- the name resolves on access and the ORIGINAL ImportError propagates, so the message still names `raganything` rather than a vague AttributeError. Deliberately NOT set to None on failure, which would have produced 'NoneType is not callable' far from the cause. Checked first: RAGProcessor appears in no file under services/, i.e. no deployed code path; only two one-off scripts use it.",
-      "repro": "python -c \"from src.processing import SchemaExtractor\" must succeed without raganything; python -c \"import src.processing as p; p.RAGProcessor\" must raise ImportError naming raganything."
-    },
-    {
-      "scenario": "The PYTEST_REAL_DB opt-in changes behaviour for the 4,101 tests that do not ask for it.",
-      "what_happens": "If the psycopg2 stub were skipped automatically whenever the real library is installed, thousands of pure-logic tests would start attempting real connections on any dev machine — silent, widespread, and hard to attribute.",
-      "mitigated": true,
-      "how": "Opt-IN via an explicit environment variable, never automatic. Default runs are byte-for-byte unchanged: measured 4,101 passed before and after the conftest_mocks edit. One real bug surfaced while building it — the RealDictCursor patch did an unguarded sys.modules lookup that raised KeyError and killed the ENTIRE run at conftest load under the new flag; it is now guarded, and only the stub is ever patched, never the genuine library.",
-      "repro": "python -m pytest -q (expect 4,101 passed) then PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_lga_coverage.py -o addopts= (expect it to connect and run, not skip)."
-    },
-    {
-      "scenario": "Releasing conditionally-runnable tests inflates the skip count, and the dependency-skip ratchet — the sibling gate — refuses the change.",
-      "what_happens": "Exactly what happened: skips went 2 -> 16 and CI failed with 'SKIP-TOTAL RATCHET: FAILED — 16 skipped test(s) against a baseline of 2'. The tempting fix is to raise that baseline, which would blunt a working gate to accommodate my change and make future genuine skip growth invisible.",
-      "mitigated": true,
-      "how": "Baseline NOT raised. The tests are DESELECTED instead, via a new `integration` marker in pytest.ini's addopts alongside the existing `database` one, and test_lga_coverage.py re-marked `database`. A test that needs a server this environment does not have is not a skipped test, it is a test for a different environment — so it should not consume the skip budget. Result: back to 2 skipped, 75 deselected, and both markers still reachable (`pytest -m integration` shows 14, `-m database` collects 31).",
-      "repro": "python scripts/check_dependency_skips.py must report against baseline without failing; python -m pytest -q must show 2 skipped, not 16."
+      "how": "This report is committed alongside the change it describes rather than left modified in the working tree.",
+      "repro": "git status --porcelain .qa_report.json returns nothing after committing."
     }
   ],
-  "mutation_analysis": "Both enforcement rules were planted and each fired with a specific message; conftest.py restored byte-identically (md5 identical). A third rule fired unplanned against a genuine error of my own -- a failed cleanup left a stale baseline entry and the checker demanded its deletion. The ratchet's own 11 tests were written to cover the cases most likely to be quietly weakened later: the all-skip case, the no-tests case, and the marker-hiding case. Weak assertions avoided: the tests assert on the clean/not-clean decision and the summary text rather than on exit codes alone, because an exit code cannot distinguish 'no tests ran' from 'all skipped', and those two need different responses.",
-  "residual_risk": "The list is empty, which is NOT the same as the tests being good. Three specific limits. (1) test_lga_coverage.py now runs, and on its first real execution FAILED on a genuine defect: Marrickville has 14.8% NULL v2_topic (583 of 3,934) against a 10% threshold. That is an open data-quality finding this PR surfaces and does not fix. (2) That gate still only checks 4 hardcoded councils, in a slug format that does not match production, and does NOT read the enabled-councils list — so it cannot notice a council being switched on. Rewriting it was attempted and deliberately STOPPED: the check is tier-dependent and no machine-readable tier map exists. Tier 2 councils promise numeric controls ONLY, so having no provision text is their DESIGNED state, not a defect; a naive derived gate would fail 13 councils that are working as intended. That is a product decision. (3) 16 tests now report as skips (live server or database absent). Visible and actionable, but not coverage. Unchanged elsewhere: the liability scanner still reads only changed lines, CI still runs no frontend build.",
+  "mutation_analysis": "The selftest is the mutation analysis for a pure-rules module: nine identities, each asserting accept or reject, covering every branch of problem_with — no dot in domain, placeholder domain, placeholder name, single-character name, empty email, malformed email, bot allowance, and two valid addresses that must pass. It caught two real defects in its own author before the check was wired anywhere. Beyond the unit level the check was demonstrated end to end: a commit as t <t@t> was refused by the hook and left no commit in the history, and the same commit succeeded once the override was removed.",
+  "residual_risk": "This is a plausibility gate, not an identity check. A well-formed address belonging to nobody on the team passes, and it must, because deciding who is allowed to commit is a different problem needing a maintained roster. It also cannot help commits already made: the 49 existing t@t commits stay unattributed and their previews stay blocked, because rewriting them would rewrite published branch history. And it only fires where it runs — a cloud environment that neither installs the hooks nor opens a pull request is still unprotected, though nothing reaches main without a pull request.",
   "post_merge": {
-    "db_reset": "None. No migration, no schema change, no database write. Tests were run against the live database read-only to establish which files pass; nothing was written.",
-    "secrets": "None added or read. Four of the released files skip cleanly when DATABASE_URL is absent, which is how CI already runs them.",
-    "other_repo": "None. No sibling repository or deployment target affected.",
-    "manual_verify": "Confirm the first line of CI's pytest output reads 'quarantined: 10 test files excluded from collection', and that the 'Quarantined tests (shrink-only ratchet)' step appears and passes. Then confirm the count in .claude/rules/testing-and-qa.md still matches reality -- it is the number that will drift first, and it now has a command beside it to re-derive."
+    "db_reset": "No. Nothing in this change touches any database.",
+    "secrets": "No. It reads git config user.name and user.email and commit metadata; no credentials are read, written or logged.",
+    "other_repo": "No. Single repository. The fix to the identity itself was a local git config change already applied outside this pull request.",
+    "manual_verify": "Confirm the next pull request raised after this merges shows a Vercel preview rather than Blocked. That is the outcome this exists to protect, and it is not something CI can assert for itself."
   }
 }
