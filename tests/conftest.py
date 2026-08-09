@@ -39,24 +39,43 @@ collect_ignore = [
     # Stale subdirectories (import errors during collection)
     "processing",
     "root_tests",
-    # Stale test files that error during collection
+    # ── Quarantined test files ───────────────────────────────────────────────
+    # Every entry below MUST have a matching entry in tests/quarantine-baseline.json
+    # recording its measured failure. scripts/check_test_quarantine.py enforces
+    # that in both directions: adding a file here without a baseline entry fails,
+    # and a baseline file that starts PASSING also fails, so it gets released
+    # rather than left as standing amnesty.
+    #
+    # History worth keeping: all 16 were quarantined in one commit on 2026-05-23
+    # (#362) -- the same commit that turned the gates on. Re-measured 2026-08-09,
+    # FIVE passed with no changes at all (35 tests) and have been released; two
+    # more were broken BY the quarantining itself, which inserted a marker above
+    # a `from __future__` import and made them SyntaxErrors.
     "test_address_validation.py",
     "test_conveyancing_db.py",
-    "test_conveyancing_integration.py",
     "test_integration.py",
     "test_lga_coverage.py",
-    "test_end_to_end_validation.py",
     "test_end_to_end_user_flow.py",
     "test_ashfield_marrickville_fix.py",
     "test_ashfield_query.py",
-    "test_dev_type_filtering.py",
-    "test_leichhardt_thorough.py",
     "test_marrickville_query.py",
     "test_prp_8b_verification.py",
     "test_real_user_flow_with_pp.py",
-    "test_version_tracking.py",
-    "test_versioning_api.py",
 ]
+
+
+def pytest_report_header(config):
+    """Print the quarantine count on every run.
+
+    The whole failure this guards against is invisibility: an uncollected file
+    produces no output at all, so nobody is reminded it exists. One line at the
+    top of every test run is the cheapest possible reminder.
+    """
+    n = sum(1 for f in collect_ignore if f.startswith("test_"))
+    if n:
+        return (f"quarantined: {n} test files excluded from collection "
+                f"(see tests/quarantine-baseline.json)")
+    return None
 
 # ---------------------------------------------------------------------------
 # test_address_validation.py — test_addr + report

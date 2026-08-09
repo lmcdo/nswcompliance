@@ -1,6 +1,3 @@
-import pytest
-pytestmark = pytest.mark.stale
-
 """
 LGA onboarding coverage tests.
 
@@ -18,6 +15,10 @@ Gate sequence before enabling a new LGA:
 Run: pytest tests/test_lga_coverage.py -v
 """
 from __future__ import annotations
+
+import pytest
+
+pytestmark = pytest.mark.stale
 
 import os
 import sys

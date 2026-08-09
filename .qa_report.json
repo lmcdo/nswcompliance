@@ -1,98 +1,133 @@
 {
   "tier": "standard",
-  "justification": "The Site Report page's 'email me this brief' capture (components/reports/PostResultEmailStrip.tsx, already wired into app/reports/intelligence-brief/page.tsx with product='intelligence-brief') has been posting to /api/canibuildit/lead since it shipped, but 'intelligence-brief' was never added to the route's Zod-enforced INTEREST_TYPES enum, so every submission 400'd. Confirmed live via browser network inspection: submitted a real address through the deployed Site Report, captured the actual XHR — status 400 — while the UI showed 'Thanks — we'll be in touch' regardless (that always-show-success behaviour is deliberate, tested design for graceful degradation on genuine transient failures, per PostResultEmailStrip.test.tsx's explicit 'Silent failure — never block the UX' comment; NOT touched here). Fix: add 'intelligence-brief' to INTEREST_TYPES + a branded buildEmailContent case. Also fixed a second bug found on read: the confirmation email's sender name and footer were hardcoded to the 'Can I Build It' consumer brand regardless of product, so an intelligence-brief email would have arrived From: PlotDetect with a 'Can I Build It? canibuildit.com.au' footer once the 400 was fixed — sender/footer now follow the product. A cross-review flagged a third issue in this new copy: the email said 'view it again' about a link with no report ID or persisted state (verified: this page has no share/permalink mechanism for a past run, only re-running a fresh brief) — copy corrected to 'run this or another address again', an accurate description of what the link actually does. A second cross-review pass flagged a real HTML-injection risk: address is Zod-bounded on length only (not character set) and was interpolated unescaped into the HTML email body — a crafted address could inject markup/links into an outgoing PlotDetect-branded email. Added an escapeHtml() helper and applied it to the body (not the subject, which is plain text) in the new intelligence-brief case. The same unescaped pattern exists in all 7 pre-existing cases in this file (flood, solar, shadow, threat-radar, dual-occ-referral, lga-request, granny-flat) — pre-existing, not introduced by this PR, and out of scope for a lead-capture-400 bugfix; flagged to the user as a follow-up, not silently left and not silently expanded into here. USER REQUESTED THE FOLLOW-UP IN THIS SAME PR: hoisted escapeHtml(address) to a single call at the top of buildEmailContent and applied it to every case whose body interpolates address (flood/flood-truth, solar-yield/solar, shadow, threat-radar, dual-occ-referral, granny-flat/default) -- 6 more cases, 7 total including intelligence-brief. lga-request is the one case genuinely excluded: verified its body never references address at all, so there is nothing to escape there (locked in with an explicit test). All subjects still use raw address (plain text, never HTML-rendered) -- only body escaping changed.",
-  "commit_hash": "fc3fd344",
+  "justification": "Releases six test files from quarantine (43 tests that already passed), fixes two files that the original quarantining itself broke, and replaces an invisible permanent exemption list with a shrink-only ratchet wired into CI. No product code changes: the only non-test edits are conftest collection config, a CI step, a new checker script and docs. Standard rather than minor because it changes what the test gates enforce for every future change, and because two of the files it touches (test_lga_coverage.py) guard an LGA-onboarding rule whose absence is already implicated in 13 councils going live without data.",
+  "commit_hash": "PENDING",
   "files": [
-    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
-    "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
-    "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts"
+    "tests/conftest.py",
+    "tests/quarantine-baseline.json",
+    "scripts/check_test_quarantine.py",
+    "tests/test_check_test_quarantine.py",
+    "tests/test_lga_coverage.py",
+    "tests/test_conveyancing_integration.py",
+    "tests/test_end_to_end_validation.py",
+    "tests/test_leichhardt_thorough.py",
+    "tests/test_version_tracking.py",
+    "tests/test_versioning_api.py",
+    "tests/test_dev_type_filtering.py",
+    ".github/workflows/gates.yml",
+    ".gitignore",
+    ".claude/rules/testing-and-qa.md",
+    ".qa_report.json"
   ],
+  "falsifiable_check": {
+    "command": "python scripts/check_test_quarantine.py && python -m pytest tests/test_check_test_quarantine.py -q",
+    "fails_when": "PROVEN by planting both enforcement rules and confirming each fires, with tests/conftest.py restored byte-identically afterwards (md5 8b180d569b8a0b28e7eabe4660acb8eb before and after both). RULE 1, no new debt: added test_flood_truth.py to collect_ignore with no baseline entry -> 'NEW quarantine, not in the baseline: test_flood_truth.py', exit 1. RULE 2, fixed means released: added test_upzoning_check.py to collect_ignore WITH a fabricated baseline entry -> 'BASELINE ENTRY NOW PASSES: test_upzoning_check.py -- now 13 passed', exit 1. RULE 3 also fired unplanned and caught a real mistake of mine: my plant-2 cleanup failed to revert the untracked baseline file, leaving a stale entry behind, and the check reported 'STALE BASELINE ENTRY ... Delete the entry.' The ratchet caught its own author within minutes of being written.",
+    "limits": "The ratchet proves the quarantine list has not GROWN and that nothing in it has silently started passing. It says nothing about whether the ten remaining files SHOULD be fixed, and it cannot see a test that runs but asserts nothing. It reports that explicitly on every pass rather than printing an unqualified green."
+  },
   "pre_impl": {
-    "existing_data": "Read PostResultEmailStrip.tsx (generic, reusable, already used by 3 callers: ThreatRadarTool, PropertyAlertsOptIn, intelligence-brief page) and its test suite before writing anything, to avoid duplicating existing lead-capture infrastructure (prior-art sweep). Confirmed via COMPONENT_MAP.md that CompleteSummary/the email strip are the correct, already-existing insertion points -- no new component needed, this is a bugfix not a feature build. Live-verified the 400 with a real submission (network tab) before touching code, and re-verified after the fix that the previously-broken value is now schema-accepted (unit test, since re-deploying to prod is out of scope for this session).",
-    "assumption_mismatch": "Initially assumed the email-capture feature did not exist and needed building. Prior-art sweep found it already existed and was already wired in -- the real problem was a silent server-side validation gap, not a missing feature. Also initially assumed the client's 'always show success' behaviour was an accidental silent-failure bug to fix; reading PostResultEmailStrip.test.tsx showed it is deliberate, tested UX policy for transient-failure graceful degradation across ALL callers (threat-radar, solar-yield, etc.) -- changing it would have broken 2 passing tests and reversed an intentional design decision. Left untouched; fixed only the actual root cause (the enum).",
-    "new_vs_existing": "No new component, no new API route, no new DB table. Extends the existing INTEREST_TYPES enum (1 value) and existing buildEmailContent switch (1 case) in the existing, already-tested /api/canibuildit/lead route that 3 other features already depend on."
+    "existing_data": "Measured before changing anything. All 16 quarantined files were run individually against the live database: 5 passed outright (35 tests), 1 was partial (50 pass / 27 fail), 10 were broken. Traced the origin with git log -S: every stale marker was added in ONE commit, 366f2054 on 2026-05-23, titled 'working test infrastructure + pre-push hook + CI' -- the commit that turned the gates on. Confirmed the exemption is invisible: the files sit in collect_ignore so pytest never collects them, they produce no skipped line, and `pytest -m stale` collects ZERO tests, meaning even a deliberate search finds nothing.",
+    "assumption_mismatch": "Assumed these tests were quarantined because they need infrastructure CI does not have (a running server, a live database) and therefore could not be turned on. WRONG for six of sixteen: they pass today with no changes at all. Worse, the assumption that quarantining is harmless was also wrong -- inserting 'import pytest / pytestmark = pytest.mark.stale' at the top of two files pushed 'from __future__ import annotations' below other statements, which is a SyntaxError. The quarantine did not merely hide broken tests, it CREATED two of them. test_lga_coverage.py has been un-runnable ever since for that reason alone.",
+    "new_vs_existing": "The shrink-only baseline pattern is copied deliberately from scripts/schema_contract_baseline.json rather than invented; its comment already states the two rules ('may only SHRINK... an entry that no longer occurs ALSO fails CI'). The CI step sits directly beside check_dependency_skips.py, its sibling for the other way a test stops running. No new pattern, no new dependency, no product code."
   },
   "functions": [
     {
-      "name": "POST",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:98",
-      "input": "JSON body incl. interest_type (now accepts 'intelligence-brief' as a 12th enum value)",
-      "output": "on valid input: stores the lead, computes a per-product from/replyTo/footer pair (intelligence-brief -> PlotDetect brand; every other existing product -> unchanged Can I Build It brand), sends the branded confirmation email, returns 200 {ok:true}",
-      "if_none": "interest_type outside the enum -> Zod safeParse fails -> 400 (unchanged behaviour for genuinely unknown values, e.g. 'nuclear-plant' -- still rejected, see lead-abuse.test.ts)"
+      "name": "quarantined_test_files",
+      "file_line": "scripts/check_test_quarantine.py:76",
+      "input": "no arguments; parses tests/conftest.py from disk",
+      "output": "sorted list of collect_ignore entries beginning with test_, read via ast rather than by importing conftest (importing would trigger its mock-injection side effects)",
+      "if_none": "returns an empty list when collect_ignore is absent or holds no test files, which the caller treats as zero debt rather than as an error"
     },
     {
-      "name": "buildEmailContent",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:248",
-      "input": "product identifier string (interest_type from the request body), plus the cleaned property address string",
-      "output": "escapeHtml(address) computed once at the top (line 257) and reused across every case; for 'intelligence-brief': {subject: 'Your Site Report — <address>' (raw, plain text), body: HTML-escaped address + links to verify.plotdetect.com.au/reports/intelligence-brief}; the 6 other body-interpolating cases (flood, solar-yield, shadow, threat-radar, dual-occ-referral, granny-flat) now use the same escaped value; lga-request unaffected (no address in its body)",
-      "if_none": "unknown product string falls through to the existing default (granny-flat copy) -- pre-existing behaviour, unchanged"
+      "name": "run_one",
+      "file_line": "scripts/check_test_quarantine.py:110",
+      "input": "one test filename relative to tests/",
+      "output": "(passes_cleanly, summary). Runs pytest with -o addopts= so the ini's default deselection cannot hide the file from the check written to look at it",
+      "if_none": "a file that only skips, contains no tests, or errors on collection is NOT clean -- an all-skipped file protects nothing and promoting it would be the same self-deception one layer up"
     },
     {
-      "name": "escapeHtml",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:239",
-      "input": "raw string (the user-submitted, Zod length-only-bounded address)",
-      "output": "the same string with &, <, >, \", ' replaced by their HTML entities, safe to interpolate into an HTML email body",
-      "if_none": "empty string in -> empty string out; no special-casing needed"
+      "name": "load_baseline",
+      "file_line": "scripts/check_test_quarantine.py:99",
+      "input": "no arguments; reads tests/quarantine-baseline.json",
+      "output": "dict keyed by filename, each carrying status, measured, error and cause",
+      "if_none": "a missing baseline file returns an empty dict, so every quarantined file then reports as new debt rather than being silently accepted"
+    },
+    {
+      "name": "pytest_report_header",
+      "file_line": "tests/conftest.py:67",
+      "input": "the pytest config object, unused",
+      "output": "one line naming the number of quarantined files, printed at the top of every run",
+      "if_none": "returns None when nothing is quarantined, so the line disappears entirely once the debt reaches zero"
     }
   ],
   "values": [
     {
-      "value": "INTEREST_TYPES now includes 'intelligence-brief' (was missing -- this was the entire root cause of the 400)",
-      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:64",
-      "if_missing": "every Site Report 'email me this brief' submission 400s permanently; user sees a false success confirmation and never receives the email or gets stored as a lead (the exact bug this PR fixes)"
+      "value": "6 files released, 43 tests recovered (3,970 -> 4,013 before this PR's own new tests; 4,024 with them)",
+      "read_at": "measured by running each quarantined file individually against the live database, 2026-08-09",
+      "why": "The concrete answer to 'can we turn them on'. Five needed no changes whatsoever; the sixth needed only the import-order repair.",
+      "if_missing": "Without measuring per file, the honest-sounding assumption -- 'they were quarantined for a reason, leave them' -- would have held, and 43 working tests would have stayed off indefinitely."
     },
     {
-      "value": "per-product {fromLine, replyTo, footerLabel, footerUrl} -- PlotDetect brand for intelligence-brief, Can I Build It brand for every other product (unchanged)",
-      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:199",
-      "if_missing": "before this fix: hardcoded to the Can I Build It brand for ALL products -- an intelligence-brief email would arrive From: PlotDetect (once the 400 is fixed) with a mismatched 'Can I Build It? canibuildit.com.au' footer"
+      "value": "All 16 quarantined in commit 366f2054, 2026-05-23",
+      "read_at": "git log -S 'pytestmark = pytest.mark.stale' per file",
+      "why": "Changes the diagnosis completely. This is not gradual decay or neglect; it is the one-off cost of switching enforcement on, which nothing ever came back to pay down.",
+      "if_missing": "Without the origin the fix would be framed as discipline ('remember to check'), which is exactly the kind of prose rule this project has already established does not hold."
+    },
+    {
+      "value": "pytest -m stale collects 0 tests",
+      "read_at": "python -m pytest -m stale --collect-only -q, 2026-08-09",
+      "why": "Proves the exemption is invisible rather than merely quiet. The marker is dead weight; collect_ignore is what actually excludes them, and it reports nothing.",
+      "if_missing": "The obvious fix would have been to lean on the marker, which does nothing at all here."
+    },
+    {
+      "value": "2 files were broken BY the quarantining",
+      "read_at": "SyntaxError on 'from __future__ import annotations'; confirmed by restoring the legal import order and re-running -- test_lga_coverage.py then collected 12 tests",
+      "why": "The quarantine did not just conceal broken tests, it manufactured two. That is a much stronger argument for a visible list than mere untidiness.",
+      "if_missing": "These two would have been recorded as legitimately broken and left alone, when the repair was a two-line reordering."
     }
   ],
-  "queries": [],
   "break_it": [
     {
-      "scenario": "A future developer adds a new product to PostResultEmailStrip's callers (a 4th interest_type) without adding it to the server's INTEREST_TYPES enum -- the exact mistake that caused this bug.",
-      "what_happens": "Every submission for that product silently 400s while the client shows 'Thanks — we'll be in touch' (deliberate UX, see above) -- the lead is lost and nobody notices, because success is always shown regardless of the real HTTP status.",
+      "scenario": "The baseline becomes the new hiding place — entries are added and never removed, exactly as collect_ignore was.",
+      "what_happens": "The same failure with more ceremony: a longer list, still unread, still permanent. This is the single most likely way this PR fails to achieve anything.",
       "mitigated": true,
-      "how": "Not structurally preventable without changing the deliberate client UX (out of scope, would break tested behaviour) -- but the fix here demonstrates the failure mode explicitly (lead-abuse.test.ts already has a live 'rejects unknown interest_type with 400' test) so the pattern is documented and a future PR review can catch a new caller whose product string isn't in the enum. The comment added at INTEREST_TYPES' first use in this PR names this exact class of bug for the next person extending it.",
-      "repro": "add a 4th PostResultEmailStrip call site with a product value not in INTEREST_TYPES, submit via the UI, observe the UI says success while the network tab shows 400 -- reproduces the exact bug this PR fixes for a 4th time"
+      "how": "Rule 2 is the answer and is why this is a ratchet rather than a baseline. A listed file that starts passing FAILS CI, so fixing a test forces its removal from the list. A baseline that only guards against growth would allow permanent amnesty; this one makes entries decay. Proven by planting a passing file with a fabricated entry.",
+      "repro": "Add a known-good file (e.g. test_upzoning_check.py) to collect_ignore with a baseline entry, then run scripts/check_test_quarantine.py -- expect 'BASELINE ENTRY NOW PASSES' and exit 1."
     },
     {
-      "scenario": "The per-product from/replyTo/footer branch only checks interest_type === 'intelligence-brief'; a typo or new value silently falls to the else branch (Can I Build It brand).",
-      "what_happens": "A genuinely new PlotDetect-brand (not canibuildit-brand) product added later would silently get the wrong sender/footer instead of erroring -- a branding bug, not a data-loss bug (email still sends and lead still stores).",
+      "scenario": "A file is quietly added to collect_ignore when it starts failing, instead of being fixed.",
+      "what_happens": "Debt grows invisibly, which is precisely the 15-month pattern this replaces.",
       "mitigated": true,
-      "how": "Lower severity than the original bug (cosmetic, not silent data loss) and consistent with how buildEmailContent's own switch/default already works in this file. Two regression tests lock the current behaviour for both branches (intelligence-brief brand AND the unchanged canibuildit brand for granny-flat), so any future change to this branch is caught by CI.",
-      "repro": "pytest -- N/A (frontend); npx jest __tests__/api/canibuildit/lead-abuse.test.ts -- both brand tests must stay green"
+      "how": "Rule 1: any collect_ignore entry beginning with test_ that has no baseline entry fails CI with a message naming the file. Proven by planting test_flood_truth.py.",
+      "repro": "Add any test file to collect_ignore without a baseline entry and run the checker -- expect 'NEW quarantine, not in the baseline' and exit 1."
     },
     {
-      "scenario": "PostResultEmailStrip's client-side 'always show success' behaviour (untouched by this PR) could mask a FUTURE regression the same way it masked this one.",
-      "what_happens": "Any server-side failure on this endpoint -- a new validation rule, a Supabase outage, a Resend key rotation -- would again show 'Thanks' to every user while silently losing their email, with no client-visible signal.",
-      "mitigated": false,
-      "how": "Deliberately NOT changed in this PR -- it is tested, intentional design (PostResultEmailStrip.test.tsx: 'Silent failure — never block the UX') shared by 3 callers, and changing it is a UX/product decision outside this bugfix's scope, not something to change unilaterally.",
-      "repro": "n/a -- documented as a known, accepted tradeoff, not something this PR claims to fix"
+      "scenario": "A released file was only ever passing because every one of its tests skips, so releasing it adds coverage that does not exist.",
+      "what_happens": "The test count rises and protects nothing — a flattering number, which is the failure mode this whole line of work exists to stop.",
+      "mitigated": true,
+      "how": "run_one treats an all-skipped file as NOT clean, so the ratchet will not demand its release and it stays quarantined until it genuinely runs. test_lga_coverage.py is exactly this case: it now collects 12 tests but every one skips, so it remains in the baseline with that recorded as its status rather than being counted as a win.",
+      "repro": "tests/test_check_test_quarantine.py::test_a_file_that_only_skips_is_not_treated_as_clean"
     },
     {
-      "scenario": "A submitter crafts an address containing HTML markup (e.g. a fake </strong><a href=evil-link>) via any of the 8 PostResultEmailStrip-backed forms -- Zod only bounds address length (5-200 chars), not character set.",
-      "what_happens": "That markup would be interpolated raw into the outgoing PlotDetect/Can-I-Build-It-branded HTML email, letting an attacker inject a phishing link or misleading content into a legitimate-sender email (the recipient is the submitter's own address, so low blast radius, but the pattern was real across every product).",
+      "scenario": "The stale marker deselects a quarantined file from the very check meant to inspect it, so the ratchet reports 'no tests ran' regardless of the file's real state.",
+      "what_happens": "The checker would report every quarantined file as still broken forever, including ones that had been fixed — silently defeating rule 2 while appearing to work.",
       "mitigated": true,
-      "how": "escapeHtml(address) is now computed once and applied to every case whose body interpolates address -- all 7 (intelligence-brief, flood/flood-truth, solar-yield/solar, shadow, threat-radar, dual-occ-referral, granny-flat). lga-request is the one genuine exception, verified its body never references address at all. Subjects stay raw everywhere (plain text, never HTML-rendered). 7 parametrized regression tests (one per product) plus one confirming lga-request has nothing to escape.",
-      "repro": "npx jest __tests__/api/canibuildit/lead-email.test.ts -t 'escapes an attacker-controlled address'"
+      "how": "run_one passes -o addopts= to clear the ini's -m \"not stale and not database\" default. Pinned by a test that builds a pytest.ini with a deselecting addopts and a marked test file, and asserts the result is still seen.",
+      "repro": "tests/test_check_test_quarantine.py::test_the_marker_cannot_hide_a_result_from_the_check"
     },
     {
-      "scenario": "Before this fix, the canibuildit_leads insert (unchanged code, line 177) was never reached for intelligence-brief submissions -- Zod validation 400'd before execution ever got there, so the insert's own correctness was never in question, only its reachability.",
-      "what_happens": "Reachability, not query logic, was the defect -- a perfectly correct insert that silently never ran for this one interest_type, so no leads with interest_type='intelligence-brief' exist in canibuildit_leads from before this fix.",
+      "scenario": "Releasing six files destabilises the suite — a released test is flaky, or depends on the live database, and main goes red intermittently.",
+      "what_happens": "Red main, and the likeliest response is to re-quarantine, undoing the PR and reinforcing the original habit.",
       "mitigated": true,
-      "how": "The new happy-path test ('accepts interest_type intelligence-brief and returns ok:true') exercises the full route including this insert with the mocked Supabase client, confirming the call now reaches and passes through the existing insert path unchanged.",
-      "repro": "npx jest __tests__/api/canibuildit/lead-abuse.test.ts -t 'accepts interest_type'"
+      "how": "Partially, and the residual is stated. All six were run individually AND in the full suite: 4,024 passed, 2 skipped, 0 failed. Four of the six carry their own DATABASE_URL guards and skip cleanly without it, which is why the CI environment does not need to change. NOT established: behaviour over time. If one proves flaky, the correct response is to fix or re-quarantine it WITH a baseline entry recording why — which the ratchet now forces, so even a regression leaves evidence.",
+      "repro": "python -m pytest -q with and without DATABASE_URL set; both must be green."
     }
   ],
+  "mutation_analysis": "Both enforcement rules were planted and each fired with a specific message; conftest.py restored byte-identically (md5 identical). A third rule fired unplanned against a genuine error of my own -- a failed cleanup left a stale baseline entry and the checker demanded its deletion. The ratchet's own 11 tests were written to cover the cases most likely to be quietly weakened later: the all-skip case, the no-tests case, and the marker-hiding case. Weak assertions avoided: the tests assert on the clean/not-clean decision and the summary text rather than on exit codes alone, because an exit code cannot distinguish 'no tests ran' from 'all skipped', and those two need different responses.",
+  "residual_risk": "Four things this does not do. (1) It does not fix the ten remaining files; it makes them visible and countable. Two of them (test_conveyancing_db.py, 50 passing tests trapped alongside 27 failures) are worth attacking next and the baseline says so. (2) test_lga_coverage.py now collects but every test skips, so the LGA-onboarding gate STILL does not protect anything -- releasing it would be a false win and it deliberately stays quarantined. (3) Five entries are not tests at all but one-off scripts; the honest end state is deletion, which is a separate decision because deleting files is not reversible in the same casual way. (4) The same 'switched on but scoped to nothing' pattern exists elsewhere and is untouched here: the liability scanner reads only changed lines, CI runs no frontend build, and scripts/doc_claims.py is wired to no hook.",
   "post_merge": {
-    "db_reset": "Not required -- no schema change, only a Zod enum extension. canibuildit_leads already has the columns this write needs.",
-    "secrets": "None.",
-    "other_repo": "None.",
-    "manual_verify": "Yes -- after deploy, submit a real address through verify.plotdetect.com.au/reports/intelligence-brief's 'Email me' strip and confirm (a) the network request now returns 200, (b) the confirmation email arrives From: PlotDetect <info@plotdetect.com.au> with a PlotDetect-branded footer linking to verify.plotdetect.com.au, and (c) the lead appears in canibuildit_leads with interest_type='intelligence-brief'."
-  },
-  "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest --testPathPattern=canibuildit",
-    "fails_when": "Both defects this PR fixes were PLANTED back into frontend-nextjs/app/api/canibuildit/lead/route.ts and each was confirmed to turn the command red, then restored byte-identically (md5 1058a2dce63403f44ee85d31a76c0dda before and after each plant). (1) Removing 'intelligence-brief' from INTEREST_TYPES at line 64 -- the original bug, where every Site Report email submission 400'd -- fails 2 of 52 tests. (2) Replacing `const safeAddress = escapeHtml(address)` with `const safeAddress = address` at line 254 -- re-opening the HTML-injection hole in outgoing PlotDetect-branded emails -- fails 7 of 52 tests. Baseline with neither defect present: 52 passed, 2 suites, run against this branch merged with origin/main at 177f84b2. The suite therefore detects both the enum omission and the loss of escaping; it does NOT prove the live 400 is gone in production, which needs a real submission after deploy."
+    "db_reset": "None. No migration, no schema change, no database write. Tests were run against the live database read-only to establish which files pass; nothing was written.",
+    "secrets": "None added or read. Four of the released files skip cleanly when DATABASE_URL is absent, which is how CI already runs them.",
+    "other_repo": "None. No sibling repository or deployment target affected.",
+    "manual_verify": "Confirm the first line of CI's pytest output reads 'quarantined: 10 test files excluded from collection', and that the 'Quarantined tests (shrink-only ratchet)' step appears and passes. Then confirm the count in .claude/rules/testing-and-qa.md still matches reality -- it is the number that will drift first, and it now has a command beside it to re-derive."
   }
 }
