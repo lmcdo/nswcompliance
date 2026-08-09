@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A new read-only verification script, its unit tests, and a falsifiability proof driving the shared #890 harness. It reads production Supabase read-only and downloads published PDFs from R2. No writes, no migrations, no schema change, no served surface altered. Standard rather than minor because the script produces a PASS/FAIL judgement about the project's headline asset, and a wrong judgement here would either manufacture a crisis or conceal one. This commit adds the measure/write pair that corrected pdf_page on 8 rows (0.75% of the table): a read-only proposer, and a guarded writer that backs up, predicts to disk, guards each UPDATE on the expected pre-state and verifies afterwards. 8 applied, 0 skipped, row count 1071 unchanged, prediction matched 8/8. A second repair round corrected 11 more page citations (Waverley), resolved by the document's own chapter/section numbering after the value-only method left them ambiguous. 19 rows repaired in total; citation accuracy 85.3% -> 98.4%.",
-  "commit_hash": "6ef79b39",
+  "commit_hash": "ec23dad7",
   "files": [
     ".gitignore",
     ".qa_report.json",
