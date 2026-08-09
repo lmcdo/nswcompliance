@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Rewrites the public, search-indexed blog page describing how this platform validates its data. The page is syndicated into the sitemap, RSS and JSON-LD and linked from /how-it-works, so it is served marketing copy making representations under ACL s18. Five claims were stated as absolutes ('if a source is listed, it was queried'; 'never a false positive or silent failure'; 'you will never see a false all clear'; 'we can produce the exact response'; 'an automated daily monitor... within 24 hours') and each was measurably false against this codebase and database on 2026-08-08. Each is replaced with a factual description of what the system does. APPROACH CORRECTED DURING REVIEW: a first version added a dated 'what this page got wrong' section itemising the defects with counts. That was withdrawn on two grounds -- it is not how any commercial site states limitations, and publishing a specific defect register with figures creates a written admission that increases rather than reduces exposure. The correct remedy for an overclaim is to stop overclaiming, not to confess. No logic, no data, no schema.",
-  "commit_hash": "bfe172aa",
+  "commit_hash": "6e38b45c",
   "files": [
     "frontend-nextjs/app/blog/how-we-validate-property-data-nsw/page.tsx",
     ".qa_report.json"
