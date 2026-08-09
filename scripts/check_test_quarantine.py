@@ -202,6 +202,15 @@ def main() -> int:
             print(f"  - {e}")
         return 1
 
+    if not quarantined:
+        # Reaching zero is a real outcome and should read as one. The generic
+        # "the debt has not grown" line below would understate it.
+        print("\nPASSED: NOTHING IS QUARANTINED. Every test file in tests/ is "
+              "collected.")
+        print("        Adding one back now fails this check unless a measured "
+              "reason is recorded beside it.")
+        return 0
+
     print("\nPASSED: quarantine list matches the baseline and none of it has "
           "started passing.")
     print("        This is not a clean bill of health -- it means the debt has "

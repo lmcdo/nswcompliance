@@ -3,63 +3,9 @@
   "_origin": "All 16 files were quarantined in one commit on 2026-05-23 (#362, 'working test infrastructure + pre-push hook + CI') -- the same commit that turned the gates ON. Getting a green baseline meant exempting everything that failed, and nothing ever forced a re-check. Re-measured 2026-08-09 against the live database: 5 files passed with no changes at all (35 tests) and were released. Two more were broken BY the quarantining itself; fixing the import order released a SIXTH file (test_conveyancing_integration.py, 8 passed) -- found by the ratchet on its very first run, which is the behaviour this file exists for.",
   "_generated": "2026-08-09",
   "_how_to_clear_an_entry": "Fix the test, run scripts/check_test_quarantine.py, and it will tell you the entry is now passing and must be deleted from this file.",
-  "entries": [
-    {
-      "file": "test_lga_coverage.py",
-      "status": "blocked-by-mock",
-      "measured": "12 skipped without DATABASE_URL; WITH one, 12 failed on TypeError MagicMock vs int (2026-08-09)",
-      "error": "TypeError: '>' not supported between instances of 'MagicMock' and 'int'",
-      "cause": "Not a defect in this test. tests/conftest_mocks.py line 35 stubs psycopg2 into sys.modules whenever it has not already been imported -- which at conftest time is always, even when the real library IS installed. So a DB test can never obtain a real connection. Releasing this needs that stub made conditional (importlib.util.find_spec), which changes the import environment for all 4,000+ tests and is its own change with its own blast radius.",
-      "note": "Still the highest-value entry. This is the gate that enforces extract -> tag -> verify coverage -> THEN enable an LGA, and 13 councils with zero provisions are live. It is now one well-scoped infrastructure fix away from running, rather than an unexplained SyntaxError."
-    },
-    {
-      "file": "test_address_validation.py",
-      "status": "needs-live-server",
-      "measured": "1 collection error (2026-08-09)",
-      "error": "FileNotFoundError: tests/fixtures/test_addresses.json",
-      "cause": "The fixture file it loads at import time is not in the repository. Either commit the fixture or make the load lazy and skip when absent. MEASURED 2026-08-09: this file targets a local HTTP server (localhost:3007 or :3003) that CI does not start. It is a genuine integration test, not a broken unit test. The honest end state is a skip guard plus an integration marker so it is visible and runnable on demand -- not deletion, and not silent exclusion."
-    },
-    {
-      "file": "test_real_user_flow_with_pp.py",
-      "status": "needs-live-server",
-      "measured": "7 failed (2026-08-09)",
-      "error": "TypeError: Object of type MagicMock is not JSON serializable",
-      "cause": "A mock is being passed where a serialisable value is expected. Test-side defect, fixable without touching product code. MEASURED 2026-08-09: this file targets a local HTTP server (localhost:3007 or :3003) that CI does not start. It is a genuine integration test, not a broken unit test. The honest end state is a skip guard plus an integration marker so it is visible and runnable on demand -- not deletion, and not silent exclusion."
-    },
-    {
-      "file": "test_end_to_end_user_flow.py",
-      "status": "needs-live-server",
-      "measured": "no tests ran (2026-08-09)",
-      "error": "Contains no pytest test functions",
-      "cause": "A script that reads as a test. It calls a live server at http://localhost:3003. Candidate for deletion rather than repair -- it has never been able to run in CI and does not assert anything pytest can see. MEASURED 2026-08-09: this file targets a local HTTP server (localhost:3007 or :3003) that CI does not start. It is a genuine integration test, not a broken unit test. The honest end state is a skip guard plus an integration marker so it is visible and runnable on demand -- not deletion, and not silent exclusion."
-    },
-    {
-      "file": "test_ashfield_marrickville_fix.py",
-      "status": "not-a-test",
-      "measured": "no tests ran (2026-08-09)",
-      "error": "Contains no pytest test functions",
-      "cause": "One-off verification script from a past data fix. Candidate for deletion."
-    },
-    {
-      "file": "test_ashfield_query.py",
-      "status": "not-a-test",
-      "measured": "no tests ran (2026-08-09)",
-      "error": "Contains no pytest test functions",
-      "cause": "One-off query script. Candidate for deletion."
-    },
-    {
-      "file": "test_marrickville_query.py",
-      "status": "not-a-test",
-      "measured": "no tests ran (2026-08-09)",
-      "error": "Contains no pytest test functions",
-      "cause": "One-off query script. Candidate for deletion."
-    },
-    {
-      "file": "test_prp_8b_verification.py",
-      "status": "not-a-test",
-      "measured": "no tests ran (2026-08-09)",
-      "error": "Contains no pytest test functions",
-      "cause": "One-off verification script. Candidate for deletion."
-    }
-  ]
+  "entries": [],
+  "_deleted_2026_08_09": "Five files deleted rather than repaired: test_ashfield_query, test_marrickville_query, test_ashfield_marrickville_fix, test_prp_8b_verification, test_end_to_end_user_flow. Together 1,090 lines with ZERO test functions and ZERO assert statements -- print-based one-off scripts that happened to be named test_*. They could never pass or fail, so they were not debt to repay, they were noise inflating the count. Recoverable from git history if ever wanted.",
+  "_released_as_integration_2026_08_09": "test_address_validation.py and test_real_user_flow_with_pp.py are no longer quarantined. They drive a local HTTP server, so they now carry pytest.mark.integration plus a skipif that probes the server, and report as a visible SKIP with an actionable reason instead of being silently uncollected. test_address_validation additionally needed conftest._load_test_addresses to stop raising during pytest_generate_tests -- a collection-time raise cannot be reached by any skipif -- and a .gitignore escape, because the broad test_*.json rule had made its fixture impossible to commit.",
+  "_released_2026_08_09_lga_coverage": "test_lga_coverage.py released. Import order repaired, and tests/conftest_mocks.py gained an opt-in (PYTEST_REAL_DB=1) so a database test can finally obtain a real connection. Without DATABASE_URL it skips cleanly, so CI stays green; with one it RUNS and immediately found a real defect: Marrickville has 14.8% NULL v2_topic (583 of 3,934) against a 10% threshold. Run it with: PYTEST_REAL_DB=1 DATABASE_URL=postgresql://... pytest tests/test_lga_coverage.py -o addopts=",
+  "_open_design_question": "The gate checks only 4 hardcoded councils, in a slug format ('inner-west/marrickville') that does not even match production ('marrickville'). It does NOT read the enabled-councils list, so it cannot notice a council being switched on. Rewriting it to derive that list was attempted and STOPPED, because the check it would need to make is tier-dependent and no machine-readable tier map exists: Tier 1 councils (Inner West) promise full provision text; Tier 2 councils promise numeric controls ONLY, and having no provisions is their DESIGNED state, not a defect. Until someone records which council is on which tier, a derived gate would either pass vacuously or fail 13 councils that are working as intended. That is a product decision, not a test fix."
 }

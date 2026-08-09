@@ -1,26 +1,29 @@
 {
   "tier": "standard",
-  "justification": "Releases EIGHT of sixteen quarantined test files -- six that already passed plus two repaired here -- and replaces an invisible permanent exemption list with a shrink-only ratchet wired into CI. 3,970 -> 4,101 passing tests. Two product-adjacent fixes: a test fixture that had drifted 4 columns behind the query it stands in for, and src/processing/__init__.py made to import lazily so one optional dependency stops making the whole package unimportable. Standard tier: it changes what the gates enforce for every future change, and touches one product __init__.",
+  "justification": "Takes the quarantined-test list from 16 files to ZERO, and installs a shrink-only ratchet in CI so it cannot silently refill. 3,970 -> 4,101 passing tests. Six files already passed; two were broken BY the quarantining itself; two had drifted behind the code and were repaired; five were not tests at all (1,090 lines, zero assertions) and were deleted; three needed a live server or a real database and now carry skip guards. Standard tier: it changes what the gates enforce for every future change, deletes files, and touches tests/conftest_mocks.py, which every one of the 4,101 tests imports.",
   "commit_hash": "6417ed37",
   "files": [
-    "tests/conftest.py",
-    "tests/quarantine-baseline.json",
-    "scripts/check_test_quarantine.py",
-    "tests/test_check_test_quarantine.py",
-    "tests/test_lga_coverage.py",
-    "tests/test_conveyancing_integration.py",
-    "tests/test_end_to_end_validation.py",
-    "tests/test_leichhardt_thorough.py",
-    "tests/test_version_tracking.py",
-    "tests/test_versioning_api.py",
-    "tests/test_dev_type_filtering.py",
+    ".claude/rules/testing-and-qa.md",
     ".github/workflows/gates.yml",
     ".gitignore",
-    ".claude/rules/testing-and-qa.md",
     ".qa_report.json",
+    "scripts/check_test_quarantine.py",
+    "src/processing/__init__.py",
+    "tests/conftest.py",
+    "tests/conftest_mocks.py",
+    "tests/quarantine-baseline.json",
+    "tests/test_address_validation.py",
+    "tests/test_check_test_quarantine.py",
     "tests/test_conveyancing_db.py",
+    "tests/test_conveyancing_integration.py",
+    "tests/test_dev_type_filtering.py",
+    "tests/test_end_to_end_validation.py",
     "tests/test_integration.py",
-    "src/processing/__init__.py"
+    "tests/test_leichhardt_thorough.py",
+    "tests/test_lga_coverage.py",
+    "tests/test_real_user_flow_with_pp.py",
+    "tests/test_version_tracking.py",
+    "tests/test_versioning_api.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/check_test_quarantine.py && python -m pytest tests/test_check_test_quarantine.py -q",
@@ -56,7 +59,7 @@
     },
     {
       "name": "pytest_report_header",
-      "file_line": "tests/conftest.py:67",
+      "file_line": "tests/conftest.py:57",
       "input": "the pytest config object, unused",
       "output": "one line naming the number of quarantined files, printed at the top of every run",
       "if_none": "returns None when nothing is quarantined, so the line disappears entirely once the debt reaches zero"
@@ -137,10 +140,17 @@
       "mitigated": true,
       "how": "PEP 562 module __getattr__ keeps `from src.processing import RAGProcessor` working -- the name resolves on access and the ORIGINAL ImportError propagates, so the message still names `raganything` rather than a vague AttributeError. Deliberately NOT set to None on failure, which would have produced 'NoneType is not callable' far from the cause. Checked first: RAGProcessor appears in no file under services/, i.e. no deployed code path; only two one-off scripts use it.",
       "repro": "python -c \"from src.processing import SchemaExtractor\" must succeed without raganything; python -c \"import src.processing as p; p.RAGProcessor\" must raise ImportError naming raganything."
+    },
+    {
+      "scenario": "The PYTEST_REAL_DB opt-in changes behaviour for the 4,101 tests that do not ask for it.",
+      "what_happens": "If the psycopg2 stub were skipped automatically whenever the real library is installed, thousands of pure-logic tests would start attempting real connections on any dev machine — silent, widespread, and hard to attribute.",
+      "mitigated": true,
+      "how": "Opt-IN via an explicit environment variable, never automatic. Default runs are byte-for-byte unchanged: measured 4,101 passed before and after the conftest_mocks edit. One real bug surfaced while building it — the RealDictCursor patch did an unguarded sys.modules lookup that raised KeyError and killed the ENTIRE run at conftest load under the new flag; it is now guarded, and only the stub is ever patched, never the genuine library.",
+      "repro": "python -m pytest -q (expect 4,101 passed) then PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_lga_coverage.py -o addopts= (expect it to connect and run, not skip)."
     }
   ],
   "mutation_analysis": "Both enforcement rules were planted and each fired with a specific message; conftest.py restored byte-identically (md5 identical). A third rule fired unplanned against a genuine error of my own -- a failed cleanup left a stale baseline entry and the checker demanded its deletion. The ratchet's own 11 tests were written to cover the cases most likely to be quietly weakened later: the all-skip case, the no-tests case, and the marker-hiding case. Weak assertions avoided: the tests assert on the clean/not-clean decision and the summary text rather than on exit codes alone, because an exit code cannot distinguish 'no tests ran' from 'all skipped', and those two need different responses.",
-  "residual_risk": "EIGHT of sixteen now run. The remaining eight are categorised by NEXT ACTION rather than lumped as 'stale': (1) test_lga_coverage.py -- the LGA-onboarding gate -- is blocked by tests/conftest_mocks.py line 35, which stubs psycopg2 into sys.modules whenever it has not already been imported, so a DB test can never get a real connection even with DATABASE_URL set. Making that stub conditional on importlib.util.find_spec would likely release it, but changes the import environment for all 4,100 tests and needs its own change with its own blast radius. (2) Three files target a local HTTP server (localhost:3003/:3007) CI does not start -- genuine integration tests needing a skip guard and an integration marker, not repair. (3) Four contain no test functions at all; the honest end state is deletion, which is a user decision because it is not casually reversible. Unchanged elsewhere: the liability scanner still reads only changed lines, CI still runs no frontend build, and scripts/doc_claims.py is still wired to no hook.",
+  "residual_risk": "The list is empty, which is NOT the same as the tests being good. Three specific limits. (1) test_lga_coverage.py now runs, and on its first real execution FAILED on a genuine defect: Marrickville has 14.8% NULL v2_topic (583 of 3,934) against a 10% threshold. That is an open data-quality finding this PR surfaces and does not fix. (2) That gate still only checks 4 hardcoded councils, in a slug format that does not match production, and does NOT read the enabled-councils list — so it cannot notice a council being switched on. Rewriting it was attempted and deliberately STOPPED: the check is tier-dependent and no machine-readable tier map exists. Tier 2 councils promise numeric controls ONLY, so having no provision text is their DESIGNED state, not a defect; a naive derived gate would fail 13 councils that are working as intended. That is a product decision. (3) 16 tests now report as skips (live server or database absent). Visible and actionable, but not coverage. Unchanged elsewhere: the liability scanner still reads only changed lines, CI still runs no frontend build.",
   "post_merge": {
     "db_reset": "None. No migration, no schema change, no database write. Tests were run against the live database read-only to establish which files pass; nothing was written.",
     "secrets": "None added or read. Four of the released files skip cleanly when DATABASE_URL is absent, which is how CI already runs them.",
