@@ -6,7 +6,7 @@
 
 ## Verdict
 
-> **RECALL 0.946 — 35 of 37 scored points. Wilson 95% CI 0.823 – 0.985. Pass mark 0.90.**
+> **RECALL 0.946 — 35 of 37 scored points. Cluster 95% CI 0.786 – 1.000 across 8 clusters, which is the interval that governs. Wilson 95% CI 0.823 – 0.985 if the points are treated as independent, which they are not. Pass mark 0.90.**
 > **VERDICT: INDISTINGUISHABLE FROM THE MARK. Not a pass, and not a fail.**
 
 > **⚠ CORRECTED TWICE. Read both, because the second correction moved the number UP.**
@@ -154,34 +154,64 @@ before the run."*
 - **Nothing about specificity.** A flag outside the 2022 extent may be a correct 1% mapping of ground
   that did not flood that year; the two cannot be separated with this data.
 
-## What would settle it
+## What would settle it — and the answer is not more points
 
-> **⚠ CORRECTED TWICE.** This section first claimed *"roughly 150 scored points would put the
-> Wilson lower bound above 0.90"*. At the recall then measured (0.895) that was **impossible** — a
-> Wilson lower bound converges on the point estimate from below and can never exceed it, so no
-> sample size lifted it past 0.90. Once the reference was corrected for polygon holes the measured
-> recall rose to **0.946**, and at that recall the claim becomes true — at **153** scored points,
-> not 150 by coincidence. Recomputed rather than restored:
+> **⚠ CORRECTED THREE TIMES, and the third correction reverses the advice.**
+>
+> This section first claimed *"roughly 150 scored points would put the Wilson lower bound above
+> 0.90"*. At the recall then measured (0.895) that was **impossible**: a Wilson lower bound cannot
+> exceed its own point estimate. After the hole fix raised recall to 0.946 I recomputed and
+> published **153**. That was also wrong — 153 clears only because rounding 0.946 × 153 up to 145
+> hits gives 0.9477, slightly above the measured rate. The bound does not *stay* above 0.90 until
+> **n = 179**. Caught in cross-review.
+>
+> **But the real error was upstream of all three numbers**, and it is the one worth reading.
 
-| Scored points, recall held at 0.946 | Wilson 95% CI | Lower bound ≥ 0.90? |
+**Every figure above assumes 37 independent observations. They are not independent.**
+
+Whether the screen finds a flooded property depends almost entirely on whether **its council has a
+flood overlay loaded** — a property shared by every point in that council. Outcomes arrive in
+blocks. This run makes it vivid:
+
+| Cluster | Points | Found |
 |---|---|---|
-| 37 (this run) | 0.823 – 0.985 | no |
-| 75 | 0.871 – 0.979 | no |
-| **153** | ~0.900 – 0.974 | **yes — first n that clears it** |
-| 300 | 0.915 – 0.967 | yes |
+| EMSR567/AOI09 | 8 | 8 |
+| EMSR586/AOI03 | 8 | 8 |
+| EMSR586/AOI02 | 6 | 6 |
+| EMSR567/AOI12 | 4 | 4 |
+| EMSR567/AOI13 | 3 | 3 |
+| EMSR567/AOI16 | 3 | 3 |
+| EMSR586/AOI01 | 3 | 3 |
+| **EMSR570/AOI01** | **2** | **0** |
 
-**So there is now a concrete, reachable target: about 153 scored points.** At this run's yield —
-37 scored from 150 raw draws, roughly one in four landing inside covered councils — that is on the
-order of **620 raw draws**.
+Seven clusters at 100%, and **both misses in the same 2-point cluster**. Resampling whole AOIs with
+replacement instead of individual points gives a 95% interval of **0.786 – 1.000**, against Wilson's
+0.823 – 0.985. The conventional figure is too narrow, and the run therefore rests on a single
+2-point cluster.
 
-Two cautions on reading that. It assumes the true recall really is near 0.946; if the larger sample
-pulls it back toward 0.90 the bound will not clear, and that is the outcome the exercise exists to
-find out. And it would still be recall **inside Copernicus-mapped disaster areas**, which remains a
-best case.
+**Now the part that changes the plan.** Simulating the observed structure — one cluster in eight
+holding no flood data — the cluster lower bound converges on the true rate, **0.875**:
 
-The binding constraint on sample size is not compute — it is that Copernicus mapped only the areas
-the EU was asked to map, and only a fraction of those fall in councils this product covers.
-Widening either the council coverage or the reference set is the work.
+| Clusters sampled | ≈ points | Cluster 95% lower bound |
+|---|---|---|
+| 8 (this run) | 37 | 0.786 |
+| 16 | 80 | 0.688 |
+| 32 | 160 | 0.750 |
+| 64 | 320 | 0.781 |
+| 96 | 480 | 0.802 |
+
+It never reaches 0.90, because under that structure the product's true recall **is not above 0.90**.
+**No sample size settles this question.** Sampling harder measures the same coverage gap more
+precisely; it does not close it.
+
+**What would actually settle it is not a bigger sample — it is a different question, and a cheaper
+one.** The quantity that governs recall is *what fraction of NSW councils hold flood data at all*,
+and that is not something to estimate by sampling satellite photographs of a flood. It is a direct
+count against our own overlay table. That count, plus loading the missing councils, moves the
+number. Another 150 draws would not.
+
+The 179-point figure is retained above only as the corrected arithmetic under an assumption this
+run shows to be false. It is not a recommendation.
 
 ## Limits, as committed in advance
 
