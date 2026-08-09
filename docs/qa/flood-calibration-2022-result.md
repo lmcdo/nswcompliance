@@ -107,7 +107,7 @@ neighbouring councils in `spatial_overlays`:
 
 So this is not a detection failure. **The product holds no flood overlay for Richmond Valley at
 all**, and returns "no flood indicator" for every address in it — including ground the European
-Commission photographed under water. The recall figure is measuring, in these four points, an
+Commission photographed under water. The recall figure is measuring, in these two points, an
 absence of data rather than an absence of flooding.
 
 **Lismore holding a single polygon deserves its own look.** It is the council that recorded the
@@ -124,14 +124,21 @@ entirely explained by a coverage gap rather than spread thinly across the sample
 ## What this licenses
 
 **Licensed:** *"checked against the Copernicus EMS observed extents of the 2022 NSW floods — the
-served screen returned a flood indicator at 34 of 38 points inside our council coverage (Wilson 95%
-CI 0.76–0.96). At N=38 this does not establish whether the product meets the 0.90 mark committed
+served screen returned a flood indicator at 35 of 37 points inside our council coverage (Wilson 95%
+CI 0.823–0.985). At N=37 this does not establish whether the product meets the 0.90 mark committed
 before the run."*
+
+> This wording is the one sentence intended for external quotation, so it is pinned by
+> `test_the_licensed_statement_quotes_the_run`. It published the superseded 34-of-38 figure for one
+> commit after the corrected run, because the agreement tests checked only the headline line while
+> the customer-quotable sentence sat unguarded twenty lines below it. Caught in review, not by the
+> guard that existed to catch it.
 
 **Not licensed:**
 
 - **Not "validated".** Nowhere near it.
-- **Not a pass.** The point estimate is below the mark and the interval contains it.
+- **Not a pass.** The point estimate (0.946) is above the 0.90 mark but the interval still contains
+  it — the lower bound is 0.823. Being above the mark on 37 points is not the same as clearing it.
 - **Nothing about the 1% AEP verdict** — deliberately excluded. 2022 exceeded the 1% design event in
   several catchments (Lismore peaked 14.4 m, a record by ~2 m), so comparing them measures construct
   mismatch, not product error. Visible in the raw output: hits carry `in_100yr = False` on ground
