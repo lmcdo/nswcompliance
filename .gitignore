@@ -418,6 +418,9 @@ scripts/*
 # for every existing report). Committed so the claims can cite a command.
 !scripts/measure_granny_confidence_states.py
 !scripts/measure_climate_reference_availability.py
+# Read-only census behind the flood three-state change: how many stored
+# reports served a 'not in a flood zone' that was never established.
+!scripts/measure_flood_zone_unassessed.py
 # Falsifiability plant-restore harness + the doc-claim checker. Both are
 # imported by tests and invoked from .githooks/pre-push, so an untracked copy
 # breaks every fresh clone — which is exactly the trap this line block warns

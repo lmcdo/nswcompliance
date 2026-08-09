@@ -93,9 +93,25 @@ PR body: `## What` (one-line) + `## Why` (problem/feature). No "Test plan". No a
 
 ## Database Quick Reference
 - Always check `DB_SCHEMA.md` before writing queries
-- ~42 tables, 47,818 provisions in `regulatory_provisions`
-- Use `v2_precinct_id` (102 precincts), NOT `dcp_precinct_provisions` (legacy)
-- Common columns: `v2_topic`, `v2_marker`, `former_council`, `v2_precinct_id`
+- **Every figure here carries the query that produces it. Re-run it rather than quoting this
+  file — a number without its query is how this section was wrong for months.**
+
+| Fact | Value (measured 2026-08-08) | Query |
+|---|---|---|
+| Base tables | **116** (130 relations incl. views) | `SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'` |
+| `regulatory_provisions` rows | **55,696** | `SELECT count(*) FROM regulatory_provisions` |
+| …of which live + actionable (the served set) | **19,957** | `... WHERE is_current AND v2_is_actionable` |
+| Distinct `v2_precinct_id` | **433** (423 current, 418 live+actionable) | `SELECT count(DISTINCT v2_precinct_id) FROM regulatory_provisions WHERE v2_precinct_id IS NOT NULL` |
+| `dcp_setback_controls` rows | **1,071** | `SELECT count(*) FROM dcp_setback_controls` |
+
+- Use `v2_precinct_id`, NOT `dcp_precinct_provisions` (legacy, **0 rows**)
+- Common columns: `v2_topic`, `v2_marker`, `source_council`, `ref_number`, `v2_precinct_id`
+- ⚠ **`former_council` and `source_ref` DO NOT EXIST on `regulatory_provisions`.** Use
+  `source_council` (lowercase slugs, ~19.7k NULL for statewide instruments) and `ref_number`.
+  Several older docs and scripts still assume the old names.
+- **Never quote a flat council count** — coverage is layered. See
+  `memory/verify-dcp-coverage-status.md` and
+  `~/.claude/plans/ce-verified-capability-statement-2026-08.md` §3.2.
 
 ## Plan Files
 - Location: `~/.claude/plans/`

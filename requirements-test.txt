@@ -72,3 +72,20 @@ suncalc>=0.1.3
 # file nothing installs is exactly what turned four flood postconditions into
 # decoration for months (#880).
 pvlib>=0.15.2
+
+# shapely: the census counted 13 skips for it, but only 12 are tests — all in
+# tests/test_solar_yield.py. The thirteenth entry is a FILE,
+# tests/test_sydney_water_gsp_ingest.py, which calls pytest.importorskip at
+# module level and therefore never collects its 28 tests. The ratchet counted
+# that whole file as one skip, so 28 dark tests were logged with the weight of
+# one — under-reported 28-fold by the guard built to make dark tests visible
+# (#879). The module covers the price parse, the status derivation that drives
+# user-facing serviceability wording, and the geometry coercion — the functions
+# a silent bug would corrupt. All 28 pass. Pinned to match requirements.txt:151.
+# Ships manylinux wheels, so no system libraries are needed on CI.
+shapely==2.1.2
+
+# matplotlib: the missing third of the "numpy + matplotlib + PIL" skip group —
+# numpy and pillow are already in CI's transitive closure, matplotlib was not,
+# so the 5 hillshade render tests never ran. Pinned to match requirements.txt:76.
+matplotlib==3.11.0
