@@ -106,8 +106,17 @@ def _matches_remote(dest: Path, head: dict, tag: str, rel_path: str) -> bool:
     # R2 can carry an explicit SHA-256 when the object was uploaded with
     # additional checksums enabled. Prefer it: it is comparable regardless of
     # how the object was uploaded.
+    # A COMPOSITE checksum is not a full-object digest. S3-compatible stores
+    # expose multipart checksums as a digest-of-digests with a "-N" suffix,
+    # which can never equal a locally computed full-file SHA-256. Comparing
+    # them would discard a perfectly good raster on every boot and leave the
+    # council reported as not assessed forever — a check that always fails is
+    # as useless as one that always passes, and harder to notice.
     remote_sha = head.get("ChecksumSHA256")
-    if remote_sha:
+    composite = bool(remote_sha) and (
+        "-" in remote_sha or head.get("ChecksumType") == "COMPOSITE"
+    )
+    if remote_sha and not composite:
         return _local_sha256_b64(dest) == remote_sha
 
     etag = (head.get("ETag") or "").strip('"')
@@ -138,11 +147,6 @@ def _matches_remote(dest: Path, head: dict, tag: str, rel_path: str) -> bool:
         f"pass — that is outside what this check can see.)"
     )
     return False
-    log.warning(
-        f"[{tag}-dl] {rel_path}: SAME SIZE but checksum differs from the remote "
-        f"object — local copy is stale or corrupt. Re-downloading."
-    )
-    return False
 
 
 def _download_study(s3, tag: str, prefix: str, dest_dir: Path, files: list[str]) -> int:
@@ -167,14 +171,15 @@ def _download_study(s3, tag: str, prefix: str, dest_dir: Path, files: list[str])
         log.info(f"[{tag}-dl] downloading {rel_path} ({remote_size / 1_048_576:.1f} MB)...")
         try:
             s3.download_file(R2_BUCKET_NAME, key, str(dest))
-            # Verify what actually landed, not what we asked for. A truncated
+            # Verify what actually LANDED, not what we asked for. A truncated
             # or mid-flight-corrupted download is worse than a missing file:
-            # missing is visible, wrong is served.
-            # Verify what actually LANDED. Skipped when the object is
+            # missing is visible, wrong is served. Skipped when the object is
             # unverifiable by construction (multipart ETag, no checksum) —
             # otherwise a fresh, correct download would be discarded on every
             # boot by a check that can never pass.
-            verifiable = bool(head.get("ChecksumSHA256")) or (
+            _sha = head.get("ChecksumSHA256")
+            verifiable = (bool(_sha) and "-" not in _sha
+                          and head.get("ChecksumType") != "COMPOSITE") or (
                 (head.get("ETag") or "").strip('"') and "-" not in (head.get("ETag") or "")
             )
             if verifiable and not _matches_remote(dest, head, tag, rel_path):
