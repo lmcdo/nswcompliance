@@ -86,6 +86,16 @@ jobs:
       - name: Tests that did not run (dependency-skip ratchet)
         if: always()
         run: python scripts/check_dependency_skips.py
+      # The sibling of the above, for the OTHER way a test stops running. A
+      # dependency skip at least prints "skipped"; a file in collect_ignore is
+      # never collected, so it produces no output at all and `pytest -m stale`
+      # returns zero. All 16 were quarantined in the single commit that turned
+      # these gates on (#362, 2026-05-23) and nothing re-checked for 15 months.
+      # Shrink-only: a new quarantine fails, and so does a listed file that has
+      # started passing, so fixed means deleted rather than forgiven.
+      - name: Quarantined tests (shrink-only ratchet)
+        if: always()
+        run: python scripts/check_test_quarantine.py
       - name: Mutation-count baselines (counts never drop)
         run: |
           if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
