@@ -126,3 +126,38 @@ def test_assurance_page_quotes_the_same_figures(result):
     assert f"{round(float(result['recall']), 3)}" in text, (
         "assurance page does not quote the run's recall"
     )
+
+
+def test_every_miss_is_enumerated(result):
+    """The report named ONE miss; the artifact holds FOUR.
+
+    Understating a failure count by four in a document written to be relied on
+    is the same class of defect as the headline mismatch — and worse here,
+    because the four misses turned out to share a cause (Richmond Valley holds
+    zero flood polygons) that a single named miss completely hid.
+
+    Each miss must appear in the prose by its coordinates, so adding a miss to
+    the run forces it into the write-up.
+    """
+    md = RESULT_MD.read_text(encoding="utf-8")
+    misses = [r for r in result["results"] if r.get("hit") is False]
+    assert misses, "no misses in the artifact — this test needs rewriting if that is real"
+    for m in misses:
+        coord = f"{m['lat']:.4f}, {m['lng']:.4f}"
+        alt = f"{m['lat']:.4f},{m['lng']:.4f}"
+        assert coord in md or alt in md, (
+            f"miss at {coord} is in the artifact but not named in the report"
+        )
+
+
+def test_the_report_states_the_true_miss_count(result):
+    """Guards the specific sentence that was wrong.
+
+    'The one miss' as a heading, when there are four, is not a rounding error —
+    it is the reader being told the failure is isolated when it is a cluster.
+    """
+    md = RESULT_MD.read_text(encoding="utf-8").lower()
+    n = len([r for r in result["results"] if r.get("hit") is False])
+    assert "## the one miss" not in md, (
+        f"report still headed 'The one miss' but the artifact records {n}"
+    )

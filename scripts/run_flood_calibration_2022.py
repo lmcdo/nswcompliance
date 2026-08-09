@@ -30,7 +30,24 @@ from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
 CORP = ROOT / "data/flood_calibration/copernicus"
-N = 150   # NSW-scoped target; the raw sample is drawn much larger, see below
+# 150 RAW DRAWS, per docs/qa/flood-calibration-2022-amendment-01.md (committed
+# 2026-08-10, BEFORE the re-run). The original protocol at fb0a44f7 said 50, and
+# this had drifted to 150 without the protocol following — a deviation that
+# moved the published recall from 0.800 to 0.895, so it is amended on the record
+# rather than absorbed.
+#
+# The underlying defect was a UNITS error: the protocol specified raw DRAWS
+# while reasoning about SCORED points. 50 draws yield ~15 scored, an interval of
+# 0.548-0.930 — from one-in-two to almost-always, which decides nothing.
+#
+# The pass mark (recall >= 0.90) has NOT moved and never will by this route.
+N = 150
+
+# The floor that actually matters, and the one the original protocol lacked.
+# Below this the interval is too wide to separate a working product from a
+# broken one, so the run reports UNKNOWABLE rather than a figure. A number from
+# too few points is worse than no number: it looks like evidence.
+MIN_SCORED = 30
 SEED = 20220228  # the date the Northern Rivers flood peaked. Fixed, so the run repeats.
 
 def polygons():
@@ -179,6 +196,21 @@ if not scored:
     print("measured nothing. Fix the harness and re-run.")
     for r in results[:3]: print("   ", r.get("error"))
     raise SystemExit(2)
+# The floor from amendment-01, ENFORCED rather than merely declared. Stated in
+# scored points, which is the unit that governs the interval — the original
+# protocol specified raw draws and that units slip is what produced a 15-point
+# run whose interval (0.548-0.930) could not separate a working product from a
+# broken one. Reported BEFORE the recall figure is computed, so an undersized
+# run cannot print a number that gets quoted.
+if len(scored) < MIN_SCORED:
+    print("=" * 74)
+    print(f"UNKNOWABLE: {len(scored)} scored points, {MIN_SCORED} required "
+          f"(docs/qa/flood-calibration-2022-amendment-01.md).")
+    print("Not a pass and not a fail. At this sample size the confidence")
+    print("interval is too wide to distinguish a working product from a")
+    print("broken one, so no recall figure is published.")
+    raise SystemExit(2)
+
 recall = said_something / len(scored)
 import math
 # WILSON, not Wald. At p near 1 the Wald interval is invalid and reports a

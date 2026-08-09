@@ -38,14 +38,17 @@ Every one of those corrections came from the cross-review, not from me.
 
 ## What was run
 
-26,569 observed flood polygons across 47 Copernicus EMS archives (EMSR567, EMSR570, EMSR586). 50
-points sampled with a fixed seed, stratified round-robin across 23 activation/AOI pairs.
+26,569 observed flood polygons across 47 Copernicus EMS archives (EMSR567, EMSR570, EMSR586).
+**150 raw draws** with a fixed seed (20220228), stratified round-robin across 23 activation/AOI
+pairs, per `flood-calibration-2022-amendment-01.md`.
 
 **Scope filter:** each point tested against the product's own NSW council coverage via
-`lookup_lga`. **7 of 50 passed.** The other 43 are outside it — EMSR567 mapped south-east
-Queensland as well as northern NSW, and the pipeline's own latitude envelope is coarse enough to
-accept Brisbane-area points, which is how the earlier 41-point denominator came about. Scoring a
-Queensland observation as NSW recall measures the wrong thing.
+`lookup_lga`. **38 of 38 sampled points passed; none were excluded.** A coarse latitude pre-filter
+now drops the south-east Queensland polygons before sampling — EMSR567 mapped both states, and
+without that filter the stratified walk spent most of its draws in Queensland, which is how the
+earlier run scored only 7 points. `lookup_lga` remains the authoritative test; the pre-filter only
+stops the sample being wasted. An unresolvable lookup returns `None` — unknown scope, excluded,
+never silently treated as in-scope.
 
 **Hit definition:** an allowlist — `flood_signal` in `low`/`moderate`/`elevated`, or
 `in_100yr_flood_zone` true, or a council/SES extent match. `unavailable` is explicitly **not** a
@@ -57,15 +60,47 @@ inside the instrument measuring it.
 download — and the file was re-fetched before the run that produced this number. An AOI silently
 missing from the sample can only flatter the result.
 
-## The one miss
+## The four misses — and they are one finding, not four
+
+An earlier version of this section reported **one** miss. The artifact records **four**, and
+naming only one understated the failure by a factor of four in a document written to be relied on.
 
 ```
-EMSR570 / AOI01   -29.0424, 153.2542
-flood_signal = none   in_100yr_flood_zone = False   ses_in_flood_planning_area = False
+AOI01  -29.0424, 153.2542   signal=none  1pct=False  ses=False
+AOI01  -29.0253, 153.1980   signal=none  1pct=False  ses=False
+AOI01  -29.0921, 153.3311   signal=none  1pct=False  ses=False
+AOI01  -29.0660, 153.3032   signal=none  1pct=False  ses=False
 ```
 
-Northern Rivers, March–April 2022 second wave. The product returned `none` at a location the
-European Commission mapped as inundated.
+**Every miss is identical and they are all in the same place.** Same AOI, a span of roughly
+7 km × 12 km, and the same signature at all four: nothing from the EPI layer, nothing from the 1%
+AEP verdict, nothing from the council/SES extent. Four independent failures would look different
+from each other. These do not.
+
+**Cause, measured rather than inferred.** All four fall in **Richmond Valley** council, and a
+point-in-polygon check returns **zero flood polygons covering any of them**. Compare the
+neighbouring councils in `spatial_overlays`:
+
+| Council | Flood polygons held |
+|---|---|
+| Ballina | 191 |
+| Clarence Valley | 12 |
+| **Lismore** | **1** |
+| **Richmond Valley** | **0** |
+
+So this is not a detection failure. **The product holds no flood overlay for Richmond Valley at
+all**, and returns "no flood indicator" for every address in it — including ground the European
+Commission photographed under water. The recall figure is measuring, in these four points, an
+absence of data rather than an absence of flooding.
+
+**Lismore holding a single polygon deserves its own look.** It is the council that recorded the
+most catastrophic flood in Australian history in 2022. One polygon is unlikely to be its true
+extent, and no point in this sample landed there to test it.
+
+**This changes what the headline number means.** 0.895 is not "the screen misses about one in ten
+flooded places at random". It is closer to "the screen works where flood data has been loaded, and
+returns a confident negative where it has not". Those are very different products, and only the
+second one is dangerous.
 
 ## What this licenses
 
