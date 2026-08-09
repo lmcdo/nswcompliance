@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Takes the quarantined-test list from 16 files to ZERO, and installs a shrink-only ratchet in CI so it cannot silently refill. 3,970 -> 4,101 passing tests. Six files already passed; two were broken BY the quarantining itself; two had drifted behind the code and were repaired; five were not tests at all (1,090 lines, zero assertions) and were deleted; three needed a live server or a real database and now carry skip guards. Standard tier: it changes what the gates enforce for every future change, deletes files, and touches tests/conftest_mocks.py, which every one of the 4,101 tests imports.",
-  "commit_hash": "6417ed37",
+  "commit_hash": "01a700a5",
   "files": [
     ".claude/rules/testing-and-qa.md",
     ".github/workflows/gates.yml",
