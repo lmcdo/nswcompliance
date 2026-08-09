@@ -6,10 +6,18 @@
 
 ## Verdict
 
-> **RECALL 0.857 — 6 of 7 scored points. Wilson 95% CI 0.487 – 0.974. Pass mark 0.90.**
+> **RECALL 0.895 — 34 of 38 scored points. Wilson 95% CI 0.759 – 0.958. Pass mark 0.90.**
 > **VERDICT: INDISTINGUISHABLE FROM THE MARK. Not a pass, and not a fail.**
 
-Seven points is far too few to decide anything. The interval spans from "half the time" to "almost
+> **⚠ CORRECTED 2026-08-09.** This section previously published **0.857 (6 of 7)**, which the
+> committed runner does not produce. Re-running `scripts/run_flood_calibration_2022.py` at seed
+> 20220228 reproduces `flood-calibration-2022-result.json` byte-identically — 38 sampled, 38 in
+> coverage, 34 hits — so the JSON is the reproducible artifact and the 6-of-7 figure was an
+> intermediate run that was never refreshed here. The VERDICT is unchanged either way, which is
+> the only reason this was a documentation defect rather than a wrong conclusion. Found by the
+> cross-review, which flagged that the markdown and its own cited JSON disagreed.
+
+Thirty-eight points is still too few to decide. The interval spans from "three in four" to "almost
 always", and it contains the mark, so the honest reading is that this run did not establish whether
 the product clears 0.90 or not. That is the third state, and it is the answer.
 
@@ -23,7 +31,8 @@ published as a pass.
 | first run | — | — | every report_id was an invalid UUID; 0 of 50 scored, and the harness printed **FAIL** from a 0/0 division. Discarded — a harness that could not run has measured nothing |
 | second | 0.976 (40/41) | Wald ±0.047 → lower 0.929 | reported **PASS**. Wald is invalid at a proportion this close to 1 |
 | third | 0.976 (40/41) | Wilson 0.874–0.996 | lower bound below the mark, so **indistinguishable**, per the rule written before the run |
-| **final** | **0.857 (6/7)** | **Wilson 0.487–0.974** | the denominator was wrong: 34 of the 41 were outside the product's council coverage, several in south-east Queensland, and `flood_signal='unavailable'` was being counted as a flood indicator |
+| fourth | 0.857 (6/7) | Wilson 0.487–0.974 | an intermediate run. Its denominator excluded all but 7 points as outside council coverage; the committed runner, with a working `lookup_lga`, scopes IN 38 of 38. Not reproducible — superseded |
+| **final** | **0.895 (34/38)** | **Wilson 0.759–0.958** | what `scripts/run_flood_calibration_2022.py` produces at seed 20220228, verified by re-running it and diffing the JSON: identical. `flood_signal='unavailable'` is correctly NOT counted as a flood indicator |
 
 Every one of those corrections came from the cross-review, not from me.
 
@@ -61,9 +70,9 @@ European Commission mapped as inundated.
 ## What this licenses
 
 **Licensed:** *"checked against the Copernicus EMS observed extents of the 2022 NSW floods — the
-served screen returned a flood indicator at 6 of 7 points inside our council coverage (Wilson 95% CI
-0.49–0.97). At N=7 this does not establish whether the product meets the 0.90 mark committed before
-the run."*
+served screen returned a flood indicator at 34 of 38 points inside our council coverage (Wilson 95%
+CI 0.76–0.96). At N=38 this does not establish whether the product meets the 0.90 mark committed
+before the run."*
 
 **Not licensed:**
 
