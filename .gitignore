@@ -374,6 +374,8 @@ docs/*
 !docs/user-stories/
 !docs/intelligence-brief/
 !docs/intelligence-brief/**
+!docs/pitch/
+!docs/pitch/**
 !docs/*.md
 
 # PDF page images (stored in cloud, not git)

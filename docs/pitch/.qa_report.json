@@ -1,0 +1,98 @@
+{
+  "tier": "standard",
+  "justification": "Documentation-only PR — seven markdown files in docs/pitch/. No served output, no data path, no user-facing UI. Standard tier is the right ceiling; Critical is reserved for served outputs and Basic would skip the grounding gate this report needs to survive the same doc-claim checks these files preach.",
+  "commit_hash": "af7982a",
+  "files": [
+    "docs/pitch/demo-runbook.md",
+    "docs/pitch/cheat-sheet.md",
+    "docs/pitch/positioning-paragraph.md",
+    "docs/pitch/audit-sow-template.md",
+    "docs/pitch/qualifying-diagnostic.md",
+    "docs/pitch/rehearsal.md",
+    "docs/pitch/red-flags.md"
+  ],
+  "pre_impl": {
+    "existing_data": "Two source-of-truth documents on other branches (origin/docs/what-to-sell-2026-08, origin/docs/strategy-review-2026-08-08) read via git show; seven scripts under scripts/ read for their WHY and PR-of-origin; .githooks/pre-commit and pre-push read to confirm sidecar guard and language gate wiring; git log for PRs #872 through #893 read to bound campaign dates and pin PR numbers per script. No new files were referenced without opening the target.",
+    "assumption_mismatch": "The main assumption class is 'a PR referenced in the cheat-sheet or rehearsal maps to the check the reader will find in that PR.' Mitigation: every PR number in cheat-sheet.md was verified by `git log --all --oneline --diff-filter=A -- scripts/<file>.py` (falsifiability #890, doc_claims #890, lint_fabricated_verdicts #859, liability_language #835, validate_schema_contract #856, qa_gate #835, lint_hardcoded_confidence #872). Every PR cited in the rehearsal (#886, #859, #890, #856) is a real PR in the log and was cited for what it actually did.",
+    "new_vs_existing": "docs/pitch/ did not exist before this branch; all seven files are new. No existing file was overwritten. Prior-art sweep for pitch/positioning material: ~/.claude/plans/*pitch*, docs/PITCH*, docs/*pitch* — no hits (verified during the four-sweep before writing). ce-linkedin-rewrite-2026-06.md exists but is quarantined per STRATEGY_REVIEW_2026-08-08.md §10 — its product claims predate the truth-in-claims campaign and are not reused here."
+  },
+  "functions": [
+    {
+      "name": "runbook demo driver (heredoc, not a tracked file)",
+      "file_line": "docs/pitch/demo-runbook.md:57-79",
+      "input": "the runbook's own two heredocs — one five-line dummy, one twenty-line driver — plus scripts/falsifiability.py copied into cwd by the setup step",
+      "output": "stdout — five labelled lines with sha256 prefixes and rc codes; exit 0 on success",
+      "if_none": "If scripts/falsifiability.py is missing, ImportError before any plant runs — the setup section names this explicitly and gives the cp command. If the dummy file was not created by step 1, PlantDidNotTake is raised with a clear message before the block body runs. The runbook's 'what can go wrong' table lists both."
+    }
+  ],
+  "falsifiable_check": {
+    "command": "cd /tmp/claude-0/-home-user-nswcompliance/46b3786d-ce5b-5398-870c-267cce824fa8/scratchpad/demo2 && python3 demo.py",
+    "fails_when": "The demo prints 'bytes identical to baseline?  False' — the plant-restore harness left the file mutated on disk. Also fails if the planted rc is not non-zero (the check didn't catch the lie). Both were verified to go the right way during writing; both directions were exercised (baseline rc=0, planted rc=1, restored rc=0, sha256 restored to a1ea58c8278f, matching baseline)."
+  },
+  "values": [
+    {
+      "value": "captured demo output (baseline sha, planted sha, restored sha, rc codes)",
+      "read_at": "docs/pitch/demo-runbook.md:96-104",
+      "nullable": "no — the values were captured live",
+      "guard_at": "docs/pitch/demo-runbook.md:144-149 — the 'verification note' says sha256 will differ on their machine and that the only assertion that must survive transplant is 'bytes identical to baseline?  True'",
+      "if_missing": "the demo would print different text, and the runbook's expected-output block would be wrong. Runbook was actually executed in /tmp/.../scratchpad/demo2 on 2026-08-09 and its output pasted verbatim (see scratchpad session log)."
+    },
+    {
+      "value": "PR numbers in cheat-sheet.md",
+      "read_at": "docs/pitch/cheat-sheet.md:9-15",
+      "nullable": "no",
+      "guard_at": "verified against `git log --all --oneline --diff-filter=A -- scripts/<file>.py` per row",
+      "if_missing": "a wrong PR number would send a buyer to unrelated code, undermining the whole 'every claim references something on GitHub' promise. Would fail the equivalent of scripts/doc_claims.py PATH check if run against this doc."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The demo runbook is executed on a laptop where the buyer's Python has assertions disabled (PYTHONOPTIMIZE=1) — the planted 'a - b' would not raise, the check would stay green, and the runbook's central claim ('non-zero means the lie was caught') would be visibly false in front of the buyer.",
+      "what_happens": "Lawrence delivers a demo that contradicts what he just said it would do; every subsequent claim in the pitch loses credibility.",
+      "mitigated": true,
+      "how": "docs/pitch/demo-runbook.md:117-118 — the 'what can go wrong' table names PYTHONOPTIMIZE as a specific cause and instructs Lawrence to bail out verbally ('let me not fake this, my machine at home just showed it going red — happy to send you the recording') rather than talk past it. This is the one failure mode where the honest response is more valuable than the demo working.",
+      "repro": "PYTHONOPTIMIZE=1 python3 demo.py in the scratch directory; check that the planted rc is 0 rather than 1; confirm the runbook tells Lawrence what to say."
+    },
+    {
+      "scenario": "A hostile buyer reads positioning-paragraph.md Version A, files Lawrence as 'AI prompter', and follows up with Q6 in rehearsal.md: 'So you're really a prompt engineer, not an engineer.' Version A alone (without the rehearsal answer to that specific trap) leaves Lawrence one clarifying sentence short.",
+      "what_happens": "Buyer disengages mentally between Q1 and Q6, and Lawrence loses the room before he gets to the demo.",
+      "mitigated": true,
+      "how": "docs/pitch/positioning-paragraph.md:16-45 ships TWO versions with an explicit selection rule ('If the room is engineering-heavy, switch to B') and B's opening — 'a rule I hadn't seen written down elsewhere: before I trust a check, I break the code underneath it and prove the check goes red' — is a specific technical claim a prompt engineer would not make. rehearsal.md Q6:98-116 handles the trap directly with 'if your view is that a person who directs an AI is not doing engineering, then this isn't a fit and we should end the call.'",
+      "repro": "Read Version A aloud to an engineer, then ask them Q6's trap. Read Version B to a second engineer, then ask them the same trap. Version B is more robust standalone. See §Positioning-trap-test in this report below."
+    },
+    {
+      "scenario": "A buyer or hostile reviewer picks up the cheat-sheet, clicks PR #890, and finds a PR that does not contain scripts/falsifiability.py — the entire 'every claim references something on GitHub' promise collapses on the first click.",
+      "what_happens": "Every artefact loses credibility in one click.",
+      "mitigated": true,
+      "how": "Every PR number in cheat-sheet.md was verified during writing via `git log --all --oneline --diff-filter=A -- scripts/<file>.py`. The commit-history block from the earlier scratch is captured in the transcript; PRs shown are the ones that ADD each file, not later commits that touched it.",
+      "repro": "For each of the 7 rows in cheat-sheet.md, run `git log --all --oneline --diff-filter=A -- <script-path>` and confirm the cited PR number appears in the head commit's subject line."
+    },
+    {
+      "scenario": "A buyer asks Lawrence to run the demo on their code and their code is not Python — Lawrence has said 'the same harness runs on any Python file' but their product is Rust / Go / TypeScript.",
+      "what_happens": "Lawrence backs off a claim in front of the buyer, or accepts an engagement he can't reproduce the demo inside.",
+      "mitigated": true,
+      "how": "docs/pitch/demo-runbook.md:135-138 says explicitly: 'It doesn't say every check on my repo works this way. Only the reliability findings that made it into the last twenty-plus PRs use this discipline.' docs/pitch/qualifying-diagnostic.md is language-agnostic — Q1/Q2/Q3 don't require Python; Probe 1 (marketing-page grep) and Probe 2 (public-endpoint diff) both run against any product. The pitch package as a whole works for non-Python codebases; the specific plant-restore demo does not, and the runbook is explicit that the demo is for the meeting, not the engagement.",
+      "repro": "N/A — the mitigation is in what the artefacts do not claim."
+    },
+    {
+      "scenario": "The four PR numbers cited in rehearsal.md (#886, #859, #890, #856) do not describe the specific finding Lawrence claims in the answer.",
+      "what_happens": "First serious buyer clicks the PR mid-call, contradicts Lawrence live, meeting ends.",
+      "mitigated": true,
+      "how": "Each PR number was cross-checked against git log: #886 c6d64ed 'feat(shadow): remove the adjacent-lot construction check from the product' — the 538-attempts-zero-results finding, correctly claimed; #859 2ed1687 'feat(gates): fabricated-verdict lint' — the DQ-36 finding, correctly claimed; #890 f5acb08 'chore(gates): a shared plant-restore harness' — the design decisions Lawrence claims (fail-closed, sidecar shell-search, hook not test) all appear in the falsifiability.py module docstring; #856 8260f6b 'chore(gates): schema-contract check, first CI workflow, and the live defect it found' — the '4,000+ tests all green through a table rename' finding is exactly this PR's story.",
+      "repro": "For each PR number in rehearsal.md, `git log --all --oneline | grep '#<n>'` and read the commit subject aloud; check it matches what the rehearsal answer promises."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No — no credentials, no API keys, no environment variables referenced in any artefact.",
+    "other_repo": "No",
+    "manual_verify": "Yes — the demo runbook needs Lawrence to run it end-to-end on his own laptop once before the first pitch meeting. Not verified for him, only verified by the writer of this report on a Linux scratch directory; a MacOS or Windows laptop with CRLF line endings may behave differently and the demo hedges on that via 'sha256 will differ on their machine' but Lawrence should confirm bytes-identical works on his specific machine before the first buyer meeting."
+  },
+  "positioning_trap_test": {
+    "question_run": "Does Version A of docs/pitch/positioning-paragraph.md survive Q6's trap ('So you're really a prompt engineer, not an engineer.') without needing the rehearsal follow-up to save it?",
+    "verdict": "Version A does not survive standalone. Its strongest specific claim ('designed the checks that catch each class of silent failure') is generic enough that a hostile reader can dismiss it. Version B does survive standalone: 'a rule I hadn't seen written down elsewhere: before I trust a check, I break the code underneath it and prove the check goes red' is a specific technique with a stated novelty claim, which a prompt engineer would not phrase that way.",
+    "recommendation": "Memorise Version B first for standalone survival; keep Version A for warmer buyer contexts where undersell is more damaging than over-modesty. If Lawrence has bandwidth for only one paragraph on the first pitch, Version B is the safer choice."
+  },
+  "branch_note": "Working branch is claude/lawrence-audit-pitch-package-ehb0mv per the session-start instruction that overrides the task prompt's suggested feat/pitch-package. The .githooks/pre-commit branch guard only blocks main/master, so this branch name is accepted."
+}
