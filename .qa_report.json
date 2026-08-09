@@ -7,6 +7,7 @@
     ".github/workflows/gates.yml",
     ".gitignore",
     ".qa_report.json",
+    "pytest.ini",
     "scripts/check_test_quarantine.py",
     "src/processing/__init__.py",
     "tests/conftest.py",
@@ -147,6 +148,13 @@
       "mitigated": true,
       "how": "Opt-IN via an explicit environment variable, never automatic. Default runs are byte-for-byte unchanged: measured 4,101 passed before and after the conftest_mocks edit. One real bug surfaced while building it — the RealDictCursor patch did an unguarded sys.modules lookup that raised KeyError and killed the ENTIRE run at conftest load under the new flag; it is now guarded, and only the stub is ever patched, never the genuine library.",
       "repro": "python -m pytest -q (expect 4,101 passed) then PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_lga_coverage.py -o addopts= (expect it to connect and run, not skip)."
+    },
+    {
+      "scenario": "Releasing conditionally-runnable tests inflates the skip count, and the dependency-skip ratchet — the sibling gate — refuses the change.",
+      "what_happens": "Exactly what happened: skips went 2 -> 16 and CI failed with 'SKIP-TOTAL RATCHET: FAILED — 16 skipped test(s) against a baseline of 2'. The tempting fix is to raise that baseline, which would blunt a working gate to accommodate my change and make future genuine skip growth invisible.",
+      "mitigated": true,
+      "how": "Baseline NOT raised. The tests are DESELECTED instead, via a new `integration` marker in pytest.ini's addopts alongside the existing `database` one, and test_lga_coverage.py re-marked `database`. A test that needs a server this environment does not have is not a skipped test, it is a test for a different environment — so it should not consume the skip budget. Result: back to 2 skipped, 75 deselected, and both markers still reachable (`pytest -m integration` shows 14, `-m database` collects 31).",
+      "repro": "python scripts/check_dependency_skips.py must report against baseline without failing; python -m pytest -q must show 2 skipped, not 16."
     }
   ],
   "mutation_analysis": "Both enforcement rules were planted and each fired with a specific message; conftest.py restored byte-identically (md5 identical). A third rule fired unplanned against a genuine error of my own -- a failed cleanup left a stale baseline entry and the checker demanded its deletion. The ratchet's own 11 tests were written to cover the cases most likely to be quietly weakened later: the all-skip case, the no-tests case, and the marker-hiding case. Weak assertions avoided: the tests assert on the clean/not-clean decision and the summary text rather than on exit codes alone, because an exit code cannot distinguish 'no tests ran' from 'all skipped', and those two need different responses.",

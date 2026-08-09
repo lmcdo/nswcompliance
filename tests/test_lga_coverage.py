@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = pytest.mark.stale
+pytestmark = pytest.mark.database
 
 import os
 import sys
