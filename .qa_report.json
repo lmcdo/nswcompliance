@@ -1,135 +1,92 @@
 {
- "tier": "standard",
- "justification": "Documentation only, but every claim in it is a measured claim about the live database and the current code, so it carries the same risk profile as code: a wrong number here goes into an employment, contract or licensing conversation and cannot be walked back. Three files under docs/architecture/ — SYSTEM_TECHNICAL.md (three Mermaid diagrams: what gets stored, what gets served, one address end to end), SYSTEM_INTEGRATED.md (the two-pile story view with assurance-ladder colouring and the seven gates), VERIFICATION.md (one row per box, arrow and count, each with the SQL or the file and line that produced it). No application code is touched. The risk this report addresses is not a runtime failure — it is a false claim shipped in a document that a hostile reader will check.",
- "commit_hash": "1c33adc3",
- "files": [
-  "docs/architecture/SYSTEM_TECHNICAL.md",
-  "docs/architecture/SYSTEM_INTEGRATED.md",
-  "docs/architecture/VERIFICATION.md",
-  "docs/architecture/rendered/technical-1-stored.svg",
-  "docs/architecture/rendered/technical-2-served.svg",
-  "docs/architecture/rendered/technical-3-lookup-trace.svg",
-  "docs/architecture/rendered/integrated-two-piles.svg"
- ],
- "pre_impl": {
-  "existing_data": "Prior-art sweep found four existing architecture documents before writing: docs/ARCHITECTURE.md (82 lines, dated 2026-05-02), .claude/docs/ARCHITECTURE.md (50 lines, 2026-01-30), .claude/docs/ARCHITECTURE_FLOW_AND_UI.md (1,079 lines) and .claude/docs/ARCHITECTURE-LGA-EXPANSION.md (414 lines). The brief named docs/ARCHITECTURE_FLOW_AND_UI.md, which does not exist at that path — it is under .claude/docs/. The two ARCHITECTURE.md files both open with '47,818 provisions', which is the row count of document_id_backup, a backup table; the live figure is 55,696. They are superseded rather than extended, and SYSTEM_TECHNICAL.md section 5 says so explicitly so a future reader does not treat them as current.",
-  "assumption_mismatch": "Four assumptions were wrong and were corrected before any file was written. (1) The working tree's local main was 51 commits behind origin/main at the time of the first probe; four of the seven named gates did not exist on that stale tree and .github/workflows/ was absent entirely. All evidence was re-gathered against origin/main at af7982a8. (2) The brief assumed the session might lack live DB access; it did not, so every count is measured on 2026-08-09 rather than cited from the 2026-08-08 strategy review. (3) services/CLAUDE.md describes all five satellite products as 'not started' and they are all shipped — that document is excluded as an evidence source. (4) A plain grep for 'sentinel' across services/ matches six modules, which would have put a false Sentinel-2 edge on the diagram; opening each file showed three of them use the word to mean a sentinel value. Only pre_da_history.py and drawdown_verify.py touch imagery.",
-  "new_vs_existing": "New directory docs/architecture/. Nothing existing was edited or deleted. The four prior architecture documents are left in place and cross-referenced with their staleness stated. .qa_report.json is replaced, which is the per-branch convention."
- },
- "functions": [
-  {
-   "name": "read-only DB evidence collection",
-   "file_line": "ad-hoc script; all SQL reproduced verbatim in docs/architecture/VERIFICATION.md section 1",
-   "input": "DATABASE_URL from the repository root .env",
-   "output": "37 exact counts, each stored beside the SELECT that produced it",
-   "if_none": "The connection was opened with set_session(readonly=True) and SET statement_timeout = 30000, so a write could not have executed even if one had been written by mistake. Had the connection failed, the fallback was the counts committed in STRATEGY_REVIEW_2026-08-08.md, labelled with that date; it was not needed."
+  "tier": "minor",
+  "justification": "Developer tooling only. A new author-identity check plus its wiring into the pre-commit hook and one PR-only CI step. No product code, no served output, no database read or write, no migration, no schema change.",
+  "commit_hash": "40944b22",
+  "files": [
+    "scripts/check_commit_authors.py",
+    ".githooks/pre-commit",
+    ".github/workflows/gates.yml",
+    ".gitignore",
+    ".qa_report.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/check_commit_authors.py --selftest && python scripts/check_commit_authors.py --range e1955be6~1..e1955be6",
+    "fails_when": "The selftest runs nine identities through the rules and exits 1 on any disagreement between expected and actual. The second command exits 1 against e1955be6, the real first t@t commit in this repository's history, so the check is proven against the actual incident rather than a fixture. Both were also demonstrated live: with a local override of t <t@t> set, git commit was REFUSED by the hook and no commit entered the history; with the override removed the same commit succeeded.",
+    "external_authority": "The incident itself: 49 commits authored t@t between 2026-08-08 10:19 and 2026-08-09, and the Vercel deployment list showing every preview Blocked with a blank author while production, re-authored by GitHub's squash merge, shows github/lmcdo and is Ready."
   },
-  {
-   "name": "Mermaid render check",
-   "file_line": "docs/architecture/rendered/*.mmd, rendered with @mermaid-js/mermaid-cli@10",
-   "input": "the four fenced mermaid blocks, extracted from the two markdown files by script rather than by hand",
-   "output": "four SVGs, zero syntax errors, all page-shaped rather than strip-shaped",
-   "if_none": "mermaid-cli renders a diagram containing the words 'Syntax error' rather than exiting non-zero, so a grep for that string is run over each SVG as well as checking the exit path. All four return zero matches."
+  "pre_impl": {
+    "existing_data": "Four sweeps 2026-08-09 vs origin/main ca41fcd1. A grep for user.email or author-email patterns over scripts/, .githooks/ and .github/ returns no identity check. .githooks/pre-commit gates branch name, secrets, large files, TSC, bracket lint, fail-soft lint, zone codes and fabricated verdicts, none of them authorship. .githooks/pre-push runs pytest, jest, qa_gate and the liability scan. .github/workflows/gates.yml has five jobs and no identity step. No frontend surface is involved.",
+    "assumption_mismatch": "Two, both caught by the check's own selftest before it was wired anywhere. A minimum local-part length rejected a@b.co, which is a perfectly valid address, and was removed. And the first range test was pointed at main, which is clean by construction because a squash merge re-authors every commit, so it reported success while being incapable of failing; re-aimed at a real t@t commit, it correctly goes red.",
+    "new_vs_existing": "New check. Additive: no existing gate changed behaviour, and the CI step is a new step inside an existing job that already fetches full history for its merge-base diff."
   },
-  {
-   "name": "doc_claims.py self-check",
-   "file_line": "scripts/doc_claims.py, run with --docs over the three new files",
-   "input": "the three new markdown files under docs/architecture/, passed explicitly with --docs",
-   "output": "no path and no version findings against these files",
-   "if_none": "The seven dependency findings it reports are pre-existing repository issues about requirements files and test imports; they are unrelated to this change and are not fixed here."
+  "functions": [
+    {
+      "name": "problem_with",
+      "file_line": "scripts/check_commit_authors.py:70",
+      "input": "an author name and email exactly as git would record them on the commit",
+      "output": "A sentence naming why this identity cannot belong to a real person, or None when it is plausible. Structural only: a domain with no dot, a known placeholder domain, a placeholder or single-character name. Bot prefixes are allowed through.",
+      "if_none": "An empty email returns 'no author email is set at all' rather than passing. A real address that simply is not the repo owner's PASSES, deliberately, because this is a placeholder gate and not an authorisation gate; an allow-list of permitted humans would be a roster to maintain and a second thing to get wrong."
+    },
+    {
+      "name": "check_staged",
+      "file_line": "scripts/check_commit_authors.py:104",
+      "input": "nothing; it reads the identity the next commit in this repository would actually use",
+      "output": "0 when plausible. On rejection it prints the offending identity, the reason, and both the local and global config values when a repo-local override is present, because that override is the failure and it is invisible unless printed beside the global it is shadowing.",
+      "if_none": "An unset local override is reported as (unset) rather than blank, so the output distinguishes no override from an override set to empty."
+    },
+    {
+      "name": "check_range",
+      "file_line": "scripts/check_commit_authors.py:135",
+      "input": "a git revision range, in CI the merge-base of origin/main and the pull request head",
+      "output": "0 when every non-merge commit is plausibly authored, printing the count checked so a vacuous pass is visible. On failure it lists each bad commit with its reason and the rebase command that rewrites them.",
+      "if_none": "An empty range prints that there are no non-merge commits to check and returns 0, stated explicitly rather than reported as a pass over zero commits."
+    }
+  ],
+  "values": "N/A — no database or API values are read. The only inputs are git config values and commit metadata.",
+  "queries": "N/A — no SQL is executed anywhere in this change.",
+  "break_it": [
+    {
+      "scenario": "The check is added only to the git hook.",
+      "what_happens": "Hooks are opt-in per clone and this repository has 15 worktrees; a commit arriving from an environment where nobody enabled core.hooksPath is unaffected, which is the likely origin of this very incident.",
+      "mitigated": true,
+      "how": "It runs in CI as well, in the qa-and-liability job which already fetches full history. The retrospective's central finding was that every gate here was client-side and skippable; a hook-only check would have repeated it.",
+      "repro": "Commit with --no-verify, push, and the pull request check still fails."
+    },
+    {
+      "scenario": "The CI step runs on main as well as on pull requests.",
+      "what_happens": "It is trivially green forever. A squash merge re-authors the commit as the merging GitHub account, so main can never contain a bad author; the check would look active while being incapable of failing, which is the DQ-30 zero-percent-drift shape.",
+      "mitigated": true,
+      "how": "The step is guarded by github.event_name == 'pull_request', matching the QA report step above it, which is gated for exactly the same reason.",
+      "repro": "git log main --author=t@t returns nothing while 49 such commits exist on branches."
+    },
+    {
+      "scenario": "The rules are strict enough to reject a real person.",
+      "what_happens": "Someone with a short but legitimate address cannot commit, the check gets disabled, and the protection is lost entirely.",
+      "mitigated": true,
+      "how": "The minimum local-part length was removed after the selftest caught it rejecting a@b.co. What remains cannot reject a deliverable address, because every real domain contains a dot.",
+      "repro": "python scripts/check_commit_authors.py --selftest — the identity 'A B' <a@b.co> must be accepted."
+    },
+    {
+      "scenario": "A bot's commit is rejected.",
+      "what_happens": "dependabot and github-actions commits fail CI, and 16 such commits exist in recent history.",
+      "mitigated": true,
+      "how": "Bot prefixes are allowed through explicitly, and the selftest pins dependabot's noreply address as accepted.",
+      "repro": "python scripts/check_commit_authors.py --range over a range containing a dependabot commit."
+    },
+    {
+      "scenario": "The check passes locally and fails in CI.",
+      "what_happens": "Exactly what happened on the previous branch: .qa_report.json is tracked, edits to it were never staged, the pre-push hook read the working copy and passed while CI read the committed copy and failed.",
+      "mitigated": true,
+      "how": "This report is committed alongside the change it describes rather than left modified in the working tree.",
+      "repro": "git status --porcelain .qa_report.json returns nothing after committing."
+    }
+  ],
+  "mutation_analysis": "The selftest is the mutation analysis for a pure-rules module: nine identities, each asserting accept or reject, covering every branch of problem_with — no dot in domain, placeholder domain, placeholder name, single-character name, empty email, malformed email, bot allowance, and two valid addresses that must pass. It caught two real defects in its own author before the check was wired anywhere. Beyond the unit level the check was demonstrated end to end: a commit as t <t@t> was refused by the hook and left no commit in the history, and the same commit succeeded once the override was removed.",
+  "residual_risk": "This is a plausibility gate, not an identity check. A well-formed address belonging to nobody on the team passes, and it must, because deciding who is allowed to commit is a different problem needing a maintained roster. It also cannot help commits already made: the 49 existing t@t commits stay unattributed and their previews stay blocked, because rewriting them would rewrite published branch history. And it only fires where it runs — a cloud environment that neither installs the hooks nor opens a pull request is still unprotected, though nothing reaches main without a pull request.",
+  "post_merge": {
+    "db_reset": "No. Nothing in this change touches any database.",
+    "secrets": "No. It reads git config user.name and user.email and commit metadata; no credentials are read, written or logged.",
+    "other_repo": "No. Single repository. The fix to the identity itself was a local git config change already applied outside this pull request.",
+    "manual_verify": "Confirm the next pull request raised after this merges shows a Vercel preview rather than Blocked. That is the outcome this exists to protect, and it is not something CI can assert for itself."
   }
- ],
- "values": [
-  {
-   "value": "Every count on every diagram",
-   "read_at": "the live Supabase database, 2026-08-09, via the SELECT recorded next to it in VERIFICATION.md section 1",
-   "if_missing": "No count is carried over from a document. Two figures ARE doc-sourced and both are labelled as such in VERIFICATION.md section 6: the test counts and the shadow calibration result, both dated 2026-08-08 from STRATEGY_REVIEW_2026-08-08.md. Only the calibration result appears on a diagram, and it is the one figure a reader should re-check before quoting."
-  },
-  {
-   "value": "Every arrow between two boxes",
-   "read_at": "a specific file and line, recorded in VERIFICATION.md section 3",
-   "if_missing": "Drawn dashed and labelled UNVERIFIED, with a row in section 4 stating what was tried and why it could not be resolved. Four such items exist; the Trigger.dev hop is the substantive one, because its task definitions live in the sibling repository plotdetect-agents which is not checked out here."
-  }
- ],
- "queries": [
-  {
-   "query": "SELECT count(*) FROM dcp_setback_controls WHERE is_current = TRUE",
-   "purpose": "Establish how many numeric DCP controls are actually served, as distinct from how many rows the table holds. The diagram shows both 1,071 and 989 because the difference matters: quoting the table size as the served figure would overstate the defensible surface by 82 rows.",
-   "file_line": "docs/architecture/VERIFICATION.md section 1, the row labelled '989 live'",
-   "where_clause": "is_current = TRUE — without it the count returns 1,071, which includes superseded rows and the 28 fabricated-value rows that were deliberately set is_current=FALSE rather than deleted, so that the evidence of the defect survives."
-  },
-  {
-   "query": "SELECT count(*) FROM regulatory_provisions WHERE is_current = TRUE AND v2_is_actionable = TRUE",
-   "purpose": "Establish the served clause count. The raw table count of 55,696 is the number quoted in two stale architecture documents and in older marketing, and it is roughly 2.8x the number a user can actually be shown.",
-   "file_line": "docs/architecture/VERIFICATION.md section 1, the row labelled '19,957 served'",
-   "where_clause": "is_current = TRUE AND v2_is_actionable = TRUE — both are required. is_current alone returns 31,469, which includes clauses that are current but are narrative rather than a control."
-  },
-  {
-   "query": "all 37 evidence queries as a set",
-   "purpose": "Produce every count on every diagram from the live database rather than from a document, so that each figure carries its own reproduction instructions.",
-   "file_line": "docs/architecture/VERIFICATION.md section 1, one row per query",
-   "where_clause": "Read-only session throughout: set_session(readonly=True) plus statement_timeout 30s. Every statement is a SELECT and no transaction is opened that could write. The project rule is that a change to this database is immediately live in production, so a documentation task opens the connection read-only rather than relying on each query being careful."
-  }
- ],
- "break_it": [
-  {
-   "scenario": "A reader checks a count and it does not reproduce",
-   "what_happens": "The diagram is wrong and should be corrected.",
-   "mitigated": true,
-   "how": "Every count carries the SELECT that produced it and the date it ran, so the reader can distinguish 'this was never true' from 'this has moved since 9 August'. VERIFICATION.md opens by saying exactly that.",
-   "repro": "Run any query in VERIFICATION.md section 1 against the production database."
-  },
-  {
-   "scenario": "The diagram is read months later and quoted as current",
-   "what_happens": "Stale counts presented as measured — the failure mode the strategy review names as the leading source of false premises in this project.",
-   "mitigated": true,
-   "how": "Both files carry the measurement date and the commit hash in their first two lines. The figures that move fastest are the ingest-run count and the certificate and application totals, which change daily; the spatial and DCP counts move rarely.",
-   "repro": "Re-run the section 1 queries and compare."
-  },
-  {
-   "scenario": "A grep-based claim is wrong because the matched word means something else in code",
-   "what_happens": "A false edge is drawn — the same class of error as the 'Threat Radar shares the Sentinel-2 pipeline' line that misled three sessions.",
-   "mitigated": true,
-   "how": "This actually happened during the work. Every module matched by the 'sentinel' search was opened; three used it as a programming term. The near-miss is recorded in VERIFICATION.md section 6 rather than quietly fixed, because the record is the useful part.",
-   "repro": "grep -rl \"sentinel\" services/ returns six files; open bushfire_prescreen.py, cdc_screen.py and solar_yield.py and read the matching lines."
-  },
-  {
-   "scenario": "Evidence is gathered from a stale checkout",
-   "what_happens": "Gates that exist are reported as missing, and the whole picture is wrong by 51 commits.",
-   "mitigated": true,
-   "how": "This also happened. The first probe reported four of the seven gates as absent. Comparing local main against origin/main showed it 51 commits behind, so all evidence was re-gathered against origin/main. Every file claim states the commit it was checked at.",
-   "repro": "git rev-list --count main..origin/main"
-  },
-  {
-   "scenario": "The dcp_setback_controls count is taken without is_current = TRUE, so 1,071 is quoted as the number of numeric controls actually served",
-   "what_happens": "The defensible surface is overstated by 82 rows, and the overstatement includes the 28 fabricated-value rows that were deliberately marked is_current=FALSE rather than deleted. Quoting those as live would republish the exact defect the fabrication guard was built to stop.",
-   "mitigated": true,
-   "how": "Both numbers appear on the diagram and in VERIFICATION.md section 1 — 1,071 rows held, 989 live — with the WHERE clause shown for the second. A reader cannot pick up one without seeing the other.",
-   "repro": "SELECT count(*) FROM dcp_setback_controls; then the same with WHERE is_current = TRUE. Compare 1,071 against 989."
-  },
-  {
-   "scenario": "The regulatory_provisions count is taken without the v2_is_actionable filter, so 55,696 clauses is quoted as the served corpus",
-   "what_happens": "The corpus is overstated by roughly 2.8x. This is not hypothetical: 47,818 — a backup table's row count — appears in two committed architecture documents, and inflated corpus figures have appeared in older marketing.",
-   "mitigated": true,
-   "how": "The diagram box reads '55,696 · 19,957 served' so both halves travel together, and VERIFICATION.md section 6 names the two stale documents and the backup table their number came from.",
-   "repro": "SELECT count(*) FROM regulatory_provisions; then add WHERE is_current AND v2_is_actionable. Compare 55,696 against 19,957, and note is_current alone gives 31,469."
-  },
-  {
-   "scenario": "Producing the diagram damages the user's uncommitted work",
-   "what_happens": "At the start of this work, four files had both local uncommitted edits and upstream changes, so a checkout would have conflicted or discarded them.",
-   "mitigated": true,
-   "how": "Nothing in the primary working tree was modified while that was true; work was isolated until main had been brought up to date, at which point the conflict no longer existed. The only files this branch adds are new ones under docs/architecture/, plus the replaced .qa_report.json.",
-   "repro": "git status --porcelain — the remaining modified files are unrelated to this change."
-  }
- ],
- "post_merge": {
-  "db_reset": "None. No migration, no schema change, no write of any kind.",
-  "secrets": "None added. Evidence collection read DATABASE_URL from the existing repository root .env; no credential appears in any committed file.",
-  "other_repo": "The Trigger.dev task definitions in the sibling repository plotdetect-agents remain unverified and are marked as such on the diagram. If that repository is ever checked out alongside this one, the dashed edge can be resolved and the row in VERIFICATION.md section 4 removed.",
-  "manual_verify": "Open both markdown files on GitHub and confirm the four Mermaid blocks render. They render locally under mermaid-cli 10 with zero syntax errors, which is strong evidence but not identical to GitHub's renderer version."
- },
- "falsifiable_check": {
-  "command": "python scripts/doc_claims.py --docs docs/architecture/SYSTEM_TECHNICAL.md docs/architecture/SYSTEM_INTEGRATED.md docs/architecture/VERIFICATION.md",
-  "fails_when": "Any file path, module or version named in the three documents stops resolving in the code — for example if services/pre_da_history.py is renamed, or scripts/falsifiability.py is removed. It reported a genuine finding on the first run against these files, when an earlier draft cited a deleted module's path as evidence that the file no longer exists; the row now cites the deleting commit c6d64edb instead. It does not and cannot check whether a count still matches the database, which is why every count carries its own query."
- }
 }
