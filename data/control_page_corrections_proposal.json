@@ -1,0 +1,153 @@
+{
+  "generated_against": "origin/main f5acb080",
+  "rule": "Waverley round 2. The value alone was ambiguous in a 448-page plan, so these were resolved by the document's OWN numbering: our ref 'C2.9(b)' is never written verbatim \u2014 the chapter code sits in the running header ('Other Residential Development C2') and the section in the body ('2.9 LANDSCAPING'). Each row was then confirmed by reading the clause LETTER at that page, not just the value.",
+  "states": {
+    "resolved_by_clause_reading": 11
+  },
+  "proposals": [
+    {
+      "id": 557,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 205,
+      "offset": -18,
+      "term_coverage": 1.0,
+      "basis": "C2.3(a) '2.3 SETBACKS' heading on p205; 6m rear setback text on p205"
+    },
+    {
+      "id": 558,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 206,
+      "offset": -17,
+      "term_coverage": 1.0,
+      "basis": "C2.3(b) Table 3 \u2014 the height/side-setback table is printed on p206 ('Height up to 4.5m 0.9m')"
+    },
+    {
+      "id": 559,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 206,
+      "offset": -17,
+      "term_coverage": 1.0,
+      "basis": "C2.3(b) Table 3 \u2014 same table, 'Height up to 12.5m 1.5m'"
+    },
+    {
+      "id": 560,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 206,
+      "offset": -17,
+      "term_coverage": 1.0,
+      "basis": "C2.3(b) Table 3 \u2014 same table, 'Height above 12.5m 1.5-2.5m'"
+    },
+    {
+      "id": 561,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 205,
+      "offset": -18,
+      "term_coverage": 1.0,
+      "basis": "C2.3(a) same clause, multi_dwelling_housing"
+    },
+    {
+      "id": 629,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 21,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 185,
+      "offset": 164,
+      "term_coverage": 1.0,
+      "basis": "C1.9(c) verbatim on p185: 'A minimum of 20% of the total site area is to be provided as landscaped area'"
+    },
+    {
+      "id": 630,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 21,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 185,
+      "offset": 164,
+      "term_coverage": 1.0,
+      "basis": "C1.9(c) same clause, dual_occupancy"
+    },
+    {
+      "id": 631,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 21,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 185,
+      "offset": 164,
+      "term_coverage": 1.0,
+      "basis": "C1.9(d) verbatim on p185: 'A minimum 50% of the landscaped area must be deep soil zone'"
+    },
+    {
+      "id": 632,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 21,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 185,
+      "offset": 164,
+      "term_coverage": 1.0,
+      "basis": "C1.9(d) same clause, dual_occupancy"
+    },
+    {
+      "id": 633,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 50,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 213,
+      "offset": 163,
+      "term_coverage": 1.0,
+      "basis": "C2.9(b) verbatim on p213: '(b) 30% of the site area is to be provided as landscaped area'; p214's 30% is a different control (communal open space sunlight)"
+    },
+    {
+      "id": 634,
+      "lga": "waverley",
+      "control_type": "(see basis)",
+      "cited_page": 50,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "",
+      "proposed_page": 213,
+      "offset": 163,
+      "term_coverage": 1.0,
+      "basis": "C2.9(b) same clause, residential_flat_building"
+    }
+  ],
+  "reported": []
+}

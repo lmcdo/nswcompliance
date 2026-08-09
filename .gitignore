@@ -485,6 +485,12 @@ scripts/*
 !scripts/dcp_commit_approved.py
 !scripts/backfill_source_chapter_key.py
 !scripts/verify_controls_monitoring.py
+# Controls checked against the council's own published PDF (rung 3) + its proof
+!scripts/validate_controls_against_source_pdf.py
+!scripts/prove_controls_pdf_check.py
+!scripts/measure_control_page_corrections.py
+!scripts/repair_control_pdf_pages.py
+!scripts/resolve_control_page_by_clause.py
 !scripts/insert_cb_parking.py
 !scripts/insert_penrith_parking.py
 !scripts/insert_cumberland_parking.py
