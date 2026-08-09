@@ -374,6 +374,8 @@ docs/*
 !docs/user-stories/
 !docs/intelligence-brief/
 !docs/intelligence-brief/**
+!docs/architecture/
+!docs/architecture/**
 !docs/*.md
 
 # PDF page images (stored in cloud, not git)
@@ -492,6 +494,12 @@ scripts/*
 !scripts/dcp_commit_approved.py
 !scripts/backfill_source_chapter_key.py
 !scripts/verify_controls_monitoring.py
+# Controls checked against the council's own published PDF (rung 3) + its proof
+!scripts/validate_controls_against_source_pdf.py
+!scripts/prove_controls_pdf_check.py
+!scripts/measure_control_page_corrections.py
+!scripts/repair_control_pdf_pages.py
+!scripts/resolve_control_page_by_clause.py
 !scripts/insert_cb_parking.py
 !scripts/insert_penrith_parking.py
 !scripts/insert_cumberland_parking.py
@@ -663,3 +671,12 @@ latent-scope-data/
 # idempotence/rollback. Committed so the production write can be audited and
 # rolled back from the repo rather than from memory.
 !scripts/repair_shadow_reports.py
+
+# Quarantine ratchet. Committed because it carries the enforcement rules --
+# a checker that lives on one machine enforces nothing.
+!scripts/check_test_quarantine.py
+
+# The address fixture for tests/test_address_validation.py. The broad
+# `test_*.json` rule above is aimed at scratch output and silently swallowed
+# it, so the fixture could never be committed and the test could never run.
+!tests/fixtures/test_addresses.json

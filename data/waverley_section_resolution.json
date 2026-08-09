@@ -1,0 +1,65 @@
+[
+  {
+    "id": 557,
+    "cited_page": 223,
+    "proposed_page": 205,
+    "offset": -18,
+    "ref": "C2.3(a)",
+    "control_type": "rear_setback",
+    "basis": "section heading 2.3 in chapter C2 at p205"
+  },
+  {
+    "id": 558,
+    "cited_page": 223,
+    "proposed_page": 206,
+    "offset": -17,
+    "ref": "C2.3(b) Table 3",
+    "control_type": "side_setback",
+    "basis": "section heading 2.3 in chapter C2 at p205"
+  },
+  {
+    "id": 559,
+    "cited_page": 223,
+    "proposed_page": 206,
+    "offset": -17,
+    "ref": "C2.3(b) Table 3",
+    "control_type": "side_setback",
+    "basis": "section heading 2.3 in chapter C2 at p205"
+  },
+  {
+    "id": 560,
+    "cited_page": 223,
+    "proposed_page": 206,
+    "offset": -17,
+    "ref": "C2.3(b) Table 3",
+    "control_type": "side_setback",
+    "basis": "section heading 2.3 in chapter C2 at p205"
+  },
+  {
+    "id": 561,
+    "cited_page": 223,
+    "proposed_page": 205,
+    "offset": -18,
+    "ref": "C2.3(a)",
+    "control_type": "rear_setback",
+    "basis": "section heading 2.3 in chapter C2 at p205"
+  },
+  {
+    "id": 629,
+    "cited_page": 21,
+    "proposed_page": 185,
+    "offset": 164,
+    "ref": "C1.9(c)",
+    "control_type": "landscaping_min",
+    "basis": "section heading 1.9 in chapter C1 at p185"
+  },
+  {
+    "id": 630,
+    "cited_page": 21,
+    "proposed_page": 185,
+    "offset": 164,
+    "ref": "C1.9(c)",
+    "control_type": "landscaping_min",
+    "basis": "section heading 1.9 in chapter C1 at p185"
+  }
+]
