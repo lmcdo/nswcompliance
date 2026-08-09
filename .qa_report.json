@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Developer tooling only. A new author-identity check plus its wiring into the pre-commit hook and one PR-only CI step. No product code, no served output, no database read or write, no migration, no schema change.",
-  "commit_hash": "d9732ad4",
+  "commit_hash": "6481e02f",
   "files": [
     "scripts/check_commit_authors.py",
     ".githooks/pre-commit",
