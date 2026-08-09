@@ -1,0 +1,395 @@
+{
+  "generated_against": "origin/main f5acb080",
+  "rule": "proposed only where exactly one page carries the value with >=0.8 term coverage; ambiguous and absent are never proposed",
+  "states": {
+    "single_candidate": 8,
+    "not_in_document": 12,
+    "not_testable": 11,
+    "already_correct": 110,
+    "ambiguous": 11
+  },
+  "proposals": [
+    {
+      "id": 500,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "cited_page": 57,
+      "document": "source-pdfs/dcps/ashfield/v1.1-2026-03-02/chapter-a-miscellaneous.pdf",
+      "document_pages": 126,
+      "quote": "Dwelling House 1 space per dwelling (preferably 2)",
+      "proposed_page": 61,
+      "offset": 4,
+      "term_coverage": 1.0
+    },
+    {
+      "id": 501,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "cited_page": 57,
+      "document": "source-pdfs/dcps/ashfield/v1.1-2026-03-02/chapter-a-miscellaneous.pdf",
+      "document_pages": 126,
+      "quote": "Boarding Houses 1 parking space per resident employee and 0.5 parking spaces per boarding room",
+      "proposed_page": 61,
+      "offset": 4,
+      "term_coverage": 1.0
+    },
+    {
+      "id": 502,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "cited_page": 57,
+      "document": "source-pdfs/dcps/ashfield/v1.1-2026-03-02/chapter-a-miscellaneous.pdf",
+      "document_pages": 126,
+      "quote": "Multi-unit housing in R3 1 car space per unit plus 1 additional space for every five 2-bedroom units, plus 1 additional space for every two 3-bedroom units",
+      "proposed_page": 62,
+      "offset": 5,
+      "term_coverage": 1.0
+    },
+    {
+      "id": 504,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "cited_page": 37,
+      "document": "source-pdfs/dcps/ashfield/v1.1-2026-03-02/chapter-f-dev-category.pdf",
+      "document_pages": 85,
+      "quote": "DS9.1 On site carparking is provided as follows, whichever is the lesser: at a minimum of 1 space per dwelling or in accordance with the Apartment Design Guide",
+      "proposed_page": 40,
+      "offset": 3,
+      "term_coverage": 1.0
+    },
+    {
+      "id": 535,
+      "lga": "marrickville",
+      "control_type": "car_parking",
+      "cited_page": 8,
+      "document": "source-pdfs/dcps/marrickville/v1.1-2026-03-30/part2-s10-parking.pdf",
+      "document_pages": 23,
+      "quote": "Seniors housing: 0.33 per unit for residents + 0.33 per unit for visitors and carers (Parking Area 2)",
+      "proposed_page": 10,
+      "offset": 2,
+      "term_coverage": 1.0
+    },
+    {
+      "id": 554,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "cited_page": 189,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "Comply with the minimum setbacks: Ground Floor 0.9m, First Floor 0.9m",
+      "proposed_page": 172,
+      "offset": -17,
+      "term_coverage": 1.0
+    },
+    {
+      "id": 555,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "cited_page": 189,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "Comply with the minimum setbacks: Second Floor 1.5m",
+      "proposed_page": 172,
+      "offset": -17,
+      "term_coverage": 1.0
+    },
+    {
+      "id": 556,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "cited_page": 190,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "Where a brand new three storey structure is proposed, all floors must be setback by 1.5m",
+      "proposed_page": 173,
+      "offset": -17,
+      "term_coverage": 1.0
+    }
+  ],
+  "reported": [
+    {
+      "id": 503,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "cited_page": 57,
+      "document": "source-pdfs/dcps/ashfield/v1.1-2026-03-02/chapter-a-miscellaneous.pdf",
+      "document_pages": 126,
+      "quote": "1 visitor space required per 5 units plus 1 car wash bay",
+      "state": "not_in_document"
+    },
+    {
+      "id": 506,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "cited_page": 57,
+      "document": "source-pdfs/dcps/ashfield/v1.1-2026-03-02/chapter-a-miscellaneous.pdf",
+      "document_pages": 126,
+      "quote": "Youth Hostel/Backpacker Hostel 1 space for each 5 occupants/lodgers, plus 1 space for any resident manager, plus 1 space for each 2 employees",
+      "state": "not_in_document"
+    },
+    {
+      "id": 507,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "cited_page": 57,
+      "document": "source-pdfs/dcps/ashfield/v1.1-2026-03-02/chapter-a-miscellaneous.pdf",
+      "document_pages": 126,
+      "quote": "Housing for Aged Persons Resident funded developments- 2 spaces per 3 self-contained units plus 1 visitor space for every 5 units",
+      "state": "not_in_document"
+    },
+    {
+      "id": 505,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "cited_page": 37,
+      "document": "source-pdfs/dcps/ashfield/v1.1-2026-03-02/chapter-f-dev-category.pdf",
+      "document_pages": 85,
+      "quote": "DS9.2 Parking for visitors is provided at the rate of 1 space for every 4 dwellings including serviced apartments plus 1 car wash bay",
+      "state": "not_in_document"
+    },
+    {
+      "id": 622,
+      "lga": "blacktown",
+      "control_type": "communal_open_space_min",
+      "cited_page": 54,
+      "document": "source-pdfs/dcps/blacktown/v1.1-2026-04-27/blacktown-dcp-2015-part-c.pdf",
+      "document_pages": 95,
+      "quote": "Common open space must comply with the requirements of the NSW Apartment Design Guide: Minimum total area equal to 25% of the site",
+      "state": "not_in_document"
+    },
+    {
+      "id": 621,
+      "lga": "blacktown",
+      "control_type": "deep_soil_min",
+      "cited_page": 58,
+      "document": "source-pdfs/dcps/blacktown/v1.1-2026-04-27/blacktown-dcp-2015-part-c.pdf",
+      "document_pages": 95,
+      "quote": "Deep soil zones must comply with the requirements of the NSW Apartment Design Guide. Table 6.4 Minimum deep soil zone sizes: less than 650sq.m - 7%",
+      "state": "not_in_document"
+    },
+    {
+      "id": 517,
+      "lga": "marrickville",
+      "control_type": "car_parking",
+      "cited_page": 8,
+      "document": "source-pdfs/dcps/marrickville/v1.1-2026-03-30/part2-s10-parking.pdf",
+      "document_pages": 23,
+      "quote": "1 per principal dwelling and secondary dwelling combined",
+      "state": "not_in_document"
+    },
+    {
+      "id": 629,
+      "lga": "waverley",
+      "control_type": "landscaping_min",
+      "cited_page": 21,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "A minimum of 20% of the total site area is to be provided as landscaped area.",
+      "state": "ambiguous",
+      "candidate_pages": [
+        61,
+        185
+      ]
+    },
+    {
+      "id": 630,
+      "lga": "waverley",
+      "control_type": "landscaping_min",
+      "cited_page": 21,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "A minimum of 20% of the total site area is to be provided as landscaped area.",
+      "state": "ambiguous",
+      "candidate_pages": [
+        61,
+        185
+      ]
+    },
+    {
+      "id": 631,
+      "lga": "waverley",
+      "control_type": "deep_soil_min",
+      "cited_page": 21,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "A minimum 50% of the landscaped area must be deep soil zone.",
+      "state": "ambiguous",
+      "candidate_pages": [
+        215,
+        368
+      ]
+    },
+    {
+      "id": 632,
+      "lga": "waverley",
+      "control_type": "deep_soil_min",
+      "cited_page": 21,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "A minimum 50% of the landscaped area must be deep soil zone.",
+      "state": "ambiguous",
+      "candidate_pages": [
+        215,
+        368
+      ]
+    },
+    {
+      "id": 633,
+      "lga": "waverley",
+      "control_type": "landscaping_min",
+      "cited_page": 50,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "30% of the site area is to be provided as landscaped area.",
+      "state": "ambiguous",
+      "candidate_pages": [
+        146,
+        213
+      ]
+    },
+    {
+      "id": 634,
+      "lga": "waverley",
+      "control_type": "landscaping_min",
+      "cited_page": 50,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "30% of the site area is to be provided as landscaped area.",
+      "state": "ambiguous",
+      "candidate_pages": [
+        146,
+        213
+      ]
+    },
+    {
+      "id": 635,
+      "lga": "waverley",
+      "control_type": "deep_soil_min",
+      "cited_page": 50,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "50% of the landscaped area must be deep soil zone.",
+      "state": "not_in_document"
+    },
+    {
+      "id": 636,
+      "lga": "waverley",
+      "control_type": "deep_soil_min",
+      "cited_page": 50,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "50% of the landscaped area must be deep soil zone.",
+      "state": "not_in_document"
+    },
+    {
+      "id": 557,
+      "lga": "waverley",
+      "control_type": "rear_setback",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "New buildings are to provide a minimum 6m rear setback, or extend no further to the rear than the predominant rear building line, whichever is the greater setba",
+      "state": "ambiguous",
+      "candidate_pages": [
+        171,
+        205
+      ]
+    },
+    {
+      "id": 558,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "Height up to 4.5m: Side setback to whole building (min.) 0.9m",
+      "state": "ambiguous",
+      "candidate_pages": [
+        191,
+        206
+      ]
+    },
+    {
+      "id": 559,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "Height up to 12.5m: Side setback to whole building (min.) 1.5m",
+      "state": "ambiguous",
+      "candidate_pages": [
+        120,
+        165,
+        167,
+        177,
+        191,
+        206,
+        258,
+        317,
+        373
+      ]
+    },
+    {
+      "id": 560,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "Height above 12.5m: Side setback to whole building (min.) 1.5 - 2.5m",
+      "state": "ambiguous",
+      "candidate_pages": [
+        120,
+        177,
+        206,
+        317,
+        377
+      ]
+    },
+    {
+      "id": 561,
+      "lga": "waverley",
+      "control_type": "rear_setback",
+      "cited_page": 223,
+      "document": "source-pdfs/dcps/waverley/v1.1-2026-03-16/waverley-dcp-2022.pdf",
+      "document_pages": 448,
+      "quote": "New buildings are to provide a minimum 6m rear setback, or extend no further to the rear than the predominant rear building line, whichever is the greater setba",
+      "state": "ambiguous",
+      "candidate_pages": [
+        171,
+        205
+      ]
+    },
+    {
+      "id": 1160,
+      "lga": "wingecarribee",
+      "control_type": "side_setback",
+      "cited_page": 213,
+      "document": "source-pdfs/dcps/wingecarribee/v1.0-baseline/wingecarribee-bowral-town-plan.pdf",
+      "document_pages": 296,
+      "quote": "C3.9.2(c)(ii) 3.5 metres where development is more than [ ] metres in height above natural ground level [sic \u2014 the height figure is missing in the published doc",
+      "state": "not_in_document"
+    },
+    {
+      "id": 647,
+      "lga": "woollahra",
+      "control_type": "landscaping_min",
+      "cited_page": 48,
+      "document": "source-pdfs/dcps/woollahra/v1.2-2026-07-29/chapter-b3-general-development.pdf",
+      "document_pages": 105,
+      "quote": "Woollahra DCP 2015 uses deep soil landscaped area (35%) and tree canopy area (35%) controls instead of a separate minimum landscaped area percentage.",
+      "state": "not_in_document"
+    },
+    {
+      "id": 648,
+      "lga": "woollahra",
+      "control_type": "landscaping_min",
+      "cited_page": 48,
+      "document": "source-pdfs/dcps/woollahra/v1.2-2026-07-29/chapter-b3-general-development.pdf",
+      "document_pages": 105,
+      "quote": "Woollahra DCP 2015 uses deep soil landscaped area (35%) and tree canopy area (35%) controls instead of a separate minimum landscaped area percentage.",
+      "state": "not_in_document"
+    }
+  ]
+}

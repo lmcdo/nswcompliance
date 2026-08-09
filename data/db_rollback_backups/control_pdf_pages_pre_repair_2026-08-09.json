@@ -1,0 +1,96 @@
+{
+  "table": "dcp_setback_controls",
+  "column": "pdf_page",
+  "taken_at": "2026-08-09T05:29:44.397861+00:00",
+  "rollback": "UPDATE dcp_setback_controls SET pdf_page = <pdf_page> WHERE id = <id>",
+  "rows": [
+    {
+      "id": 500,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "pdf_page": 57,
+      "section_ref": "Table 3",
+      "value_min": "1",
+      "value_max": null,
+      "source_chapter_key": "chapter-a-miscellaneous",
+      "is_current": true
+    },
+    {
+      "id": 501,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "pdf_page": 57,
+      "section_ref": "Table 3",
+      "value_min": "0.5",
+      "value_max": null,
+      "source_chapter_key": "chapter-a-miscellaneous",
+      "is_current": true
+    },
+    {
+      "id": 502,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "pdf_page": 57,
+      "section_ref": "Table 3",
+      "value_min": "1",
+      "value_max": null,
+      "source_chapter_key": "chapter-a-miscellaneous",
+      "is_current": true
+    },
+    {
+      "id": 504,
+      "lga": "ashfield",
+      "control_type": "car_parking",
+      "pdf_page": 37,
+      "section_ref": "DS9.1",
+      "value_min": "1",
+      "value_max": null,
+      "source_chapter_key": "chapter-f-dev-category",
+      "is_current": true
+    },
+    {
+      "id": 535,
+      "lga": "marrickville",
+      "control_type": "car_parking",
+      "pdf_page": 8,
+      "section_ref": "Table 1",
+      "value_min": "0.33",
+      "value_max": null,
+      "source_chapter_key": "part2-s10-parking",
+      "is_current": true
+    },
+    {
+      "id": 554,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "pdf_page": 189,
+      "section_ref": "C1.2(a) Table 1",
+      "value_min": "0.9",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 555,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "pdf_page": 189,
+      "section_ref": "C1.2(a) Table 1",
+      "value_min": "1.5",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 556,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "pdf_page": 190,
+      "section_ref": "C1.2(f)",
+      "value_min": "1.5",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    }
+  ]
+}
