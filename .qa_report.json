@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Finishes the flood lane: three hazard flags that served a never-resolved overlay as a clean negative, the scoping signal for #892's three-state verdict replaced with one that exists, 1.6 GB of council flood grids shipped so two councils can answer at all, and the first calibration of a served flood verdict against an independent observed reference. Critical because it changes served output on the field a buyer relies on most and because the calibration result will be quoted externally.",
-  "commit_hash": "be53db97",
+  "commit_hash": "1d765713",
   "files": [
     ".gitignore",
     "Dockerfile.python",
