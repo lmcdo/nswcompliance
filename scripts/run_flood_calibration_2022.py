@@ -170,6 +170,15 @@ def point_in_ring(x, y, ring):
         j = i
     return inside
 
+# Every AOI removed from the stratified walk, with WHY. A group that vanishes
+# from the sample can only flatter the result — the AOIs hardest to draw a
+# point from are the thin, irregular inundation corridors, which is exactly the
+# ground a flood screen is most likely to miss. Recording this is not optional
+# bookkeeping: silence here is a selection bias that looks like a good number.
+DROPPED_GROUPS: dict = {}
+SAMPLE_ATTEMPTS = 5000
+
+
 def sample(polys, n, seed):
     rnd = random.Random(seed)
     by_aoi = {}
@@ -186,10 +195,12 @@ def sample(polys, n, seed):
             if len(picked) >= n: break
             rings = by_aoi[k]
             got_one = False
-            for _ in range(200):
+            why = f"rejection sampling failed in {SAMPLE_ATTEMPTS} attempts"
+            for _ in range(SAMPLE_ATTEMPTS):
                 ring, holes = rnd.choice(rings)
                 xs = [p[0] for p in ring]; ys = [p[1] for p in ring]
                 if max(xs) > 180 or min(xs) < 110:  # not lon/lat — skip projected products
+                    why = "projected product, not lon/lat"
                     break
                 x = rnd.uniform(min(xs), max(xs)); y = rnd.uniform(min(ys), max(ys))
                 # Inside the exterior AND outside every hole. A point in a dry
@@ -200,15 +211,53 @@ def sample(polys, n, seed):
                     picked.append((k[0], k[1], round(y, 6), round(x, 6)))
                     got_one = True; progressed = True; break
             if not got_one:
-                keys.remove(k)   # exhausted — never ask it again
+                DROPPED_GROUPS[f"{k[0]}/{k[1]}"] = why
+                keys.remove(k)   # never ask it again
         if not progressed:
             break                # nothing left can yield a point
     return picked[:n]
+
+
+def report_dropped_groups() -> None:
+    """A dropped AOI is reported, and a biasing one aborts the run.
+
+    Two causes, treated differently because they mean different things:
+
+    - A PROJECTED product cannot yield a lon/lat point at all. That is a fact
+      about the archive's format, not about flooding, so it is reported and the
+      run continues.
+    - REJECTION-SAMPLING EXHAUSTION means the polygons are so thin or irregular
+      that SAMPLE_ATTEMPTS uniform draws inside their bounding boxes all
+      missed.
+      Those are narrow inundation corridors — the hardest ground for a flood
+      screen and therefore the ground whose absence most flatters recall.
+      Dropping it silently is a selection bias, so it is fatal.
+
+    Measured on the published run: ZERO groups dropped, all 17 activation/AOI
+    pairs produced points, all 150 draws made. This guard is therefore latent
+    today; it exists so that a future reference set cannot quietly shrink.
+    """
+    if not DROPPED_GROUPS:
+        print("dropped activation/AOI groups: 0", flush=True)
+        return
+    print("=" * 74, flush=True)
+    print(f"DROPPED {len(DROPPED_GROUPS)} activation/AOI group(s) from the sample:", flush=True)
+    for g, why in sorted(DROPPED_GROUPS.items()):
+        print(f"   {g}: {why}", flush=True)
+    biasing = {g: w for g, w in DROPPED_GROUPS.items() if "rejection sampling" in w}
+    if biasing:
+        print("ABORTED: the groups above were lost to rejection-sampling", flush=True)
+        print("exhaustion, not to a data format. Their inundation is thin or", flush=True)
+        print("irregular — the ground most likely to be missed — so excluding", flush=True)
+        print("them can only flatter recall. Raise SAMPLE_ATTEMPTS or sample", flush=True)
+        print("geometrically, then re-run. UNKNOWABLE, not a pass.", flush=True)
+        raise SystemExit(2)
 
 check_reference_complete()
 polys = polygons()
 print(f"observed flood polygons loaded: {len(polys)}", flush=True)
 pts = sample(polys, N, SEED)
+report_dropped_groups()
 print(f"sampled points: {len(pts)} across {len(set((a,b) for a,b,_,_ in pts))} activation/AOI pairs", flush=True)
 if not pts:
     print("NO POINTS — cannot calibrate. UNKNOWABLE, not a pass."); raise SystemExit(2)
@@ -269,7 +318,21 @@ for i, (act, aoi, lat, lng) in enumerate(pts, 1):
     try:
         r = run_flood(FloodRequest(address=f"calibration {act}/{aoi}", lat=lat, lng=lng,
                                    report_id=str(uuid.uuid4())))
-        o = (r or {}).get("outputs") or {}
+        # CONTRACT CHECK BEFORE COUNTING AN EXECUTION.
+        #
+        # `(r or {}).get("outputs") or {}` turned a None or malformed response
+        # into an all-null answer, which scores as a clean MISS and increments
+        # `executed`. That walked straight past the zero-execution guard added
+        # above: if run_flood swallowed an outage and returned None for every
+        # point, `executed` would reach 37 with every signal null and the run
+        # would publish "recall 0.000, FAIL" — the exact outcome that guard was
+        # written to prevent, arriving through the one door it did not cover.
+        if not isinstance(r, dict) or not isinstance(r.get("outputs"), dict):
+            raise ValueError(
+                f"run_flood returned no usable outputs contract "
+                f"(type={type(r).__name__}); treated as an error, not a miss"
+            )
+        o = r["outputs"]
         sig = o.get("flood_signal"); z = o.get("in_100yr_flood_zone"); ses = o.get("ses_in_flood_planning_area")
         # ALLOWLIST. `unavailable` means the sources could not be consulted —
         # the product supplied no flood indicator, so it is not a hit. Counting
@@ -388,6 +451,7 @@ Path(WT / "docs/qa/flood-calibration-2022-result.json").write_text(
                 "n_scope_unresolved": n_scope_unknown,
                 "n_sampled": len(pts), "n_scored": len(scored), "hits": said_something,
                 "n_executed": executed, "n_errored": n_errored,
+                "dropped_groups": DROPPED_GROUPS,
                 "recall": recall, "wilson_lo": lo, "wilson_hi": hi,
                 "pass_mark": 0.90, "verdict": verdict, "out_of_scope_at_scoring": oos,
                 "scope_contradictions": contradictions,

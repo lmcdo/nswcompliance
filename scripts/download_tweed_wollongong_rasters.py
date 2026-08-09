@@ -27,6 +27,7 @@ Exits 0 always. A missing raster degrades to "not assessed" in flood_truth.py
 rather than crashing — and, since #892, never to "not in a flood zone".
 """
 import logging
+import hashlib
 import os
 from pathlib import Path
 
@@ -66,6 +67,49 @@ STUDIES = [
 ]
 
 
+def _local_md5(path: Path) -> str:
+    """MD5 of a local file, streamed. Used only to compare against R2's ETag."""
+    h = hashlib.md5()  # noqa: S324 — matching S3's ETag, not a security digest
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _matches_remote(dest: Path, head: dict, tag: str, rel_path: str) -> bool:
+    """Is the local raster the same OBJECT as the remote one?
+
+    Size alone cannot answer this. A stale raster from a previous container, or
+    a corrupted-but-readable GeoTIFF, keeps its byte length and was being
+    skipped as "already present" — then served as authoritative 1% AEP flood
+    data with no warning anywhere.
+
+    S3/R2 already hands us a checksum for free in the same head_object call:
+    for a single-part upload the ETag IS the MD5. For a MULTIPART upload it is
+    a digest-of-digests with a "-N" suffix that cannot be reproduced without
+    knowing the part size, so it is not comparable — in that case we say so
+    rather than pretending the size check verified anything.
+    """
+    size_ok = dest.stat().st_size == head["ContentLength"]
+    if not size_ok:
+        return False
+    etag = (head.get("ETag") or "").strip('"')
+    if not etag or "-" in etag:
+        log.warning(
+            f"[{tag}-dl] {rel_path}: remote ETag is multipart or absent, so only "
+            f"SIZE was compared. A same-size stale or corrupt raster would not be "
+            f"detected here."
+        )
+        return True
+    if _local_md5(dest) == etag:
+        return True
+    log.warning(
+        f"[{tag}-dl] {rel_path}: SAME SIZE but checksum differs from the remote "
+        f"object — local copy is stale or corrupt. Re-downloading."
+    )
+    return False
+
+
 def _download_study(s3, tag: str, prefix: str, dest_dir: Path, files: list[str]) -> int:
     present = 0
     for rel_path in files:
@@ -74,12 +118,13 @@ def _download_study(s3, tag: str, prefix: str, dest_dir: Path, files: list[str])
         key = f"{prefix}/{rel_path}"
 
         try:
-            remote_size = s3.head_object(Bucket=R2_BUCKET_NAME, Key=key)["ContentLength"]
+            head = s3.head_object(Bucket=R2_BUCKET_NAME, Key=key)
+            remote_size = head["ContentLength"]
         except Exception as e:  # noqa: BLE001
             log.warning(f"[{tag}-dl] {rel_path}: head_object failed — {e}")
             continue
 
-        if dest.exists() and dest.stat().st_size == remote_size:
+        if dest.exists() and _matches_remote(dest, head, tag, rel_path):
             log.info(f"[{tag}-dl] {rel_path} already present ({remote_size / 1_048_576:.1f} MB) — skip")
             present += 1
             continue
@@ -87,6 +132,13 @@ def _download_study(s3, tag: str, prefix: str, dest_dir: Path, files: list[str])
         log.info(f"[{tag}-dl] downloading {rel_path} ({remote_size / 1_048_576:.1f} MB)...")
         try:
             s3.download_file(R2_BUCKET_NAME, key, str(dest))
+            # Verify what actually landed, not what we asked for. A truncated
+            # or mid-flight-corrupted download is worse than a missing file:
+            # missing is visible, wrong is served.
+            if not _matches_remote(dest, head, tag, rel_path):
+                log.warning(f"[{tag}-dl] {rel_path}: downloaded copy failed verification — discarding")
+                dest.unlink(missing_ok=True)
+                continue
             present += 1
         except Exception as e:  # noqa: BLE001
             log.warning(f"[{tag}-dl] {rel_path}: download failed — {e}")
@@ -106,13 +158,22 @@ def main():
         log.warning("[flood-dl] boto3 not installed — skipping")
         return
 
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
-        aws_access_key_id=R2_ACCESS_KEY_ID,
-        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-        region_name="auto",
-    )
+    # Every other failure path in this script warns and returns, because it
+    # runs in the Docker startup chain: a non-zero exit means uvicorn never
+    # starts. Client construction was the one uncaught call, so an invalid
+    # endpoint or account id would have taken the whole container down instead
+    # of serving those councils as visibly not assessed.
+    try:
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+            region_name="auto",
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"[flood-dl] could not construct the R2 client — skipping: {e}")
+        return
 
     for tag, prefix, dest_dir, files in STUDIES:
         got = _download_study(s3, tag, prefix, dest_dir, files)
