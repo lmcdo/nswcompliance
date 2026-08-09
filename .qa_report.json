@@ -1,98 +1,171 @@
 {
   "tier": "standard",
-  "justification": "The Site Report page's 'email me this brief' capture (components/reports/PostResultEmailStrip.tsx, already wired into app/reports/intelligence-brief/page.tsx with product='intelligence-brief') has been posting to /api/canibuildit/lead since it shipped, but 'intelligence-brief' was never added to the route's Zod-enforced INTEREST_TYPES enum, so every submission 400'd. Confirmed live via browser network inspection: submitted a real address through the deployed Site Report, captured the actual XHR — status 400 — while the UI showed 'Thanks — we'll be in touch' regardless (that always-show-success behaviour is deliberate, tested design for graceful degradation on genuine transient failures, per PostResultEmailStrip.test.tsx's explicit 'Silent failure — never block the UX' comment; NOT touched here). Fix: add 'intelligence-brief' to INTEREST_TYPES + a branded buildEmailContent case. Also fixed a second bug found on read: the confirmation email's sender name and footer were hardcoded to the 'Can I Build It' consumer brand regardless of product, so an intelligence-brief email would have arrived From: PlotDetect with a 'Can I Build It? canibuildit.com.au' footer once the 400 was fixed — sender/footer now follow the product. A cross-review flagged a third issue in this new copy: the email said 'view it again' about a link with no report ID or persisted state (verified: this page has no share/permalink mechanism for a past run, only re-running a fresh brief) — copy corrected to 'run this or another address again', an accurate description of what the link actually does. A second cross-review pass flagged a real HTML-injection risk: address is Zod-bounded on length only (not character set) and was interpolated unescaped into the HTML email body — a crafted address could inject markup/links into an outgoing PlotDetect-branded email. Added an escapeHtml() helper and applied it to the body (not the subject, which is plain text) in the new intelligence-brief case. The same unescaped pattern exists in all 7 pre-existing cases in this file (flood, solar, shadow, threat-radar, dual-occ-referral, lga-request, granny-flat) — pre-existing, not introduced by this PR, and out of scope for a lead-capture-400 bugfix; flagged to the user as a follow-up, not silently left and not silently expanded into here. USER REQUESTED THE FOLLOW-UP IN THIS SAME PR: hoisted escapeHtml(address) to a single call at the top of buildEmailContent and applied it to every case whose body interpolates address (flood/flood-truth, solar-yield/solar, shadow, threat-radar, dual-occ-referral, granny-flat/default) -- 6 more cases, 7 total including intelligence-brief. lga-request is the one case genuinely excluded: verified its body never references address at all, so there is nothing to escape there (locked in with an explicit test). All subjects still use raw address (plain text, never HTML-rendered) -- only body escaping changed.",
-  "commit_hash": "fc3fd344",
+  "justification": "A new read-only verification script, its unit tests, and a falsifiability proof driving the shared #890 harness. It reads production Supabase read-only and downloads published PDFs from R2. No writes, no migrations, no schema change, no served surface altered. Standard rather than minor because the script produces a PASS/FAIL judgement about the project's headline asset, and a wrong judgement here would either manufacture a crisis or conceal one. This commit adds the measure/write pair that corrected pdf_page on 8 rows (0.75% of the table): a read-only proposer, and a guarded writer that backs up, predicts to disk, guards each UPDATE on the expected pre-state and verifies afterwards. 8 applied, 0 skipped, row count 1071 unchanged, prediction matched 8/8. A second repair round corrected 11 more page citations (Waverley), resolved by the document's own chapter/section numbering after the value-only method left them ambiguous. 19 rows repaired in total; citation accuracy 85.3% -> 98.4%.",
+  "commit_hash": "ec23dad7",
   "files": [
-    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
-    "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
-    "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts"
+    ".gitignore",
+    ".qa_report.json",
+    "scripts/measure_control_page_corrections.py",
+    "scripts/prove_controls_pdf_check.py",
+    "scripts/repair_control_pdf_pages.py",
+    "scripts/resolve_control_page_by_clause.py",
+    "scripts/validate_controls_against_source_pdf.py",
+    "tests/test_controls_against_source_pdf.py"
   ],
+  "falsifiable_check": {
+    "command": "python scripts/prove_controls_pdf_check.py",
+    "fails_when": "Seven defects are planted into scripts/validate_controls_against_source_pdf.py one at a time and each must turn tests/test_controls_against_source_pdf.py red; the runner exits 1 if any survives, if the baseline is not already green, or if a plant fails to change the file sha256. Measured 7/7 CAUGHT, file restored byte-identically each time. The planted defects: (1) stop requiring the control number to be present, (2) stop requiring the subject wording to match, (3) soften DATA_MARK from 0.95 to 0.50, (4) treat could-not-check rows as checkable, (5) stop stripping clause markers, (6) stop preferring the stored value over numbers scraped from the quote, (7) stop folding ampersand into and. Separately, python -m pytest tests/test_controls_against_source_pdf.py -q must pass 35/35.",
+    "external_authority": "The council's own published DCP PDF, fetched from R2. Nothing in this pipeline produced it, so it can disagree with us, which is the entire point. This is the first external authority the controls table has been compared against (ce-verified-capability-statement-2026-08 section 2.6d: not compared against anything)."
+  },
   "pre_impl": {
-    "existing_data": "Read PostResultEmailStrip.tsx (generic, reusable, already used by 3 callers: ThreatRadarTool, PropertyAlertsOptIn, intelligence-brief page) and its test suite before writing anything, to avoid duplicating existing lead-capture infrastructure (prior-art sweep). Confirmed via COMPONENT_MAP.md that CompleteSummary/the email strip are the correct, already-existing insertion points -- no new component needed, this is a bugfix not a feature build. Live-verified the 400 with a real submission (network tab) before touching code, and re-verified after the fix that the previously-broken value is now schema-accepted (unit test, since re-deploying to prod is out of scope for this session).",
-    "assumption_mismatch": "Initially assumed the email-capture feature did not exist and needed building. Prior-art sweep found it already existed and was already wired in -- the real problem was a silent server-side validation gap, not a missing feature. Also initially assumed the client's 'always show success' behaviour was an accidental silent-failure bug to fix; reading PostResultEmailStrip.test.tsx showed it is deliberate, tested UX policy for transient-failure graceful degradation across ALL callers (threat-radar, solar-yield, etc.) -- changing it would have broken 2 passing tests and reversed an intentional design decision. Left untouched; fixed only the actual root cause (the enum).",
-    "new_vs_existing": "No new component, no new API route, no new DB table. Extends the existing INTEREST_TYPES enum (1 value) and existing buildEmailContent switch (1 case) in the existing, already-tested /api/canibuildit/lead route that 3 other features already depend on."
+    "existing_data": "Four sweeps against origin/main f5acb080, recorded in the script prior-art-checked header. validate_control_source_values.py (#868) compares a value to its OWN stored quote and cannot fail when the quote came from the wrong place. validate_controls_provenance.py (#866) classifies provenance from the repo and never opens a document. link_controls_to_provisions.py (#867) matches against the ingested corpus, 42 of 1071 rows, and the corpus is itself extracted so it is not independent. measure_control_quote_gap.py measures why that match misses. numeric_control_review.py is nearest and its R2 download is REUSED, not copied. Frontend sweep: StateLevelControls, DcpStructuredControls, planning-controls route and api/dcp/structured-controls all render controls; none verifies one.",
+    "assumption_mismatch": "TWO assumptions were false and both were caught before any figure was reported. (1) source_text is documented everywhere as the verbatim sentence its number came from; for table-derived controls it is a reconstruction of a table cell plus its row and column labels, measured on marrickville id=534 where the PDF reads 'Seniors housing' and '0.2 per unit ... visitors & carers' under the heading 'Car spaces: Parking Area 1'. A contiguous-run test would have scored it near zero and reported a false crisis, so the method became value-presence plus term coverage. (2) pdf_page was assumed to locate the control; all 21 marrickville rows cite page 8 while the rate is on page 10, and the printed folio is the PDF index minus 4, so neither reading of the field matches. Data correctness and citation accuracy were therefore split into two separately reported measurements.",
+    "new_vs_existing": "New script. It is the third rung (validated against X) for an asset previously at rung 1-2 only, and it is deliberately additive: nothing existing changed behaviour. The .gitignore edit un-ignores the two new scripts, which sit under a blanket scripts/* exclusion with a per-file allow-list; without it both would have been silently untracked, the trap #866 already had to guard once."
   },
   "functions": [
     {
-      "name": "POST",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:98",
-      "input": "JSON body incl. interest_type (now accepts 'intelligence-brief' as a 12th enum value)",
-      "output": "on valid input: stores the lead, computes a per-product from/replyTo/footer pair (intelligence-brief -> PlotDetect brand; every other existing product -> unchanged Can I Build It brand), sends the branded confirmation email, returns 200 {ok:true}",
-      "if_none": "interest_type outside the enum -> Zod safeParse fails -> 400 (unchanged behaviour for genuinely unknown values, e.g. 'nuclear-plant' -- still rejected, see lead-abuse.test.ts)"
+      "name": "page_supports",
+      "file_line": "scripts/validate_controls_against_source_pdf.py:203",
+      "input": "the control quote, one page's extracted text, and the control's stored value_min/value_max",
+      "output": "(supported, term_coverage, missing_values). Supported requires BOTH the stored value present on the page (accepted in metres or millimetres) AND at least 70% of the quote's distinguishing words. Two independent conditions: the value is the claim under test; the term coverage is what stops a bare number matching by coincidence on a 1563-page document.",
+      "if_none": "An empty page returns (False, 0.0, the required values). A row with no stored value and no numbers in its quote can never return True because bool(wanted) is part of the conjunction, so a vacuous pass is impossible."
     },
     {
-      "name": "buildEmailContent",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:248",
-      "input": "product identifier string (interest_type from the request body), plus the cleaned property address string",
-      "output": "escapeHtml(address) computed once at the top (line 257) and reused across every case; for 'intelligence-brief': {subject: 'Your Site Report — <address>' (raw, plain text), body: HTML-escaped address + links to verify.plotdetect.com.au/reports/intelligence-brief}; the 6 other body-interpolating cases (flood, solar-yield, shadow, threat-radar, dual-occ-referral, granny-flat) now use the same escaped value; lga-request unaffected (no address in its body)",
-      "if_none": "unknown product string falls through to the existing default (granny-flat copy) -- pre-existing behaviour, unchanged"
+      "name": "required_values",
+      "file_line": "scripts/validate_controls_against_source_pdf.py:170",
+      "input": "value_min, value_max as stored (numeric or None)",
+      "output": "The numbers that must be found, each also offered in its millimetre/metre twin because a stored 0.9 is routinely published as 900mm.",
+      "if_none": "Returns empty rather than guessing. The caller then falls back to numbers scraped from the quote, and if there are none either, the row is classified no_numeric_value_to_check and excluded from the denominator."
     },
     {
-      "name": "escapeHtml",
-      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:239",
-      "input": "raw string (the user-submitted, Zod length-only-bounded address)",
-      "output": "the same string with &, <, >, \", ' replaced by their HTML entities, safe to interpolate into an HTML email body",
-      "if_none": "empty string in -> empty string out; no special-casing needed"
+      "name": "strip_clause_marker",
+      "file_line": "scripts/validate_controls_against_source_pdf.py:149",
+      "input": "a control's stored source_text, which for DCP rows usually opens with a clause marker such as C.06 or O.01",
+      "output": "The same text with a leading clause marker (C.06, O.01, A.1.2) removed, so its digits are never read as a measurement.",
+      "if_none": "None or empty returns an empty string. A sentence that genuinely opens with a value (3 metres is the minimum...) is not matched by the marker pattern and keeps its number, pinned by test."
+    },
+    {
+      "name": "classify",
+      "file_line": "scripts/validate_controls_against_source_pdf.py:250",
+      "input": "one control row plus the full page-text map of its cited document",
+      "output": "Exactly one of eight verdicts: supported_on_cited_page, supported_on_another_page (carrying the real page and the offset), unsupported_by_document, cited_page_past_end_of_document, document_has_no_text_layer, document_unavailable, row_has_no_source_text, no_numeric_value_to_check.",
+      "if_none": "Every not-checkable condition has its OWN verdict rather than collapsing into a failure or a pass, and all four are excluded from the denominator, which is printed beside every rate."
     }
   ],
   "values": [
     {
-      "value": "INTEREST_TYPES now includes 'intelligence-brief' (was missing -- this was the entire root cause of the 400)",
-      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:64",
-      "if_missing": "every Site Report 'email me this brief' submission 400s permanently; user sees a false success confirmation and never receives the email or gets stored as a lead (the exact bug this PR fixes)"
+      "value": "dcp_setback_controls.value_min / value_max — the control's stored number, and the thing under test. Column names read from information_schema, not inferred.",
+      "read_at": "scripts/validate_controls_against_source_pdf.py ROWS_SQL, consumed by required_values() and compared against the PDF page text.",
+      "if_missing": "14 of the 152 rows store neither. The row is classified no_numeric_value_to_check and excluded from the denominator — never a pass, never a failure. These are legitimate: Waverley and Woollahra front setbacks are character-based and the DCP sets no numeric minimum."
     },
     {
-      "value": "per-product {fromLine, replyTo, footerLabel, footerUrl} -- PlotDetect brand for intelligence-brief, Can I Build It brand for every other product (unchanged)",
-      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:199",
-      "if_missing": "before this fix: hardcoded to the Can I Build It brand for ALL products -- an intelligence-brief email would arrive From: PlotDetect (once the 400 is fixed) with a mismatched 'Can I Build It? canibuildit.com.au' footer"
+      "value": "dcp_setback_controls.pdf_page — the page the row claims its value came from. 193 of 1071 rows carry one; 152 are current and join to a fetchable document.",
+      "read_at": "Same query; consumed by classify() to build the ±1 page window.",
+      "if_missing": "919 controls have no page and are outside this check entirely. Reported as a coverage limit (14%), never silently treated as covered."
+    },
+    {
+      "value": "dcp_setback_controls.source_text — the quote, used only for its distinguishing words, not as a verbatim string.",
+      "read_at": "Same query; consumed by distinctive_terms() after strip_clause_marker().",
+      "if_missing": "Verdict row_has_no_source_text, inside COULD_NOT_CHECK, excluded from the denominator."
+    },
+    {
+      "value": "dcp_chapter_registry.r2_current_path — the object key of the council's published PDF.",
+      "read_at": "Same query, joined on (council = lga, chapter_key = source_chapter_key); consumed by download_from_r2().",
+      "if_missing": "Rows without a path are excluded by the WHERE clause. A path that fails to download yields document_unavailable, printed per document, never a pass."
     }
   ],
-  "queries": [],
+  "queries": [
+    {
+      "purpose": "Select every current control that cites a page and joins to a fetchable published document — the checkable population.",
+      "file_line": "scripts/validate_controls_against_source_pdf.py ROWS_SQL (module constant, executed once in main())",
+      "where_clause": "c.pdf_page IS NOT NULL AND c.is_current = TRUE AND g.r2_current_path IS NOT NULL AND g.r2_current_path <> '' — scoped to current rows so superseded controls are not judged, and to rows with a document so an unreachable PDF cannot masquerade as a failure. Runs under SET statement_timeout = '60s' on a connection pinned conn.set_session(readonly=True). No writes, no DDL."
+    }
+  ],
   "break_it": [
     {
-      "scenario": "A future developer adds a new product to PostResultEmailStrip's callers (a 4th interest_type) without adding it to the server's INTEREST_TYPES enum -- the exact mistake that caused this bug.",
-      "what_happens": "Every submission for that product silently 400s while the client shows 'Thanks — we'll be in touch' (deliberate UX, see above) -- the lead is lost and nobody notices, because success is always shown regardless of the real HTTP status.",
+      "scenario": "A clause marker's digits are counted as a control value.",
+      "what_happens": "C.06 On corner lots ... minimum of 3 metres yields numbers 6 and 3, which then match a page discussing 600m2 suburban lots, and the row passes on the wrong page.",
       "mitigated": true,
-      "how": "Not structurally preventable without changing the deliberate client UX (out of scope, would break tested behaviour) -- but the fix here demonstrates the failure mode explicitly (lead-abuse.test.ts already has a live 'rejects unknown interest_type with 400' test) so the pattern is documented and a future PR review can catch a new caller whose product string isn't in the enum. The comment added at INTEREST_TYPES' first use in this PR names this exact class of bug for the next person extending it.",
-      "repro": "add a 4th PostResultEmailStrip call site with a product value not in INTEREST_TYPES, submit via the UI, observe the UI says success while the network tab shows 400 -- reproduces the exact bug this PR fixes for a 4th time"
+      "how": "strip_clause_marker removes the marker before any number is read, and the stored value_min/value_max takes precedence over quote-scraped numbers. Three tests pin it; planting its removal turns the suite red.",
+      "repro": "Not hypothetical: measured live on parramatta id=563 and it produced the first run's inflated 99.3%."
     },
     {
-      "scenario": "The per-product from/replyTo/footer branch only checks interest_type === 'intelligence-brief'; a typo or new value silently falls to the else branch (Can I Build It brand).",
-      "what_happens": "A genuinely new PlotDetect-brand (not canibuildit-brand) product added later would silently get the wrong sender/footer instead of erroring -- a branding bug, not a data-loss bug (email still sends and lead still stores).",
+      "scenario": "A control that legitimately has no number is reported as unsupported.",
+      "what_happens": "Waverley and Woollahra character-based front setbacks (consistent with the predominant setback of adjacent development) have no numeric minimum by design. Thirteen correct rows were failed, manufacturing a defect out of good data.",
       "mitigated": true,
-      "how": "Lower severity than the original bug (cosmetic, not silent data loss) and consistent with how buildEmailContent's own switch/default already works in this file. Two regression tests lock the current behaviour for both branches (intelligence-brief brand AND the unchanged canibuildit brand for granny-flat), so any future change to this branch is caught by CI.",
-      "repro": "pytest -- N/A (frontend); npx jest __tests__/api/canibuildit/lead-abuse.test.ts -- both brand tests must stay green"
+      "how": "no_numeric_value_to_check is its own verdict inside COULD_NOT_CHECK, excluded from the denominator and never counted as a pass.",
+      "repro": "Measured: 14 of the 152 rows store no value; the run reported 84.9% before this was separated and 91.5% after."
     },
     {
-      "scenario": "PostResultEmailStrip's client-side 'always show success' behaviour (untouched by this PR) could mask a FUTURE regression the same way it masked this one.",
-      "what_happens": "Any server-side failure on this endpoint -- a new validation rule, a Supabase outage, a Resend key rotation -- would again show 'Thanks' to every user while silently losing their email, with no client-visible signal.",
-      "mitigated": false,
-      "how": "Deliberately NOT changed in this PR -- it is tested, intentional design (PostResultEmailStrip.test.tsx: 'Silent failure — never block the UX') shared by 3 callers, and changing it is a UX/product decision outside this bugfix's scope, not something to change unilaterally.",
-      "repro": "n/a -- documented as a known, accepted tradeoff, not something this PR claims to fix"
+      "scenario": "A bare number matches by coincidence on a very long document.",
+      "what_happens": "Parramatta's DCP is 1563 pages, so almost any small number appears somewhere and a value-only test would pass nearly everything.",
+      "mitigated": true,
+      "how": "70% term coverage is required on the same page as the value. Planting the removal of the coverage condition turns the suite red.",
+      "repro": "tests/test_controls_against_source_pdf.py::TestPageSupports::test_right_numbers_wrong_subject_is_not_supported"
     },
     {
-      "scenario": "A submitter crafts an address containing HTML markup (e.g. a fake </strong><a href=evil-link>) via any of the 8 PostResultEmailStrip-backed forms -- Zod only bounds address length (5-200 chars), not character set.",
-      "what_happens": "That markup would be interpolated raw into the outgoing PlotDetect/Can-I-Build-It-branded HTML email, letting an attacker inject a phishing link or misleading content into a legitimate-sender email (the recipient is the submitter's own address, so low blast radius, but the pattern was real across every product).",
+      "scenario": "A PDF is a scanned image with no text layer.",
+      "what_happens": "Every control in it reads as unsupported, producing a false mass failure.",
       "mitigated": true,
-      "how": "escapeHtml(address) is now computed once and applied to every case whose body interpolates address -- all 7 (intelligence-brief, flood/flood-truth, solar-yield/solar, shadow, threat-radar, dual-occ-referral, granny-flat). lga-request is the one genuine exception, verified its body never references address at all. Subjects stay raw everywhere (plain text, never HTML-rendered). 7 parametrized regression tests (one per product) plus one confirming lga-request has nothing to escape.",
-      "repro": "npx jest __tests__/api/canibuildit/lead-email.test.ts -t 'escapes an attacker-controlled address'"
+      "how": "document_has_no_text_layer is a distinct verdict inside COULD_NOT_CHECK. Observed live: 3 of 23 marrickville pages and 1 of 48 georges_river pages carry no text.",
+      "repro": "tests/test_controls_against_source_pdf.py::TestClassify::test_document_without_text_layer_is_not_a_pass"
     },
     {
-      "scenario": "Before this fix, the canibuildit_leads insert (unchanged code, line 177) was never reached for intelligence-brief submissions -- Zod validation 400'd before execution ever got there, so the insert's own correctness was never in question, only its reachability.",
-      "what_happens": "Reachability, not query logic, was the defect -- a perfectly correct insert that silently never ran for this one interest_type, so no leads with interest_type='intelligence-brief' exist in canibuildit_leads from before this fix.",
+      "scenario": "R2 credentials are absent or a fetch fails.",
+      "what_happens": "The run silently checks nothing and reports a clean pass.",
       "mitigated": true,
-      "how": "The new happy-path test ('accepts interest_type intelligence-brief and returns ok:true') exercises the full route including this insert with the mocked Supabase client, confirming the call now reaches and passes through the existing insert path unchanged.",
-      "repro": "npx jest __tests__/api/canibuildit/lead-abuse.test.ts -t 'accepts interest_type'"
+      "how": "document_unavailable is a distinct verdict, the failure is printed per document, and a run where nothing is checkable returns 'nothing could be checked -- that is not a pass' and exits 1.",
+      "repro": "tests/test_controls_against_source_pdf.py::TestSummaryMark::test_nothing_checkable_is_not_a_pass"
+    },
+    {
+      "scenario": "The pass mark is softened after seeing a disappointing result.",
+      "what_happens": "The check becomes a formality, exactly the DQ-30 0%-drift failure in a new costume.",
+      "mitigated": true,
+      "how": "DATA_MARK is a module constant documented as fixed before the first fetch, pinned by a test, and planting a change to it turns the suite red. Citation accuracy is reported UNGRADED precisely because one case was inspected during pre-implementation.",
+      "repro": "python scripts/prove_controls_pdf_check.py, case 'soften the pass mark to 50%'"
+    },
+    {
+      "scenario": "A missing library silently skips the check.",
+      "what_happens": "A green run that verified nothing, the pattern that left 23 tests dark for months.",
+      "mitigated": true,
+      "how": "fitz and psycopg2 are imported at module scope with no try/except and no importorskip, so an absent library is an immediate RED. numeric_control_review.py's try/except-to-None is called out in the header as the anti-pattern.",
+      "repro": "Rename the fitz package and run the script; it raises ImportError rather than reporting a pass."
+    },
+    {
+      "scenario": "A --limit debug run is read as a full gate result.",
+      "what_happens": "The rate describes only the documents the caller chose to fetch, but the script printed PASS and exited 0, so a partial run is indistinguishable from a complete one.",
+      "mitigated": true,
+      "how": "A --limit run that actually skipped documents prints INCONCLUSIVE with the skipped count and returns 2. A partial run can never exit 0.",
+      "repro": "python scripts/validate_controls_against_source_pdf.py --limit 2 ; echo $?  -> 2"
+    },
+    {
+      "scenario": "A wrong page reference is replaced by a guessed one, so it looks repaired and nobody re-checks it.",
+      "what_happens": "The 11 ambiguous Waverley rows each have several pages carrying the value in a 448-page document; picking the first would write a differently-wrong page that now carries an air of verification.",
+      "mitigated": true,
+      "how": "A correction is proposed ONLY where exactly one page in the whole document carries the value at >=80% term coverage. Ambiguous (11) and not-in-document (12) are reported and never written.",
+      "repro": "python scripts/measure_control_page_corrections.py — states: already_correct 110, single_candidate 8, ambiguous 11, not_in_document 12, not_testable 11."
+    },
+    {
+      "scenario": "A row changed between measurement and write, and the write clobbers the newer value.",
+      "what_happens": "Another session's repair is silently overwritten with a stale proposal.",
+      "mitigated": true,
+      "how": "Every UPDATE carries WHERE id = %s AND pdf_page = %s (the expected pre-state); a non-matching row yields rowcount 0, is counted as SKIPPED and printed. Pre-state of all 8 rows is backed up before the first write and the predicted after-state is written to disk before any row changes.",
+      "repro": "data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09.json and ..._prediction_2026-08-09.json"
+    },
+    {
+      "scenario": "A page correction is derived in a scratchpad script that is never committed.",
+      "what_happens": "The 11 Waverley repairs become unreproducible hand-work — the exact failure the extraction post-mortem names, and the reason half the controls table has no recipe.",
+      "mitigated": true,
+      "how": "scripts/resolve_control_page_by_clause.py is committed and allow-listed past the blanket scripts/* ignore; re-running it regenerates the same 11 (council, clause, page) triples.",
+      "repro": "python scripts/resolve_control_page_by_clause.py"
     }
   ],
+  "mutation_analysis": "Seven mutations planted through the shared #890 harness, all seven caught, each restored byte-identically and verified by sha256 in a finally block. The two that matter most reproduce real incidents rather than hypotheticals: stop-stripping-clause-markers reproduces the measured parramatta id=563 false positive and the zone-probe trap where Woollahra C1 (Control 1) and Ashfield E1 (a chapter label) were counted as zone codes; count-could-not-check-as-checkable reproduces the denominator inflation that would let unfetchable documents read as passes. On strength rather than volume: the 35 unit tests cover a pure core with no I/O, so a mutation cannot be masked by a network or database dependency.",
+  "residual_risk": "THE HEADLINE NUMBER IS NOT A LIST OF CONFIRMED ERRORS. Twelve controls are reported unsupported; none has been confirmed by a human opening the PDF. At least one (wingecarribee id=1160) missed on term coverage by three percentage points, which is a threshold artifact rather than a data defect, so the true error count is at most 12 and possibly well below. The 70% coverage threshold and the plus-or-minus-1 page tolerance are judgement calls with no external basis. Coverage is 14% of the table: 919 controls record no page and are untouched, so nothing here licenses a claim about the other 86%. Citation accuracy (85.3%) is measured but ungraded this run and must not be quoted as a passed test. Finally, this checks that a number APPEARS on a page alongside matching words; it does not read the sentence, so a control could be supported by text that means the opposite, and only a human reading can settle that.",
   "post_merge": {
-    "db_reset": "Not required -- no schema change, only a Zod enum extension. canibuildit_leads already has the columns this write needs.",
-    "secrets": "None.",
-    "other_repo": "None.",
-    "manual_verify": "Yes -- after deploy, submit a real address through verify.plotdetect.com.au/reports/intelligence-brief's 'Email me' strip and confirm (a) the network request now returns 200, (b) the confirmation email arrives From: PlotDetect <info@plotdetect.com.au> with a PlotDetect-branded footer linking to verify.plotdetect.com.au, and (c) the lead appears in canibuildit_leads with interest_type='intelligence-brief'."
-  },
-  "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest --testPathPattern=canibuildit",
-    "fails_when": "Both defects this PR fixes were PLANTED back into frontend-nextjs/app/api/canibuildit/lead/route.ts and each was confirmed to turn the command red, then restored byte-identically (md5 1058a2dce63403f44ee85d31a76c0dda before and after each plant). (1) Removing 'intelligence-brief' from INTEREST_TYPES at line 64 -- the original bug, where every Site Report email submission 400'd -- fails 2 of 52 tests. (2) Replacing `const safeAddress = escapeHtml(address)` with `const safeAddress = address` at line 254 -- re-opening the HTML-injection hole in outgoing PlotDetect-branded emails -- fails 7 of 52 tests. Baseline with neither defect present: 52 passed, 2 suites, run against this branch merged with origin/main at 177f84b2. The suite therefore detects both the enum omission and the loss of escaping; it does NOT prove the live 400 is gone in production, which needs a real submission after deploy."
+    "db_reset": "A production write WAS performed: pdf_page corrected on 8 of 1071 dcp_setback_controls rows. Backup data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09.json; rollback is UPDATE dcp_setback_controls SET pdf_page=<pdf_page> WHERE id=<id> from that file. Verified: 8 applied, 0 skipped, row count 1071 before and after, prediction matched 8/8, and an independent re-run of the checker moved citation accuracy 85.3% -> 91.5%. SECOND WRITE: pdf_page corrected on 11 further rows (Waverley), backup data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09-waverley.json, 11 applied, 0 skipped, 1071/989 rows unchanged, prediction matched 11/11, citation accuracy verified 91.5% -> 98.4% by re-run.",
+    "secrets": "No. Credentials are read from the bare repo .env into os.environ and never printed; the R2 client is constructed from them and no key, token or connection string is logged. PDFs are cached to the OS temp directory, not the repo.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Open the twelve unsupported controls' PDFs at the cited page and read them, to separate real extraction errors from threshold artifacts. Then decide whether the 919 controls with no pdf_page should have one backfilled, since without it they cannot be checked by this method at all."
   }
 }
