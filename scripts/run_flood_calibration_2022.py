@@ -108,10 +108,16 @@ def sample(polys, n, seed):
     for aoi, act, r in polys: by_aoi.setdefault((act, aoi), []).append(r)
     keys = sorted(by_aoi); picked = []
     # Stratified: walk the AOIs round-robin so no single activation dominates.
+    # `keys` MUST shrink. Previously an AOI that can never yield a lon/lat point
+    # (a projected product, say) stayed in the list forever, so if no AOI could
+    # produce one the outer while looped indefinitely making no progress — a
+    # calibration that hangs rather than reports.
     while len(picked) < n and keys:
+        progressed = False
         for k in list(keys):
             if len(picked) >= n: break
             rings = by_aoi[k]
+            got_one = False
             for _ in range(200):
                 ring = rnd.choice(rings)
                 xs = [p[0] for p in ring]; ys = [p[1] for p in ring]
@@ -119,7 +125,12 @@ def sample(polys, n, seed):
                     break
                 x = rnd.uniform(min(xs), max(xs)); y = rnd.uniform(min(ys), max(ys))
                 if point_in_ring(x, y, ring):
-                    picked.append((k[0], k[1], round(y, 6), round(x, 6))); break
+                    picked.append((k[0], k[1], round(y, 6), round(x, 6)))
+                    got_one = True; progressed = True; break
+            if not got_one:
+                keys.remove(k)   # exhausted — never ask it again
+        if not progressed:
+            break                # nothing left can yield a point
     return picked[:n]
 
 polys = polygons()
@@ -151,12 +162,27 @@ def in_nsw(lat, lng, _cache={}):
     _cache[key] = got
     return got
 
-scoped = []
+# Three states, recorded separately. The artifact previously wrote only the
+# POST-scope count as n_sampled and out_of_scope: 0, so a run that drew 150 and
+# kept 38 published "38 of 38, no exclusions" — the attrition, and any
+# lookup failures inside it, were invisible. That is the absence-as-answer
+# pattern committed inside the instrument built to measure it.
+n_raw_draws = len(pts)
+scoped, n_out_of_scope, n_scope_unknown = [], 0, 0
 for act, aoi, lat, lng in pts:
     ok = in_nsw(lat, lng)
-    if ok is True: scoped.append((act, aoi, lat, lng))
-print(f"in NSW LGA coverage: {len(scoped)} of {len(pts)} sampled "
-      f"({len(pts)-len(scoped)} outside — EMSR567 mapped SE Queensland too)", flush=True)
+    if ok is True:
+        scoped.append((act, aoi, lat, lng))
+    elif ok is False:
+        n_out_of_scope += 1      # resolved, and genuinely outside coverage
+    else:
+        n_scope_unknown += 1     # lookup FAILED — not the same thing
+print(f"raw draws: {n_raw_draws} -> in NSW LGA coverage {len(scoped)}, "
+      f"outside {n_out_of_scope}, scope unresolved {n_scope_unknown}", flush=True)
+if n_scope_unknown:
+    # An unresolved lookup is a hole in the scope test, not a clean exclusion.
+    print(f"  ! {n_scope_unknown} draws could not be resolved to an LGA — "
+          f"excluded, but they are unknown scope, not known-outside.", flush=True)
 pts = scoped
 
 said_something = 0; results = []
@@ -236,7 +262,10 @@ print(f"PASS MARK            : 0.90, committed before the run", flush=True)
 print(f"VERDICT              : {verdict}", flush=True)
 print("=" * 74, flush=True)
 Path(WT / "docs/qa/flood-calibration-2022-result.json").write_text(
-    json.dumps({"n_sampled": len(pts), "n_scored": len(scored), "hits": said_something,
+    json.dumps({"n_raw_draws": n_raw_draws, "n_in_scope": len(pts),
+                "n_out_of_scope_at_scope_test": n_out_of_scope,
+                "n_scope_unresolved": n_scope_unknown,
+                "n_sampled": len(pts), "n_scored": len(scored), "hits": said_something,
                 "recall": recall, "wilson_lo": lo, "wilson_hi": hi,
                 "pass_mark": 0.90, "verdict": verdict, "out_of_scope": oos,
                 "seed": SEED, "results": results}, indent=2), encoding="utf-8")

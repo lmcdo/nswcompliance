@@ -1,8 +1,8 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-10T10:15:00+10:00",
+  "timestamp": "2026-08-10T11:30:00+10:00",
   "reason": "Applying Sol's four findings to scripts/run_flood_calibration_2022.py, a read-only calibration runner. It issues no SQL of its own; it calls run_flood, which writes one property_reports row per point exactly as ordinary traffic does. Three of the four change how the RESULT is computed rather than what is queried, and one of them changes the verdict: (a) the interval was Wald, which is invalid at p near 1 and reported a lower bound of 0.929 against Wilson's 0.874 — the difference between claiming a pass and not having earned one, and my own pre-commit says an interval overlapping the mark is 'indistinguishable from the mark, not a pass'; (b) any pipeline exception was dropped from the denominator, so a database failure at an in-scope point would silently inflate recall — only an explicit outside-NSW refusal is out of scope now, and in this run all nine were verified to be exactly that; (c) the checkout path was hardcoded to one laptop while the file is committed as reproducible evidence; (d) a filename split that would IndexError. Verified before editing: all nine excluded points carried '422: latitude ... outside NSW', and Wilson at n=41, x=40 computes to 0.874-0.996.",
-  "target": "Document N=150 against the committed amendment and add the >=30 scored-point floor",
-  "findings_summary": "Constant comment + one guard. Measured first: 50 raw draws yield 15 scored points (interval 0.548-0.930), 150 yield 38 (0.759-0.958). The original protocol specified draws while reasoning about scored points - a units error, now corrected in amendment-01 which was committed BEFORE this edit.",
-  "go_no_go": "GO. Amendment committed first at 2840007f; this makes the code match it."
+  "target": "Record raw-draw scope counts in the artifact; drop exhausted AOI keys in sample(); correct an impossible sample-size claim",
+  "findings_summary": "Computed rather than reasoned: at observed recall 0.895 the Wilson lower bound is 0.834 at n=150 and 0.868 at n=600 -- it converges to 0.895 from below and can never exceed the point estimate, so the published claim that ~150 points would lift it above 0.90 is impossible. To clear 0.90 the TRUE recall must exceed it: ~375 scored points at 0.93, ~130 at 0.95, ~70 at 0.97.",
+  "go_no_go": "GO. Three bounded fixes, all measured first."
 }
