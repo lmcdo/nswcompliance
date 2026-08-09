@@ -6,7 +6,7 @@
 
 ## Verdict
 
-> **RECALL 0.946 — 35 of 37 scored points. Cluster 95% CI 0.786 – 1.000 across 8 clusters, which is the interval that governs. Wilson 95% CI 0.823 – 0.985 if the points are treated as independent, which they are not. Pass mark 0.90.**
+> **RECALL 0.946 — 35 of 37 scored points. Cluster 95% CI 0.727 – 1.000 across 7 councils, which is the interval that governs. Wilson 95% CI 0.823 – 0.985 if the points are treated as independent, which they are not. Pass mark 0.90.**
 > **VERDICT: INDISTINGUISHABLE FROM THE MARK. Not a pass, and not a fail.**
 
 > **⚠ CORRECTED TWICE. Read both, because the second correction moved the number UP.**
@@ -171,34 +171,38 @@ before the run."*
 
 Whether the screen finds a flooded property depends almost entirely on whether **its council has a
 flood overlay loaded** — a property shared by every point in that council. Outcomes arrive in
-blocks. This run makes it vivid:
+blocks. Grouped by the council each point actually resolved to:
 
-| Cluster | Points | Found |
+| Council | Points | Found |
 |---|---|---|
-| EMSR567/AOI09 | 8 | 8 |
-| EMSR586/AOI03 | 8 | 8 |
-| EMSR586/AOI02 | 6 | 6 |
-| EMSR567/AOI12 | 4 | 4 |
-| EMSR567/AOI13 | 3 | 3 |
-| EMSR567/AOI16 | 3 | 3 |
-| EMSR586/AOI01 | 3 | 3 |
-| **EMSR570/AOI01** | **2** | **0** |
+| HAWKESBURY | 15 | 15 |
+| BALLINA | 8 | 8 |
+| CAMDEN | 5 | 5 |
+| CANTERBURY-BANKSTOWN | 4 | 4 |
+| **RICHMOND VALLEY** | 2 | **0** |
+| THE HILLS SHIRE | 2 | 2 |
+| CAMPBELLTOWN | 1 | 1 |
 
-Seven clusters at 100%, and **both misses in the same 2-point cluster**. Resampling whole AOIs with
-replacement instead of individual points gives a 95% interval of **0.786 – 1.000**, against Wilson's
-0.823 – 0.985. The conventional figure is too narrow, and the run therefore rests on a single
-2-point cluster.
+**Six of seven councils at 100%, and every miss in the seventh.** Hawkesbury alone supplies 15 of
+the 37 points. Resampling whole councils with replacement gives a 95% interval of
+**0.727 – 1.000**, against Wilson's 0.823 – 0.985. The conventional figure is far too
+narrow, and the entire result rests on one 2-point council.
 
-**Now the part that changes the plan.** Simulating the observed structure — one cluster in eight
-holding no flood data — the cluster lower bound converges on the true rate, **0.875**:
+> An earlier version of this section clustered by Copernicus **activation/AOI** and reported
+> 0.786 – 1.000. That was inconsistent with the mechanism being argued in the same paragraph: if
+> recall is driven by council coverage, two AOIs inside one council are not independent draws.
+> Clustering on the actual council widens the interval further. Caught in cross-review.
 
-| Clusters sampled | ≈ points | Cluster 95% lower bound |
+**Now the part that changes the plan.** Simulating the observed structure — one council in seven
+holding no flood data — the cluster lower bound converges on the true rate, about **0.857**:
+
+| Councils sampled | ≈ points | Cluster 95% lower bound |
 |---|---|---|
-| 8 (this run) | 37 | 0.786 |
-| 16 | 80 | 0.688 |
-| 32 | 160 | 0.750 |
-| 64 | 320 | 0.781 |
-| 96 | 480 | 0.802 |
+| 7 | 35 | 0.571 |
+| 14 | 70 | 0.643 |
+| 28 | 140 | 0.714 |
+| 56 | 280 | 0.768 |
+| 112 | 560 | 0.786 |
 
 It never reaches 0.90, because under that structure the product's true recall **is not above 0.90**.
 **No sample size settles this question.** Sampling harder measures the same coverage gap more

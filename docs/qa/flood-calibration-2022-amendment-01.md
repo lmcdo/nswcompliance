@@ -1,3 +1,23 @@
+> # ⚠ SUPERSEDED — historical protocol record only
+>
+> **Do not quote any figure from this file.** It was written and committed BEFORE the re-run, on
+> purpose, so that the protocol change (N=50 → N=150) was on record ahead of seeing the result. It
+> therefore preserves what was known at that moment: **0.800 at N=50 and 0.895 at N=150, 34 of 38
+> scored points.**
+>
+> Two later defects in the reference construction changed those numbers. Interior polygon rings
+> were being discarded, and the runner globbed the archive directory instead of reading the
+> committed manifest. **The authoritative result is `flood-calibration-2022-result.md`: recall
+> 0.946, 35 of 37 scored points.**
+>
+> The suggestion below that roughly 150 scored points would settle the question is also
+> superseded, and not by arithmetic — the points are not independent. Outcomes cluster by council,
+> and under that structure no sample size clears the 0.90 mark. See "What would settle it" in the
+> result document.
+>
+> This file is kept unedited beneath this banner because a protocol commitment that gets rewritten
+> after the result is no longer a commitment.
+
 # Flood calibration 2022 — Amendment 01: sample size
 
 **Written:** 2026-08-10. **Amends:** `flood-calibration-2022-precommit.md` (commit `fb0a44f7`).

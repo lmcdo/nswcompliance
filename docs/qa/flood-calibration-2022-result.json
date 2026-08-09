@@ -12,9 +12,40 @@
   "recall": 0.9459459459459459,
   "wilson_lo": 0.822950349364601,
   "wilson_hi": 0.9850493372294601,
-  "cluster_lo": 0.7857142857142857,
+  "cluster_lo": 0.7272727272727273,
   "cluster_hi": 1.0,
-  "n_clusters": 8,
+  "n_clusters": 7,
+  "cluster_unit": "council",
+  "clusters": {
+    "BALLINA": {
+      "n": 8,
+      "hits": 8
+    },
+    "CAMDEN": {
+      "n": 5,
+      "hits": 5
+    },
+    "CAMPBELLTOWN": {
+      "n": 1,
+      "hits": 1
+    },
+    "CANTERBURY-BANKSTOWN": {
+      "n": 4,
+      "hits": 4
+    },
+    "HAWKESBURY": {
+      "n": 15,
+      "hits": 15
+    },
+    "RICHMOND VALLEY": {
+      "n": 2,
+      "hits": 0
+    },
+    "THE HILLS SHIRE": {
+      "n": 2,
+      "hits": 2
+    }
+  },
   "pass_mark": 0.9,
   "verdict": "INDISTINGUISHABLE FROM THE MARK",
   "out_of_scope_at_scoring": 0,
@@ -24,6 +55,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI09",
+      "council": "BALLINA",
       "lat": -28.896241,
       "lng": 153.534854,
       "flood_signal": "elevated",
@@ -34,6 +66,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI13",
+      "council": "HAWKESBURY",
       "lat": -33.515099,
       "lng": 150.914417,
       "flood_signal": "elevated",
@@ -44,6 +77,7 @@
     {
       "act": "EMSR570",
       "aoi": "AOI01",
+      "council": "RICHMOND VALLEY",
       "lat": -29.042446,
       "lng": 153.254151,
       "flood_signal": "none",
@@ -54,6 +88,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI03",
+      "council": "THE HILLS SHIRE",
       "lat": -33.473646,
       "lng": 150.884684,
       "flood_signal": "elevated",
@@ -64,6 +99,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI09",
+      "council": "BALLINA",
       "lat": -28.8651,
       "lng": 153.514978,
       "flood_signal": "elevated",
@@ -74,6 +110,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI12",
+      "council": "CANTERBURY-BANKSTOWN",
       "lat": -33.940589,
       "lng": 150.969504,
       "flood_signal": "moderate",
@@ -84,6 +121,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI13",
+      "council": "HAWKESBURY",
       "lat": -33.549184,
       "lng": 150.892324,
       "flood_signal": "elevated",
@@ -94,6 +132,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI03",
+      "council": "HAWKESBURY",
       "lat": -33.472465,
       "lng": 150.8991,
       "flood_signal": "elevated",
@@ -104,6 +143,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI09",
+      "council": "BALLINA",
       "lat": -28.891267,
       "lng": 153.552403,
       "flood_signal": "elevated",
@@ -114,6 +154,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI12",
+      "council": "CANTERBURY-BANKSTOWN",
       "lat": -33.932378,
       "lng": 150.973822,
       "flood_signal": "moderate",
@@ -124,6 +165,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI16",
+      "council": "CAMDEN",
       "lat": -34.081537,
       "lng": 150.703881,
       "flood_signal": "moderate",
@@ -134,6 +176,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI01",
+      "council": "CAMDEN",
       "lat": -34.043539,
       "lng": 150.706517,
       "flood_signal": "moderate",
@@ -144,6 +187,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI02",
+      "council": "HAWKESBURY",
       "lat": -33.575622,
       "lng": 150.730037,
       "flood_signal": "elevated",
@@ -154,6 +198,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI03",
+      "council": "HAWKESBURY",
       "lat": -33.516529,
       "lng": 150.83705,
       "flood_signal": "elevated",
@@ -164,6 +209,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI09",
+      "council": "BALLINA",
       "lat": -28.896746,
       "lng": 153.555857,
       "flood_signal": "elevated",
@@ -174,6 +220,7 @@
     {
       "act": "EMSR570",
       "aoi": "AOI01",
+      "council": "RICHMOND VALLEY",
       "lat": -29.066006,
       "lng": 153.303199,
       "flood_signal": "none",
@@ -184,6 +231,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI02",
+      "council": "HAWKESBURY",
       "lat": -33.662923,
       "lng": 150.665153,
       "flood_signal": "elevated",
@@ -194,6 +242,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI09",
+      "council": "BALLINA",
       "lat": -28.842847,
       "lng": 153.545633,
       "flood_signal": "elevated",
@@ -204,6 +253,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI01",
+      "council": "CAMDEN",
       "lat": -34.048498,
       "lng": 150.708638,
       "flood_signal": "moderate",
@@ -214,6 +264,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI03",
+      "council": "HAWKESBURY",
       "lat": -33.517785,
       "lng": 150.898211,
       "flood_signal": "elevated",
@@ -224,6 +275,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI09",
+      "council": "BALLINA",
       "lat": -28.902086,
       "lng": 153.541122,
       "flood_signal": "elevated",
@@ -234,6 +286,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI12",
+      "council": "CANTERBURY-BANKSTOWN",
       "lat": -33.937015,
       "lng": 150.9699,
       "flood_signal": "moderate",
@@ -244,6 +297,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI13",
+      "council": "HAWKESBURY",
       "lat": -33.496629,
       "lng": 150.895837,
       "flood_signal": "elevated",
@@ -254,6 +308,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI16",
+      "council": "CAMPBELLTOWN",
       "lat": -34.109453,
       "lng": 150.745077,
       "flood_signal": "moderate",
@@ -264,6 +319,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI02",
+      "council": "THE HILLS SHIRE",
       "lat": -33.562488,
       "lng": 150.933909,
       "flood_signal": "elevated",
@@ -274,6 +330,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI03",
+      "council": "HAWKESBURY",
       "lat": -33.442722,
       "lng": 150.883034,
       "flood_signal": "elevated",
@@ -284,6 +341,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI09",
+      "council": "BALLINA",
       "lat": -28.85704,
       "lng": 153.507612,
       "flood_signal": "elevated",
@@ -294,6 +352,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI01",
+      "council": "CAMDEN",
       "lat": -34.044783,
       "lng": 150.675129,
       "flood_signal": "moderate",
@@ -304,6 +363,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI02",
+      "council": "HAWKESBURY",
       "lat": -33.612074,
       "lng": 150.700004,
       "flood_signal": "elevated",
@@ -314,6 +374,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI03",
+      "council": "HAWKESBURY",
       "lat": -33.472262,
       "lng": 150.897936,
       "flood_signal": "elevated",
@@ -324,6 +385,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI16",
+      "council": "CAMDEN",
       "lat": -34.091738,
       "lng": 150.709954,
       "flood_signal": "moderate",
@@ -334,6 +396,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI02",
+      "council": "HAWKESBURY",
       "lat": -33.633627,
       "lng": 150.847515,
       "flood_signal": "elevated",
@@ -344,6 +407,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI03",
+      "council": "HAWKESBURY",
       "lat": -33.496582,
       "lng": 150.884154,
       "flood_signal": "elevated",
@@ -354,6 +418,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI09",
+      "council": "BALLINA",
       "lat": -28.894774,
       "lng": 153.555652,
       "flood_signal": "elevated",
@@ -364,6 +429,7 @@
     {
       "act": "EMSR567",
       "aoi": "AOI12",
+      "council": "CANTERBURY-BANKSTOWN",
       "lat": -33.938998,
       "lng": 150.970273,
       "flood_signal": "moderate",
@@ -374,6 +440,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI02",
+      "council": "HAWKESBURY",
       "lat": -33.560625,
       "lng": 150.848626,
       "flood_signal": "elevated",
@@ -384,6 +451,7 @@
     {
       "act": "EMSR586",
       "aoi": "AOI03",
+      "council": "HAWKESBURY",
       "lat": -33.428696,
       "lng": 150.811802,
       "flood_signal": "moderate",

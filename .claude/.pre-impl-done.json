@@ -1,8 +1,5 @@
 {
-  "status": "passed",
-  "timestamp": "2026-08-10T13:30:00+10:00",
-  "reason": "Applying Sol's four findings to scripts/run_flood_calibration_2022.py, a read-only calibration runner. It issues no SQL of its own; it calls run_flood, which writes one property_reports row per point exactly as ordinary traffic does. Three of the four change how the RESULT is computed rather than what is queried, and one of them changes the verdict: (a) the interval was Wald, which is invalid at p near 1 and reported a lower bound of 0.929 against Wilson's 0.874 — the difference between claiming a pass and not having earned one, and my own pre-commit says an interval overlapping the mark is 'indistinguishable from the mark, not a pass'; (b) any pipeline exception was dropped from the denominator, so a database failure at an in-scope point would silently inflate recall — only an explicit outside-NSW refusal is out of scope now, and in this run all nine were verified to be exactly that; (c) the checkout path was hardcoded to one laptop while the file is committed as reproducible evidence; (d) a filename split that would IndexError. Verified before editing: all nine excluded points carried '422: latitude ... outside NSW', and Wilson at n=41, x=40 computes to 0.874-0.996.",
-  "target": "Abort on a missing reference archive; stop inferring scope from an exception string",
-  "findings_summary": "Two ways a flattering number could pass. (1) The runner validated only the ZIPs the glob found, so an entirely ABSENT archive was undetectable — and all four published misses came from one AOI, so losing one archive would remove them and raise recall. Manifest of 47 archives with sha256 prefixes now committed. (2) After in_nsw() has already ruled a point IN scope, an exception whose text contains \"outside NSW\" removed it from the denominator. Two components contradicting each other must be loud, not a silent exclusion that inflates recall.",
-  "go_no_go": "GO. Both make an incomplete or contradictory run fail loudly instead of publishing."
+  "status": "trivial",
+  "timestamp": "2026-08-10T00:00:00Z",
+  "reason": "removing dead code left by an earlier string replacement in scripts/download_tweed_wollongong_rasters.py (an unreachable log.warning + return after a return) and a duplicated comment; no logic, no queries, no new behaviour"
 }

@@ -308,18 +308,31 @@ from lga_lookup import lookup_lga
 import uuid
 
 def in_nsw(lat, lng, _cache={}):
-    """Authoritative-for-this-product scope test: does NSW LGA coverage
-    contain the point? The pipeline's latitude envelope is coarse and admits
-    south-east Queensland — EMSR567 mapped both states, and scoring a Brisbane
-    point as NSW recall is measuring the wrong thing."""
-    key = (round(lat, 4), round(lng, 4))
+    """Authoritative-for-this-product scope test, returning the COUNCIL too.
+
+    Does NSW LGA coverage contain the point? The pipeline's latitude envelope
+    is coarse and admits south-east Queensland — EMSR567 mapped both states,
+    and scoring a Brisbane point as NSW recall is measuring the wrong thing.
+
+    Returns (in_scope, council_name) where in_scope is True / False / None,
+    None meaning the lookup FAILED, which is unknown scope rather than out of
+    scope. The council name is what the interval is clustered on: recall is
+    driven by whether a council has a flood overlay loaded, so the council is
+    the sampling unit, not the point and not the AOI.
+
+    Cached on the EXACT coordinates. It previously keyed on 4 decimal places,
+    about 11 m, so two distinct sampled points could share one lookup and one
+    scope decision. Points are drawn at 6 dp; there is no reason to blur them.
+    """
+    key = (lat, lng)
     if key in _cache: return _cache[key]
     conn = None
     try:
         conn = _get_conn()
-        got = bool((lookup_lga(lat, lng, conn) or {}).get("lga_name"))
+        name = (lookup_lga(lat, lng, conn) or {}).get("lga_name")
+        got = (bool(name), name)
     except Exception:
-        got = None          # unknown scope, not "in scope"
+        got = (None, None)  # unknown scope, not "in scope"
     finally:
         if conn: conn.close()
     _cache[key] = got
@@ -333,9 +346,9 @@ def in_nsw(lat, lng, _cache={}):
 n_raw_draws = len(pts)
 scoped, n_out_of_scope, n_scope_unknown = [], 0, 0
 for act, aoi, lat, lng in pts:
-    ok = in_nsw(lat, lng)
+    ok, council = in_nsw(lat, lng)
     if ok is True:
-        scoped.append((act, aoi, lat, lng))
+        scoped.append((act, aoi, lat, lng, council))
     elif ok is False:
         n_out_of_scope += 1      # resolved, and genuinely outside coverage
     else:
@@ -368,7 +381,7 @@ said_something = 0; results = []
 # below for what that cost.
 executed = 0
 t0 = time.time()
-for i, (act, aoi, lat, lng) in enumerate(pts, 1):
+for i, (act, aoi, lat, lng, council) in enumerate(pts, 1):
     try:
         r = run_flood(FloodRequest(address=f"calibration {act}/{aoi}", lat=lat, lng=lng,
                                    report_id=str(uuid.uuid4())))
@@ -394,7 +407,8 @@ for i, (act, aoi, lat, lng) in enumerate(pts, 1):
         hit = (sig in ("low", "moderate", "elevated")) or (z is True) or (ses is True)
         executed += 1
         said_something += 1 if hit else 0
-        results.append({"act": act, "aoi": aoi, "lat": lat, "lng": lng,
+        results.append({"act": act, "aoi": aoi, "council": council,
+                        "lat": lat, "lng": lng,
                         "flood_signal": sig, "in_100yr": z, "ses": ses, "hit": hit})
         print(f"[{i}/{len(pts)}] {act}/{aoi} {lat:.4f},{lng:.4f} signal={sig} 1pct={z} ses={ses} -> {'HIT' if hit else 'MISS'}", flush=True)
     except Exception as e:
@@ -415,7 +429,8 @@ for i, (act, aoi, lat, lng) in enumerate(pts, 1):
             print(f"   ! SCOPE CONTRADICTION at {lat:.4f},{lng:.4f}: lookup_lga "
                   f"placed this point IN coverage but run_flood refused it as "
                   f"outside. Scored as a miss, not excluded.", flush=True)
-        results.append({"act": act, "aoi": aoi, "lat": lat, "lng": lng,
+        results.append({"act": act, "aoi": aoi, "council": council,
+                        "lat": lat, "lng": lng,
                         "error": msg[:140],
                         "hit": False,
                         "scope_contradiction": contradiction})
@@ -487,13 +502,22 @@ lo, hi = max(0.0, _centre - _half), min(1.0, _centre + _half)
 # in the same 2-point cluster. Treating that as 37 independent observations
 # reports an interval narrower than the evidence supports.
 #
-# So a cluster bootstrap is computed alongside it, resampling whole AOIs with
-# replacement. It is the conservative number and it is the one the verdict
+# So a cluster bootstrap is computed alongside it, resampling whole COUNCILS
+# with replacement. It is the conservative number and it is the one the verdict
 # uses. Reported together rather than instead, because a reader comparing this
 # to another study needs the conventional figure too.
+#
+# The cluster is the COUNCIL, not the activation/AOI. An earlier version used
+# the AOI, which was inconsistent with the very mechanism being argued: if
+# recall is driven by whether a council holds a flood overlay, then two AOIs
+# inside one council are not independent draws, and resampling them separately
+# reports an interval narrower than the evidence supports. Where a council is
+# unresolved the AOI is used as a fallback key so the point is never silently
+# merged into one giant cluster.
 _by_cluster: dict = {}
 for _r in results:
-    _by_cluster.setdefault((_r["act"], _r["aoi"]), []).append(1 if _r.get("hit") else 0)
+    _key = _r.get("council") or f"UNRESOLVED:{_r['act']}/{_r['aoi']}"
+    _by_cluster.setdefault(_key, []).append(1 if _r.get("hit") else 0)
 _cl_keys = sorted(_by_cluster)
 _boot_rng = random.Random(SEED)
 _boots = []
@@ -528,7 +552,7 @@ oos = 0
 print(f"scope contradictions (lookup said in, run_flood said out): {contradictions}", flush=True)
 print(f"RECALL               : {recall:.3f}", flush=True)
 print(f"  Wilson 95% CI      : {lo:.3f} - {hi:.3f}  (assumes 37 independent trials — they are not)", flush=True)
-print(f"  CLUSTER 95% CI     : {cluster_lo:.3f} - {cluster_hi:.3f}  ({n_clusters} activation/AOI clusters; THIS governs)", flush=True)
+print(f"  CLUSTER 95% CI     : {cluster_lo:.3f} - {cluster_hi:.3f}  ({n_clusters} council clusters; THIS governs)", flush=True)
 print(f"PASS MARK            : 0.90, committed before the run", flush=True)
 print(f"VERDICT              : {verdict}", flush=True)
 print("=" * 74, flush=True)
@@ -541,7 +565,8 @@ Path(WT / "docs/qa/flood-calibration-2022-result.json").write_text(
                 "dropped_groups": DROPPED_GROUPS,
                 "recall": recall, "wilson_lo": lo, "wilson_hi": hi,
                 "cluster_lo": cluster_lo, "cluster_hi": cluster_hi,
-                "n_clusters": n_clusters,
+                "n_clusters": n_clusters, "cluster_unit": "council",
+                "clusters": {k: {"n": len(v), "hits": sum(v)} for k, v in sorted(_by_cluster.items())},
                 "pass_mark": 0.90, "verdict": verdict, "out_of_scope_at_scoring": oos,
                 "scope_contradictions": contradictions,
                 "seed": SEED, "results": results}, indent=2), encoding="utf-8")
