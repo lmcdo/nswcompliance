@@ -42,8 +42,13 @@ Every one of those corrections came from the cross-review, not from me.
 **150 raw draws** with a fixed seed (20220228), stratified round-robin across 23 activation/AOI
 pairs, per `flood-calibration-2022-amendment-01.md`.
 
-**Scope filter:** each point tested against the product's own NSW council coverage via
-`lookup_lga`. **38 of 38 sampled points passed; none were excluded.** A coarse latitude pre-filter
+**Scope filter:** each draw tested against the product's own NSW council coverage via `lookup_lga`.
+**150 raw draws → 38 in coverage, 112 outside, 0 unresolved.** An earlier version of this section
+said "38 of 38, none excluded", because the artifact recorded only the post-filter count — the 112
+discarded draws were invisible, and any lookup FAILURES among them would have been indistinguishable
+from genuine out-of-coverage points. The three counts are now written separately, and a draw whose
+lookup fails is recorded as `scope_unresolved` rather than folded in with the ones known to be
+outside. A coarse latitude pre-filter
 now drops the south-east Queensland polygons before sampling — EMSR567 mapped both states, and
 without that filter the stratified walk spent most of its draws in Queensland, which is how the
 earlier run scored only 7 points. `lookup_lga` remains the authoritative test; the pre-filter only
@@ -122,10 +127,39 @@ before the run."*
 
 ## What would settle it
 
-More points inside council coverage. At this recall roughly 150 scored points would put the Wilson
-lower bound above 0.90. The binding constraint is not compute — it is that Copernicus mapped only
-the areas the EU was asked to map, and only a fraction of those fall in councils this product
-covers. Widening either the council coverage or the reference set is the work.
+> **⚠ CORRECTED 2026-08-10.** This section previously said *"at this recall roughly 150 scored
+> points would put the Wilson lower bound above 0.90"*. **That is impossible.** A Wilson lower
+> bound converges on the point estimate from below and can never exceed it, so at an observed
+> recall of 0.895 no sample size whatsoever lifts the bound past 0.90. Computed:
+
+| Scored points, recall held at 0.895 | Wilson 95% CI | Lower bound ≥ 0.90? |
+|---|---|---|
+| 38 (this run) | 0.759 – 0.958 | no |
+| 150 | 0.834 – 0.933 | no |
+| 600 | 0.868 – 0.917 | **still no** |
+
+**More points cannot turn this result into a pass.** They can only do one of two things: reveal
+that the true recall is higher than 0.895 and the small sample understated it, or tighten the
+interval until 0.895 can be declared a **fail** with confidence — which happens somewhere past
+600 scored points.
+
+For the bound to clear 0.90 the TRUE recall has to be above it, and then the sample needed is:
+
+| If true recall is | Scored points needed for the lower bound to clear 0.90 |
+|---|---|
+| 0.93 | ~375 |
+| 0.95 | ~130 |
+| 0.97 | ~70 |
+
+So the honest framing is not "we need 150 more points". It is: **on the evidence so far this
+product has not demonstrated 90% recall, and the cheapest way to find out whether it can is to fix
+the Richmond Valley class of coverage gap first** — four of the four misses came from one council
+holding no flood data at all, so the measured recall is currently bounded by data coverage rather
+than by detection.
+
+The binding constraint on sample size is not compute — it is that Copernicus mapped only the areas
+the EU was asked to map, and only a fraction of those fall in councils this product covers.
+Widening either the council coverage or the reference set is the work.
 
 ## Limits, as committed in advance
 

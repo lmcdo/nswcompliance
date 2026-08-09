@@ -1,4 +1,8 @@
 {
+  "n_raw_draws": 150,
+  "n_in_scope": 38,
+  "n_out_of_scope_at_scope_test": 112,
+  "n_scope_unresolved": 0,
   "n_sampled": 38,
   "n_scored": 38,
   "hits": 34,
