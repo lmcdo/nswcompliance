@@ -1,116 +1,170 @@
 {
   "tier": "standard",
-  "justification": "Developer tooling only. No product code, no served output, no database read or write, no migration. Two new scripts plus an observation-mode reporting block in scripts/qa_gate.py that never touches the passed/failed verdict, and one blocking line in .githooks/pre-push whose trigger condition cannot false-positive. Not Minor, because scripts/falsifiability.py is now the thing every falsifiability claim in this campaign rests on, and a defect in it makes every downstream proof worthless; not Critical, because nothing here can reach a customer, a report or a row.",
-  "commit_hash": "339c7090",
+  "justification": "A new read-only verification script, its unit tests, and a falsifiability proof driving the shared #890 harness. It reads production Supabase read-only and downloads published PDFs from R2. No writes, no migrations, no schema change, no served surface altered. Standard rather than minor because the script produces a PASS/FAIL judgement about the project's headline asset, and a wrong judgement here would either manufacture a crisis or conceal one. This commit adds the measure/write pair that corrected pdf_page on 8 rows (0.75% of the table): a read-only proposer, and a guarded writer that backs up, predicts to disk, guards each UPDATE on the expected pre-state and verifies afterwards. 8 applied, 0 skipped, row count 1071 unchanged, prediction matched 8/8. A second repair round corrected 11 more page citations (Waverley), resolved by the document's own chapter/section numbering after the value-only method left them ambiguous. 19 rows repaired in total; citation accuracy 85.3% -> 98.4%.",
+  "commit_hash": "76bda84c",
   "files": [
-    "scripts/falsifiability.py",
-    "scripts/doc_claims.py",
-    "scripts/qa_gate.py",
-    "scripts/baselines/doc-claim-baseline.json",
-    "tests/test_falsifiability.py",
-    "tests/test_doc_claims.py",
-    ".githooks/pre-push",
+    "scripts/validate_controls_against_source_pdf.py",
+    "scripts/prove_controls_pdf_check.py",
+    "scripts/measure_control_page_corrections.py",
+    "scripts/repair_control_pdf_pages.py",
+    "scripts/resolve_control_page_by_clause.py",
+    "tests/test_controls_against_source_pdf.py",
     ".gitignore"
   ],
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_falsifiability.py tests/test_doc_claims.py -q",
-    "fails_when": "TWENTY planted defects were each confirmed to turn this command red, then restored byte-identically -- and the planting was done BY the new helper, driven from an unmutated copy of itself in a temp directory so the file being mutated was never the file doing the mutating. On scripts/falsifiability.py: disabling the post-write hash comparison; making a missing anchor return instead of raise, which is the open-coded behaviour this replaces; downgrading the restore assertion to the print that PR #883 actually shipped (2 failures); removing the CRLF anchor translation so a multi-line plant silently no-ops again; skipping the recovery sidecar (4 failures); and swapping the atomic os.link claim for a non-exclusive os.replace. On scripts/doc_claims.py: check_paths returning [] (10 failures), check_versions returning nothing (6), check_dependencies returning nothing (8), dropping the stale-line-citation check, ignoring the basename-ambiguity flag so a route.ts:548 claim is judged against an arbitrary route.ts, rewording an unknowable note as an all-clear, counting markdown as evidence that a requirements file is installed, accepting a bare `-r file.txt` with no pip install in front of it (48 failures), guessing which number belongs to which identifier when a line names two, dropping the backslash-continuation join so a real multi-line pip install reads as an orphan, weakening the ast test-import parse so pytest.importorskip is missed, replacing the ast version parse with a raw-text regex so a constant inside a comment becomes a live value, removing the GIT_* environment scrub so git answers about the wrong repository, and taking the baseline counts from all violations instead of the ones written. Baseline green before each plant and green again after; both files' final sha256 byte-identical to the first. ONE MUTANT INITIALLY SURVIVED and is recorded rather than quietly fixed: swapping os.link for os.replace left every test passing, because the concurrency test was reaching StalePlantFound through the up-front sidecar.exists() check and could not distinguish an atomic claim from check-then-act. It was a test that could not fail for the reason it claimed. Rewritten to force the lost race -- exists() reports False for a sidecar that is present -- after which it dies. The authority is external to the code under test in the two cases that matter most: tests/test_doc_claims.py::test_planting_a_nonexistent_test_path_goes_red and ::test_planting_a_mismatched_version_goes_red plant into the real tracked docs/QA-DATA-PROVENANCE.md and assert against the real filesystem and the real code constants, not against a fixture the check also generated.",
-    "external_authority": "git ls-files and the filesystem decide whether a path resolves; the assignment statements in tracked .py/.ts/.tsx files decide what a version constant holds; the pip install -r lines in .github/workflows and Dockerfiles decide which requirements files are installed. None of the three is produced by doc_claims.py, so no check compares the tool against its own output."
+    "command": "python scripts/prove_controls_pdf_check.py",
+    "fails_when": "Seven defects are planted into scripts/validate_controls_against_source_pdf.py one at a time and each must turn tests/test_controls_against_source_pdf.py red; the runner exits 1 if any survives, if the baseline is not already green, or if a plant fails to change the file sha256. Measured 7/7 CAUGHT, file restored byte-identically each time. The planted defects: (1) stop requiring the control number to be present, (2) stop requiring the subject wording to match, (3) soften DATA_MARK from 0.95 to 0.50, (4) treat could-not-check rows as checkable, (5) stop stripping clause markers, (6) stop preferring the stored value over numbers scraped from the quote, (7) stop folding ampersand into and. Separately, python -m pytest tests/test_controls_against_source_pdf.py -q must pass 35/35.",
+    "external_authority": "The council's own published DCP PDF, fetched from R2. Nothing in this pipeline produced it, so it can disagree with us, which is the entire point. This is the first external authority the controls table has been compared against (ce-verified-capability-statement-2026-08 section 2.6d: not compared against anything)."
   },
   "pre_impl": {
-    "existing_data": "Four sweeps against origin/main 704ccb0f, recorded in each script's prior-art-checked header. No shared plant-restore helper exists: git ls-files scripts/ matching falsif|plant|restore|mutat returns only mutation_health.py and run_mutation_tests.sh, which drive mutmut and never edit a file in place; git grep for planted-a-defect phrasing across py/ts/tsx/sh/md/json returns zero; git grep for def plant|restore|prove_falsif returns zero. The only implementation that has ever existed is a throwaway scratchpad script from PR #883, never committed. Nothing checks a document's claims against code either: the three existing lint_*.py scripts all lint code, and the plan doc's own section 4i says of this exact idea 'Noted, not yet machinery.'",
-    "assumption_mismatch": "Three of the brief's factual claims did not survive checking, and one correction changed the design. The brief says PR #883 'did it correctly with sha256 on both sides'. It hashes both sides but does not ASSERT either: a missing anchor prints '!! SKIPPED' and continues (scratchpad prove_it_fails.py:74-76), and the closing byte-identity comparison is print('BYTE-IDENTICAL TO BASELINE:', after == baseline) at line 94 -- it reports False and still exits 0. So the reference implementation fails open on BOTH rules, not neither, which is why the helper raises rather than reporting. The brief also implies these scripts are committed somewhere; they are not, in any branch. And the plan doc's section 4j claims the METHODOLOGY_VERSION single-source fix and the API score exclusion are 'SHIPPED' -- git grep METHODOLOGY_VERSION on origin/main returns zero and merged #887 touched five files, none of them code. That work sits in open PR #889, which is a different session's branch and was left alone.",
-    "new_vs_existing": "New shared helper rather than extending anything, because there is nothing to extend. The CRLF failure mode was verified rather than assumed: git config core.autocrlf is true on this repo, so every checked-out source file has CRLF endings while every anchor typed into a Python literal has LF, which makes the silent no-op the DEFAULT outcome of the naive pattern and not an unlucky edge case. That is pinned as its own test. The doc-claim check is added to the existing scripts/qa_gate.py rather than becoming a new gate, and reuses the committed-baseline idiom already established by scripts/check_dependency_skips.py."
+    "existing_data": "Four sweeps against origin/main f5acb080, recorded in the script prior-art-checked header. validate_control_source_values.py (#868) compares a value to its OWN stored quote and cannot fail when the quote came from the wrong place. validate_controls_provenance.py (#866) classifies provenance from the repo and never opens a document. link_controls_to_provisions.py (#867) matches against the ingested corpus, 42 of 1071 rows, and the corpus is itself extracted so it is not independent. measure_control_quote_gap.py measures why that match misses. numeric_control_review.py is nearest and its R2 download is REUSED, not copied. Frontend sweep: StateLevelControls, DcpStructuredControls, planning-controls route and api/dcp/structured-controls all render controls; none verifies one.",
+    "assumption_mismatch": "TWO assumptions were false and both were caught before any figure was reported. (1) source_text is documented everywhere as the verbatim sentence its number came from; for table-derived controls it is a reconstruction of a table cell plus its row and column labels, measured on marrickville id=534 where the PDF reads 'Seniors housing' and '0.2 per unit ... visitors & carers' under the heading 'Car spaces: Parking Area 1'. A contiguous-run test would have scored it near zero and reported a false crisis, so the method became value-presence plus term coverage. (2) pdf_page was assumed to locate the control; all 21 marrickville rows cite page 8 while the rate is on page 10, and the printed folio is the PDF index minus 4, so neither reading of the field matches. Data correctness and citation accuracy were therefore split into two separately reported measurements.",
+    "new_vs_existing": "New script. It is the third rung (validated against X) for an asset previously at rung 1-2 only, and it is deliberately additive: nothing existing changed behaviour. The .gitignore edit un-ignores the two new scripts, which sit under a blanket scripts/* exclusion with a per-file allow-list; without it both would have been silently untracked, the trap #866 already had to guard once."
   },
   "functions": [
     {
-      "name": "planted",
-      "file_line": "scripts/falsifiability.py:287",
-      "input": "a file path, an anchor string or bytes, and its replacement; everything is coerced to bytes, so there is no decode step to crash on",
-      "output": "a context manager yielding PlantInfo with the before and after sha256 digests and which newline style the anchor matched",
-      "if_none": "raises rather than returning; a missing anchor, an ambiguous anchor, a no-op replacement, a write that reverts and a stale sidecar are each a distinct exception with the reason named"
+      "name": "page_supports",
+      "file_line": "scripts/validate_controls_against_source_pdf.py:203",
+      "input": "the control quote, one page's extracted text, and the control's stored value_min/value_max",
+      "output": "(supported, term_coverage, missing_values). Supported requires BOTH the stored value present on the page (accepted in metres or millimetres) AND at least 70% of the quote's distinguishing words. Two independent conditions: the value is the claim under test; the term coverage is what stops a bare number matching by coincidence on a 1563-page document.",
+      "if_none": "An empty page returns (False, 0.0, the required values). A row with no stored value and no numbers in its quote can never return True because bool(wanted) is part of the conjunction, so a vacuous pass is impossible."
     },
     {
-      "name": "_restore",
-      "file_line": "scripts/falsifiability.py:371",
-      "input": "the target path, the original bytes, the original digest, and the sidecar path holding a second copy of those bytes",
-      "output": "returns only after the file on disk hashes to the original value, at which point the sidecar is deleted",
-      "if_none": "retries one write for a transient lock, then raises RestoreFailed naming both digests and leaves the sidecar in place so --recover can finish the job"
+      "name": "required_values",
+      "file_line": "scripts/validate_controls_against_source_pdf.py:170",
+      "input": "value_min, value_max as stored (numeric or None)",
+      "output": "The numbers that must be found, each also offered in its millimetre/metre twin because a stored 0.9 is routinely published as 900mm.",
+      "if_none": "Returns empty rather than guessing. The caller then falls back to numbers scraped from the quote, and if there are none either, the row is classified no_numeric_value_to_check and excluded from the denominator."
     },
     {
-      "name": "check_dependencies",
-      "file_line": "scripts/doc_claims.py:768",
-      "input": "the project directory and the set of tracked paths from git ls-files",
-      "output": "violations for requirements files no installer references and for packages tests import that the CI install set never provides",
-      "if_none": "when no CI pip install -r line can be found it emits an unknowable note and runs no test-import check, rather than reporting a clean result it did not earn"
+      "name": "strip_clause_marker",
+      "file_line": "scripts/validate_controls_against_source_pdf.py:149",
+      "input": "a control's stored source_text, which for DCP rows usually opens with a clause marker such as C.06 or O.01",
+      "output": "The same text with a leading clause marker (C.06, O.01, A.1.2) removed, so its digits are never read as a measurement.",
+      "if_none": "None or empty returns an empty string. A sentence that genuinely opens with a value (3 metres is the minimum...) is not matched by the marker pattern and keeps its number, pinned by test."
     },
     {
-      "name": "observe_doc_claims",
-      "file_line": "scripts/qa_gate.py:1207",
-      "input": "the QA report path, the diff file list and the project directory, taken from the same argv parsing the gate already does",
-      "output": "a list of human-readable observation lines, diff-scoped to changed markdown plus the report itself and filtered against the committed baseline",
-      "if_none": "returns a SKIPPED line saying unknowable rather than an empty list, and never contributes to the errors list or the passed flag"
+      "name": "classify",
+      "file_line": "scripts/validate_controls_against_source_pdf.py:250",
+      "input": "one control row plus the full page-text map of its cited document",
+      "output": "Exactly one of eight verdicts: supported_on_cited_page, supported_on_another_page (carrying the real page and the offset), unsupported_by_document, cited_page_past_end_of_document, document_has_no_text_layer, document_unavailable, row_has_no_source_text, no_numeric_value_to_check.",
+      "if_none": "Every not-checkable condition has its OWN verdict rather than collapsing into a failure or a pass, and all four are excluded from the denominator, which is printed beside every rate."
     }
   ],
-  "values": "N/A — no database or API values are read. The only external inputs are tracked file paths, file bytes and sha256 digests.",
-  "queries": "N/A — no SQL is executed anywhere in this change.",
+  "values": [
+    {
+      "value": "dcp_setback_controls.value_min / value_max — the control's stored number, and the thing under test. Column names read from information_schema, not inferred.",
+      "read_at": "scripts/validate_controls_against_source_pdf.py ROWS_SQL, consumed by required_values() and compared against the PDF page text.",
+      "if_missing": "14 of the 152 rows store neither. The row is classified no_numeric_value_to_check and excluded from the denominator — never a pass, never a failure. These are legitimate: Waverley and Woollahra front setbacks are character-based and the DCP sets no numeric minimum."
+    },
+    {
+      "value": "dcp_setback_controls.pdf_page — the page the row claims its value came from. 193 of 1071 rows carry one; 152 are current and join to a fetchable document.",
+      "read_at": "Same query; consumed by classify() to build the ±1 page window.",
+      "if_missing": "919 controls have no page and are outside this check entirely. Reported as a coverage limit (14%), never silently treated as covered."
+    },
+    {
+      "value": "dcp_setback_controls.source_text — the quote, used only for its distinguishing words, not as a verbatim string.",
+      "read_at": "Same query; consumed by distinctive_terms() after strip_clause_marker().",
+      "if_missing": "Verdict row_has_no_source_text, inside COULD_NOT_CHECK, excluded from the denominator."
+    },
+    {
+      "value": "dcp_chapter_registry.r2_current_path — the object key of the council's published PDF.",
+      "read_at": "Same query, joined on (council = lga, chapter_key = source_chapter_key); consumed by download_from_r2().",
+      "if_missing": "Rows without a path are excluded by the WHERE clause. A path that fails to download yields document_unavailable, printed per document, never a pass."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Select every current control that cites a page and joins to a fetchable published document — the checkable population.",
+      "file_line": "scripts/validate_controls_against_source_pdf.py ROWS_SQL (module constant, executed once in main())",
+      "where_clause": "c.pdf_page IS NOT NULL AND c.is_current = TRUE AND g.r2_current_path IS NOT NULL AND g.r2_current_path <> '' — scoped to current rows so superseded controls are not judged, and to rows with a document so an unreachable PDF cannot masquerade as a failure. Runs under SET statement_timeout = '60s' on a connection pinned conn.set_session(readonly=True). No writes, no DDL."
+    }
+  ],
   "break_it": [
     {
-      "scenario": "A proof run is killed with SIGKILL or the machine loses power while a defect is planted, so the finally block never executes and the mutation stays in the working tree.",
-      "what_happens": "The recovery sidecar written before the plant survives. The next planted() call on that file raises StalePlantFound and refuses to start, and .githooks/pre-push runs falsifiability.py --check, which exits 1 and blocks the push with the recover command in the message.",
+      "scenario": "A clause marker's digits are counted as a control value.",
+      "what_happens": "C.06 On corner lots ... minimum of 3 metres yields numbers 6 and 3, which then match a page discussing 600m2 suburban lots, and the row passes on the wrong page.",
       "mitigated": true,
-      "how": "Sidecar written before the write and deleted only after a hash-verified restore; tests test_stale_sidecar_refuses_to_start, test_recover_restores_and_clears and test_check_cli_is_red_while_a_plant_is_live cover all three paths.",
-      "repro": "python -m pytest tests/test_falsifiability.py -q -k 'stale or recover or check_cli'"
+      "how": "strip_clause_marker removes the marker before any number is read, and the stored value_min/value_max takes precedence over quote-scraped numbers. Three tests pin it; planting its removal turns the suite red.",
+      "repro": "Not hypothetical: measured live on parramatta id=563 and it produced the first run's inflated 99.3%."
     },
     {
-      "scenario": "Someone writes a multi-line anchor with LF newlines against this repo's CRLF working tree, exactly as happened when a plant silently no-opped and the run still reported success.",
-      "what_happens": "The helper detects the file's dominant line ending, retries the anchor translated to it, and plants successfully with anchor_style CRLF-translated. If translation still finds nothing it raises PlantDidNotTake naming the line ending as the usual cause, instead of skipping.",
+      "scenario": "A control that legitimately has no number is reported as unsupported.",
+      "what_happens": "Waverley and Woollahra character-based front setbacks (consistent with the predominant setback of adjacent development) have no numeric minimum by design. Thirteen correct rows were failed, manufacturing a defect out of good data.",
       "mitigated": true,
-      "how": "dominant_newline plus _anchor_candidates; test_the_naive_pattern_is_the_one_that_no_ops pins the counterfactual that plain replace() is a no-op on the same input, so the reason survives even if the mechanism changes.",
-      "repro": "python -m pytest tests/test_falsifiability.py -q -k 'naive or multiline or missing_anchor'"
+      "how": "no_numeric_value_to_check is its own verdict inside COULD_NOT_CHECK, excluded from the denominator and never counted as a pass.",
+      "repro": "Measured: 14 of the 152 rows store no value; the run reported 84.9% before this was separated and 91.5% after."
     },
     {
-      "scenario": "The restore write runs but a lock, an antivirus scanner or a filesystem layer leaves different bytes on disk, so the file looks restored and is not.",
-      "what_happens": "RestoreFailed is raised with both digests. If the proof body ALSO raised, the restore failure is what propagates, because damage on disk outranks a failed assertion, and the body exception is preserved on __context__ so nothing is lost.",
+      "scenario": "A bare number matches by coincidence on a very long document.",
+      "what_happens": "Parramatta's DCP is 1563 pages, so almost any small number appears somewhere and a value-only test would pass nearly everything.",
       "mitigated": true,
-      "how": "The finally block re-reads and re-hashes rather than trusting the write; test_restore_that_does_not_complete_raises and test_failed_restore_outranks_a_failing_body sabotage Path.write_bytes to force exactly this.",
-      "repro": "python -m pytest tests/test_falsifiability.py -q -k 'restore'"
+      "how": "70% term coverage is required on the same page as the value. Planting the removal of the coverage condition turns the suite red.",
+      "repro": "tests/test_controls_against_source_pdf.py::TestPageSupports::test_right_numbers_wrong_subject_is_not_supported"
     },
     {
-      "scenario": "The doc-claim check reads a document that cites a bare route.ts:548 when forty-seven files share that basename, so the line-count comparison has no single file to judge against.",
-      "what_happens": "The resolver returns an ambiguity flag alongside the match and the line-number comparison is skipped entirely. Reporting a line finding computed from an arbitrary same-named file would be a fabricated finding, which is worse than a missed one.",
+      "scenario": "A PDF is a scanned image with no text layer.",
+      "what_happens": "Every control in it reads as unsupported, producing a false mass failure.",
       "mitigated": true,
-      "how": "_resolvable returns a (path, unambiguous) pair and check_paths gates the lineref branch on it; test_line_citation_against_an_ambiguous_basename_is_not_reported covers it, and removing the flag turns the suite red.",
-      "repro": "python -m pytest tests/test_doc_claims.py -q -k 'ambiguous'"
+      "how": "document_has_no_text_layer is a distinct verdict inside COULD_NOT_CHECK. Observed live: 3 of 23 marrickville pages and 1 of 48 georges_river pages carry no text.",
+      "repro": "tests/test_controls_against_source_pdf.py::TestClassify::test_document_without_text_layer_is_not_a_pass"
     },
     {
-      "scenario": "The doc-claim check runs somewhere git cannot answer, for instance an exported tarball or a container without the .git directory, so no path can be resolved.",
-      "what_happens": "scan returns zero violations WITH an unknowable note stating that no check ran and that this is not a pass, and observe_doc_claims prints a SKIPPED line. A silent empty result would read as a clean corpus.",
+      "scenario": "R2 credentials are absent or a fetch fails.",
+      "what_happens": "The run silently checks nothing and reports a clean pass.",
       "mitigated": true,
-      "how": "tracked_files returns None rather than an empty set, and every unknowable branch appends a note; test_no_git_index_is_unknowable_not_clean asserts the note text, and rewording it as an all-clear turns the suite red.",
-      "repro": "python -m pytest tests/test_doc_claims.py -q -k 'unknowable or unreadable or unmappable'"
+      "how": "document_unavailable is a distinct verdict, the failure is printed per document, and a run where nothing is checkable returns 'nothing could be checked -- that is not a pass' and exits 1.",
+      "repro": "tests/test_controls_against_source_pdf.py::TestSummaryMark::test_nothing_checkable_is_not_a_pass"
     },
     {
-      "scenario": "Somebody reads a quiet doc-claim run as evidence that a document is true, when the check cannot decide a semantic claim such as the services/CLAUDE.md sentence about which pipeline a product shares.",
-      "what_happens": "Nothing is reported, because nothing decidable is wrong. The limit is stated in the module docstring, in the qa_gate observation footer and in the PR body, and a test builds a document whose every sentence is false but whose paths all resolve, asserting silence.",
+      "scenario": "The pass mark is softened after seeing a disappointing result.",
+      "what_happens": "The check becomes a formality, exactly the DQ-30 0%-drift failure in a new costume.",
       "mitigated": true,
-      "how": "test_semantic_claims_are_out_of_scope pins the boundary so that a future widening has to change the stated scope deliberately rather than by accident.",
-      "repro": "python -m pytest tests/test_doc_claims.py -q -k 'semantic'"
+      "how": "DATA_MARK is a module constant documented as fixed before the first fetch, pinned by a test, and planting a change to it turns the suite red. Citation accuracy is reported UNGRADED precisely because one case was inspected during pre-implementation.",
+      "repro": "python scripts/prove_controls_pdf_check.py, case 'soften the pass mark to 50%'"
     },
     {
-      "scenario": "The checker runs from inside a git hook, where git exports GIT_DIR and GIT_INDEX_FILE, and those variables override the cwd a subprocess was pointed at.",
-      "what_happens": "Without a scrubbed environment `git ls-files` answers about the hook's repository instead of the scanned one, so every path resolves against the wrong file list. tracked_files now strips GIT_* before the call, and so does every git invocation in the test fixture.",
+      "scenario": "A missing library silently skips the check.",
+      "what_happens": "A green run that verified nothing, the pattern that left 23 tests dark for months.",
       "mitigated": true,
-      "how": "doc_claims.git_env() removes GIT_* except the ssh/askpass helpers, and test_git_hook_env_does_not_redirect_the_file_list pins it by setting GIT_DIR to a different repository and asserting the scanned repo's files still come back.",
-      "repro": "GIT_DIR=$(git rev-parse --git-dir) python -m pytest tests/test_doc_claims.py -q"
+      "how": "fitz and psycopg2 are imported at module scope with no try/except and no importorskip, so an absent library is an immediate RED. numeric_control_review.py's try/except-to-None is called out in the header as the anti-pattern.",
+      "repro": "Rename the fitz package and run the script; it raises ImportError rather than reporting a pass."
+    },
+    {
+      "scenario": "A --limit debug run is read as a full gate result.",
+      "what_happens": "The rate describes only the documents the caller chose to fetch, but the script printed PASS and exited 0, so a partial run is indistinguishable from a complete one.",
+      "mitigated": true,
+      "how": "A --limit run that actually skipped documents prints INCONCLUSIVE with the skipped count and returns 2. A partial run can never exit 0.",
+      "repro": "python scripts/validate_controls_against_source_pdf.py --limit 2 ; echo $?  -> 2"
+    },
+    {
+      "scenario": "A wrong page reference is replaced by a guessed one, so it looks repaired and nobody re-checks it.",
+      "what_happens": "The 11 ambiguous Waverley rows each have several pages carrying the value in a 448-page document; picking the first would write a differently-wrong page that now carries an air of verification.",
+      "mitigated": true,
+      "how": "A correction is proposed ONLY where exactly one page in the whole document carries the value at >=80% term coverage. Ambiguous (11) and not-in-document (12) are reported and never written.",
+      "repro": "python scripts/measure_control_page_corrections.py — states: already_correct 110, single_candidate 8, ambiguous 11, not_in_document 12, not_testable 11."
+    },
+    {
+      "scenario": "A row changed between measurement and write, and the write clobbers the newer value.",
+      "what_happens": "Another session's repair is silently overwritten with a stale proposal.",
+      "mitigated": true,
+      "how": "Every UPDATE carries WHERE id = %s AND pdf_page = %s (the expected pre-state); a non-matching row yields rowcount 0, is counted as SKIPPED and printed. Pre-state of all 8 rows is backed up before the first write and the predicted after-state is written to disk before any row changes.",
+      "repro": "data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09.json and ..._prediction_2026-08-09.json"
+    },
+    {
+      "scenario": "A page correction is derived in a scratchpad script that is never committed.",
+      "what_happens": "The 11 Waverley repairs become unreproducible hand-work — the exact failure the extraction post-mortem names, and the reason half the controls table has no recipe.",
+      "mitigated": true,
+      "how": "scripts/resolve_control_page_by_clause.py is committed and allow-listed past the blanket scripts/* ignore; re-running it regenerates the same 11 (council, clause, page) triples.",
+      "repro": "python scripts/resolve_control_page_by_clause.py"
     }
   ],
-  "mutation_analysis": "Eleven mutations, all caught, listed with their failure counts in falsifiable_check.fails_when. The two that matter most are the ones reproducing real incidents: making a missing anchor return instead of raise reproduces the open-coded skip behaviour and goes red, and downgrading the restore assertion to a print reproduces exactly what PR #883 shipped and goes red with two failures. Two guards were confirmed load-bearing that a reviewer might read as defensive padding: removing the CRLF translation and removing the sidecar write both turn the suite red. Three defects in the new code were found by these tests rather than by review -- find was never converted to bytes so every plant raised TypeError, the code-constant regex used [Vv]ersion and therefore missed every SCREAMING_CASE constant including METHODOLOGY_VERSION, and the doc version regex refused a literal ending a sentence. Not covered by mutation testing: the argparse wiring in either main(), and the exact wording of finding messages. Sol raised five findings on the diff and all five were real and are fixed, each pinned by a new test: --strict exited 0 when the scan could not run at all, which is the fail-open this change exists to remove and now exits 2; pip's -r includes were not followed, so an included requirements file would have been reported as an orphan nothing installs; the baseline was generated before the QA report was rewritten and therefore carried fingerprints from the previous report; a version identifier defined in two modules let a doc name the other module's value unchallenged, now reported as an unknowable note while a literal no module holds is still a finding; and a file present on this machine but untracked was accepted as a resolved path, which made the result depend on whose checkout ran it. A second Sol round on the fixed diff raised five more, also all real and all fixed, each pinned by a test: the recovery sidecar was written non-atomically, so a kill mid-write could leave TRUNCATED bytes that --recover would then write over the target while reporting success -- a backup that can be silently wrong is worse than none, because it is trusted, and it is now a temp file plus fsync plus os.replace; the pre-push guard was gated on the helper file existing, which failed open in the one situation that matters, so the sidecar search now runs in shell and does not depend on the helper at all; markdown was counted as evidence that a requirements file is installed, meaning a README SAYING pip install -r was believed about what the code does, which is the precise error this module exists to catch, and dropping it surfaced requirements-latentscope.txt as a genuine orphan nothing automated installs; a commented-out install line counted as an install; and version constants were read by raw-text regex, so an assignment inside a comment or an example string was treated as a live value that could silently validate a false doc claim, now parsed with ast for Python and comment-stripped for TypeScript, where the residual string-literal gap is stated rather than papered over. A third round raised four more, again all real and all fixed: the sidecar was claimed by an exists() check followed by a create, which is check-then-act, so two concurrent plants on one file would both proceed and the first restore would delete the second's evidence -- the claim is now a single atomic os.link that raises FileExistsError, with the weaker os.replace kept only for filesystems without hard links and labelled as weaker; the directory entry was not fsynced, now best-effort with an explicit note that it is a no-op on Windows and that the kill case which actually happened is covered without it; the baseline header counted all violations while writing only the baselineable ones, so it could disagree with its own findings list; and a version literal was bound to EVERY identifier within the window rather than the nearest, which would fabricate two mismatches from the line 'API_VERSION 2.0 and METHODOLOGY_VERSION 1.1' when both claims are correct. That last one is the worst class in this change -- a fabricated finding -- and it is now pinned by a test in both directions. Three Sol rounds, fourteen findings, all real, none dismissed.",
-  "residual_risk": "The doc-claim check's precision is measured, not assumed, and the number is a lower bound. The first live run produced 368 findings; six defects in the CHECK accounted for most of them -- an extension alternation matching ts before tsx, a missing trailing boundary turning shapely.geometry.shape into a .sh file, a lookbehind that let placeholder and glob tails through as _config.py and _parking.py, no relative-path resolution for ../.. references, ambiguous basenames driving line-count claims, and whole-line scoping that pulled a correlation threshold into a version claim. After fixing all six the corpus stands at 137 baselined findings across 124 documents -- 127 path, 1 version, 9 dependency -- plus 8 more raised against this change's own QA report, which is deliberately excluded from the baseline because it is rewritten every PR and a stale fingerprint would suppress the same false claim when a later report made it for real. Of the 127 path findings, 126 name a basename that exists nowhere in the repository, which makes them high-confidence true positives; a targeted sweep of the tokens that looked wrong found 3 false positives (an abbreviation _geometry.py, the prose fragment Check-exclusions.ts, and pdfplumber/pdf.js which names a third-party file outside the repo), so roughly 2.4 percent. A 15-item random sample contained none. That sweep was targeted rather than exhaustive, so 3 is a floor and not a measured total -- all 127 were not hand-verified, and saying so is the point of observation mode. Also unmeasured: whether the finding count grows or shrinks over a fortnight of normal commits, which is the number that would earn blocking status. Separately, the basename-keyed installer map cannot distinguish three different requirements.txt files, which is deliberate because Dockerfiles COPY-rename them, but it means a genuinely orphaned requirements.txt in a subdirectory would be missed. Thirty-five test imports could not be mapped to a distribution and were not checked; they are reported as unknowable, not as clean. One further false-positive mode was found by running the gate on THIS report: a document that QUOTES a nonexistent path as an example gets flagged for quoting it. Six of the six new findings on this change are that mode -- five are the false-positive examples named above and the sixth is the uncommitted scratchpad script prove_it_fails.py. It is the same shape as the CLIMATE_RISK_METHODOLOGY.md line that describes the v1.2 defect and is then reported for containing 1.2. Deliberately not suppressed: distinguishing a quoted example from a live claim needs a reader, and a heuristic that guessed would start hiding real findings. It is the strongest argument in this change for staying in observation mode. Found the hard way, and worth recording because it is this change's own subject matter: the first push attempt went red inside .githooks/pre-push while the same suite was green run directly. Git exports GIT_DIR and GIT_INDEX_FILE to its hooks and they override a subprocess's cwd, so the test fixture's `git init` and `git commit` operated on the REAL worktree -- moving its branch to the fixture's commit and replacing its index with six fixture files. Nothing was lost (the work commit was recovered by SHA with git reset --mixed, working tree untouched), and the same variable would have made `git ls-files` answer about the wrong repository, which is a silently wrong file list underneath every path finding. Both the tool and the fixture now scrub GIT_*, and the case is pinned by a test that points GIT_DIR at a different repository.",
+  "mutation_analysis": "Seven mutations planted through the shared #890 harness, all seven caught, each restored byte-identically and verified by sha256 in a finally block. The two that matter most reproduce real incidents rather than hypotheticals: stop-stripping-clause-markers reproduces the measured parramatta id=563 false positive and the zone-probe trap where Woollahra C1 (Control 1) and Ashfield E1 (a chapter label) were counted as zone codes; count-could-not-check-as-checkable reproduces the denominator inflation that would let unfetchable documents read as passes. On strength rather than volume: the 35 unit tests cover a pure core with no I/O, so a mutation cannot be masked by a network or database dependency.",
+  "residual_risk": "THE HEADLINE NUMBER IS NOT A LIST OF CONFIRMED ERRORS. Twelve controls are reported unsupported; none has been confirmed by a human opening the PDF. At least one (wingecarribee id=1160) missed on term coverage by three percentage points, which is a threshold artifact rather than a data defect, so the true error count is at most 12 and possibly well below. The 70% coverage threshold and the plus-or-minus-1 page tolerance are judgement calls with no external basis. Coverage is 14% of the table: 919 controls record no page and are untouched, so nothing here licenses a claim about the other 86%. Citation accuracy (85.3%) is measured but ungraded this run and must not be quoted as a passed test. Finally, this checks that a number APPEARS on a page alongside matching words; it does not read the sentence, so a control could be supported by text that means the opposite, and only a human reading can settle that.",
   "post_merge": {
-    "db_reset": "No. Nothing in this change reads or writes any database.",
-    "secrets": "No. No credentials, tokens or connection strings are read, written or logged.",
-    "other_repo": "No. Single repository, and the new pre-push line is guarded by a file-exists test so a clone without the script is unaffected.",
-    "manual_verify": "Yes. Run python scripts/doc_claims.py once after merge and confirm 138 findings against scripts/baselines/doc-claim-baseline.json, then git config core.hooksPath .githooks in each existing worktree so the planted-defect guard is actually installed rather than merely committed."
+    "db_reset": "A production write WAS performed: pdf_page corrected on 8 of 1071 dcp_setback_controls rows. Backup data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09.json; rollback is UPDATE dcp_setback_controls SET pdf_page=<pdf_page> WHERE id=<id> from that file. Verified: 8 applied, 0 skipped, row count 1071 before and after, prediction matched 8/8, and an independent re-run of the checker moved citation accuracy 85.3% -> 91.5%. SECOND WRITE: pdf_page corrected on 11 further rows (Waverley), backup data/db_rollback_backups/control_pdf_pages_pre_repair_2026-08-09-waverley.json, 11 applied, 0 skipped, 1071/989 rows unchanged, prediction matched 11/11, citation accuracy verified 91.5% -> 98.4% by re-run.",
+    "secrets": "No. Credentials are read from the bare repo .env into os.environ and never printed; the R2 client is constructed from them and no key, token or connection string is logged. PDFs are cached to the OS temp directory, not the repo.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Open the twelve unsupported controls' PDFs at the cited page and read them, to separate real extraction errors from threshold artifacts. Then decide whether the 919 controls with no pdf_page should have one backfilled, since without it they cannot be checked by this method at all."
   }
 }
