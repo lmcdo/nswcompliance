@@ -1,168 +1,135 @@
 {
-  "tier": "standard",
-  "justification": "Takes the quarantined-test list from 16 files to ZERO, and installs a shrink-only ratchet in CI so it cannot silently refill. 3,970 -> 4,101 passing tests. Six files already passed; two were broken BY the quarantining itself; two had drifted behind the code and were repaired; five were not tests at all (1,090 lines, zero assertions) and were deleted; three needed a live server or a real database and now carry skip guards. Standard tier: it changes what the gates enforce for every future change, deletes files, and touches tests/conftest_mocks.py, which every one of the 4,101 tests imports.",
-  "commit_hash": "af459a82",
-  "files": [
-    ".claude/rules/testing-and-qa.md",
-    ".github/workflows/gates.yml",
-    ".gitignore",
-    ".qa_report.json",
-    "pytest.ini",
-    "scripts/check_test_quarantine.py",
-    "src/processing/__init__.py",
-    "tests/conftest.py",
-    "tests/conftest_mocks.py",
-    "tests/quarantine-baseline.json",
-    "tests/test_address_validation.py",
-    "tests/test_check_test_quarantine.py",
-    "tests/test_conveyancing_db.py",
-    "tests/test_conveyancing_integration.py",
-    "tests/test_dev_type_filtering.py",
-    "tests/test_end_to_end_validation.py",
-    "tests/test_integration.py",
-    "tests/test_leichhardt_thorough.py",
-    "tests/test_lga_coverage.py",
-    "tests/test_real_user_flow_with_pp.py",
-    "tests/test_version_tracking.py",
-    "tests/test_versioning_api.py"
-  ],
-  "falsifiable_check": {
-    "command": "python scripts/check_test_quarantine.py && python -m pytest tests/test_check_test_quarantine.py -q",
-    "fails_when": "PROVEN by planting both enforcement rules and confirming each fires, with tests/conftest.py restored byte-identically afterwards (md5 8b180d569b8a0b28e7eabe4660acb8eb before and after both). RULE 1, no new debt: added test_flood_truth.py to collect_ignore with no baseline entry -> 'NEW quarantine, not in the baseline: test_flood_truth.py', exit 1. RULE 2, fixed means released: added test_upzoning_check.py to collect_ignore WITH a fabricated baseline entry -> 'BASELINE ENTRY NOW PASSES: test_upzoning_check.py -- now 13 passed', exit 1. RULE 3 also fired unplanned and caught a real mistake of mine: my plant-2 cleanup failed to revert the untracked baseline file, leaving a stale entry behind, and the check reported 'STALE BASELINE ENTRY ... Delete the entry.' The ratchet caught its own author within minutes of being written.",
-    "limits": "The ratchet proves the quarantine list has not GROWN and that nothing in it has silently started passing. It says nothing about whether the ten remaining files SHOULD be fixed, and it cannot see a test that runs but asserts nothing. It reports that explicitly on every pass rather than printing an unqualified green."
+ "tier": "standard",
+ "justification": "Documentation only, but every claim in it is a measured claim about the live database and the current code, so it carries the same risk profile as code: a wrong number here goes into an employment, contract or licensing conversation and cannot be walked back. Three files under docs/architecture/ — SYSTEM_TECHNICAL.md (three Mermaid diagrams: what gets stored, what gets served, one address end to end), SYSTEM_INTEGRATED.md (the two-pile story view with assurance-ladder colouring and the seven gates), VERIFICATION.md (one row per box, arrow and count, each with the SQL or the file and line that produced it). No application code is touched. The risk this report addresses is not a runtime failure — it is a false claim shipped in a document that a hostile reader will check.",
+ "commit_hash": "1c33adc3",
+ "files": [
+  "docs/architecture/SYSTEM_TECHNICAL.md",
+  "docs/architecture/SYSTEM_INTEGRATED.md",
+  "docs/architecture/VERIFICATION.md",
+  "docs/architecture/rendered/technical-1-stored.svg",
+  "docs/architecture/rendered/technical-2-served.svg",
+  "docs/architecture/rendered/technical-3-lookup-trace.svg",
+  "docs/architecture/rendered/integrated-two-piles.svg"
+ ],
+ "pre_impl": {
+  "existing_data": "Prior-art sweep found four existing architecture documents before writing: docs/ARCHITECTURE.md (82 lines, dated 2026-05-02), .claude/docs/ARCHITECTURE.md (50 lines, 2026-01-30), .claude/docs/ARCHITECTURE_FLOW_AND_UI.md (1,079 lines) and .claude/docs/ARCHITECTURE-LGA-EXPANSION.md (414 lines). The brief named docs/ARCHITECTURE_FLOW_AND_UI.md, which does not exist at that path — it is under .claude/docs/. The two ARCHITECTURE.md files both open with '47,818 provisions', which is the row count of document_id_backup, a backup table; the live figure is 55,696. They are superseded rather than extended, and SYSTEM_TECHNICAL.md section 5 says so explicitly so a future reader does not treat them as current.",
+  "assumption_mismatch": "Four assumptions were wrong and were corrected before any file was written. (1) The working tree's local main was 51 commits behind origin/main at the time of the first probe; four of the seven named gates did not exist on that stale tree and .github/workflows/ was absent entirely. All evidence was re-gathered against origin/main at af7982a8. (2) The brief assumed the session might lack live DB access; it did not, so every count is measured on 2026-08-09 rather than cited from the 2026-08-08 strategy review. (3) services/CLAUDE.md describes all five satellite products as 'not started' and they are all shipped — that document is excluded as an evidence source. (4) A plain grep for 'sentinel' across services/ matches six modules, which would have put a false Sentinel-2 edge on the diagram; opening each file showed three of them use the word to mean a sentinel value. Only pre_da_history.py and drawdown_verify.py touch imagery.",
+  "new_vs_existing": "New directory docs/architecture/. Nothing existing was edited or deleted. The four prior architecture documents are left in place and cross-referenced with their staleness stated. .qa_report.json is replaced, which is the per-branch convention."
+ },
+ "functions": [
+  {
+   "name": "read-only DB evidence collection",
+   "file_line": "ad-hoc script; all SQL reproduced verbatim in docs/architecture/VERIFICATION.md section 1",
+   "input": "DATABASE_URL from the repository root .env",
+   "output": "37 exact counts, each stored beside the SELECT that produced it",
+   "if_none": "The connection was opened with set_session(readonly=True) and SET statement_timeout = 30000, so a write could not have executed even if one had been written by mistake. Had the connection failed, the fallback was the counts committed in STRATEGY_REVIEW_2026-08-08.md, labelled with that date; it was not needed."
   },
-  "pre_impl": {
-    "existing_data": "Measured before changing anything. All 16 quarantined files were run individually against the live database: 5 passed outright (35 tests), 1 was partial (50 pass / 27 fail), 10 were broken. Traced the origin with git log -S: every stale marker was added in ONE commit, 366f2054 on 2026-05-23, titled 'working test infrastructure + pre-push hook + CI' -- the commit that turned the gates on. Confirmed the exemption is invisible: the files sit in collect_ignore so pytest never collects them, they produce no skipped line, and `pytest -m stale` collects ZERO tests, meaning even a deliberate search finds nothing.",
-    "assumption_mismatch": "Assumed these tests were quarantined because they need infrastructure CI does not have (a running server, a live database) and therefore could not be turned on. WRONG for six of sixteen: they pass today with no changes at all. Worse, the assumption that quarantining is harmless was also wrong -- inserting 'import pytest / pytestmark = pytest.mark.stale' at the top of two files pushed 'from __future__ import annotations' below other statements, which is a SyntaxError. The quarantine did not merely hide broken tests, it CREATED two of them. test_lga_coverage.py has been un-runnable ever since for that reason alone.",
-    "new_vs_existing": "The shrink-only baseline pattern is copied deliberately from scripts/schema_contract_baseline.json rather than invented; its comment already states the two rules ('may only SHRINK... an entry that no longer occurs ALSO fails CI'). The CI step sits directly beside check_dependency_skips.py, its sibling for the other way a test stops running. No new pattern, no new dependency, no product code."
+  {
+   "name": "Mermaid render check",
+   "file_line": "docs/architecture/rendered/*.mmd, rendered with @mermaid-js/mermaid-cli@10",
+   "input": "the four fenced mermaid blocks, extracted from the two markdown files by script rather than by hand",
+   "output": "four SVGs, zero syntax errors, all page-shaped rather than strip-shaped",
+   "if_none": "mermaid-cli renders a diagram containing the words 'Syntax error' rather than exiting non-zero, so a grep for that string is run over each SVG as well as checking the exit path. All four return zero matches."
   },
-  "functions": [
-    {
-      "name": "quarantined_test_files",
-      "file_line": "scripts/check_test_quarantine.py:72",
-      "input": "no arguments; parses tests/conftest.py from disk",
-      "output": "sorted list of collect_ignore entries beginning with test_, read via ast rather than by importing conftest (importing would trigger its mock-injection side effects)",
-      "if_none": "returns an empty list when collect_ignore is absent or holds no test files, which the caller treats as zero debt rather than as an error"
-    },
-    {
-      "name": "run_one",
-      "file_line": "scripts/check_test_quarantine.py:106",
-      "input": "one test filename relative to tests/",
-      "output": "(passes_cleanly, summary). Runs pytest with -o addopts= so the ini's default deselection cannot hide the file from the check written to look at it",
-      "if_none": "a file that only skips, contains no tests, or errors on collection is NOT clean -- an all-skipped file protects nothing and promoting it would be the same self-deception one layer up"
-    },
-    {
-      "name": "load_baseline",
-      "file_line": "scripts/check_test_quarantine.py:95",
-      "input": "no arguments; reads and parses the JSON at tests/quarantine-baseline.json from disk",
-      "output": "dict keyed by filename, each carrying status, measured, error and cause",
-      "if_none": "a missing baseline file returns an empty dict, so every quarantined file then reports as new debt rather than being silently accepted"
-    },
-    {
-      "name": "pytest_report_header",
-      "file_line": "tests/conftest.py:57",
-      "input": "the pytest config object, unused",
-      "output": "one line naming the number of quarantined files, printed at the top of every run",
-      "if_none": "returns None when nothing is quarantined, so the line disappears entirely once the debt reaches zero"
-    }
-  ],
-  "values": [
-    {
-      "value": "6 files released, 43 tests recovered (3,970 -> 4,013 before this PR's own new tests; 4,024 with them)",
-      "read_at": "measured by running each quarantined file individually against the live database, 2026-08-09",
-      "why": "The concrete answer to 'can we turn them on'. Five needed no changes whatsoever; the sixth needed only the import-order repair.",
-      "if_missing": "Without measuring per file, the honest-sounding assumption -- 'they were quarantined for a reason, leave them' -- would have held, and 43 working tests would have stayed off indefinitely."
-    },
-    {
-      "value": "All 16 quarantined in commit 366f2054, 2026-05-23",
-      "read_at": "git log -S 'pytestmark = pytest.mark.stale' per file",
-      "why": "Changes the diagnosis completely. This is not gradual decay or neglect; it is the one-off cost of switching enforcement on, which nothing ever came back to pay down.",
-      "if_missing": "Without the origin the fix would be framed as discipline ('remember to check'), which is exactly the kind of prose rule this project has already established does not hold."
-    },
-    {
-      "value": "pytest -m stale collects 0 tests",
-      "read_at": "python -m pytest -m stale --collect-only -q, 2026-08-09",
-      "why": "Proves the exemption is invisible rather than merely quiet. The marker is dead weight; collect_ignore is what actually excludes them, and it reports nothing.",
-      "if_missing": "The obvious fix would have been to lean on the marker, which does nothing at all here."
-    },
-    {
-      "value": "2 files were broken BY the quarantining",
-      "read_at": "SyntaxError on 'from __future__ import annotations'; confirmed by restoring the legal import order and re-running -- test_lga_coverage.py then collected 12 tests",
-      "why": "The quarantine did not just conceal broken tests, it manufactured two. That is a much stronger argument for a visible list than mere untidiness.",
-      "if_missing": "These two would have been recorded as legitimately broken and left alone, when the repair was a two-line reordering."
-    }
-  ],
-  "break_it": [
-    {
-      "scenario": "The baseline becomes the new hiding place — entries are added and never removed, exactly as collect_ignore was.",
-      "what_happens": "The same failure with more ceremony: a longer list, still unread, still permanent. This is the single most likely way this PR fails to achieve anything.",
-      "mitigated": true,
-      "how": "Rule 2 is the answer and is why this is a ratchet rather than a baseline. A listed file that starts passing FAILS CI, so fixing a test forces its removal from the list. A baseline that only guards against growth would allow permanent amnesty; this one makes entries decay. Proven by planting a passing file with a fabricated entry.",
-      "repro": "Add a known-good file (e.g. test_upzoning_check.py) to collect_ignore with a baseline entry, then run scripts/check_test_quarantine.py -- expect 'BASELINE ENTRY NOW PASSES' and exit 1."
-    },
-    {
-      "scenario": "A file is quietly added to collect_ignore when it starts failing, instead of being fixed.",
-      "what_happens": "Debt grows invisibly, which is precisely the 15-month pattern this replaces.",
-      "mitigated": true,
-      "how": "Rule 1: any collect_ignore entry beginning with test_ that has no baseline entry fails CI with a message naming the file. Proven by planting test_flood_truth.py.",
-      "repro": "Add any test file to collect_ignore without a baseline entry and run the checker -- expect 'NEW quarantine, not in the baseline' and exit 1."
-    },
-    {
-      "scenario": "A released file was only ever passing because every one of its tests skips, so releasing it adds coverage that does not exist.",
-      "what_happens": "The test count rises and protects nothing — a flattering number, which is the failure mode this whole line of work exists to stop.",
-      "mitigated": true,
-      "how": "run_one treats an all-skipped file as NOT clean, so the ratchet will not demand its release and it stays quarantined until it genuinely runs. test_lga_coverage.py is exactly this case: it now collects 12 tests but every one skips, so it remains in the baseline with that recorded as its status rather than being counted as a win.",
-      "repro": "tests/test_check_test_quarantine.py::test_a_file_that_only_skips_is_not_treated_as_clean"
-    },
-    {
-      "scenario": "The stale marker deselects a quarantined file from the very check meant to inspect it, so the ratchet reports 'no tests ran' regardless of the file's real state.",
-      "what_happens": "The checker would report every quarantined file as still broken forever, including ones that had been fixed — silently defeating rule 2 while appearing to work.",
-      "mitigated": true,
-      "how": "run_one passes -o addopts= to clear the ini's -m \"not stale and not database\" default. Pinned by a test that builds a pytest.ini with a deselecting addopts and a marked test file, and asserts the result is still seen.",
-      "repro": "tests/test_check_test_quarantine.py::test_the_marker_cannot_hide_a_result_from_the_check"
-    },
-    {
-      "scenario": "Releasing six files destabilises the suite — a released test is flaky, or depends on the live database, and main goes red intermittently.",
-      "what_happens": "Red main, and the likeliest response is to re-quarantine, undoing the PR and reinforcing the original habit.",
-      "mitigated": true,
-      "how": "Partially, and the residual is stated. All six were run individually AND in the full suite: 4,024 passed, 2 skipped, 0 failed. Four of the six carry their own DATABASE_URL guards and skip cleanly without it, which is why the CI environment does not need to change. NOT established: behaviour over time. If one proves flaky, the correct response is to fix or re-quarantine it WITH a baseline entry recording why — which the ratchet now forces, so even a regression leaves evidence.",
-      "repro": "python -m pytest -q with and without DATABASE_URL set; both must be green."
-    },
-    {
-      "scenario": "A malformed baseline file makes the gate error out instead of reporting, so a broken checker reads as an infrastructure problem rather than as unrecorded debt.",
-      "what_happens": "load_baseline used .get('entries', []); with \"entries\": null present, the default does not apply and iteration raises. CI would show a crashed step, which gets triaged as flaky tooling and skipped, and the quarantine list stops being checked at all — the original failure, restored.",
-      "mitigated": true,
-      "how": "Uses (data.get('entries') or []) so a null or malformed entries block degrades to an empty baseline. That makes every quarantined file report as NEW debt and fails loudly, which is the correct direction for a gate: a broken baseline must not fail open. Caught by the qa_gate Python-adversarial check, not by me.",
-      "repro": "Set \"entries\": null in tests/quarantine-baseline.json and run scripts/check_test_quarantine.py -- it must report every quarantined file as new debt and exit 1, not raise TypeError."
-    },
-    {
-      "scenario": "The lazy RAGProcessor import hides a genuinely missing dependency until deep inside a run, or breaks a caller that relied on eager import.",
-      "what_happens": "Someone calling RAGProcessor in one of the two scripts that use it would hit the failure later than before, or `from src.processing import RAGProcessor` would stop working.",
-      "mitigated": true,
-      "how": "PEP 562 module __getattr__ keeps `from src.processing import RAGProcessor` working -- the name resolves on access and the ORIGINAL ImportError propagates, so the message still names `raganything` rather than a vague AttributeError. Deliberately NOT set to None on failure, which would have produced 'NoneType is not callable' far from the cause. Checked first: RAGProcessor appears in no file under services/, i.e. no deployed code path; only two one-off scripts use it.",
-      "repro": "python -c \"from src.processing import SchemaExtractor\" must succeed without raganything; python -c \"import src.processing as p; p.RAGProcessor\" must raise ImportError naming raganything."
-    },
-    {
-      "scenario": "The PYTEST_REAL_DB opt-in changes behaviour for the 4,101 tests that do not ask for it.",
-      "what_happens": "If the psycopg2 stub were skipped automatically whenever the real library is installed, thousands of pure-logic tests would start attempting real connections on any dev machine — silent, widespread, and hard to attribute.",
-      "mitigated": true,
-      "how": "Opt-IN via an explicit environment variable, never automatic. Default runs are byte-for-byte unchanged: measured 4,101 passed before and after the conftest_mocks edit. One real bug surfaced while building it — the RealDictCursor patch did an unguarded sys.modules lookup that raised KeyError and killed the ENTIRE run at conftest load under the new flag; it is now guarded, and only the stub is ever patched, never the genuine library.",
-      "repro": "python -m pytest -q (expect 4,101 passed) then PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_lga_coverage.py -o addopts= (expect it to connect and run, not skip)."
-    },
-    {
-      "scenario": "Releasing conditionally-runnable tests inflates the skip count, and the dependency-skip ratchet — the sibling gate — refuses the change.",
-      "what_happens": "Exactly what happened: skips went 2 -> 16 and CI failed with 'SKIP-TOTAL RATCHET: FAILED — 16 skipped test(s) against a baseline of 2'. The tempting fix is to raise that baseline, which would blunt a working gate to accommodate my change and make future genuine skip growth invisible.",
-      "mitigated": true,
-      "how": "Baseline NOT raised. The tests are DESELECTED instead, via a new `integration` marker in pytest.ini's addopts alongside the existing `database` one, and test_lga_coverage.py re-marked `database`. A test that needs a server this environment does not have is not a skipped test, it is a test for a different environment — so it should not consume the skip budget. Result: back to 2 skipped, 75 deselected, and both markers still reachable (`pytest -m integration` shows 14, `-m database` collects 31).",
-      "repro": "python scripts/check_dependency_skips.py must report against baseline without failing; python -m pytest -q must show 2 skipped, not 16."
-    }
-  ],
-  "mutation_analysis": "Both enforcement rules were planted and each fired with a specific message; conftest.py restored byte-identically (md5 identical). A third rule fired unplanned against a genuine error of my own -- a failed cleanup left a stale baseline entry and the checker demanded its deletion. The ratchet's own 11 tests were written to cover the cases most likely to be quietly weakened later: the all-skip case, the no-tests case, and the marker-hiding case. Weak assertions avoided: the tests assert on the clean/not-clean decision and the summary text rather than on exit codes alone, because an exit code cannot distinguish 'no tests ran' from 'all skipped', and those two need different responses.",
-  "residual_risk": "The list is empty, which is NOT the same as the tests being good. Three specific limits. (1) test_lga_coverage.py now runs, and on its first real execution FAILED on a genuine defect: Marrickville has 14.8% NULL v2_topic (583 of 3,934) against a 10% threshold. That is an open data-quality finding this PR surfaces and does not fix. (2) That gate still only checks 4 hardcoded councils, in a slug format that does not match production, and does NOT read the enabled-councils list — so it cannot notice a council being switched on. Rewriting it was attempted and deliberately STOPPED: the check is tier-dependent and no machine-readable tier map exists. Tier 2 councils promise numeric controls ONLY, so having no provision text is their DESIGNED state, not a defect; a naive derived gate would fail 13 councils that are working as intended. That is a product decision. (3) 16 tests now report as skips (live server or database absent). Visible and actionable, but not coverage. Unchanged elsewhere: the liability scanner still reads only changed lines, CI still runs no frontend build.",
-  "post_merge": {
-    "db_reset": "None. No migration, no schema change, no database write. Tests were run against the live database read-only to establish which files pass; nothing was written.",
-    "secrets": "None added or read. Four of the released files skip cleanly when DATABASE_URL is absent, which is how CI already runs them.",
-    "other_repo": "None. No sibling repository or deployment target affected.",
-    "manual_verify": "Confirm the first line of CI's pytest output reads 'quarantined: 10 test files excluded from collection', and that the 'Quarantined tests (shrink-only ratchet)' step appears and passes. Then confirm the count in .claude/rules/testing-and-qa.md still matches reality -- it is the number that will drift first, and it now has a command beside it to re-derive."
+  {
+   "name": "doc_claims.py self-check",
+   "file_line": "scripts/doc_claims.py, run with --docs over the three new files",
+   "input": "the three new markdown files under docs/architecture/, passed explicitly with --docs",
+   "output": "no path and no version findings against these files",
+   "if_none": "The seven dependency findings it reports are pre-existing repository issues about requirements files and test imports; they are unrelated to this change and are not fixed here."
   }
+ ],
+ "values": [
+  {
+   "value": "Every count on every diagram",
+   "read_at": "the live Supabase database, 2026-08-09, via the SELECT recorded next to it in VERIFICATION.md section 1",
+   "if_missing": "No count is carried over from a document. Two figures ARE doc-sourced and both are labelled as such in VERIFICATION.md section 6: the test counts and the shadow calibration result, both dated 2026-08-08 from STRATEGY_REVIEW_2026-08-08.md. Only the calibration result appears on a diagram, and it is the one figure a reader should re-check before quoting."
+  },
+  {
+   "value": "Every arrow between two boxes",
+   "read_at": "a specific file and line, recorded in VERIFICATION.md section 3",
+   "if_missing": "Drawn dashed and labelled UNVERIFIED, with a row in section 4 stating what was tried and why it could not be resolved. Four such items exist; the Trigger.dev hop is the substantive one, because its task definitions live in the sibling repository plotdetect-agents which is not checked out here."
+  }
+ ],
+ "queries": [
+  {
+   "query": "SELECT count(*) FROM dcp_setback_controls WHERE is_current = TRUE",
+   "purpose": "Establish how many numeric DCP controls are actually served, as distinct from how many rows the table holds. The diagram shows both 1,071 and 989 because the difference matters: quoting the table size as the served figure would overstate the defensible surface by 82 rows.",
+   "file_line": "docs/architecture/VERIFICATION.md section 1, the row labelled '989 live'",
+   "where_clause": "is_current = TRUE — without it the count returns 1,071, which includes superseded rows and the 28 fabricated-value rows that were deliberately set is_current=FALSE rather than deleted, so that the evidence of the defect survives."
+  },
+  {
+   "query": "SELECT count(*) FROM regulatory_provisions WHERE is_current = TRUE AND v2_is_actionable = TRUE",
+   "purpose": "Establish the served clause count. The raw table count of 55,696 is the number quoted in two stale architecture documents and in older marketing, and it is roughly 2.8x the number a user can actually be shown.",
+   "file_line": "docs/architecture/VERIFICATION.md section 1, the row labelled '19,957 served'",
+   "where_clause": "is_current = TRUE AND v2_is_actionable = TRUE — both are required. is_current alone returns 31,469, which includes clauses that are current but are narrative rather than a control."
+  },
+  {
+   "query": "all 37 evidence queries as a set",
+   "purpose": "Produce every count on every diagram from the live database rather than from a document, so that each figure carries its own reproduction instructions.",
+   "file_line": "docs/architecture/VERIFICATION.md section 1, one row per query",
+   "where_clause": "Read-only session throughout: set_session(readonly=True) plus statement_timeout 30s. Every statement is a SELECT and no transaction is opened that could write. The project rule is that a change to this database is immediately live in production, so a documentation task opens the connection read-only rather than relying on each query being careful."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A reader checks a count and it does not reproduce",
+   "what_happens": "The diagram is wrong and should be corrected.",
+   "mitigated": true,
+   "how": "Every count carries the SELECT that produced it and the date it ran, so the reader can distinguish 'this was never true' from 'this has moved since 9 August'. VERIFICATION.md opens by saying exactly that.",
+   "repro": "Run any query in VERIFICATION.md section 1 against the production database."
+  },
+  {
+   "scenario": "The diagram is read months later and quoted as current",
+   "what_happens": "Stale counts presented as measured — the failure mode the strategy review names as the leading source of false premises in this project.",
+   "mitigated": true,
+   "how": "Both files carry the measurement date and the commit hash in their first two lines. The figures that move fastest are the ingest-run count and the certificate and application totals, which change daily; the spatial and DCP counts move rarely.",
+   "repro": "Re-run the section 1 queries and compare."
+  },
+  {
+   "scenario": "A grep-based claim is wrong because the matched word means something else in code",
+   "what_happens": "A false edge is drawn — the same class of error as the 'Threat Radar shares the Sentinel-2 pipeline' line that misled three sessions.",
+   "mitigated": true,
+   "how": "This actually happened during the work. Every module matched by the 'sentinel' search was opened; three used it as a programming term. The near-miss is recorded in VERIFICATION.md section 6 rather than quietly fixed, because the record is the useful part.",
+   "repro": "grep -rl \"sentinel\" services/ returns six files; open bushfire_prescreen.py, cdc_screen.py and solar_yield.py and read the matching lines."
+  },
+  {
+   "scenario": "Evidence is gathered from a stale checkout",
+   "what_happens": "Gates that exist are reported as missing, and the whole picture is wrong by 51 commits.",
+   "mitigated": true,
+   "how": "This also happened. The first probe reported four of the seven gates as absent. Comparing local main against origin/main showed it 51 commits behind, so all evidence was re-gathered against origin/main. Every file claim states the commit it was checked at.",
+   "repro": "git rev-list --count main..origin/main"
+  },
+  {
+   "scenario": "The dcp_setback_controls count is taken without is_current = TRUE, so 1,071 is quoted as the number of numeric controls actually served",
+   "what_happens": "The defensible surface is overstated by 82 rows, and the overstatement includes the 28 fabricated-value rows that were deliberately marked is_current=FALSE rather than deleted. Quoting those as live would republish the exact defect the fabrication guard was built to stop.",
+   "mitigated": true,
+   "how": "Both numbers appear on the diagram and in VERIFICATION.md section 1 — 1,071 rows held, 989 live — with the WHERE clause shown for the second. A reader cannot pick up one without seeing the other.",
+   "repro": "SELECT count(*) FROM dcp_setback_controls; then the same with WHERE is_current = TRUE. Compare 1,071 against 989."
+  },
+  {
+   "scenario": "The regulatory_provisions count is taken without the v2_is_actionable filter, so 55,696 clauses is quoted as the served corpus",
+   "what_happens": "The corpus is overstated by roughly 2.8x. This is not hypothetical: 47,818 — a backup table's row count — appears in two committed architecture documents, and inflated corpus figures have appeared in older marketing.",
+   "mitigated": true,
+   "how": "The diagram box reads '55,696 · 19,957 served' so both halves travel together, and VERIFICATION.md section 6 names the two stale documents and the backup table their number came from.",
+   "repro": "SELECT count(*) FROM regulatory_provisions; then add WHERE is_current AND v2_is_actionable. Compare 55,696 against 19,957, and note is_current alone gives 31,469."
+  },
+  {
+   "scenario": "Producing the diagram damages the user's uncommitted work",
+   "what_happens": "At the start of this work, four files had both local uncommitted edits and upstream changes, so a checkout would have conflicted or discarded them.",
+   "mitigated": true,
+   "how": "Nothing in the primary working tree was modified while that was true; work was isolated until main had been brought up to date, at which point the conflict no longer existed. The only files this branch adds are new ones under docs/architecture/, plus the replaced .qa_report.json.",
+   "repro": "git status --porcelain — the remaining modified files are unrelated to this change."
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None. No migration, no schema change, no write of any kind.",
+  "secrets": "None added. Evidence collection read DATABASE_URL from the existing repository root .env; no credential appears in any committed file.",
+  "other_repo": "The Trigger.dev task definitions in the sibling repository plotdetect-agents remain unverified and are marked as such on the diagram. If that repository is ever checked out alongside this one, the dashed edge can be resolved and the row in VERIFICATION.md section 4 removed.",
+  "manual_verify": "Open both markdown files on GitHub and confirm the four Mermaid blocks render. They render locally under mermaid-cli 10 with zero syntax errors, which is strong evidence but not identical to GitHub's renderer version."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/doc_claims.py --docs docs/architecture/SYSTEM_TECHNICAL.md docs/architecture/SYSTEM_INTEGRATED.md docs/architecture/VERIFICATION.md",
+  "fails_when": "Any file path, module or version named in the three documents stops resolving in the code — for example if services/pre_da_history.py is renamed, or scripts/falsifiability.py is removed. It reported a genuine finding on the first run against these files, when an earlier draft cited a deleted module's path as evidence that the file no longer exists; the row now cites the deleting commit c6d64edb instead. It does not and cannot check whether a count still matches the database, which is why every count carries its own query."
+ }
 }

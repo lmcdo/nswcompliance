@@ -1,0 +1,45 @@
+flowchart LR
+  subgraph SRC["Outside data"]
+    S1["Planning Portal<br/>ePlanning API"]
+    S2["NSW ArcGIS<br/>mapprod1/2/3"]
+    S4["Council DCP PDFs<br/>no API exists"]
+  end
+
+  subgraph ING["Getting it in"]
+    I1["Map layer sync<br/>manual, no schedule"]
+    I2["DCP watch + extract<br/>a human approves<br/>before anything lands"]
+    I3["Certificate + DA ingest<br/>774 runs in 7 days"]
+    I4["Cloudflare R2<br/>PDF store"]
+  end
+
+  subgraph DB["Supabase Postgres + PostGIS · 117 tables"]
+    D1["spatial_overlays<br/>1,088,573 · 25 layers"]
+    D2["nsw_cadastre_lots<br/>3,220,617"]
+    D3["lot_search_index<br/>3,126,418 pre-joined"]
+    D4["certificates<br/>181,737 · 128 councils"]
+    D5["applications<br/>62,016 · 128 councils"]
+    D6["regulatory_provisions<br/>55,696 · 19,957 served"]
+    D7["dcp_setback_controls<br/>1,071 · 30 councils"]
+    D8["lep_land_use_table<br/>18,196 · 26 councils"]
+  end
+
+  S2 --> I1
+  S1 --> I1
+  S4 --> I2
+  S1 --> I3
+  I1 --> D1
+  I2 --> I4
+  I2 --> D6
+  I2 --> D7
+  I3 --> D4
+  I3 --> D5
+  D1 --> D3
+  D2 --> D3
+  D1 ~~~ D8
+
+  classDef src fill:#e8f0fe,stroke:#3b6fb6,color:#10233d
+  classDef ing fill:#fff3e0,stroke:#c77700,color:#3d2a10
+  classDef db fill:#e9f7ef,stroke:#2e7d52,color:#102a1c
+  class S1,S2,S4 src
+  class I1,I2,I3,I4 ing
+  class D1,D2,D3,D4,D5,D6,D7,D8 db
