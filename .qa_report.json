@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Documentation only, but every claim in it is a measured claim about the live database and the current code, so it carries the same risk profile as code: a wrong number here goes into an employment, contract or licensing conversation and cannot be walked back. Three files under docs/architecture/ — SYSTEM_TECHNICAL.md (three Mermaid diagrams: what gets stored, what gets served, one address end to end), SYSTEM_INTEGRATED.md (the two-pile story view with assurance-ladder colouring and the seven gates), VERIFICATION.md (one row per box, arrow and count, each with the SQL or the file and line that produced it). No application code is touched. The risk this report addresses is not a runtime failure — it is a false claim shipped in a document that a hostile reader will check.",
- "commit_hash": "",
+ "commit_hash": "1c33adc3",
  "files": [
   "docs/architecture/SYSTEM_TECHNICAL.md",
   "docs/architecture/SYSTEM_INTEGRATED.md",
