@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes a BLOCKING pre-push gate. A gate that is too weak lets defects through; a gate that cannot converge trains people to bypass it, which is worse than not having one. On 2026-08-10 the Sol review blocked a single branch four times in a row across 17 findings — every one of which checked out as real, so the reviewer was sound and the harness was not. It passed the merge-base with main as the review base, so each push re-read the entire branch (18 files, 2,500 lines, 175 KB). A non-deterministic reviewer re-reading an unchanged, growing input returns a different subset each time, so fixing everything in run N did nothing to reduce what run N+1 could surface. Three fixes: read only the new commits, remember what was already adjudicated, and stop after three rounds. No application code, no database, no served output.",
- "commit_hash": "7539fe55",
+ "commit_hash": "b915e89f",
  "files": [
   ".githooks/pre-push",
   "scripts/sol_review_base.sh",
@@ -27,7 +27,7 @@
    "name": "finding_key",
    "file_line": "scripts/cross_review.py",
    "input": "one finding dict from the model",
-   "output": "file::category — deliberately coarse",
+   "output": "a string of the form file::category, with no line number and no summary text — deliberately coarse so a reworded repeat still matches",
    "if_none": "A finding with neither field keys as '?::?'. It does not collapse distinct findings together: a missing file still differs from another missing file only if the categories differ, which is pinned by test_missing_fields_do_not_collapse_everything_into_one_key. The coarseness is a stated trade-off, not an oversight — line numbers shift the moment anything above them is edited, and summaries are model prose that returns reworded, so both finer keys match almost nothing in practice."
   },
   {
@@ -65,7 +65,7 @@
  "queries": [
   {
    "query": "none",
-   "purpose": "This change touches no database. No SQL is added, read or modified; the pre-impl protocol's schema, join-key, timeout and loop-invariant steps are recorded as not applicable rather than skipped silently.",
+   "purpose": "This change touches no database at all. No SQL is added, read or modified, and no table, join key or migration is involved; the pre-impl protocol's schema, value-audit, timeout and loop-invariant steps are recorded as not applicable rather than skipped silently. The corresponding break-it scenario below tests that claim rather than asserting it.",
    "file_line": ".claude/.pre-impl-done.json",
    "where_clause": "n/a"
   }
@@ -112,6 +112,13 @@
    "mitigated": true,
    "how": "Twelve tests, and the two wrong implementations were planted to confirm the suite distinguishes them: always-merge-base fails test_ordinary_case_reviews_only_commits_since_the_last_push, and always-upstream fails test_main_merged_in_after_the_last_push_falls_back_to_the_merge_base. Each went red on exactly the test that names it, and no other.",
    "repro": "In sol_review_base.sh replace the SOL_BASE assignment with DUP_BASE and run the suite."
+  },
+  {
+   "scenario": "The 'no database' claim is wrong and a query slipped in unnoticed",
+   "what_happens": "A change reviewed as infrastructure-only would have gone through the pre-impl protocol's DB steps marked not-applicable, so a missing WHERE clause or an unguarded row access would have had no schema or value audit behind it.",
+   "mitigated": true,
+   "how": "The claim is checked rather than asserted: grep the branch diff for SQL and database access and it returns nothing. The only Python changed is scripts/cross_review.py, which reads a JSON file and calls the OpenAI API; the only other additions are a shell script that reads git refs and two test files that build throwaway git repositories.",
+   "repro": "git diff origin/main...HEAD -- '*.py' '*.sh' | grep -iE 'SELECT |INSERT |UPDATE |DELETE |psycopg2|DATABASE_URL|\\.execute\\(' — expect no matches."
   }
  ],
  "post_merge": {
