@@ -453,6 +453,10 @@ scripts/*
 # breaks every fresh clone — which is exactly the trap this line block warns
 # about four comments above.
 !scripts/falsifiability.py
+# The lot-area repair. Tracked because the run against production is only
+# auditable if the exact statement that rewrote 2.5M rows is in the history,
+# and because it is the documented rollback path for that run.
+!scripts/fix_lot_area_mercator.py
 !scripts/doc_claims.py
 # Builds the cdc_lot_link table (certificates -> cadastral lots). The table is
 # live in production, so the recipe that produced it has to be in the repo or

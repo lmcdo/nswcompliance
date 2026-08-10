@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-10T00:00:00Z",
-  "target": "scripts/cross_review.py + .githooks/pre-push — make the Sol gate converge (incremental diff, adjudicated-findings memory, round cap)",
-  "findings_summary": "No database surface at all: no SQL, no schema, no migrations, no bulk operations, no join keys. The change reads git refs and a JSON state file under .git/. Schema/value/timeout/loop-invariant steps are not applicable and are recorded as such rather than skipped silently."
+  "timestamp": "2026-08-10T03:47:04.461054+00:00",
+  "target": "scripts/fix_lot_area_mercator.py + build_lot_search_index.py area source \u2014 repair lot_search_index.lot_area_m2 filled from Web Mercator shape_area",
+  "findings_summary": "Both geoms SRID 4326 so ::geography needs no transform; lotidstring join has 0 unmatched rows; 0 NULL geom/area; 50k batch = 12.4s (under 120s cap), ~51 batches; loop sentinel is IS DISTINCT FROM so the set strictly shrinks; added geom IS NOT NULL guard so a NULL geom cannot blank an area. planlotarea/true=1.0003 (keep), shape_area/true=1.4390 and 1.0028 after cos^2(lat) correction."
 }
