@@ -284,6 +284,11 @@ def test_ci_detached_head_still_finds_the_branch(qrp, repo, monkeypatch):
     without saying it checked the wrong one.
     """
     monkeypatch.delenv("QA_REPORT_BRANCH", raising=False)
+    # GitHub Actions SETS GITHUB_HEAD_REF, so without this the "git cannot name
+    # the branch" half of the test is answered by the ambient CI environment and
+    # passes for the wrong reason locally while failing on the runner. Caught by
+    # CI on the first run of this file, 2026-08-10.
+    monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)
     _git(repo.path, "checkout", "-q", "--detach", "HEAD")
     assert qrp.current_branch(repo.path) is None
     monkeypatch.setenv("GITHUB_HEAD_REF", "feat/from-ci")
