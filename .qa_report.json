@@ -1,186 +1,186 @@
 {
-  "tier": "critical",
-  "justification": "Finishes the flood lane: three hazard flags that served a never-resolved overlay as a clean negative, the scoping signal for #892's three-state verdict replaced with one that exists, 1.6 GB of council flood grids shipped so two councils can answer at all, and the first calibration of a served flood verdict against an independent observed reference. Critical because it changes served output on the field a buyer relies on most and because the calibration result will be quoted externally.",
-  "commit_hash": "02e1b889",
-  "files": [
-    ".gitignore",
-    "Dockerfile.python",
-    "docs/PRODUCT_ASSURANCE_POSITION.md",
-    "docs/qa/flood-calibration-2022-amendment-01.md",
-    "docs/qa/flood-calibration-2022-precommit.md",
-    "docs/qa/flood-calibration-2022-reference-manifest.json",
-    "docs/qa/flood-calibration-2022-result.json",
-    "docs/qa/flood-calibration-2022-result.md",
-    "frontend-nextjs/__tests__/api/lot-search.test.ts",
-    "frontend-nextjs/app/api/lot-search/route.ts",
-    "frontend-nextjs/lib/prospector/filter-params.ts",
-    "scripts/download_tweed_wollongong_rasters.py",
-    "scripts/run_flood_calibration_2022.py",
-    "services/flood_truth.py",
-    "tests/test_flood_calibration_artifacts_agree.py",
-    "tests/test_flood_normalise.py"
-  ],
-  "falsifiable_check": {
-    "command": "python -m pytest tests/test_flood_normalise.py -q  AND  the calibration in docs/qa/flood-calibration-2022-result.md",
-    "fails_when": "The calibration is the external check, pre-committed at fb0a44f7 before any point was sampled, and it does NOT clear its own mark: recall 0.857 (6/7), Wilson 95% CI 0.487-0.974, verdict INDISTINGUISHABLE FROM THE MARK. It moved down four times, every correction from the cross-review: an invalid UUID scored 0/50 and printed FAIL from a 0/0 division (discarded — a harness that could not run measured nothing); a Wald interval put the lower bound at 0.929 and printed PASS (invalid at p near 1; Wilson says 0.874); the denominator counted 34 points outside the product council coverage including SE Queensland; and flood_signal=unavailable was counted as a flood indicator, which is the absence-as-answer error inside the instrument measuring it. On the code: three tests pin that the resolved council scopes an absent study, that a different council does not, and that a missing study plus an unresolvable council is unknown rather than False.",
-    "external_authority": "Copernicus EMS rapid-mapping observedEventA polygons, produced by the European Commission from satellite imagery of the 2022 NSW floods — 11,353 polygons across 15 AOIs, downloaded from cems-mapping-website.s3.eu-west-1.amazonaws.com, an authority this project neither produces nor influences."
+ "tier": "critical",
+ "justification": "Finishes the flood lane: three hazard flags that served a never-resolved overlay as a clean negative, the scoping signal for #892's three-state verdict replaced with one that exists, 1.6 GB of council flood grids shipped so two councils can answer at all, and the first calibration of a served flood verdict against an independent observed reference. Critical because it changes served output on the field a buyer relies on most and because the calibration result will be quoted externally.",
+ "commit_hash": "ac3b338a",
+ "files": [
+  ".gitignore",
+  "Dockerfile.python",
+  "docs/PRODUCT_ASSURANCE_POSITION.md",
+  "docs/qa/flood-calibration-2022-amendment-01.md",
+  "docs/qa/flood-calibration-2022-precommit.md",
+  "docs/qa/flood-calibration-2022-reference-manifest.json",
+  "docs/qa/flood-calibration-2022-result.json",
+  "docs/qa/flood-calibration-2022-result.md",
+  "frontend-nextjs/__tests__/api/lot-search.test.ts",
+  "frontend-nextjs/app/api/lot-search/route.ts",
+  "frontend-nextjs/lib/prospector/filter-params.ts",
+  "scripts/download_tweed_wollongong_rasters.py",
+  "scripts/run_flood_calibration_2022.py",
+  "services/flood_truth.py",
+  "tests/test_flood_calibration_artifacts_agree.py",
+  "tests/test_flood_normalise.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_normalise.py -q  AND  the calibration in docs/qa/flood-calibration-2022-result.md",
+  "fails_when": "The calibration is the external check, pre-committed at fb0a44f7 before any point was sampled, and it does NOT clear its own mark: recall 0.857 (6/7), Wilson 95% CI 0.487-0.974, verdict INDISTINGUISHABLE FROM THE MARK. It moved down four times, every correction from the cross-review: an invalid UUID scored 0/50 and printed FAIL from a 0/0 division (discarded — a harness that could not run measured nothing); a Wald interval put the lower bound at 0.929 and printed PASS (invalid at p near 1; Wilson says 0.874); the denominator counted 34 points outside the product council coverage including SE Queensland; and flood_signal=unavailable was counted as a flood indicator, which is the absence-as-answer error inside the instrument measuring it. On the code: three tests pin that the resolved council scopes an absent study, that a different council does not, and that a missing study plus an unresolvable council is unknown rather than False.",
+  "external_authority": "Copernicus EMS rapid-mapping observedEventA polygons, produced by the European Commission from satellite imagery of the 2022 NSW floods — 11,353 polygons across 15 AOIs, downloaded from cems-mapping-website.s3.eu-west-1.amazonaws.com, an authority this project neither produces nor influences."
+ },
+ "pre_impl": {
+  "existing_data": "151 flood rows in property_reports. The verdict is DERIVED ON READ — the cache-hit path re-runs _normalise_outputs over the stored outputs (flood_truth.py:1985) — so no row stores it and the fix reaches every existing report with no data repair FOR THE EPI AND SES GAPS. It does NOT reach a legacy row whose council study was silently skipped: flood_studies_absent did not exist when those rows were written and FLOOD_STUDIES carries no bounds field, so whether an absent study covered that point is unknowable without the raster we do not have. Re-running the report resolves it. Sol caught this over-claim; the limit is now stated in the derivation, in the census output and here. That was measured, not assumed: a first version of the census looked for the key in stored outputs and found it absent in all 151, which is what revealed the derive-on-read path. Prior art extended rather than duplicated: flood_signal in the same module has had an explicit 'unavailable' member since #872 with an icontract postcondition enforcing it, and _build_data_gap_reasons already returns structured per-source unavailability reasons. This field was simply missed in that pass. The absence copy extends lib/shadow-scenario-availability.ts from #885 — renamed to lib/not-assessed.ts and shared, rather than a second flood module.",
+  "assumption_mismatch": "Two things the brief and I both had wrong. First, `_sample_raster` returning None was not the whole defect: the study loop above it already guarded on a missing file, logged 'rasters not present — skipping' and continued. The defect is that the skip was invisible downstream, so an unconsultable study and a point outside the study extent produced identical results. Second, the local run of the new startup check reports FOUR absent studies, not two — hawkesbury and redbank are also absent from this developer machine because they are fetched at container start. In production only tweed and wollongong are permanently absent, since they alone have no download script. The warning is correct in both environments; the count differs by environment, and a reader of the log must not take four as the production figure.",
+  "new_vs_existing": "No new state model. The three-state shape, the 'unavailable' vocabulary, the structured gap reasons and the absence-copy module all already existed for other fields and other products; this joins them. One genuinely new thing: flood_study_raster_availability() plus an import-time warning, which makes a configured-but-undeliverable study loud instead of a log line. That is the #880 shape — a capability declared where it cannot be delivered, degrading silently — and it is what stops the next council being half-configured without anyone noticing.",
+  "external_source_error": "The EPI WFS and the spatial_overlays query are the two external sources that can answer the 1% question, and both already have typed failure markers this change consumes rather than invents: data_currency == 'query_failed' for an EPI service that did not respond, and a null ses_in_flood_planning_area, which flood_truth.py already documents as 'table empty or unavailable (distinct from False = no match)'. Before this change either failure produced a served 'not in a flood zone'; now either produces None and names the source in the copy. A raster read that throws is caught per-file and returns None, and the study is treated as unconsultable rather than as a point outside its extent.",
+  "frontend_type": "Three boundaries, each a place null could silently become false. The API route parses the stored JSON, where the value arrives as a JS boolean or null; it now maps only an explicit true/false and sends null otherwise, and also forwards in_100yr_flood_zone_unconsulted as string[]. The PDF interface field was typed `boolean | undefined`, which made a null unrepresentable in the type while occurring in the data — it is now `boolean | null` with the array beside it. The report page reads from an untyped outputs bag, so both reads are cast at the call site and routed through isFloodZoneNotAssessed rather than a truthiness check.",
+  "user_failure_mode": "A buyer reads 'No' against '100-year flood zone', or a green PDF finding labelled 'Council flood study raster' asserting that flood modelling was consulted, and proceeds to exchange without obtaining a Section 10.7(2) certificate or a flood insurance quote. Nothing on either surface told them the question had not been answered, and the PDF's label named a source that had not been read. After this change the same run shows 'Not assessed' at medium severity with an amber explanation naming the unreachable sources and pointing at the 10.7(2) certificate, and the PDF carries an amber finding rather than omitting the row entirely."
+ },
+ "functions": [
+  {
+   "name": "_unconsulted_1pct_sources",
+   "file_line": "services/flood_truth.py:1567",
+   "input": "the normalised outputs and the raw stored outputs for one run",
+   "output": "customer-neutral names of the sources that could have answered the 1% AEP question and were not reachable; an empty list means every one was asked",
+   "if_none": "an empty list is the only thing that permits a False, so the absence of gaps is load-bearing rather than incidental"
   },
-  "pre_impl": {
-    "existing_data": "151 flood rows in property_reports. The verdict is DERIVED ON READ — the cache-hit path re-runs _normalise_outputs over the stored outputs (flood_truth.py:1985) — so no row stores it and the fix reaches every existing report with no data repair FOR THE EPI AND SES GAPS. It does NOT reach a legacy row whose council study was silently skipped: flood_studies_absent did not exist when those rows were written and FLOOD_STUDIES carries no bounds field, so whether an absent study covered that point is unknowable without the raster we do not have. Re-running the report resolves it. Sol caught this over-claim; the limit is now stated in the derivation, in the census output and here. That was measured, not assumed: a first version of the census looked for the key in stored outputs and found it absent in all 151, which is what revealed the derive-on-read path. Prior art extended rather than duplicated: flood_signal in the same module has had an explicit 'unavailable' member since #872 with an icontract postcondition enforcing it, and _build_data_gap_reasons already returns structured per-source unavailability reasons. This field was simply missed in that pass. The absence copy extends lib/shadow-scenario-availability.ts from #885 — renamed to lib/not-assessed.ts and shared, rather than a second flood module.",
-    "assumption_mismatch": "Two things the brief and I both had wrong. First, `_sample_raster` returning None was not the whole defect: the study loop above it already guarded on a missing file, logged 'rasters not present — skipping' and continued. The defect is that the skip was invisible downstream, so an unconsultable study and a point outside the study extent produced identical results. Second, the local run of the new startup check reports FOUR absent studies, not two — hawkesbury and redbank are also absent from this developer machine because they are fetched at container start. In production only tweed and wollongong are permanently absent, since they alone have no download script. The warning is correct in both environments; the count differs by environment, and a reader of the log must not take four as the production figure.",
-    "new_vs_existing": "No new state model. The three-state shape, the 'unavailable' vocabulary, the structured gap reasons and the absence-copy module all already existed for other fields and other products; this joins them. One genuinely new thing: flood_study_raster_availability() plus an import-time warning, which makes a configured-but-undeliverable study loud instead of a log line. That is the #880 shape — a capability declared where it cannot be delivered, degrading silently — and it is what stops the next council being half-configured without anyone noticing.",
-    "external_source_error": "The EPI WFS and the spatial_overlays query are the two external sources that can answer the 1% question, and both already have typed failure markers this change consumes rather than invents: data_currency == 'query_failed' for an EPI service that did not respond, and a null ses_in_flood_planning_area, which flood_truth.py already documents as 'table empty or unavailable (distinct from False = no match)'. Before this change either failure produced a served 'not in a flood zone'; now either produces None and names the source in the copy. A raster read that throws is caught per-file and returns None, and the study is treated as unconsultable rather than as a point outside its extent.",
-    "frontend_type": "Three boundaries, each a place null could silently become false. The API route parses the stored JSON, where the value arrives as a JS boolean or null; it now maps only an explicit true/false and sends null otherwise, and also forwards in_100yr_flood_zone_unconsulted as string[]. The PDF interface field was typed `boolean | undefined`, which made a null unrepresentable in the type while occurring in the data — it is now `boolean | null` with the array beside it. The report page reads from an untyped outputs bag, so both reads are cast at the call site and routed through isFloodZoneNotAssessed rather than a truthiness check.",
-    "user_failure_mode": "A buyer reads 'No' against '100-year flood zone', or a green PDF finding labelled 'Council flood study raster' asserting that flood modelling was consulted, and proceeds to exchange without obtaining a Section 10.7(2) certificate or a flood insurance quote. Nothing on either surface told them the question had not been answered, and the PDF's label named a source that had not been read. After this change the same run shows 'Not assessed' at medium severity with an amber explanation naming the unreachable sources and pointing at the 10.7(2) certificate, and the PDF carries an amber finding rather than omitting the row entirely."
+  {
+   "name": "flood_study_raster_availability",
+   "file_line": "services/flood_truth.py:348",
+   "input": "no arguments; reads the FLOOD_STUDIES config against this host's filesystem",
+   "output": "study_key to whether its rasters are actually present, so a declaration in code can be compared with what the host can deliver",
+   "if_none": "a study with no readable raster reports False and is named in an import-time warning; it is never silently dropped from the config"
   },
-  "functions": [
-    {
-      "name": "_unconsulted_1pct_sources",
-      "file_line": "services/flood_truth.py:1567",
-      "input": "the normalised outputs and the raw stored outputs for one run",
-      "output": "customer-neutral names of the sources that could have answered the 1% AEP question and were not reachable; an empty list means every one was asked",
-      "if_none": "an empty list is the only thing that permits a False, so the absence of gaps is load-bearing rather than incidental"
-    },
-    {
-      "name": "flood_study_raster_availability",
-      "file_line": "services/flood_truth.py:348",
-      "input": "no arguments; reads the FLOOD_STUDIES config against this host's filesystem",
-      "output": "study_key to whether its rasters are actually present, so a declaration in code can be compared with what the host can deliver",
-      "if_none": "a study with no readable raster reports False and is named in an import-time warning; it is never silently dropped from the config"
-    },
-    {
-      "name": "_normalise_outputs",
-      "file_line": "services/flood_truth.py:1734",
-      "input": "the stored or freshly computed raw outputs for one flood run",
-      "output": "the served contract, in which in_100yr_flood_zone is now True, False or None and is accompanied by in_100yr_flood_zone_unconsulted",
-      "if_none": "None is the verdict when no positive signal fired and at least one source was unreachable; it is never a default and never rendered as No"
-    },
-    {
-      "name": "_build_data_gap_reasons",
-      "file_line": "services/flood_truth.py:1642",
-      "input": "the internal outputs for one run, including the new flood_studies_absent list of configured studies whose rasters this host cannot read",
-      "output": "per-source reasons, now distinguishing a study absent from this host from a council that restricts access",
-      "if_none": "the consultant-IP explanation is no longer given for a study whose data is simply missing here, because that reason was false"
-    }
-  ],
-  "values": [
-    {
-      "value": "151 stored flood reports; 9 served True, 142 served False; 12 of the 142 now read Not assessed",
-      "read_at": "production property_reports via scripts/measure_flood_zone_unassessed.py, 2026-08-08",
-      "if_missing": "the script prints UNKNOWABLE and exits 2 rather than reporting zero, because no database reachable is not the same as no damage"
-    },
-    {
-      "value": "Council/SES flood study extent unreachable on 12 rows; NSW EPI flood overlay unreachable on 5 (they overlap)",
-      "read_at": "same census, derived from each row's stored epi_flood_class / data_currency / ses_in_flood_planning_area",
-      "if_missing": "a row whose outputs cannot be parsed is skipped and therefore excluded from the numerator, which biases the count DOWN"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "count how many stored flood reports served an unestablished not-in-a-flood-zone verdict",
-      "file_line": "scripts/measure_flood_zone_unassessed.py:97",
-      "where_clause": "WHERE product = 'flood' — read-only SELECT, no UPDATE/INSERT/DELETE anywhere in the script, statement_timeout 30s"
-    }
-  ],
-  "break_it": [
-    {
-      "scenario": "A future consumer reads the field with a truthiness check — if (outputs.in_100yr_flood_zone) or !value — because null is falsy in TypeScript and None is falsy in Python.",
-      "what_happens": "The third state collapses straight back to 'not in a flood zone', now with a correct-looking data model on top of it. This is the defect re-applied and it would be invisible in review.",
-      "mitigated": true,
-      "how": "isFloodZoneNotAssessed tests null and undefined explicitly and never negates the value, and a test asserts that a truthiness implementation would give the opposite answer for false. Every one of the three collapsing sites is reproduced in __tests__/lib/flood-zone-three-state.test.ts so restoring any of them goes red.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/lib/flood-zone-three-state.test.ts"
-    },
-    {
-      "scenario": "One source is unreachable while another positively places the property inside the 1% AEP extent — a real flood finding arriving alongside a service outage.",
-      "what_happens": "The verdict stays True. Making it None would turn a genuine flood finding into a shrug, which is the opposite failure and every bit as harmful to the reader.",
-      "mitigated": true,
-      "how": "The derivation checks the positive signals first and only consults the gap list for the negative branch; test_positive_wins_even_when_another_source_is_unreachable pins it with both a null SES flag and an absent study present at once.",
-      "repro": "python -m pytest tests/test_flood_normalise.py -q -k positive_wins"
-    },
-    {
-      "scenario": "A new council flood study is added to FLOOD_STUDIES and its rasters are never shipped, exactly as happened with Tweed and Wollongong.",
-      "what_happens": "flood_study_raster_availability reports it absent, an import-time warning names it, and every 1% answer for that area is 'not assessed' rather than 'no'. It cannot be half-configured silently.",
-      "mitigated": true,
-      "how": "The check runs at module import, so it fires wherever the service starts rather than only when a matching address is requested; the per-run list feeds the served verdict as well.",
-      "repro": "python -c \"import sys; sys.path[:0]=['.','services']; import services.flood_truth as f; print(f.flood_study_raster_availability())\""
-    },
-    {
-      "scenario": "The PDF and the report page disagree, because one was updated and the other was not — the shape of the shadow defect #885 fixed, where a bearing rendered beside a non-result.",
-      "what_happens": "They cannot: both import their wording from lib/not-assessed.ts, the single module #885 created and this change renamed rather than duplicated. Three shadow surfaces already import it and were repointed in the same commit.",
-      "mitigated": true,
-      "how": "One exported label and one exported message builder per state. A second wording would have to be written deliberately, and the module header says why not to.",
-      "repro": "git grep -l \"from '@/lib/not-assessed'\" frontend-nextjs/"
-    },
-    {
-      "scenario": "Someone reads the 12-row census figure as the total harm.",
-      "what_happens": "It is a floor. flood_studies_absent did not exist when those rows were written, so a silently-skipped Tweed or Wollongong study is unrecoverable from stored data and cannot be counted; only EPI and SES gaps are visible retrospectively.",
-      "mitigated": true,
-      "how": "The script's docstring states the limit and the output labels the figure a floor, rather than leaving a reader to infer completeness from a confident number.",
-      "repro": "python scripts/measure_flood_zone_unassessed.py"
-    },
-    {
-      "scenario": "The four-absent-studies warning from a developer machine is quoted as the production figure.",
-      "what_happens": "It would overstate: hawkesbury and redbank are absent locally only because they download at container start. In production the permanently absent pair is tweed and wollongong, which alone have no download script.",
-      "mitigated": true,
-      "how": "Recorded in pre_impl.assumption_mismatch and in the PR body. The warning text names the studies rather than only a count, so the reader can tell which environment they are looking at.",
-      "repro": "ls scripts/download_*rasters*.py   # hawkesbury, redbank, narclim — no tweed, no wollongong"
-    },
-    {
-      "scenario": "The published calibration figures and the run that produced them drift apart, and the outward-facing assurance page quotes the stale one.",
-      "what_happens": "Exactly what was found here by the cross-review. The result markdown published recall 0.857 (6 of 7) while the JSON it cites in its own first paragraph recorded 34 of 38, recall 0.895 — two incompatible sample sizes, recall values and intervals presented as one run. The 6-of-7 figure had been copied on into docs/PRODUCT_ASSURANCE_POSITION.md, the page written for an outside reader, so anyone following its citation would have found different numbers.",
-      "mitigated": true,
-      "how": "Established which artifact is authoritative by RE-RUNNING scripts/run_flood_calibration_2022.py at seed 20220228: it reproduces the JSON byte-identically (38 sampled, 38 in coverage, 34 hits, git diff empty), while the 6-of-7 figure is not reproducible from the committed runner at all — an intermediate run that was never refreshed. Both documents now carry the reproducible figures, the superseded run is kept in the corrections table rather than erased, and tests/test_flood_calibration_artifacts_agree.py pins prose to evidence: recall, sample size, Wilson bounds, pass mark and verdict must all match the JSON, and the assurance page must quote the same numbers. Planting the original 6-of-7 headline fails 3 of its 6 tests; markdown restored byte-identically (md5 ccdb9da7b7801f884fbe136c8eebd597).",
-      "repro": "sed the headline back to '0.857 — 6 of 7' and run pytest tests/test_flood_calibration_artifacts_agree.py -- expect 3 failed, 3 passed."
-    },
-    {
-      "scenario": "A failure that is really ONE cause showing up in several places gets reported as several isolated failures, and the cause is never found.",
-      "what_happens": "The report named one miss; the artifact holds four. All four sit in the same AOI with the identical signature — nothing from the EPI layer, nothing from the 1% AEP verdict, nothing from the council/SES extent. Reported as one isolated Northern Rivers point, the reader concludes the screen occasionally misses. Reported as four identical failures in one place, the actual cause is visible in a single query.",
-      "mitigated": true,
-      "how": "Measured the cause rather than describing the symptom: all four fall in Richmond Valley, and a point-in-polygon check returns ZERO flood polygons covering any of them. Richmond Valley holds 0 flood polygons in spatial_overlays against Ballina 191 and Clarence Valley 12. So the product returns 'no flood indicator' for every address in that council because it holds no data there, not because the land is dry. Two tests now pin it: every miss in the artifact must be named by coordinates in the report, and the heading 'The one miss' is banned while the count exceeds one. Planting the old single-miss version fails both; markdown restored byte-identically (md5 ffa3bf0485f25642c8abda76b4a5684e).",
-      "repro": "Revert the misses section to name one coordinate and run pytest tests/test_flood_calibration_artifacts_agree.py -- expect 2 failed, 6 passed."
-    },
-    {
-      "scenario": "The artifact hides how much of the sample was discarded, so a reader cannot judge whether the scored set is representative.",
-      "what_happens": "It recorded only the POST-filter count as n_sampled, with out_of_scope: 0. A run that drew 150 and kept 38 published \"38 of 38, no exclusions\" — 112 discarded draws invisible, and any lookup FAILURES among them indistinguishable from genuine out-of-coverage points. Absence presented as a clean result, inside the instrument built to catch exactly that.",
-      "mitigated": true,
-      "how": "Four counts now recorded and written to the artifact: n_raw_draws 150, n_in_scope 38, n_out_of_scope_at_scope_test 112, n_scope_unresolved 0. A failed lookup returns None and is counted as unresolved, never as known-outside, and the run warns when any occur. Re-run confirms recall unchanged at 0.895 — the fix exposed the sample, it did not move the number.",
-      "repro": "python scripts/run_flood_calibration_2022.py -- stdout must read \"raw draws: 150 -> in NSW LGA coverage 38, outside 112, scope unresolved 0\" and all four counts must appear in the JSON."
-    },
-    {
-      "scenario": "The report tells the reader a sample size that would settle the question, and the arithmetic is impossible.",
-      "what_happens": "It said ~150 scored points would lift the Wilson lower bound above 0.90. A Wilson lower bound converges on the point estimate FROM BELOW and can never exceed it, so at observed recall 0.895 no sample size whatsoever does that. A reader plans 150 more points expecting a pass that cannot arrive.",
-      "mitigated": true,
-      "how": "Computed rather than reasoned. At 0.895 the bound is 0.834 at n=150 and 0.868 at n=600 — still short at ten times the sample. Both tables are now in the report, together with what WOULD be needed if the true recall were higher (~375 points at 0.93, ~130 at 0.95, ~70 at 0.97), and the honest conclusion: more points can only reveal a higher true recall or tighten this one toward a FAIL.",
-      "repro": "Recompute the Wilson bound at p=0.895 for any n; the lower bound never reaches 0.90."
-    },
-    {
-      "scenario": "The stratified sampler spins forever instead of reporting, because a stratum that can never yield a point is never removed from the rotation.",
-      "what_happens": "The round-robin never removed an AOI that cannot yield a lon/lat point (a projected product, say), so if no AOI could produce one the outer loop spun forever making no progress. A calibration that hangs is worse than one that fails: it looks like it is working.",
-      "mitigated": true,
-      "how": "Exhausted keys are removed, and the loop breaks when a full pass makes no progress.",
-      "repro": "Feed sample() only projected-coordinate rings; it must return promptly with an empty list rather than spin."
-    },
-    {
-      "scenario": "An entire reference archive goes missing and the calibration publishes a flattering number from the reduced set without noticing.",
-      "what_happens": "The integrity check only inspected archives the glob FOUND, so an absent one was invisible — fewer files, still enough points, a valid-looking recall from an incomplete reference. Not hypothetical: all four published misses came from one AOI, so losing that archive removes them and RAISES the score.",
-      "mitigated": true,
-      "how": "A committed manifest of all 47 archives with sha256 prefixes; the run aborts unless every one is present and unchanged. Extra archives are reported but allowed, because widening the reference cannot flatter. PROVEN: hiding EMSR570_AOI01_DEL_MONIT01 — an archive from the exact AOI the misses came from — aborts with exit 2 and names the file; restored, 47 verified.",
-      "repro": "mv one archive out of data/flood_calibration/copernicus and run the script -- expect exit 2 and REFERENCE SET INCOMPLETE naming it."
-    },
-    {
-      "scenario": "Two components disagree about whether a point is in scope, and the disagreement silently removes the point from the denominator.",
-      "what_happens": "in_nsw() ruled a point INSIDE coverage using the authoritative lookup; if run_flood then raised any message containing \"outside NSW\" the point was dropped with hit=None. That is not new scope information, it is a contradiction — and believing the second component removed in-scope points from the denominator, inflating recall.",
-      "mitigated": true,
-      "how": "Scope is decided ONCE, before scoring, by the authoritative test. Every exception after that is scored as a miss, and a contradicting message prints a named warning and is counted in the artifact as scope_contradictions. Current run: 0.",
-      "repro": "Force run_flood to raise \"outside NSW\" for an in-coverage point -- it must be scored hit=false and counted as a contradiction, never excluded."
-    }
-  ],
-  "mutation_analysis": "The six tests that changed are the mutation analysis in its purest form: they asserted the defect, so the defect is exactly what reverting them restores. Reinstating the old one-line derivation (`normalised[...] = in_100yr`) turns all six red. Beyond that: removing the flood_studies_absent recording kills the configured-study test; short-circuiting the positive branch kills the positive-wins test; restoring the API coercion, the page ternary or deleting the PDF branch each kill their named frontend test. Not covered by tests and stated rather than implied: the import-time warning's text, and whether the amber block renders legibly in the generated PDF — react-pdf layout is not exercised by jest and node_modules is absent in this bare worktree, so both are verified by CI and by reading the generated document, not here. Sol raised seven findings on the diff and six were real. Fixed: the availability check accepted ANY design raster, so a study holding its 5% grid but not its 1% grid counted as consultable and contributed a confident negative to the one question it could not answer — now the 1% grid specifically, pinned by three new tests; FloodOutputs omitted in_100yr_flood_zone_unconsulted, so pydantic would have dropped the source list at that boundary and left the frontend an absence it could not explain; the PDF's amber finding was headed 'Council flood study raster' even when the unreachable source was EPI, which names a specific falsehood about what failed, now the neutral '1% AEP flood extent'; the census silently swallowed rows whose normalisation raised, which understates the count, and now reports them and exits 2; and the legacy-row limit above. The seventh — add `is_active = TRUE` to the census query — is a FALSE POSITIVE: property_reports has twelve columns and none of them is is_active, verified against information_schema. Sol applied the project's generic pre-PR rule to a table that has no such column. A second Sol round on the fixed diff raised two more HIGHs, both real and both fixed. The first was mine and it was the opposite failure to the one being repaired: an absent Tweed raster marked EVERY coordinate unconsulted, so a Sydney property with good EPI and SES data would have served 'Not assessed' citing Tweed — a correct, established negative turned into a shrug. Absence is now scoped to the address's own council, decided in the derivation where ses_study_lga is known rather than in the raster query where it is not, and pinned in both directions including the deliberate under-report when the council is unknown. The second: the report page cast an untyped JSON value to `boolean | null`, a promise the compiler cannot keep — a legacy row holding the string 'false' would satisfy the type, fail `=== true` and render 'No'. isFloodZoneNotAssessed now takes unknown and only the two real booleans are answers, with readFloodZoneVerdict as the validator the page uses; eight non-boolean shapes are pinned. Same class as the Number('') === 0 bug #881 fixed. A third round found the gap between the two: flood_study_raster_availability() was tightened to the 1% grid, but the run loop still chose its BOUNDS proxy from the PMF grid first, so a study holding its PMF and not its 1% file passed the proxy check, sampled None, and read as 'outside the extent'. The loop now consults the same 1%-specific function, so the two cannot disagree. Sol raised four findings on this diff and all four were real. The one that changed the headline: the calibration reported a Wald interval, invalid at a proportion this close to 1, whose lower bound of 0.929 sat above the 0.90 mark and printed PASS. Wilson puts it at 0.874, BELOW the mark, and the pre-commit written before the run says a result within the interval of the mark is indistinguishable from it and not a pass. The verdict is now INDISTINGUISHABLE FROM THE MARK. I would have shipped the flattering number; the cross-review caught it. Also fixed: any pipeline exception was dropped from the denominator, so ten database failures would have read as 100% recall on the forty that worked — only an explicit outside-NSW refusal is out of scope now, and all nine exclusions in this run were checked individually to be exactly that; the runner hardcoded one laptop's paths while being committed as reproducible evidence; and a filename split that could IndexError mid-run. A fifth, mine: a missing study plus an unresolvable council still produced a confident False, so the council scoping had become a new route to the very answer the three-state change exists to prevent. A test asserted that behaviour and is corrected.",
-  "residual_risk": "The census figure of 12 is a floor for the reason above, and it counts only what the stored rows can still prove. Three of the twelve are in Lismore, Murwillumbah and Telarah — towns at the centre of the 2022 floods — which is a strong hint that the unestablished answers were also wrong answers, but this change cannot show that and does not claim it: it establishes that we said no without checking, not that the true answer was yes. The retroactive fix is partial in one direction, which is the honest version of the headline: a stored report whose council study was silently skipped keeps whatever EPI and SES established, because nothing in the row records the skip. Only a re-run fixes those. Nothing here ships the Tweed or Wollongong rasters, so those two areas will now correctly report 'not assessed' instead of incorrectly reporting 'no' — better, but still not an answer, and that is the next approved piece of work. The startup warning is a log line, not a failed boot: making an absent study fatal would take the whole flood product down in an environment where one council's files are late, which is a worse trade for a service that answers for many councils. That choice is deliberate and is the weakest link in the loud-not-silent chain. Finally, the report page's amber explanation is new UI in a shared component used by every product's report page; the detail field is optional and unset everywhere else, so no other product's layout changes, but that is a same-file blast radius worth a reviewer's eye. One direction is deliberately weaker: when a report carries no council name, an absent study is NOT reported as unconsulted. That under-reports rather than over-reports, because a false 'not assessed' on every address in the state would destroy the signal the change exists to create. It is pinned by a test so the choice is visible rather than incidental. Sol's remaining finding is the deliberate trade-off, not a defect to fix here: a Tweed property whose SES query returned no council name keeps a False even though the Tweed study was absent. The alternative — reporting the absence when the council is unknown — taints every address in the state, which is the same failure inverted and destroys the signal. Neither is right; the actual resolution is shipping the Tweed and Wollongong rasters, which is the next approved piece of work and makes flood_studies_absent empty in production, at which point the scoping question disappears entirely. Until then this change is strictly better than what it replaces and never worse. The calibration does not clear its own mark at N=41 and is reported that way. Roughly 150 scored points would settle it; each point is a live pipeline run, which is why the sample is small. The one miss — EMSR570/AOI01 at -29.0196, 153.2219, Northern Rivers, flood_signal none — is named rather than averaged away. Recall is measured inside Copernicus-mapped disaster AOIs, the worst-hit and best-mapped ground, so it is a best case and says nothing about an unmapped catchment. The reference labels no permanent-water class, so an unquantified share of sampled points may be river channel, which inflates recall. ALSO FOUND while verifying this PR: the calibration re-run emits 'FLOOD STUDY CONFIG/DATA MISMATCH: 4 configured but their rasters are not on this host: hawkesbury, redbank, tweed, wollongong', so every 1% AEP answer in those areas is 'not assessed' on a host without the grids. That warning is the correct fail-closed behaviour and is the reason this PR ships the download script; it is called out here because it means the calibration above measured the SCREENING signal, not the 1% AEP verdict, on this host. Separately, the boot sequence now downloads Tweed and Wollongong (1.6 GB uncompressed) in addition to Hawkesbury and Redbank, which lengthens cold start — PR #888 is open on container boot time and the two interact. Compressing Wollongong from ASCII grid to deflated GeoTIFF was measured at 8.5x (1,139 MB -> 135 MB) and is not done here. NEW AND MORE IMPORTANT THAN THE RECALL FIGURE: Richmond Valley holds ZERO flood polygons, so every address in that council receives a confident 'no flood indicator' regardless of the ground. Lismore — the council that recorded the most catastrophic flood in Australian history in 2022 — holds exactly ONE polygon, which is unlikely to be its true extent and which no point in this sample happened to test. This reframes the headline: 0.895 is not 'misses about one in ten at random', it is closer to 'works where flood data has been loaded, returns a confident negative where it has not'. Only the second behaviour is dangerous, and it is a DATA COVERAGE gap, not a detection defect. Neither council is fixed here; both are surfaced.",
-  "post_merge": {
-    "db_reset": "No. The calibration wrote 41 flood reports to property_reports as a side effect of calling the live pipeline — real runs at real coordinates, not fabricated rows, and indistinguishable from ordinary traffic. Nothing was updated or deleted.",
-    "secrets": "No. R2 and DB credentials read from the existing .env; none logged.",
-    "other_repo": "No. Single repository.",
-    "manual_verify": "Yes. After deploy, confirm the boot log shows the Tweed and Wollongong 1% AEP grids downloading from R2 and that FLOOD STUDY CONFIG/DATA MISMATCH no longer names them; then re-run scripts/measure_flood_zone_unassessed.py and expect the not-assessed count to fall as those councils become answerable."
+  {
+   "name": "_normalise_outputs",
+   "file_line": "services/flood_truth.py:1734",
+   "input": "the stored or freshly computed raw outputs for one flood run",
+   "output": "the served contract, in which in_100yr_flood_zone is now True, False or None and is accompanied by in_100yr_flood_zone_unconsulted",
+   "if_none": "None is the verdict when no positive signal fired and at least one source was unreachable; it is never a default and never rendered as No"
+  },
+  {
+   "name": "_build_data_gap_reasons",
+   "file_line": "services/flood_truth.py:1642",
+   "input": "the internal outputs for one run, including the new flood_studies_absent list of configured studies whose rasters this host cannot read",
+   "output": "per-source reasons, now distinguishing a study absent from this host from a council that restricts access",
+   "if_none": "the consultant-IP explanation is no longer given for a study whose data is simply missing here, because that reason was false"
   }
+ ],
+ "values": [
+  {
+   "value": "151 stored flood reports; 9 served True, 142 served False; 12 of the 142 now read Not assessed",
+   "read_at": "production property_reports via scripts/measure_flood_zone_unassessed.py, 2026-08-08",
+   "if_missing": "the script prints UNKNOWABLE and exits 2 rather than reporting zero, because no database reachable is not the same as no damage"
+  },
+  {
+   "value": "Council/SES flood study extent unreachable on 12 rows; NSW EPI flood overlay unreachable on 5 (they overlap)",
+   "read_at": "same census, derived from each row's stored epi_flood_class / data_currency / ses_in_flood_planning_area",
+   "if_missing": "a row whose outputs cannot be parsed is skipped and therefore excluded from the numerator, which biases the count DOWN"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "count how many stored flood reports served an unestablished not-in-a-flood-zone verdict",
+   "file_line": "scripts/measure_flood_zone_unassessed.py:97",
+   "where_clause": "WHERE product = 'flood' — read-only SELECT, no UPDATE/INSERT/DELETE anywhere in the script, statement_timeout 30s"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A future consumer reads the field with a truthiness check — if (outputs.in_100yr_flood_zone) or !value — because null is falsy in TypeScript and None is falsy in Python.",
+   "what_happens": "The third state collapses straight back to 'not in a flood zone', now with a correct-looking data model on top of it. This is the defect re-applied and it would be invisible in review.",
+   "mitigated": true,
+   "how": "isFloodZoneNotAssessed tests null and undefined explicitly and never negates the value, and a test asserts that a truthiness implementation would give the opposite answer for false. Every one of the three collapsing sites is reproduced in __tests__/lib/flood-zone-three-state.test.ts so restoring any of them goes red.",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/flood-zone-three-state.test.ts"
+  },
+  {
+   "scenario": "One source is unreachable while another positively places the property inside the 1% AEP extent — a real flood finding arriving alongside a service outage.",
+   "what_happens": "The verdict stays True. Making it None would turn a genuine flood finding into a shrug, which is the opposite failure and every bit as harmful to the reader.",
+   "mitigated": true,
+   "how": "The derivation checks the positive signals first and only consults the gap list for the negative branch; test_positive_wins_even_when_another_source_is_unreachable pins it with both a null SES flag and an absent study present at once.",
+   "repro": "python -m pytest tests/test_flood_normalise.py -q -k positive_wins"
+  },
+  {
+   "scenario": "A new council flood study is added to FLOOD_STUDIES and its rasters are never shipped, exactly as happened with Tweed and Wollongong.",
+   "what_happens": "flood_study_raster_availability reports it absent, an import-time warning names it, and every 1% answer for that area is 'not assessed' rather than 'no'. It cannot be half-configured silently.",
+   "mitigated": true,
+   "how": "The check runs at module import, so it fires wherever the service starts rather than only when a matching address is requested; the per-run list feeds the served verdict as well.",
+   "repro": "python -c \"import sys; sys.path[:0]=['.','services']; import services.flood_truth as f; print(f.flood_study_raster_availability())\""
+  },
+  {
+   "scenario": "The PDF and the report page disagree, because one was updated and the other was not — the shape of the shadow defect #885 fixed, where a bearing rendered beside a non-result.",
+   "what_happens": "They cannot: both import their wording from lib/not-assessed.ts, the single module #885 created and this change renamed rather than duplicated. Three shadow surfaces already import it and were repointed in the same commit.",
+   "mitigated": true,
+   "how": "One exported label and one exported message builder per state. A second wording would have to be written deliberately, and the module header says why not to.",
+   "repro": "git grep -l \"from '@/lib/not-assessed'\" frontend-nextjs/"
+  },
+  {
+   "scenario": "Someone reads the 12-row census figure as the total harm.",
+   "what_happens": "It is a floor. flood_studies_absent did not exist when those rows were written, so a silently-skipped Tweed or Wollongong study is unrecoverable from stored data and cannot be counted; only EPI and SES gaps are visible retrospectively.",
+   "mitigated": true,
+   "how": "The script's docstring states the limit and the output labels the figure a floor, rather than leaving a reader to infer completeness from a confident number.",
+   "repro": "python scripts/measure_flood_zone_unassessed.py"
+  },
+  {
+   "scenario": "The four-absent-studies warning from a developer machine is quoted as the production figure.",
+   "what_happens": "It would overstate: hawkesbury and redbank are absent locally only because they download at container start. In production the permanently absent pair is tweed and wollongong, which alone have no download script.",
+   "mitigated": true,
+   "how": "Recorded in pre_impl.assumption_mismatch and in the PR body. The warning text names the studies rather than only a count, so the reader can tell which environment they are looking at.",
+   "repro": "ls scripts/download_*rasters*.py   # hawkesbury, redbank, narclim — no tweed, no wollongong"
+  },
+  {
+   "scenario": "The published calibration figures and the run that produced them drift apart, and the outward-facing assurance page quotes the stale one.",
+   "what_happens": "Exactly what was found here by the cross-review. The result markdown published recall 0.857 (6 of 7) while the JSON it cites in its own first paragraph recorded 34 of 38, recall 0.895 — two incompatible sample sizes, recall values and intervals presented as one run. The 6-of-7 figure had been copied on into docs/PRODUCT_ASSURANCE_POSITION.md, the page written for an outside reader, so anyone following its citation would have found different numbers.",
+   "mitigated": true,
+   "how": "Established which artifact is authoritative by RE-RUNNING scripts/run_flood_calibration_2022.py at seed 20220228: it reproduces the JSON byte-identically (38 sampled, 38 in coverage, 34 hits, git diff empty), while the 6-of-7 figure is not reproducible from the committed runner at all — an intermediate run that was never refreshed. Both documents now carry the reproducible figures, the superseded run is kept in the corrections table rather than erased, and tests/test_flood_calibration_artifacts_agree.py pins prose to evidence: recall, sample size, Wilson bounds, pass mark and verdict must all match the JSON, and the assurance page must quote the same numbers. Planting the original 6-of-7 headline fails 3 of its 6 tests; markdown restored byte-identically (md5 ccdb9da7b7801f884fbe136c8eebd597).",
+   "repro": "sed the headline back to '0.857 — 6 of 7' and run pytest tests/test_flood_calibration_artifacts_agree.py -- expect 3 failed, 3 passed."
+  },
+  {
+   "scenario": "A failure that is really ONE cause showing up in several places gets reported as several isolated failures, and the cause is never found.",
+   "what_happens": "The report named one miss; the artifact holds four. All four sit in the same AOI with the identical signature — nothing from the EPI layer, nothing from the 1% AEP verdict, nothing from the council/SES extent. Reported as one isolated Northern Rivers point, the reader concludes the screen occasionally misses. Reported as four identical failures in one place, the actual cause is visible in a single query.",
+   "mitigated": true,
+   "how": "Measured the cause rather than describing the symptom: all four fall in Richmond Valley, and a point-in-polygon check returns ZERO flood polygons covering any of them. Richmond Valley holds 0 flood polygons in spatial_overlays against Ballina 191 and Clarence Valley 12. So the product returns 'no flood indicator' for every address in that council because it holds no data there, not because the land is dry. Two tests now pin it: every miss in the artifact must be named by coordinates in the report, and the heading 'The one miss' is banned while the count exceeds one. Planting the old single-miss version fails both; markdown restored byte-identically (md5 ffa3bf0485f25642c8abda76b4a5684e).",
+   "repro": "Revert the misses section to name one coordinate and run pytest tests/test_flood_calibration_artifacts_agree.py -- expect 2 failed, 6 passed."
+  },
+  {
+   "scenario": "The artifact hides how much of the sample was discarded, so a reader cannot judge whether the scored set is representative.",
+   "what_happens": "It recorded only the POST-filter count as n_sampled, with out_of_scope: 0. A run that drew 150 and kept 38 published \"38 of 38, no exclusions\" — 112 discarded draws invisible, and any lookup FAILURES among them indistinguishable from genuine out-of-coverage points. Absence presented as a clean result, inside the instrument built to catch exactly that.",
+   "mitigated": true,
+   "how": "Four counts now recorded and written to the artifact: n_raw_draws 150, n_in_scope 38, n_out_of_scope_at_scope_test 112, n_scope_unresolved 0. A failed lookup returns None and is counted as unresolved, never as known-outside, and the run warns when any occur. Re-run confirms recall unchanged at 0.895 — the fix exposed the sample, it did not move the number.",
+   "repro": "python scripts/run_flood_calibration_2022.py -- stdout must read \"raw draws: 150 -> in NSW LGA coverage 38, outside 112, scope unresolved 0\" and all four counts must appear in the JSON."
+  },
+  {
+   "scenario": "The report tells the reader a sample size that would settle the question, and the arithmetic is impossible.",
+   "what_happens": "It said ~150 scored points would lift the Wilson lower bound above 0.90. A Wilson lower bound converges on the point estimate FROM BELOW and can never exceed it, so at observed recall 0.895 no sample size whatsoever does that. A reader plans 150 more points expecting a pass that cannot arrive.",
+   "mitigated": true,
+   "how": "Computed rather than reasoned. At 0.895 the bound is 0.834 at n=150 and 0.868 at n=600 — still short at ten times the sample. Both tables are now in the report, together with what WOULD be needed if the true recall were higher (~375 points at 0.93, ~130 at 0.95, ~70 at 0.97), and the honest conclusion: more points can only reveal a higher true recall or tighten this one toward a FAIL.",
+   "repro": "Recompute the Wilson bound at p=0.895 for any n; the lower bound never reaches 0.90."
+  },
+  {
+   "scenario": "The stratified sampler spins forever instead of reporting, because a stratum that can never yield a point is never removed from the rotation.",
+   "what_happens": "The round-robin never removed an AOI that cannot yield a lon/lat point (a projected product, say), so if no AOI could produce one the outer loop spun forever making no progress. A calibration that hangs is worse than one that fails: it looks like it is working.",
+   "mitigated": true,
+   "how": "Exhausted keys are removed, and the loop breaks when a full pass makes no progress.",
+   "repro": "Feed sample() only projected-coordinate rings; it must return promptly with an empty list rather than spin."
+  },
+  {
+   "scenario": "An entire reference archive goes missing and the calibration publishes a flattering number from the reduced set without noticing.",
+   "what_happens": "The integrity check only inspected archives the glob FOUND, so an absent one was invisible — fewer files, still enough points, a valid-looking recall from an incomplete reference. Not hypothetical: all four published misses came from one AOI, so losing that archive removes them and RAISES the score.",
+   "mitigated": true,
+   "how": "A committed manifest of all 47 archives with sha256 prefixes; the run aborts unless every one is present and unchanged. Extra archives are reported but allowed, because widening the reference cannot flatter. PROVEN: hiding EMSR570_AOI01_DEL_MONIT01 — an archive from the exact AOI the misses came from — aborts with exit 2 and names the file; restored, 47 verified.",
+   "repro": "mv one archive out of data/flood_calibration/copernicus and run the script -- expect exit 2 and REFERENCE SET INCOMPLETE naming it."
+  },
+  {
+   "scenario": "Two components disagree about whether a point is in scope, and the disagreement silently removes the point from the denominator.",
+   "what_happens": "in_nsw() ruled a point INSIDE coverage using the authoritative lookup; if run_flood then raised any message containing \"outside NSW\" the point was dropped with hit=None. That is not new scope information, it is a contradiction — and believing the second component removed in-scope points from the denominator, inflating recall.",
+   "mitigated": true,
+   "how": "Scope is decided ONCE, before scoring, by the authoritative test. Every exception after that is scored as a miss, and a contradicting message prints a named warning and is counted in the artifact as scope_contradictions. Current run: 0.",
+   "repro": "Force run_flood to raise \"outside NSW\" for an in-coverage point -- it must be scored hit=false and counted as a contradiction, never excluded."
+  }
+ ],
+ "mutation_analysis": "The six tests that changed are the mutation analysis in its purest form: they asserted the defect, so the defect is exactly what reverting them restores. Reinstating the old one-line derivation (`normalised[...] = in_100yr`) turns all six red. Beyond that: removing the flood_studies_absent recording kills the configured-study test; short-circuiting the positive branch kills the positive-wins test; restoring the API coercion, the page ternary or deleting the PDF branch each kill their named frontend test. Not covered by tests and stated rather than implied: the import-time warning's text, and whether the amber block renders legibly in the generated PDF — react-pdf layout is not exercised by jest and node_modules is absent in this bare worktree, so both are verified by CI and by reading the generated document, not here. Sol raised seven findings on the diff and six were real. Fixed: the availability check accepted ANY design raster, so a study holding its 5% grid but not its 1% grid counted as consultable and contributed a confident negative to the one question it could not answer — now the 1% grid specifically, pinned by three new tests; FloodOutputs omitted in_100yr_flood_zone_unconsulted, so pydantic would have dropped the source list at that boundary and left the frontend an absence it could not explain; the PDF's amber finding was headed 'Council flood study raster' even when the unreachable source was EPI, which names a specific falsehood about what failed, now the neutral '1% AEP flood extent'; the census silently swallowed rows whose normalisation raised, which understates the count, and now reports them and exits 2; and the legacy-row limit above. The seventh — add `is_active = TRUE` to the census query — is a FALSE POSITIVE: property_reports has twelve columns and none of them is is_active, verified against information_schema. Sol applied the project's generic pre-PR rule to a table that has no such column. A second Sol round on the fixed diff raised two more HIGHs, both real and both fixed. The first was mine and it was the opposite failure to the one being repaired: an absent Tweed raster marked EVERY coordinate unconsulted, so a Sydney property with good EPI and SES data would have served 'Not assessed' citing Tweed — a correct, established negative turned into a shrug. Absence is now scoped to the address's own council, decided in the derivation where ses_study_lga is known rather than in the raster query where it is not, and pinned in both directions including the deliberate under-report when the council is unknown. The second: the report page cast an untyped JSON value to `boolean | null`, a promise the compiler cannot keep — a legacy row holding the string 'false' would satisfy the type, fail `=== true` and render 'No'. isFloodZoneNotAssessed now takes unknown and only the two real booleans are answers, with readFloodZoneVerdict as the validator the page uses; eight non-boolean shapes are pinned. Same class as the Number('') === 0 bug #881 fixed. A third round found the gap between the two: flood_study_raster_availability() was tightened to the 1% grid, but the run loop still chose its BOUNDS proxy from the PMF grid first, so a study holding its PMF and not its 1% file passed the proxy check, sampled None, and read as 'outside the extent'. The loop now consults the same 1%-specific function, so the two cannot disagree. Sol raised four findings on this diff and all four were real. The one that changed the headline: the calibration reported a Wald interval, invalid at a proportion this close to 1, whose lower bound of 0.929 sat above the 0.90 mark and printed PASS. Wilson puts it at 0.874, BELOW the mark, and the pre-commit written before the run says a result within the interval of the mark is indistinguishable from it and not a pass. The verdict is now INDISTINGUISHABLE FROM THE MARK. I would have shipped the flattering number; the cross-review caught it. Also fixed: any pipeline exception was dropped from the denominator, so ten database failures would have read as 100% recall on the forty that worked — only an explicit outside-NSW refusal is out of scope now, and all nine exclusions in this run were checked individually to be exactly that; the runner hardcoded one laptop's paths while being committed as reproducible evidence; and a filename split that could IndexError mid-run. A fifth, mine: a missing study plus an unresolvable council still produced a confident False, so the council scoping had become a new route to the very answer the three-state change exists to prevent. A test asserted that behaviour and is corrected.",
+ "residual_risk": "The census figure of 12 is a floor for the reason above, and it counts only what the stored rows can still prove. Three of the twelve are in Lismore, Murwillumbah and Telarah — towns at the centre of the 2022 floods — which is a strong hint that the unestablished answers were also wrong answers, but this change cannot show that and does not claim it: it establishes that we said no without checking, not that the true answer was yes. The retroactive fix is partial in one direction, which is the honest version of the headline: a stored report whose council study was silently skipped keeps whatever EPI and SES established, because nothing in the row records the skip. Only a re-run fixes those. Nothing here ships the Tweed or Wollongong rasters, so those two areas will now correctly report 'not assessed' instead of incorrectly reporting 'no' — better, but still not an answer, and that is the next approved piece of work. The startup warning is a log line, not a failed boot: making an absent study fatal would take the whole flood product down in an environment where one council's files are late, which is a worse trade for a service that answers for many councils. That choice is deliberate and is the weakest link in the loud-not-silent chain. Finally, the report page's amber explanation is new UI in a shared component used by every product's report page; the detail field is optional and unset everywhere else, so no other product's layout changes, but that is a same-file blast radius worth a reviewer's eye. One direction is deliberately weaker: when a report carries no council name, an absent study is NOT reported as unconsulted. That under-reports rather than over-reports, because a false 'not assessed' on every address in the state would destroy the signal the change exists to create. It is pinned by a test so the choice is visible rather than incidental. Sol's remaining finding is the deliberate trade-off, not a defect to fix here: a Tweed property whose SES query returned no council name keeps a False even though the Tweed study was absent. The alternative — reporting the absence when the council is unknown — taints every address in the state, which is the same failure inverted and destroys the signal. Neither is right; the actual resolution is shipping the Tweed and Wollongong rasters, which is the next approved piece of work and makes flood_studies_absent empty in production, at which point the scoping question disappears entirely. Until then this change is strictly better than what it replaces and never worse. The calibration does not clear its own mark at N=41 and is reported that way. Roughly 150 scored points would settle it; each point is a live pipeline run, which is why the sample is small. The one miss — EMSR570/AOI01 at -29.0196, 153.2219, Northern Rivers, flood_signal none — is named rather than averaged away. Recall is measured inside Copernicus-mapped disaster AOIs, the worst-hit and best-mapped ground, so it is a best case and says nothing about an unmapped catchment. The reference labels no permanent-water class, so an unquantified share of sampled points may be river channel, which inflates recall. ALSO FOUND while verifying this PR: the calibration re-run emits 'FLOOD STUDY CONFIG/DATA MISMATCH: 4 configured but their rasters are not on this host: hawkesbury, redbank, tweed, wollongong', so every 1% AEP answer in those areas is 'not assessed' on a host without the grids. That warning is the correct fail-closed behaviour and is the reason this PR ships the download script; it is called out here because it means the calibration above measured the SCREENING signal, not the 1% AEP verdict, on this host. Separately, the boot sequence now downloads Tweed and Wollongong (1.6 GB uncompressed) in addition to Hawkesbury and Redbank, which lengthens cold start — PR #888 is open on container boot time and the two interact. Compressing Wollongong from ASCII grid to deflated GeoTIFF was measured at 8.5x (1,139 MB -> 135 MB) and is not done here. NEW AND MORE IMPORTANT THAN THE RECALL FIGURE: Richmond Valley holds ZERO flood polygons, so every address in that council receives a confident 'no flood indicator' regardless of the ground. Lismore — the council that recorded the most catastrophic flood in Australian history in 2022 — holds exactly ONE polygon, which is unlikely to be its true extent and which no point in this sample happened to test. This reframes the headline: 0.895 is not 'misses about one in ten at random', it is closer to 'works where flood data has been loaded, returns a confident negative where it has not'. Only the second behaviour is dangerous, and it is a DATA COVERAGE gap, not a detection defect. Neither council is fixed here; both are surfaced.",
+ "post_merge": {
+  "db_reset": "No. The calibration wrote 41 flood reports to property_reports as a side effect of calling the live pipeline — real runs at real coordinates, not fabricated rows, and indistinguishable from ordinary traffic. Nothing was updated or deleted.",
+  "secrets": "No. R2 and DB credentials read from the existing .env; none logged.",
+  "other_repo": "No. Single repository.",
+  "manual_verify": "Yes. After deploy, confirm the boot log shows the Tweed and Wollongong 1% AEP grids downloading from R2 and that FLOOD STUDY CONFIG/DATA MISMATCH no longer names them; then re-run scripts/measure_flood_zone_unassessed.py and expect the not-assessed count to fall as those councils become answerable."
+ }
 }
