@@ -76,8 +76,23 @@ Origin: four prior-art misses in one session, 2026-07-27.
 
 ## Deployment & Branching [ENFORCED]
 Branch naming: `fix/` | `feat/` | `chore/`
-Workflow: branch → work → commit → `gh pr create` → share preview → user says "merge" → `gh pr merge --squash`
+Workflow: branch → work → commit → `gh pr create` → share preview → user says "merge" →
+**`python scripts/check_pr_gates.py <PR>`** → `gh pr merge --squash`
 PR body: `## What` (one-line) + `## Why` (problem/feature). No "Test plan". No attribution.
+
+**Never merge on an empty check list. [CRITICAL]**
+A PR that is **CONFLICTING gets no GitHub Actions run at all** — `pull_request` workflows execute
+against the merge commit, and a conflicting branch has none to build. Nothing fails; nothing
+starts. The PR page shows no checks, which looks exactly like "not finished yet".
+Measured 2026-08-10: PR #907 sat 40+ min with zero runs, rebasing cleared the conflict, and the
+run appeared **20 seconds** later. PR #902 was merged 10 seconds *before* its run was created.
+- `python scripts/check_pr_gates.py <PR>` exits non-zero unless a `gates` run exists for the
+  PR's current head sha **and** passed. Run it immediately before `gh pr merge`.
+- If it says NOT-RUN: `git fetch origin && git rebase origin/main`, resolve, force-push.
+- Branch protection would block this properly, but the API returns 403 "Upgrade to GitHub Pro" —
+  unavailable on a private repo on the free plan. Until then this check is the gate.
+- Safety net if one slips through: `gates` also runs on push to `main`, and `main-red-alarm.yml`
+  raises an issue if main's HEAD has no successful run. That catches it *after* landing, not before.
 
 ## Project Structure
 - `services/` — Python backend (compliance API, satellite product pipelines)
