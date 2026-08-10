@@ -385,7 +385,14 @@ SOL_TOUCHES_OUTPUT=$(echo "$SOL_CHANGED" | grep -E "$SOL_SCOPED_PATHS" || true)
 # Deliberately not a committed baseline like the quarantine ratchet: that one
 # describes durable code state, this one describes one branch's review cycle,
 # and a permanent record here would be a standing amnesty.
-SOL_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null | tr '/' '-')
+# The readable part is for humans; the hash is what makes it unique. Slashes
+# were simply replaced with dashes, so feat/x and feat-x shared one state file
+# and one branch's adjudications would have exempted the other's findings —
+# amnesty leaking across branches, which is precisely what this record must not
+# do. The hash is of the exact ref, so no two branch names can collide.
+SOL_REF=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached)
+SOL_HASH=$(printf '%s' "$SOL_REF" | sha1sum 2>/dev/null | cut -c1-10)
+SOL_BRANCH="$(printf '%s' "$SOL_REF" | tr '/' '-')-${SOL_HASH:-nohash}"
 SOL_STATE_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/sol-review"
 SOL_ADJUDICATED="$SOL_STATE_DIR/$SOL_BRANCH.json"
 SOL_ROUNDS="$SOL_STATE_DIR/$SOL_BRANCH.rounds"
