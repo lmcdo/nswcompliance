@@ -14,7 +14,7 @@ qa_report_template.json only; (4) `~/.claude/plans/INDEX*.md` + MEMORY.md name
 WHY THIS EXISTS
 ---------------
 ``.qa_report.json`` lived at the repo root, tracked, and every branch wrote it.
-That is a guaranteed conflict: the moment one PR merges, every other open PR
+That collides by construction: the moment one PR merges, every other open PR
 touching it becomes CONFLICTING, and a conflicting PR gets **no GitHub Actions
 run at all** -- nothing fails, nothing starts, and the PR page looks identical
 to "still running". On 2026-08-10, 8 of 16 open PRs were dirty for this reason
@@ -74,7 +74,7 @@ class BranchUnknown(RuntimeError):
 
 
 def slugify_branch(branch: str) -> str:
-    """Return a flat, filename-safe slug for a git branch name.
+    """Return a flat slug usable as a filename for a git branch name.
 
     ``/`` becomes ``__`` rather than a directory separator, so the report
     directory stays flat. Flat matters for two reasons: pruning is a single
