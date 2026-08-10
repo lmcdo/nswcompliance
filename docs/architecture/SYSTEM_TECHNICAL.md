@@ -43,6 +43,7 @@ flowchart LR
     D6["regulatory_provisions<br/>55,696 · 19,957 served"]
     D7["dcp_setback_controls<br/>1,071 · 30 councils"]
     D8["lep_land_use_table<br/>18,196 · 26 councils"]
+    D10["cdc_lot_link<br/>181,750 · 98.1% matched"]
   end
 
   S2 --> I1
@@ -57,6 +58,8 @@ flowchart LR
   I3 --> D5
   D1 --> D3
   D2 --> D3
+  D4 --> D10
+  D2 --> D10
   D1 ~~~ D8
 
   classDef src fill:#e8f0fe,stroke:#3b6fb6,color:#10233d
@@ -64,8 +67,13 @@ flowchart LR
   classDef db fill:#e9f7ef,stroke:#2e7d52,color:#102a1c
   class S1,S2,S4 src
   class I1,I2,I3,I4 ing
-  class D1,D2,D3,D4,D5,D6,D7,D8 db
+  class D1,D2,D3,D4,D5,D6,D7,D8,D10 db
 ```
+
+`cdc_lot_link` was added on 2026-08-10 and is the only box on this diagram that is derived from
+two others rather than ingested. It ties each certificate to the lot its coordinates fall inside,
+which is what turns "what got approved at this address" into "what got approved on lots like this
+one". 178,259 of 181,750 matched — 98.1%.
 
 ---
 
