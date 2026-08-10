@@ -15,7 +15,7 @@ We spent a fortnight proving whether the products could be trusted. The answer:
 
 That is the whole finding, and it points somewhere the campaign didn't expect: **the answer is not
 more checking. It is calculating less, and selling the one thing we hold that is a record rather
-than an opinion — 156,000 approved building certificates.**
+than an opinion — 181,737 approved building certificates.**
 
 ---
 
@@ -94,7 +94,11 @@ unwind their own decision.
 
 ## 4. The asset nobody else has
 
-**156,000 complying development certificates. 128 councils. 2018 to 2026.**
+**181,737 complying development certificates. 128 councils. July 2018 to August 2026.**
+
+Counted live on 2026-08-09 — `SELECT count(*) FROM complying_development_certificates`, with
+`count(DISTINCT council_name)` for the councils and `min/max(determination_date)` for the span.
+An earlier draft of this document said 156,000, which understated the asset by roughly 26,000.
 
 A record of **what actually got approved** — not what the rules say, but what got through.
 
@@ -112,7 +116,7 @@ Archistar tells you what fits. PropCode tells you what the document says. **Nobo
 the council actually waved through.**
 
 And the pitch stops being about accuracy — which is the trap that has swallowed eighteen months.
-It becomes *"here's what happened 156,000 times."* Nobody can argue with that, and no verification
+It becomes *"here's what happened 181,737 times."* Nobody can argue with that, and no verification
 apparatus is required to say it.
 
 ---
