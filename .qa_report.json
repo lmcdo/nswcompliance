@@ -1,92 +1,95 @@
 {
-  "tier": "minor",
-  "justification": "Developer tooling only. A new author-identity check plus its wiring into the pre-commit hook and one PR-only CI step. No product code, no served output, no database read or write, no migration, no schema change.",
-  "commit_hash": "40944b22",
+  "tier": "standard",
+  "justification": "Changes what a paid Intelligence Brief renders to the buyer. One defect suppressed populated data outright: a DataField carrying a real value was skipped whenever its confidence badge read not_available, so permitted uses and similar lists silently vanished from the report. The rest are display corrections on the same served surface — lot dimensions, source-footer labels, overlay classification and staleness wording. No database read or write, no migration, no schema change, no new external call.",
+  "commit_hash": "0623f705",
   "files": [
-    "scripts/check_commit_authors.py",
-    ".githooks/pre-commit",
-    ".github/workflows/gates.yml",
-    ".gitignore",
-    ".qa_report.json"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/provenance.ts",
+    "frontend-nextjs/__tests__/app/brief-sources-per-run.test.ts",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/reports/DAOutcomes.tsx",
+    "services/compound_constraints.py",
+    "services/intelligence_brief.py",
+    "tests/test_satellite_integration.py"
   ],
   "falsifiable_check": {
-    "command": "python scripts/check_commit_authors.py --selftest && python scripts/check_commit_authors.py --range e1955be6~1..e1955be6",
-    "fails_when": "The selftest runs nine identities through the rules and exits 1 on any disagreement between expected and actual. The second command exits 1 against e1955be6, the real first t@t commit in this repository's history, so the check is proven against the actual incident rather than a fixture. Both were also demonstrated live: with a local override of t <t@t> set, git commit was REFUSED by the hook and no commit entered the history; with the override removed the same commit succeeded.",
-    "external_authority": "The incident itself: 49 commits authored t@t between 2026-08-08 10:19 and 2026-08-09, and the Vercel deployment list showing every preview Blocked with a blank author while production, re-authored by GitHub's squash merge, shows github/lmcdo and is Ready."
+    "command": "cd frontend-nextjs && npx jest --testPathPattern=brief-sources-per-run",
+    "fails_when": "any slug in SOURCE_LABELS loses its mapping and humanizeSource falls back to the title-cased slug, so the footer names an internal pipeline instead of the real-world source. Verified by deleting the shadow_detector entry from provenance.ts: the suite went red on that case, 1 failed / 16 passed, and green again on restore."
   },
   "pre_impl": {
-    "existing_data": "Four sweeps 2026-08-09 vs origin/main ca41fcd1. A grep for user.email or author-email patterns over scripts/, .githooks/ and .github/ returns no identity check. .githooks/pre-commit gates branch name, secrets, large files, TSC, bracket lint, fail-soft lint, zone codes and fabricated verdicts, none of them authorship. .githooks/pre-push runs pytest, jest, qa_gate and the liability scan. .github/workflows/gates.yml has five jobs and no identity step. No frontend surface is involved.",
-    "assumption_mismatch": "Two, both caught by the check's own selftest before it was wired anywhere. A minimum local-part length rejected a@b.co, which is a perfectly valid address, and was removed. And the first range test was pointed at main, which is clean by construction because a squash merge re-authors every commit, so it reported success while being incapable of failing; re-aimed at a real t@t commit, it correctly goes red.",
-    "new_vs_existing": "New check. Additive: no existing gate changed behaviour, and the CI step is a new step inside an existing job that already fetches full history for its merge-base diff."
+    "existing_data": "No stored data is touched or rewritten. Every change is at render time over sections already streamed to the page; provenance.ts holds a static slug-to-label map with no persistence, and no property_reports row is read or written by this change.",
+    "assumption_mismatch": "The prior code assumed confidence == 'not_available' implied there was nothing to show. That is false for fields that carry a populated value alongside a low-confidence badge, which is how permitted uses arrive. The guard now requires the value itself to be empty before skipping.",
+    "new_vs_existing": "Reuses main's existing provenance.ts module rather than reintroducing the source-label map into page.tsx. An earlier version of this branch carried its own label map and its own dedupe; main has since extracted both into provenance.ts with case-insensitive dedupe, so only the ten missing slug mappings were carried across."
   },
   "functions": [
     {
-      "name": "problem_with",
-      "file_line": "scripts/check_commit_authors.py:70",
-      "input": "an author name and email exactly as git would record them on the commit",
-      "output": "A sentence naming why this identity cannot belong to a real person, or None when it is plausible. Structural only: a domain with no dot, a known placeholder domain, a placeholder or single-character name. Bot prefixes are allowed through.",
-      "if_none": "An empty email returns 'no author email is set at all' rather than passing. A real address that simply is not the repo owner's PASSES, deliberately, because this is a placeholder gate and not an authorisation gate; an allow-list of permitted humans would be a roster to maintain and a second thing to get wrong."
+      "name": "renderDataField value guard",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "input": "a DataField with confidence and value",
+      "output": "the rendered field when the value is populated, regardless of the confidence badge",
+      "if_none": "value null or an empty array short-circuits as before, so a genuinely absent field is still skipped rather than rendered blank"
     },
     {
-      "name": "check_staged",
-      "file_line": "scripts/check_commit_authors.py:104",
-      "input": "nothing; it reads the identity the next commit in this repository would actually use",
-      "output": "0 when plausible. On rejection it prints the offending identity, the reason, and both the local and global config values when a repo-local override is present, because that override is the failure and it is invisible unless printed beside the global it is shadowing.",
-      "if_none": "An unset local override is reported as (unset) rather than blank, so the output distinguishes no override from an override set to empty."
-    },
-    {
-      "name": "check_range",
-      "file_line": "scripts/check_commit_authors.py:135",
-      "input": "a git revision range, in CI the merge-base of origin/main and the pull request head",
-      "output": "0 when every non-merge commit is plausibly authored, printing the count checked so a vacuous pass is visible. On failure it lists each bad commit with its reason and the rebase command that rewrites them.",
-      "if_none": "An empty range prints that there are no non-merge commits to check and returns 0, stated explicitly rather than reported as a pass over zero commits."
+      "name": "humanizeSource",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:42",
+      "input": "an internal source slug string emitted by a pipeline section",
+      "output": "the real-world source name for the footer",
+      "if_none": "an unmapped slug still falls back to the title-cased slug — the pre-existing behaviour, now covered by an explicit assertion"
     }
   ],
-  "values": "N/A — no database or API values are read. The only inputs are git config values and commit metadata.",
-  "queries": "N/A — no SQL is executed anywhere in this change.",
+  "values": [
+    {
+      "value": "df.value on a DataField whose confidence is not_available",
+      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "nullable": "yes",
+      "guard_at": "the dfValueEmpty check in the same conditional",
+      "if_missing": "field skipped, as before"
+    },
+    {
+      "value": "lot_dimensions frontage_m / depth_m / is_corner",
+      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "nullable": "yes",
+      "guard_at": "each field is typeof-checked before formatting",
+      "if_missing": "renders an em dash rather than a partial or NaN measurement"
+    }
+  ],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "The check is added only to the git hook.",
-      "what_happens": "Hooks are opt-in per clone and this repository has 15 worktrees; a commit arriving from an environment where nobody enabled core.hooksPath is unaffected, which is the likely origin of this very incident.",
+      "scenario": "A permitted-uses DataField arrives with a populated array and confidence not_available",
+      "what_happens": "Before this change the whole field was skipped and the buyer saw nothing, with no indication data existed",
       "mitigated": true,
-      "how": "It runs in CI as well, in the qa-and-liability job which already fetches full history. The retrospective's central finding was that every gate here was client-side and skippable; a hook-only check would have repeated it.",
-      "repro": "Commit with --no-verify, push, and the pull request check still fails."
+      "how": "the guard now also requires the value to be null or an empty array before skipping",
+      "repro": "Open /reports/intelligence-brief for an address whose Planning section returns permitted uses with confidence not_available; before the fix the Permitted uses row is absent from the rendered page, after it the list renders."
     },
     {
-      "scenario": "The CI step runs on main as well as on pull requests.",
-      "what_happens": "It is trivially green forever. A squash merge re-authors the commit as the merging GitHub account, so main can never contain a bad author; the check would look active while being incapable of failing, which is the DQ-30 zero-percent-drift shape.",
+      "scenario": "lot_dimensions arrives as an object with only some measurements present",
+      "what_happens": "A naive formatter would emit NaN or a half-built string such as 'undefined m frontage'",
       "mitigated": true,
-      "how": "The step is guarded by github.event_name == 'pull_request', matching the QA report step above it, which is gated for exactly the same reason.",
-      "repro": "git log main --author=t@t returns nothing while 49 such commits exist on branches."
+      "how": "each measurement is typeof-checked individually and only present ones are joined; an empty result renders an em dash",
+      "repro": "Open /reports/intelligence-brief for a lot whose cadastre returns frontage_m but no depth_m; the Secondary Dwelling area must read '12.5 m frontage' alone, never 'undefined m depth' or NaN."
     },
     {
-      "scenario": "The rules are strict enough to reject a real person.",
-      "what_happens": "Someone with a short but legitimate address cannot commit, the check gets disabled, and the protection is lost entirely.",
+      "scenario": "Two internal slugs name the same real-world source in one run, for example vg_valuation and nsw_valuer_general",
+      "what_happens": "The footer would list NSW Valuer General twice, implying two independent sources corroborate a figure that came from one",
       "mitigated": true,
-      "how": "The minimum local-part length was removed after the selftest caught it rejecting a@b.co. What remains cannot reject a deliverable address, because every real domain contains a dot.",
-      "repro": "python scripts/check_commit_authors.py --selftest — the identity 'A B' <a@b.co> must be accepted."
+      "how": "main's collectSources keys on the lower-cased label so both collapse to one row; a new test asserts the three Valuer General slugs resolve to a single label",
+      "repro": "cd frontend-nextjs && npx jest --testPathPattern=brief-sources-per-run -t 'three Valuer General slugs'"
     },
     {
-      "scenario": "A bot's commit is rejected.",
-      "what_happens": "dependabot and github-actions commits fail CI, and 16 such commits exist in recent history.",
-      "mitigated": true,
-      "how": "Bot prefixes are allowed through explicitly, and the selftest pins dependabot's noreply address as accepted.",
-      "repro": "python scripts/check_commit_authors.py --range over a range containing a dependabot commit."
-    },
-    {
-      "scenario": "The check passes locally and fails in CI.",
-      "what_happens": "Exactly what happened on the previous branch: .qa_report.json is tracked, edits to it were never staged, the pre-push hook read the working copy and passed while CI read the committed copy and failed.",
-      "mitigated": true,
-      "how": "This report is committed alongside the change it describes rather than left modified in the working tree.",
-      "repro": "git status --porcelain .qa_report.json returns nothing after committing."
+      "scenario": "A new pipeline emits a source slug that nobody added to SOURCE_LABELS",
+      "what_happens": "The footer prints the title-cased internal slug, exposing an internal pipeline name to the buyer",
+      "mitigated": false,
+      "how": "Not fixed here. The fallback is unchanged and there is no gate that fails on an unmapped slug reaching the footer. Recorded in residual_risk.",
+      "repro": "cd frontend-nextjs && node -e \"const{humanizeSource}=require('./app/reports/intelligence-brief/provenance.ts');console.log(humanizeSource('brand_new_pipeline'))\" — prints 'Brand New Pipeline', the internal slug, with nothing failing."
     }
   ],
-  "mutation_analysis": "The selftest is the mutation analysis for a pure-rules module: nine identities, each asserting accept or reject, covering every branch of problem_with — no dot in domain, placeholder domain, placeholder name, single-character name, empty email, malformed email, bot allowance, and two valid addresses that must pass. It caught two real defects in its own author before the check was wired anywhere. Beyond the unit level the check was demonstrated end to end: a commit as t <t@t> was refused by the hook and left no commit in the history, and the same commit succeeded once the override was removed.",
-  "residual_risk": "This is a plausibility gate, not an identity check. A well-formed address belonging to nobody on the team passes, and it must, because deciding who is allowed to commit is a different problem needing a maintained roster. It also cannot help commits already made: the 49 existing t@t commits stay unattributed and their previews stay blocked, because rewriting them would rewrite published branch history. And it only fires where it runs — a cloud environment that neither installs the hooks nor opens a pull request is still unprotected, though nothing reaches main without a pull request.",
+  "mutation_analysis": "Deleting the shadow_detector mapping from provenance.ts turned the new suite red (1 failed, 16 passed) and restoring it turned it green, so the label assertions are not vacuous. The render guard and the lot_dimensions formatter have NO automated test — both live inline in page.tsx and would need the component extracted to be unit-testable. A mutation that reverted the guard to its original form would still pass the suite.",
+  "residual_risk": "Two of the six fixes are unverified by any test: the not_available render guard and the lot_dimensions formatting, both inline in page.tsx. An unmapped source slug still renders as its internal name in the footer, with no gate to catch it. These need either a component test or extraction of the render helpers into a pure module, following the pattern main already used for provenance.ts.",
   "post_merge": {
-    "db_reset": "No. Nothing in this change touches any database.",
-    "secrets": "No. It reads git config user.name and user.email and commit metadata; no credentials are read, written or logged.",
-    "other_repo": "No. Single repository. The fix to the identity itself was a local git config change already applied outside this pull request.",
-    "manual_verify": "Confirm the next pull request raised after this merges shows a Vercel preview rather than Blocked. That is the outcome this exists to protect, and it is not something CI can assert for itself."
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — regenerate an Intelligence Brief for an address with permitted uses and confirm the list renders; check the Secondary Dwelling area shows readable frontage and depth rather than a field count; confirm the Data sources footer lists NSW Valuer General once, and that no row reads as an internal slug such as 'Plotdetect Dcp'."
   }
 }

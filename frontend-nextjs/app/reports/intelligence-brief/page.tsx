@@ -275,6 +275,7 @@ const UNAVAILABLE_TEXT_STYLES: Record<UnavailableTone, string> = {
 
 // Acronyms + units expanded in field labels; '' drops the word (internal terms).
 const KEY_WORDS: Record<string, string> = {
+  r3r4: 'R3/R4',
   jrc: 'JRC', wofs: 'WOfS', bom: 'BoM', epi: 'EPI', anef: 'ANEF', gfa: 'GFA',
   fsr: 'FSR', lep: 'LEP', dcp: 'DCP', sepp: 'SEPP', hca: 'HCA', tod: 'TOD',
   da: 'DA', das: 'DAs', cdc: 'CDC', url: 'URL', ahd: 'AHD', bal: 'BAL', id: 'ID',
@@ -484,12 +485,32 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
         // Unwrap DataField: extract .value and show confidence badge
         if (isDataField(val)) {
           const df = val;
-          if (df.confidence === 'not_available') {
+          const dfValueEmpty = df.value == null ||
+            (Array.isArray(df.value) && df.value.length === 0);
+          if (df.confidence === 'not_available' && dfValueEmpty) {
+            // #745 D7-2: only short-circuit when there is genuinely nothing to
+            // show — a populated list (e.g. permitted uses) must render even if
+            // the confidence badge is not_available.
             const u = describeUnavailable(df.reason, section, satelliteRan);
             return (
               <div key={key} className="flex flex-col">
                 <FieldLabel fieldKey={key} />
                 <dd className={`text-sm mt-0.5 ${UNAVAILABLE_TEXT_STYLES[u.tone]}`}>{u.label}</dd>
+              </div>
+            );
+          }
+          // #745 D7-3: lot dimensions rendered readably, not "8 fields".
+          if (key === 'lot_dimensions' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
+            const ld = df.value as Record<string, unknown>;
+            const bits: string[] = [];
+            if (typeof ld.frontage_m === 'number') bits.push(`${(ld.frontage_m as number).toFixed(1)} m frontage`);
+            if (typeof ld.depth_m === 'number') bits.push(`${(ld.depth_m as number).toFixed(1)} m depth`);
+            if (ld.is_corner === true) bits.push('corner lot');
+            if (typeof ld.lot_type === 'string' && ld.lot_type && ld.lot_type !== 'standard') bits.push(formatKey(String(ld.lot_type)).toLowerCase());
+            return (
+              <div key={key} className="flex flex-col">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">{bits.length > 0 ? bits.join(' · ') : '—'}</dd>
               </div>
             );
           }
@@ -3105,15 +3126,19 @@ function IntelligenceBriefInner() {
             </div>
           )}
 
-          {/* Live status panel — elapsed time, section timeline, progress */}
+          {/* Live status panel — elapsed time, section timeline, progress.
+              #745 D7-1: hidden once complete — its section timeline duplicated
+              the jump bar's list at the top of the finished report. */}
+          {state !== 'complete' && (
           <LiveStatusPanel
-            elapsed={state === 'complete' && completeEvent ? completeEvent.data.elapsed_seconds : elapsed}
-            progress={state === 'triggering' ? 0 : state === 'complete' ? 100 : latestProgress}
+            elapsed={elapsed}
+            progress={state === 'triggering' ? 0 : latestProgress}
             receivedSections={sectionEvents.map((e) => e.data.section)}
             briefType={briefType}
             includeSatellite={includeSatellite}
             state={state}
           />
+          )}
 
           {/* Sticky jump bar — one card per row makes the page long; this tracks
               the sections that have streamed in and jumps to them. */}
