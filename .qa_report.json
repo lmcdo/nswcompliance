@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what a paid Intelligence Brief tells the reader when a field is empty. The per-field renderer computed a plain-English explanation and then discarded it, showing only a two-word label — so 'None here' could not be distinguished from 'we never checked' or 'the lookup broke'. That is the absence-versus-failure ambiguity the surrounding campaign exists to remove. The classifier is also extracted into its own module so its wording is unit-testable. No database read or write, no migration, no schema change, no new external call, no change to what any pipeline computes.",
-  "commit_hash": "87b9fb45",
+  "commit_hash": "d0eb544b",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     "frontend-nextjs/app/reports/intelligence-brief/unavailable.ts",
