@@ -17,25 +17,48 @@ const GRANNY_ROUTE_SRC = fs.readFileSync(
   'utf8',
 );
 
+// The unavailable-label classifier was extracted out of page.tsx into its own
+// module so its wording could be unit-tested directly. These source-scan guards
+// pin the copy, so they must follow it: scan both files, or a future extraction
+// silently turns every "not.toContain" assertion below into a pass over a file
+// that no longer holds the string.
+const UNAVAILABLE_SRC = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'app', 'reports', 'intelligence-brief', 'unavailable.ts'),
+  'utf8',
+);
+
+const CLASSIFIER_SRC = `${PAGE_SRC}\n${UNAVAILABLE_SRC}`;
+
 describe('intelligence-brief page — unavailable-label classifier copy', () => {
   it('the catch-all no longer claims a promised field is "Not part of this brief"', () => {
     // The phrase may survive ONLY in the not-requested (optional add-on) branch —
     // count code lines, not comments.
-    const codeLines = PAGE_SRC.split('\n').filter((l) => !l.trim().startsWith('//'));
+    const codeLines = CLASSIFIER_SRC.split('\n').filter((l) => !l.trim().startsWith('//'));
     const occurrences = codeLines.filter((l) => /not part of this brief/i.test(l));
     expect(occurrences.length).toBeLessThanOrEqual(1);
     expect(occurrences.join('\n')).toContain('An optional add-on');
-    expect(PAGE_SRC).not.toContain("detail: 'Not part of this brief.'");
+    expect(CLASSIFIER_SRC).not.toContain("detail: 'Not part of this brief.'");
   });
 
   it('retrieval misses route to a retry, not a shrug', () => {
-    expect(PAGE_SRC).toContain(
+    expect(CLASSIFIER_SRC).toContain(
       'This field could not be retrieved on this run — run the brief again to retry.',
     );
   });
 
   it('the "None here" branch no longer editorialises about good news', () => {
-    expect(PAGE_SRC).not.toContain("For a constrained site that's good news");
+    expect(CLASSIFIER_SRC).not.toContain("For a constrained site that's good news");
+  });
+
+  it('the field-level renderer shows the explanation, not just the short label', () => {
+    // A bare "None here" cannot distinguish a checked-clear result from an
+    // unchecked one. The per-field branch must render u.detail alongside u.label.
+    const fieldBranch = PAGE_SRC.slice(
+      PAGE_SRC.indexOf('const u = describeUnavailable(df.reason, section'),
+      PAGE_SRC.indexOf('lot dimensions rendered readably'),
+    );
+    expect(fieldBranch).toContain('{u.label}');
+    expect(fieldBranch).toContain('{u.detail}');
   });
 
   it('the confidence legend no longer instructs readers to treat values as fact', () => {
