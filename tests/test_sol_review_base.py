@@ -23,6 +23,7 @@ wrongness looks like (test_main_merged_in_after_the_last_push).
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -59,14 +60,54 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _clean_env() -> dict:
+    """Environment with git's own variables stripped.
+
+    These tests build throwaway repositories in tmp_path. When pytest is
+    invoked FROM a git hook — which is exactly when this suite matters most,
+    because the pre-push hook runs it — git exports GIT_DIR, GIT_INDEX_FILE and
+    GIT_WORK_TREE pointing at the REAL repository. Every `git` call below would
+    then operate on this repo instead of the temp one: the fixture blew up on
+    the first push, and a subtler version could have quietly asserted against
+    the wrong history and passed. Inherited state is not test isolation.
+    """
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
 def sh(cwd: Path, *args: str) -> str:
-    p = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+    p = subprocess.run(args, cwd=cwd, capture_output=True, text=True, env=_clean_env())
     if p.returncode != 0:
         raise AssertionError(f"{' '.join(args)} failed in {cwd}:\n{p.stderr}")
     return p.stdout.strip()
 
 
+def assert_isolated(repo: Path) -> None:
+    """Refuse to mutate anything that is not a throwaway repository.
+
+    This is not paranoia, it is a post-mortem. Before _clean_env existed, this
+    suite ran under the pre-push hook with git's GIT_DIR exported, so every
+    command below addressed the REAL repository from a temp working directory:
+    `git add -A` staged the whole repo as deleted, `git commit` landed a junk
+    commit named "add base.txt" on the branch, and `git init` + `git config`
+    rewrote the shared .git/config — setting core.bare=true, which broke
+    `git status` in every worktree at once.
+
+    _clean_env fixes the cause. This checks the consequence, so that if the
+    guard is ever removed or bypassed the suite fails on its first mutation
+    instead of quietly wrecking the checkout it is running inside.
+    """
+    git_dir = subprocess.run(["git", "rev-parse", "--absolute-git-dir"], cwd=repo,
+                             capture_output=True, text=True, env=_clean_env()).stdout.strip()
+    resolved = Path(git_dir).resolve()
+    assert repo.resolve() in resolved.parents or resolved.is_relative_to(repo.resolve()), (
+        f"REFUSING TO MUTATE: {repo} resolves to git dir {resolved}, which is "
+        f"outside the temp repository. The git environment has leaked — see "
+        f"_clean_env. Stopping before anything is written."
+    )
+
+
 def commit(repo: Path, name: str, body: str = "x") -> str:
+    assert_isolated(repo)
     (repo / name).write_text(body, encoding="utf-8")
     sh(repo, "git", "add", "-A")
     sh(repo, "git", "-c", "user.email=t@t", "-c", "user.name=t",
@@ -77,7 +118,8 @@ def commit(repo: Path, name: str, body: str = "x") -> str:
 def base_for(repo: Path) -> str:
     """What the hook would choose, invoked exactly as the hook invokes it."""
     dup = sh(repo, "git", "merge-base", "origin/main", "HEAD")
-    p = subprocess.run([BASH, SCRIPT.as_posix(), dup], cwd=repo, capture_output=True, text=True)
+    p = subprocess.run([BASH, SCRIPT.as_posix(), dup], cwd=repo, capture_output=True,
+                       text=True, env=_clean_env())
     assert p.returncode == 0, p.stderr
     return p.stdout.strip()
 
@@ -153,7 +195,8 @@ def test_never_pushed_branch_reviews_the_whole_branch(repo: Path):
     sh(repo, "git", "checkout", "-q", "-b", "fresh")
     commit(repo, "fresh1.txt")
     assert subprocess.run(["git", "rev-parse", "--verify", "--quiet", "@{u}"],
-                          cwd=repo, capture_output=True).returncode != 0, \
+                          cwd=repo, capture_output=True,
+                          env=_clean_env()).returncode != 0, \
         "fixture is wrong: this branch should have no upstream"
 
     assert base_for(repo) == sh(repo, "git", "merge-base", "origin/main", "HEAD")
@@ -181,6 +224,7 @@ def test_a_rebased_branch_ignores_its_stale_upstream(repo: Path):
 
 def test_the_script_never_fails_open_to_empty(repo: Path):
     """A base of "" would make the hook diff against nothing. Print the fallback."""
-    p = subprocess.run([BASH, SCRIPT.as_posix()], cwd=repo, capture_output=True, text=True)
+    p = subprocess.run([BASH, SCRIPT.as_posix()], cwd=repo, capture_output=True,
+                       text=True, env=_clean_env())
     assert p.returncode == 0
     assert p.stdout.strip(), "must print a usable ref even with no argument"
