@@ -406,6 +406,16 @@ export function ConstraintArithmeticCard({
                     {' '}up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
                     ({humanizeForm(result.max_permitted_form)}) with council approval.
                   </div>
+                  {/* #745 D6: the two ceilings rest on different legal pathways.
+                      Without a label, "up to 3 (multi-dwelling)" reads as a
+                      contradiction of the SEPP card's "Not eligible" above. */}
+                  {!result.ceiling_from_lmr && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      The higher figure rests on the LEP land use table for this
+                      zone (a merit-assessed development application) — it is a
+                      separate pathway from the SEPP Housing standards shown above.
+                    </div>
+                  )}
                   {/* LMR note — shown ONLY when a real clause backs it (no citation, no claim). */}
                   {result.ceiling_from_lmr && result.lmr_source_clause && (
                     <div className="text-xs text-teal-700 mt-1">

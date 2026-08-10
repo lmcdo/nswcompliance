@@ -3118,6 +3118,10 @@ def _build_environmental(
         if "bushfire" in (sepp.get("name") or "").lower():
             bushfire_designation = bushfire_designation or "Bushfire Prone Land"
 
+    # #745 D7-4: principal planning-control layers (lot size, height, FSR,
+    # zone) are Planning Controls, not environmental constraints — filter them
+    # from the Environmental card's overlay list.
+    _PLANNING_CONTROL_LAYERS = {"lot_size", "height", "fsr", "zone"}
     env_overlays = [
         EnvironmentalOverlay(
             layer_type=o.get("layer_type", ""),
@@ -3126,6 +3130,7 @@ def _build_environmental(
             lga=o.get("lga"),
         )
         for o in overlay_list
+        if o.get("layer_type") not in _PLANNING_CONTROL_LAYERS
     ]
 
     # Extract typed constraint fields from overlay list
