@@ -53,6 +53,14 @@ two such figures, both flagged in section 6.
 | Floor space 65, height 75, landslide 6 | same query with `layer_type` in `('fsr','height','landslide')` | 65, 75, 6 | 2026-08-09 |
 | Bushfire + fire history 263,276 shapes, no currency date | `SELECT layer_type, count(*), max(currency_date) FROM spatial_overlays WHERE layer_type IN ('bushfire','fire_history') GROUP BY 1` | bushfire 225688 / NULL; fire_history 37588 / NULL | 2026-08-09 |
 | Last map sync 13 Apr – 8 Jul 2026 | `SELECT min(synced_at)::date, max(synced_at)::date FROM spatial_overlays` | 2026-04-13 → 2026-07-08 | 2026-08-09 |
+| `cdc_lot_link` 181,750 rows | `SELECT count(*) FROM cdc_lot_link` | 181750 | **2026-08-10** |
+| …matched to a lot, 98.1% | `SELECT count(*) FROM cdc_lot_link WHERE match_status='matched'` | 178259 | **2026-08-10** |
+| …point not inside any lot | `… WHERE match_status='no_lot_at_point'` | 3466 | **2026-08-10** |
+| …no coordinates to look up | `… WHERE match_status='no_coordinates'` | 25 | **2026-08-10** |
+| Distinct lots with an approval | `SELECT count(DISTINCT lotidstring) FROM cdc_lot_link WHERE lotidstring IS NOT NULL` | 128098 | **2026-08-10** |
+| `development_type` double-encoded on 5.9% | `SELECT jsonb_typeof(development_type), count(*) FROM complying_development_certificates GROUP BY 1` | array 171002 · **string 10748** | **2026-08-10** |
+| …and all 10,748 decode | `SELECT count(*) FILTER (WHERE jsonb_typeof((development_type #>> '{}')::jsonb)='array') FROM complying_development_certificates WHERE jsonb_typeof(development_type)='string'` | 10748 | **2026-08-10** |
+| Certificates grew overnight | `SELECT count(*) FROM complying_development_certificates` on two days | 181,737 → **181,750** | 08-09 → 08-10 |
 
 **Full layer breakdown** (rows · councils · newest currency date), from
 `SELECT layer_type, count(*), count(DISTINCT lga_name), max(currency_date) FROM spatial_overlays GROUP BY 1`,

@@ -1,95 +1,120 @@
 {
-  "tier": "standard",
-  "justification": "Changes what a paid Intelligence Brief renders to the buyer. One defect suppressed populated data outright: a DataField carrying a real value was skipped whenever its confidence badge read not_available, so permitted uses and similar lists silently vanished from the report. The rest are display corrections on the same served surface — lot dimensions, source-footer labels, overlay classification and staleness wording. No database read or write, no migration, no schema change, no new external call.",
-  "commit_hash": "0623f705",
-  "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/provenance.ts",
-    "frontend-nextjs/__tests__/app/brief-sources-per-run.test.ts",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "frontend-nextjs/components/reports/DAOutcomes.tsx",
-    "services/compound_constraints.py",
-    "services/intelligence_brief.py",
-    "tests/test_satellite_integration.py"
-  ],
-  "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest --testPathPattern=brief-sources-per-run",
-    "fails_when": "any slug in SOURCE_LABELS loses its mapping and humanizeSource falls back to the title-cased slug, so the footer names an internal pipeline instead of the real-world source. Verified by deleting the shadow_detector entry from provenance.ts: the suite went red on that case, 1 failed / 16 passed, and green again on restore."
+ "tier": "standard",
+ "justification": "Creates one new production table, cdc_lot_link, and commits the script that builds it. The table links each of the 181,750 complying-development certificates to the cadastral lot its coordinates fall inside, which is what turns 'what was approved at this address' into 'what was approved on lots like this one'. Nothing existing is modified: the build is purely additive and dropping the table reverses it completely. Also corrects DB_SCHEMA.md, whose header had been wrong by roughly half since February (58 tables against a real 118, 46,585 provisions against 55,696), and which omitted the four largest tables in the database entirely. The risk this report addresses is a silent wrong answer rather than a crash — a lot link that quietly fails, or a development type that quietly becomes NULL, both read as 'nothing there' rather than as an error.",
+ "commit_hash": "60422e8b",
+ "files": [
+  "scripts/build_cdc_lot_link.py",
+  "DB_SCHEMA.md",
+  "docs/architecture/SYSTEM_TECHNICAL.md",
+  "docs/architecture/SYSTEM_INTEGRATED.md",
+  "docs/architecture/VERIFICATION.md",
+  ".gitignore"
+ ],
+ "pre_impl": {
+  "existing_data": "Four sweeps before writing. (1) git ls-files scripts/ matching cdc|certificate|lot_index|lot_join returned only validate_lot_index.py, a read-only drift harness comparing lot_search_index LEP values against the live MapServer — a different concern in the opposite direction. (2) grep for cdc_lot|certificates_by_lot|lots like this|comparable_approvals across services/ and frontend-nextjs/ returned zero. (3) information_schema showed complying_development_certificates (the source), cdc_eligibility_standards (CDC rules, not certificates) and lot_index_refresh_log (refresh logging) — no link table. (4) lot_search_index joins LOTS to PLANNING CONTROLS; this joins CERTIFICATES to LOTS. Different direction, different key, no overlap.",
+  "assumption_mismatch": "The pre-implementation protocol caught a real defect before a single row was written. development_type is jsonb, but stored in TWO shapes: 171,002 rows are a jsonb array and 10,748 (5.9%) are a jsonb STRING whose text is itself a JSON array — double-encoded. The obvious implementation guards with jsonb_typeof(...)='array' and lets the remainder fall through to NULL, which silently empties the 'what was built' field on 5.9% of the corpus, indistinguishable from a certificate that recorded no type. Decoding the string shape recovers all 10,748. Two other assumptions were checked and held: cadastre geom is SRID 4326 on every row with zero NULL geoms, so the ST_SetSRID(...,4326) literal needs no reprojection; and latitude/longitude are double precision with zero rows outside the NSW bounding box.",
+  "new_vs_existing": "New table cdc_lot_link and new script scripts/build_cdc_lot_link.py. No existing table, column or row is modified. DB_SCHEMA.md and the three architecture documents are edited to describe the new state. .gitignore gains one allowlist exception, because scripts/* is ignored by design with an explicit !scripts/<name> list — without the exception the build recipe for a live production table would have been silently untracked, which is the exact trap the comment block above that list warns about."
+ },
+ "functions": [
+  {
+   "name": "BATCH_SQL — the point-in-polygon link plus development-type normalisation",
+   "file_line": "scripts/build_cdc_lot_link.py, the BATCH_SQL constant",
+   "input": "up to 2,000 certificates that have no row in cdc_lot_link yet, each with latitude, longitude and development_type",
+   "output": "one cdc_lot_link row per input certificate, carrying lotidstring, lot_area_m2, dev_types and a three-state match_status",
+   "if_none": "A certificate that matches no lot still gets a row, with match_status 'no_lot_at_point'. A certificate with no coordinates still gets a row, with 'no_coordinates'. Nothing is skipped, so an absent link can never be confused with an unattempted one — and this is also what makes the loop terminate."
   },
-  "pre_impl": {
-    "existing_data": "No stored data is touched or rewritten. Every change is at render time over sections already streamed to the page; provenance.ts holds a static slug-to-label map with no persistence, and no property_reports row is read or written by this change.",
-    "assumption_mismatch": "The prior code assumed confidence == 'not_available' implied there was nothing to show. That is false for fields that carry a populated value alongside a low-confidence badge, which is how permitted uses arrive. The guard now requires the value itself to be empty before skipping.",
-    "new_vs_existing": "Reuses main's existing provenance.ts module rather than reintroducing the source-label map into page.tsx. An earlier version of this branch carried its own label map and its own dedupe; main has since extracted both into provenance.ts with case-insensitive dedupe, so only the ten missing slug mappings were carried across."
+  {
+   "name": "development_type shape normalisation",
+   "file_line": "scripts/build_cdc_lot_link.py, the CASE jsonb_typeof block inside BATCH_SQL",
+   "input": "development_type, which is a jsonb array on 171,002 rows and a double-encoded jsonb string on 10,748",
+   "output": "a text[] of distinct development types, or an empty array where the source recorded none",
+   "if_none": "dev_types is NULL only when the shape is neither array nor string — a shape this script has never seen. Measured at build time: 0 undecodable, 36 explicitly empty, 181,714 with types. An empty array and NULL are deliberately different values, so 'the source said none' stays distinguishable from 'we could not read it'."
   },
-  "functions": [
-    {
-      "name": "renderDataField value guard",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-      "input": "a DataField with confidence and value",
-      "output": "the rendered field when the value is populated, regardless of the confidence badge",
-      "if_none": "value null or an empty array short-circuits as before, so a genuinely absent field is still skipped rather than rendered blank"
-    },
-    {
-      "name": "humanizeSource",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:42",
-      "input": "an internal source slug string emitted by a pipeline section",
-      "output": "the real-world source name for the footer",
-      "if_none": "an unmapped slug still falls back to the title-cased slug — the pre-existing behaviour, now covered by an explicit assertion"
-    }
-  ],
-  "values": [
-    {
-      "value": "df.value on a DataField whose confidence is not_available",
-      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-      "nullable": "yes",
-      "guard_at": "the dfValueEmpty check in the same conditional",
-      "if_missing": "field skipped, as before"
-    },
-    {
-      "value": "lot_dimensions frontage_m / depth_m / is_corner",
-      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-      "nullable": "yes",
-      "guard_at": "each field is typeof-checked before formatting",
-      "if_missing": "renders an em dash rather than a partial or NaN measurement"
-    }
-  ],
-  "queries": [],
-  "break_it": [
-    {
-      "scenario": "A permitted-uses DataField arrives with a populated array and confidence not_available",
-      "what_happens": "Before this change the whole field was skipped and the buyer saw nothing, with no indication data existed",
-      "mitigated": true,
-      "how": "the guard now also requires the value to be null or an empty array before skipping",
-      "repro": "Open /reports/intelligence-brief for an address whose Planning section returns permitted uses with confidence not_available; before the fix the Permitted uses row is absent from the rendered page, after it the list renders."
-    },
-    {
-      "scenario": "lot_dimensions arrives as an object with only some measurements present",
-      "what_happens": "A naive formatter would emit NaN or a half-built string such as 'undefined m frontage'",
-      "mitigated": true,
-      "how": "each measurement is typeof-checked individually and only present ones are joined; an empty result renders an em dash",
-      "repro": "Open /reports/intelligence-brief for a lot whose cadastre returns frontage_m but no depth_m; the Secondary Dwelling area must read '12.5 m frontage' alone, never 'undefined m depth' or NaN."
-    },
-    {
-      "scenario": "Two internal slugs name the same real-world source in one run, for example vg_valuation and nsw_valuer_general",
-      "what_happens": "The footer would list NSW Valuer General twice, implying two independent sources corroborate a figure that came from one",
-      "mitigated": true,
-      "how": "main's collectSources keys on the lower-cased label so both collapse to one row; a new test asserts the three Valuer General slugs resolve to a single label",
-      "repro": "cd frontend-nextjs && npx jest --testPathPattern=brief-sources-per-run -t 'three Valuer General slugs'"
-    },
-    {
-      "scenario": "A new pipeline emits a source slug that nobody added to SOURCE_LABELS",
-      "what_happens": "The footer prints the title-cased internal slug, exposing an internal pipeline name to the buyer",
-      "mitigated": false,
-      "how": "Not fixed here. The fallback is unchanged and there is no gate that fails on an unmapped slug reaching the footer. Recorded in residual_risk.",
-      "repro": "cd frontend-nextjs && node -e \"const{humanizeSource}=require('./app/reports/intelligence-brief/provenance.ts');console.log(humanizeSource('brand_new_pipeline'))\" — prints 'Brand New Pipeline', the internal slug, with nothing failing."
-    }
-  ],
-  "mutation_analysis": "Deleting the shadow_detector mapping from provenance.ts turned the new suite red (1 failed, 16 passed) and restoring it turned it green, so the label assertions are not vacuous. The render guard and the lot_dimensions formatter have NO automated test — both live inline in page.tsx and would need the component extracted to be unit-testable. A mutation that reverted the guard to its original form would still pass the suite.",
-  "residual_risk": "Two of the six fixes are unverified by any test: the not_available render guard and the lot_dimensions formatting, both inline in page.tsx. An unmapped source slug still renders as its internal name in the footer, with no gate to catch it. These need either a component test or extraction of the render helpers into a pure module, following the pattern main already used for provenance.ts.",
-  "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes — regenerate an Intelligence Brief for an address with permitted uses and confirm the list renders; check the Secondary Dwelling area shows readable frontage and depth rather than a field count; confirm the Data sources footer lists NSW Valuer General once, and that no row reads as an internal slug such as 'Plotdetect Dcp'."
+  {
+   "name": "report — the status readout",
+   "file_line": "scripts/build_cdc_lot_link.py, report()",
+   "input": "the live cdc_lot_link table as it currently stands in production, read with no writes",
+   "output": "counts by match_status and by dev_types state, plus how many certificates remain unlinked",
+   "if_none": "If the table does not exist it says so rather than raising. If undecodable is non-zero it prints an explicit instruction to investigate, because that number being above zero means a storage shape has appeared that this script does not handle."
   }
+ ],
+ "values": [
+  {
+   "value": "the 98.1% match rate and every count in the docs",
+   "read_at": "the live database on 2026-08-10, immediately after the build, via scripts/build_cdc_lot_link.py --status",
+   "if_missing": "Every figure is reproducible by re-running that command, which is read-only. The counts are also recorded in docs/architecture/VERIFICATION.md beside the SQL that produces them. Certificates grew 181,737 to 181,750 between 08-09 and 08-10, so any count here is a measurement with a date, not a constant."
+  },
+  {
+   "value": "lot_area_m2, denormalised onto the link table",
+   "read_at": "nsw_cadastre_lots.planlotarea at link time",
+   "if_missing": "NULL where the matched lot has no recorded area, and NULL for every non-matched row. It is a copy taken at link time, so if the cadastre is re-synced this column goes stale silently — that is the one field on this table with a staleness risk, and re-running the script does NOT refresh it for already-linked rows."
+  }
+ ],
+ "queries": [
+  {
+   "query": "SELECT ... FROM complying_development_certificates c0 WHERE NOT EXISTS (SELECT 1 FROM cdc_lot_link k WHERE k.cdc_id = c0.id) LIMIT 2000",
+   "purpose": "Select only the certificates that have not been linked yet, so the build is resumable after an interruption and a no-op once complete. This is also the loop's termination condition.",
+   "file_line": "scripts/build_cdc_lot_link.py, the inner subquery of BATCH_SQL",
+   "where_clause": "NOT EXISTS against the link table's primary key. Without it the script would reprocess the same first 2,000 rows forever. It is safe against non-matches specifically because a row is inserted for every certificate regardless of outcome — if non-matches were skipped instead, they would stay pending and the loop would never end."
+  },
+  {
+   "query": "ST_Intersects(n.geom, ST_SetSRID(ST_MakePoint(c.longitude, c.latitude), 4326)) ... LIMIT 1",
+   "purpose": "Find the cadastral lot a certificate's coordinates fall inside. This is the whole point of the table.",
+   "file_line": "scripts/build_cdc_lot_link.py, the spatial LEFT JOIN LATERAL in BATCH_SQL",
+   "where_clause": "Guarded on latitude and longitude both being non-NULL, so the 25 coordinate-less certificates are classified rather than silently erroring. The 4326 literal was verified against the live catalog before writing — cadastre geom is SRID 4326 on every row, so no reprojection is needed and a mismatched-SRID silent miss is not possible. LIMIT 1 is a deliberate simplification for stacked strata parcels, documented in the module docstring: the linked lot is the parcel footprint, not the individual unit."
+  },
+  {
+   "query": "CASE jsonb_typeof(development_type) WHEN 'array' THEN development_type WHEN 'string' THEN (development_type #>> '{}')::jsonb END",
+   "purpose": "Collapse the two storage shapes of development_type into one array before anything unnests it, so the 5.9% double-encoded rows are read rather than blanked.",
+   "file_line": "scripts/build_cdc_lot_link.py, the dt_norm expression in BATCH_SQL",
+   "where_clause": "The CASE has no ELSE, so an unrecognised shape yields NULL rather than a wrong value — a loud gap instead of a quiet fabrication. Verified before writing that all 10,748 string-shaped rows decode to arrays, and confirmed after building that undecodable is 0."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The two storage shapes of development_type are not collapsed, so the 10,748 double-encoded rows get NULL dev_types",
+   "what_happens": "Nearly 6% of certificates silently lose their 'what was built' field. Every downstream query filtering on development type under-reports, and because NULL reads as 'no type recorded' rather than as an error, nothing surfaces the loss.",
+   "mitigated": true,
+   "how": "Caught by the pre-implementation protocol before the first write, not after. The CASE handles both shapes, an empty array is stored distinctly from NULL, and report() prints the undecodable count on every run with an explicit instruction if it is above zero.",
+   "repro": "SELECT jsonb_typeof(development_type), count(*) FROM complying_development_certificates GROUP BY 1 — 171,002 array against 10,748 string."
+  },
+  {
+   "scenario": "A certificate matches no lot and is skipped rather than recorded",
+   "what_happens": "The 3,466 unmatched rows stay in the pending set forever, so the build loop never terminates. Worse, a later reader cannot tell 'we looked and found nothing' from 'we never looked'.",
+   "mitigated": true,
+   "how": "match_status is three-state and a row is written for every certificate whatever the outcome. That makes absence explicit and simultaneously guarantees the loop drains.",
+   "repro": "SELECT match_status, count(*) FROM cdc_lot_link GROUP BY 1 — matched 178,259, no_lot_at_point 3,466, no_coordinates 25, summing to the full 181,750."
+  },
+  {
+   "scenario": "The geometry SRIDs do not match between the point literal and the cadastre",
+   "what_happens": "Either every intersect raises, or worse it silently fails to find the cadastral lot under each point and the table fills with no_lot_at_point while looking like it ran correctly.",
+   "mitigated": true,
+   "how": "Checked before writing: SELECT DISTINCT ST_SRID(geom) FROM nsw_cadastre_lots returns 4326 only, with zero NULL geoms, matching the literal. A 98.1% match rate on the finished table is the confirming evidence — a silent SRID mismatch would have produced near-zero.",
+   "repro": "SELECT DISTINCT ST_SRID(geom) FROM nsw_cadastre_lots."
+  },
+  {
+   "scenario": "The build is interrupted partway and leaves the table half-populated",
+   "what_happens": "A partial table that looks complete to any reader who does not check the count.",
+   "mitigated": true,
+   "how": "Each batch selects only unlinked certificates and inserts with ON CONFLICT DO NOTHING, so re-running resumes exactly where it stopped. This was exercised for real: the first run was cut off at 50,000 rows and the second completed the remaining 131,750 with no duplicates and no gaps. --status reports how many remain.",
+   "repro": "Interrupt the script, then run it again; then python scripts/build_cdc_lot_link.py --status shows remaining 0."
+  },
+  {
+   "scenario": "lot_area_m2 goes stale after a cadastre re-sync",
+   "what_happens": "Queries filtering on lot size use an area copied at link time, which may no longer match the cadastre. Wrong comparison set, no error.",
+   "mitigated": false,
+   "how": "NOT mitigated, and deliberately stated rather than hidden. Re-running the script links only NEW certificates; it does not refresh lot_area_m2 on rows already linked. Refreshing after a cadastre re-sync currently requires dropping and rebuilding the table, which takes about three minutes. This is the one staleness risk on this table and it is recorded in DB_SCHEMA.md and in the QA values section.",
+   "repro": "Compare cdc_lot_link.lot_area_m2 against nsw_cadastre_lots.planlotarea for the same lotidstring after any cadastre sync."
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None required. The build is additive: one new table, four new indexes, no change to any existing table, column or row. DROP TABLE cdc_lot_link reverses it entirely. The table is already populated in production as of 2026-08-10.",
+  "secrets": "None added. The script reads DATABASE_URL from the repository root .env, the same as every other script here. No credential appears in any committed file.",
+  "other_repo": "None.",
+  "manual_verify": "python scripts/build_cdc_lot_link.py --status should report 181,750 linked and 0 remaining, with undecodable at 0. Re-run it periodically — the certificate feed adds rows daily and the script links only the new ones, so it is safe as a scheduled job."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/validate_schema_contract.py --quiet",
+  "fails_when": "Any SQL identifier written in code stops resolving against the live catalog — so if cdc_lot_link or any of its columns is dropped or renamed while code still references it, this exits non-zero. It passed after this change with no new invalid references (10 pre-existing defects remain suppressed by the baseline). Its honest limit: it checks that names resolve, not that the data behind them is right. The data-level invariant is that scripts/build_cdc_lot_link.py --status reports 0 undecodable and 0 remaining; that one reports rather than exiting non-zero, so it is a check a human reads, not a gate."
+ }
 }
