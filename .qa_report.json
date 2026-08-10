@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Creates one new production table, cdc_lot_link, and commits the script that builds it. The table links each of the 181,750 complying-development certificates to the cadastral lot its coordinates fall inside, which is what turns 'what was approved at this address' into 'what was approved on lots like this one'. Nothing existing is modified: the build is purely additive and dropping the table reverses it completely. Also corrects DB_SCHEMA.md, whose header had been wrong by roughly half since February (58 tables against a real 118, 46,585 provisions against 55,696), and which omitted the four largest tables in the database entirely. The risk this report addresses is a silent wrong answer rather than a crash — a lot link that quietly fails, or a development type that quietly becomes NULL, both read as 'nothing there' rather than as an error.",
- "commit_hash": "",
+ "commit_hash": "60422e8b",
  "files": [
   "scripts/build_cdc_lot_link.py",
   "DB_SCHEMA.md",
