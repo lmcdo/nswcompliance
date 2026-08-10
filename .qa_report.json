@@ -1,91 +1,140 @@
 {
-  "tier": "standard",
-  "justification": "Changes what a paid Intelligence Brief tells the reader when a field is empty. The per-field renderer computed a plain-English explanation and then discarded it, showing only a two-word label — so 'None here' could not be distinguished from 'we never checked' or 'the lookup broke'. That is the absence-versus-failure ambiguity the surrounding campaign exists to remove. The classifier is also extracted into its own module so its wording is unit-testable. No database read or write, no migration, no schema change, no new external call, no change to what any pipeline computes.",
-  "commit_hash": "d0eb544b",
+  "tier": "critical",
+  "justification": "Changes the shape of a served API response. /pipeline/climate-risk stops returning outputs.score, outputs.band, outputs.interaction_bonus and the per-hazard raw_score/weight/weighted_score, and the served disclaimer string changes from v1.0 to v1.1. No customer-facing renderer read the removed fields — each renderer was opened and read, not assumed — so the visible change is confined to the disclaimer version and to direct API consumers. Critical tier because the response contract itself changed, and because a second unlisted export path to a third party was found and closed.",
+  "commit_hash": "827622e9",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/unavailable.ts",
-    "frontend-nextjs/__tests__/app/brief-unavailable-copy.test.ts",
-    "frontend-nextjs/__tests__/app/brief-copy-guards.test.ts"
+    "services/climate_risk_score.py",
+    "services/climate_risk_pipeline.py",
+    "services/intelligence_brief.py",
+    "frontend-nextjs/components/tools/ClimateRiskResultCard.tsx",
+    "frontend-nextjs/components/tools/ClimateRiskTool.tsx",
+    "tests/test_climate_risk_score.py",
+    "tests/test_brief_golden_fixtures.py",
+    "tests/fixtures/brief_golden/climate_risk.json",
+    "scripts/brief_field_coverage_baseline.json",
+    "docs/CLIMATE_RISK_METHODOLOGY.md",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "frontend-nextjs/__tests__/components/tools/ClimateRiskResultCard-three-state.test.tsx"
   ],
   "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest --testPathPattern=brief-unavailable-copy",
-    "fails_when": "any branch of describeUnavailable returns a detail that is empty, shorter than five words, or identical to its own label — i.e. a label with no explanation behind it. Verified by rewriting the not-requested branch's detail to the bare string 'Not included': two assertions went red (2 failed / 7 passed) and both returned green once the sentence was restored."
+    "command": "python -m pytest -k \"to_dict_omits or climate_hazard_contract or service_output_contract\" -q",
+    "fails_when": "Each of four planted defects turns it red. Proven 2026-08-07 by planting each defect and then restoring byte-identically, md5-verified. (1) Re-adding score to ClimateRiskResult.to_dict fails test_to_dict_omits_the_unvalidatable_composite AND test_climate_service_output_contract_matches_to_dict_top_level_keys — 2 failed. (2) Serialising an extra per-hazard key the contract does not declare fails test_climate_hazard_contract_matches_service_to_dict_keys — 1 failed. (3) Declaring a field on ClimateHazardOutput the service never emits fails the same test — 1 failed. (4) Deleting confidence_reason from the stored golden fixture fails it too — 1 failed, which is the exact divergence that went unnoticed for weeks. THE FIRST ATTEMPT AT THIS PROOF WAS INVALID AND IS RECORDED RATHER THAN DISCARDED: the patch strings used a bare newline against CRLF files, so plants 2 and 3 silently no-opped and reported passes. Any such proof must use line-ending-aware patching before it can be believed.",
+    "external_authority": "NOT a self-comparison, and here is why. The check does not re-run the scorer and assert it agrees with itself; it asserts a RELATIONSHIP BETWEEN TWO INDEPENDENTLY-AUTHORED ARTEFACTS that have no shared source: the Pydantic contract in services/intelligence_brief.py, and the dict produced by services/climate_risk_score.py. Neither is generated from the other, so they can and did diverge. That divergence is the defect being pinned: the service added confidence_reason and the contract did not, for weeks. The AUTHORITY for the removal itself is external to this repo entirely — decision #699, the climate-risk legal assessment, which bars the composite from customer-facing surfaces, plus the 2026-08-07 calibration outcome recorded in docs/CLIMATE_RISK_METHODOLOGY.md finding the score has no construct-valid reference and cannot be validated. The tests enforce that external ruling against the code; they do not ask the code to confirm itself. The PREVIOUS version of this test WAS the self-referential shape the gate is warning about — it compared the contract to a stored fixture, a copy against a copy, so both could be stale in the same direction and it stayed green. Replacing that stored reference with a live to_dict() call is precisely the DQ-30 lesson being applied, not repeated. Logged as DQ-53. Independently of all of that, falsifiability was DEMONSTRATED rather than argued: four defects were deliberately planted and each turned the suite red, with every file restored byte-identically and md5-verified."
   },
   "pre_impl": {
-    "existing_data": "No stored data is read or written. The change is entirely at render time over sections already streamed to the page, plus a file move of a pure function. No property_reports row, no database, no API contract is touched.",
-    "assumption_mismatch": "The per-field branch assumed a short status label was enough for an empty field. Every other caller of describeUnavailable — the section header, market context, and the Data Gaps list — already renders the detail sentence, so the field grid was the sole place the explanation was computed and dropped.",
-    "new_vs_existing": "Reuses describeUnavailable rather than writing new copy: all wording already existed and is unchanged. The extraction into unavailable.ts follows the pattern main already established with provenance.ts, and SECTION_LABELS is passed in as a parameter rather than moved, so the new module carries no page-level constants."
+    "existing_data": "Counted directly against production on a read-only connection before any edit. property_reports holds shadow 538, flood 151, solar-yield 63, bushfire 60 — and zero climate rows. No stored data carries a composite score, so there is nothing to repair or migrate.",
+    "assumption_mismatch": "Three of the dispatch brief's factual premises were false and were reported before being acted on. (1) The changelog says v1.2 — it does not; no v1.2 entry exists anywhere, the module carries one 1.1 entry, and grepping the doc and module for it returns nothing. The claim originated in docs/CLIMATE_RISK_METHODOLOGY.md, was copied into .qa_report.json, and reached the brief from there — the fourth false premise in two days sourced from one of our own documents. (2) The API JSON is the one leak — ClimateRiskTool.tsx also exported result_score/result_band to PostHog, a second route to a third party. (3) My own error: the first round of measurement was run against the primary working directory, stale at 616a8b1c against origin/main e6d501c1. Every finding was re-verified in the worktree; all survived, one line number moved.",
+    "new_vs_existing": "No new module. The exclusion sits inside the existing ClimateRiskResult.to_dict rather than at the endpoint, deliberately: climate_risk_pipeline leaked the composite by spreading **result.to_dict(), so a fix at the endpoint would leave the next consumer that spreads the dict free to re-open it. build_disclaimer is a three-line helper replacing a duplicated literal, not a new abstraction.",
+    "external_source_error": "No external source is called by this change. The NARCliM raster and spatial_overlays paths are untouched, and the per-hazard typed-absence behaviour added by #872 is unchanged with all its tests still passing.",
+    "frontend_type": "ClimateRiskOutputs and HazardScore in ClimateRiskResultCard.tsx are narrowed to what the API now returns. The card never read score, band, interaction_bonus, raw_score, weight or weighted_score — verified by reading the whole component — so no render path loses a value. confidence_reason and available were ADDED to the HazardScore interface because the service has emitted them for some time and the interface had silently drifted behind.",
+    "user_failure_mode": "A direct API consumer outside this repo that parsed outputs.score would now read undefined. That is the intended consequence and is stated in the PR body: an unvalidatable composite that no surface renders should not be reachable by anyone who calls the endpoint. Nothing inside this repo reads it — grepping services/ and frontend-nextjs/ for reads of outputs.score or outputs.band returns nothing."
   },
   "functions": [
     {
-      "name": "describeUnavailable",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/unavailable.ts",
-      "input": "an internal reason string, the section key, whether satellite analysis ran, and the section description",
-      "output": "a label, a plain-English detail sentence, and one of five tones",
-      "if_none": "an unrecognised or absent reason returns the error tone with a retry sentence, never a claim that the field was not part of the brief"
+      "name": "build_disclaimer",
+      "file_line": "services/climate_risk_score.py:130",
+      "input": "An optional version string, defaulting to the module constant METHODOLOGY_VERSION.",
+      "output": "The served disclaimer text with the version interpolated exactly once, so the number cannot be stated twice with two different values.",
+      "if_none": "Not reachable with None — the parameter carries a module-constant default. An empty string would render a visibly broken version rather than a confidently wrong one."
     },
     {
-      "name": "sectionDesc",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-      "input": "an optional section key string looked up against SECTION_LABELS",
-      "output": "that section's human description, used to make a 'no' explain what was checked",
-      "if_none": "returns undefined and the copy falls back to generic wording such as 'this layer'"
+      "name": "climate_risk_score",
+      "file_line": "services/climate_risk_score.py:525",
+      "input": "Latitude and longitude in WGS84 decimal degrees for a single NSW property point, the same pair the FastAPI endpoint receives after address resolution.",
+      "output": "A ClimateRiskResult. score, band and interaction_bonus are still computed and still populated on the object — they are the model — but to_dict no longer serialises them.",
+      "if_none": "Unavailable hazards are excluded from the denominator rather than counted as zero risk, and _normalize_heat returns available=False when NARCliM has no value. Absence stays typed instead of becoming a confident no-risk."
+    },
+    {
+      "name": "_normalize_flood",
+      "file_line": "services/climate_risk_score.py:259",
+      "input": "The overlays mapping returned by _query_spatial_overlays, keyed by layer_type, holding every PostGIS hazard polygon whose geometry intersects the query point.",
+      "output": "A HazardScore whose serialised form now carries hazard, present, detail, confidence, confidence_reason, data_source and available — and no weight arithmetic.",
+      "if_none": "An empty overlays dict yields present=False with a confidence_reason stating the ingest is geographically partial, so absence at a point is not represented as absence of hazard."
     }
   ],
   "values": [
     {
-      "value": "u.detail returned by describeUnavailable",
-      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx per-field unavailable branch",
-      "nullable": "no — every branch returns a non-empty string, asserted by test",
-      "guard_at": "rendered only when non-empty and different from u.label",
-      "if_missing": "the label alone renders, exactly as before this change"
+      "value": "METHODOLOGY_VERSION = 1.1",
+      "read_at": "services/climate_risk_score.py:127, consumed by the disclaimer at :132 and rendered as v{methodology_version} at ClimateRiskResultCard.tsx:143",
+      "if_missing": "Not optional — a module constant. Previously the version existed as two independent literals and they disagreed: the field said 1.1, the disclaimer text said v1.0, and the card rendered both on one screen."
     },
     {
-      "value": "SECTION_LABELS[section]?.description",
-      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx sectionDesc",
-      "nullable": "yes — an unknown section key yields undefined",
-      "guard_at": "optional chaining plus a truthiness check on the section key itself",
-      "if_missing": "wording degrades to 'this layer' rather than throwing or printing undefined"
+      "value": "outputs.score and outputs.band in the API response",
+      "read_at": "Nothing reads them. Grepping services/ and frontend-nextjs/ returns zero reads; ClimateDisclosureProfile has never carried them and tests/test_satellite_integration.py already asserted their absence.",
+      "if_missing": "That is now the permanent state, pinned by test_to_dict_omits_the_unvalidatable_composite so a re-add fails rather than silently restoring the leak."
+    },
+    {
+      "value": "ClimateHazardOutput.confidence_reason",
+      "read_at": "services/intelligence_brief.py — added to the S2 contract; the service has emitted it since the output-grounding work while the contract did not declare it.",
+      "if_missing": "Optional, defaulting to None. Its prior absence is DQ-53: the contract test compared the model against a stored fixture rather than a live call, so contract and fixture were missing it together and the comparison stayed green."
     }
   ],
-  "queries": [],
+  "queries": [
+    {
+      "purpose": "Count stored reports per product, to size the blast radius of the response-shape change on stored data before editing anything.",
+      "file_line": "ad-hoc read-only census, 2026-08-07, run against production before any code change",
+      "where_clause": "SELECT product, count(*) FROM property_reports GROUP BY product — no filter, because the question was the full corpus composition. Result: shadow 538, flood 151, solar-yield 63, bushfire 60, climate 0.",
+      "if_zero": "Zero climate rows is the reported finding, not a silent pass: no stored composite exists anywhere, so this change needs no data repair and no migration.",
+      "if_wrong": "Read-only throughout. No INSERT, UPDATE, DELETE or DDL was issued at any point in this job."
+    }
+  ],
   "break_it": [
     {
-      "scenario": "A checked-clear field renders while the reader cannot tell whether anything was checked",
-      "what_happens": "'None here' alone reads identically whether the layer was queried and came back empty or was never queried at all",
+      "scenario": "A future consumer adds a field to the climate API by spreading **result.to_dict() and the composite comes back with it.",
+      "what_happens": "The unvalidatable score is served again, exactly as before this change.",
       "mitigated": true,
-      "how": "the detail sentence now renders beneath the label, and it states what was checked",
-      "repro": "Open /reports/intelligence-brief for an address with a clear overlay result: the field must read 'None here' followed by the sentence naming what was checked, not the label alone."
+      "how": "The exclusion is at to_dict, not at the endpoint, so spreading the dict cannot reintroduce it. test_to_dict_omits_the_unvalidatable_composite fails on any re-add and names itself in the failure message.",
+      "repro": "Add score to to_dict and run pytest -k to_dict_omits — 2 tests fail (proven 2026-08-07)."
     },
     {
-      "scenario": "A future branch is added to describeUnavailable with a label but no explanation",
-      "what_happens": "The field would silently regress to a bare status word, reintroducing exactly this defect",
+      "scenario": "Someone removes only score and band in a future refactor and leaves the per-hazard weights.",
+      "what_happens": "The composite stays reconstructible — sum weighted_score over available hazards and divide by total weight — so the removal would be cosmetic.",
       "mitigated": true,
-      "how": "brief-unavailable-copy.test.ts asserts every branch, across five sections and fourteen reason strings, returns a detail of at least five words that differs from its label",
-      "repro": "cd frontend-nextjs && npx jest --testPathPattern=brief-unavailable-copy"
+      "how": "raw_score, weight and weighted_score were removed in the same pass and are pinned by the same test, which asserts the exact permitted hazard key set rather than only the absence of named keys.",
+      "repro": "Re-add weight to the hazard dict in to_dict and run pytest -k to_dict_omits."
     },
     {
-      "scenario": "The copy is moved again and the source-scan guards keep passing over a file that no longer holds it",
-      "what_happens": "Every not.toContain assertion in brief-copy-guards.test.ts would pass vacuously, protecting nothing",
+      "scenario": "The service adds a new serialised field and the Pydantic contract is not updated — the exact drift that already happened with confidence_reason.",
+      "what_happens": "Previously invisible: the contract test compared the model to a stored fixture, so both could be wrong together and stay green.",
       "mitigated": true,
-      "how": "the guard now scans page.tsx and unavailable.ts concatenated, so the copy is found wherever it lives; a missing unavailable.ts throws on readFileSync rather than passing quietly",
-      "repro": "cd frontend-nextjs && npx jest --testPathPattern=brief-copy-guards"
+      "how": "test_climate_hazard_contract_matches_service_to_dict_keys now builds a live ClimateRiskResult and compares against its to_dict output, and separately checks the stored fixture against that same live output so a stale fixture fails instead of hiding.",
+      "repro": "Add a key to the hazard dict in to_dict, or delete confidence_reason from tests/fixtures/brief_golden/climate_risk.json — either goes red, both proven 2026-08-07."
     },
     {
-      "scenario": "A long detail sentence overflows a narrow grid cell on mobile",
-      "what_happens": "Text could clip or force horizontal scroll in the four-column field grid",
+      "scenario": "The disclaimer version and methodology_version drift apart again.",
+      "what_happens": "The card renders one version beside a disclaimer stating another, which is what it did before this change.",
       "mitigated": true,
-      "how": "the detail renders in a paragraph carrying break-words and overflow-wrap anywhere, the same treatment the normal field value already uses",
-      "repro": "Open /reports/intelligence-brief at a 375px viewport on a section with an unavailable satellite layer and confirm the sentence wraps inside its cell."
+      "how": "The disclaimer is built by build_disclaimer from the instance's own methodology_version in __post_init__. There is no second literal left to fall out of step.",
+      "repro": "Construct ClimateRiskResult with methodology_version 9.9 and assert v9.9 appears in .disclaimer."
+    },
+    {
+      "scenario": "The brief field-coverage ratchet is silently widened to accept the shrink.",
+      "what_happens": "Future genuine field losses would stop being caught.",
+      "mitigated": true,
+      "how": "The baseline was edited only for the six removed fields plus the one gained, using the ratchet's own documented escape hatch, and the shrink is justified in the PR body. The ratchet still fails on any other loss.",
+      "repro": "Remove any remaining field from ClimateRiskServiceOutput and run pytest -k field_coverage."
+    },
+    {
+      "scenario": "PostHog dashboards charting result_score or result_band silently flatline.",
+      "what_happens": "Outcome telemetry for the climate tool is now absent — the tool_run event fires with tool and source only.",
+      "mitigated": false,
+      "how": "NOT mitigated, and stated rather than papered over. Both properties would have become null anyway once the API stopped returning them, so the alternative was permanently null telemetry. A replacement metric built from data that IS rendered — the count of hazards present — was deliberately not added as outside this PR's scope, and is flagged in the PR body as a follow-up.",
+      "repro": "Query the PostHog tool_run event for the climate-risk tool after deploy; result_score is no longer a property."
+    },
+    {
+      "scenario": "A hazard whose data source could not be reached renders as a confident negative.",
+      "what_happens": "_normalize_heat returns present=false with available=false when NARCliM has no value for the point. The card branched only on present, so a failed lookup displayed as 'Not present' and was counted in the 'N of M mapped hazard categories' denominator - a failure served as a finding about the property. The DQ-36 class, and the same defect #885 fixed for shadow.",
+      "mitigated": true,
+      "how": "RAISED BY CROSS-REVIEW ON THIS PR AND FIXED HERE, not deferred. The badge now renders three states - Present / Not present / Not checked - unavailable hazards are excluded from the denominator, and an amber line states that an unchecked category is not a finding of no hazard. available was also changed from optional to required on the interface, because the API emits it on every hazard.",
+      "repro": "Revert the badge to the two-state expression and run npx jest --testPathPattern=ClimateRiskResultCard-three-state: 1 failed, 4 passed. Proven 2026-08-07 with the file restored byte-identically (md5-verified)."
     }
   ],
-  "mutation_analysis": "Rewriting the not-requested branch's detail to the bare label 'Not included' turned two assertions red (2 failed / 7 passed) and restoring the sentence returned all nine to green, so the explanation assertions are not vacuous. The extraction itself is covered by the full suite: 82 suites / 1,095 tests pass, and tsc reports zero errors, which is what catches a bad move of a 135-line block. The React rendering of u.detail is asserted by a source-scan guard rather than a render test — a mutation that deleted the JSX but left the string in the file would not be caught.",
-  "residual_risk": "The per-field JSX is still verified by source scanning, not by rendering the component, because page.tsx remains a single large client component. The lot_dimensions and heritage formatters noted in the previous change remain untested for the same reason. Extracting the field renderer is the next step if this area is touched again.",
+  "mutation_analysis": "The load-bearing claim is that the composite no longer crosses the serialisation boundary. A stub returning an empty dict from to_dict would pass an absence-only assertion, so test_to_dict_omits_the_unvalidatable_composite asserts the exact permitted key set on the hazard dict as well as the absence of the six banned keys — an empty dict fails the positive half. Conversely a test asserting only the positive key set would pass if a banned key appeared elsewhere in the payload, so both halves are present. The contract tests were strengthened against the mutation that had already occurred in production: comparing two stored artefacts passes whenever both are stale in the same direction, which is why the reference is now a live to_dict() call. All four planted mutations were verified to turn the suite red with every file restored byte-identically, and the first attempt at that proof was itself invalid on CRLF line endings and is recorded in falsifiable_check rather than dropped.",
+  "residual_risk": "The composite is still computed on every call - it is the model, and the per-hazard facts are derived through it - but it is no longer serialised, rendered, stored or exported. RESOLVED SINCE THE FIRST DRAFT OF THIS REPORT: the card rendering an unavailable hazard as 'Not present' was listed here as out of scope; cross-review raised it as HIGH, it was confirmed on the evidence, and it is fixed in this PR rather than deferred. What remains. (1) DQ-53: how many other contract tests across the suite compare two stored artefacts instead of a live call is UNMEASURED. One instance is fixed; the census is not done, and the tracker entry says so rather than implying coverage. (2) The permanent ceiling recorded in the methodology doc is an argument, not a measurement. It asserts that no obtainable dataset could validate the composite because the score does not claim to predict an outcome; it is falsifiable in principle - produce a dataset the score is supposed to track - and is stated in those terms. (3) Cross-review's second finding was also correct and is corrected in the doc: an earlier draft of the ceiling said five of six components are regulatory-overlay membership and that the layer IS ground truth. Both were overstated. Fire history is NPWS observational data, not a regulatory designation, so it is four of six; and what we query is spatial_overlays, a geographically PARTIAL ingest - the code's own confidence_reason strings say absence there cannot distinguish unmapped-at-point from layer-not-ingested. A designation is definitional at the Planning Portal; our non-intersection is inconclusive unless coverage is confirmed. That makes the position worse rather than better and does not rescue the composite, but the argument now rests on the weights having no referent rather than on the inputs being infallible. CROSS-REVIEW: 2 findings, both CONFIRMED on the evidence and both FIXED. Zero overridden.",
   "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes — regenerate an Intelligence Brief for an address with at least one empty field and confirm each empty field shows both the short label and the sentence explaining what was or was not checked; check a satellite layer left unticked reads as an instruction to tick and re-run, not as a finding."
+    "db_reset": "None required and none possible. Every statement issued during this job was a read; zero climate rows exist in property_reports, so there is no stored composite to repair and no backup was needed.",
+    "secrets": "None added, moved or removed.",
+    "other_repo": "None. plotdetect-agents does not call the climate-risk pipeline.",
+    "manual_verify": "After deploy, POST to /api/satellite/climate-risk for any address and confirm outputs contains hazards, methodology_version, data_date, disclaimer and narclim_summary, and does NOT contain score, band or interaction_bonus, and that no hazard entry carries raw_score, weight or weighted_score. Then load /climate-risk in a browser and confirm the card header still reads N of M mapped hazard categories present, and that the version beside the address reads v1.1 with a disclaimer that also says v1.1."
   }
 }
