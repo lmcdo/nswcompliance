@@ -159,6 +159,15 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements-test.txt
+      # PR only, and for the same reason as the QA report below: a squash merge
+      # re-authors the commit as the merging GitHub account, so on main this is
+      # always trivially green and proves nothing. The branch commits are the
+      # only place a bad author identity is still visible.
+      - name: Commit author identity
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          python scripts/check_commit_authors.py --range "$BASE..HEAD"
       # PR only — see the note above the job. The liability scan below still
       # runs on main; only THIS check is unanswerable after a squash merge.
       - name: QA report validation

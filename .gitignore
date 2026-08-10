@@ -500,6 +500,7 @@ scripts/*
 !scripts/measure_control_page_corrections.py
 !scripts/repair_control_pdf_pages.py
 !scripts/resolve_control_page_by_clause.py
+!scripts/check_commit_authors.py
 !scripts/insert_cb_parking.py
 !scripts/insert_penrith_parking.py
 !scripts/insert_cumberland_parking.py
