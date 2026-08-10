@@ -1,6 +1,5 @@
 {
-  "status": "passed",
-  "timestamp": "2026-08-10T14:33:16.555363+10:00",
-  "target": "scripts/check_pr_gates.py \u2014 pre-merge guard: refuse to merge a PR whose gates run never ran or did not pass",
-  "findings_summary": "NO DATABASE ACCESS \u2014 this script queries the GitHub REST API only, so the schema/join/timeout sections of the protocol do not apply. Root cause established by measurement, not inference: a PR whose mergeable state is CONFLICTING gets NO GitHub Actions run at all, because pull_request workflows execute against the merge commit and that commit cannot be built. Proven on PR #907 \u2014 40+ minutes with zero runs while CONFLICTING; rebased to clear the conflict; run appeared 20 seconds later and all five jobs passed. Same explanation retro-fits PR #902, whose run appeared minutes after its rebase, not after the close/reopen I had credited. Real fix is branch protection requiring the gates checks, but repos/lmcdo/nswcompliance/branches/main/protection returns HTTP 403 Upgrade to GitHub Pro \u2014 unavailable on a private repo on the free plan. Existing mitigation confirmed live: gates also runs on push to main (04:30:03Z after the 04:30:00Z merge, success) and main-red-alarm sweeps for a HEAD with no successful run, so an unchecked merge is caught AFTER landing. The remaining gap is purely pre-merge, which is what this script covers."
+  "status": "trivial",
+  "timestamp": "2026-08-10T00:00:00Z",
+  "reason": "removing dead code left by an earlier string replacement in scripts/download_tweed_wollongong_rasters.py (an unreachable log.warning + return after a return) and a duplicated comment; no logic, no queries, no new behaviour"
 }
