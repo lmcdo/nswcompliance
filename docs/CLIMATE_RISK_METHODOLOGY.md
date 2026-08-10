@@ -1,15 +1,31 @@
 # Climate Risk Awareness Score — Methodology Document
 
-**Version:** 1.0 (this document)
+**Version:** 1.0 (this document — independent of the code's version)
 **Date:** 2026-05-15, validation status appended 2026-08-07
-**Status:** Computed and returned by the API. NOT rendered as a score on any
-customer-facing surface — see [Validation status](#validation-status).
+**Status:** Computed internally. **No longer returned by the API** — the composite
+score, its band, the interaction bonus and the per-hazard weight arithmetic are
+excluded from `to_dict()` as of 2026-08-07. See [Validation status](#validation-status).
 
-> **⚠ This document lags the code.** `services/climate_risk_score.py` is at
-> `methodology_version = "1.1"` with a v1.2 changelog entry. The sections below
-> marked **[corrected 2026-08-07]** were measured against the running code; the
-> rest has not been re-checked. Where this document and the code disagree, the
-> code is authoritative.
+> **⚠ CORRECTION 2026-08-07 — there is no v1.2.** An earlier revision of this
+> banner said the code was at `methodology_version = "1.1"` **"with a v1.2
+> changelog entry"**. No such entry exists: the changelog in
+> `services/climate_risk_score.py` has a single `1.1 (2026-05-18)` entry, and
+> `git grep "1\.2"` over this document and the module returns nothing. The claim
+> was written into this file, repeated in `.qa_report.json`, and from there into
+> a dispatch brief — the fourth false premise in two days to originate in one of
+> our own documents rather than in the code. A version number in a document is a
+> greppable, falsifiable claim; this one was never grepped.
+>
+> **The real defect was narrower and is now fixed.** Two version strings
+> disagreed *and both rendered*: `methodology_version = "1.1"` displayed as
+> "v1.1" on the tool card while the served disclaimer text opened "Climate Risk
+> Awareness Score v1.0" — on the same screen. `METHODOLOGY_VERSION` is now the
+> single source and the disclaimer interpolates from it.
+>
+> **This document still lags the code.** Sections marked
+> **[corrected 2026-08-07]** were measured against the running code; the rest has
+> not been re-checked. Where this document and the code disagree, the code is
+> authoritative.
 
 ---
 
@@ -264,18 +280,85 @@ N = 20. At that N the 95% confidence interval on a Spearman ρ is roughly ±0.4
 wide, so ρ = 0.7 is not statistically distinguishable from ρ = 0.4 or ρ = 0.9.
 The pass mark could not discriminate even with perfect data.
 
-### The honest ceiling
+### Is there any construct-valid reference at all? Answered 2026-08-07
 
-**This composite score cannot be validated with available data.** That is a
-completed outcome, not an outstanding task. It is recorded here so no surface,
-document, or marketing claim describes the score as validated, calibrated, or
-benchmarked — it is none of those things.
+APRA failed on construct, not just extractability: its CVA measures the insurance
+*protection gap* — premium against income, with no hazard-exposure term. The
+follow-up question was whether anything else measures the same thing this score
+does. Three candidates were assessed. **None is valid, and the reasons are
+structural rather than practical.**
 
-What would change it is loss or claims data keyed to a geography we can resolve
-a point into, which is not publicly available in Australia at property level.
-Until then the correct posture is the one already in force: report the
-per-hazard facts, which are pass-through from government layers and sound, and
-do not present the composite as a score.
+| Candidate | Exists? | Obtainable? | Would it falsify the score? |
+|---|---|---|---|
+| Insurance claims by postcode | Yes (ICA catastrophe data; per-postcode frequency is a commercial product from Finity/Taylor Fry) | **No** — not free at usable granularity | **No.** Claims measure realised loss = exposure × vulnerability × value × insured take-up × event occurrence. This score deliberately excludes vulnerability, value and construction (see Known limitations). A high-exposure lot with a modern elevated house claims nothing. And postcode is coarser than a point — aggregating destroys the within-postcode variation that is the score's entire purpose, reintroducing the same sampling free parameter that sank the APRA comparison. |
+| Recorded hazard events (NPWS fire history) | Yes — **we already hold it** in `spatial_overlays` | Yes | **No — it is circular.** Fire history is one of the six weighted inputs (`_normalize_fire_history`). Correlating the composite against its own component is the DQ-30 "0% drift" trap: it would return a strong result that means nothing. Holding it out and correlating the other five against it just asks whether Bush Fire Prone Land predicts fires — which it does by construction, since BFPL is drawn from vegetation and fire-behaviour modelling. |
+| NARCliM projections vs observed | Yes (BoM ACORN-SAT; NARCliM2.0 publishes its own evaluation) | Partially | **No — wrong object.** It would validate NARCliM, a third party's model already evaluated by its authors. Our heat component is a linear rescale of a NARCliM delta: if NARCliM is right our component is right by construction, and if it is wrong that is a defect in a cited source, not in our aggregation. It leaves the actual questionable parts untouched. |
+
+**The structural reason, which no new dataset fixes.** Four of the six components
+— flood, bushfire, coastal and landslide — are *membership of a mapped
+regulatory overlay*. An EPI flood planning layer is not a prediction that can be
+wrong: it is a legal designation, and **at the source** it is definitional for
+"is this land in the flood planning area". There is no higher authority to
+correlate it against, so there is no error term for that component.
+
+> **⚠ Two corrections to an earlier draft of this paragraph, both raised in
+> cross-review and both correct.**
+>
+> **(1) It said "five of six". That overcounted.** Fire history is **NPWS
+> observational event data, not a regulatory designation** — it records where
+> fires were recorded, which is an empirical claim that can be incomplete, not a
+> legal one. Heat is a model projection. So the definitional argument covers
+> four components, not five.
+>
+> **(2) It said the layer "IS the ground truth", full stop. That conflated the
+> authoritative source with our copy of it.** What we query is
+> `spatial_overlays`, an **ingest that is geographically partial** — the code
+> says so itself in every non-intersection `confidence_reason`: *"absence here
+> does not distinguish unmapped-at-point from layer-not-ingested"*. A designation
+> is definitional at the Planning Portal; our non-intersection is **inconclusive
+> unless coverage at that point is confirmed**. A property inside an official
+> flood area that our ingest does not cover returns "not present".
+>
+> This does not rescue the composite — it makes the position worse, not better,
+> and it is the reason the per-hazard `confidence_reason` strings carry the
+> coverage caveat rather than asserting a clean negative. The conclusion below is
+> unchanged, but it now rests on the weights having no referent, not on the
+> inputs being infallible.
+
+What remains genuinely arbitrary is everything we added on top: the equal weights
+(0.167), the interaction bonuses (0.05/0.05/0.05/0.03), the heat scale endpoint
+(`max_delta = 45.0`) and the band cut-offs (20/40/60/80). **None of these has an
+external referent even in principle**, because the score does not claim to
+predict an outcome. This document states it plainly under Known limitations:
+*"Score reflects hazard exposure, not probability of loss."*
+
+**A quantity that forecasts nothing cannot be calibrated against anything —
+there is no error term to measure.** That is not a data gap. It is a property of
+the construct as defined.
+
+### The honest ceiling — PERMANENT
+
+**This composite score cannot be validated with available data, and no
+obtainable dataset would change that.** A completed outcome, not an outstanding
+task, and not a pending calibration. Climate must not be described anywhere as
+awaiting calibration, because nothing can ever calibrate it.
+
+Recorded here so that no surface, document, or marketing claim describes the
+score as validated, calibrated, or benchmarked — it is none of those things, and
+the word **"verified" remains banned** for it.
+
+Revising the earlier wording: a previous version of this section said the ceiling
+would lift given "loss or claims data keyed to a geography we can resolve a point
+into". That was too generous. Such data would validate a *different* quantity —
+expected loss — which this score explicitly does not estimate. Building the score
+that claims to predict loss is a new product with a new construct, not a
+calibration of this one.
+
+**What is defensible, and is what ships.** The individual per-hazard facts are
+each independently checkable against the Planning Portal and the source layers:
+rung 1, source-linked, which is the correct and final ceiling for this product.
+That is already the served posture — the per-hazard presence facts render, the
+composite does not.
 
 ### D3 was not triggered, and is already substantially in force
 
@@ -293,9 +376,19 @@ reading each renderer:
 | `/climate-risk` page | No | "It is not scored, ranked, or colour-coded into a risk verdict" |
 | Conveyancing PDF | No | `conveyancing.py` `_fetch_climate` — "NO composite score (barred by the legal assessment; #699)" |
 | Intelligence Brief | No | `ClimateDisclosureProfile` — "replaces composite climate risk score… No composite score" |
-| **API JSON** | **Yes** | `climate_risk_pipeline.py` returns `outputs.score` and `outputs.band` |
+| **API JSON** | **No — closed 2026-08-07** | `to_dict()` no longer serialises `score`, `band`, `interaction_bonus`, or per-hazard `raw_score`/`weight`/`weighted_score`. Pinned by `test_to_dict_omits_the_unvalidatable_composite`. |
+| PostHog telemetry | **No — closed 2026-08-07** | `ClimateRiskTool.tsx` exported `result_score`/`result_band` to a third-party analytics service; removed |
 
-The API response is the one place an unvalidated composite still escapes.
+The API response *was* the one place an unvalidated composite still escaped, and
+the PostHog export was a second route nobody had listed. Both are closed. The
+exclusion sits at `to_dict` — the serialisation boundary — rather than at the
+endpoint, because the endpoint leaked it by spreading `**result.to_dict()`; had
+the fix been applied at the endpoint, the next consumer to spread the dict would
+have re-opened it.
+
+The per-hazard weights were removed alongside the composite: `weight` and
+`weighted_score` make it reconstructible, so removing only `score`/`band` would
+have left the composite derivable by any consumer willing to sum six numbers.
 
 ## Reproducibility
 
