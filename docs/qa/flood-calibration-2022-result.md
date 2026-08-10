@@ -114,9 +114,20 @@ neighbouring councils in `spatial_overlays`:
 | **Richmond Valley** | **0** |
 
 So this is not a detection failure. **The product holds no flood overlay for Richmond Valley at
-all**, and returns "no flood indicator" for every address in it — including ground the European
-Commission photographed under water. The recall figure is measuring, in these two points, an
-absence of data rather than an absence of flooding.
+all**, so the overlay-derived signals — the EPI layer, the 1% AEP verdict and the council/SES
+extent — can return nothing for any address in that council, whatever the ground is doing. At the
+two points sampled here that produced "no flood indicator" on ground the European Commission
+photographed under water.
+
+**Stated that narrowly on purpose.** An earlier version of this paragraph said the product "returns
+no flood indicator for every address in it", which is more than two points can support and ignores
+the non-overlay sources — satellite water history and BOM gauges — which are not council-scoped and
+could fire where a polygon does not exist. They did not fire at these two. Whether they would
+elsewhere in Richmond Valley is untested, and the honest claim is about the overlay layers and
+these two points, not about every address.
+
+The recall figure is measuring, in these two points, an absence of data rather than an absence of
+flooding.
 
 **Lismore holding a single polygon deserves its own look.** It is the council that recorded the
 most catastrophic flood in Australian history in 2022. One polygon is unlikely to be its true
