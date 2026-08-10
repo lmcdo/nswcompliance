@@ -435,6 +435,9 @@ scripts/*
 # The 2022 flood calibration runner. Committed so the number in
 # docs/qa/flood-calibration-2022-result.md can be reproduced, seed and all.
 !scripts/run_flood_calibration_2022.py
+# Read-only sweep for tests that assert an absence produces a NEGATIVE
+# verdict rather than an unknown one — the class that hid the flood defect.
+!scripts/sweep_absence_negative_tests.py
 # Falsifiability plant-restore harness + the doc-claim checker. Both are
 # imported by tests and invoked from .githooks/pre-push, so an untracked copy
 # breaks every fresh clone — which is exactly the trap this line block warns
