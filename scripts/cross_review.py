@@ -264,6 +264,39 @@ def _positive_int(raw: str) -> int:
     return value
 
 
+def finding_key(f: dict) -> str:
+    """Identity for an already-adjudicated finding, deliberately COARSE.
+
+    file + category, with no line number and no summary text. Both of the
+    obvious finer keys fail in practice:
+
+    - LINE NUMBERS shift as soon as anything above them is edited, and the
+      commit that fixes a finding almost always shifts them.
+    - SUMMARY TEXT is model prose. The same defect comes back worded
+      differently on the next run, so a text key matches almost nothing.
+
+    The cost is real and worth stating: a genuinely NEW null-guard defect in a
+    file where a null-guard finding was already adjudicated will be recorded as
+    advisory rather than blocking. That is tolerable only because this pairs
+    with an incremental review base — the diff being read is the new commits,
+    not the whole branch — and because the record is per-branch and thrown away
+    when the branch is gone. It is not a standing amnesty.
+    """
+    return f"{(f.get('file') or '?').strip()}::{(f.get('category') or '?').strip()}"
+
+
+def load_adjudicated(path: Path | None) -> set:
+    if not path or not path.exists():
+        return set()
+    try:
+        return set(json.loads(path.read_text(encoding="utf-8")).get("keys", []))
+    except Exception:
+        # A corrupt record must not silently grant amnesty to everything, nor
+        # block a push. Treat it as empty: every finding gates as if new.
+        print(f"(adjudicated record at {path} unreadable — treating as empty)")
+        return set()
+
+
 def main() -> None:
     # Findings text can contain arbitrary Unicode; the default Windows console
     # codec (cp1252) raises UnicodeEncodeError on it. Force UTF-8 output.
@@ -278,22 +311,48 @@ def main() -> None:
     parser.add_argument("--max-diff-kb", type=int, default=256, help="Refuse diffs larger than this many KB (default: 256).")
     parser.add_argument("--out", type=Path, help="Also write the findings JSON to this path.")
     parser.add_argument("--fail-on", choices=["high", "medium", "low"], help="Exit non-zero if a finding at/above this severity exists.")
+    parser.add_argument("--adjudicated", type=Path, help="JSON record of findings already adjudicated on this branch; they are reported but do not gate.")
+    parser.add_argument("--record-adjudicated", action="store_true", help="Add this run's findings to the --adjudicated record.")
     args = parser.parse_args()
 
     api_key = sol_common.load_api_key(_REPO_ROOT)
     diff = get_diff(args)
     result = call_model(build_messages(diff, load_checklist(args.base)), args.model, api_key)
     findings = rank(result["findings"])
-    render(findings, args.model)
+
+    # Split into findings this branch has already been shown, and genuinely new
+    # ones. Without this the gate cannot converge: it re-reads a diff, an LLM
+    # returns a different subset of the same pool each time, and fixing
+    # everything in run N does nothing to reduce what run N+1 surfaces.
+    known = load_adjudicated(args.adjudicated)
+    fresh = [f for f in findings if finding_key(f) not in known]
+    repeats = [f for f in findings if finding_key(f) in known]
+
+    render(fresh, args.model)
+    if repeats:
+        print(f"\n{len(repeats)} finding(s) already adjudicated on this branch "
+              f"(reported, not gating):")
+        for f in repeats:
+            print(f"   [{str(f.get('severity','?')).upper()}] {finding_key(f)} — "
+                  f"{str(f.get('summary',''))[:110]}")
+        print("   If one of these is real and unfixed, it still needs fixing — "
+              "being repeated is not evidence either way.")
 
     if args.out:
         args.out.write_text(json.dumps({"model": args.model, "findings": findings}, indent=2), encoding="utf-8")
         print(f"Report written to {args.out}")
 
+    if args.record_adjudicated and args.adjudicated:
+        args.adjudicated.parent.mkdir(parents=True, exist_ok=True)
+        args.adjudicated.write_text(
+            json.dumps({"keys": sorted(known | {finding_key(f) for f in findings})}, indent=2),
+            encoding="utf-8")
+
     if args.fail_on:
         threshold = _SEVERITY_ORDER[args.fail_on]
         # Missing severity -> unknown rank (most severe), so a gate never fails open.
-        worst = min((severity_rank(f.get("severity")) for f in findings), default=99)
+        # Gates on FRESH findings only; repeats were adjudicated once already.
+        worst = min((severity_rank(f.get("severity")) for f in fresh), default=99)
         if worst <= threshold:
             sys.exit(2)
 

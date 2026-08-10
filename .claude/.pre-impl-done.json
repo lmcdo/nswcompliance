@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-08-08T18:00:00Z",
-  "reason": "Applying Sol round-3 finding 1 to services/flood_truth.py. Still no database surface — the change is a filesystem availability check. The run loop picks its bounds proxy from the PMF grid first, so a study holding its PMF but not its 1% AEP grid passed the proxy check, sampled None for 1pct, and was read as 'point outside the study extent' — a confident negative from a file that does not exist. flood_study_raster_availability() was already tightened to the 1% grid specifically in the previous round; this closes the gap between that function and the loop that decides flood_studies_absent, so the two now agree. Investigated before editing: the proxy_candidates list is ('pmf', '1pct') and falls back to the first configured design key, which is why a PMF-only study slipped through; the new check reuses the existing function rather than repeating its logic, and the three tests added last round for that function already cover the missing-1pct and no-1pct-configured cases. All six pre-impl protocol steps remain inapplicable: no table, no join key, no SQL, no pending-set sentinel, no cross-system entity naming, no column feeding a typed model."
+  "status": "passed",
+  "timestamp": "2026-08-10T00:00:00Z",
+  "target": "scripts/cross_review.py + .githooks/pre-push — make the Sol gate converge (incremental diff, adjudicated-findings memory, round cap)",
+  "findings_summary": "No database surface at all: no SQL, no schema, no migrations, no bulk operations, no join keys. The change reads git refs and a JSON state file under .git/. Schema/value/timeout/loop-invariant steps are not applicable and are recorded as such rather than skipped silently."
 }

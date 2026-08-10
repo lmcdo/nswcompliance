@@ -410,6 +410,11 @@ frontend-nextjs/public/pdfjs/
 scripts/*
 !scripts/pr_overlap_guard.py
 !scripts/r2_pdf_uploader.py
+# Sol cross-review base selection. The pre-push hook shells out to this, and
+# the hook FALLS BACK SILENTLY to the old whole-branch base if it is missing —
+# so an untracked copy here would revert the fix on every other clone while
+# leaving the hook looking fixed. Tested by tests/test_sol_review_base.py.
+!scripts/sol_review_base.sh
 # Cross-reference resolution pre-task artifacts (permanent QA artifacts)
 !scripts/xref_pretask_setup.py
 !scripts/xref_detection_audit.py
