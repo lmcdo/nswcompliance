@@ -49,9 +49,29 @@ confidence story to tell. It is also the one thing here that survives the NSW pl
 those publish the *rules* at source, which erodes the rules-based products and does nothing to a
 record of outcomes.
 
-**Not yet verified:** whether it joins cleanly to the lot database. Latitude and longitude are
-100% populated so a spatial join to `nsw_cadastre_lots` (3,220,617 parcels) is available in
-principle — the join itself has not been tested. Do not claim "lot-level" until it has.
+**The lot join is now built and works** — `cdc_lot_link`, created 2026-08-10 by a parallel
+session. 181,750 rows: **178,259 matched (98.1%)**, 3,466 with no lot at the point, 25 with no
+coordinates. 128,098 distinct lots carry at least one certificate and 26,434 carry more than one.
+
+That turns the asset from a table into a product, because it answers the question in the form a
+buyer asks it:
+
+> **Blacktown · lot 450–750 m² · dwelling house → 245 approvals, median cost $501,074, median
+> 20 days to determination, 90th percentile 85 days.**
+
+Cross-council comparison works too — median determination 21–29 days and median cost $374k–$520k
+across the top five councils. **Use that worked example in applications.** It is concrete, it is
+checkable, and no competitor can produce it.
+
+Two honest limits to keep with it: for a strata address the linked lot is the parcel footprint,
+not the unit (a point inside stacked parcels takes the first match), and unmatched rows cluster
+in dense urban councils — City of Sydney 687, Parramatta 283.
+
+⚠ **`development_type` is double-encoded on 5.9% of rows** — 171,002 are a jsonb array but 10,748
+are a jsonb *string* containing a JSON array. The obvious `jsonb_typeof = 'array'` guard silently
+writes NULL for all 10,748, indistinguishable from "no type recorded". Use
+`(development_type #>> '{}')::jsonb` when `jsonb_typeof = 'string'`. Anything reading that column
+has the same trap.
 
 **⚠ `first_seen_at` on that table is a dead column** — NULL on 146,841 rows and last populated
 2026-05-22. Use `created_at` for ingest freshness. Anyone measuring feed health off `first_seen_at`
