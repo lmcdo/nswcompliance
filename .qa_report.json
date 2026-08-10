@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes a BLOCKING pre-push gate. A gate that is too weak lets defects through; a gate that cannot converge trains people to bypass it, which is worse than not having one. On 2026-08-10 the Sol review blocked a single branch four times in a row across 17 findings — every one of which checked out as real, so the reviewer was sound and the harness was not. It passed the merge-base with main as the review base, so each push re-read the entire branch (18 files, 2,500 lines, 175 KB). A non-deterministic reviewer re-reading an unchanged, growing input returns a different subset each time, so fixing everything in run N did nothing to reduce what run N+1 could surface. Three fixes: read only the new commits, remember what was already adjudicated, and stop after three rounds. No application code, no database, no served output.",
- "commit_hash": "f747a12b",
+ "commit_hash": "4e23b1c5",
  "files": [
   ".githooks/pre-push",
   "scripts/sol_review_base.sh",
