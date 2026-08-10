@@ -7,10 +7,15 @@ Three layers of verification:
   2. Grounding — file:line references verified against real code via AST
   3. Depth — minimum word counts, break-it uniqueness, cross-references
 
+The report is per-branch and committed at .qa/reports/<branch-slug>.json. Omit
+the path and it is resolved for the current branch by qa_report_path — the one
+definition every consumer shares, so the hook, the workflow and this gate cannot
+end up checking different files.
+
 Usage:
-    python scripts/qa_gate.py .qa_report.json
-    python scripts/qa_gate.py .qa_report.json --diff-files file1.py file2.py
-    python scripts/qa_gate.py .qa_report.json --project-dir /path/to/repo
+    python scripts/qa_gate.py
+    python scripts/qa_gate.py --diff-files file1.py file2.py
+    python scripts/qa_gate.py .qa/reports/fix__thing.json --project-dir /path/to/repo
 
 Exit codes:
     0 = PASSED

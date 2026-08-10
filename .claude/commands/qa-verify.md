@@ -55,10 +55,23 @@ Write integration-style tests for any gaps found.
 
 ## Step 5: Generate QA report
 
-Now fill out `.qa_report.json` using the template at `scripts/qa_report_template.json`.
+The report is **per-branch and committed**, at `.qa/reports/<branch-slug>.json`.
+Ask for the exact path rather than typing one — every consumer resolves it the
+same way, and a hand-written path is how they drift:
+
+```bash
+python scripts/qa_report_path.py --target --relative
+```
+
+Fill it out using the template at `scripts/qa_report_template.json`.
 
 Requirements:
-- `commit_hash`: run `git rev-parse --short HEAD`
+- `commit_hash`: run `git rev-parse --short HEAD`. It must name one of **this
+  branch's own** commits — an ancestor of HEAD that is not already on
+  `origin/main`. The `post-commit` hook restamps it for you after each commit,
+  so the usual flow is: commit, let the hook stamp, then include the restamped
+  report in your next commit. Do NOT amend to fix the stamp — the amend changes
+  the hash you just recorded.
 - `functions`: every function you wrote/modified, with **actual AST line numbers** (verify by reading the file, don't estimate)
 - `break_it`: the scenarios from Phase 2, updated based on Phase 3 findings
 - Every `input`/`output`/`if_none` description must be >=8 words for Critical tier
@@ -66,8 +79,10 @@ Requirements:
 
 Run:
 ```bash
-python scripts/qa_gate.py .qa_report.json --diff-files <changed-files>
+python scripts/qa_gate.py --diff-files <changed-files>
 ```
+
+Omitting the path is deliberate: the gate resolves this branch's report itself.
 
 If it fails, fix the report (not the gate). Show the passing output in the conversation.
 

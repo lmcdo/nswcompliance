@@ -105,10 +105,22 @@ def _run() -> tuple[int, str]:
         timeout=120,
     )
     lines = [ln for ln in proc.stdout.splitlines() if "QA-GATE:" in ln or "hash" in ln]
-    return proc.returncode, (lines[-1].strip() if lines else proc.stdout.strip()[-160:])
+    detail = lines[-1].strip() if lines else proc.stdout.strip()[-160:]
+    # The gate prints em-dashes. Captured with errors="replace" they arrive as
+    # U+FFFD, which a cp1252 console cannot print — and a proof harness that
+    # dies while REPORTING its result is indistinguishable from one that failed.
+    return proc.returncode, detail.encode("ascii", "replace").decode("ascii")
 
 
 def main() -> int:
+    # A cp1252 console is the default on Windows and this harness must be able
+    # to print its own verdict on the machine it runs on.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     report = resolve(REPO)
     if report is None:
         print("No QA report resolved for this branch — nothing to prove.")
@@ -128,7 +140,7 @@ def main() -> int:
     print(f"stamped     : {current}")
     print(f"sibling tip : {sibling}   (must be rejected)")
     print(f"origin/main : {on_main}   (must be rejected)")
-    print(f"full sha    : {full_sha[:12]}…  (must be accepted)\n")
+    print(f"full sha    : {full_sha[:12]}..  (must be accepted)\n")
 
     cases = [
         ProofCase(

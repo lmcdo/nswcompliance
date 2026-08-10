@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "No product code and no database, but this changes the gate every session depends on to commit and push. A mistake here is not a wrong number on a page — it is either every commit blocked repo-wide, or worse, a gate that reports PASSED while reading a file belonging to a different branch. The second failure is silent and is the exact class this repo's railguard work exists to stop, so it gets Standard scrutiny rather than Minor.",
-  "commit_hash": "PENDING",
+  "commit_hash": "d9405adf",
   "files": [
     "scripts/qa_report_path.py",
     "scripts/qa_gate.py",
@@ -30,28 +30,28 @@
   "functions": [
     {
       "name": "check_commit_hash_binding",
-      "file_line": "scripts/qa_gate.py:1265",
+      "file_line": "scripts/qa_gate.py:1310",
       "input": "the report's commit_hash, at any abbreviation length, plus the repository root",
       "output": "an error when the hash names no commit, names a commit that is not an ancestor of HEAD, or names one already on origin/main; otherwise nothing",
       "if_none": "an unresolvable git, a missing origin/main, or a branch with no commits of its own all yield no error — the question is unanswerable, and answering it 'fail' is what forced main red under the old rule"
     },
     {
       "name": "resolve",
-      "file_line": "scripts/qa_report_path.py:196",
+      "file_line": "scripts/qa_report_path.py:199",
       "input": "the repository root and an optional explicit path",
       "output": "the report that exists for this branch, trying explicit path, QA_REPORT_PATH, the branch's own file, single-candidate discovery, then the legacy root file",
       "if_none": "returns None, and callers treat that as absent rather than substituting another branch's file — CI then warns instead of reporting a pass it did not earn"
     },
     {
       "name": "current_branch",
-      "file_line": "scripts/qa_report_path.py:124",
+      "file_line": "scripts/qa_report_path.py:125",
       "input": "environment and git, in that order of authority",
       "output": "the branch name from QA_REPORT_BRANCH, else GITHUB_HEAD_REF, else git symbolic-ref",
       "if_none": "None on a detached HEAD, because a pull_request event checks out a detached merge commit and inventing a branch name there would silently bind the gate to the wrong file"
     },
     {
       "name": "live_branch_slugs",
-      "file_line": "scripts/prune_qa_reports.py:56",
+      "file_line": "scripts/prune_qa_reports.py:50",
       "input": "git ls-remote --heads against the remote",
       "output": "the slug of every branch that currently exists, used to identify orphaned reports",
       "if_none": "raises RemoteUnavailable and deletes nothing; an empty branch list means the question was not answered, never that no branch is alive, and reading it the second way would delete every report in one run"
