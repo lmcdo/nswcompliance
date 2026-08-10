@@ -69,6 +69,15 @@ def _git(*args: str) -> str:
     return proc.stdout.strip()
 
 
+def _is_ancestor(rev: str, ref: str) -> bool | None:
+    """True/False, or None when git could not answer (0=yes, 1=no, else error)."""
+    proc = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", rev, ref],
+        cwd=str(REPO), capture_output=True, timeout=30,
+    )
+    return {0: True, 1: False}.get(proc.returncode)
+
+
 def _a_sibling_branch_commit() -> str:
     """The tip of some remote branch that is NOT an ancestor of HEAD.
 
@@ -136,6 +145,28 @@ def main() -> int:
     on_main = _git("rev-parse", "--short", "origin/main")
     full_sha = _git("rev-parse", "HEAD")
 
+    # Preconditions. Without these the harness can report CAUGHT for the wrong
+    # reason and call it proof — which it did on 2026-08-10, when a corrupted
+    # local origin/main ref made `sibling` and `on_main` the SAME commit and the
+    # inherited-from-main case was silently re-testing not-an-ancestor.
+    if sibling == on_main:
+        raise SystemExit(
+            f"sibling tip and origin/main are the same commit ({sibling}). The "
+            f"two red cases would test one condition twice. Run `git fetch "
+            f"origin` and check refs/remotes/origin/main is not stale."
+        )
+    if _is_ancestor(on_main, "origin/main") is not True:
+        raise SystemExit(
+            f"{on_main} is not an ancestor of origin/main, so the "
+            f"inherited-from-main case would not exercise that branch of the "
+            f"check. Local origin/main is probably wrong."
+        )
+    if _is_ancestor(sibling, "HEAD") is not False:
+        raise SystemExit(
+            f"{sibling} IS an ancestor of HEAD, so the copied-from-another-branch "
+            f"case would not exercise that branch of the check."
+        )
+
     print(f"report      : {report.relative_to(REPO).as_posix()}")
     print(f"stamped     : {current}")
     print(f"sibling tip : {sibling}   (must be rejected)")
@@ -176,11 +207,29 @@ def main() -> int:
     result = prove(cases, _run)
     print(result.table())
     print()
-    if result.ok:
-        print("PROVEN: every planted defect was caught, the legitimate report passed,")
-        print("and the file is byte-identical to where it started.")
+
+    # "It went red" is not the claim. "It went red FOR THIS REASON" is. A red
+    # that fires on a different branch of the check would look identical in the
+    # table above and would prove nothing about the branch it names.
+    expected_reason = {
+        "copied-from-another-branch": "not an ancestor of HEAD",
+        "inherited-from-main": "already on origin/main",
+        "names-no-commit": "names no commit",
+    }
+    wrong_reason = [
+        f"{o.label}: expected {expected_reason[o.label]!r}, got {o.detail!r}"
+        for o in result.outcomes
+        if o.label in expected_reason and expected_reason[o.label] not in o.detail
+    ]
+
+    if result.ok and not wrong_reason:
+        print("PROVEN: every planted defect was caught for the reason it was planted,")
+        print("the legitimate report passed, and the file is byte-identical to where")
+        print("it started.")
         return 0
-    print("NOT PROVEN — see the verdict column above.")
+    for line in wrong_reason:
+        print(f"WRONG REASON — {line}")
+    print("NOT PROVEN — see above.")
     return 1
 
 

@@ -30,21 +30,21 @@
   "functions": [
     {
       "name": "check_commit_hash_binding",
-      "file_line": "scripts/qa_gate.py:1310",
+      "file_line": "scripts/qa_gate.py:1314",
       "input": "the report's commit_hash, at any abbreviation length, plus the repository root",
       "output": "an error when the hash names no commit, names a commit that is not an ancestor of HEAD, or names one already on origin/main; otherwise nothing",
       "if_none": "an unresolvable git, a missing origin/main, or a branch with no commits of its own all yield no error — the question is unanswerable, and answering it 'fail' is what forced main red under the old rule"
     },
     {
       "name": "resolve",
-      "file_line": "scripts/qa_report_path.py:199",
+      "file_line": "scripts/qa_report_path.py:224",
       "input": "the repository root and an optional explicit path",
       "output": "the report that exists for this branch, trying explicit path, QA_REPORT_PATH, the branch's own file, single-candidate discovery, then the legacy root file",
       "if_none": "returns None, and callers treat that as absent rather than substituting another branch's file — CI then warns instead of reporting a pass it did not earn"
     },
     {
       "name": "current_branch",
-      "file_line": "scripts/qa_report_path.py:125",
+      "file_line": "scripts/qa_report_path.py:150",
       "input": "environment and git, in that order of authority",
       "output": "the branch name from QA_REPORT_BRANCH, else GITHUB_HEAD_REF, else git symbolic-ref",
       "if_none": "None on a detached HEAD, because a pull_request event checks out a detached merge commit and inventing a branch name there would silently bind the gate to the wrong file"
@@ -97,6 +97,13 @@
       "mitigated": true,
       "how": "The legacy fallback in resolve() means an unmigrated branch is still CHECKED rather than silently unenforced, which is the outcome that actually matters — pinned by test_a_branch_cut_before_the_move_still_gets_checked. The clean resolution is one command, qa_report_path.py --migrate, and it is stated in the PR body's blast radius rather than left to be discovered.",
       "repro": "python scripts/qa_report_path.py --migrate"
+    },
+    {
+      "scenario": "A git hook exports GIT_DIR, which overrides cwd for every git command the gate then runs.",
+      "what_happens": "qa_gate.py invoked from .githooks/pre-push resolves the report's commit against the HOOK's repository instead of the one it was pointed at, and answers confidently about the wrong history. The same override made this change's own tests re-initialise the working repository: running them from pre-push created two branches, added two empty commits to the branch under test and moved its HEAD, and the run that did it still reported a pass.",
+      "mitigated": true,
+      "how": "qa_report_path.git_env strips every GIT_* variable except the three that configure authentication rather than repository selection, and both qa_report_path._git and qa_gate._git_query pass it. The tests do the same and additionally assert, before writing any commit, that git rev-parse --show-toplevel equals the temporary directory they just created — so the destructive path fails loudly instead of silently. doc_claims.py and test_sol_review_base.py already carried this defence; these files did not.",
+      "repro": "GIT_DIR=$(git rev-parse --absolute-git-dir) python -m pytest tests/test_qa_report_binding.py -q"
     },
     {
       "scenario": "The Claude pre-commit hook runs from the session directory while the commit is happening in a worktree.",

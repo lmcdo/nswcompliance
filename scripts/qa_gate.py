@@ -1286,6 +1286,10 @@ def _git_query(
             errors="replace",
             timeout=timeout,
             cwd=project_dir or ".",
+            # A hook exports GIT_DIR and it OVERRIDES cwd, so without this the
+            # binding would be checked against the hook's repository rather than
+            # the one being validated. See qa_report_path.git_env.
+            env=qa_report_path.git_env(),
         )
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return None, ""

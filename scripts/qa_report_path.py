@@ -100,6 +100,30 @@ def slugify_branch(branch: str) -> str:
     return slug
 
 
+def git_env() -> dict[str, str]:
+    """The environment with git's per-invocation variables removed.
+
+    A git hook exports ``GIT_DIR``, ``GIT_INDEX_FILE`` and friends, and they
+    OVERRIDE ``cwd``. Without this, a resolver or gate invoked from
+    ``.githooks/pre-push`` with an explicit ``--project-dir`` answers about the
+    HOOK's repository rather than the one it was pointed at -- silently, and
+    with a confident wrong answer.
+
+    doc_claims.py carries the same helper for the same reason, discovered the
+    same way. Kept here rather than imported from there because qa_gate.py
+    already imports this module and doc_claims.py is the heavier dependency.
+
+    ``GIT_ASKPASS``/``GIT_SSH``/``GIT_SSH_COMMAND`` are kept: they configure how
+    git authenticates, not which repository it looks at.
+    """
+    return {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith("GIT_")
+        or k in ("GIT_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND")
+    }
+
+
 def _git(args: list[str], project_dir: str | Path) -> tuple[int, str]:
     """Run a git command, returning ``(returncode, stripped_stdout)``.
 
@@ -116,6 +140,7 @@ def _git(args: list[str], project_dir: str | Path) -> tuple[int, str]:
             encoding="utf-8",
             errors="replace",
             timeout=10,
+            env=git_env(),
         )
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return 1, ""

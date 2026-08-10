@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -51,6 +52,30 @@ def qg():
     return _load("qa_gate")
 
 
+def _git_env() -> dict[str, str]:
+    """The environment with git's per-invocation variables removed.
+
+    A git hook exports GIT_DIR, GIT_INDEX_FILE and friends, and they OVERRIDE
+    cwd. Without this, the `git init` below re-initialises THE REAL REPOSITORY
+    and every command in this file then operates on it.
+
+    That is not hypothetical. Running this file from .githooks/pre-push on
+    2026-08-10 created branches `feature` and `other` in the working repo, added
+    two empty commits to the branch under test, and moved its HEAD off it. The
+    tests still reported a pass on the run that did it; the damage only surfaced
+    on the NEXT run, as "a branch named 'other' already exists".
+
+    tests/test_doc_claims.py and tests/test_sol_review_base.py already do this;
+    this file was the one that did not.
+    """
+    return {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith("GIT_")
+        or k in ("GIT_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND")
+    }
+
+
 def _git(root: Path, *args: str) -> str:
     proc = subprocess.run(
         ["git", *args],
@@ -60,6 +85,7 @@ def _git(root: Path, *args: str) -> str:
         encoding="utf-8",
         errors="replace",
         timeout=30,
+        env=_git_env(),
     )
     assert proc.returncode == 0, f"git {' '.join(args)} failed: {proc.stderr}"
     return proc.stdout.strip()
@@ -88,6 +114,18 @@ def repo(tmp_path: Path) -> SimpleNamespace:
     root = tmp_path / "repo"
     root.mkdir()
     _git(root, "init", "-q", "-b", "main")
+
+    # Prove the repo we just made is the repo git is talking to, BEFORE writing
+    # a single commit. Scrubbing GIT_* above should make this impossible to
+    # fail, which is exactly why it is asserted: the failure mode it guards is
+    # silent, destructive, and lands on the developer's real branch.
+    top = Path(_git(root, "rev-parse", "--show-toplevel")).resolve()
+    assert top == root.resolve(), (
+        f"refusing to continue: git resolved to {top}, not the temporary repo "
+        f"{root.resolve()}. Something in the environment is pointing git at "
+        f"another repository, and committing here would mutate it."
+    )
+
     _git(root, "config", "user.email", "t@example.com")
     _git(root, "config", "user.name", "Test")
     _git(root, "config", "commit.gpgsign", "false")
