@@ -1,13 +1,6 @@
 {
   "status": "passed",
-<<<<<<< HEAD
   "timestamp": "2026-08-10T00:00:00Z",
   "target": "scripts/cross_review.py + .githooks/pre-push — make the Sol gate converge (incremental diff, adjudicated-findings memory, round cap)",
   "findings_summary": "No database surface at all: no SQL, no schema, no migrations, no bulk operations, no join keys. The change reads git refs and a JSON state file under .git/. Schema/value/timeout/loop-invariant steps are not applicable and are recorded as such rather than skipped silently."
 }
-=======
-  "timestamp": "2026-08-10T10:28:05.130932+10:00",
-  "target": "scripts/build_cdc_lot_link.py \u2014 additive cdc_lot_link table: point-in-polygon join of complying_development_certificates to nsw_cadastre_lots, plus development_type jsonb normalised to text[]",
-  "findings_summary": "DEFECT CAUGHT: development_type is double-encoded on 10,748 of 181,750 rows (5.9%) \u2014 a jsonb STRING containing a JSON array, not a jsonb array. The naive jsonb_array_elements guard would have written NULL for all of them, indistinguishable from no-type-recorded. Fix: decode via (development_type #>> {}) ::jsonb when jsonb_typeof=string; verified all 10,748 decode to arrays, leaving 0 undecodable, 36 explicitly-empty, 181,714 with types. SRID CHECKED AND MATCHES: cadastre geom is 4326 on every row, 0 NULL geoms, so ST_SetSRID(...,4326) needs no reprojection. lat/lng are double precision, 0 rows outside the NSW bounding box. TIMEOUT SAFE: EXPLAIN ANALYZE confirms Index Scan using idx_cadastre_lots_geom; 200 points in 230ms = ~1.15ms/point, so a 2,000-row batch is ~2.3s against a 30s ceiling and the full 181,750 is roughly 3.5 minutes. LOOP INVARIANT SAFE: sentinel is existence of a row in cdc_lot_link, and a row is written for every certificate including non-matches (match_status three-state), so a no-match row still leaves the pending set \u2014 no infinite loop. No entity-name mapping needed: the join is spatial, not by council name."
-}
->>>>>>> origin/main
