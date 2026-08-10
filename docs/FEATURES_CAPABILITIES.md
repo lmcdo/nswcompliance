@@ -120,7 +120,7 @@ Quick reference for what PlotDetect can and cannot do.
 - **Shadow Ambush Detector** (`/reports/shadow`) — Neighbouring development shadow impact. Includes AerialTile with lot boundary overlay.
 - **Threat Radar** (`/reports/threat-radar`) — Nearby DA/CDC activity monitoring.
 - **Pre-DA Site History** (`/reports/pre-da-history`) — 8-year satellite change detection + DA history + heritage overlay.
-- **Granny Flat Yield Predictor** (`/reports/granny-flat`) — Structure detection + yield calculation.
+- **Granny Flat Yield Predictor** (`/reports/granny-flat`) — Planning-rule eligibility + yield calculation. **Structure detection is NOT a capability**: measured 2026-08-10 against human labels on 56 lots, it found 14 of 38 visible secondary structures (recall 0.368) against a pre-committed floor of 0.70, and failed in all four councils tested. Existing structures are user-confirmed from the aerial tile, not detected. See `docs/CONFIGURATION.md` under `MODAL_STRUCTURES_URL`.
 
 ### 7. Product Landing Pages
 Each satellite product has a composable landing page with: hero (address input + satellite aerial background), verified data source badges, feature grid, free-vs-paid pricing comparison, methodology section, and optional coverage section (flood). Hero address input dispatches to tool component via custom event for seamless search flow.
