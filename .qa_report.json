@@ -1,134 +1,91 @@
 {
- "tier": "standard",
- "justification": "Changes a BLOCKING pre-push gate. A gate that is too weak lets defects through; a gate that cannot converge trains people to bypass it, which is worse than not having one. On 2026-08-10 the Sol review blocked a single branch four times in a row across 17 findings — every one of which checked out as real, so the reviewer was sound and the harness was not. It passed the merge-base with main as the review base, so each push re-read the entire branch (18 files, 2,500 lines, 175 KB). A non-deterministic reviewer re-reading an unchanged, growing input returns a different subset each time, so fixing everything in run N did nothing to reduce what run N+1 could surface. Three fixes: read only the new commits, remember what was already adjudicated, and stop after three rounds. No application code, no database, no served output.",
- "commit_hash": "4e23b1c5",
- "files": [
-  ".githooks/pre-push",
-  "scripts/sol_review_base.sh",
-  "scripts/cross_review.py",
-  "tests/test_sol_review_base.py",
-  "tests/test_sol_adjudicated_findings.py",
-  ".gitignore"
- ],
- "pre_impl": {
-  "existing_data": "The gate's history was read before changing it rather than assumed. Sol was added advisory on 2026-07-18 (#787, f6647f62) and made blocking on 2026-08-01 (#859, 2ed1687c) — nine days before this change. The blocking scope regex and the --base argument were read from .githooks/pre-push section 7 as committed, not from memory. The repo already carries two shrink-only baseline ratchets (tests/quarantine-baseline.json, schema_contract_baseline.json); the adjudication record deliberately does NOT follow that committed pattern, because those describe durable code state while this describes one branch's review cycle, and a committed version would be a standing amnesty.",
-  "assumption_mismatch": "Three assumptions were wrong and were caught by measuring. (1) I assumed the last pushed commit was always the right review base. On the real branch that produced 66 files and 476 KB against the merge-base's 18, because a merge of origin/main sat between the two — so the base must be the LATER of the two boundaries, not simply the upstream. (2) I assumed the 4-round block was caused by defects I was introducing. scripts/download_tweed_wollongong_rasters.py was added in the branch's FIRST commit (fb0a44f7), was not mentioned in round 1, and was flagged in rounds 2 and 4 — old code resurfacing on a re-read, not new bugs. (3) I assumed the blocking-vs-advisory scope reflected what the push changed. It was decided on the cumulative diff, so one api/ route touched days earlier made every later push blocking, including pushes containing only Python and docs.",
-  "new_vs_existing": "One new script (scripts/sol_review_base.sh) and two new test files. scripts/cross_review.py gains two optional flags and is otherwise unchanged; existing invocations without --adjudicated behave exactly as before. .githooks/pre-push section 7 is rewired. .gitignore gains one allowlist line: scripts/* is ignored, and without it the new script would be untracked while the hook silently fell back to the old base on every other clone."
- },
- "functions": [
-  {
-   "name": "sol_review_base.sh",
-   "file_line": "scripts/sol_review_base.sh, invoked from .githooks/pre-push section 7",
-   "input": "the merge-base with origin/main, as one positional argument",
-   "output": "one commit sha: the later of {merge-base with main, last pushed commit}",
-   "if_none": "Prints the argument it was given, which is the old whole-branch behaviour. Every failure path is conservative: a missing upstream, an upstream that is not an ancestor of HEAD (rebase or force-push), or an unreadable ref all fall back rather than producing a base that would under-review. The hook additionally wraps the call in `|| echo \"$DUP_BASE\"`, so a missing or non-executable script cannot break the push."
+  "tier": "standard",
+  "justification": "Changes what a paid Intelligence Brief tells the reader when a field is empty. The per-field renderer computed a plain-English explanation and then discarded it, showing only a two-word label — so 'None here' could not be distinguished from 'we never checked' or 'the lookup broke'. That is the absence-versus-failure ambiguity the surrounding campaign exists to remove. The classifier is also extracted into its own module so its wording is unit-testable. No database read or write, no migration, no schema change, no new external call, no change to what any pipeline computes.",
+  "commit_hash": "9adbdf3e",
+  "files": [
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/unavailable.ts",
+    "frontend-nextjs/__tests__/app/brief-unavailable-copy.test.ts",
+    "frontend-nextjs/__tests__/app/brief-copy-guards.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --testPathPattern=brief-unavailable-copy",
+    "fails_when": "any branch of describeUnavailable returns a detail that is empty, shorter than five words, or identical to its own label — i.e. a label with no explanation behind it. Verified by rewriting the not-requested branch's detail to the bare string 'Not included': two assertions went red (2 failed / 7 passed) and both returned green once the sentence was restored."
   },
-  {
-   "name": "finding_key",
-   "file_line": "scripts/cross_review.py",
-   "input": "one finding dict from the model",
-   "output": "a string of the form file::category, with no line number and no summary text — deliberately coarse so a reworded repeat still matches",
-   "if_none": "A finding with neither field keys as '?::?'. It does not collapse distinct findings together: a missing file still differs from another missing file only if the categories differ, which is pinned by test_missing_fields_do_not_collapse_everything_into_one_key. The coarseness is a stated trade-off, not an oversight — line numbers shift the moment anything above them is edited, and summaries are model prose that returns reworded, so both finer keys match almost nothing in practice."
+  "pre_impl": {
+    "existing_data": "No stored data is read or written. The change is entirely at render time over sections already streamed to the page, plus a file move of a pure function. No property_reports row, no database, no API contract is touched.",
+    "assumption_mismatch": "The per-field branch assumed a short status label was enough for an empty field. Every other caller of describeUnavailable — the section header, market context, and the Data Gaps list — already renders the detail sentence, so the field grid was the sole place the explanation was computed and dropped.",
+    "new_vs_existing": "Reuses describeUnavailable rather than writing new copy: all wording already existed and is unchanged. The extraction into unavailable.ts follows the pattern main already established with provenance.ts, and SECTION_LABELS is passed in as a parameter rather than moved, so the new module carries no page-level constants."
   },
-  {
-   "name": "load_adjudicated",
-   "file_line": "scripts/cross_review.py",
-   "input": "a path to the per-branch JSON record under .git/sol-review/, or None",
-   "output": "a set of already-adjudicated finding keys",
-   "if_none": "Returns an empty set, so every finding gates as if new. This fails CLOSED in all three of the ways it can go wrong: no path, no file, or unparseable content. A corrupt record silently meaning 'everything is already adjudicated' would disable the gate while leaving it looking enabled, which is the failure mode this whole change exists to avoid."
-  },
-  {
-   "name": "assert_isolated",
-   "file_line": "tests/test_sol_review_base.py",
-   "input": "the temp repository path a test is about to mutate",
-   "output": "nothing, or an assertion failure before any write",
-   "if_none": "Raises before the first `git add`. Added after the leak below did real damage; it checks the consequence so that removing the environment guard fails loudly instead of silently."
+  "functions": [
+    {
+      "name": "describeUnavailable",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/unavailable.ts",
+      "input": "an internal reason string, the section key, whether satellite analysis ran, and the section description",
+      "output": "a label, a plain-English detail sentence, and one of five tones",
+      "if_none": "an unrecognised or absent reason returns the error tone with a retry sentence, never a claim that the field was not part of the brief"
+    },
+    {
+      "name": "sectionDesc",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "input": "an optional section key string looked up against SECTION_LABELS",
+      "output": "that section's human description, used to make a 'no' explain what was checked",
+      "if_none": "returns undefined and the copy falls back to generic wording such as 'this layer'"
+    }
+  ],
+  "values": [
+    {
+      "value": "u.detail returned by describeUnavailable",
+      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx per-field unavailable branch",
+      "nullable": "no — every branch returns a non-empty string, asserted by test",
+      "guard_at": "rendered only when non-empty and different from u.label",
+      "if_missing": "the label alone renders, exactly as before this change"
+    },
+    {
+      "value": "SECTION_LABELS[section]?.description",
+      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx sectionDesc",
+      "nullable": "yes — an unknown section key yields undefined",
+      "guard_at": "optional chaining plus a truthiness check on the section key itself",
+      "if_missing": "wording degrades to 'this layer' rather than throwing or printing undefined"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A checked-clear field renders while the reader cannot tell whether anything was checked",
+      "what_happens": "'None here' alone reads identically whether the layer was queried and came back empty or was never queried at all",
+      "mitigated": true,
+      "how": "the detail sentence now renders beneath the label, and it states what was checked",
+      "repro": "Open /reports/intelligence-brief for an address with a clear overlay result: the field must read 'None here' followed by the sentence naming what was checked, not the label alone."
+    },
+    {
+      "scenario": "A future branch is added to describeUnavailable with a label but no explanation",
+      "what_happens": "The field would silently regress to a bare status word, reintroducing exactly this defect",
+      "mitigated": true,
+      "how": "brief-unavailable-copy.test.ts asserts every branch, across five sections and fourteen reason strings, returns a detail of at least five words that differs from its label",
+      "repro": "cd frontend-nextjs && npx jest --testPathPattern=brief-unavailable-copy"
+    },
+    {
+      "scenario": "The copy is moved again and the source-scan guards keep passing over a file that no longer holds it",
+      "what_happens": "Every not.toContain assertion in brief-copy-guards.test.ts would pass vacuously, protecting nothing",
+      "mitigated": true,
+      "how": "the guard now scans page.tsx and unavailable.ts concatenated, so the copy is found wherever it lives; a missing unavailable.ts throws on readFileSync rather than passing quietly",
+      "repro": "cd frontend-nextjs && npx jest --testPathPattern=brief-copy-guards"
+    },
+    {
+      "scenario": "A long detail sentence overflows a narrow grid cell on mobile",
+      "what_happens": "Text could clip or force horizontal scroll in the four-column field grid",
+      "mitigated": true,
+      "how": "the detail renders in a paragraph carrying break-words and overflow-wrap anywhere, the same treatment the normal field value already uses",
+      "repro": "Open /reports/intelligence-brief at a 375px viewport on a section with an unavailable satellite layer and confirm the sentence wraps inside its cell."
+    }
+  ],
+  "mutation_analysis": "Rewriting the not-requested branch's detail to the bare label 'Not included' turned two assertions red (2 failed / 7 passed) and restoring the sentence returned all nine to green, so the explanation assertions are not vacuous. The extraction itself is covered by the full suite: 82 suites / 1,095 tests pass, and tsc reports zero errors, which is what catches a bad move of a 135-line block. The React rendering of u.detail is asserted by a source-scan guard rather than a render test — a mutation that deleted the JSX but left the string in the file would not be caught.",
+  "residual_risk": "The per-field JSX is still verified by source scanning, not by rendering the component, because page.tsx remains a single large client component. The lot_dimensions and heritage formatters noted in the previous change remain untested for the same reason. Extracting the field renderer is the next step if this area is touched again.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — regenerate an Intelligence Brief for an address with at least one empty field and confirm each empty field shows both the short label and the sentence explaining what was or was not checked; check a satellite layer left unticked reads as an instruction to tick and re-run, not as a finding."
   }
- ],
- "values": [
-  {
-   "value": "the review base",
-   "read_at": "computed per push by scripts/sol_review_base.sh from git refs",
-   "if_missing": "Falls back to the merge-base with origin/main — the previous behaviour. Reviewing too much is wasteful; reviewing too little would let a change through unread, so every ambiguous case resolves toward more review, not less."
-  },
-  {
-   "value": "the adjudication record",
-   "read_at": ".git/sol-review/<branch>.json, written after each review",
-   "if_missing": "Treated as empty, so nothing is exempt. It lives under .git/ and is never committed, so it cannot outlive the branch or travel to another clone as a permanent exemption."
-  },
-  {
-   "value": "the round counter",
-   "read_at": ".git/sol-review/<branch>.rounds",
-   "if_missing": "Reads as 0 and the next block is round 1. A successful push deletes it, so a cycle that ended does not carry into the next one."
-  }
- ],
- "queries": [
-  {
-   "query": "none",
-   "purpose": "This change touches no database at all. No SQL is added, read or modified, and no table, join key or migration is involved; the pre-impl protocol's schema, value-audit, timeout and loop-invariant steps are recorded as not applicable rather than skipped silently. The corresponding break-it scenario below tests that claim rather than asserting it.",
-   "file_line": ".claude/.pre-impl-done.json",
-   "where_clause": "n/a"
-  }
- ],
- "break_it": [
-  {
-   "scenario": "The adjudication record masks a genuinely new defect of the same category in the same file",
-   "what_happens": "It is reported but does not block, so a real HIGH finding could be pushed past.",
-   "mitigated": true,
-   "how": "Accepted deliberately and stated in the code rather than hidden. It is bounded by the incremental base — the diff being read is the new commits, not the whole branch — and by the record being per-branch and thrown away with it. Repeats are still printed with a line saying that being repeated is not evidence either way.",
-   "repro": "Adjudicate a null-guard finding in scripts/cross_review.py, then introduce a different null-guard defect in the same file and push."
-  },
-  {
-   "scenario": "The base script is missing, unreadable or not executable on another clone",
-   "what_happens": "Without a fallback the hook would error and block every push, or worse, diff against an empty base.",
-   "mitigated": true,
-   "how": "The hook wraps the call in `|| echo \"$DUP_BASE\"`, and the script itself prints its argument on any doubt. The more dangerous version of this was the file being GITIGNORED — scripts/* is ignored, so it would have been untracked while the hook fell back silently and looked fixed. An allowlist line was added and confirmed with git ls-files --error-unmatch.",
-   "repro": "chmod -x scripts/sol_review_base.sh, or rename it, then push. The review still runs against the merge-base."
-  },
-  {
-   "scenario": "A branch merges main and the review balloons back to the whole branch",
-   "what_happens": "A long-lived branch that keeps merging main keeps paying for a full re-read.",
-   "mitigated": false,
-   "how": "NOT fixed, and stated as a known limitation in the script's docstring. It is defensible — branch code combined with newly merged main code is genuinely unreviewed in combination — but it is a real cost and pretending otherwise would be the same mistake this change is fixing.",
-   "repro": "git merge origin/main on a pushed branch, then push and watch the file count."
-  },
-  {
-   "scenario": "The round cap trains people to override instead of fixing",
-   "what_happens": "Real findings get waved through with a one-line reason.",
-   "mitigated": true,
-   "how": "The cap does not weaken the block — it still exits non-zero and still requires SOL_OVERRIDE. What changes at round three is only the guidance: it stops implying another fix round will clear it and asks for an explicit decision. The override already required a 15-character written reason and still does.",
-   "repro": "Trigger three blocked pushes on one branch and read the third message."
-  },
-  {
-   "scenario": "The new tests mutate the real repository instead of a temp one",
-   "what_happens": "Catastrophic, and it ALREADY HAPPENED. The pre-push hook runs pytest, and git exports GIT_DIR, GIT_INDEX_FILE and GIT_WORK_TREE to hooks. Every git call in the throwaway repos addressed the real repository: `git add -A` staged 3,087 files as deleted, `git commit` landed a junk commit named 'add base.txt' on this branch, and `git init` plus `git config` rewrote the shared .git/config, setting core.bare=true and breaking `git status` in every worktree at once.",
-   "mitigated": true,
-   "how": "All of it was reverted: branch reset to the gate commit, core.bare set back to false, stray receive.denyCurrentBranch unset, all four worktrees verified healthy. Two layers now guard it — _clean_env strips GIT_* from every subprocess, and assert_isolated refuses to mutate a repository whose git dir resolves outside tmp_path. The suite passed when run by hand and failed only inside the environment it exists to protect, which is the general lesson: inherited state is not test isolation.",
-   "repro": "GIT_DIR=$(git rev-parse --absolute-git-dir) python -m pytest tests/test_sol_review_base.py — passes. Then delete the GIT_ filter in _clean_env and re-run: it stops on the first mutation naming the cause."
-  },
-  {
-   "scenario": "A future edit narrows the key or reverts the base to the merge-base, quietly restoring the loop",
-   "what_happens": "The gate stops converging again and nobody notices until it costs another hour.",
-   "mitigated": true,
-   "how": "Twelve tests, and the two wrong implementations were planted to confirm the suite distinguishes them: always-merge-base fails test_ordinary_case_reviews_only_commits_since_the_last_push, and always-upstream fails test_main_merged_in_after_the_last_push_falls_back_to_the_merge_base. Each went red on exactly the test that names it, and no other.",
-   "repro": "In sol_review_base.sh replace the SOL_BASE assignment with DUP_BASE and run the suite."
-  },
-  {
-   "scenario": "The 'no database' claim is wrong and a query slipped in unnoticed",
-   "what_happens": "A change reviewed as infrastructure-only would have gone through the pre-impl protocol's DB steps marked not-applicable, so a missing WHERE clause or an unguarded row access would have had no schema or value audit behind it.",
-   "mitigated": true,
-   "how": "The claim is checked rather than asserted: grep the branch diff for SQL and database access and it returns nothing. The only Python changed is scripts/cross_review.py, which reads a JSON file and calls the OpenAI API; the only other additions are a shell script that reads git refs and two test files that build throwaway git repositories.",
-   "repro": "git diff origin/main...HEAD -- '*.py' '*.sh' | grep -iE 'SELECT |INSERT |UPDATE |DELETE |psycopg2|DATABASE_URL|\\.execute\\(' — expect no matches."
-  }
- ],
- "post_merge": {
-  "db_reset": "None. No migration, no schema change, no write of any kind.",
-  "secrets": "None added. cross_review.py's key handling is untouched; it still resolves OPENAI_API_KEY via sol_common.",
-  "other_repo": "None.",
-  "manual_verify": "The round cap is shell logic inside the hook and is not covered by pytest — its counter arithmetic was verified by simulation, but the message it prints at round three has only been read, not triggered end to end. Confirm on the next branch that genuinely blocks three times. Also worth watching on the first few branches: whether the coarse file::category key masks anything a reviewer would have wanted blocked."
- },
- "falsifiable_check": {
-  "command": "python -m pytest tests/test_sol_review_base.py tests/test_sol_adjudicated_findings.py -q",
-  "fails_when": "The review base stops being incremental in the ordinary push-then-commit case, or stops falling back to the merge-base once main has been merged in, or starts trusting a stale upstream after a rebase, or the adjudication record starts granting amnesty when it is absent or corrupt, or a test tries to mutate a repository outside tmp_path. All five are covered by a test that was confirmed to go red with the corresponding defect planted. It does NOT check that Sol's findings are correct, and it cannot: the reviewer was never the problem."
- }
 }
