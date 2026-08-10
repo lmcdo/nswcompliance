@@ -289,7 +289,11 @@ def load_adjudicated(path: Path | None) -> set:
     if not path or not path.exists():
         return set()
     try:
-        return set(json.loads(path.read_text(encoding="utf-8")).get("keys", []))
+        # `.get("keys", [])` returns None when the key EXISTS with a null
+        # value — the default only covers a missing key. set(None) then raises
+        # and lands in the except below, which would report the file as
+        # "unreadable" when it parsed perfectly well. `or []` covers both.
+        return set(json.loads(path.read_text(encoding="utf-8")).get("keys") or [])
     except Exception:
         # A corrupt record must not silently grant amnesty to everything, nor
         # block a push. Treat it as empty: every finding gates as if new.

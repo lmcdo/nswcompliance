@@ -1,135 +1,127 @@
 {
  "tier": "standard",
- "justification": "Documentation only, but every claim in it is a measured claim about the live database and the current code, so it carries the same risk profile as code: a wrong number here goes into an employment, contract or licensing conversation and cannot be walked back. Three files under docs/architecture/ — SYSTEM_TECHNICAL.md (three Mermaid diagrams: what gets stored, what gets served, one address end to end), SYSTEM_INTEGRATED.md (the two-pile story view with assurance-ladder colouring and the seven gates), VERIFICATION.md (one row per box, arrow and count, each with the SQL or the file and line that produced it). No application code is touched. The risk this report addresses is not a runtime failure — it is a false claim shipped in a document that a hostile reader will check.",
+ "justification": "Changes a BLOCKING pre-push gate. A gate that is too weak lets defects through; a gate that cannot converge trains people to bypass it, which is worse than not having one. On 2026-08-10 the Sol review blocked a single branch four times in a row across 17 findings — every one of which checked out as real, so the reviewer was sound and the harness was not. It passed the merge-base with main as the review base, so each push re-read the entire branch (18 files, 2,500 lines, 175 KB). A non-deterministic reviewer re-reading an unchanged, growing input returns a different subset each time, so fixing everything in run N did nothing to reduce what run N+1 could surface. Three fixes: read only the new commits, remember what was already adjudicated, and stop after three rounds. No application code, no database, no served output.",
  "commit_hash": "7539fe55",
  "files": [
-  "docs/architecture/SYSTEM_TECHNICAL.md",
-  "docs/architecture/SYSTEM_INTEGRATED.md",
-  "docs/architecture/VERIFICATION.md",
-  "docs/architecture/rendered/technical-1-stored.svg",
-  "docs/architecture/rendered/technical-2-served.svg",
-  "docs/architecture/rendered/technical-3-lookup-trace.svg",
-  "docs/architecture/rendered/integrated-two-piles.svg"
+  ".githooks/pre-push",
+  "scripts/sol_review_base.sh",
+  "scripts/cross_review.py",
+  "tests/test_sol_review_base.py",
+  "tests/test_sol_adjudicated_findings.py",
+  ".gitignore"
  ],
  "pre_impl": {
-  "existing_data": "Prior-art sweep found four existing architecture documents before writing: docs/ARCHITECTURE.md (82 lines, dated 2026-05-02), .claude/docs/ARCHITECTURE.md (50 lines, 2026-01-30), .claude/docs/ARCHITECTURE_FLOW_AND_UI.md (1,079 lines) and .claude/docs/ARCHITECTURE-LGA-EXPANSION.md (414 lines). The brief named docs/ARCHITECTURE_FLOW_AND_UI.md, which does not exist at that path — it is under .claude/docs/. The two ARCHITECTURE.md files both open with '47,818 provisions', which is the row count of document_id_backup, a backup table; the live figure is 55,696. They are superseded rather than extended, and SYSTEM_TECHNICAL.md section 5 says so explicitly so a future reader does not treat them as current.",
-  "assumption_mismatch": "Four assumptions were wrong and were corrected before any file was written. (1) The working tree's local main was 51 commits behind origin/main at the time of the first probe; four of the seven named gates did not exist on that stale tree and .github/workflows/ was absent entirely. All evidence was re-gathered against origin/main at af7982a8. (2) The brief assumed the session might lack live DB access; it did not, so every count is measured on 2026-08-09 rather than cited from the 2026-08-08 strategy review. (3) services/CLAUDE.md describes all five satellite products as 'not started' and they are all shipped — that document is excluded as an evidence source. (4) A plain grep for 'sentinel' across services/ matches six modules, which would have put a false Sentinel-2 edge on the diagram; opening each file showed three of them use the word to mean a sentinel value. Only pre_da_history.py and drawdown_verify.py touch imagery.",
-  "new_vs_existing": "New directory docs/architecture/. Nothing existing was edited or deleted. The four prior architecture documents are left in place and cross-referenced with their staleness stated. .qa_report.json is replaced, which is the per-branch convention."
+  "existing_data": "The gate's history was read before changing it rather than assumed. Sol was added advisory on 2026-07-18 (#787, f6647f62) and made blocking on 2026-08-01 (#859, 2ed1687c) — nine days before this change. The blocking scope regex and the --base argument were read from .githooks/pre-push section 7 as committed, not from memory. The repo already carries two shrink-only baseline ratchets (tests/quarantine-baseline.json, schema_contract_baseline.json); the adjudication record deliberately does NOT follow that committed pattern, because those describe durable code state while this describes one branch's review cycle, and a committed version would be a standing amnesty.",
+  "assumption_mismatch": "Three assumptions were wrong and were caught by measuring. (1) I assumed the last pushed commit was always the right review base. On the real branch that produced 66 files and 476 KB against the merge-base's 18, because a merge of origin/main sat between the two — so the base must be the LATER of the two boundaries, not simply the upstream. (2) I assumed the 4-round block was caused by defects I was introducing. scripts/download_tweed_wollongong_rasters.py was added in the branch's FIRST commit (fb0a44f7), was not mentioned in round 1, and was flagged in rounds 2 and 4 — old code resurfacing on a re-read, not new bugs. (3) I assumed the blocking-vs-advisory scope reflected what the push changed. It was decided on the cumulative diff, so one api/ route touched days earlier made every later push blocking, including pushes containing only Python and docs.",
+  "new_vs_existing": "One new script (scripts/sol_review_base.sh) and two new test files. scripts/cross_review.py gains two optional flags and is otherwise unchanged; existing invocations without --adjudicated behave exactly as before. .githooks/pre-push section 7 is rewired. .gitignore gains one allowlist line: scripts/* is ignored, and without it the new script would be untracked while the hook silently fell back to the old base on every other clone."
  },
  "functions": [
   {
-   "name": "read-only DB evidence collection",
-   "file_line": "ad-hoc script; all SQL reproduced verbatim in docs/architecture/VERIFICATION.md section 1",
-   "input": "DATABASE_URL from the repository root .env",
-   "output": "37 exact counts, each stored beside the SELECT that produced it",
-   "if_none": "The connection was opened with set_session(readonly=True) and SET statement_timeout = 30000, so a write could not have executed even if one had been written by mistake. Had the connection failed, the fallback was the counts committed in STRATEGY_REVIEW_2026-08-08.md, labelled with that date; it was not needed."
+   "name": "sol_review_base.sh",
+   "file_line": "scripts/sol_review_base.sh, invoked from .githooks/pre-push section 7",
+   "input": "the merge-base with origin/main, as one positional argument",
+   "output": "one commit sha: the later of {merge-base with main, last pushed commit}",
+   "if_none": "Prints the argument it was given, which is the old whole-branch behaviour. Every failure path is conservative: a missing upstream, an upstream that is not an ancestor of HEAD (rebase or force-push), or an unreadable ref all fall back rather than producing a base that would under-review. The hook additionally wraps the call in `|| echo \"$DUP_BASE\"`, so a missing or non-executable script cannot break the push."
   },
   {
-   "name": "Mermaid render check",
-   "file_line": "docs/architecture/rendered/*.mmd, rendered with @mermaid-js/mermaid-cli@10",
-   "input": "the four fenced mermaid blocks, extracted from the two markdown files by script rather than by hand",
-   "output": "four SVGs, zero syntax errors, all page-shaped rather than strip-shaped",
-   "if_none": "mermaid-cli renders a diagram containing the words 'Syntax error' rather than exiting non-zero, so a grep for that string is run over each SVG as well as checking the exit path. All four return zero matches."
+   "name": "finding_key",
+   "file_line": "scripts/cross_review.py",
+   "input": "one finding dict from the model",
+   "output": "file::category — deliberately coarse",
+   "if_none": "A finding with neither field keys as '?::?'. It does not collapse distinct findings together: a missing file still differs from another missing file only if the categories differ, which is pinned by test_missing_fields_do_not_collapse_everything_into_one_key. The coarseness is a stated trade-off, not an oversight — line numbers shift the moment anything above them is edited, and summaries are model prose that returns reworded, so both finer keys match almost nothing in practice."
   },
   {
-   "name": "doc_claims.py self-check",
-   "file_line": "scripts/doc_claims.py, run with --docs over the three new files",
-   "input": "the three new markdown files under docs/architecture/, passed explicitly with --docs",
-   "output": "no path and no version findings against these files",
-   "if_none": "The seven dependency findings it reports are pre-existing repository issues about requirements files and test imports; they are unrelated to this change and are not fixed here."
+   "name": "load_adjudicated",
+   "file_line": "scripts/cross_review.py",
+   "input": "a path to the per-branch JSON record under .git/sol-review/, or None",
+   "output": "a set of already-adjudicated finding keys",
+   "if_none": "Returns an empty set, so every finding gates as if new. This fails CLOSED in all three of the ways it can go wrong: no path, no file, or unparseable content. A corrupt record silently meaning 'everything is already adjudicated' would disable the gate while leaving it looking enabled, which is the failure mode this whole change exists to avoid."
+  },
+  {
+   "name": "assert_isolated",
+   "file_line": "tests/test_sol_review_base.py",
+   "input": "the temp repository path a test is about to mutate",
+   "output": "nothing, or an assertion failure before any write",
+   "if_none": "Raises before the first `git add`. Added after the leak below did real damage; it checks the consequence so that removing the environment guard fails loudly instead of silently."
   }
  ],
  "values": [
   {
-   "value": "Every count on every diagram",
-   "read_at": "the live Supabase database, 2026-08-09, via the SELECT recorded next to it in VERIFICATION.md section 1",
-   "if_missing": "No count is carried over from a document. Two figures ARE doc-sourced and both are labelled as such in VERIFICATION.md section 6: the test counts and the shadow calibration result, both dated 2026-08-08 from STRATEGY_REVIEW_2026-08-08.md. Only the calibration result appears on a diagram, and it is the one figure a reader should re-check before quoting."
+   "value": "the review base",
+   "read_at": "computed per push by scripts/sol_review_base.sh from git refs",
+   "if_missing": "Falls back to the merge-base with origin/main — the previous behaviour. Reviewing too much is wasteful; reviewing too little would let a change through unread, so every ambiguous case resolves toward more review, not less."
   },
   {
-   "value": "Every arrow between two boxes",
-   "read_at": "a specific file and line, recorded in VERIFICATION.md section 3",
-   "if_missing": "Drawn dashed and labelled UNVERIFIED, with a row in section 4 stating what was tried and why it could not be resolved. Four such items exist; the Trigger.dev hop is the substantive one, because its task definitions live in the sibling repository plotdetect-agents which is not checked out here."
+   "value": "the adjudication record",
+   "read_at": ".git/sol-review/<branch>.json, written after each review",
+   "if_missing": "Treated as empty, so nothing is exempt. It lives under .git/ and is never committed, so it cannot outlive the branch or travel to another clone as a permanent exemption."
+  },
+  {
+   "value": "the round counter",
+   "read_at": ".git/sol-review/<branch>.rounds",
+   "if_missing": "Reads as 0 and the next block is round 1. A successful push deletes it, so a cycle that ended does not carry into the next one."
   }
  ],
  "queries": [
   {
-   "query": "SELECT count(*) FROM dcp_setback_controls WHERE is_current = TRUE",
-   "purpose": "Establish how many numeric DCP controls are actually served, as distinct from how many rows the table holds. The diagram shows both 1,071 and 989 because the difference matters: quoting the table size as the served figure would overstate the defensible surface by 82 rows.",
-   "file_line": "docs/architecture/VERIFICATION.md section 1, the row labelled '989 live'",
-   "where_clause": "is_current = TRUE — without it the count returns 1,071, which includes superseded rows and the 28 fabricated-value rows that were deliberately set is_current=FALSE rather than deleted, so that the evidence of the defect survives."
-  },
-  {
-   "query": "SELECT count(*) FROM regulatory_provisions WHERE is_current = TRUE AND v2_is_actionable = TRUE",
-   "purpose": "Establish the served clause count. The raw table count of 55,696 is the number quoted in two stale architecture documents and in older marketing, and it is roughly 2.8x the number a user can actually be shown.",
-   "file_line": "docs/architecture/VERIFICATION.md section 1, the row labelled '19,957 served'",
-   "where_clause": "is_current = TRUE AND v2_is_actionable = TRUE — both are required. is_current alone returns 31,469, which includes clauses that are current but are narrative rather than a control."
-  },
-  {
-   "query": "all 37 evidence queries as a set",
-   "purpose": "Produce every count on every diagram from the live database rather than from a document, so that each figure carries its own reproduction instructions.",
-   "file_line": "docs/architecture/VERIFICATION.md section 1, one row per query",
-   "where_clause": "Read-only session throughout: set_session(readonly=True) plus statement_timeout 30s. Every statement is a SELECT and no transaction is opened that could write. The project rule is that a change to this database is immediately live in production, so a documentation task opens the connection read-only rather than relying on each query being careful."
+   "query": "none",
+   "purpose": "This change touches no database. No SQL is added, read or modified; the pre-impl protocol's schema, join-key, timeout and loop-invariant steps are recorded as not applicable rather than skipped silently.",
+   "file_line": ".claude/.pre-impl-done.json",
+   "where_clause": "n/a"
   }
  ],
  "break_it": [
   {
-   "scenario": "A reader checks a count and it does not reproduce",
-   "what_happens": "The diagram is wrong and should be corrected.",
+   "scenario": "The adjudication record masks a genuinely new defect of the same category in the same file",
+   "what_happens": "It is reported but does not block, so a real HIGH finding could be pushed past.",
    "mitigated": true,
-   "how": "Every count carries the SELECT that produced it and the date it ran, so the reader can distinguish 'this was never true' from 'this has moved since 9 August'. VERIFICATION.md opens by saying exactly that.",
-   "repro": "Run any query in VERIFICATION.md section 1 against the production database."
+   "how": "Accepted deliberately and stated in the code rather than hidden. It is bounded by the incremental base — the diff being read is the new commits, not the whole branch — and by the record being per-branch and thrown away with it. Repeats are still printed with a line saying that being repeated is not evidence either way.",
+   "repro": "Adjudicate a null-guard finding in services/x.py, then introduce a different null-guard defect in the same file and push."
   },
   {
-   "scenario": "The diagram is read months later and quoted as current",
-   "what_happens": "Stale counts presented as measured — the failure mode the strategy review names as the leading source of false premises in this project.",
+   "scenario": "The base script is missing, unreadable or not executable on another clone",
+   "what_happens": "Without a fallback the hook would error and block every push, or worse, diff against an empty base.",
    "mitigated": true,
-   "how": "Both files carry the measurement date and the commit hash in their first two lines. The figures that move fastest are the ingest-run count and the certificate and application totals, which change daily; the spatial and DCP counts move rarely.",
-   "repro": "Re-run the section 1 queries and compare."
+   "how": "The hook wraps the call in `|| echo \"$DUP_BASE\"`, and the script itself prints its argument on any doubt. The more dangerous version of this was the file being GITIGNORED — scripts/* is ignored, so it would have been untracked while the hook fell back silently and looked fixed. An allowlist line was added and confirmed with git ls-files --error-unmatch.",
+   "repro": "chmod -x scripts/sol_review_base.sh, or rename it, then push. The review still runs against the merge-base."
   },
   {
-   "scenario": "A grep-based claim is wrong because the matched word means something else in code",
-   "what_happens": "A false edge is drawn — the same class of error as the 'Threat Radar shares the Sentinel-2 pipeline' line that misled three sessions.",
-   "mitigated": true,
-   "how": "This actually happened during the work. Every module matched by the 'sentinel' search was opened; three used it as a programming term. The near-miss is recorded in VERIFICATION.md section 6 rather than quietly fixed, because the record is the useful part.",
-   "repro": "grep -rl \"sentinel\" services/ returns six files; open bushfire_prescreen.py, cdc_screen.py and solar_yield.py and read the matching lines."
+   "scenario": "A branch merges main and the review balloons back to the whole branch",
+   "what_happens": "A long-lived branch that keeps merging main keeps paying for a full re-read.",
+   "mitigated": false,
+   "how": "NOT fixed, and stated as a known limitation in the script's docstring. It is defensible — branch code combined with newly merged main code is genuinely unreviewed in combination — but it is a real cost and pretending otherwise would be the same mistake this change is fixing.",
+   "repro": "git merge origin/main on a pushed branch, then push and watch the file count."
   },
   {
-   "scenario": "Evidence is gathered from a stale checkout",
-   "what_happens": "Gates that exist are reported as missing, and the whole picture is wrong by 51 commits.",
+   "scenario": "The round cap trains people to override instead of fixing",
+   "what_happens": "Real findings get waved through with a one-line reason.",
    "mitigated": true,
-   "how": "This also happened. The first probe reported four of the seven gates as absent. Comparing local main against origin/main showed it 51 commits behind, so all evidence was re-gathered against origin/main. Every file claim states the commit it was checked at.",
-   "repro": "git rev-list --count main..origin/main"
+   "how": "The cap does not weaken the block — it still exits non-zero and still requires SOL_OVERRIDE. What changes at round three is only the guidance: it stops implying another fix round will clear it and asks for an explicit decision. The override already required a 15-character written reason and still does.",
+   "repro": "Trigger three blocked pushes on one branch and read the third message."
   },
   {
-   "scenario": "The dcp_setback_controls count is taken without is_current = TRUE, so 1,071 is quoted as the number of numeric controls actually served",
-   "what_happens": "The defensible surface is overstated by 82 rows, and the overstatement includes the 28 fabricated-value rows that were deliberately marked is_current=FALSE rather than deleted. Quoting those as live would republish the exact defect the fabrication guard was built to stop.",
+   "scenario": "The new tests mutate the real repository instead of a temp one",
+   "what_happens": "Catastrophic, and it ALREADY HAPPENED. The pre-push hook runs pytest, and git exports GIT_DIR, GIT_INDEX_FILE and GIT_WORK_TREE to hooks. Every git call in the throwaway repos addressed the real repository: `git add -A` staged 3,087 files as deleted, `git commit` landed a junk commit named 'add base.txt' on this branch, and `git init` plus `git config` rewrote the shared .git/config, setting core.bare=true and breaking `git status` in every worktree at once.",
    "mitigated": true,
-   "how": "Both numbers appear on the diagram and in VERIFICATION.md section 1 — 1,071 rows held, 989 live — with the WHERE clause shown for the second. A reader cannot pick up one without seeing the other.",
-   "repro": "SELECT count(*) FROM dcp_setback_controls; then the same with WHERE is_current = TRUE. Compare 1,071 against 989."
+   "how": "All of it was reverted: branch reset to the gate commit, core.bare set back to false, stray receive.denyCurrentBranch unset, all four worktrees verified healthy. Two layers now guard it — _clean_env strips GIT_* from every subprocess, and assert_isolated refuses to mutate a repository whose git dir resolves outside tmp_path. The suite passed when run by hand and failed only inside the environment it exists to protect, which is the general lesson: inherited state is not test isolation.",
+   "repro": "GIT_DIR=$(git rev-parse --absolute-git-dir) python -m pytest tests/test_sol_review_base.py — passes. Then delete the GIT_ filter in _clean_env and re-run: it stops on the first mutation naming the cause."
   },
   {
-   "scenario": "The regulatory_provisions count is taken without the v2_is_actionable filter, so 55,696 clauses is quoted as the served corpus",
-   "what_happens": "The corpus is overstated by roughly 2.8x. This is not hypothetical: 47,818 — a backup table's row count — appears in two committed architecture documents, and inflated corpus figures have appeared in older marketing.",
+   "scenario": "A future edit narrows the key or reverts the base to the merge-base, quietly restoring the loop",
+   "what_happens": "The gate stops converging again and nobody notices until it costs another hour.",
    "mitigated": true,
-   "how": "The diagram box reads '55,696 · 19,957 served' so both halves travel together, and VERIFICATION.md section 6 names the two stale documents and the backup table their number came from.",
-   "repro": "SELECT count(*) FROM regulatory_provisions; then add WHERE is_current AND v2_is_actionable. Compare 55,696 against 19,957, and note is_current alone gives 31,469."
-  },
-  {
-   "scenario": "Producing the diagram damages the user's uncommitted work",
-   "what_happens": "At the start of this work, four files had both local uncommitted edits and upstream changes, so a checkout would have conflicted or discarded them.",
-   "mitigated": true,
-   "how": "Nothing in the primary working tree was modified while that was true; work was isolated until main had been brought up to date, at which point the conflict no longer existed. The only files this branch adds are new ones under docs/architecture/, plus the replaced .qa_report.json.",
-   "repro": "git status --porcelain — the remaining modified files are unrelated to this change."
+   "how": "Twelve tests, and the two wrong implementations were planted to confirm the suite distinguishes them: always-merge-base fails test_ordinary_case_reviews_only_commits_since_the_last_push, and always-upstream fails test_main_merged_in_after_the_last_push_falls_back_to_the_merge_base. Each went red on exactly the test that names it, and no other.",
+   "repro": "In sol_review_base.sh replace the SOL_BASE assignment with DUP_BASE and run the suite."
   }
  ],
  "post_merge": {
   "db_reset": "None. No migration, no schema change, no write of any kind.",
-  "secrets": "None added. Evidence collection read DATABASE_URL from the existing repository root .env; no credential appears in any committed file.",
-  "other_repo": "The Trigger.dev task definitions in the sibling repository plotdetect-agents remain unverified and are marked as such on the diagram. If that repository is ever checked out alongside this one, the dashed edge can be resolved and the row in VERIFICATION.md section 4 removed.",
-  "manual_verify": "Open both markdown files on GitHub and confirm the four Mermaid blocks render. They render locally under mermaid-cli 10 with zero syntax errors, which is strong evidence but not identical to GitHub's renderer version."
+  "secrets": "None added. cross_review.py's key handling is untouched; it still resolves OPENAI_API_KEY via sol_common.",
+  "other_repo": "None.",
+  "manual_verify": "The round cap is shell logic inside the hook and is not covered by pytest — its counter arithmetic was verified by simulation, but the message it prints at round three has only been read, not triggered end to end. Confirm on the next branch that genuinely blocks three times. Also worth watching on the first few branches: whether the coarse file::category key masks anything a reviewer would have wanted blocked."
  },
  "falsifiable_check": {
-  "command": "python scripts/doc_claims.py --docs docs/architecture/SYSTEM_TECHNICAL.md docs/architecture/SYSTEM_INTEGRATED.md docs/architecture/VERIFICATION.md",
-  "fails_when": "Any file path, module or version named in the three documents stops resolving in the code — for example if services/pre_da_history.py is renamed, or scripts/falsifiability.py is removed. It reported a genuine finding on the first run against these files, when an earlier draft cited a deleted module's path as evidence that the file no longer exists; the row now cites the deleting commit c6d64edb instead. It does not and cannot check whether a count still matches the database, which is why every count carries its own query."
+  "command": "python -m pytest tests/test_sol_review_base.py tests/test_sol_adjudicated_findings.py -q",
+  "fails_when": "The review base stops being incremental in the ordinary push-then-commit case, or stops falling back to the merge-base once main has been merged in, or starts trusting a stale upstream after a rebase, or the adjudication record starts granting amnesty when it is absent or corrupt, or a test tries to mutate a repository outside tmp_path. All five are covered by a test that was confirmed to go red with the corresponding defect planted. It does NOT check that Sol's findings are correct, and it cannot: the reviewer was never the problem."
  }
 }
