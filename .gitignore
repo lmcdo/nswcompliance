@@ -429,6 +429,12 @@ scripts/*
 # about four comments above.
 !scripts/falsifiability.py
 !scripts/doc_claims.py
+# Builds the cdc_lot_link table (certificates -> cadastral lots). The table is
+# live in production, so the recipe that produced it has to be in the repo or
+# nobody can reproduce, audit or re-run it — and it needs re-running, because
+# the certificate feed adds rows daily. Also the only place the development_type
+# double-encoding fix is written down.
+!scripts/build_cdc_lot_link.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py

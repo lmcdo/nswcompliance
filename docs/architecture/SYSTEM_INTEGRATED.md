@@ -120,8 +120,22 @@ different in kind from everything else here:
 - **It survives the reforms.** When NSW publishes structured planning controls at source, that
   erodes the rules-based products and does nothing at all to this one.
 
-Alongside it sit 62,016 development applications — though those only run back to May 2025, so
+Alongside it sit 62,018 development applications — though those only run back to May 2025, so
 the eight-year depth belongs to the certificates alone.
+
+**Checked on 2026-08-10, and it passes.** `WHAT_TO_SELL_AND_WHY` set three tests for whether this
+data is actually usable. All three:
+
+1. **Depth** — 44 councils hold 1,000+ certificates, 33 hold 200–999. Median council has 366.
+   The thin ones are remote shires where little gets built, not gaps in the collection.
+2. **Content** — what it is, the dates and the address are 100% complete; cost, dwellings and
+   storeys are 98.2%. Median job $186,870. Because both dates are complete, **how long approval
+   took is computable: median 18 days, 90th percentile 81.**
+3. **Joinable to lots** — yes. `cdc_lot_link` now ties **178,259 of 181,750 (98.1%)** to the lot
+   they sit on, covering 128,098 distinct lots.
+
+So the question is answerable: *Blacktown, 450–750 m², a dwelling house → 245 approvals, median
+$501,074, median 20 days.* That needs none of the machinery built during the fortnight.
 
 ---
 
