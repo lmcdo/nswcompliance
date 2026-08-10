@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
+  "status": "passed",
   "timestamp": "2026-08-10T00:00:00Z",
-  "reason": "removing dead code left by an earlier string replacement in scripts/download_tweed_wollongong_rasters.py (an unreachable log.warning + return after a return) and a duplicated comment; no logic, no queries, no new behaviour"
+  "target": "scripts/cross_review.py + .githooks/pre-push — make the Sol gate converge (incremental diff, adjudicated-findings memory, round cap)",
+  "findings_summary": "No database surface at all: no SQL, no schema, no migrations, no bulk operations, no join keys. The change reads git refs and a JSON state file under .git/. Schema/value/timeout/loop-invariant steps are not applicable and are recorded as such rather than skipped silently."
 }
