@@ -135,7 +135,10 @@ def main() -> int:
         print("No QA report resolved for this branch — nothing to prove.")
         return 2
 
-    current = json.loads(report.read_text(encoding="utf-8")).get("commit_hash", "")
+    # `or ""` not a .get default: a report carrying "commit_hash": null would
+    # otherwise yield None and build the anchor '"commit_hash": "None"', which
+    # matches nothing, and the plant would fail rather than the check.
+    current = json.loads(report.read_text(encoding="utf-8")).get("commit_hash") or ""
     if not current:
         print("Report has no commit_hash — nothing to prove.")
         return 2

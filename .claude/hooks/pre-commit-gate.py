@@ -48,7 +48,7 @@ def main():
     # report at all. So prefer the working tree the command is running in and
     # fall back to the session directory.
     candidates = []
-    for start in (os.getcwd(), os.environ.get("CLAUDE_PROJECT_DIR", "")):
+    for start in (os.getcwd(), os.environ.get("CLAUDE_PROJECT_DIR") or ""):
         if not start or not os.path.isdir(start):
             continue
         try:

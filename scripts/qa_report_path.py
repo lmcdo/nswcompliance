@@ -169,7 +169,7 @@ def current_branch(project_dir: str | Path = ".") -> str | None:
         The branch name, or None on a detached HEAD with no env override.
     """
     for var in ("QA_REPORT_BRANCH", "GITHUB_HEAD_REF"):
-        value = os.environ.get(var, "").strip()
+        value = (os.environ.get(var) or "").strip()
         if value:
             return value
     code, out = _git(["symbolic-ref", "--short", "HEAD"], project_dir)
@@ -233,7 +233,8 @@ def resolve(project_dir: str | Path = ".", explicit: str | None = None) -> Path 
     """
     root = Path(project_dir).resolve()
 
-    for candidate_str in (explicit, os.environ.get("QA_REPORT_PATH", "").strip()):
+    override = (os.environ.get("QA_REPORT_PATH") or "").strip()
+    for candidate_str in (explicit, override):
         if candidate_str:
             candidate = Path(candidate_str)
             if not candidate.is_absolute():
