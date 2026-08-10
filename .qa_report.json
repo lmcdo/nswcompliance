@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Measure-only by instruction: one read-only sweep script and two tracker entries. No product code, no served output, no database write. Not Minor, because the sweep's tiering is a judgement that will drive which tests get adjudicated first, and a wrong tier hides a served hazard field in tier 4 where nobody looks. The classifier deserves the same scrutiny as a gate.",
-  "commit_hash": "1b6753e1",
+  "commit_hash": "8df5a597",
   "files": [
     "scripts/sweep_absence_negative_tests.py",
     ".claude/DATA_QUALITY_TRACKER.md",
