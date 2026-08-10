@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what a paid Intelligence Brief renders to the buyer. One defect suppressed populated data outright: a DataField carrying a real value was skipped whenever its confidence badge read not_available, so permitted uses and similar lists silently vanished from the report. The rest are display corrections on the same served surface — lot dimensions, source-footer labels, overlay classification and staleness wording. No database read or write, no migration, no schema change, no new external call.",
-  "commit_hash": "1fdbe7c9",
+  "commit_hash": "0623f705",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     "frontend-nextjs/app/reports/intelligence-brief/provenance.ts",
