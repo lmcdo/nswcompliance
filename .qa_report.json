@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the shape of a served API response. /pipeline/climate-risk stops returning outputs.score, outputs.band, outputs.interaction_bonus and the per-hazard raw_score/weight/weighted_score, and the served disclaimer string changes from v1.0 to v1.1. No customer-facing renderer read the removed fields — each renderer was opened and read, not assumed — so the visible change is confined to the disclaimer version and to direct API consumers. Critical tier because the response contract itself changed, and because a second unlisted export path to a third party was found and closed.",
-  "commit_hash": "827622e9",
+  "commit_hash": "14ebc210",
   "files": [
     "services/climate_risk_score.py",
     "services/climate_risk_pipeline.py",
