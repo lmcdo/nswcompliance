@@ -435,6 +435,11 @@ scripts/*
 # the certificate feed adds rows daily. Also the only place the development_type
 # double-encoding fix is written down.
 !scripts/build_cdc_lot_link.py
+# Pre-merge guard: refuses to merge a PR whose gates run never ran. A
+# CONFLICTING PR gets no Actions run at all, and an empty check list reads
+# as 'not finished yet'. CLAUDE.md's merge workflow invokes this by path, so
+# an untracked copy makes that instruction a lie in every fresh clone.
+!scripts/check_pr_gates.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py
