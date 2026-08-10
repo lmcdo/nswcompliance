@@ -6,6 +6,36 @@ Detail lives in `~/.claude/plans/ce-calibration-execution-plan-2026-08.md` §6 a
 
 ---
 
+> ## ⚠ RETRACTION — 2026-08-10
+>
+> **Section 4 of this document was wrong and is withdrawn.** It recommended leading with the
+> complying-development certificate archive. Three of its load-bearing claims were tested two days
+> after it was written and none survived:
+>
+> - **"Nobody can copy it without eight years of collecting."** False. The records come from the
+>   NSW Planning Portal, which is public and unauthenticated. This repo's own
+>   `memory/reference-da-tracking-mapserver.md` documents a no-auth endpoint carrying ~324,000
+>   application records with outcome, cost, dwellings, floor area and coordinates, paginated 4,000
+>   at a time. A competent developer rebuilds it in days.
+> - **"What the council actually waved through."** Observes nothing. Complying development is a
+>   *non-discretionary* pathway — meeting the standards produces the certificate. Where a council
+>   actually exercises judgement is development applications, and there the archive is 62,016 rows
+>   reaching back only to May 2025. The eight years of depth sit where depth means least.
+> - **"A question no competitor can touch."** ~97% of determined applications are approved
+>   (149,118 against 4,272 refused). A differentiator has to discriminate; this one cannot.
+>
+> **All three were checkable in minutes and none of them were checked** — including by the author
+> of this document, in the document arguing that unverified derived claims are the whole problem.
+> That is the error itself, committed inside its own statement. Left visible rather than edited
+> out, because a retraction that hides what was claimed teaches nothing.
+>
+> Sections 1, 2, 3 and 6 stand — they rest on measurements, not on an argument. Section 5's
+> proposed day of work has been done, and section 4 is its answer.
+>
+> Companion retraction of the same claim in a funding context: PR #908, `docs/SUPPORT_AVENUES.md`.
+
+---
+
 ## The short version
 
 We spent a fortnight proving whether the products could be trusted. The answer:
@@ -14,8 +44,11 @@ We spent a fortnight proving whether the products could be trusted. The answer:
 - **Everything it simply passes along was fine.** Basically all of it.
 
 That is the whole finding, and it points somewhere the campaign didn't expect: **the answer is not
-more checking. It is calculating less, and selling the one thing we hold that is a record rather
-than an opinion — 181,737 approved building certificates.**
+more checking. It is calculating less.**
+
+What to calculate *less of* is settled. **What to lead with instead is deliberately left open** —
+see section 4. Installing a replacement headline on the same day one was retracted would repeat
+the error being corrected.
 
 ---
 
@@ -92,49 +125,43 @@ unwind their own decision.
 
 ---
 
-## 4. The asset nobody else has
+## 4. ~~The asset nobody else has~~ — WITHDRAWN, and what survives it
 
-**181,737 complying development certificates. 128 councils. July 2018 to August 2026.**
+The certificate archive is real and the count is real — **181,750 records, 128 councils, July 2018
+to August 2026**, each figure carrying its own query. What was wrong was the argument built on top
+of them, retracted in full at the head of this document.
 
-Counted live on 2026-08-09 — `SELECT count(*) FROM complying_development_certificates`, with
-`count(DISTINCT council_name)` for the councils and `min/max(determination_date)` for the span.
-An earlier draft of this document said 156,000, which understated the asset by roughly 26,000.
+**The lesson is worth more than the pitch was.** The reasoning failed on three checks that each
+take minutes: *is the source actually private, does the process actually involve a decision, and
+does the outcome actually vary?* No / no / no. Every derived business claim needs those three
+asked of it before it leaves a page — the same discipline this document demands of derived
+product claims, which is precisely why writing it here without applying it is the instructive
+part.
 
-A record of **what actually got approved** — not what the rules say, but what got through.
+**What genuinely survives is a field, not a pitch.** A purchaser cannot see an approved-but-unbuilt
+development on the adjoining block. That is a real due-diligence signal, it comes from data already
+held, and it belongs in the report that already exists — as one more fact passed through, which is
+the category section 2 shows to be sound.
 
-Why it is different from everything else we hold:
-
-- **It is a record, so there is nothing to check.** You report it. No calibration, no confidence
-  story, no quiet failure mode.
-- **Nobody can copy it** without the same eight years of collecting.
-- **It does not melt.** When the NSW planning reforms publish structured controls at source, that
-  kills the rules-based products — and does nothing at all to this one.
-- **It answers a question no competitor can touch:** for this kind of build, on this size lot, in
-  this council — what actually got approved, how long did it take, and what did it cost?
-
-Archistar tells you what fits. PropCode tells you what the document says. **Nobody tells you what
-the council actually waved through.**
-
-And the pitch stops being about accuracy — which is the trap that has swallowed eighteen months.
-It becomes *"here's what happened 181,737 times."* Nobody can argue with that, and no verification
-apparatus is required to say it.
+**What to lead with instead is deliberately left open.** The only candidate on the record is the
+**1,071 source-linked setback controls** — genuinely extracted from council PDFs rather than
+downloaded from an open endpoint, and honestly small. Whether that can carry a pitch is untested,
+and it will not be asserted here until it is. Installing an untested headline the same day one was
+retracted is the error being corrected, not repeated.
 
 ---
 
-## 5. What to do next — one day, not a fortnight
+## 5. What to do next
 
-**Check whether the certificate data is usable.** Not whether it is right — it is a record, it is
-right by construction. Three questions only:
+**Section 5 originally proposed a day spent checking whether the certificate data was usable.**
+That day was spent. The answer is section 4: the data is usable and the argument was not. The
+question was the wrong one — it asked whether the data was *good*, when what decided it was whether
+the data was *ours*, whether the process it records involves a *decision*, and whether the outcome
+*varies*.
 
-1. How many of the 128 councils have real depth, and how many have a handful of rows?
-2. Does it carry what was built, what it cost, and the dates?
-3. Can it join to the lot database, so "this lot" becomes "lots like this"?
-
-If yes, there is a product nobody else has, and it needs none of the machinery built this
-fortnight.
-If no, that is known in a day rather than another year.
-
-**This is the opposite kind of work to the last fortnight, and it is the right kind.**
+**The next question is still not a building question.** Distribution remains the constraint —
+section 6 — and nothing in the last fortnight moved it. What moves it is asking people who might
+pay, which is a week of conversations and no code at all.
 
 ---
 
