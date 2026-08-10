@@ -1,13 +1,10 @@
 {
- "tier": "standard",
- "justification": "Creates one new production table, cdc_lot_link, and commits the script that builds it. The table links each of the 181,750 complying-development certificates to the cadastral lot its coordinates fall inside, which is what turns 'what was approved at this address' into 'what was approved on lots like this one'. Nothing existing is modified: the build is purely additive and dropping the table reverses it completely. Also corrects DB_SCHEMA.md, whose header had been wrong by roughly half since February (58 tables against a real 118, 46,585 provisions against 55,696), and which omitted the four largest tables in the database entirely. The risk this report addresses is a silent wrong answer rather than a crash — a lot link that quietly fails, or a development type that quietly becomes NULL, both read as 'nothing there' rather than as an error.",
- "commit_hash": "60422e8b",
+ "tier": "minor",
+ "justification": "Adds scripts/check_pr_gates.py, a pre-merge guard, plus the CLAUDE.md workflow step that invokes it and one .gitignore allowlist line. No production data, no database access, no user-facing surface — the script only reads the GitHub API and exits non-zero. Minor rather than Standard because nothing it touches can produce a wrong answer for a customer; the worst failure is that it refuses a merge it should have allowed, which is the safe direction.",
+ "commit_hash": "",
  "files": [
-  "scripts/build_cdc_lot_link.py",
-  "DB_SCHEMA.md",
-  "docs/architecture/SYSTEM_TECHNICAL.md",
-  "docs/architecture/SYSTEM_INTEGRATED.md",
-  "docs/architecture/VERIFICATION.md",
+  "scripts/check_pr_gates.py",
+  "CLAUDE.md",
   ".gitignore"
  ],
  "pre_impl": {
@@ -114,7 +111,7 @@
   "manual_verify": "python scripts/build_cdc_lot_link.py --status should report 181,750 linked and 0 remaining, with undecodable at 0. Re-run it periodically — the certificate feed adds rows daily and the script links only the new ones, so it is safe as a scheduled job."
  },
  "falsifiable_check": {
-  "command": "python scripts/validate_schema_contract.py --quiet",
-  "fails_when": "Any SQL identifier written in code stops resolving against the live catalog — so if cdc_lot_link or any of its columns is dropped or renamed while code still references it, this exits non-zero. It passed after this change with no new invalid references (10 pre-existing defects remain suppressed by the baseline). Its honest limit: it checks that names resolve, not that the data behind them is right. The data-level invariant is that scripts/build_cdc_lot_link.py --status reports 0 undecodable and 0 remaining; that one reports rather than exiting non-zero, so it is a check a human reads, not a gate."
+  "command": "python scripts/check_pr_gates.py <an open PR whose gates run failed>",
+  "fails_when": "Exits 1 whenever a gates run for the PR's head sha is absent or did not succeed. Exercised against two real PRs on 2026-08-10: #907 (MERGED, not open) returned NOT-RUN exit 1, and #908 (open, gates concluded failure) returned FAILED exit 1 with the run URL. A green PR returns READY exit 0. Its honest limit: it cannot PREVENT a merge — only branch protection can, and that returns 403 Upgrade to GitHub Pro on this plan — so it is a check that must be run, not a gate that runs itself."
  }
 }
