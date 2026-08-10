@@ -1,6 +1,16 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# QA railguards (ephemeral per-commit)
+# QA railguards.
+#
+# The per-branch reports in .qa/reports/ are COMMITTED and must stay that way:
+# CI treats an absent report as a warning and exit 0, so an ignored report is a
+# gate that silently stops enforcing. Do not add .qa/ here.
+#
+# The legacy shared root path stays ignored so a stray local copy cannot be
+# re-committed. That is not theoretical: #398 untracked this file on
+# 2026-05-28 and #434 — a sitemap PR — re-added it three days later, and the
+# line below made it look untracked for ten weeks. gitignore does not apply to
+# files that are already tracked.
 .qa_report.json
 
 # Ad-hoc scratch DB query scripts (may contain connection strings) — never commit
@@ -567,6 +577,12 @@ scripts/*
 !scripts/insert_gap_fill_top_volume.py
 !scripts/insert_gap_fill_mid_volume.py
 !scripts/qa_gate.py
+# The QA report's path resolver, its cleanup script, and the harness proving the
+# commit binding can go red. qa_gate.py imports qa_report_path at module scope,
+# so leaving it ignored would ship a gate that cannot start in a fresh clone.
+!scripts/qa_report_path.py
+!scripts/prune_qa_reports.py
+!scripts/prove_qa_report_binding.py
 !scripts/qa_report_template.json
 !scripts/check_test_baselines.py
 !scripts/check_dependency_skips.py

@@ -131,22 +131,27 @@ jobs:
 
   # pre-push [3/4] + [4/4]
   #
-  # The job runs on both events; the QA-REPORT STEP is the PR-only part, and
-  # not by preference — on main it could never pass. qa_gate.py binds
-  # .qa_report.json to one of the branch's last 5 commits
-  # (scripts/qa_gate.py:1285-1302), which a SQUASH merge necessarily destroys:
-  # the squash commit is a new hash and the branch's commits never enter
-  # main's history, so the report hash is guaranteed absent. Every push to
-  # main failed on "Commit hash mismatch" — a second, independent reason main
-  # was red from 2026-08-03, underneath the PyMuPDF one and invisible while
-  # that was being blamed for everything.
+  # The job runs on both events; the QA-REPORT STEP is the PR-only part.
   #
-  # A gate that can only ever be red teaches people that red means nothing —
-  # the same disease as the outage this commit fixes. So that ONE step runs
-  # where its question is answerable and is skipped on main, while the
-  # liability scan keeps running on both. Scoping the whole job to pull
-  # requests (the first attempt here) would have let a direct push to main
-  # land prohibited wording with nothing scanning it.
+  # HISTORY, because the original reason is now fixed and the scoping is not.
+  # qa_gate.py used to bind the report to one of the branch's last 5 commits,
+  # which a SQUASH merge necessarily destroys: the squash is a new hash and the
+  # branch's commits never enter main's history, so the report hash was
+  # guaranteed absent. Every push to main failed on "Commit hash mismatch" — a
+  # second, independent reason main was red from 2026-08-03, underneath the
+  # PyMuPDF one and invisible while that was being blamed for everything. The
+  # binding is now ancestry-based (check_commit_hash_binding in qa_gate.py) and
+  # SKIPS when the branch has no commits of its own, so it no longer forces
+  # main red.
+  #
+  # The step stays PR-only for a different and still-live reason: the report is
+  # per-branch (.qa/reports/<slug>.json), and on main there is no branch whose
+  # report this is — the resolver correctly finds nothing and the step would
+  # warn on every single push. Diff-coverage against main's own last commit is
+  # meaningless too. So it runs where its question is answerable, while the
+  # liability scan keeps running on both. Scoping the WHOLE job to pull
+  # requests (the first attempt here) would have let a direct push to main land
+  # prohibited wording with nothing scanning it.
   qa-and-liability:
     name: QA report + liability language
     runs-on: ubuntu-latest
@@ -173,16 +178,22 @@ jobs:
       - name: QA report validation
         if: github.event_name == 'pull_request'
         run: |
-          if [ ! -f .qa_report.json ]; then
-            echo "::warning::.qa_report.json absent — QA gate NOT enforced on this ref"
+          # Per-branch report. GITHUB_HEAD_REF is what names the branch here:
+          # a pull_request event checks out a DETACHED merge commit, so git
+          # itself cannot say which branch this is.
+          REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null || true)
+          if [ -z "$REPORT" ] || [ ! -f "$REPORT" ]; then
+            TARGET=$(python scripts/qa_report_path.py --target --relative 2>/dev/null || true)
+            echo "::warning::QA report absent (expected ${TARGET:-.qa/reports/<slug>.json}) — QA gate NOT enforced on this ref"
             exit 0
           fi
+          echo "QA report: $REPORT"
           BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
           FILES=$(git diff --name-only "$BASE"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' || true)
           if [ -n "$FILES" ]; then
-            python scripts/qa_gate.py .qa_report.json --diff-files $FILES
+            python scripts/qa_gate.py "$REPORT" --diff-files $FILES
           else
-            python scripts/qa_gate.py .qa_report.json
+            python scripts/qa_gate.py "$REPORT"
           fi
       # Runs on BOTH events. Scoping the whole job to pull requests would have
       # meant a direct push to main — an admin, or any automation with write

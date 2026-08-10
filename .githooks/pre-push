@@ -208,11 +208,15 @@ echo ""
 # ── 3. QA report validation ──────────────────────────────────────────────────
 
 echo "=== [3/4] Validating QA report ==="
-if [ -f .qa_report.json ]; then
+# The report is per-branch (.qa/reports/<slug>.json). Resolve it rather than
+# hardcoding a path, so this hook and CI can never disagree about which file
+# they are checking — a disagreement would present as "the gate passed".
+QA_REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null)
+if [ -n "$QA_REPORT" ] && [ -f "$QA_REPORT" ]; then
   # Auto-detect changed files vs merge-base (works correctly in worktrees where origin/main may have diverged)
   MERGE_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
   DIFF_FILES=$(git diff --name-only "$MERGE_BASE"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' 2>/dev/null)
-  QA_ARGS=".qa_report.json"
+  QA_ARGS="$QA_REPORT"
   if [ -n "$DIFF_FILES" ]; then
     QA_ARGS="$QA_ARGS --diff-files $DIFF_FILES"
   fi
@@ -221,12 +225,14 @@ if [ -f .qa_report.json ]; then
   if [ $QA_RESULT -ne 0 ]; then
     echo ""
     echo "QA report validation FAILED. Push blocked."
-    echo "Fix .qa_report.json and re-run: python scripts/qa_gate.py .qa_report.json"
+    echo "Fix $QA_REPORT and re-run: python scripts/qa_gate.py $QA_REPORT"
     exit 1
   fi
 else
-  echo "WARNING: No .qa_report.json found. Skipping QA validation."
-  echo "  Create one before committing non-trivial changes."
+  TARGET=$(python scripts/qa_report_path.py --target --relative 2>/dev/null)
+  echo "WARNING: No QA report for this branch. Skipping QA validation."
+  echo "  Expected at: ${TARGET:-.qa/reports/<branch-slug>.json}"
+  echo "  Create one from scripts/qa_report_template.json before non-trivial changes."
 fi
 echo ""
 
