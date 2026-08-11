@@ -1,0 +1,145 @@
+{
+  "tier": "standard",
+  "justification": "Adds the tooling to measure secondary-structure detection recall, which has never been measured and cannot be measured from stored data. Four parts: migration 065 creating structure_labels; a seeded sampling script; an internal-only labelling surface; and the recall comparison script carrying a pre-committed pass mark. Standard rather than critical: it adds a new table and a new internal route, but writes no production product data, changes no served customer output, and the migration is NOT applied in this PR. The risk it manages is not breakage — it is producing a flattering recall number that nobody can trust, which is why the anti-self-agreement design is structural rather than procedural.",
+  "commit_hash": "d26c9ca5",
+  "files": [
+    "migrations/065_structure_labels.sql",
+    "scripts/sample_structure_label_set.py",
+    "scripts/measure_structure_detection_recall.py",
+    "tests/test_structure_detection_recall.py",
+    "frontend-nextjs/app/api/internal/structure-labels/route.ts",
+    "frontend-nextjs/app/internal/structure-labelling/page.tsx",
+    "frontend-nextjs/app/internal/structure-labelling/StructureLabeller.tsx",
+    ".gitignore",
+    ".claude/.pre-impl-done.json",
+    ".qa_report.json",
+    "services/modal_inference.py",
+    "data/gf_recall_001_result.json",
+    "frontend-nextjs/app/sitemap.ts"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_structure_detection_recall.py -q",
+    "fails_when": "PROVEN by planting both halves of the one-to-one matching guard and confirming each is caught by its OWN test, then restoring byte-identically (md5 60b7e07d658e2f0c54424189277f4303 before and after both). Plant 1, removing the `pi in used_p` guard so one detection may claim many structures: fails test_one_prediction_cannot_claim_two_structures_it_genuinely_covers (1 failed, 16 passed). Plant 2, removing the `ti in used_t` guard so many detections may claim one structure: fails test_two_predictions_cannot_both_claim_one_structure (1 failed, 16 passed). THE FIRST VERSION OF THIS SUITE FAILED THIS CHECK: the original test used a box whose overlap with each structure was 0.11, below the 0.30 threshold, so the guard was never reached and the planted defect left all 16 tests green. The test was rewritten to use overlaps of 0.5 and now asserts both candidate pairs clear the threshold before asserting the outcome, so it exercises the guard rather than the threshold. That failure is recorded in the test file itself so nobody re-weakens it the same way.",
+    "limits": "Covers the matching arithmetic only. It does not cover the SQL join, the sampling query, or the UI. Those are exercised the first time the sampler and recall script run against real labels, and the recall script reports UNKNOWABLE rather than a number until at least 40 rows are labelled."
+  },
+  "pre_impl": {
+    "existing_data": "Full protocol run and recorded in .claude/.pre-impl-done.json. Key discoveries, all measured live 2026-08-08: (1) no labels/ground-truth/annotation/calibration table exists in the database; (2) /internal holds only dcp-review, setback-review and leads, all of which review rows that already carry a machine answer and display it — the opposite shape to what ground truth needs; (3) no Python recall, precision or IoU code exists anywhere; (4) the calibration plan records granny-flat recall as blocked on hand-labelling with no tooling built.",
+    "assumption_mismatch": "TWO assumptions were wrong and both were caught before shipping. (a) Assumed lot_search_index used the same LGA spelling as the rest of the schema. It does not: it stores UPPERCASE ('INNER WEST') while lga_registry stores title case and dcp_setback_controls stores lowercase slugs. Filtering on 'Inner West' returns zero rows and would have produced an empty sample that looked like a legitimate result. Five councils also fail the obvious upper+underscore rule and need explicit overrides, and 'NORTH SYDNEY' is a separate council that matches LIKE '%SYDNEY%', so matching must be exact equality. (b) Assumed the human labels could be joined to detector output on a tile hash. Checked before writing the join: granny_flat_reports.outputs carries no tile hash, and a live scan found ZERO stored rows containing the aerial_tile identity block at all. The original join would have matched nothing on every run and reported UNKNOWABLE forever while appearing to work. The join now uses rounded lat/lng and the script states that pixel equality is unproven.",
+    "new_vs_existing": "New table, new internal route, new page, two new scripts. The auth gate, the getPool() access pattern and the one-item-at-a-time queue shape are reused from setback-review rather than reinvented. No existing table is altered and no existing route is touched."
+  },
+  "functions": [
+    {
+      "name": "match_boxes",
+      "file_line": "scripts/measure_structure_detection_recall.py:172 (match_boxes)",
+      "input": "two lists of {bbox_pixel:[x0,y0,x1,y1]} — human labels and detector output for one lot",
+      "output": "(matched, missed, spurious) using greedy one-to-one matching by descending overlap, at the committed 0.30 IoU threshold",
+      "if_none": "empty truth and empty prediction returns (0,0,0) — agreement that a lot is bare, never an invented match. Empty prediction against non-empty truth returns everything as missed."
+    },
+    {
+      "name": "iou",
+      "file_line": "scripts/measure_structure_detection_recall.py:150 (iou)",
+      "input": "two [x0,y0,x1,y1] pixel boxes, in either corner order",
+      "output": "intersection over union in [0,1]; coordinates are normalised first so a box a human dragged right-to-left is not treated as negative-width",
+      "if_none": "zero-area or non-overlapping boxes return 0.0; touching edges return 0.0 because a shared border is not shared area"
+    },
+    {
+      "name": "lga_slug_to_index_name",
+      "file_line": "scripts/sample_structure_label_set.py:72",
+      "input": "a council slug such as 'ku_ring_gai'",
+      "output": "the exact lot_search_index.lga_name string, via 5 measured overrides and otherwise upper(replace(slug,'_',' '))",
+      "if_none": "an unknown slug falls through to the rule and, if it matches nothing, the sampler prints a per-council warning and continues rather than silently returning a short sample"
+    },
+    {
+      "name": "GET /api/internal/structure-labels",
+      "file_line": "frontend-nextjs/app/api/internal/structure-labels/route.ts:118",
+      "input": "the sample_id query string parameter, defaulting to gf-recall-001 when absent; no body and no other input",
+      "output": "the next pending lot plus its aerial tile URLs, tile identity and a sha256 of the fetched bytes. Selects an explicit column list from structure_labels only and holds no query against any detector table.",
+      "if_none": "no pending rows returns {done:true, item:null} with progress counts; any tile fetch failure returns sha256:null rather than a hash of partial bytes"
+    }
+  ],
+  "values": [
+    {
+      "value": "RECALL_FLOOR 0.70, PRECISION_FLOOR 0.60, IOU_MATCH 0.30, MIN_LABELLED 40",
+      "read_at": "scripts/measure_structure_detection_recall.py:88-91",
+      "why": "Committed in the file before a single label exists, so the result cannot be renegotiated once it arrives. This is the shadow-calibration discipline: the 0.50 degree mark was set before the first run and that is why its pass means something.",
+      "if_missing": "Without a pre-committed mark the measurement becomes an opinion formed after seeing the number, which is how '13 of 16 confirmations' survived. A test asserts these exact values so moving them is a visible, deliberate act rather than a quiet edit."
+    },
+    {
+      "value": "IoU threshold deliberately loose at 0.30",
+      "read_at": "scripts/measure_structure_detection_recall.py:90",
+      "why": "The product claims to notice that a structure exists, not to trace its outline. A box covering a third of a shed has noticed the shed. Setting 0.30 and saying so is more honest than setting 0.50 and reporting the worse number as if it measured the same thing.",
+      "if_missing": "A strict threshold would measure segmentation quality and report a low figure for a product that never claimed segmentation, understating it as badly as a loose one would overstate it."
+    },
+    {
+      "value": "5 explicit LGA name overrides",
+      "read_at": "scripts/sample_structure_label_set.py:57",
+      "why": "Measured: upper(replace(slug,'_',' ')) returns zero matching lots for canterbury_bankstown, ku_ring_gai, city_of_sydney, the_hills and parramatta.",
+      "if_missing": "Those five councils contribute zero lots and the sample silently covers four councils instead of nine, biasing recall toward whatever built form happens to remain."
+    },
+    {
+      "value": "sample band: zones R1-R3, lot area 300-1200 m2, 4 councils",
+      "read_at": "scripts/sample_structure_label_set.py:96-110",
+      "why": "Councils chosen for contrasting built form — dense terrace, post-war suburban, heavy-canopy large-lot, and open newer suburban — because detection difficulty tracks tree cover and lot size, so a sample from one alone would not generalise.",
+      "if_missing": "A single-council sample would produce a recall figure that reads as general and is not. The scope is stated in the script output and must travel with any number quoted from it."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The labeller is shown, or can infer, what the detector found — and the labels become an echo of the machine rather than an independent reading.",
+      "what_happens": "Exactly the 13-of-16 failure repeated with more ceremony: a recall figure that looks measured, is actually the machine agreeing with itself, and is then quoted on the product. Worse than no measurement, because it carries false authority.",
+      "mitigated": true,
+      "how": "Structural, not procedural. structure_labels has NO column able to hold a detector output, so a row cannot be pre-filled. The GET route holds no query against granny_flat_reports and selects an explicit column list. Tiles come straight from the public SIX Maps service, not through the detection pipeline, so there is no shared code path a detection could ride along. The comparison happens in a separate offline script.",
+      "repro": "grep -n 'granny_flat_reports\\|detected_structures\\|samgeo' frontend-nextjs/app/api/internal/structure-labels/route.ts frontend-nextjs/app/internal/structure-labelling/*.tsx — returns nothing. Any future match is the defect."
+    },
+    {
+      "scenario": "Matching becomes many-to-one and one sprawling detection is credited with finding every structure it spans, inflating recall toward 100%.",
+      "what_happens": "The product would claim a recall it does not have, on the basis of a detector that located nothing in particular. This is the single easiest way for this measurement to produce a flattering lie.",
+      "mitigated": true,
+      "how": "Greedy matching with both a used_t and a used_p set. Proven: removing either guard fails a specific test. The first version of the test suite did NOT catch this — the test box overlapped at 0.11, under the threshold, so the guard was never reached and a planted defect left all 16 tests green. Rewritten to overlap at 0.5 and to assert both pairs clear the threshold first.",
+      "repro": "sed -i 's/if ti in used_t or pi in used_p:/if ti in used_t:/' scripts/measure_structure_detection_recall.py && python -m pytest tests/test_structure_detection_recall.py -q — expect 1 failed, 16 passed."
+    },
+    {
+      "scenario": "An empty lot is treated as an unanswered lot, so it is re-served forever and never leaves the queue.",
+      "what_happens": "The labeller cannot finish, and worse, the completed sample over-represents lots that happen to have structures — which biases recall upward, because empty lots are where false positives show.",
+      "mitigated": true,
+      "how": "An empty labels array is a first-class answer. The POST route accepts [] explicitly with a comment saying why, and the CHECK constraint treats status='labelled' with labels='[]'::jsonb as complete because it tests labels IS NOT NULL rather than truthiness.",
+      "repro": "Save a lot with zero boxes drawn. It must disappear from the queue and appear in the labelled count. SQL: SELECT status, labels FROM structure_labels WHERE labels = '[]'::jsonb — rows must show status='labelled'."
+    },
+    {
+      "scenario": "The recall script silently compares a human reading of one image against a machine reading of a different one, or of a different lot entirely.",
+      "what_happens": "A number that looks like recall but measures nothing. Undetectable from the output.",
+      "mitigated": true,
+      "how": "Partially, and the residual is stated rather than hidden. Lots with no detector run at the same coordinates are EXCLUDED and counted, not matched to something else. The script prints, on every run, that pixel equality is unproven because the detector records no tile hash. The labelling side already records a sha256 of the bytes it displayed, so the day the detector hashes too, the comparison tightens with no migration.",
+      "repro": "Run the recall script against a sample where no detector runs exist. It must report the exclusion count and refuse to fold those lots into the totals."
+    },
+    {
+      "scenario": "The pass mark is quietly moved after the result comes in and does not flatter.",
+      "what_happens": "The pre-commitment becomes decorative and the resulting figure means nothing — the precise renegotiation the shadow calibration avoided and the climate lane caught itself attempting.",
+      "mitigated": true,
+      "how": "test_thresholds_are_the_committed_values asserts all four constants, so any change fails CI and must be argued for in a commit message rather than slipped in. The thresholds live in the committed script rather than in an environment variable or a local config.",
+      "repro": "Change RECALL_FLOOR to 0.5 and run pytest — test_thresholds_are_the_committed_values fails."
+    },
+    {
+      "scenario": "A value that is present-but-null, or absent, is treated as a usable number or list.",
+      "what_happens": "Two concrete paths, both found by the QA gate on this PR rather than by me. (1) The route used `=== null` on lot_area_m2; a driver returning undefined would make Number(undefined) NaN and render 'NaN m2' beside the address. (2) The recall script used .get('detected_structures', []); when the key is PRESENT with value null the default is not used and iteration raises, killing the whole run. The second is the same three-state confusion this project keeps hitting: a detector that failed stores null, which is not the same as finding nothing.",
+      "mitigated": true,
+      "how": "Route now uses `== null`, which catches both null and undefined, with the reason in a comment. Recall script now uses `(det.get('detected_structures') or [])`, so a stored null degrades to an empty prediction list for that lot instead of aborting the run. Both were flagged by the qa_gate type-boundary and Python-adversarial checks and fixed before merge.",
+      "repro": "python scripts/qa_gate.py .qa_report.json --diff-files <changed files> -- the gate reports 'uses === null but API/DB values can also be undefined' and 'uses .get(key, []) but if key exists with value None the default is NOT used'. Both must be absent."
+    },
+    {
+      "scenario": "Sol adversarial review, 7 findings — ALL SEVEN were real and all are fixed in this PR. Recorded because the pattern matters more than the individual bugs: every one was a way to produce a confident number from insufficient or unusable data.",
+      "what_happens": "Without these fixes the recall figure could have been (a) computed from a single lot while claiming a 40-lot minimum, (b) depressed by counting failed detector runs as misses, (c) built on labels silently discarded by a concurrent write, (d) corrupted by the main house counted as a secondary structure, or (e) injected by an unauthenticated caller posting straight to the API.",
+      "mitigated": true,
+      "how": "1. MIN_LABELLED moved AFTER pairing — the gate now counts COMPARABLE lots, not labelled ones; the pre-pairing check is retained only as a cheap necessary-but-not-sufficient early exit and says so. 2. Three-state detector handling: [] is a real zero and is included; null / absent / detection_failed is a FAILED run and is excluded and counted, because counting a failure as 'found nothing' turns every structure on that lot into a miss. This also reverses a fix I had made minutes earlier that collapsed null to []. 3. Both UPDATEs use RETURNING and 409 on rowCount 0, so a second labeller's answer is never silently dropped. 4. is_main_dwelling must be boolean AND consistent with structure_type. 5. Both handlers now run the auth check independently of the page. 6. Sampler uses divmod and rejects n<=0. 7. The tile-hash comment no longer claims to be evidence of what was on screen — it is the server's fetch, the gap is stated, and proxying is named as the real fix.",
+      "repro": "python scripts/measure_structure_detection_recall.py --sample-id <id> with 40 labelled rows but only 1 paired must print UNKNOWABLE, not PASS. python scripts/sample_structure_label_set.py --n 1 must draw 1, not 4. POST to /api/internal/structure-labels with an already-answered id must return 409."
+    }
+  ],
+  "mutation_analysis": "Two mutations planted and each caught by its own test, with the file restored byte-identically after both (md5 60b7e07d658e2f0c54424189277f4303). Critically, a THIRD mutation was planted first and NOT caught: that run is what exposed the original test as theatre — it asserted a one-to-one property using boxes that never reached the one-to-one code path. The suite was rewritten and re-planted before being accepted. Weak tests deleted: the two original overlapping-box tests, replaced by three that state which property each one actually exercises.",
+  "residual_risk": "Four things this PR does NOT do. (1) The migration is NOT applied to production. It ships as a file; applying it is a separate, deliberate act and the sampler cannot run until it is. (2) No labels exist yet, so no recall number exists — the script reports UNKNOWABLE below 40 labelled rows, which is a real outcome and not a failure. (3) The detector still records no tile hash, so pixel equality between what the human saw and what the machine scanned remains unproven; adding a hash to the detector output is a small follow-up, logged not assumed. (4) The sample covers 4 councils, residential zones R1-R3 and lots of 300-1200 m2. Any recall figure from it describes that population only and must not be quoted as general. Separately: a single labeller is a single point of view — inter-rater agreement is unmeasured, and with one person available it cannot be measured, which caps how strong any resulting claim may be. (5) The tile hash records the SERVER's fetch, not the bytes the browser rendered. If the mosaic refreshes between the two, or a tile fails only in the browser, the hash does not describe what the labeller saw. The fix is to proxy the hashed bytes and render those; it is not done here and is named rather than implied away. (6) Rows are served without being claimed, so two concurrent labellers can be handed the same lot; the second now gets a 409 instead of silent loss, but with one labeller this is not worth a reservation mechanism yet.",
+  "post_merge": {
+    "db_reset": "Migration 065 WAS APPLIED to production during this PR, because the schema-contract gate correctly refused to let code referencing a non-existent table be pushed -- shipping that is the dead-route defect already sitting in the baseline. Applied 2026-08-09. Purely additive and audited before running: 1 CREATE TABLE IF NOT EXISTS, 3 CREATE INDEX IF NOT EXISTS, 2 ALTER TABLE both targeting the new table, 4 COMMENTs. No DROP TABLE, TRUNCATE, CASCADE, DELETE or UPDATE, and no existing table referenced. Predicted before the write: table absent, 0 rows after. Verified after: table present, 26 columns, 3 constraints, 0 rows -- matched exactly. Rollback is DROP TABLE structure_labels with no other effect, since nothing references it. The CHECK constraint was then exercised in a rolled-back transaction: it BLOCKS a pending row with labels pre-filled (the 13-of-16 failure shape), labelled with no author, labelled with no labels, and skipped with no reason; it ALLOWS labelled-with-empty-array-and-author and pending-with-nothing-set. No test rows persisted (verified 0).",
+    "secrets": "None added. The labelling route calls the public NSW SIX Maps tile service, which needs no key, and the licence string is carried through and displayed under the image as CC-BY requires.",
+    "other_repo": "None. No sibling repository or deployment target affected.",
+    "manual_verify": "In order: apply migration 065; run the sampler dry-run and confirm the per-LGA split is even and no council reports zero (already verified pre-merge: 40 lots, 10 each across 4 councils); re-run with --write; open /internal/structure-labelling and confirm the aerial tile renders, a drawn box persists, and saving advances to the next lot. Confirm the page shows NO detector output anywhere. Then label the sample and run the recall script — which will report UNKNOWABLE until 40 rows are done."
+  }
+}
