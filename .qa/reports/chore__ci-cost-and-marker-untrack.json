@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Two config lines and no code: scope an existing cancel-in-progress to pull requests, and stop tracking a per-session hook marker. No product behaviour changes and nothing is served differently.",
-  "commit_hash": "21232940",
+  "commit_hash": "6e03ec5d",
   "files": [
     ".github/workflows/gates.yml",
     ".github/workflows/main-red-alarm.yml",
@@ -35,6 +35,13 @@
       "mitigated": true,
       "how": "runs-on reads the repo variable RUNNER_LABEL rather than a literal, so unsetting it returns every job to ubuntu-latest with no code change and no PR. check_pr_gates.py still refuses to merge while no successful run exists for the head sha, so a queued job cannot be mistaken for a pass.",
       "repro": "gh api repos/lmcdo/nswcompliance/actions/runners --jq '.runners[] | \"\\(.name) \\(.status)\"'"
+    },
+    {
+      "scenario": "A self-hosted run passes every check and then appears to hang for 40 minutes.",
+      "what_happens": "The post-job cache upload cannot reach GitHub's cache service and retries with statusCode http_timeout. The run stays in_progress long after the last real step succeeded, so check_pr_gates.py reports NOT-RUN and the PR looks broken when it is actually green.",
+      "mitigated": true,
+      "how": "The cache inputs were removed from setup-python and setup-node. They are redundant on a persistent runner because pip and npm cache on the machine between jobs. Measured 2026-08-11: real checks finished in ~6 min, the cache post-step added ~40.",
+      "repro": "grep -c 'cache:' .github/workflows/gates.yml"
     }
   ],
   "post_merge": {
