@@ -60,7 +60,7 @@ EXCLUDE_PATTERNS = [
     # its own failure message. Narrow on purpose: it matches a quoted value
     # assigned to a Status key, so prose such as "your application is
     # approved" is still caught.
-    r"\bStatus:\s*['\"](?:Approved|Determined|Refused|Withdrawn)['\"]",
+    r"\b[Ss]tatus:\s*['\"](?:Approved|Determined|Refused|Withdrawn)['\"]",
 ]
 
 
