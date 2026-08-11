@@ -135,7 +135,9 @@ def run():
         if entry:
             logger.info(
                 f"  {pc}: 1br ${entry.get('median_weekly_rent_1br_aud')}/wk "
-                f"(n={entry.get('sample_size_1br', 0)}), "
+                # `or 0`, not a .get default: the key can be present AND None,
+                # in which case the default is never applied and this logs "n=None".
+                f"(n={entry.get('sample_size_1br') or 0}), "
                 f"2br ${entry.get('median_weekly_rent_2br_aud')}/wk"
             )
         else:

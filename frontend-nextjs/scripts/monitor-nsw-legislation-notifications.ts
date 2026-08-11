@@ -45,7 +45,9 @@ async function monitorNotifications() {
     `;
 
     const lastCheckResult = await pool.query(lastCheckQuery);
-    const lastCheck = lastCheckResult.rows[0].last_check;
+    // rows[0]?. — a MAX() aggregate returns one row today, but an empty result
+    // would throw here rather than fall through to the default date below.
+    const lastCheck = lastCheckResult.rows[0]?.last_check;
     const lastCheckDate = lastCheck ? new Date(lastCheck) : new Date('2025-10-14');
 
     console.log(`Last verification: ${lastCheckDate.toLocaleDateString()}`);
