@@ -7,10 +7,15 @@ Three layers of verification:
   2. Grounding — file:line references verified against real code via AST
   3. Depth — minimum word counts, break-it uniqueness, cross-references
 
+The report is per-branch and committed at .qa/reports/<branch-slug>.json. Omit
+the path and it is resolved for the current branch by qa_report_path — the one
+definition every consumer shares, so the hook, the workflow and this gate cannot
+end up checking different files.
+
 Usage:
-    python scripts/qa_gate.py .qa_report.json
-    python scripts/qa_gate.py .qa_report.json --diff-files file1.py file2.py
-    python scripts/qa_gate.py .qa_report.json --project-dir /path/to/repo
+    python scripts/qa_gate.py
+    python scripts/qa_gate.py --diff-files file1.py file2.py
+    python scripts/qa_gate.py .qa/reports/fix__thing.json --project-dir /path/to/repo
 
 Exit codes:
     0 = PASSED
@@ -25,6 +30,12 @@ import os
 import re
 from pathlib import Path
 from typing import Optional
+
+# Same directory, but this file is run as a script from the repo root and is
+# also loaded by tests via importlib, so neither cwd nor a package context can
+# be relied on to find it.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import qa_report_path  # noqa: E402  (path must be set first)
 
 TIER_REQUIREMENTS = {
     "critical": {
@@ -1252,6 +1263,139 @@ def observe_doc_claims(
     return out
 
 
+# ─── Commit-hash binding ─────────────────────────────────────────────────────
+
+
+def _git_query(
+    args: list[str], project_dir: str, timeout: int = 5
+) -> tuple[Optional[int], str]:
+    """Run a git command.
+
+    Returns:
+        ``(returncode, stdout)``, or ``(None, "")`` when git could not be run at
+        all. The None is load-bearing: "git is unusable" and "git said no" are
+        different facts, and collapsing them is how a gate starts failing open
+        without anyone noticing.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            cwd=project_dir or ".",
+            # A hook exports GIT_DIR and it OVERRIDES cwd, so without this the
+            # binding would be checked against the hook's repository rather than
+            # the one being validated. See qa_report_path.git_env.
+            env=qa_report_path.git_env(),
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return None, ""
+    return proc.returncode, proc.stdout.strip()
+
+
+def _is_ancestor(sha: str, ref: str, project_dir: str) -> Optional[bool]:
+    """Whether ``sha`` is an ancestor of ``ref``.
+
+    Returns None when git could not answer. ``merge-base --is-ancestor`` uses 0
+    for yes and 1 for no; any other code is an error (a bad ref, a corrupt
+    object) and must NOT be read as "no".
+    """
+    code, _ = _git_query(["merge-base", "--is-ancestor", sha, ref], project_dir)
+    if code == 0:
+        return True
+    if code == 1:
+        return False
+    return None
+
+
+def check_commit_hash_binding(report_hash: str, project_dir: str) -> list[str]:
+    """Verify the report names one of THIS BRANCH'S OWN commits.
+
+    A branch's own commit is an ancestor of HEAD that is not already an ancestor
+    of ``origin/main``. That is the whole test, and it catches every case the
+    old rule was written for:
+
+    ==============================  ==========================  ========
+    report names                    ancestry                    verdict
+    ==============================  ==========================  ========
+    a commit on another branch      not an ancestor of HEAD     caught
+    a commit already on main        an ancestor of origin/main  caught
+    a hash that resolves to nothing does not resolve            caught
+    one of this branch's commits    both conditions hold        passes
+    ==============================  ==========================  ========
+
+    WHY NOT "the last 5 commits"
+    ----------------------------
+    The previous rule required the hash to appear in ``git log --format=%h -5``.
+    A **squash merge destroys the commit the report names**: the squash is a new
+    hash and the branch's own commits never enter main's history. So main
+    permanently carried a ``commit_hash`` present in no history, and every
+    branch cut from main inherited it and failed the gate before it had done
+    anything wrong. Landing five PRs on 2026-08-10 needed a manual re-stamp on
+    each, and amending the stamp into the commit it names is self-referential --
+    the amend changes the hash just recorded. The rule was unsatisfiable by
+    construction; ancestry is satisfiable by construction.
+
+    It is also robust where the old rule was brittle: ``merge-base
+    --is-ancestor`` operates on resolved SHAs, so an abbreviation of any length
+    works. The old string-compare against ``%h`` broke whenever git chose a
+    different abbreviation length on either side.
+
+    Args:
+        report_hash: The ``commit_hash`` field from the report.
+        project_dir: Repository root.
+
+    Returns:
+        Error strings; empty when the binding holds, and empty when git cannot
+        answer -- an unusable git or an absent ``origin/main`` is an
+        infrastructure fact, not evidence about the report, and blocking on it
+        would make the gate red in every environment without a remote.
+    """
+    code, sha = _git_query(
+        ["rev-parse", "--verify", "--quiet", f"{report_hash}^{{commit}}"], project_dir
+    )
+    if code is None:
+        return []
+    if code != 0 or not sha:
+        return [
+            f"Commit hash '{report_hash}' names no commit in this repository. "
+            f"Re-stamp it: git rev-parse --short HEAD"
+        ]
+
+    # Does this branch have any commits of its own? On main -- or on a branch
+    # that is fully merged -- it does not, and the question is unanswerable
+    # rather than failed. Not skipping here is what made every push to main red
+    # under the old rule, and a gate that can only ever be red teaches people
+    # that red means nothing.
+    code, own = _git_query(["rev-list", "--count", "origin/main..HEAD"], project_dir)
+    if code is None or code != 0 or own.strip() in ("", "0"):
+        return []
+
+    on_branch = _is_ancestor(sha, "HEAD", project_dir)
+    if on_branch is None:
+        return []
+    if not on_branch:
+        return [
+            f"Commit hash '{report_hash}' is not an ancestor of HEAD — this "
+            f"report belongs to a different branch. Re-stamp it: "
+            f"git rev-parse --short HEAD"
+        ]
+
+    already_on_main = _is_ancestor(sha, "origin/main", project_dir)
+    if already_on_main is None:
+        return []
+    if already_on_main:
+        return [
+            f"Commit hash '{report_hash}' names a commit already on origin/main, "
+            f"not one of this branch's own {own} commit(s) — the report is "
+            f"inherited or stale. Re-stamp it: git rev-parse --short HEAD"
+        ]
+    return []
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -1376,25 +1520,13 @@ def validate_report(
             )
 
     # --- Commit hash binding: detect stale/copied reports ---
-    # The report hash must match a recent commit on the branch (within last 5).
-    # This avoids the chicken-and-egg problem: committing the report changes HEAD,
-    # so we accept any hash from the recent branch history, not just HEAD exactly.
+    # The report must name one of THIS BRANCH'S OWN commits — an ancestor of
+    # HEAD that is not already an ancestor of origin/main. See
+    # check_commit_hash_binding for why "within the last 5 commits" was
+    # unsatisfiable by construction after a squash merge.
     report_hash = report.get("commit_hash", "")
     if report_hash:
-        try:
-            result = subprocess.run(
-                ["git", "log", "--format=%h", "-5"],
-                capture_output=True, text=True, timeout=5,
-                cwd=project_dir or "."
-            )
-            recent_hashes = result.stdout.strip().split("\n")
-            if recent_hashes and report_hash not in recent_hashes:
-                errors.append(
-                    f"Commit hash mismatch: report says '{report_hash}' but recent "
-                    f"commits are {recent_hashes[:3]}. Regenerate the QA report."
-                )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass  # Can't verify — don't block
+        errors.extend(check_commit_hash_binding(report_hash, project_dir or "."))
     elif tier in ("standard", "critical"):
         errors.append(
             "Missing commit_hash in report. Add \"commit_hash\": \"<short-hash>\" "
@@ -1464,17 +1596,19 @@ def validate_report(
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/qa_gate.py .qa_report.json [--diff-files f1 f2 ...] [--project-dir path]")
-        sys.exit(1)
-
-    report_path = sys.argv[1]
+    # The report path is optional. Omitted, it is resolved for the current
+    # branch by qa_report_path — the single definition every caller shares, so
+    # the hook, the workflow and this gate cannot drift onto different files.
+    positional = sys.argv[1:2]
+    explicit_path = (
+        positional[0] if positional and not positional[0].startswith("--") else None
+    )
 
     # Parse optional args
     diff_files = None
     project_dir = None
 
-    args = sys.argv[2:]
+    args = sys.argv[2:] if explicit_path else sys.argv[1:]
     i = 0
     while i < len(args):
         if args[i] == "--diff-files":
@@ -1494,8 +1628,13 @@ def main():
 
     # Auto-detect project dir if not specified
     if not project_dir:
-        # Walk up from report file to find .git (dir or file — worktrees use a file)
-        check = os.path.dirname(os.path.abspath(report_path))
+        # Walk up from the report file — or from cwd when the path is still to
+        # be resolved — to find .git (dir or file; worktrees use a file)
+        check = (
+            os.path.dirname(os.path.abspath(explicit_path))
+            if explicit_path
+            else os.path.abspath(".")
+        )
         for _ in range(10):
             if os.path.exists(os.path.join(check, ".git")):
                 project_dir = check
@@ -1505,9 +1644,23 @@ def main():
                 break
             check = parent
 
-    if not os.path.exists(report_path):
-        print(f"QA-GATE: FAILED — report file not found: {report_path}")
+    resolved = qa_report_path.resolve(project_dir or ".", explicit_path)
+    if resolved is None:
+        if explicit_path:
+            print(f"QA-GATE: FAILED — report file not found: {explicit_path}")
+        else:
+            try:
+                expected = qa_report_path.target_path(project_dir or ".")
+                where = os.path.relpath(expected, project_dir or ".")
+            except (qa_report_path.BranchUnknown, ValueError) as exc:
+                where = f"<undetermined: {exc}>"
+            print(
+                f"QA-GATE: FAILED — no QA report for this branch.\n"
+                f"  Expected: {where}\n"
+                f"  Create it from scripts/qa_report_template.json."
+            )
         sys.exit(1)
+    report_path = str(resolved)
 
     try:
         with open(report_path, "r", encoding="utf-8") as f:

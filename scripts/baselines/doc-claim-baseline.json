@@ -2,6 +2,7 @@
   "generated_against": "9d6fba3d",
   "mode": "observation",
   "excluded_from_baseline": [
+    ".qa/reports/",
     ".qa_report.json"
   ],
   "counts": {

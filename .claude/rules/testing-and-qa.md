@@ -4,10 +4,29 @@ globs:
   - "frontend-nextjs/__tests__/**"
   - "frontend-nextjs/**/*.test.*"
   - "scripts/qa_*"
+  - ".qa/reports/**"
   - ".qa_report.json"
 ---
 
 # Testing & QA
+
+## The QA report is per-branch and committed
+- Path: `.qa/reports/<branch-slug>.json`, slashes in the branch name become `__`.
+  Never type it — `python scripts/qa_report_path.py --target --relative` prints it,
+  and every consumer (post-commit, pre-push, CI, the gate, the Claude commit hook)
+  resolves it the same way.
+- `python scripts/qa_gate.py` with no path resolves this branch's report itself.
+- **It stays committed.** CI treats an absent report as a warning and `exit 0`, so
+  an ignored or untracked report is a gate that silently stops enforcing. `#398`
+  untracked it for the conflict problem and `#434` — a sitemap PR — re-added it
+  three days later; `.gitignore` line 4 made that invisible for ten weeks.
+- `commit_hash` must name one of **this branch's own** commits: an ancestor of
+  HEAD that is not already on `origin/main`. Commit, let `post-commit` restamp,
+  include the restamped report in the next commit. Amending to fix the stamp does
+  not work — the amend changes the hash just recorded.
+- Orphans (branch merged and deleted) are cleaned up with
+  `python scripts/prune_qa_reports.py` — dry-run by default, `--apply` to delete.
+  It refuses to do anything if `git ls-remote` cannot answer.
 
 ## Running Tests
 > Counts measured 2026-08-08 at `origin/main` f5acb080. **Re-run rather than quote** —
