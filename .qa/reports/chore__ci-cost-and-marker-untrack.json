@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Two config lines and no code: scope an existing cancel-in-progress to pull requests, and stop tracking a per-session hook marker. No product behaviour changes and nothing is served differently.",
-  "commit_hash": "fb562232",
+  "commit_hash": "703f2288",
   "files": [
     ".github/workflows/gates.yml",
     ".gitignore"
