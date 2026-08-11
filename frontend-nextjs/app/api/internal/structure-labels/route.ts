@@ -300,8 +300,14 @@ export async function GET(req: NextRequest) {
   }
 }
 
-type LabelBox = {
-  bbox_pixel: [number, number, number, number];
+// A label is a POINT. Boxes were the original shape and are still accepted so
+// the labels recorded before the change stay valid — for a long terrace at an
+// angle an upright box also contains the neighbours, and two adjacent terraces
+// give overlapping boxes the matcher can pair wrongly, so clicking inside the
+// structure answers "did the scan find it" without any of that.
+type LabelMark = {
+  point_pixel?: [number, number];
+  bbox_pixel?: [number, number, number, number];
   structure_type: string;
   is_main_dwelling: boolean;
 };
@@ -389,11 +395,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    for (const l of labels as LabelBox[]) {
+    const tw = Number(tile?.width) || 0;
+    const th = Number(tile?.height) || 0;
+    for (const l of labels as LabelMark[]) {
+      const pt = l?.point_pixel;
       const b = l?.bbox_pixel;
-      if (!Array.isArray(b) || b.length !== 4 || b.some((v) => !Number.isFinite(v))) {
+      if (Array.isArray(pt)) {
+        if (pt.length !== 2 || pt.some((v) => !Number.isFinite(v))) {
+          return NextResponse.json(
+            { error: 'point_pixel must be 2 finite numbers' },
+            { status: 400 },
+          );
+        }
+        // Bounded to the tile using the SERVER's dimensions where available.
+        // A click outside the image is a coordinate bug, not a structure, and
+        // it would score against a detector box it can never fall inside.
+        if (tw && th && (pt[0] < 0 || pt[1] < 0 || pt[0] > tw || pt[1] > th)) {
+          return NextResponse.json(
+            { error: `point_pixel ${JSON.stringify(pt)} is outside the ${tw}x${th} tile` },
+            { status: 400 },
+          );
+        }
+      } else if (Array.isArray(b)) {
+        if (b.length !== 4 || b.some((v) => !Number.isFinite(v))) {
+          return NextResponse.json(
+            { error: 'bbox_pixel must be 4 finite numbers' },
+            { status: 400 },
+          );
+        }
+      } else {
         return NextResponse.json(
-          { error: 'each label needs bbox_pixel as 4 finite numbers' },
+          { error: 'each label needs point_pixel (preferred) or bbox_pixel' },
           { status: 400 },
         );
       }

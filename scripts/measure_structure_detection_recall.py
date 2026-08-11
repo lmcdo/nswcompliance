@@ -23,20 +23,26 @@ product's wording -- not to move the line.
                                must find at least 70%
     PRECISION_FLOOR   = 0.60   of what the detector reports, at least 60% must
                                correspond to something a human can see
-    IOU_MATCH         = 0.30   two boxes are "the same structure" at 30%
-                               overlap; deliberately loose, because the
-                               question is "did it find the shed", not "did it
-                               trace the shed's outline"
     MIN_LABELLED      = 40     below this the confidence interval is too wide
                                for any verdict; the run reports UNKNOWABLE
 
-WHY A LOOSE IOU IS THE HONEST CHOICE
-------------------------------------
-A strict IoU would measure segmentation quality, which is not what the product
-claims. The product claims to notice that a secondary structure exists. A box
-that covers a third of the shed has noticed the shed. Setting the bar at 0.30
-and saying so is more honest than setting it at 0.50 and quietly reporting a
-worse number as if it were the same measurement.
+MATCHING IS POINT-IN-BOX, NOT IoU
+---------------------------------
+The human clicks once inside each structure; a match is that click falling
+inside one of the detector's boxes.
+
+IoU was tried first and is wrong for this imagery. A long terrace at an angle
+has an upright bounding box that also covers its neighbours, and two adjacent
+terraces produce overlapping boxes — so the human's box for house A could
+exceed the threshold against the machine's box for house B and score a hit for
+a structure the machine never isolated. Reported from use, then confirmed in
+the labels already recorded: one was 266x53px, a 33m x 6.6m terrace.
+
+Point-in-box asks only what the product claims to answer — did the scan find
+THIS structure — and is insensitive to orientation, to how loosely either side
+bounds the roof, and to adjacency. It gives up any check on the box's SIZE,
+which is why matching stays one-to-one and ties go to the smallest containing
+box.
 
 WHAT THIS CANNOT TELL YOU
 -------------------------
@@ -74,6 +80,50 @@ IOU_MATCH = 0.30
 MIN_LABELLED = 40
 
 
+def label_point(label: dict) -> tuple[float, float] | None:
+    """Where the human says a structure is.
+
+    A label is a clicked POINT. Labels recorded before that change hold a
+    dragged bbox instead, and their centroid is the same statement, so they
+    convert losslessly rather than being discarded.
+    """
+    p = label.get("point_pixel")
+    if isinstance(p, (list, tuple)) and len(p) == 2:
+        return float(p[0]), float(p[1])
+    b = label.get("bbox_pixel")
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        x0, y0, x1, y1 = (float(v) for v in b)
+        return (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    return None
+
+
+def point_in_box(pt: tuple[float, float], box: list[int]) -> bool:
+    """Is the human's click inside the machine's box?
+
+    WHY THIS REPLACED IoU
+    ---------------------
+    IoU compares two SHAPES, and the shapes here do not survive the geometry.
+    A long terrace at an angle has an upright bounding box that also covers the
+    neighbours; two adjacent terraces have overlapping boxes. Under IoU the
+    human's box for house A could match the machine's box for house B above
+    threshold and score a hit for a structure the machine never isolated.
+
+    Point-in-box answers the question the product actually makes: did the scan
+    find THIS structure. It is insensitive to orientation, to how loosely
+    either side bounds the roof, and to adjacency.
+
+    Kept honest about what it gives up: it does not check that the machine's
+    box is the right SIZE. A single detection covering the whole lot would
+    contain every point and score perfectly — which is why the one-to-one rule
+    below still applies, so one box can claim at most one structure.
+    """
+    x, y = pt
+    x0, y0, x1, y1 = (float(v) for v in box)
+    lo_x, hi_x = min(x0, x1), max(x0, x1)
+    lo_y, hi_y = min(y0, y1), max(y0, y1)
+    return lo_x <= x <= hi_x and lo_y <= y <= hi_y
+
+
 def iou(a: list[int], b: list[int]) -> float:
     """Intersection over union for two [x0,y0,x1,y1] pixel boxes."""
     ax0, ay0, ax1, ay1 = a
@@ -99,16 +149,28 @@ def iou(a: list[int], b: list[int]) -> float:
 def match_boxes(truth: list[dict], pred: list[dict]) -> tuple[int, int, int]:
     """Greedy one-to-one matching. Returns (matched, missed, spurious).
 
-    Greedy by descending overlap, and each predicted box may only claim one
-    truth box. Without the one-to-one rule a single large prediction covering
-    a whole yard would "find" every structure on it and recall would read 100%.
+    A human point matches a machine box when the point falls inside it. Still
+    ONE-TO-ONE: without that rule a single detection covering the whole lot
+    would contain every point and recall would read 100% for a scan that
+    isolated nothing.
+
+    Ties are broken by the SMALLEST containing box, so a tight detection wins
+    over a sprawling one that happens to cover the same point — otherwise a
+    lot-sized box could claim a structure ahead of the detection that actually
+    found it.
     """
     pairs = []
     for ti, t in enumerate(truth):
+        pt = label_point(t)
+        if pt is None:
+            continue
         for pi, p in enumerate(pred):
-            score = iou(t["bbox_pixel"], p["bbox_pixel"])
-            if score >= IOU_MATCH:
-                pairs.append((score, ti, pi))
+            box = p.get("bbox_pixel")
+            if not box or not point_in_box(pt, box):
+                continue
+            x0, y0, x1, y1 = (float(v) for v in box)
+            area = abs(x1 - x0) * abs(y1 - y0)
+            pairs.append((-area, ti, pi))   # sort desc => smallest area first
     pairs.sort(reverse=True)
 
     used_t: set[int] = set()

@@ -31,8 +31,13 @@ type Tile = {
   licence: string;
 };
 
-type Box = {
-  bbox_pixel: [number, number, number, number];
+// A POINT, not a box. See the note in the UI: for a long terrace at an angle
+// the upright box that contains it also contains the neighbours, and two
+// adjacent terraces produce overlapping boxes that the matcher can pair
+// wrongly. The question this measurement asks is "did the scan find this
+// structure", and a click inside it answers exactly that.
+type Mark = {
+  point_pixel: [number, number];
   structure_type: string;
   is_main_dwelling: boolean;
 };
@@ -58,8 +63,7 @@ export default function StructureLabeller() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [boxes, setBoxes] = useState<Box[]>([]);
-  const [drawing, setDrawing] = useState<null | { x0: number; y0: number; x1: number; y1: number }>(null);
+  const [marks, setMarks] = useState<Mark[]>([]);
   const [pendingType, setPendingType] = useState<string>('shed');
   const [labeller, setLabeller] = useState('');
 
@@ -74,8 +78,7 @@ export default function StructureLabeller() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setBoxes([]);
-    setDrawing(null);
+    setMarks([]);
     try {
       const r = await fetch(`/api/internal/structure-labels?sample_id=${SAMPLE_ID}`);
       const d = await r.json();
@@ -97,7 +100,7 @@ export default function StructureLabeller() {
     void load();
   }, [load]);
 
-  // --- drawing ---------------------------------------------------------
+  // --- marking ----------------------------------------------------------
   function pointIn(e: React.MouseEvent): { x: number; y: number } | null {
     const el = surfaceRef.current;
     if (!el || !tile) return null;
@@ -112,32 +115,13 @@ export default function StructureLabeller() {
     };
   }
 
-  function onDown(e: React.MouseEvent) {
+  function onClick(e: React.MouseEvent) {
     const p = pointIn(e);
     if (!p) return;
-    setDrawing({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
-  }
-
-  function onMove(e: React.MouseEvent) {
-    if (!drawing) return;
-    const p = pointIn(e);
-    if (!p) return;
-    setDrawing({ ...drawing, x1: p.x, y1: p.y });
-  }
-
-  function onUp() {
-    if (!drawing) return;
-    const x0 = Math.min(drawing.x0, drawing.x1);
-    const y0 = Math.min(drawing.y0, drawing.y1);
-    const x1 = Math.max(drawing.x0, drawing.x1);
-    const y1 = Math.max(drawing.y0, drawing.y1);
-    setDrawing(null);
-    // Ignore stray clicks: a 3px box is a misclick, not a building.
-    if (x1 - x0 < 8 || y1 - y0 < 8) return;
-    setBoxes((b) => [
-      ...b,
+    setMarks((m) => [
+      ...m,
       {
-        bbox_pixel: [x0, y0, x1, y1],
+        point_pixel: [p.x, p.y],
         structure_type: pendingType,
         is_main_dwelling: pendingType === 'main_dwelling',
       },
@@ -173,7 +157,7 @@ export default function StructureLabeller() {
         body: JSON.stringify({
           id: item.id,
           status,
-          labels: status === 'labelled' ? boxes : undefined,
+          labels: status === 'labelled' ? marks : undefined,
           skip_reason: skipReason,
           labelled_by: labeller.trim(),
           seconds_spent: Math.round((Date.now() - startedAt.current) / 1000),
@@ -241,21 +225,21 @@ export default function StructureLabeller() {
       </div>
 
       <p className="text-sm text-slate-600 mb-4 max-w-3xl">
-        Mark <strong>every roofed structure inside the dashed boundary</strong>.
-        Drag a box around each one, then pick what it is. If the block has
-        nothing but the house, mark the house and save — an empty answer is a
+        Pick a type, then <strong>click once on each roofed structure inside the
+        dashed boundary</strong>. One click per structure. If the block has
+        nothing but the house, click the house and save — an empty answer is a
         real answer. You are not being shown what the scan found, deliberately:
         the whole point is to get a reading that does not agree with the machine
         by construction.
       </p>
 
       <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-slate-700">
-        <strong>Boxes stay upright — don&apos;t try to match the roof angle.</strong>{' '}
-        Buildings sit at all angles to the image, but the scan reports each one as an
-        upright rectangle too (two corners, no rotation). So draw the{' '}
-        <strong>smallest upright box that fully contains the structure</strong> and the
-        two are compared like for like. A box that looks loose around a
-        diagonal roof is the correct answer here, not a sloppy one.
+        <strong>One click per structure — no boxes.</strong> This used to ask for a
+        dragged box, which does not work here: a long terrace at an angle needs an
+        upright box so large it swallows the neighbours, and two adjacent terraces
+        produce overlapping boxes the comparison can pair up wrongly. The question
+        being measured is simply <em>did the scan find this structure</em>, and a
+        click inside it answers that exactly. Click roughly the middle of each roof.
       </div>
 
       {error && (
@@ -295,10 +279,7 @@ export default function StructureLabeller() {
         <>
           <div
             ref={surfaceRef}
-            onMouseDown={onDown}
-            onMouseMove={onMove}
-            onMouseUp={onUp}
-            onMouseLeave={() => setDrawing(null)}
+            onClick={onClick}
             className="relative select-none cursor-crosshair border border-slate-300 rounded-lg overflow-hidden"
             style={{ width: '100%', maxWidth: tile.width, aspectRatio: '1 / 1' }}
           >
@@ -337,32 +318,23 @@ export default function StructureLabeller() {
               </svg>
             )}
 
-            {/* Committed boxes */}
-            {boxes.map((b, i) => (
+            {/* One pin per structure. Numbered so a miscount is visible at a
+                glance, and small so it never hides what it is marking. */}
+            {marks.map((m, i) => (
               <div
                 key={i}
-                className="absolute border-2 border-teal-400 bg-teal-400/20 pointer-events-none"
+                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center rounded-full bg-teal-500 text-white text-[11px] font-bold ring-2 ring-white"
                 style={{
-                  left: `${(b.bbox_pixel[0] / tile.width) * 100}%`,
-                  top: `${(b.bbox_pixel[1] / tile.height) * 100}%`,
-                  width: `${((b.bbox_pixel[2] - b.bbox_pixel[0]) / tile.width) * 100}%`,
-                  height: `${((b.bbox_pixel[3] - b.bbox_pixel[1]) / tile.height) * 100}%`,
+                  left: `${(m.point_pixel[0] / tile.width) * 100}%`,
+                  top: `${(m.point_pixel[1] / tile.height) * 100}%`,
+                  width: 22,
+                  height: 22,
                 }}
-              />
+                title={m.structure_type}
+              >
+                {i + 1}
+              </div>
             ))}
-
-            {/* In-progress box */}
-            {drawing && (
-              <div
-                className="absolute border-2 border-amber-400 bg-amber-400/20 pointer-events-none"
-                style={{
-                  left: `${(Math.min(drawing.x0, drawing.x1) / tile.width) * 100}%`,
-                  top: `${(Math.min(drawing.y0, drawing.y1) / tile.height) * 100}%`,
-                  width: `${(Math.abs(drawing.x1 - drawing.x0) / tile.width) * 100}%`,
-                  height: `${(Math.abs(drawing.y1 - drawing.y0) / tile.height) * 100}%`,
-                }}
-              />
-            )}
           </div>
           <p className="mt-1 text-xs text-slate-400">{tile.licence}</p>
         </>
@@ -370,11 +342,12 @@ export default function StructureLabeller() {
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <div className="text-sm text-slate-600">
-          {boxes.length} marked
-          {boxes.length > 0 && (
+          <span className="font-medium text-slate-900">{marks.length}</span>{' '}
+          marked on this lot
+          {marks.length > 0 && (
             <button
               type="button"
-              onClick={() => setBoxes((b) => b.slice(0, -1))}
+              onClick={() => setMarks((m) => m.slice(0, -1))}
               className="ml-2 text-teal-700 underline"
             >
               undo last

@@ -7,8 +7,14 @@ the script runs against real labels.
 The failure this guards against is specific: if matching were many-to-one, a
 single detection covering a whole backyard would "find" every structure on it
 and recall would read 100% while the detector had located nothing in
-particular. test_one_large_prediction_does_not_match_everything is the test
-that would go red if someone relaxed that.
+particular. test_a_sprawling_prediction_can_claim_only_one_structure is the
+test that goes red if someone relaxes that.
+
+Matching is POINT-IN-BOX: the human clicks inside a structure, and a match is
+that click landing inside a detector box. The iou() helper is retained and
+still tested because it remains useful for diagnostics, but it no longer
+decides a match — see the module docstring of the script for why the shapes
+did not survive this imagery.
 """
 
 from __future__ import annotations
@@ -92,31 +98,74 @@ def test_detector_finds_nothing_on_a_lot_with_structures():
     assert recall.match_boxes(truth, []) == (0, 2, 0)
 
 
-def test_a_sprawling_prediction_scores_nothing_when_it_matches_nothing_well():
-    """A box covering the whole yard overlaps each structure only slightly.
+def point(x, y):
+    return {"point_pixel": [x, y]}
 
-    NOTE what this does and does not prove. Both IoUs here are ~0.11, under the
-    0.30 mark, so nothing is matched and the ONE-TO-ONE rule is never reached.
-    This test covers the threshold, not the one-to-one guard — see
-    test_one_prediction_cannot_claim_two_structures_it_genuinely_covers for
-    that. Recorded explicitly because an earlier version of this file claimed
-    this test guarded one-to-one matching, and a planted many-to-one defect
-    left the whole suite green.
+
+def test_a_sprawling_prediction_can_claim_only_one_structure():
+    """One detection covering the whole yard contains BOTH clicks.
+
+    Under point-in-box this is the case the one-to-one rule exists for, and it
+    is now reachable — under the old IoU matching the overlaps were ~0.11 and
+    the rule was never exercised at all, which is how a planted many-to-one
+    defect once left the whole suite green.
+
+    Correct outcome: the sprawling box is credited with finding ONE structure,
+    the other is recorded as missed, and there is nothing spurious because the
+    single prediction was used.
     """
-    truth = [box(0, 0, 10, 10), box(20, 20, 30, 30)]
+    truth = [point(5, 5), point(25, 25)]
     one_big = [box(0, 0, 30, 30)]
     matched, missed, spurious = recall.match_boxes(truth, one_big)
-    assert (matched, missed, spurious) == (0, 2, 1)
+    assert matched == 1, "one box must not claim two structures"
+    assert missed == 1
+    assert spurious == 0
+
+
+def test_a_click_outside_every_box_is_a_miss():
+    truth = [point(500, 500)]
+    pred = [box(0, 0, 30, 30)]
+    assert recall.match_boxes(truth, pred) == (0, 1, 1)
+
+
+def test_a_click_on_the_boundary_counts_as_inside():
+    """Inclusive edges. A click landing exactly on the box edge is agreement,
+    not a miss — the alternative punishes sub-pixel placement."""
+    assert recall.point_in_box((10.0, 5.0), [0, 0, 10, 10]) is True
+
+
+def test_a_legacy_box_label_converts_to_its_centroid():
+    """Labels recorded before the switch must not be discarded.
+
+    Their centroid is the same statement — 'a structure is here' — so they
+    convert losslessly and keep contributing to the sample.
+    """
+    assert recall.label_point({"bbox_pixel": [0, 0, 10, 20]}) == (5.0, 10.0)
+    assert recall.label_point({"point_pixel": [3, 4]}) == (3.0, 4.0)
+    assert recall.label_point({"structure_type": "shed"}) is None
+
+
+def test_a_tight_box_wins_over_a_sprawling_one_for_the_same_click():
+    """Two detections contain the same click; the tighter one should claim it.
+
+    Otherwise a lot-sized box could take the credit ahead of the detection
+    that actually isolated the structure, and the sprawling box would look
+    useful while the precise one was counted spurious.
+    """
+    truth = [point(5, 5)]
+    pred = [box(0, 0, 100, 100), box(0, 0, 10, 10)]
+    matched, missed, spurious = recall.match_boxes(truth, pred)
+    assert (matched, missed, spurious) == (1, 0, 1)
 
 
 def test_one_prediction_cannot_claim_two_structures_it_genuinely_covers():
     """The load-bearing test for one-to-one matching.
 
-    Two adjacent structures, and one prediction spanning both. The overlap with
-    EACH is 0.5 — comfortably over the 0.30 mark — so both pairs are candidates
-    and the one-to-one rule is what decides the outcome. A correct matcher
-    credits the prediction with finding one structure and records the other as
-    missed.
+    Two adjacent structures, and one prediction spanning both. Each truth box
+    converts to its centroid, and BOTH centroids fall inside the single
+    prediction, so both pairs are candidates and the one-to-one rule is what
+    decides the outcome. A correct matcher credits the prediction with finding
+    one structure and records the other as missed.
 
     If this reports matched=2, matching has become many-to-one: one detection
     would be credited with finding every structure it happens to span, and
@@ -175,5 +224,4 @@ def test_thresholds_are_the_committed_values():
     """
     assert recall.RECALL_FLOOR == 0.70
     assert recall.PRECISION_FLOOR == 0.60
-    assert recall.IOU_MATCH == 0.30
     assert recall.MIN_LABELLED == 40
