@@ -137,7 +137,7 @@ export function RefusalStatsSentence({ stats, formatLabel }: { stats: RefusalSta
   }
   return (
     <>
-      Of {stats.total_determined?.toLocaleString()} applications determined in {formatLabel(String(stats.lga ?? 'this council').toLowerCase())},
+      Of {stats.total_determined?.toLocaleString()} applications determined in {formatLabel(String(stats.lga ?? 'this council'))},
       lodged between {windowStart} and {windowEnd} (the extent of the published tracking data):{' '}
       {granted?.toLocaleString()} granted development consent, {stats.refused?.toLocaleString()} refused
       {stats.deferred_commencement ? <>, {stats.deferred_commencement.toLocaleString()} deferred commencement</> : null}

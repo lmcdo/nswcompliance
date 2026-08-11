@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/database/pool-manager';
+import { CDC_HOUSING_CODE_ZONES } from '@/lib/regulatory-constants';
 
 const DOC_ID = 'State_Environmental_Planning_Policy_Exempt_and_Complying_Development_Codes_2008__NSW_Legislation';
 
@@ -9,7 +10,7 @@ const DOC_ID = 'State_Environmental_Planning_Policy_Exempt_and_Complying_Develop
 // Parts 3B/3C/3D are geographic (Low Rise Diversity, Greenfield, Inland) — handled separately
 // Returns null for zones not covered by any Housing Code part — caller must handle explicitly.
 function zoneToPartMap(zoneCode: string): string | null {
-  const housingCodeZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
+  const housingCodeZones = CDC_HOUSING_CODE_ZONES;
   const ruralHousingCodeZones = ['R5', 'RU1', 'RU2', 'RU3', 'RU4', 'RU6'];
   if (housingCodeZones.includes(zoneCode)) return '3';
   if (ruralHousingCodeZones.includes(zoneCode)) return '3A';

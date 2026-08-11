@@ -25,10 +25,11 @@ export interface PrecinctMapping {
 
 // LGAs whose DCP precincts tile the whole area — a containment miss there is a
 // geocoding artefact, so snapping to the nearest boundary within 500m is safe.
-// In councils with sparse site-specific precincts (e.g. Waverley Part E), most
+// In councils with sparse site-specific precincts (e.g. Waverley Part E, and
+// Ku-ring-gai where 10 boundaries cover 0.29 km² of an ~85 km² LGA), most
 // addresses are legitimately in no precinct; snapping would serve controls for
 // an area the property is not in.
-const NEAREST_FALLBACK_LGAS = new Set(['inner west', 'ku-ring-gai']);
+const NEAREST_FALLBACK_LGAS = new Set(['inner west']);
 
 /**
  * Get DCP precinct for an address using PostGIS geometric matching
@@ -193,6 +194,7 @@ async function getPrecinctUsingPostGIS(
         precinct_id,
         precinct_name,
         lga,
+        former_council,
         confidence_score,
         extraction_method
       FROM dcp_precinct_boundaries
@@ -235,7 +237,7 @@ async function getPrecinctUsingPostGIS(
       precinctName: allNames,
       documentId: documentId,
       lga: primary.lga,
-      formerCouncil: getFormerCouncilFromPrecinctId(primary.precinct_id),
+      formerCouncil: resolveFormerCouncil(primary.former_council, primary.precinct_id),
       confidenceScore: primary.confidence_score,
       matchMethod: 'geometric'
     };
@@ -270,6 +272,7 @@ async function findNearestPrecinct(
         precinct_id,
         precinct_name,
         lga,
+        former_council,
         confidence_score * 0.5 as confidence_score,
         ST_Distance(
           ST_Transform(boundary, 3857),
@@ -301,7 +304,7 @@ async function findNearestPrecinct(
       precinctName: precinct.precinct_name,
       documentId: buildPrecinctDocumentId(precinct.precinct_id, precinct.precinct_name, precinct.lga),
       lga: precinct.lga,
-      formerCouncil: getFormerCouncilFromPrecinctId(precinct.precinct_id),
+      formerCouncil: resolveFormerCouncil(precinct.former_council, precinct.precinct_id),
       confidenceScore: precinct.confidence_score,
       matchMethod: 'geometric'
     };
@@ -376,13 +379,63 @@ const PRECINCT_ID_PATTERNS: Record<string, RegExp[]> = {
   'Waverley': [
     /^e\d+$/i,                 // E1, E2, ... E7
   ],
+
+  // Sydney DCP 2012 section-keyed precincts: 2.x[.y] locality statements,
+  // 5.x specific areas, 6.x.y specific sites (e.g. '2.13.6', '5.8', '6.3.3').
+  'City of Sydney': [
+    /^[256]\.\d{1,2}(\.\d{1,2})?$/,
+  ],
+
+  // Ku-ring-gai DCP Part 14 local centre precincts (14B_T1..T4, 14I..14O).
+  'Ku-ring-gai': [
+    /^14[A-O](_T\d)?$/i,
+  ],
 };
+
+/**
+ * Display form for a stored former_council value. The column holds a mix of
+ * display names ('Waverley', 'Marrickville', 'Parramatta', 'Woollahra') and
+ * slugs ('city_of_sydney'); slugs are title-cased with joiner words kept
+ * lowercase and the Ku-ring-gai hyphenation preserved.
+ */
+export function normalizeFormerCouncil(raw: string | null | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  if (!value.includes('_')) return value;
+  if (value.toLowerCase() === 'ku_ring_gai') return 'Ku-ring-gai';
+  const JOINERS = new Set(['of', 'and', 'the']);
+  return value
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map((w, i) => (i > 0 && JOINERS.has(w) ? w : w[0].toUpperCase() + w.slice(1)))
+    .join(' ');
+}
+
+/**
+ * Council attribution for a boundary row: the row's own former_council column
+ * is authoritative when set (it names the council the boundary was loaded
+ * for); PRECINCT_ID_PATTERNS is only a fallback for legacy rows where the
+ * column is NULL (e.g. Ku-ring-gai). The pattern approach degrades as each new
+ * council adds id formats — dotted Parramatta ids (7.10.1, 9) and name-keyed
+ * Woollahra ids ('Paddington HCA') have no safe regex that does not collide
+ * with another council's vocabulary.
+ */
+export function resolveFormerCouncil(
+  storedFormerCouncil: string | null | undefined,
+  precinctId: string
+): string {
+  return (
+    normalizeFormerCouncil(storedFormerCouncil) ??
+    getFormerCouncilFromPrecinctId(precinctId)
+  );
+}
 
 /**
  * Get former council from precinct ID using config-driven patterns
  * Returns the council name that owns this precinct based on ID patterns
  */
-function getFormerCouncilFromPrecinctId(precinctId: string): string {
+export function getFormerCouncilFromPrecinctId(precinctId: string): string {
   if (!precinctId) return 'Unknown';
 
   const id = precinctId.toLowerCase();

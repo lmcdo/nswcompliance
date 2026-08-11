@@ -145,7 +145,7 @@ Compound constraint detection:
 | Check | Issue found? | Severity |
 |-------|-------------|----------|
 | Parallel API calls share rate limits | YES — Planning Portal has undocumented rate limits. If orchestrator fires 6 parallel calls to same API, may hit 429. Need shared rate limiter across concurrent requests. | High |
-| Thread pool isolation | YES — if shadow_detector hangs (pvlib calculation edge case), must not block flood_truth response. Per-pipeline timeout required. | Medium |
+| Thread pool isolation | YES — if shadow_detector hangs (pybdshadow calculation edge case), must not block flood_truth response. Per-pipeline timeout required. | Medium |
 | Batch endpoint: 50 briefs × 6 API calls each = 300 concurrent API calls | YES — must limit concurrency. Max 4-8 parallel brief computations in batch. Queue the rest. | High |
 | Pre-computation script: bulk spatial queries lock DB | POSSIBLE — `ST_Contains` across millions of rows can lock spatial_overlays for reads if vacuum is running. Use read replica or run during low-traffic. | Low |
 

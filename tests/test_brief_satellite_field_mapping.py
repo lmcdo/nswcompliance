@@ -311,8 +311,6 @@ KINCUMBER_SHADOW_RAW = {
     "adg_compliant": True,
     "worst_case_scenario": "jun21_3pm",
     "confidence": "low",
-    "construction_change_detected": False,
-    "construction_change_note": "Sentinel-2 timeout",
     "scenarios": [
         {"label": "ADG worst case 9am Jun 21", "time_local": "09:00",
          "shadow_length_m": 19.0, "shadow_overlap_fraction": 0.095,
@@ -333,12 +331,14 @@ KINCUMBER_SHADOW_RAW = {
 }
 
 
-def test_shadow_carries_confidence_and_change_note():
+def test_shadow_carries_confidence():
+    """The construction_change_* assertions were REMOVED 2026-08-07 (§4h) with
+    the adjacent-lot check. They were correct against the old doctrine; the
+    fields no longer exist on the contract, so keeping them would test a
+    feature the product does not have."""
     r = _build_shadow_result(KINCUMBER_SHADOW_RAW)
     assert r is not None
     assert r.confidence == "low"
-    assert r.construction_change_detected is False
-    assert r.construction_change_note == "Sentinel-2 timeout"
     assert r.height_source == "default"
     assert len(r.scenarios) == 5
     labels = [s.date_label for s in r.scenarios]
@@ -350,5 +350,3 @@ def test_shadow_carries_confidence_and_change_note():
 def test_shadow_new_fields_default_none_on_sparse_output():
     r = _build_shadow_result({"scenarios": []})
     assert r.confidence is None
-    assert r.construction_change_detected is None
-    assert r.construction_change_note is None

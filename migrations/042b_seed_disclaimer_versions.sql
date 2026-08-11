@@ -2,6 +2,13 @@
 -- These are the v1 disclaimers active from launch. When disclaimers change,
 -- insert a new version row and set superseded_at on the old one.
 -- Date: 2026-05-18
+--
+-- HISTORICAL RECORD — do not edit the rows below; they are what was seeded.
+-- Superseded since:
+--   shadow-v1 -> shadow-v2 in migrations/064_shadow_disclaimer_v2_pvlib_removal.sql
+--     (2026-08-06): the shadow source_attributions here name pvlib, which the
+--     running code has never imported. Read 064, not this file, for the
+--     current shadow attribution.
 
 INSERT INTO disclaimer_versions (pipeline_name, version, headline_disclaimer, limitations_text, source_attributions)
 VALUES

@@ -282,3 +282,55 @@ Cost is not a decision factor at this scale. The verbatim gate makes model choic
 **Do Phase 0 + 1 regardless** — pure regression-repair + cheapest removal of the worst liability modes.
 
 Strongest external precedents: CourtListener/RECAP (content-hash + deterministic identity + idempotent retry), Open States (fail-loud + schema validation), UK Planning Data (standardize-and-validate, domain sibling), Ascent RegTech (highlighted old-vs-new diff + expert gate). Neutral extraction benchmark: arXiv 2410.09871 (DocLayNet).
+
+---
+
+## 8. The update cycle, and why precinct labels survive it (added 2026-07-29)
+
+**Plain-English: what happens on every monitor/update run, and the guarantee.**
+
+A DCP chapter is built from a council PDF in a fixed pipeline. When the monitor detects
+the PDF changed (or a forced re-run), the chapter is rebuilt in this exact order:
+
+1. **Extract** — read the PDF into raw provision rows (text + ref + page). Layout-aware:
+   two-column pages read via the geometric columnar reader; scanned/garbled pages route
+   through OCR; a preflight measures the layout first and flags hazards.
+2. **Enrich [1/4] Actionability** — is each row an actual control?
+3. **Enrich [2/4] Layer + topic** — generic / use-specific / condition / precinct, plus topic.
+4. **Enrich [3/4] Applicability** — which development types the control applies to.
+5. **Enrich [4/4] Precinct keying** — derive `v2_precinct_id` (which neighbourhood/precinct
+   each row belongs to) from a written rule per council, and set the row's layer to
+   `precinct`. This is what connects a rule to its map boundary so it serves to the right
+   address.
+
+Steps 2–5 run **automatically inside the extractor** after a successful commit
+(`main()` in `scripts/dcp_extract_changed.py`). There is no separate manual command.
+
+**Why the labels can't be silently lost anymore (the guarantee):**
+
+- Precinct keying is **derived, not stored by hand.** The rule (`scripts/derive_precinct_keys.py`,
+  `RULES`) reads only *stable* inputs the extractor always reproduces — the document name
+  (Marrickville), the clause number (Leichhardt), the page (Ashfield Parts), a fixed value
+  (Ashfield Haberfield), a chapter→precinct map (Ku-ring-gai), or an existing structural tag
+  `v2_dcp_part` (Waverley). Re-extraction changes the row ids, never these inputs — so
+  re-running the rule reproduces the same keys.
+- Because keying is **step [4/4] of the same mandatory block that already runs after every
+  extraction**, a re-extraction *always* re-keys. Before 2026-07-29 keying was a manual step,
+  so each nightly re-extraction left a council un-keyed until a human noticed (this is exactly
+  how Waverley silently lost all its precinct labels between 2026-07-28 and 2026-07-29).
+- The pass is **idempotent and non-destructive**: it only writes `v2_precinct_id`/layer, never
+  the rule text; running it twice is a no-op; it backs up every change; and it never guesses
+  (a row with no matching rule is left untouched and reported, never mis-labelled).
+
+**The one operational rule this creates:** every council whose provisions are precinct-keyed
+must have a rule in `RULES`. If a *new* council is onboarded and keyed by hand without adding
+a rule, the next re-extraction will un-key it — so "add the derivation rule" is part of
+onboarding, not an afterthought. Councils covered as of 2026-07-29: Marrickville, Leichhardt
+(Part C S2), Ashfield (E2 Haberfield + chapter-D Parts), Ku-ring-gai (Part 14 sites), Waverley
+(Part E). A council with boundaries but no rule shows the honest "site-specific rules may
+exist" warning until its rule is added — it never serves wrong-area data.
+
+**QA verification:** `python scripts/derive_precinct_keys.py --validate` re-derives every
+keyable row and asserts it reproduces the key already in the DB for the deterministic councils
+(a green run = the labels in the database match what the rules would produce from source). Run
+it after any extraction/enrichment change to confirm nothing drifted.

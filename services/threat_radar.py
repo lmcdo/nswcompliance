@@ -236,6 +236,17 @@ def subscribe(req: SubscribeRequest):
     except ValueError as e:
         raise HTTPException(422, str(e))
 
+    # Units/CRS entry check (campaign item 4): a swapped/projected coordinate
+    # would silently monitor the wrong place for the subscription's lifetime.
+    try:
+        from services.geometry_checks import check_point_nsw
+    except ImportError:
+        from geometry_checks import check_point_nsw
+    coord_reason = check_point_nsw(req.lat, req.lng)
+    if coord_reason:
+        raise HTTPException(
+            422, f"Subscription could not be created: {coord_reason}")
+
     conn = None
     try:
         conn = _get_conn()

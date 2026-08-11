@@ -299,20 +299,26 @@ def golden_set_applicability():
             "expected_dev_types": ["multi_dwelling_housing", "residential_flat_building", "attached_dwelling"],
             "council": "marrickville",
         },
-        # Marrickville Part 5 - Commercial
+        # Marrickville Part 5 - Commercial. DQ-30: zones were ["B1","B2","B4",
+        # "MU1"] — B1/B2/B4 are retired NSW zone codes (April 2023 Employment
+        # Zones Reform); real current equivalents are E1 (was B1/B2) and MU1
+        # (was B4). See .claude/DATA_QUALITY_TRACKER.md.
         {
             "document_id": "Marrickville__DCP__2011__-__5_0__Commercial",
             "text": "Commercial setbacks.",
-            "expected_zones": ["B1", "B2", "B4", "MU1"],
-            "expected_dev_types": ["commercial_premises", "retail_premises", "office_premises", "shop_top_housing"],
+            "expected_zones": ["E1", "MU1"],  # noqa: zone-codes -- golden-set expected-output fixture, not a shared constant
+            "expected_dev_types": ["commercial_premises", "retail_premises", "office_premises", "shop_top_housing", "mixed_use"],
             "council": "marrickville",
         },
-        # Marrickville Part 6 - Industrial
+        # Marrickville Part 6 - Industrial. DQ-30: zones were ["IN1","IN2"] —
+        # both retired; real current equivalent is E4. This was the most
+        # severe DQ-30 finding: with no fallback, these provisions matched
+        # zero real properties (Inner West has had no IN-zones since 2023).
         {
             "document_id": "Marrickville__DCP__2011__-__6_0__Industrial",
             "text": "Industrial setbacks.",
-            "expected_zones": ["IN1", "IN2"],
-            "expected_dev_types": ["industrial_development", "warehouse", "light_industry"],
+            "expected_zones": ["E4"],
+            "expected_dev_types": ["industrial_development", "warehouse", "light_industry", "heavy_industry"],
             "council": "marrickville",
         },
         # Marrickville Part 2 - Generic (ALL)

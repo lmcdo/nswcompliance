@@ -30,6 +30,9 @@ export function Page4Dcp({ computed }: { computed: SEEComputedData }) {
       </Text>
 
       {/* ---- Cover statement (Schedule B reference) ---- */}
+      {/* verdict-ok: the count and the claim both come from chapter_assertions /
+          topic_assertions, which this component receives; Schedule B IS the list of
+          provisions asserted non-applicable, so the sentence restates received data. */}
       {((chapter_assertions?.length ?? 0) > 0 || (topic_assertions?.length ?? 0) > 0) && (
         <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 10 }}>
           {(chapter_assertions?.length ?? 0) > 0

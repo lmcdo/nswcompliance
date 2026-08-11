@@ -1,0 +1,124 @@
+{
+  "tier": "standard",
+  "justification": "No product code and no database, but this changes the gate every session depends on to commit and push. A mistake here is not a wrong number on a page — it is either every commit blocked repo-wide, or worse, a gate that reports PASSED while reading a file belonging to a different branch. The second failure is silent and is the exact class this repo's railguard work exists to stop, so it gets Standard scrutiny rather than Minor.",
+  "commit_hash": "d9405adf",
+  "files": [
+    "scripts/qa_report_path.py",
+    "scripts/qa_gate.py",
+    "scripts/prune_qa_reports.py",
+    "scripts/doc_claims.py",
+    "scripts/prove_qa_report_binding.py",
+    "tests/test_qa_report_binding.py",
+    ".claude/hooks/pre-commit-gate.py",
+    ".githooks/post-commit",
+    ".githooks/pre-push",
+    ".github/workflows/gates.yml",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/prove_qa_report_binding.py",
+    "fails_when": "The harness plants three defects into this branch's own report and re-runs qa_gate.py on each. It fails if a planted defect does NOT turn the gate red: a commit_hash copied from another live branch, a commit_hash naming a commit already on origin/main, and a commit_hash naming no commit at all. It also fails if the fourth case — the same commit expressed as a full 40-character SHA — turns the gate red, because the binding must not depend on abbreviation length. The baseline run must be green before anything is planted, and the trailing run must be green again with the file byte-identical to its start; scripts/falsifiability.py raises rather than warns on either, so a plant that did not take cannot be scored as a pass. Independently, tests/test_qa_report_binding.py asserts the same four outcomes against purpose-built git repositories with real commits, so the claim does not rest on this repository's particular history.",
+    "external_authority": "The verdicts come from git's own ancestry answers via merge-base --is-ancestor, not from anything this change computes. The commits used as plants are real commits authored by other branches and by main before this branch existed — origin/main's tip and a sibling branch's tip — so the fixture cannot be tuned to agree with the code under test."
+  },
+  "pre_impl": {
+    "existing_data": "Sixteen files reference the report on origin/main b1234b4c, not the thirteen the brief listed; the extra three are docs/qa/INDEX.md, docs/CLIMATE_RISK_METHODOLOGY.md and a duplicated lga-onboarding plan. Five are executable and were read in full before any edit: scripts/qa_gate.py:1382, .githooks/post-commit, .githooks/pre-push:211, .github/workflows/gates.yml:176, .claude/hooks/pre-commit-gate.py:42. The file is tracked on origin/main and on roughly 240 remote branches, confirmed with git ls-tree per branch rather than inferred from .gitignore.",
+    "assumption_mismatch": "The brief and the code both read as though the file's tracked state was a deliberate choice. It is not. fe725c58 (#398, 2026-05-28) untracked it with git rm --cached for precisely the conflict reason being fixed here, and eced0898 (#434, 2026-05-31) — a PR titled 'add GEO foundation: AI crawlers, llms.txt, topic sitemaps' — re-added it three days later. So the fix now being asked for already shipped once and was reverted by an unrelated sitemap change. That reframes the work: the risk is not choosing the right path, it is choosing one that cannot be silently undone. .gitignore line 4 still lists the file and reads like proof it is untracked, which is why ten weeks passed unnoticed — gitignore does not apply to already-tracked files.",
+    "external_source_error": "The only external system consulted is git. Every git call distinguishes 'git could not answer' from 'git answered no': _git_query returns None for an unrunnable git, and _is_ancestor maps 0 to yes and 1 to no while treating any other exit code as unknown. An unusable git, an absent origin/main, or a corrupt object therefore leaves the binding unchecked rather than failing it, which matches the previous behaviour on git errors and keeps the gate usable in a clone with no remote.",
+    "squash_merge_semantics": "A squash merge destroys the commit a report names: the squash is a new hash and the branch's own commits never enter main's history. That is why 'within the last 5 commits' was unsatisfiable rather than merely awkward, and it is the reason the new rule skips instead of failing when a branch has no commits of its own. Verified against the fixture in tests/test_qa_report_binding.py, which reproduces main with two commits, a sibling branch, and a feature branch one commit deep.",
+    "new_vs_existing": "One new resolver module and one new prune script; no new gate and no new hook registration. Every existing consumer was rewired to call the resolver instead of hardcoding a path, because five callers deriving a path independently is how they drift, and the drift presents as PASSED."
+  },
+  "functions": [
+    {
+      "name": "check_commit_hash_binding",
+      "file_line": "scripts/qa_gate.py:1314",
+      "input": "the report's commit_hash, at any abbreviation length, plus the repository root",
+      "output": "an error when the hash names no commit, names a commit that is not an ancestor of HEAD, or names one already on origin/main; otherwise nothing",
+      "if_none": "an unresolvable git, a missing origin/main, or a branch with no commits of its own all yield no error — the question is unanswerable, and answering it 'fail' is what forced main red under the old rule"
+    },
+    {
+      "name": "resolve",
+      "file_line": "scripts/qa_report_path.py:224",
+      "input": "the repository root and an optional explicit path",
+      "output": "the report that exists for this branch, trying explicit path, QA_REPORT_PATH, the branch's own file, single-candidate discovery, then the legacy root file",
+      "if_none": "returns None, and callers treat that as absent rather than substituting another branch's file — CI then warns instead of reporting a pass it did not earn"
+    },
+    {
+      "name": "current_branch",
+      "file_line": "scripts/qa_report_path.py:150",
+      "input": "environment and git, in that order of authority",
+      "output": "the branch name from QA_REPORT_BRANCH, else GITHUB_HEAD_REF, else git symbolic-ref",
+      "if_none": "None on a detached HEAD, because a pull_request event checks out a detached merge commit and inventing a branch name there would silently bind the gate to the wrong file"
+    },
+    {
+      "name": "live_branch_slugs",
+      "file_line": "scripts/prune_qa_reports.py:50",
+      "input": "git ls-remote --heads against the remote",
+      "output": "the slug of every branch that currently exists, used to identify orphaned reports",
+      "if_none": "raises RemoteUnavailable and deletes nothing; an empty branch list means the question was not answered, never that no branch is alive, and reading it the second way would delete every report in one run"
+    }
+  ],
+  "values": [
+    {
+      "value": "16 files reference the report; it is tracked on origin/main and on ~240 remote branches despite appearing on .gitignore line 4",
+      "read_at": "git grep -l qa_report origin/main and git ls-tree per remote branch, worktree at origin/main b1234b4c, 2026-08-10",
+      "if_missing": "the reference list is the change's scope; a missed consumer would keep reading a path that no longer exists and its gate would go quiet rather than loud"
+    },
+    {
+      "value": "the untrack-then-retrack history: added 813b33d1 (#354), removed fe725c58 (#398), re-added eced0898 (#434)",
+      "read_at": "git log --follow --diff-filter=AD -- .qa_report.json on origin/main, 2026-08-10",
+      "if_missing": "without it this change looks like a first attempt rather than a second, and the reason to keep the file committed rather than ignored would not be visible"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "CI runs on a pull_request event, where the checkout is a detached merge commit and git cannot name the branch.",
+      "what_happens": "The resolver finds no per-branch file, falls through to the legacy root path or to nothing, and the workflow prints its absent-report warning and exits 0. The PR shows a green gate that validated nothing — the silent failure this whole scheme exists to avoid.",
+      "mitigated": true,
+      "how": "current_branch reads GITHUB_HEAD_REF before asking git, which is the only thing that names the source branch on that event. Pinned by test_ci_detached_head_still_finds_the_branch, which detaches HEAD for real and asserts git returns nothing first, so the test fails if the env fallback is removed. The workflow also echoes the resolved path, so a wrong file is visible in the log rather than inferred.",
+      "repro": "git checkout --detach HEAD && GITHUB_HEAD_REF=feat/x python scripts/qa_report_path.py --target --relative"
+    },
+    {
+      "scenario": "Two branches pick names that differ only in a character the slug rewrites, for example feat/a-b and feat/a/b.",
+      "what_happens": "Both map to feat__a-b.json or collide some other way, the second branch silently overwrites the first's judgement, and the conflict problem returns wearing a different hat.",
+      "mitigated": false,
+      "how": "Partly structural, not fully closed. Slashes become __ and git itself forbids the refs fix/foo and fix/foo/bar coexisting, so the directory-versus-file collision cannot arise; but feat/a__b and feat/a/b do both slugify to feat__a__b. Nothing detects that. It requires deliberately adversarial branch naming and the loser is one report file, not data, so it is recorded rather than guarded.",
+      "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); import qa_report_path as q; print(q.slugify_branch('feat/a__b'), q.slugify_branch('feat/a/b'))\""
+    },
+    {
+      "scenario": "The prune script runs while the network is down or the remote refuses the connection.",
+      "what_happens": "git ls-remote returns nothing, an empty live-branch set makes every report look orphaned, and a single --apply run deletes every QA report in the repository.",
+      "mitigated": true,
+      "how": "live_branch_slugs raises RemoteUnavailable on a non-zero exit, a timeout, or an empty result, and main() prints REFUSING TO PRUNE and exits 2 before reaching any unlink. Deletion is also opt-in: without --apply the script only lists. The script is deliberately not wired into CI, so no scheduled job can trigger the deletion path unattended.",
+      "repro": "python scripts/prune_qa_reports.py --remote does-not-exist"
+    },
+    {
+      "scenario": "A session mid-PR rebases onto the new main and hits a modify/delete conflict on the old root path.",
+      "what_happens": "The branch modified .qa_report.json, main deleted it, and git stops the rebase. A session that resolves it by restoring the root file gets a report the new resolver still reads via the legacy fallback, so the gate keeps working but the conflict returns on the next merge.",
+      "mitigated": true,
+      "how": "The legacy fallback in resolve() means an unmigrated branch is still CHECKED rather than silently unenforced, which is the outcome that actually matters — pinned by test_a_branch_cut_before_the_move_still_gets_checked. The clean resolution is one command, qa_report_path.py --migrate, and it is stated in the PR body's blast radius rather than left to be discovered.",
+      "repro": "python scripts/qa_report_path.py --migrate"
+    },
+    {
+      "scenario": "A git hook exports GIT_DIR, which overrides cwd for every git command the gate then runs.",
+      "what_happens": "qa_gate.py invoked from .githooks/pre-push resolves the report's commit against the HOOK's repository instead of the one it was pointed at, and answers confidently about the wrong history. The same override made this change's own tests re-initialise the working repository: running them from pre-push created two branches, added two empty commits to the branch under test and moved its HEAD, and the run that did it still reported a pass.",
+      "mitigated": true,
+      "how": "qa_report_path.git_env strips every GIT_* variable except the three that configure authentication rather than repository selection, and both qa_report_path._git and qa_gate._git_query pass it. The tests do the same and additionally assert, before writing any commit, that git rev-parse --show-toplevel equals the temporary directory they just created — so the destructive path fails loudly instead of silently. doc_claims.py and test_sol_review_base.py already carried this defence; these files did not.",
+      "repro": "GIT_DIR=$(git rev-parse --absolute-git-dir) python -m pytest tests/test_qa_report_binding.py -q"
+    },
+    {
+      "scenario": "The Claude pre-commit hook runs from the session directory while the commit is happening in a worktree.",
+      "what_happens": "CLAUDE_PROJECT_DIR points at the main checkout, which after this lands carries no per-branch report at all, so the hook blocks every commit in every worktree — the whole repo becomes uncommittable.",
+      "mitigated": true,
+      "how": "The hook now resolves candidate roots from os.getcwd() first and the session directory second, taking the first that yields a report. This was already wrong before the move — it validated main's report against a worktree's staged files — but the per-branch path would have turned a quiet wrong answer into a hard repo-wide block, so it had to be fixed here rather than noted.",
+      "repro": "cd .claude/worktrees/<name> && python .claude/hooks/pre-commit-gate.py"
+    }
+  ],
+  "mutation_analysis": "The binding is the part worth mutating and scripts/prove_qa_report_binding.py does it against this branch's real report rather than a fixture. Replacing the ancestor-of-HEAD test with an unconditional pass makes the copied-from-another-branch case go green and the harness reports MISSED; replacing the not-on-origin/main test the same way does it for the inherited case. Returning [] from check_commit_hash_binding turns three of the four cases green at once. The green case is the guard against the opposite mutation: if anyone re-introduces string comparison against git log %h, the full-40-character-SHA plant turns red and is reported as a FALSE ALARM. On the path side, deleting the GITHUB_HEAD_REF branch of current_branch leaves every test green except test_ci_detached_head_still_finds_the_branch, which is why that test detaches HEAD for real instead of trusting a monkeypatch. That test also has to DELETE GITHUB_HEAD_REF before asserting git cannot name the branch: GitHub Actions sets it, so the first CI run failed on an assertion that had been passing locally for the wrong reason — the local environment simply had no variable to interfere. A test whose subject is an environment variable has to control that variable in both directions. Deleting the legacy fallback leaves everything green except test_a_branch_cut_before_the_move_still_gets_checked — the case that would have quietly unenforced ~240 branches.",
+  "residual_risk": "The unmigrated-branch conflict is real and unavoidable: every open PR touching the old root path gets one modify/delete conflict when this lands. That cost is paid once and is smaller than the recurring one, but it is a cost and it lands on whoever is mid-PR. Reports now accumulate on main, one per merged PR, and nothing deletes them automatically — the prune script exists but must be run by hand, so the directory will grow until someone does. The slug collision between feat/a__b and feat/a/b is unguarded. The CI step remains pull_request-only, so a direct push to main still has no QA report check; the ancestry fix removes the reason it could never pass on main, but re-enabling it was out of scope and untested. Nothing here was exercised on a real GitHub Actions run — the detached-HEAD behaviour is proven against a locally detached repository, which is the same mechanism but not the same environment.",
+  "post_merge": {
+    "db_reset": "No. This change reads and writes no database and issues no SQL.",
+    "secrets": "No credentials are read or written. The only external call is git ls-remote, which uses the caller's existing credentials and logs none.",
+    "other_repo": "No. Single repository, though the change is portable and the railguards-portability plan may want it.",
+    "manual_verify": "Yes, and it cannot be skipped: watch the first PR opened after this lands actually receive a gates run, since the failure mode being fixed is a PR that gets no run at all and therefore no red. Then confirm a second concurrent PR does not conflict with it on the report file."
+  }
+}

@@ -7,10 +7,15 @@ Three layers of verification:
   2. Grounding — file:line references verified against real code via AST
   3. Depth — minimum word counts, break-it uniqueness, cross-references
 
+The report is per-branch and committed at .qa/reports/<branch-slug>.json. Omit
+the path and it is resolved for the current branch by qa_report_path — the one
+definition every consumer shares, so the hook, the workflow and this gate cannot
+end up checking different files.
+
 Usage:
-    python scripts/qa_gate.py .qa_report.json
-    python scripts/qa_gate.py .qa_report.json --diff-files file1.py file2.py
-    python scripts/qa_gate.py .qa_report.json --project-dir /path/to/repo
+    python scripts/qa_gate.py
+    python scripts/qa_gate.py --diff-files file1.py file2.py
+    python scripts/qa_gate.py .qa/reports/fix__thing.json --project-dir /path/to/repo
 
 Exit codes:
     0 = PASSED
@@ -26,6 +31,12 @@ import re
 from pathlib import Path
 from typing import Optional
 
+# Same directory, but this file is run as a script from the repo root and is
+# also loaded by tests via importlib, so neither cwd nor a package context can
+# be relied on to find it.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import qa_report_path  # noqa: E402  (path must be set first)
+
 TIER_REQUIREMENTS = {
     "critical": {
         "pre_impl_fields": ["existing_data", "assumption_mismatch", "new_vs_existing",
@@ -34,6 +45,7 @@ TIER_REQUIREMENTS = {
         "min_break_it": 5,
         "min_words_per_field": 8,
         "sections_required": [1, 2, 3, 4, 5, 6, 7],
+        "require_falsifiable_check": True,
     },
     "standard": {
         "pre_impl_fields": ["existing_data", "assumption_mismatch", "new_vs_existing"],
@@ -41,6 +53,7 @@ TIER_REQUIREMENTS = {
         "min_break_it": 3,
         "min_words_per_field": 5,
         "sections_required": [1, 2, 3, 4, 5, 6, 7],
+        "require_falsifiable_check": True,
     },
     "minor": {
         "pre_impl_fields": [],
@@ -48,8 +61,107 @@ TIER_REQUIREMENTS = {
         "min_break_it": 1,
         "min_words_per_field": 3,
         "sections_required": [1, 6, 7],
+        # Deliberately NOT required at minor tier: a copy tweak has no meaningful
+        # falsifiable check, and a gate that fires on every trivial change gets
+        # dismissed by muscle memory within a week (DQ-34's alarm-fatigue lesson).
+        # Rare and meaningful, or it protects nothing.
+        "require_falsifiable_check": False,
     },
 }
+
+# ─── Falsifiability gate ─────────────────────────────────────────────────────
+# ORIGIN: 2026-08-01. DQ-30 was marked "Fixed" on a "0% drift" check, which
+# re-ran the tagger and compared its output to the stored value. That is a
+# SELF-COMPARISON: when the code itself is wrong, drift is 0% and the data is
+# still broken. It could not fail. 241 rows — 112 live and served — survived it.
+# The project already had the rule in writing ("a completion check must be able
+# to fail"); it did not prevent this, because a rule in a document is not
+# enforcement. This is the enforcement.
+#
+# It asks the one question a tautological check cannot answer:
+#   WHAT COMMAND, AND WHAT MAKES IT GO RED?
+
+_SELF_COMPARISON_RE = re.compile(
+    # 1. The word itself.
+    r"\bdrift\b"
+    # 2. Comparing output explicitly to itself.
+    r"|compare[sd]?\s+(?:the\s+)?(?:code|output|result)s?\s+(?:to|against|with)\s+"
+    r"(?:it|its|itself|the\s+same)"
+    r"|matches?\s+(?:the\s+)?(?:current|existing)\s+(?:code|output)"
+    # 3. The DESCRIBED form, which the first version missed and a test caught:
+    #    re-run / recompute, then compare the result to what is already stored.
+    #    Note this deliberately requires a re-derivation verb — comparing STORED
+    #    data against an external AUTHORITY ("stored zone codes absent from
+    #    lep_zone_coverage") is the correct pattern and must not be flagged.
+    r"|(?:re-?run|re-?comput\w*|re-?generat\w*|re-?derive\w*)"
+    r".{0,60}?(?:compare\w*|differs?|diff\b|match\w*|same)"
+    r".{0,40}?(?:stored|existing|previous|current|already)",
+    re.I | re.S,
+)
+
+_LOOKS_RUNNABLE_RE = re.compile(
+    r"(python|pytest|npx|npm|psql|bash|\./|SELECT\b|\.py\b|\.sh\b|\.ts\b)", re.I
+)
+
+
+def check_falsifiable(report: dict, reqs: dict) -> list[str]:
+    """Require a named check plus the condition under which it FAILS.
+
+    This is NOT a tautology detector — that is undecidable in general. It
+    enforces the two things whose absence let the original defect through: a
+    runnable command, and an explicit red condition stated separately from the
+    command itself.
+    """
+    errors: list[str] = []
+    if not reqs.get("require_falsifiable_check"):
+        return errors
+
+    fc = report.get("falsifiable_check")
+    if not isinstance(fc, dict) or not fc:
+        return [
+            "Section 1 falsifiable_check: MISSING. Add "
+            '"falsifiable_check": {"command": "<what you ran>", '
+            '"fails_when": "<what makes it go red>"}. '
+            "Ask: if the bug were still present, would this go red? If not, it is "
+            "not a verification. (Origin: DQ-30 was marked Fixed on a check that "
+            "could not fail.)"
+        ]
+
+    command = str(fc.get("command", "")).strip()
+    fails_when = str(fc.get("fails_when", "")).strip()
+
+    errors.extend(validate_non_empty(command, "Section 1 falsifiable_check.command"))
+    errors.extend(validate_non_empty(fails_when, "Section 1 falsifiable_check.fails_when"))
+    if not command or not fails_when:
+        return errors
+
+    if not _LOOKS_RUNNABLE_RE.search(command):
+        errors.append(
+            f"Section 1 falsifiable_check.command ('{command[:60]}') does not look "
+            "runnable. Name the actual command or query, not a description of one — "
+            "a check nobody can execute is not a check."
+        )
+
+    errors.extend(validate_min_words(
+        fails_when, "Section 1 falsifiable_check.fails_when", reqs["min_words_per_field"]
+    ))
+
+    if _SELF_COMPARISON_RE.search(command) or _SELF_COMPARISON_RE.search(fails_when):
+        errors.append(
+            "Section 1 falsifiable_check: reads as a SELF-COMPARISON (re-running the "
+            "code and checking it agrees with itself). That cannot fail when the code "
+            "is wrong — exactly how DQ-30 was marked Fixed while 112 live rows stayed "
+            "broken. Compare against an external authority instead (e.g. "
+            "lep_zone_coverage for zone codes), or state why this is not self-referential."
+        )
+
+    if fails_when.strip().lower() == command.strip().lower():
+        errors.append(
+            "Section 1 falsifiable_check: fails_when merely repeats command. State the "
+            "CONDITION that turns it red, not the command again."
+        )
+
+    return errors
 
 FILE_LINE_PATTERN = re.compile(r'([\w/\\._-]+):(\d+)')
 
@@ -1058,6 +1170,232 @@ def scan_diff_for_untyped_method_calls(
     return errors
 
 
+# ─── Layer 10: Doc-claim check (OBSERVATION MODE — reports, blocks nothing) ──
+#
+# ORIGIN: 2026-08-07/08. Four times in two days a session acted on a false
+# premise that came from a DOCUMENT, not from code: services/CLAUDE.md's Threat
+# Radar claim, "13/16 human confirmations" that were zero, a pre-written APRA
+# test that never existed, and a v1.2 changelog entry for a module whose only
+# version is 1.1. Every layer above this one checks CODE. Nothing checked the
+# documents describing it.
+#
+# Scope is the tractable half only — a resolvable path, a version literal
+# attributed to a code constant, a dependency that is actually installed. It
+# cannot decide "Threat Radar uses this pipeline" or "13 people confirmed", and
+# the messages say so rather than implying broader cover.
+#
+# OBSERVATION MODE, deliberately. Findings print; `passed` is untouched. This
+# project's own incident log holds a lint that blocked a routine merge on day
+# one (DQ-34, alarm fatigue), so blocking is earned with an observed
+# false-positive rate, not assumed. See the PR body for what would earn it.
+
+
+def _load_doc_claims():
+    """Load the sibling module by path.
+
+    qa_gate.py is executed both as a script (scripts/ on sys.path) and via
+    importlib.util.spec_from_file_location from tests (scripts/ NOT on
+    sys.path), so a plain `import doc_claims` works in one case and not the
+    other. Returning None on failure is correct here and only here: an
+    observation-mode check that cannot load must not break the gate that
+    surrounds it.
+    """
+    try:
+        import importlib.util
+
+        path = Path(__file__).resolve().parent / "doc_claims.py"
+        spec = importlib.util.spec_from_file_location("qa_gate_doc_claims", path)
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        return module
+    except Exception:  # noqa: BLE001 — observation mode never breaks the gate
+        return None
+
+
+def observe_doc_claims(
+    report_path: str | None, diff_files: list[str] | None, project_dir: str | None
+) -> list[str]:
+    """Return human-readable observations. NEVER returns blocking errors."""
+    if not project_dir:
+        return ["doc-claim check: SKIPPED — no project dir (unknowable, not a pass)"]
+
+    module = _load_doc_claims()
+    if module is None:
+        return [
+            "doc-claim check: SKIPPED — scripts/doc_claims.py could not be loaded "
+            "(unknowable, not a pass)"
+        ]
+
+    # Diff-scoped, like every other file scanner here: the whole 124-doc corpus
+    # carries inherited findings, and re-printing them on an unrelated change is
+    # how a check gets ignored.
+    docs = sorted({f for f in (diff_files or []) if f.endswith(".md")})
+    reports = [report_path] if report_path else []
+    if not docs and not reports:
+        return []
+
+    try:
+        result = module.scan(project_dir, docs=docs, reports=reports)
+    except Exception as exc:  # noqa: BLE001
+        return [f"doc-claim check: SKIPPED — scan raised {type(exc).__name__}: {exc}"]
+
+    baseline = module.load_baseline(Path(project_dir))
+    known = set(baseline.get("fingerprints") or []) if baseline else set()
+    fresh = [v for v in result.violations if v.fingerprint() not in known]
+
+    out: list[str] = []
+    for v in fresh:
+        out.append(f"doc-claim {v.render()}")  # render() already carries the kind
+    for note in result.notes:
+        out.append(f"doc-claim ? {note}")
+    if fresh:
+        carried = len(result.violations) - len(fresh)
+        out.append(
+            f"doc-claim: {len(fresh)} new finding(s), {carried} already in the "
+            f"baseline. Observation mode — nothing is blocked. Scope is paths, "
+            f"version literals and dependency declarations only; a semantic "
+            f"claim about behaviour is NOT checked and a clean run does not mean "
+            f"the doc is true."
+        )
+    return out
+
+
+# ─── Commit-hash binding ─────────────────────────────────────────────────────
+
+
+def _git_query(
+    args: list[str], project_dir: str, timeout: int = 5
+) -> tuple[Optional[int], str]:
+    """Run a git command.
+
+    Returns:
+        ``(returncode, stdout)``, or ``(None, "")`` when git could not be run at
+        all. The None is load-bearing: "git is unusable" and "git said no" are
+        different facts, and collapsing them is how a gate starts failing open
+        without anyone noticing.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            cwd=project_dir or ".",
+            # A hook exports GIT_DIR and it OVERRIDES cwd, so without this the
+            # binding would be checked against the hook's repository rather than
+            # the one being validated. See qa_report_path.git_env.
+            env=qa_report_path.git_env(),
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return None, ""
+    return proc.returncode, proc.stdout.strip()
+
+
+def _is_ancestor(sha: str, ref: str, project_dir: str) -> Optional[bool]:
+    """Whether ``sha`` is an ancestor of ``ref``.
+
+    Returns None when git could not answer. ``merge-base --is-ancestor`` uses 0
+    for yes and 1 for no; any other code is an error (a bad ref, a corrupt
+    object) and must NOT be read as "no".
+    """
+    code, _ = _git_query(["merge-base", "--is-ancestor", sha, ref], project_dir)
+    if code == 0:
+        return True
+    if code == 1:
+        return False
+    return None
+
+
+def check_commit_hash_binding(report_hash: str, project_dir: str) -> list[str]:
+    """Verify the report names one of THIS BRANCH'S OWN commits.
+
+    A branch's own commit is an ancestor of HEAD that is not already an ancestor
+    of ``origin/main``. That is the whole test, and it catches every case the
+    old rule was written for:
+
+    ==============================  ==========================  ========
+    report names                    ancestry                    verdict
+    ==============================  ==========================  ========
+    a commit on another branch      not an ancestor of HEAD     caught
+    a commit already on main        an ancestor of origin/main  caught
+    a hash that resolves to nothing does not resolve            caught
+    one of this branch's commits    both conditions hold        passes
+    ==============================  ==========================  ========
+
+    WHY NOT "the last 5 commits"
+    ----------------------------
+    The previous rule required the hash to appear in ``git log --format=%h -5``.
+    A **squash merge destroys the commit the report names**: the squash is a new
+    hash and the branch's own commits never enter main's history. So main
+    permanently carried a ``commit_hash`` present in no history, and every
+    branch cut from main inherited it and failed the gate before it had done
+    anything wrong. Landing five PRs on 2026-08-10 needed a manual re-stamp on
+    each, and amending the stamp into the commit it names is self-referential --
+    the amend changes the hash just recorded. The rule was unsatisfiable by
+    construction; ancestry is satisfiable by construction.
+
+    It is also robust where the old rule was brittle: ``merge-base
+    --is-ancestor`` operates on resolved SHAs, so an abbreviation of any length
+    works. The old string-compare against ``%h`` broke whenever git chose a
+    different abbreviation length on either side.
+
+    Args:
+        report_hash: The ``commit_hash`` field from the report.
+        project_dir: Repository root.
+
+    Returns:
+        Error strings; empty when the binding holds, and empty when git cannot
+        answer -- an unusable git or an absent ``origin/main`` is an
+        infrastructure fact, not evidence about the report, and blocking on it
+        would make the gate red in every environment without a remote.
+    """
+    code, sha = _git_query(
+        ["rev-parse", "--verify", "--quiet", f"{report_hash}^{{commit}}"], project_dir
+    )
+    if code is None:
+        return []
+    if code != 0 or not sha:
+        return [
+            f"Commit hash '{report_hash}' names no commit in this repository. "
+            f"Re-stamp it: git rev-parse --short HEAD"
+        ]
+
+    # Does this branch have any commits of its own? On main -- or on a branch
+    # that is fully merged -- it does not, and the question is unanswerable
+    # rather than failed. Not skipping here is what made every push to main red
+    # under the old rule, and a gate that can only ever be red teaches people
+    # that red means nothing.
+    code, own = _git_query(["rev-list", "--count", "origin/main..HEAD"], project_dir)
+    if code is None or code != 0 or own.strip() in ("", "0"):
+        return []
+
+    on_branch = _is_ancestor(sha, "HEAD", project_dir)
+    if on_branch is None:
+        return []
+    if not on_branch:
+        return [
+            f"Commit hash '{report_hash}' is not an ancestor of HEAD — this "
+            f"report belongs to a different branch. Re-stamp it: "
+            f"git rev-parse --short HEAD"
+        ]
+
+    already_on_main = _is_ancestor(sha, "origin/main", project_dir)
+    if already_on_main is None:
+        return []
+    if already_on_main:
+        return [
+            f"Commit hash '{report_hash}' names a commit already on origin/main, "
+            f"not one of this branch's own {own} commit(s) — the report is "
+            f"inherited or stale. Re-stamp it: git rev-parse --short HEAD"
+        ]
+    return []
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -1087,6 +1425,8 @@ def validate_report(
         errors.append("Section 1: missing tier justification")
     if not files:
         errors.append("Section 1: no files listed")
+
+    errors.extend(check_falsifiable(report, reqs))
 
     # --- Section 2: Pre-implementation ---
     if 2 in reqs["sections_required"]:
@@ -1180,25 +1520,13 @@ def validate_report(
             )
 
     # --- Commit hash binding: detect stale/copied reports ---
-    # The report hash must match a recent commit on the branch (within last 5).
-    # This avoids the chicken-and-egg problem: committing the report changes HEAD,
-    # so we accept any hash from the recent branch history, not just HEAD exactly.
+    # The report must name one of THIS BRANCH'S OWN commits — an ancestor of
+    # HEAD that is not already an ancestor of origin/main. See
+    # check_commit_hash_binding for why "within the last 5 commits" was
+    # unsatisfiable by construction after a squash merge.
     report_hash = report.get("commit_hash", "")
     if report_hash:
-        try:
-            result = subprocess.run(
-                ["git", "log", "--format=%h", "-5"],
-                capture_output=True, text=True, timeout=5,
-                cwd=project_dir or "."
-            )
-            recent_hashes = result.stdout.strip().split("\n")
-            if recent_hashes and report_hash not in recent_hashes:
-                errors.append(
-                    f"Commit hash mismatch: report says '{report_hash}' but recent "
-                    f"commits are {recent_hashes[:3]}. Regenerate the QA report."
-                )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass  # Can't verify — don't block
+        errors.extend(check_commit_hash_binding(report_hash, project_dir or "."))
     elif tier in ("standard", "critical"):
         errors.append(
             "Missing commit_hash in report. Add \"commit_hash\": \"<short-hash>\" "
@@ -1268,17 +1596,19 @@ def validate_report(
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/qa_gate.py .qa_report.json [--diff-files f1 f2 ...] [--project-dir path]")
-        sys.exit(1)
-
-    report_path = sys.argv[1]
+    # The report path is optional. Omitted, it is resolved for the current
+    # branch by qa_report_path — the single definition every caller shares, so
+    # the hook, the workflow and this gate cannot drift onto different files.
+    positional = sys.argv[1:2]
+    explicit_path = (
+        positional[0] if positional and not positional[0].startswith("--") else None
+    )
 
     # Parse optional args
     diff_files = None
     project_dir = None
 
-    args = sys.argv[2:]
+    args = sys.argv[2:] if explicit_path else sys.argv[1:]
     i = 0
     while i < len(args):
         if args[i] == "--diff-files":
@@ -1298,8 +1628,13 @@ def main():
 
     # Auto-detect project dir if not specified
     if not project_dir:
-        # Walk up from report file to find .git (dir or file — worktrees use a file)
-        check = os.path.dirname(os.path.abspath(report_path))
+        # Walk up from the report file — or from cwd when the path is still to
+        # be resolved — to find .git (dir or file; worktrees use a file)
+        check = (
+            os.path.dirname(os.path.abspath(explicit_path))
+            if explicit_path
+            else os.path.abspath(".")
+        )
         for _ in range(10):
             if os.path.exists(os.path.join(check, ".git")):
                 project_dir = check
@@ -1309,9 +1644,23 @@ def main():
                 break
             check = parent
 
-    if not os.path.exists(report_path):
-        print(f"QA-GATE: FAILED — report file not found: {report_path}")
+    resolved = qa_report_path.resolve(project_dir or ".", explicit_path)
+    if resolved is None:
+        if explicit_path:
+            print(f"QA-GATE: FAILED — report file not found: {explicit_path}")
+        else:
+            try:
+                expected = qa_report_path.target_path(project_dir or ".")
+                where = os.path.relpath(expected, project_dir or ".")
+            except (qa_report_path.BranchUnknown, ValueError) as exc:
+                where = f"<undetermined: {exc}>"
+            print(
+                f"QA-GATE: FAILED — no QA report for this branch.\n"
+                f"  Expected: {where}\n"
+                f"  Create it from scripts/qa_report_template.json."
+            )
         sys.exit(1)
+    report_path = str(resolved)
 
     try:
         with open(report_path, "r", encoding="utf-8") as f:
@@ -1321,6 +1670,15 @@ def main():
         sys.exit(1)
 
     passed, errors, summary = validate_report(report, diff_files, project_dir)
+
+    # Observation mode. Printed before the verdict so it is visible on a pass
+    # too, and deliberately NOT folded into `passed` or `errors`.
+    observations = observe_doc_claims(report_path, diff_files, project_dir)
+    if observations:
+        print("QA-GATE: doc-claim observations (not blocking):")
+        for note in observations:
+            print(f"  ~ {note}")
+        print()
 
     if passed:
         print("QA-GATE: PASSED")

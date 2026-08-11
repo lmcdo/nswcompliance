@@ -1,6 +1,3 @@
-import pytest
-pytestmark = pytest.mark.stale
-
 """Systematic testing of dev type filtering across all 3 councils"""
 import requests
 import json

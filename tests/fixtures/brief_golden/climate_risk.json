@@ -9,82 +9,67 @@
     "zone": "R3"
   },
   "output": {
-    "score": 1,
-    "band": "Low",
     "lat": -33.86382,
     "lng": 151.10586,
     "hazards": [
       {
         "hazard": "flood",
-        "raw_score": 0.0,
-        "weight": 0.167,
-        "weighted_score": 0.0,
         "present": false,
         "detail": "Flood planning layer: No",
         "confidence": "high",
         "data_source": "NSW Planning Portal EPI Flood layers via spatial_overlays",
-        "available": true
+        "available": true,
+        "confidence_reason": "No intersection in the ingested EPI flood overlay. Overlay ingest is geographically partial, so absence here does not distinguish unmapped-at-point from layer-not-ingested (absence census S1/S3); no secondary source disambiguates flood."
       },
       {
         "hazard": "bushfire",
-        "raw_score": 0.0,
-        "weight": 0.167,
-        "weighted_score": 0.0,
         "present": false,
         "detail": "Bushfire Prone Land: No",
         "confidence": "high",
         "data_source": "NSW RFS Bushfire Prone Land Map via spatial_overlays",
-        "available": true
+        "available": true,
+        "confidence_reason": "Ingested overlay has no intersection and the live RFS point query agrees: not mapped as bushfire prone."
       },
       {
         "hazard": "coastal",
-        "raw_score": 0.0,
-        "weight": 0.167,
-        "weighted_score": 0.0,
         "present": false,
         "detail": "Coastal hazard layers: None",
         "confidence": "high",
         "data_source": "SEPP (Resilience and Hazards) 2021 via spatial_overlays",
-        "available": true
+        "available": true,
+        "confidence_reason": "No intersection in the ingested SEPP R&H coastal layers; ingest is geographically partial (absence census S1/S3)."
       },
       {
         "hazard": "landslide",
-        "raw_score": 0.0,
-        "weight": 0.165,
-        "weighted_score": 0.0,
         "present": false,
         "detail": "Landslide risk area: No",
         "confidence": "high",
         "data_source": "NSW Planning Portal EPI Landslide Risk via spatial_overlays",
-        "available": true
+        "available": true,
+        "confidence_reason": "No intersection in the ingested EPI landslide overlay; ingest is geographically partial (absence census S1/S3)."
       },
       {
         "hazard": "fire_history",
-        "raw_score": 0.0,
-        "weight": 0.167,
-        "weighted_score": 0.0,
         "present": false,
         "detail": "Historical fire events at location: 0",
         "confidence": "high",
         "data_source": "NPWS Fire History via spatial_overlays",
-        "available": true
+        "available": true,
+        "confidence_reason": "No fire-history intersection in the ingested NPWS layer; ingest is geographically partial (absence census S1/S3)."
       },
       {
         "hazard": "heat",
-        "raw_score": 0.0,
-        "weight": 0.167,
-        "weighted_score": 0.0,
         "present": false,
         "detail": "NARCliM data not available for this location",
         "confidence": "low",
-        "data_source": "NARCliM 2.0 (AdaptNSW) \u2014 unavailable",
-        "available": false
+        "data_source": "NARCliM 2.0 (AdaptNSW) — unavailable",
+        "available": false,
+        "confidence_reason": "NARCliM raster returned no value — outside the model domain or grid files not present; heat trajectory could not be determined."
       }
     ],
-    "interaction_bonus": 0.0,
     "methodology_version": "1.1",
     "data_date": "2026-05-18",
-    "disclaimer": "Climate Risk Awareness Score v1.0. Based on government-authoritative spatial data and NARCliM 2.0 climate projections. This is not financial, insurance, or property advice. Does not account for property-specific construction, mitigation works, or individual vulnerability. Not a guarantee of future conditions.",
+    "disclaimer": "Climate Risk Awareness Score v1.1. Based on government-authoritative spatial data and NARCliM 2.0 climate projections. This is not financial, insurance, or property advice. Does not account for property-specific construction, mitigation works, or individual vulnerability. Not a guarantee of future conditions.",
     "narclim": null
   }
 }

@@ -70,6 +70,31 @@ def _shadow_result(height_source: str, height_m: float = 9.0, noon_fraction: flo
 # ---------------------------------------------------------------------------
 
 class TestShadowRowProvenance:
+    def test_adg_none_renders_not_assessed_never_a_verdict(self):
+        """THE fix-1 PDF pin (output-grounding, 2026-08-03): adg_compliant None
+        (noon scenario missing/errored) must render "Not assessed" — checked
+        BEFORE the height-provenance branches so no numeric noon-shadow claim
+        is made either. The old code fell through to "ADG concern". FAILS on
+        pre-change code."""
+        text, style, source = build_shadow_row(
+            _shadow_result("spatial_overlays", adg_compliant=None)
+        )
+        assert text.startswith("Not assessed")
+        assert "No shadow verdict" in text
+        assert "ADG concern" not in text
+        assert "%" not in text            # no numeric claim from an errored noon
+        assert style == "note"
+
+    def test_adg_none_with_default_height_makes_no_percent_claim(self):
+        """Even on the assumed-envelope path, adg None must short-circuit
+        before the '0% at Jun 21 noon' wording (the old order made that claim
+        from an errored scenario)."""
+        text, style, source = build_shadow_row(
+            _shadow_result("default", adg_compliant=None)
+        )
+        assert text.startswith("Not assessed")
+        assert "%" not in text
+
     def test_default_height_never_claims_lep(self):
         """G1-1: default envelope → no LEP attribution anywhere in the row."""
         text, style, source = build_shadow_row(_shadow_result("default"))

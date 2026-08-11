@@ -487,8 +487,40 @@ async function handleDcpProvisionLookup(
   context: PropertyContext
 ): Promise<DataResponse> {
   try {
+    // DQ-31, same class as the Housing SEPP handler below: this sent
+    // `context.zone || 'R2'`, so when the zone was unknown the AI answered with
+    // R2's DCP provisions and presented them as this property's.
+    //
+    // Omitting the param is NOT sufficient either — cross-review caught that.
+    // Without a zone the endpoint applies no zone filter, so zone-specific rows
+    // for OTHER zones come back and get presented as applicable here. That is the
+    // same fabrication with a wider net.
+    //
+    // An unknown zone means the question cannot be answered for this property, so
+    // say that, exactly as the Housing SEPP handler does.
+    // Zone AND council scope are both required. Cross-review caught that zone
+    // alone is not enough: without a council the endpoint can return another
+    // council's provisions for the same zone, and they read as applicable here.
+    //
+    // Written as explicit guards rather than a collected list so TypeScript
+    // narrows `context.zone` to a string below.
+    const hasCouncil = Boolean(context.lga || context.formerCouncil);
+    if (!context.zone || !hasCouncil) {
+      const missingScope = [!context.zone && 'zone', !hasCouncil && 'council']
+        .filter(Boolean).join(' and ');
+      return {
+        success: false,
+        category: 'factual_lookup',
+        data: null,
+        sources: [],
+        error: `The ${missingScope} for this property is not known, and DCP `
+          + `provisions are scoped by both. Not assessed — this is not a finding `
+          + `that no ${topic} provisions apply.`,
+      };
+    }
+
     const params = new URLSearchParams({
-      zone: context.zone || 'R2',
+      zone: context.zone,
       topic: topic, // Topics match v2_topic in regulatory_provisions
     });
     if (context.lga) params.set('lga', context.lga);
@@ -650,14 +682,41 @@ async function handlePermissibilityCheck(
  */
 async function handleHousingSeppCheck(context: PropertyContext): Promise<DataResponse> {
   try {
+    // DQ-31. This previously sent `zone || 'R2'`, `lotSize || 450`,
+    // `lotWidth || 12` and a hardcoded `isLMRArea: true`. Every one of those is a
+    // measurement of a SPECIFIC SITE, and every one was invented when the real
+    // value was missing — so an answer was produced for a property whose zone, lot
+    // size, width and LMR status were all unknown, and the LMR gate (the input the
+    // whole result turns on) was asserted in the claimant's favour.
+    //
+    // Missing inputs now stop the check instead of being filled in. An answer the
+    // user cannot act on is better than a confident one derived from defaults.
+    const missing = [
+      !context.zone && 'zone',
+      context.lotSize == null && 'lot size',
+      context.lotWidth == null && 'lot width',
+    ].filter(Boolean) as string[];
+
+    if (missing.length > 0) {
+      return {
+        success: false,
+        category: 'housing_sepp',
+        data: null,
+        sources: [],
+        error: `Housing SEPP eligibility needs ${missing.join(', ')} for this property. `
+          + `Not assessed — this is not a finding that the property is ineligible.`,
+      };
+    }
+
     const response = await fetch(`${API_BASE}/api/housing-sepp/eligibility`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        zoneCode: context.zone || 'R2',
-        lotSize: context.lotSize || 450,
-        lotWidth: context.lotWidth || 12,
-        isLMRArea: true,
+        zoneCode: context.zone,
+        lotSize: context.lotSize,
+        lotWidth: context.lotWidth,
+        // Omitted deliberately: this handler has no LMR-area source. The endpoint
+        // now treats an absent value as NOT ASSESSED rather than as `true`.
       }),
     });
 

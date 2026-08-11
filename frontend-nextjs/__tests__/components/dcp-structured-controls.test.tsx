@@ -74,7 +74,7 @@ describe('structured-controls API source — classification is complete', () => 
     for (const t of ['max_site_coverage', 'max_height', 'fencing_height_max', 'driveway_gradient']) {
       expect(src).toContain(`'${t}'`);
     }
-    expect(src).toMatch(/MAXIMUM_CONTROL_TYPES\.has\(row\.control_type\)/);
+    expect(src).toMatch(/MAXIMUM_CONTROL_TYPES\.has\(row\.semantic_type\)/);
     // Label backstop: a "Maximum …" label also classifies as a ceiling.
     expect(src).toMatch(/\/\^Maximum\\b\//);
     expect(src).toMatch(/direction\b/);

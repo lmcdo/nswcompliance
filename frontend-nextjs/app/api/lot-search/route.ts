@@ -192,9 +192,15 @@ async function handleSearch(req: LotSearchInput) {
       lot_area_m2: r.lot_area_m2,
       lep_height_m: r.lep_height_m,
       lep_fsr: r.lep_fsr,
-      heritage: r.heritage ?? false,
-      flood_prone: r.flood_prone ?? false,
-      bushfire_prone: r.bushfire_prone ?? false,
+      // NULL means the overlay was never resolved for this lot. It is not
+      // "no heritage / not flood prone / not bushfire prone". Coercing it with
+      // `?? false` served three clean hazard flags off a lookup that never
+      // happened — the same defect as the flood verdict (#892), on three
+      // fields at once. Null passes through; the caller decides how to render
+      // an unresolved overlay, and must not render it as a clearance.
+      heritage: r.heritage ?? null,
+      flood_prone: r.flood_prone ?? null,
+      bushfire_prone: r.bushfire_prone ?? null,
       bushfire_category: r.bushfire_category,
       ca_dev_type: r.ca_dev_type,
       ca_realistic_gfa_m2: r.ca_realistic_gfa_m2,

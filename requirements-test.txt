@@ -6,3 +6,86 @@ fastapi>=0.139.2,<1.0.0
 hypothesis>=6.0
 python-dotenv>=1.2.2
 httpx>=0.27.0
+
+# boto3: tests/test_columnar_reader.py imports the module under test, which imports
+# boto3 at module scope. It passed locally only because a dev checkout also has
+# requirements.txt installed — this file claims to be the pytest minimum and was
+# understating it. Pure Python, installs in seconds.
+boto3>=1.34
+# pdfplumber: same chain — tests/test_columnar_reader.py imports it transitively.
+# Pinned range matches scripts/requirements-extract.txt.
+pdfplumber>=0.10
+# numpy: conftest_mocks falls back to a MagicMock when numpy is absent, and
+# tests/test_granny_flat_geometry.py then dies on "numpy.__spec__ is not set".
+numpy>=1.26
+# psycopg2-binary: scripts/validate_schema_contract.py and
+# scripts/validate_zone_code_validity.py read the live catalog in CI. Wheel, no
+# system libs. Deliberately NOT installing requirements.txt, which drags torch,
+# opencv, geopandas and rasterio into a job that needs none of them.
+psycopg2-binary>=2.9
+# rasterio + pyproj: tests/test_flood_truth.py writes real 2x2 GeoTIFFs to sample
+# them. conftest_mocks falls back to a MagicMock when rasterio is missing, and
+# pytest.importorskip then FINDS that mock — so those tests fail rather than skip.
+# Installing the real library is the fix that keeps them actually running. Both
+# ship manylinux wheels; no system GDAL needed on ubuntu-latest.
+# NOTE: this could not be verified on the author's Windows machine — rasterio's
+# DLL load fails there under a long venv path (MAX_PATH), unrelated to CI.
+rasterio>=1.3
+pyproj>=3.6,<4
+# PyMuPDF: tests/test_dcp_as_at.py::TestExtractorSelectionRules generates real
+# PDFs to exercise the extractor-selection rules, and the module under test
+# (scripts/extract_dcp_stated_dates.py:95,139) opens them with fitz. Absent
+# here, those four tests died on ModuleNotFoundError and -x stopped the whole
+# run — main was red from 2026-08-03 to 2026-08-06 and ~1,800 tests never
+# executed. Pinned to match requirements.txt:120. Ships an abi3 manylinux
+# wheel (pymupdf-1.28.0-cp310-abi3-manylinux_2_28_x86_64.whl) that covers
+# CI's Python 3.12 with no system libraries.
+PyMuPDF==1.28.0
+# icontract: five tests in tests/test_flood_truth.py assert the flood
+# postconditions are actually attached. Without it they skipped — silently, and
+# in every environment — so the contracts they guard went unverified from the
+# day they were written. Matches the pin now in services/requirements.txt.
+icontract>=2.7.3
+
+# ---------------------------------------------------------------------------
+# Shadow calibration (lane 2, 2026-08-07)
+# ---------------------------------------------------------------------------
+# suncalc: what PRODUCTION uses for solar position (services/solar_position.py),
+# and the same function pybdshadow calls internally to cast the shadow polygon.
+# tests/test_shadow_calibration.py imports it directly. Pure Python + numpy.
+suncalc>=0.1.3
+#
+# pvlib: the INDEPENDENT REFERENCE for tests/test_shadow_calibration.py — NREL's
+# Solar Position Algorithm, a different algorithm by different authors from the
+# Meeus/SunCalc formulation production uses. 122 assertions compare the two.
+#
+# ⚠ TEST-ONLY, AND IT MUST STAY THAT WAY. pvlib is deliberately ABSENT from
+# services/requirements.txt (the container manifest) so it cannot reach
+# production. It was named as our method in the shadow disclaimer, the paid PDF
+# and marketing copy for months while never being imported anywhere in the repo;
+# PR #878 and migration 064 removed those claims. Nothing may reintroduce them.
+# Its ONLY legitimate use is as the yardstick a test measures us against.
+#
+# Declared HERE rather than in requirements.txt because this is the file CI
+# actually installs (.github/workflows/gates.yml:66,151,244). requirements.txt
+# already listed pvlib==0.15.2 and CI never read it — a library declared in a
+# file nothing installs is exactly what turned four flood postconditions into
+# decoration for months (#880).
+pvlib>=0.15.2
+
+# shapely: the census counted 13 skips for it, but only 12 are tests — all in
+# tests/test_solar_yield.py. The thirteenth entry is a FILE,
+# tests/test_sydney_water_gsp_ingest.py, which calls pytest.importorskip at
+# module level and therefore never collects its 28 tests. The ratchet counted
+# that whole file as one skip, so 28 dark tests were logged with the weight of
+# one — under-reported 28-fold by the guard built to make dark tests visible
+# (#879). The module covers the price parse, the status derivation that drives
+# user-facing serviceability wording, and the geometry coercion — the functions
+# a silent bug would corrupt. All 28 pass. Pinned to match requirements.txt:151.
+# Ships manylinux wheels, so no system libraries are needed on CI.
+shapely==2.1.2
+
+# matplotlib: the missing third of the "numpy + matplotlib + PIL" skip group —
+# numpy and pillow are already in CI's transitive closure, matplotlib was not,
+# so the 5 hillshade render tests never ran. Pinned to match requirements.txt:76.
+matplotlib==3.11.0

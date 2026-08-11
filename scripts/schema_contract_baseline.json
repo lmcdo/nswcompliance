@@ -1,0 +1,77 @@
+{
+  "_comment": "Known invalid SQL references, accepted so the gate can be enforced today. This list may only SHRINK: a new entry fails CI, and an entry that no longer occurs ALSO fails CI, so it gets deleted rather than lingering as a permanent amnesty. History: opened at 18 entries 2026-08-01; the 8 tod/parking-rates entries were fixed in the same PR (repointed onto dcp_setback_controls) and removed, leaving 10.",
+  "_generated": "2026-08-01",
+  "_triage_method": "Reachability traced by import/render graph, not assumed. Frontend: API route -> importing component -> is that component ever rendered in JSX. Python: module -> importer -> is it in the Dockerfile.python entrypoint graph (uvicorn services.compliance_api_server:app). Every table/column absence confirmed individually against information_schema on the live database.",
+  "entries": [
+    {
+      "file": "frontend-nextjs/app/api/compliance/dcp-complete/route.ts",
+      "ref": "dcp_general_provisions",
+      "kind": "table",
+      "status": "dead-code",
+      "note": "Renamed to zz_legacy_dcp_general_provisions (1172 rows). Queried at STEP 1, marked ALWAYS, so the route 500s for every address. Its only caller, components/compliance/ComplianceDashboard.tsx, is never rendered ('<ComplianceDashboard' matches nothing; app/assessment/page.tsx renders ProvisionsByTocStructure). Fix = delete route + component, and correct app/assessment/README.md:39,45 which still documents it as the live right column."
+    },
+    {
+      "file": "frontend-nextjs/app/api/compliance/dcp-complete/route.ts",
+      "ref": "dcp_general_requirements",
+      "kind": "table",
+      "status": "dead-code",
+      "note": "Renamed to zz_legacy_dcp_general_requirements (3172 rows). Five branches query it. Same dead route as above."
+    },
+    {
+      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
+      "ref": "dcp_general_requirements",
+      "kind": "table",
+      "status": "dead-code",
+      "note": "Reached only via components/feedback/RequirementFeedback.tsx, which is rendered only by components/feedback/FeedbackDemo.tsx, which nothing renders."
+    },
+    {
+      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
+      "ref": "requirement_feedback",
+      "kind": "table",
+      "status": "dead-code",
+      "note": "No table of this name has ever existed in the catalog; requirement_votes is the nearest entry. Same dead chain."
+    },
+    {
+      "file": "frontend-nextjs/app/api/feedback/vote/route.ts",
+      "ref": "dcp_general_requirements",
+      "kind": "table",
+      "status": "dead-code",
+      "note": "Same dead chain via RequirementFeedback.tsx -> FeedbackDemo.tsx."
+    },
+    {
+      "file": "frontend-nextjs/app/api/provisions/for-property/route_RELEVANCE_DRAFT.ts",
+      "ref": "dcp_general_requirements",
+      "kind": "table",
+      "status": "dead-code",
+      "note": "Not a route: Next.js serves only route.ts, and nothing imports this file. An abandoned draft left in the tree. Fix = delete."
+    },
+    {
+      "file": "services/basix_compliance_checker.py",
+      "ref": "basix_provisions",
+      "kind": "table",
+      "status": "deployed",
+      "note": "In the deployed import graph: Dockerfile.python runs services.compliance_api_server, which imports enhanced_compliance_api, which imports this. Whether the query executes depends on which endpoint is called - NOT established here, so this is 'deployed', not 'LIVE'. Table has never existed in the catalog."
+    },
+    {
+      "file": "services/drawdown_verify.py",
+      "ref": "drawdown_verify_audits",
+      "kind": "table",
+      "status": "deployed",
+      "note": "Imported directly by services/compliance_api_server.py (the deployed entrypoint). Three references: one INSERT and two reads. Table absent from the catalog, so any drawdown audit write is lost."
+    },
+    {
+      "file": "services/sepp_quantitative_extractor.py",
+      "ref": "sepp_provisions",
+      "kind": "table",
+      "status": "deployed",
+      "note": "Reached via special_provisions_processor -> enhanced_compliance_api -> compliance_api_server. The catalog has sepp_structured_requirements and housing_sepp_standards, not sepp_provisions."
+    },
+    {
+      "file": "services/special_provisions_processor.py",
+      "ref": "special_provisions_registry",
+      "kind": "table",
+      "status": "deployed",
+      "note": "Reached via enhanced_compliance_api -> compliance_api_server. Table absent from the catalog."
+    }
+  ]
+}

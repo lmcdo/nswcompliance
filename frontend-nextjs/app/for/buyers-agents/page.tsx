@@ -63,7 +63,7 @@ const WORKFLOW_SECTIONS = [
         title: 'Shadow Risk Analyser',
         question: 'Will this property get overshadowed?',
         answer:
-          'Shadow modelled from the maximum-height building envelope permitted on adjacent lots, calculated on ADG solar access test dates. Know before your client loses their north-facing light.',
+          'Shadow modelled from a maximum-height building envelope placed immediately north of the lot, calculated on ADG solar access test dates. Know before your client loses their north-facing light.',
         href: '/reports/shadow',
         badge: '$39',
       },
