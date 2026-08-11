@@ -15,6 +15,15 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool';
 
+// jsdom 26 (jest-environment-jsdom 30) makes window.location non-configurable,
+// so Object.defineProperty(window, 'location', ...) throws. Navigate with the
+// real History API instead, which genuinely updates location.pathname/.search.
+// The reference is captured HERE, at module load, because beforeEach replaces
+// window.history with a mock - a later lookup would find the mock and the URL
+// would silently never change.
+const realReplaceState = window.history.replaceState.bind(window.history);
+const setTestUrl = (url: string) => realReplaceState({}, '', url);
+
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
@@ -140,10 +149,7 @@ async function runEligibilityCheck(result: typeof ELIGIBLE_RESULT) {
 beforeEach(() => {
   global.fetch = jest.fn();
   // jsdom doesn't implement window.location.href assignment
-  Object.defineProperty(window, 'location', {
-    writable: true,
-    value: { href: 'http://localhost/canibuildit', search: '', pathname: '/canibuildit' },
-  });
+  setTestUrl('/canibuildit');
   Object.defineProperty(window, 'history', {
     writable: true,
     value: { replaceState: jest.fn() },
