@@ -146,7 +146,17 @@ def assign_overlays_for_lga(conn, lga_name: str, dry_run: bool = False) -> int:
         SELECT DISTINCT ON (c.lotidstring)
             c.lotidstring,
             %s,
-            COALESCE(c.planlotarea, c.shape_area),
+            -- NOT shape_area. That column is an area computed on the flat Web
+            -- Mercator projection, which stretches distance by 1/cos(latitude)
+            -- and therefore area by 1/cos^2(latitude) -- about +45% in Sydney
+            -- and worse further south. Measured 2026-08-10 over a 5,000-lot
+            -- sample: shape_area/true = 1.4390, and multiplying by cos^2(lat)
+            -- brings it to 1.0028, which identifies the projection exactly.
+            -- planlotarea is the surveyed figure and is already correct
+            -- (1.0003 of true on the same sample), so it stays the preferred
+            -- source; only the fallback changes. 79% of lots have no
+            -- planlotarea and took the inflated fallback.
+            COALESCE(c.planlotarea, ST_Area(c.geom::geography)),
             c.urbanity,
             c.geom
         FROM nsw_cadastre_lots c
@@ -751,7 +761,23 @@ def compute_constraints_for_lga(
         return _detect_sepp_lep_overrides(sepp, height_m, fsr)
 
     total_computed = 0
-    offset = 0
+    # KEYSET CURSOR. Without it this loop degrades on large LGAs: each batch
+    # re-scans every row it has already stamped looking for the next unstamped
+    # one, so cost grows with progress. Measured 2026-08-10 against production:
+    # small LGAs ran at ~490 lots/s (24,903 in 51s) while a 102,934-lot LGA ran
+    # at ~23 lots/s and was still slowing (10k per 7min, then 10k per 10min).
+    # Indexes were fully present for both, so this is the scan, not index
+    # maintenance.
+    #
+    # Correctness: every row selected here is stamped computed_at = NOW() by the
+    # execute_values UPDATE below, so everything at or below the cursor is
+    # already done and this predicate only lets the index seek. A short batch
+    # still means the LGA is exhausted.
+    #
+    # It is also strictly SAFER than the unbounded version. If a row somehow
+    # never got stamped, the old loop would re-select it forever; the cursor
+    # advances past it instead.
+    cursor = ""
 
     while True:
         cur.execute("""
@@ -762,13 +788,15 @@ def compute_constraints_for_lga(
               AND zone_code IS NOT NULL
               AND lot_area_m2 > 0
               AND computed_at IS NULL
+              AND lotidstring > %s
             ORDER BY lotidstring
             LIMIT %s
-        """, (lga_overlay_name, batch_size))
+        """, (lga_overlay_name, cursor, batch_size))
 
         rows = cur.fetchall()
         if not rows:
             break
+        cursor = max(r[0] for r in rows)
 
         updates = []
         for lotid, area, zone, height_m, fsr, former_council, urbanity in rows:

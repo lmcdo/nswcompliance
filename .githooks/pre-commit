@@ -157,4 +157,11 @@ if [ $VERDICT_RESULT -ne 0 ]; then
 fi
 echo "✅ Fabricated-verdict lint passed"
 
+echo "🔍 Checking the commit author identity..."
+python scripts/check_commit_authors.py --staged
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+echo "✅ Commit author is plausible"
+
 echo "✅ Pre-commit checks complete"

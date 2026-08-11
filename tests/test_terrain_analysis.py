@@ -806,9 +806,21 @@ class TestBuildTerrainInterpretation:
         ids = {f.id for f in interp.findings}
         assert "landform" not in ids
 
-    def test_data_source_populated(self):
+    def test_data_source_reflects_actual_provider(self):
+        """FLIPPED 2026-08-03 (campaign item 4 / DQ-46): data_source used to
+        assert the GA 5m DEM unconditionally, even when the SIX Maps
+        photogrammetry fallback actually served the raster. It now names the
+        provider recorded for the run, and says so when none was recorded."""
         interp = _build_terrain_interpretation(_full_terrain_dict())
-        assert "5m DEM" in interp.data_source
+        assert "provider not recorded" in interp.data_source
+
+        ga = dict(_full_terrain_dict(), dem_provider="ga_wcs_5m")
+        assert "Geoscience Australia 5m DEM" in _build_terrain_interpretation(ga).data_source
+
+        six = dict(_full_terrain_dict(), dem_provider="six_maps_elevation")
+        six_source = _build_terrain_interpretation(six).data_source
+        assert "SIX Maps" in six_source
+        assert "Geoscience Australia" not in six_source
 
     def test_disclaimer_mentions_surveyor(self):
         interp = _build_terrain_interpretation(_full_terrain_dict())

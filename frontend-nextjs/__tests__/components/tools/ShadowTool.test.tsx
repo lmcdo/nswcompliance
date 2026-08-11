@@ -88,8 +88,6 @@ function makeResult(overrides: Record<string, unknown> = {}) {
       north_proxy_polygon: null,
       worst_case_scenario: 'jun21_12pm',
       adg_compliant: true,
-      construction_change_detected: false,
-      construction_change_score: 0.042,
       scenarios: [
         {
           scenario: 'jun21_9am',
@@ -294,16 +292,9 @@ describe('ShadowTool — complete state (ShadowCard)', () => {
     expect(screen.getAllByText('21 Jun — 12:00 pm').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('null construction_change_score does not crash', async () => {
-    const result = makeResult();
-    result.outputs.construction_change_score = null;
-    mockSuccessFetch(result);
-    render(<ShadowTool />);
-    fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    await screen.findByText('1 Smith St Surry Hills NSW 2010');
-    expect(screen.queryByText(/toFixed/)).not.toBeInTheDocument();
-  });
+  // REMOVED 2026-08-07 (§4h): 'null construction_change_score does not crash'
+  // set a field no surface reads any more, so it could no longer fail. The
+  // crash it guarded (.toFixed on null) went with the feature.
 
   it('height_source=default shows amber warning', async () => {
     const result = makeResult();

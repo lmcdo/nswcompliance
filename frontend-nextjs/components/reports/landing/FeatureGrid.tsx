@@ -25,7 +25,14 @@ export function FeatureGrid({ title, subtitle, features }: FeatureGridProps) {
           </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Exactly three features would leave an empty fourth cell on desktop —
+            a visible hole where a card used to be. Only the 3 case is special-
+            cased: 4, 6, 8 and 9 keep the four-column layout they were designed
+            against. Tailwind needs whole class names, so this is a branch
+            rather than an interpolated column count. */}
+        <div className={`grid gap-6 sm:grid-cols-2 ${
+          features.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
+        }`}>
           {features.map((feature) => {
             const Icon = feature.icon
             return (

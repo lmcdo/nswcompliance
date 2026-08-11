@@ -1,6 +1,3 @@
-import pytest
-pytestmark = pytest.mark.stale
-
 """
 Integration tests for the conveyancing report pipeline.
 
@@ -22,6 +19,10 @@ GOLDEN ADDRESSES (manually verified):
 Add new addresses here when verifying output for new LGAs.
 """
 from __future__ import annotations
+
+import pytest
+
+pytestmark = pytest.mark.stale
 
 import os
 import sys

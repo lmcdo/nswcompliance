@@ -2,24 +2,28 @@
 """
 Legislation Monitor
 ===================
-Weekly check of NSW planning instruments (SEPPs, LEPs) for version changes.
+Monthly check of NSW planning instruments (SEPPs, LEPs) for version changes.
+
+Auto fallback chain: PCO → AustLII
+  NSW Legislation HTML scraping removed from auto chain (Jun 2026) —
+  Cloudflare blocks all datacenter IPs (Railway, GitHub Actions).
+  Still available via explicit --source nsw_legislation.
 
 Primary source: PCO XML export (legislation.nsw.gov.au/export/week)
   - IP 149.28.176.81 whitelisted (confirmed 2026-05-19 by PCO Website Help)
   - Must run outside Sydney business hours (agreed condition)
   - Returns JSON list of all instruments updated in last 7 days
 
-Secondary source: NSW Legislation individual pages (legislation.nsw.gov.au)
-  - Plain HTTP with whitelisted IP, Playwright fallback
-  - Extracts point-in-time version dates from instrument pages
-
 Fallback source: AustLII consolidated copies (classic.austlii.edu.au)
   - ~7-day lag vs legislation.nsw.gov.au
   - Scrapes "As at DD Month YYYY" date from HTML
-  - Used when both PCO and NSW Legislation are inaccessible
+
+Manual source: NSW Legislation individual pages (legislation.nsw.gov.au)
+  - Cloudflare-blocked from datacenter IPs as of Jun 2026
+  - Only usable via --source nsw_legislation from whitelisted IP
 
 Usage:
-    python scripts/legislation_monitor.py               # all active instruments
+    python scripts/legislation_monitor.py               # auto: PCO → AustLII
     python scripts/legislation_monitor.py --key sepp_housing_2021
     python scripts/legislation_monitor.py --dry-run
     python scripts/legislation_monitor.py --source pco   # force PCO only
@@ -48,6 +52,13 @@ import requests
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
+
+# Runbook connector — importable both as a package (pytest, repo root) and as a
+# sibling module (when this file is run directly as scripts/legislation_monitor.py).
+try:
+    from scripts.refresh_runbook import build_refresh_runbook
+except ImportError:  # pragma: no cover - direct-run path
+    from refresh_runbook import build_refresh_runbook
 
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
@@ -82,21 +93,85 @@ class InstrumentResult:
     stored_version: str | None
     source: str = ""  # 'pco' or 'austlii'
     error: str | None = None
+    stale_notes: tuple = ()
+
+
+# ── SEPP auto-stale (W3, founder decision 2026-07-29) ───────────────────────
+# A version change marks dependent standards rows STALE — not retired. The
+# consumers keep serving the last-reviewed values WITH a visible notice; the
+# founder clears stale_since/stale_reason during re-verification. The E&C
+# Codes SEPP feeds both tables (housing_sepp_standards carries rows citing
+# SEPP (E&C) 2008, e.g. secondary-dwelling max_floor_area).
+# Each entry: (table, extra WHERE predicate or None). housing_sepp_standards
+# carries rows from BOTH instruments (source_document values verified in prod
+# 2026-07-29: 'SEPP (Housing) 2021' variants vs '...(Exempt and Complying\n
+# Development Codes) 2008'), so each instrument stamps only its OWN rows —
+# a Housing amendment must not stale the E&C-derived floor-area standard
+# (Sol review of PR #839).
+STANDARDS_TABLES_BY_INSTRUMENT = {
+    "sepp_exempt_complying_2008": [
+        ("cdc_eligibility_standards", None),
+        ("housing_sepp_standards",
+         "(source_document ILIKE '%exempt%' OR source_document ILIKE '%e&c%')"),
+    ],
+    "sepp_housing_2021": [
+        ("housing_sepp_standards", "source_document ILIKE '%housing%'"),
+    ],
+}
+
+
+def mark_dependent_standards_stale(
+    conn, instrument_key: str, instrument_label: str,
+    old_version: str | None, new_version: str | None,
+) -> list[str]:
+    """Stamp stale_since/stale_reason on standards rows fed by a changed
+    instrument. Only rows not already stale are stamped (the FIRST detected
+    change is the one the notice should date from), and only rows the changed
+    instrument actually supplies. Returns human-readable lines for the alert;
+    empty when the instrument feeds no standards table."""
+    notes: list[str] = []
+    reason = (
+        f"{instrument_label} version changed "
+        f"({old_version or 'unknown'} -> {new_version or 'unknown'})"
+    )
+    cur = conn.cursor()
+    for table, predicate in STANDARDS_TABLES_BY_INSTRUMENT.get(instrument_key, []):
+        where = "stale_since IS NULL" + (f" AND ({predicate})" if predicate else "")
+        cur.execute(
+            f"UPDATE {table} SET stale_since = NOW(), stale_reason = %s WHERE {where}",
+            (reason,),
+        )
+        if cur.rowcount:
+            notes.append(
+                f"  {table}: {cur.rowcount} standards row(s) marked STALE — "
+                f"served with a notice until re-checked"
+            )
+    cur.close()
+    return notes
 
 
 def send_telegram(message: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
+        print("[telegram] skipped — no token or chat_id")
         return
+    original_len = len(message)
+    if original_len > 4000:
+        message = message[:3950] + "\n\n… (truncated — full output in Railway logs)"
+    print(f"[telegram] sending message ({original_len} chars, truncated={original_len > 4000})")
     try:
-        requests.post(
+        resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             json={"chat_id": chat_id, "text": message},
             timeout=10,
         )
-    except Exception:
-        pass
+        if resp.ok:
+            print(f"[telegram] sent OK ({resp.status_code})")
+        else:
+            print(f"[telegram] HTTP {resp.status_code}: {resp.text[:200]}")
+    except Exception as exc:
+        print(f"[telegram] send failed: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -104,15 +179,26 @@ def send_telegram(message: str) -> None:
 # ---------------------------------------------------------------------------
 
 def check_via_pco(instruments: list[dict]) -> dict[str, str | None]:
-    """Check instruments via PCO weekly export feed.
+    """Check instruments via PCO export feed.
+
+    Uses get_changes_since() with a 35-day window so monthly runs never
+    miss amendments.  Falls back to get_weekly_changes() if the custom
+    query fails.
 
     Returns dict of {instrument_key: new_version_string_or_None}.
     Raises on access denied or connection error.
     """
-    from pco_client import PCOAccessDenied, get_weekly_changes
+    from datetime import datetime, timedelta
+    from pco_client import PCOAccessDenied, get_changes_since, get_weekly_changes
 
-    changes = get_weekly_changes()
-    print(f"    PCO: {len(changes)} instruments changed this week")
+    since = (datetime.utcnow() - timedelta(days=35)).strftime("%Y%m%d000000")
+    try:
+        changes = get_changes_since(since)
+        print(f"    PCO: {len(changes)} instruments changed in last 35 days (since {since[:8]})")
+    except Exception as exc:
+        print(f"    PCO: custom date query failed ({exc}), falling back to weekly")
+        changes = get_weekly_changes()
+        print(f"    PCO: {len(changes)} instruments changed this week (fallback)")
 
     # Build lookup: pco_instrument_id → instrument_key
     pco_to_key = {}
@@ -183,7 +269,8 @@ def check_via_nsw_legislation(
             print(f"    [ERROR] {key}: {exc}")
             results[key] = None
             fetch_errors.append(f"{key}: {exc}")
-        time.sleep(2)
+        # 5s between requests to avoid Cloudflare rate-limiting
+        time.sleep(5)
 
     return results, fetch_errors
 
@@ -191,10 +278,12 @@ def check_via_nsw_legislation(
 def _extract_latest_pit_date(html: str, url: str) -> str | None:
     """Extract the most recent point-in-time version date from the page.
 
-    legislation.nsw.gov.au embeds links like /view/html/inforce/2026-03-13/epi-...
-    in the version timeline. The most recent date is the actual last-amended date,
-    unlike the "Current version for" header which advances with time even when
-    the instrument hasn't changed.
+    legislation.nsw.gov.au embeds links like:
+      /view/html/inforce/2026-03-13/epi-...
+      /view/whole/html/inforce/2026-03-13/epi-...
+    in the version timeline and "View whole" links. The most recent date is
+    the actual last-amended date, unlike the "Current version for" header
+    which advances with time even when the instrument hasn't changed.
     """
     # Extract EPI ID from the URL (e.g. "epi-2008-0572")
     epi_match = re.search(r"(epi-\d{4}-\d+)", url)
@@ -202,11 +291,18 @@ def _extract_latest_pit_date(html: str, url: str) -> str | None:
         return None
 
     epi_id = epi_match.group(1)
-    # Find all point-in-time links: /view/html/inforce/YYYY-MM-DD/epi-...
+    # Find all point-in-time links — both fragment and whole-document views:
+    #   /view/html/inforce/YYYY-MM-DD/epi-...
+    #   /view/whole/html/inforce/YYYY-MM-DD/epi-...
     pit_pattern = re.compile(
-        rf"/view/html/inforce/(\d{{4}}-\d{{2}}-\d{{2}})/{re.escape(epi_id)}"
+        rf"/view/(?:whole/)?html/inforce/(\d{{4}}-\d{{2}}-\d{{2}})/{re.escape(epi_id)}"
     )
     dates = pit_pattern.findall(html)
+
+    # Also check pointInTime URL parameter (e.g. ?pointInTime=2026-04-24)
+    pit_param = re.findall(r"pointInTime=(\d{4}-\d{2}-\d{2})", html)
+    dates.extend(pit_param)
+
     if not dates:
         return None
 
@@ -239,7 +335,7 @@ def _fetch_nsw_legislation_version_http(url: str) -> str | None:
         raise RuntimeError(f"HTTP {resp.status_code}: {url}")
 
     # Check for download response (not HTML)
-    ct = resp.headers.get("Content-Type", "")
+    ct = resp.headers.get("Content-Type") or ""
     if "html" not in ct and "text" not in ct:
         raise DownloadTriggeredError(
             f"Page serves download ({ct}) instead of HTML — "
@@ -265,8 +361,30 @@ def _fetch_nsw_legislation_version_playwright(url: str) -> str | None:
         resp = page.goto(url, timeout=45000, wait_until="domcontentloaded")
         if resp and resp.status == 404:
             raise RuntimeError(f"HTTP 404 — EPI ID may be wrong: {url}")
-        page.wait_for_selector("h1, .legislation-title, #content", timeout=15000)
-        time.sleep(2)
+
+        # Wait for Cloudflare challenge to resolve — the challenge page has
+        # title "Just a moment..." and its own <h1>. Poll until the real page
+        # appears or timeout after ~30s.
+        for attempt in range(6):
+            html = page.content()
+            if "Just a moment" not in html:
+                break
+            print(f"    Cloudflare challenge detected, waiting... (attempt {attempt + 1}/6)")
+            time.sleep(5)
+        else:
+            raise RuntimeError(
+                f"Cloudflare challenge did not resolve after 30s: {url}"
+            )
+
+        # Wait for actual legislation content to render
+        try:
+            page.wait_for_selector(
+                ".legislation-title, #content, .legislation-body",
+                timeout=10000,
+            )
+        except Exception:
+            pass  # Content may already be in the HTML from goto
+        time.sleep(1)
         html = page.content()
     except Exception as exc:
         if "Download is starting" in str(exc):
@@ -304,9 +422,14 @@ def _extract_version_from_html(html: str, url: str) -> str | None:
     if m:
         return m.group(1)
 
+    # Log a snippet of the HTML for debugging
+    snippet = html[:500].replace("\n", " ").strip()
     raise RuntimeError(
         f"No version date pattern found on page — "
-        f"legislation.nsw.gov.au may have changed format: {url}"
+        f"legislation.nsw.gov.au may have changed format: {url}\n"
+        f"  Tried: PIT links, pointInTime param, 'Current version for', "
+        f"'Published LW', 'As at'\n"
+        f"  HTML snippet: {snippet[:200]}..."
     )
 
 
@@ -343,6 +466,19 @@ def fetch_as_at_playwright(url: str) -> str | None:
     page = ctx.new_page()
     try:
         page.goto(url, timeout=45000, wait_until="domcontentloaded")
+
+        # Wait for Cloudflare challenge to resolve (same as NSW Legislation)
+        for attempt in range(6):
+            html = page.content()
+            if "Just a moment" not in html:
+                break
+            print(f"    AustLII Cloudflare challenge, waiting... (attempt {attempt + 1}/6)")
+            time.sleep(5)
+        else:
+            raise RuntimeError(
+                f"AustLII Cloudflare challenge did not resolve after 30s: {url}"
+            )
+
         # Try multiple selectors — AustLII may have redesigned.
         # "As at" is the classic format; "Current version" is an alternative.
         for selector in ["text=As at", "text=Current version", "text=In force", "pre", "h1"]:
@@ -366,9 +502,12 @@ def fetch_as_at_playwright(url: str) -> str | None:
     if m:
         return m.group(1)
 
+    # Log snippet for debugging
+    snippet = html[:300].replace("\n", " ").strip()
     raise RuntimeError(
         f"Playwright loaded page but no version date pattern found — "
-        f"AustLII may have changed format: {url}"
+        f"AustLII may have changed format: {url}\n"
+        f"  HTML snippet: {snippet[:200]}..."
     )
 
 
@@ -452,6 +591,7 @@ def check_instrument(
     now = datetime.now(timezone.utc)
     cur = conn.cursor()
 
+    stale_notes: list[str] = []
     if changed:
         print(f"  {key} [{source}]")
         print(f"    [CHANGED] {stored_version} → {new_version}")
@@ -466,6 +606,13 @@ def check_instrument(
                 """,
                 (new_version, now, now, key),
             )
+            # Auto-stale dependent standards (W3): last-reviewed values keep
+            # serving WITH a notice; founder clears on re-verification.
+            stale_notes = mark_dependent_standards_stale(
+                conn, key, label, stored_version, new_version,
+            )
+            for note in stale_notes:
+                print(f"  {note}")
             conn.commit()
     else:
         status = "(first run — baseline set)" if first_run else "[unchanged]"
@@ -503,18 +650,19 @@ def check_instrument(
         instrument_key=key, instrument_label=label,
         changed=changed, new_version=new_version,
         stored_version=stored_version, source=source,
+        stale_notes=tuple(stale_notes),
     )
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Weekly SEPP/LEP change monitor")
+    parser = argparse.ArgumentParser(description="Monthly SEPP/LEP change monitor")
     parser.add_argument("--key", help="Check specific instrument_key only")
     parser.add_argument("--dry-run", action="store_true", help="No DB writes")
     parser.add_argument(
         "--source", choices=["auto", "pco", "nsw_legislation", "austlii"],
         default="auto",
         help="Force data source (default: auto — try PCO, fall back to "
-             "nsw_legislation, then AustLII)",
+             "AustLII. nsw_legislation only via explicit flag)",
     )
     args = parser.parse_args()
 
@@ -547,6 +695,8 @@ def main():
     print("=" * 60)
 
     # Determine source and fetch version data
+    # Auto chain: PCO → AustLII (nsw_legislation HTML scraping removed from
+    # auto chain — Cloudflare blocks all datacenter IPs as of Jun 2026).
     source_used = args.source
     version_map: dict[str, str | None] = {}
     source_fetch_errors: list[str] = []
@@ -564,23 +714,31 @@ def main():
                 send_telegram(f"Legislation Monitor ERROR\nPCO access failed: {exc}")
                 conn.close()
                 sys.exit(1)
-            # Auto mode — fall back to nsw_legislation (preferred over AustLII)
-            print(f"  PCO unavailable ({exc}), falling back to NSW Legislation...")
-            source_used = "nsw_legislation"
+            # Auto mode — skip nsw_legislation (Cloudflare-blocked), go to AustLII
+            print(f"  PCO unavailable ({exc}), falling back to AustLII...")
+            source_used = "austlii"
 
     if source_used == "nsw_legislation":
+        # Only reached via explicit --source nsw_legislation (not auto)
         print(f"\n  Source: NSW Legislation (legislation.nsw.gov.au) — authoritative")
         try:
             version_map, source_fetch_errors = check_via_nsw_legislation(instruments)
         except Exception as exc:
-            if args.source == "nsw_legislation":
-                # User forced this source — don't fall back
-                print(f"\n  [ERROR] NSW Legislation failed: {exc}")
-                send_telegram(f"Legislation Monitor ERROR\nNSW Legislation failed: {exc}")
-                conn.close()
-                sys.exit(1)
-            print(f"  NSW Legislation failed ({exc}), falling back to AustLII...")
-            source_used = "austlii"
+            print(f"\n  [ERROR] NSW Legislation failed: {exc}")
+            send_telegram(f"Legislation Monitor ERROR\nNSW Legislation failed: {exc}")
+            conn.close()
+            sys.exit(1)
+        # If every instrument failed, report clearly instead of silent zeros
+        all_none = all(v is None for v in version_map.values())
+        if all_none and source_fetch_errors:
+            print(f"\n  All {len(source_fetch_errors)} instruments failed — NSW Legislation fully blocked")
+            send_telegram(
+                f"Legislation Monitor ERROR (nsw_legislation)\n"
+                f"All {len(source_fetch_errors)} instruments failed (Cloudflare?)\n"
+                + "\n".join(f"  {e}" for e in source_fetch_errors[:5])
+            )
+            conn.close()
+            sys.exit(1)
 
     if source_used == "austlii":
         print(f"\n  Source: AustLII (classic.austlii.edu.au) — ~7-day lag")
@@ -653,17 +811,23 @@ def main():
     if changed:
         lines = []
         for r in changed:
-            lines.append(
+            entry = (
                 f"  {r.instrument_key}\n"
                 f"    Was: {r.stored_version or '(unknown)'}\n"
                 f"    Now: {r.new_version}"
             )
+            if r.stale_notes:
+                entry += "\n" + "\n".join(r.stale_notes)
+            lines.append(entry)
         msg = (
             f"LEGISLATION CHANGE DETECTED ({source_used})\n"
             f"{len(changed)} instrument(s) updated:\n\n"
             + "\n\n".join(lines)
             + "\n\nVerify on legislation.nsw.gov.au before updating provisions."
-            + "\nThen run: python scripts/update_instrument_provisions.py --key <key>"
+            # Scoped, ready-to-run refresh chain per changed instrument (LEP =
+            # per-LGA re-ingest+recompute; SEPP = statewide note). Closes the
+            # detection -> recompute loop without auto-executing anything.
+            + build_refresh_runbook([(r.instrument_key, r.instrument_label) for r in changed])
         )
         print(f"\n{msg}")
         send_telegram(msg)

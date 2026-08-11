@@ -152,6 +152,7 @@ const CATEGORY_MAP: Record<string, string> = {
   setback: 'setbacks',
   setbacks: 'setbacks',
   front_setback: 'setbacks',
+  secondary_street_setback: 'setbacks',
   side_setback: 'setbacks',
   rear_setback: 'setbacks',
   landscape: 'landscaping',

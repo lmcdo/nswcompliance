@@ -1,0 +1,27 @@
+{
+  "tier": "minor",
+  "justification": "Widens the dcp_review_queue status CHECK to include 'superseded' - the value PR #830's supersede path and the triage flow write. Found via a live CheckViolation; the constraint predates the value. Additive widening, no rows affected.",
+  "commit_hash": "cabce01d",
+  "files": [
+    ".claude/.pre-impl-done.json",
+    "migrations/060_dcp_review_queue_superseded_status.sql"
+  ],
+  "functions": "N/A - SQL migration only, no functions.",
+  "values": "N/A - no served values involved.",
+  "queries": "N/A - DDL only.",
+  "break_it": [
+    {
+      "scenario": "PR #830's re-extraction hits a chapter with rejected rows and the supersede UPDATE violates the old constraint, crashing the Monday cron mid-run.",
+      "what_happens": "Extraction aborts for every subsequent chapter and the queue refresh is left partial.",
+      "mitigated": true,
+      "how": "Constraint widened and already applied to prod (verified via pg_get_constraintdef); the supersede UPDATE ran successfully against 4232 rows immediately after.",
+      "repro": "UPDATE a queue row to status='superseded' - succeeds post-migration, CheckViolation before."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Migration already applied to prod and verified; merge records it in the repo.",
+    "secrets": "No secrets involved.",
+    "other_repo": "None.",
+    "manual_verify": "Yes - pg_get_constraintdef shows six statuses including superseded; 4232 rows carry the new status."
+  }
+}

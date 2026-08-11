@@ -1,10 +1,32 @@
 # Database Schema - Complete Reference
 
-Last Updated: 2026-02-01
-Total Tables: 58
-Total Provisions: 46,585 (10,008 actionable)
+Last Updated: **2026-08-10** (header figures re-measured live; the per-table sections below
+still carry their original February numbers except where marked — treat any unmarked count as
+unverified and re-run the query)
+Total Tables: **118** base tables
+Total Provisions: **55,696** (19,957 current + actionable — the served set)
 
-See DB_SCHEMA_RAW.txt for full column details.
+> **Every figure here carries the query that produces it. Re-run rather than quote —
+> a number without its query is how this file was wrong for six months.**
+> The header previously read "58 tables / 46,585 provisions (10,008 actionable)". All three
+> were stale by roughly half.
+
+| Fact | Measured 2026-08-10 | Query |
+|---|---|---|
+| Base tables | **118** | `SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'` |
+| `regulatory_provisions` | **55,696** | `SELECT count(*) FROM regulatory_provisions` |
+| …current + actionable (served) | **19,957** | `… WHERE is_current AND v2_is_actionable` |
+| `dcp_setback_controls` | **1,071** | `SELECT count(*) FROM dcp_setback_controls` |
+| `dcp_precinct_boundaries` | **274** | `SELECT count(*) FROM dcp_precinct_boundaries` |
+| Distinct `v2_precinct_id` | **433** | `SELECT count(DISTINCT v2_precinct_id) FROM regulatory_provisions WHERE v2_precinct_id IS NOT NULL` |
+| `sepp_structured_requirements` | **560** | `SELECT count(*) FROM sepp_structured_requirements` |
+| `housing_sepp_standards` | **45** | `SELECT count(*) FROM housing_sepp_standards` |
+
+For full column details, query the live catalog rather than a file:
+`SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name='<table>' ORDER BY ordinal_position`.
+(This line used to point at a raw schema dump that was deleted in commit `1587970d` during a repo
+cleanup — the pointer outlived the file by months. Recover it with
+`git show 1587970d^ --stat` if you ever want the old dump.)
 
 ## ⚠️ TABLE STATUS — READ FIRST (which table to use)
 
@@ -25,25 +47,90 @@ Every table below is also labelled **inside the database** (`COMMENT ON TABLE`).
 
 **Rule of thumb:** if code reads a NEVER-READ table, that's a bug — the maintained equivalent is listed above.
 
+## The four largest tables — absent from this file until 2026-08-10
+
+These were never documented here despite being, by a wide margin, the biggest things in the
+database. All counts measured 2026-08-10.
+
+```
+nsw_cadastre_lots        3,220,617 rows   every lot in NSW: lotidstring, geom (SRID 4326),
+                                          planlotarea. GIST index idx_cadastre_lots_geom.
+lot_search_index         3,126,418 rows   lots pre-joined to planning controls (zone, height,
+                                          FSR, hazard flags) so filtered lot search is possible
+                                          at all. Written by the lot-index build; drift-checked
+                                          by scripts/validate_lot_index.py.
+spatial_overlays         1,088,573 rows   25 layer types. A SNAPSHOT, not a feed — synced_at
+                                          runs 2026-04-13 to 2026-07-08 with no scheduled job.
+                                          bushfire and fire_history carry NO currency_date.
+complying_development_
+  certificates             181,750 rows   128 councils, Jul-2018 to date, ~99.99% with
+                                          coordinates. LIVE — rows arrive daily.
+development_applications    62,018 rows   128 councils. Determinations only run back to
+                                          2025-05-23; the eight-year depth is certificates only.
+```
+
+## cdc_lot_link — added 2026-08-10
+
+Answers "for a lot like this one, what got approved, how long did it take, what did it cost".
+Built by `scripts/build_cdc_lot_link.py` — additive, idempotent, resumable. Dropping the table
+reverses it completely.
+
+```
+cdc_lot_link               181,750 rows   one per certificate
+  cdc_id       uuid PK  -> complying_development_certificates.id
+  lotidstring  text     the lot the certificate's coordinates fall inside
+  lot_area_m2  float    denormalised from the cadastre so "lots this size" avoids a
+                        3.2M-row join on every query
+  dev_types    text[]   normalised development types (see the trap below)
+  match_status text     matched | no_lot_at_point | no_coordinates
+```
+
+Result: **matched 178,259 (98.1%) · no_lot_at_point 3,466 (1.9%) · no_coordinates 25.**
+128,098 distinct lots carry at least one certificate; 26,434 carry more than one. Unmatched rows
+cluster in dense strata councils (City of Sydney 687, Parramatta 283) where the address point
+falls outside the parcel polygon. A point inside stacked strata parcels takes `LIMIT 1`, so the
+linked lot is the parcel footprint, not the unit.
+
+**⚠ TRAP — `development_type` is double-encoded on 5.9% of rows.** It is `jsonb`, but in two
+shapes: 171,002 rows are a jsonb *array*, and **10,748 are a jsonb *string* whose text is itself
+a JSON array**. Guarding with `jsonb_typeof(...) = 'array'` and letting the rest fall through
+silently blanks the "what was built" field on those 10,748, and a NULL there is indistinguishable
+from a certificate that recorded no type. Decode with:
+
+```sql
+CASE jsonb_typeof(development_type)
+     WHEN 'array'  THEN development_type
+     WHEN 'string' THEN (development_type #>> '{}')::jsonb
+END
+```
+
+Verified: that recovers all 10,748, leaving **0 undecodable, 36 explicitly-empty, 181,714 with
+types**. Anything else in the codebase reading `development_type` has the same trap.
+
 ## Core Tables (Must Know)
 
-regulatory_provisions - 46,585 rows, 51 cols
-  Main provision table. 10,008 actionable (v2_is_actionable=true)
-  Use v2_precinct_id (102 precincts), v2_dcp_part, pdf_page_image_url
+regulatory_provisions - **55,696** rows (2026-08-10), 51 cols
+  Main provision table. **19,957** current + actionable — the served set
+  Use v2_precinct_id (**433** distinct), v2_dcp_part, pdf_page_image_url
+  ⚠ `former_council` and `source_ref` DO NOT EXIST here — use `source_council` and `ref_number`
 
-sepp_structured_requirements - 3 rows, 12 cols  
+sepp_structured_requirements - **560** rows (2026-08-10), 12 cols
   Curated SEPP data with JSONB requirement_data and PDF links
+  (this file said 3 rows from Feb-2026 until 2026-08-10)
 
-dcp_precinct_boundaries - 90 rows, 18 cols
+dcp_precinct_boundaries - **274** rows (2026-08-10), 18 cols
   GeoJSON boundaries for address->precinct matching
 
 dcp_general_requirements - 3,158 rows, 60 cols
   Structured general DCP requirements
 
-housing_sepp_standards - 33 rows, 18 cols
+housing_sepp_standards - **45** rows (2026-08-10), 18 cols
   SEPP Housing 2021 standards
 
-## Precinct Data (102 total)
+## Precinct Data (**433** distinct v2_precinct_id as at 2026-08-10)
+
+⚠ The per-council breakdown below is the Feb-2026 figure and totals 102. The live count is 433.
+Never quote a flat precinct or council number — see `memory/verify-dcp-coverage-status.md`.
 
 Marrickville: 47 precincts (1_ to 48_) in Part 9
 Leichhardt: 43 precincts (C2.2.x.x + G1-G12)  

@@ -24,6 +24,15 @@ interface Highlight {
   label: string;
   value: string;
   severity?: 'high' | 'medium' | 'low';
+  /**
+   * Why there is no answer, for a highlight that could not be established.
+   *
+   * A badge alone cannot carry an absence: "Not assessed" in a pill next to
+   * eight real findings still reads as a mild result. When this is set the row
+   * renders the sentence underneath, so the reader is told what was tried and
+   * that it is neither a pass nor a fail. Copy comes from lib/not-assessed.ts.
+   */
+  detail?: string;
 }
 
 interface Props {
@@ -32,6 +41,14 @@ interface Props {
   address: string;
   runDate: string;
   confidence?: string;
+  /**
+   * What was actually checked, when the product can say. Replaces the
+   * "Confidence: x" grade for products that have moved off the ladder
+   * (granny-flat, 2026-08-06). Products still passing `confidence` render
+   * unchanged — this is additive on purpose.
+   */
+  stateLabel?: string;
+  stateDetail?: string;
   generatePath: string;
   highlights: Highlight[];
 }
@@ -42,6 +59,8 @@ export function SharedReportPage({
   address,
   runDate,
   confidence,
+  stateLabel,
+  stateDetail,
   generatePath,
   highlights,
 }: Props) {
@@ -57,8 +76,13 @@ export function SharedReportPage({
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{address}</h1>
         <p className="text-sm text-gray-500">
           Generated {runDate}
-          {confidence && <span> · Confidence: {confidence}</span>}
+          {stateLabel
+            ? <span> · {stateLabel}</span>
+            : confidence && <span> · Confidence: {confidence}</span>}
         </p>
+        {stateDetail && (
+          <p className="text-xs text-gray-500 mt-1 max-w-xl">{stateDetail}</p>
+        )}
       </div>
 
       {/* Key findings */}
@@ -66,15 +90,22 @@ export function SharedReportPage({
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Key findings</h2>
         <div className="space-y-3">
           {highlights.map((h) => (
-            <div key={h.label} className="flex items-start justify-between gap-4">
-              <span className="text-sm text-gray-600">{h.label}</span>
-              <span
-                className={`text-sm font-medium px-2.5 py-0.5 rounded-full border ${
-                  h.severity ? SEVERITY_COLORS[h.severity] : 'text-gray-700 bg-gray-50 border-gray-200'
-                }`}
-              >
-                {h.value}
-              </span>
+            <div key={h.label}>
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-sm text-gray-600">{h.label}</span>
+                <span
+                  className={`text-sm font-medium px-2.5 py-0.5 rounded-full border ${
+                    h.severity ? SEVERITY_COLORS[h.severity] : 'text-gray-700 bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  {h.value}
+                </span>
+              </div>
+              {h.detail && (
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                  {h.detail}
+                </p>
+              )}
             </div>
           ))}
         </div>

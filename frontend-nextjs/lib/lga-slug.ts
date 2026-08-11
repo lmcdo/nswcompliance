@@ -9,9 +9,9 @@
  * A third copy was about to be written for app/api/tod/parking-rates. Copy-pasted
  * lookup tables that drift apart are precisely what produced DQ-30, so the
  * structured-controls version — the more complete of the two — is lifted here
- * verbatim and that route now imports it. canibuildit/check still has its own
- * copy; consolidating it needs its own testing and is deliberately left alone
- * rather than folded into an unrelated change.
+ * verbatim and that route now imports it. canibuildit/check adopted it in the
+ * item-5 consolidation (2026-08-03) — its inline copy carried the same six
+ * renames, so keying is unchanged and this is now the ONLY slug mapper.
  *
  * The portal returns display names ("City of Sydney", "The Hills Shire"); the
  * controls table is keyed by slug ("city_of_sydney", "the_hills"). Most pairs

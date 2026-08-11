@@ -24,6 +24,12 @@ from __future__ import annotations
 CANONICAL_CONTROL_TYPES: dict[str, tuple[str, str]] = {
     # Setbacks
     "front_setback": ("Setbacks", "Front setback"),
+    # The corner-lot setback to the secondary street. Distinct from
+    # front_setback because it is a different requirement with a different
+    # value (DQ-40: 20 rows served a 2-4m secondary setback as the 4.5-6m
+    # primary), and from side_setback because the boundary faces a road.
+    # Added by migration 054, applied 2026-08-02.
+    "secondary_street_setback": ("Setbacks", "Secondary street setback"),
     "side_setback": ("Setbacks", "Side setback"),
     "rear_setback": ("Setbacks", "Rear setback"),
     "separation_from_dwelling": ("Setbacks", "Separation from dwelling"),

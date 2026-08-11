@@ -30,19 +30,19 @@ function ValidationPipeline() {
       number: 1,
       name: 'Data source verification',
       question: 'Are we querying the right source, with the right parameters?',
-      detail: 'Every external data source — government APIs, satellite imagery providers, spatial databases — is traced from endpoint URL to the value that appears in your report. If a source is listed in your report, it was actually queried. If it was not queried, it does not appear.',
+      detail: 'Every external data source — government APIs, satellite imagery providers, spatial databases — is traced from endpoint URL to the value that appears in your report. Each report records the sources queried for it, with their parameters and the time of the query.',
     },
     {
       number: 2,
       name: 'Algorithm correctness',
       question: 'Does the logic produce the right answer for known inputs?',
-      detail: 'Scoring algorithms, signal computations, and derived fields are verified against expected outputs. Test suites cover normal cases, boundary conditions, and adversarial inputs. Across 7 pipelines, we maintain over 200 automated tests.',
+      detail: 'Scoring algorithms, signal computations, and derived fields are checked against expected outputs. Test suites cover normal cases, boundary conditions, and adversarial inputs — around 5,000 automated tests across the platform. A test shows the code does what the specification says; where a result can be checked against an independent model, we do that separately and report the tolerance.',
     },
     {
       number: 3,
       name: 'Null and edge case hardening',
       question: 'What happens when data is missing, malformed, or unexpected?',
-      detail: 'Government APIs return null fields, empty arrays, and unexpected formats more often than you would think. Every field that comes from an external source is null-checked before use. Missing data produces a clear "unavailable" indicator — never a false positive or silent failure.',
+      detail: 'Government APIs return null fields, empty arrays, and unexpected formats more often than you would think. Every field that comes from an external source is null-checked before use. A missing input is carried through as "unavailable" rather than as a result, so an absent answer and a negative answer stay distinct.',
     },
     {
       number: 4,
@@ -150,8 +150,8 @@ function RecurringPatterns() {
   const patterns = [
     {
       name: 'False data source attribution',
-      description: 'PDF reports listing data sources the pipeline did not actually query. Found and fixed across 5 of 7 pipelines.',
-      fix: 'Every source in the report now maps 1:1 to a verified API call with a recorded response hash.',
+      description: 'Reports listing data sources the pipeline did not actually query. Found across 5 of 7 pipelines.',
+      fix: 'Reports record the sources queried for them, with parameters, timestamps and a response hash.',
     },
     {
       name: 'Connection leaks',
@@ -277,8 +277,11 @@ export default function HowWeValidatePage() {
 
       <p>
         If a data source is later questioned — &ldquo;did you actually check
-        the flood overlay for this address?&rdquo; — we can produce the exact
-        response, when it was received, and what it contained.
+        the flood overlay for this address?&rdquo; — we can show which source was
+        queried, with what parameters, and when. The record stores a cryptographic
+        hash of each response rather than the response itself — enough to confirm
+        that a copy has not been altered since it was received, which is what a
+        tamper-evident record is for.
       </p>
 
       {/* ---- Disclaimer architecture ---- */}
@@ -304,8 +307,8 @@ export default function HowWeValidatePage() {
 
       <p>
         Government APIs go down, change their schema, or return stale data without
-        warning. An automated daily monitor probes every external data source
-        across all screening tools. Each probe checks:
+        warning. An automated monitor probes external data sources — 15 of them at
+        the last run — and records the result. Each probe checks:
       </p>
 
       <ul>
@@ -316,13 +319,12 @@ export default function HowWeValidatePage() {
       </ul>
 
       <p>
-        If a source goes down or changes its format, we know within 24
-        hours — not when a user receives a broken report. Failures trigger an
-        immediate alert.
+        Probe results are recorded with their timestamp, so the status of any
+        source on any given run is on record rather than inferred.
       </p>
 
       <p>
-        The same daily check also looks for two types of silent failure that
+        The same check also looks for two types of silent failure that
         are harder to catch:
       </p>
 
@@ -355,21 +357,27 @@ export default function HowWeValidatePage() {
 
       <ul>
         <li>
-          Every data source listed in the report was actually queried — the
-          attribution is verified, not copied from a template
+          The sources listed are recorded at the time the report runs, with
+          their parameters and timestamps — not copied from a template
         </li>
         <li>
-          Missing data is clearly labelled as &ldquo;unavailable&rdquo; — you
-          will never see a false &ldquo;all clear&rdquo; when data is actually
-          missing
+          Missing data is intended to read as &ldquo;unavailable&rdquo; rather
+          than as a result. We have found and fixed cases where it did not, and
+          we cannot promise there are none left
         </li>
         <li>
           The language describes what the data shows — it does not make
           compliance determinations, recommendations, or assurances
         </li>
         <li>
-          A complete audit trail exists for every report, linking the output to
-          the exact data that produced it
+          An audit record exists for the report, linking the output to the data
+          that produced it
+        </li>
+        <li>
+          Where a calculation can be checked against an independent model, the
+          tolerance is stated — shadow geometry agrees with an independent
+          astronomical model to within 0.21 degrees, against a 0.50 degree
+          threshold set before testing
         </li>
       </ul>
 

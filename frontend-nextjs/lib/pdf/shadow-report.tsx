@@ -15,6 +15,9 @@ import {
 } from '@react-pdf/renderer';
 import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 import { AerialWithOverlay } from './map-overlay';
+import {
+  SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
+} from '../not-assessed';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,10 +38,15 @@ export interface ShadowScenario {
   label: string;
   date: string;
   time_local: string;
-  shadow_length_m: number;
-  shadow_overlap_fraction: number;
-  shadow_direction_deg: number;
-  overlaps_subject_lot: boolean;
+  // Nullable: a scenario whose computation failed is typed-unavailable, and the
+  // bearing is absent when the sun is below the horizon or so near the zenith
+  // that a direction is meaningless.
+  shadow_length_m: number | null;
+  shadow_overlap_fraction: number | null;
+  shadow_direction_deg: number | null;
+  overlaps_subject_lot: boolean | null;
+  status?: string | null;
+  error_note?: string | null;
   shadow_on_lot?: GeoJSONCollection | null;
   shadow_polygon?: GeoJSONCollection | null;
 }
@@ -55,9 +63,7 @@ export interface ShadowReportData {
   height_source: string | null;
   lep_name: string | null;
   scenarios: ShadowScenario[];
-  construction_change_score: number | null;
-  construction_change_detected: boolean;
-  adg_compliant: boolean;
+  adg_compliant: boolean | null;  // null = not assessed (noon scenario missing/errored)
   worst_case_scenario: string;
   confidence: string;
   data_sources: string[];
@@ -234,10 +240,19 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 // Build findings
 // ---------------------------------------------------------------------------
 
-function buildFindings(data: ShadowReportData): Finding[] {
+// Exported for direct unit testing — the generate-route test mocks the whole
+// document, so the findings wording is otherwise unreachable by tests.
+export function buildFindings(data: ShadowReportData): Finding[] {
   const findings: Finding[] = [];
   const scenarios = data.scenarios ?? [];
   const overlapCount = scenarios.filter(sc => sc.overlaps_subject_lot).length;
+  // A scenario the model could not compute must never be silently absorbed
+  // into an all-clear aggregate (Sol pre-push round): overlapCount counts only
+  // computed overlaps, so with one scenario unavailable, "no shadow overlap
+  // across any test scenario" would claim 5 results from 4. Legacy stored rows
+  // predate the status field; its absence means the row was computed.
+  const unavailableCount = scenarios.filter(sc => sc.status === 'unavailable').length;
+  const computedCount = scenarios.length - unavailableCount;
   const isNonRes = data.zone != null &&
     NON_RESIDENTIAL_PREFIXES.some(p => data.zone!.toUpperCase().startsWith(p));
 
@@ -249,20 +264,31 @@ function buildFindings(data: ShadowReportData): Finding[] {
       detail: 'ADG solar access requirements apply to residential apartment buildings only. This property is in a non-residential zone, so the result is indicative.',
       severity: overlapCount === 0 ? 'green' : 'amber',
     });
+  } else if (data.adg_compliant == null) {
+    // Not assessed — the model issued no verdict (output-grounding fix 1).
+    // Without this branch, null fell through to the "ADG concern" finding.
+    findings.push({
+      label: 'ADG Part 3F solar access test',
+      value: 'Not assessed — the noon scenario could not be computed',
+      detail: 'The shadow model could not compute the 21 June noon scenario for this lot, so the ADG solar access test was not run. No shadow verdict is made in this report.',
+      severity: 'amber',
+    });
   } else if (data.adg_compliant) {
     findings.push({
       label: 'ADG Part 3F solar access test',
-      value: overlapCount === 0 ? 'Meets ADG solar access test — no shadow overlap' : `Meets ADG solar access test — ${overlapCount} of 5 scenarios with shadow`,
+      value: overlapCount === 0
+        ? `Meets ADG solar access test — no shadow overlap${unavailableCount > 0 ? ` in the ${computedCount} computed scenarios` : ''}`
+        : `Meets ADG solar access test — ${overlapCount} of ${unavailableCount > 0 ? `${computedCount} computed` : '5'} scenarios with shadow`,
       detail: overlapCount === 0
-        ? 'The model shows no significant shadow impact on this property from a maximum-height building on an adjacent lot across any test scenario. The ADG solar access test is met based on this model.'
+        ? `The model shows no significant shadow impact on this property from a maximum-height building modelled immediately north of the lot, across ${unavailableCount > 0 ? `the ${computedCount} scenarios that could be computed. ${unavailableCount} of the 5 scenarios could not be assessed (marked in the scenario table) and no claim is made about ${unavailableCount === 1 ? 'it' : 'them'}` : 'any test scenario'}. The ADG solar access test is met based on this model.`
         : 'Some shadow impact is expected but the ADG 2-hour solar access requirement (9am–3pm on 21 June) is still met. This is typical for urban lots and unlikely to be grounds for objection.',
-      severity: overlapCount === 0 ? 'green' : 'amber',
+      severity: overlapCount === 0 ? (unavailableCount > 0 ? 'amber' : 'green') : 'amber',
     });
   } else {
     findings.push({
       label: 'ADG Part 3F solar access test',
-      value: `ADG concern — ${overlapCount} of 5 scenarios with significant shadow`,
-      detail: 'A maximum-height building on an adjacent lot may not meet the ADG 2-hour solar access requirement on 21 June. If a DA is lodged, you can lodge a formal objection during the notification period.',
+      value: `ADG concern — ${overlapCount} of ${unavailableCount > 0 ? `${computedCount} computed` : '5'} scenarios with significant shadow`,
+      detail: 'A maximum-height building modelled immediately north of this lot may not meet the ADG 2-hour solar access requirement on 21 June. If a DA is lodged, you can lodge a formal objection during the notification period.',
       severity: 'red',
     });
   }
@@ -279,7 +305,7 @@ function buildFindings(data: ShadowReportData): Finding[] {
     findings.push({
       label: `${data.lep_name ?? 'Local Environmental Plan'} — height of buildings`,
       value: `Maximum building height: ${data.height_m}m`,
-      detail: `This is the maximum height a neighbouring building could be approved to. All shadow scenarios use this height.${data.height_m > 8 ? ' At this height, a Development Application is required (exceeds 8m CDC limit), triggering mandatory neighbour notification.' : ''}`,
+      detail: `This is the maximum building height mapped at THIS property's location, used as the modelled height for the hypothetical building to the north. The control applying to the neighbouring lot is not looked up separately and may differ.${data.height_m > 8 ? ' At this height, a Development Application is required (exceeds 8m CDC limit), triggering mandatory neighbour notification.' : ''}`,
       severity: data.height_m > 8 ? 'amber' : 'green',
     });
   }
@@ -303,21 +329,15 @@ function buildFindings(data: ShadowReportData): Finding[] {
   } else if (overlapCount === 0) {
     findings.push({
       label: 'Shadow analysis — 5 ADG test scenarios',
-      value: 'No shadow overlap detected',
-      detail: 'A maximum-height building on an adjacent lot would not cast shadow onto this property in any of the 5 test scenarios. No shadow overlap was detected in any test scenario.',
-      severity: 'green',
+      value: unavailableCount > 0
+        ? `No shadow overlap in the ${computedCount} computed scenarios`
+        : 'No shadow overlap detected',
+      detail: unavailableCount > 0
+        ? `A maximum-height building modelled immediately north of this lot would not cast shadow onto the property in any of the ${computedCount} scenarios that could be computed. ${unavailableCount} of the 5 scenarios could not be assessed (marked in the scenario table), so this is not a result across all 5.`
+        : 'A maximum-height building modelled immediately north of this lot would not cast shadow onto the property in any of the 5 test scenarios.',
+      severity: unavailableCount > 0 ? 'amber' : 'green',
     });
   }
-
-  // Construction activity
-  findings.push({
-    label: `Sentinel-2 BSI change detection${data.construction_change_score != null ? ` · score ${data.construction_change_score.toFixed(3)}` : ''}`,
-    value: data.construction_change_detected ? 'Construction activity detected on adjacent lot' : 'No construction activity detected',
-    detail: data.construction_change_detected
-      ? 'Satellite imagery shows recent site clearing, demolition, or excavation on the adjacent lot. A development may already be underway — check the ePlanning Portal for lodged DAs.'
-      : 'No significant ground disturbance detected on adjacent lots in the past 90 days compared to the 12-month baseline.',
-    severity: data.construction_change_detected ? 'red' : 'green',
-  });
 
   return findings;
 }
@@ -385,6 +405,24 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                   ? Math.round(sc.shadow_overlap_fraction * 100) : null;
                 const pillColor = coveragePillColor(pct);
                 const isWorstCase = sc.scenario === data.worst_case_scenario;
+                // A scenario with no result must not look like a row with a
+                // missing number. It spans the measurement columns with one
+                // labelled statement instead — a direction printed beside
+                // "not assessed" reads as a partial result, and the bearing
+                // survives an unavailable scenario because it comes from the
+                // sun's position rather than from the lot geometry that failed.
+                if (isScenarioUnavailable(sc)) {
+                  return (
+                    <View key={sc.scenario} style={[s.tableRow, { backgroundColor: AMBER_LIGHT }]}>
+                      <Text style={s.colDate}>
+                        {SCENARIO_LABELS[sc.scenario] ?? sc.scenario}
+                      </Text>
+                      <Text style={{ flex: 1, fontSize: 7.5, color: GRAY_700 }}>
+                        {`${SCENARIO_NOT_ASSESSED_LABEL} — ${scenarioUnavailableMessage(sc.error_note)}`}
+                      </Text>
+                    </View>
+                  );
+                }
                 return (
                   <View key={sc.scenario} style={[s.tableRow, isWorstCase ? { backgroundColor: TEAL_LIGHT } : {}]}>
                     <Text style={s.colDate}>
@@ -392,7 +430,8 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                       {isWorstCase ? ' ★' : ''}
                     </Text>
                     <Text style={s.colReach}>
-                      {sc.shadow_length_m > 0 ? `${sc.shadow_length_m.toFixed(0)} m` : '—'}
+                      {sc.shadow_length_m != null && sc.shadow_length_m > 0
+                        ? `${sc.shadow_length_m.toFixed(0)} m` : '—'}
                     </Text>
                     <Text style={s.colDir}>
                       {sc.shadow_direction_deg != null ? bearingToCompass(sc.shadow_direction_deg) : '—'}
@@ -489,8 +528,9 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           );
         })()}
 
-        {/* Objection-ready paragraph — paid, only when ADG concern */}
-        {isPaid && !data.adg_compliant && !isNonRes && (() => {
+        {/* Objection-ready paragraph — paid, only when ADG concern is a
+            VERDICT (=== false). null is not-assessed, not a concern (fix 1). */}
+        {isPaid && data.adg_compliant === false && !isNonRes && (() => {
           const worstSc = scenarios.find(sc => sc.scenario === data.worst_case_scenario);
           const worstPct = worstSc?.shadow_overlap_fraction != null
             ? Math.round(worstSc.shadow_overlap_fraction * 100) : null;
@@ -502,10 +542,10 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                 Objection-ready paragraph
               </Text>
               <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.6, fontStyle: 'italic' }}>
-                {`"The proposed development at the adjacent lot would result in ${worstPct != null ? `${worstPct}%` : 'significant'} shadow coverage of ${data.address} at ${worstLabel}, based on the maximum permissible building height of ${data.height_m}m under the ${data.lep_name ?? 'applicable LEP'}. This exceeds the solar access threshold set out in the Apartment Design Guide (2015) Part 3F, which requires a minimum of 2 hours of direct sunlight to living areas between 9am and 3pm on 21 June. This constitutes grounds for objection under Section 4.15(1)(a)(iii) of the Environmental Planning and Assessment Act 1979."`}
+                {`"Screening modelling I have obtained for ${data.address} indicates that a rectangular building envelope of ${data.height_m}m — the maximum height mapped at my own property under the ${data.lep_name ?? 'applicable LEP'}, positioned immediately north of my boundary — would place ${worstPct != null ? `${worstPct}%` : 'a significant proportion'} of my property in shadow at ${worstLabel}. The Apartment Design Guide (2015) Part 3F requires a minimum of 2 hours of direct sunlight to living areas between 9am and 3pm on 21 June. On that basis I ask that the shadow impact of the proposed development, as designed, be assessed against that requirement under Section 4.15(1)(a)(iii) of the Environmental Planning and Assessment Act 1979."`}
               </Text>
               <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
-                Copy this into your council DA objection submission during the notification period.
+                Copy this into your council DA objection submission during the notification period. It is deliberately worded as screening modelling of a generic envelope, because that is what it is: the figure comes from a rectangle offset from your own boundary using your own height control, not from the lodged application&apos;s drawings and not from the neighbouring lot&apos;s own control. Presenting it as the proposed building&apos;s shadow figure would misstate it to the council.
               </Text>
             </View>
           );
@@ -555,15 +595,14 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         {isPaid && (
           <DataCurrencyTable rows={[
             { source: 'NSW Planning Portal (lot boundary + height controls)', type: 'Live API query', currency: `Queried ${data.run_date}` },
-            { source: 'Element84 Sentinel-2 (construction change)', type: 'Live STAC query', currency: `Queried ${data.run_date}` },
-            { source: 'Shadow geometry (pvlib + pybdshadow)', type: 'Computed', currency: 'Analytical model' },
+            { source: 'Shadow geometry (pybdshadow)', type: 'Computed', currency: 'Analytical model' },
           ]} />
         )}
 
         {/* Methodology — compact */}
         <Text style={s.sectionTitle}>Methodology</Text>
         <Text style={s.bodyText}>
-          Shadow geometry computed using pvlib Solar Position Algorithm and pybdshadow shadow casting for ADG test dates (21 Jun, 21 Sep, 21 Dec). Building height from applicable LEP. Northern neighbour footprint approximated from lot boundary offset. Construction activity detected via Sentinel-2 Bare Soil Index (BSI) change.
+          Shadow geometry computed using the pybdshadow shadow-casting model, which derives sun position from the modelled date and time, for ADG test dates (21 Jun, 21 Sep, 21 Dec). Times shown are local wall-clock times for New South Wales, with daylight saving applied where it is in force — the 21 December scenario is AEDT. The compass direction shown for each scenario is calculated for this address, from the same sun position used to cast the shadow. Building height from the height control mapped at this property&apos;s location. The modelled building north of the lot is a rectangle offset from the subject boundary, not a surveyed neighbouring parcel.
         </Text>
 
         <Text style={[s.sectionTitle, { marginTop: 4 }]}>Disclaimer</Text>
@@ -601,7 +640,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             <>
               <Text style={s.sectionTitle}>Shadow diagrams — 21 June (ADG test date)</Text>
               <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
-                Teal outline = subject lot boundary. Orange fill = shadow cast by a maximum-height building ({data.height_m}m) on the adjacent lot to the north.
+                Teal outline = subject lot boundary. Orange fill = shadow cast by a hypothetical {data.height_m}m building. The dashed outline is where that building is modelled — a rectangle offset north of your own boundary by your own lot depth, NOT the neighbouring parcel, whose real boundary and building position are not known to this model.
               </Text>
               <View style={{ flexDirection: 'row', gap: 16, marginBottom: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

@@ -32,11 +32,14 @@ const TOOLS = [
     sources: [
       { name: 'NSW Planning Portal (lot API)', use: 'Zone, lot size, strata status, heritage, and LEP controls for the property' },
       { name: 'SEPP Housing 2021 criteria', use: 'State-wide eligibility rules: minimum 450 m² lot, permitted zones, not strata' },
-      { name: 'NSW SIX Maps aerial imagery', use: 'High-resolution aerial tiles for automated structure detection on the lot' },
+      { name: 'NSW SIX Maps aerial imagery', use: 'High-resolution aerial tiles of the lot, shown with its boundary so you can see what is already built on it' },
       { name: 'Council DCP setback controls', use: 'Secondary dwelling setback, landscaping, and parking standards by LGA' },
     ],
     cadence: 'Planning Portal data is queried live at time of check. Aerial imagery is updated by NSW Spatial Services (typically annually). DCP controls are updated when new LGAs are onboarded.',
-    limitations: 'Structure detection accuracy is ~85–90% for standard residential lots. Heritage overlays and strata restrictions may introduce exceptions. DCP setback data is available for councils with structured controls. Always confirm with a certifier before committing.',
+    // The figure below replaces "~85-90% for standard residential lots", which
+    // was an estimate written from a single test address and was never
+    // measured. It is published here because it was published wrong here.
+    limitations: 'Structures already on the lot are identified by you from the aerial image, not found automatically. An automated scan was measured in August 2026 against human review of 56 lots across four councils: it located 14 of the 38 secondary structures a person could see, and reported a further 15 that were not there. It is not used to decide eligibility. Heritage overlays and strata restrictions may introduce exceptions. DCP setback data is available for councils with structured controls. Always confirm with a certifier before committing.',
   },
   {
     name: 'Flood Screening',
@@ -69,12 +72,11 @@ const TOOLS = [
     name: 'Shadow Analysis',
     href: '/reports/shadow',
     sources: [
-      { name: 'ESA Sentinel-2 satellite imagery (via Element84)', use: 'Spectral change detection to identify recent construction near the property' },
       { name: 'NSW Planning Portal (lot API)', use: 'Cadastral lot boundary for the subject property' },
-      { name: 'Solar position algorithm (pvlib)', use: 'Sun angle at 9 am, noon, and 3 pm on June 21 (winter solstice — worst case)' },
+      { name: 'pybdshadow shadow-casting model', use: 'Shadow geometry at 9 am, noon, and 3 pm on June 21 (winter solstice — worst case), with sun position derived from the modelled date and time' },
       { name: 'LEP height limit controls', use: 'Maximum permitted building height from LEP and DCP to model worst-case neighbour shadow' },
     ],
-    cadence: 'Solar position calculations are deterministic. Satellite imagery uses the most recent available Sentinel-2 pass. LEP height controls are queried live.',
+    cadence: 'Solar position calculations are deterministic. LEP height controls are queried live.',
     limitations: 'Shadow analysis is computed for the winter solstice as the worst-case scenario. Height estimates use LEP-permitted maximums, not actual building heights. Results are an estimate — council-submitted shadow diagrams require a licensed surveyor or certifier.',
   },
   {

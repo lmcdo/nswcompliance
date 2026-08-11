@@ -13,9 +13,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPool } from '@/lib/db';
-import { captureServerException } from '@/lib/posthog-server';
 import { toLgaSlug } from '@/lib/lga-slug';
+import {
+  fetchDcpControls,
+  DcpControlRow,
+  DcpControlsUnavailableError,
+} from '@/lib/dcp-controls-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +42,7 @@ function getLgaSlugs(council: string): string[] {
 // Group control_type values into display categories
 const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
   front_setback: { label: 'Setbacks', order: 1 },
+  secondary_street_setback: { label: 'Setbacks', order: 1 },
   side_setback: { label: 'Setbacks', order: 1 },
   rear_setback: { label: 'Setbacks', order: 1 },
   separation_from_dwelling: { label: 'Setbacks', order: 1 },
@@ -65,6 +69,7 @@ const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
 // Human-readable control type labels
 const CONTROL_TYPE_LABELS: Record<string, string> = {
   front_setback: 'Front setback',
+  secondary_street_setback: 'Secondary street setback',
   side_setback: 'Side setback',
   rear_setback: 'Rear setback',
   separation_from_dwelling: 'Separation from dwelling',
@@ -141,73 +146,57 @@ export async function GET(request: NextRequest) {
   const lgaSlugs = getLgaSlugs(council);
 
   try {
-    const pool = getPool();
-
-    // Build parameterized IN clause
-    const placeholders = lgaSlugs.map((_, i) => `$${i + 1}`).join(', ');
-    const result = await pool.query(
-      `SELECT sc.control_type, sc.value_min, sc.value_max, sc.unit, sc.condition,
-              sc.section_ref, sc.source_text, sc.dcp_version, sc.pdf_page,
-              sc.source_chapter_key, sc.needs_review, sc.lga,
-              cr.r2_public_pdf_url, cr.chapter_label, cr.dcp_name, cr.council AS registry_council
-       FROM dcp_setback_controls sc
-       LEFT JOIN dcp_chapter_registry cr
-         ON sc.source_chapter_key = cr.chapter_key
-         AND cr.council = sc.lga
-         AND cr.is_active = true
-       WHERE sc.lga IN (${placeholders})
-         AND sc.dev_type = $${lgaSlugs.length + 1}
-         AND (sc.is_current IS NULL OR sc.is_current = true)
-       ORDER BY sc.control_type, sc.section_ref`,
-      [...lgaSlugs, devType],
+    // Item 5 consolidation: rows come from the ONE guarded implementation
+    // (conveyancing_db.fetch_dcp_setbacks via /pipeline/dcp-controls) —
+    // is_current strict, needs_review excluded, deterministic order, as-at.
+    // Two behaviour changes vs the old inline SQL, both deliberate:
+    //   1. needs_review rows are EXCLUDED entirely (the old code served a
+    //      flagged row as a normal number whenever it had a value — 35 rows
+    //      measured 2026-08-03). 'under_review' can no longer occur.
+    //   2. is_current is strict (measured: zero NULL rows, no served change).
+    // The registry PDF map is per-council by construction, so the old
+    // cross-council leak sentinel is structurally unnecessary here.
+    const results = await Promise.all(
+      lgaSlugs.map((slug) => fetchDcpControls(slug)),
     );
 
-    if (result.rows.length === 0) {
-      // Check if this council has ANY controls (regardless of dev_type)
-      const anyResult = await pool.query(
-        `SELECT COUNT(*) as count, array_agg(DISTINCT dev_type) as dev_types
-         FROM dcp_setback_controls
-         WHERE lga IN (${placeholders})
-           AND (is_current IS NULL OR is_current = true)`,
-        lgaSlugs,
-      );
+    // Each row keeps its OWN result's PDF map and metadata — flattening the
+    // per-council maps by chapter_key alone could attach one former
+    // council's PDF (or dcp_name/as-at) to another's control when a future
+    // COUNCIL_TO_LGA expansion returns multiple slugs (Sol, 2026-08-04).
+    type SourcedRow = DcpControlRow & {
+      __pdfBase: string | null;
+      __source: (typeof results)[number];
+    };
+    const allRows: SourcedRow[] = results.flatMap((r) =>
+      r.available && r.rows
+        ? r.rows.map((row) => ({
+            ...row,
+            __pdfBase:
+              (row.source_chapter_key &&
+                r.registry_pdf_urls?.[row.source_chapter_key]) || null,
+            __source: r,
+          }))
+        : [],
+    );
+    const devRows = allRows.filter((r) => r.dev_type === devType);
 
-      const hasAnyControls = parseInt(anyResult.rows[0]?.count || '0') > 0;
-      const availableDevTypes = anyResult.rows[0]?.dev_types || [];
-
+    if (devRows.length === 0) {
+      const availableDevTypes = [...new Set(allRows.map((r) => r.dev_type))];
       return NextResponse.json({
         council,
         dev_type: devType,
         has_controls: false,
-        available_dev_types: hasAnyControls ? availableDevTypes : [],
+        available_dev_types: availableDevTypes,
         categories: [],
-      });
-    }
-
-    // Defence-in-depth output invariant.
-    // The registry join above is scoped to the council (cr.council = sc.lga),
-    // which fixes the cross-council contamination bug where a generic
-    // chapter_key (e.g. "part-e-s4.6") shared across councils fanned one control
-    // into several rows carrying foreign councils' DCP names. If a future change
-    // ever lets a foreign council's chapter attach again, drop the leaked rows
-    // and alert — never serve another council's controls on a compliance
-    // surface. Silent wrong data is the worst failure mode here.
-    const cleanRows = result.rows.filter(
-      (r) => !r.registry_council || r.registry_council === r.lga,
-    );
-    if (cleanRows.length !== result.rows.length) {
-      captureServerException(new Error('DCP registry cross-council leak detected'), {
-        endpoint: '/api/dcp/structured-controls',
-        council,
-        leaked_rows: result.rows.length - cleanRows.length,
       });
     }
 
     // Group by category
     const categoryMap = new Map<string, ControlCategory>();
 
-    for (const row of cleanRows) {
-      const catInfo = CONTROL_CATEGORIES[row.control_type] || { label: 'Other', order: 99 };
+    for (const row of devRows) {
+      const catInfo = CONTROL_CATEGORIES[row.semantic_type] || { label: 'Other', order: 99 };
       const catKey = catInfo.label;
 
       if (!categoryMap.has(catKey)) {
@@ -218,49 +207,45 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Build PDF URL with page anchor if available
-      let pdfUrl: string | null = row.r2_public_pdf_url || null;
+      // Build PDF URL with page anchor if available — resolved from the
+      // row's OWN council's map at collection time (never cross-council).
+      let pdfUrl: string | null = row.__pdfBase;
       if (pdfUrl && row.pdf_page) {
         pdfUrl = `${pdfUrl}#page=${row.pdf_page}`;
       }
 
-      const valueMin = row.value_min != null ? parseFloat(row.value_min) : null;
-      const valueMax = row.value_max != null ? parseFloat(row.value_max) : null;
+      const valueMin = row.value_min != null ? Number(row.value_min) : null;
+      const valueMax = row.value_max != null ? Number(row.value_max) : null;
       const hasNumeric = valueMin !== null || valueMax !== null;
-      const needsReview = row.needs_review === true;
 
-      let dataStatus: ControlDataStatus;
-      if (hasNumeric) {
-        dataStatus = 'numeric';
-      } else if (needsReview) {
-        dataStatus = 'under_review';
-      } else {
-        dataStatus = 'not_applicable';
-      }
+      // needs_review rows never reach this point (excluded at the guarded
+      // source), so status is numeric or not_applicable; 'under_review'
+      // remains in the type for consumers but cannot be emitted here.
+      const dataStatus: ControlDataStatus = hasNumeric ? 'numeric' : 'not_applicable';
 
-      const controlLabel = CONTROL_TYPE_LABELS[row.control_type] || row.control_type;
+      const controlLabel = CONTROL_TYPE_LABELS[row.semantic_type] || row.semantic_type;
       // Ceiling if the type is a known maximum OR its label reads "Maximum …" —
       // the label backstop catches a future max_* type whose author updated the
       // label map but forgot MAXIMUM_CONTROL_TYPES. No minimum control is labelled
       // "Maximum", so this never mis-flags a floor.
       const direction: ControlDirection =
-        MAXIMUM_CONTROL_TYPES.has(row.control_type) || /^Maximum\b/.test(controlLabel)
+        MAXIMUM_CONTROL_TYPES.has(row.semantic_type) || /^Maximum\b/.test(controlLabel)
           ? 'max'
           : 'min';
 
       categoryMap.get(catKey)!.controls.push({
-        control_type: row.control_type,
+        control_type: row.semantic_type,
         control_label: controlLabel,
         direction,
         value_min: valueMin,
         value_max: valueMax,
         unit: row.unit,
-        condition: row.condition,
-        section_ref: row.section_ref,
+        condition: row.notes || null,
+        section_ref: row.clause || null,
         source_text: row.source_text,
-        dcp_name: row.dcp_name || row.dcp_version,
+        dcp_name: row.dcp_version,
         dcp_version: row.dcp_version,
-        pdf_page: row.pdf_page ? parseInt(row.pdf_page) : null,
+        pdf_page: row.pdf_page != null ? Number(row.pdf_page) : null,
         pdf_url: pdfUrl,
         data_status: dataStatus,
       });
@@ -268,21 +253,38 @@ export async function GET(request: NextRequest) {
 
     const categories = Array.from(categoryMap.values()).sort((a, b) => a.order - b.order);
 
-    // Extract DCP name — prefer the longest dcp_version (usually the formal name)
-    const dcpName = cleanRows
-      .map(r => r.dcp_name || r.dcp_version)
-      .filter(Boolean)
-      .sort((a: string, b: string) => b.length - a.length)[0] || null;
+    // Metadata comes from the result(s) that actually CONTRIBUTED the served
+    // rows — never from a slug whose rows were all filtered out (Sol,
+    // 2026-08-04: the first-available slug could label another slug's rows).
+    const contributing = [...new Set(devRows.map((r) => r.__source))];
+    const dcpName =
+      contributing.find((r) => r.dcp_name)?.dcp_name ||
+      devRows
+        .map((r) => r.dcp_version)
+        .filter((v): v is string => Boolean(v))
+        .sort((a, b) => b.length - a.length)[0] ||
+      null;
+
+    const asAt = contributing.find((r) => r.as_at_line);
 
     return NextResponse.json({
       council,
       dev_type: devType,
       has_controls: true,
       dcp_name: dcpName,
+      as_at: asAt?.as_at ?? null,
+      as_at_line: asAt?.as_at_line ?? null,
       categories,
     });
   } catch (err) {
-    console.error('[dcp/structured-controls] DB error:', err);
+    if (err instanceof DcpControlsUnavailableError) {
+      console.error('[dcp/structured-controls] source unavailable:', err.message);
+      return NextResponse.json(
+        { error: 'DCP controls source unavailable — try again shortly' },
+        { status: 503 },
+      );
+    }
+    console.error('[dcp/structured-controls] error:', err);
     return NextResponse.json({ error: 'Failed to fetch structured controls' }, { status: 500 });
   }
 }

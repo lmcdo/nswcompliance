@@ -2,8 +2,17 @@
 
 Fixtures in tests/fixtures/brief_golden/ were captured 2026-07-04 by running
 the real services (scripts/capture_brief_golden_fixtures.py) against the
-verified demo addresses — NOT hand-written mocks, so they cannot be
-self-confirming: if a service renames a key, re-capture + these tests diverge.
+verified demo addresses — NOT hand-written mocks.
+
+⚠ CORRECTED 2026-08-07. This docstring used to claim the fixtures "cannot be
+self-confirming: if a service renames a key, re-capture + these tests diverge."
+That is only true for a RENAMED key. When a service ADDS one, a fixture and a
+contract that both predate it are wrong in the same direction and every test
+comparing one to the other stays green — which is what happened when
+climate_risk_score.to_dict gained ``confidence_reason``. A captured fixture is
+still a stored artefact, and comparing two stored artefacts cannot detect drift
+in the thing they were both copied from. Contract tests here should reference a
+LIVE call wherever the service can be invoked on this box.
 
 Per-layer three-state coverage: populated / queried-empty / failed must each
 render distinctly (never conflated).
@@ -116,9 +125,62 @@ def test_climate_queried_empty_distinct_from_failed():
 
 
 def test_climate_hazard_contract_matches_service_to_dict_keys():
-    # Locks ClimateHazardOutput to the exact keys HazardScore.to_dict emits.
+    """Locks ClimateHazardOutput to the keys the service ACTUALLY emits.
+
+    This compares against a LIVE ``to_dict()`` call. It previously compared the
+    contract to the stored fixture — two stored artefacts — while its comment
+    claimed it locked the contract to "the exact keys HazardScore.to_dict
+    emits". It did not. When ``to_dict`` gained ``confidence_reason`` (the
+    output-grounding work), neither the contract nor the fixture knew, both were
+    wrong in the same direction, and this test stayed green for weeks.
+
+    A check that compares a copy against a copy cannot detect drift in the
+    original. The live call is now the reference, and the fixture is checked
+    against it too — so a stale fixture fails here instead of hiding.
+    """
+    from services.climate_risk_score import ClimateRiskResult, HazardScore
+
+    served = ClimateRiskResult(
+        score=1, band="Low", lat=0.0, lng=0.0,
+        hazards=[HazardScore(
+            hazard="flood", raw_score=0.0, weight=0.167, weighted_score=0.0,
+            present=False, detail="Flood planning layer: No",
+            confidence="high", confidence_reason="queried, no intersection",
+            data_source="spatial_overlays",
+        )],
+    ).to_dict()
+    served_keys = set(served["hazards"][0].keys())
+
+    assert set(ClimateHazardOutput.model_fields) == served_keys, (
+        "ClimateHazardOutput has drifted from what climate_risk_score actually "
+        "serialises"
+    )
+
     raw = _load("climate_risk")
-    assert set(ClimateHazardOutput.model_fields) == set(raw["hazards"][0].keys())
+    assert set(raw["hazards"][0].keys()) == served_keys, (
+        "the captured fixture has drifted from the live service — re-capture it"
+    )
+
+
+def test_climate_service_output_contract_matches_to_dict_top_level_keys():
+    """Same live-reference rule for the top-level climate contract.
+
+    Pins the composite's absence at the contract layer: if ``score``/``band``/
+    ``interaction_bonus`` reappear in ``to_dict``, this fails rather than
+    silently widening what the brief seam accepts.
+    """
+    from services.climate_risk_score import ClimateRiskResult
+
+    served = ClimateRiskResult(score=1, band="Low", lat=0.0, lng=0.0).to_dict()
+    # narclim is attached downstream by _fetch_climate_risk, not by to_dict;
+    # lat/lng are echoed by the endpoint and not part of the brief seam.
+    contract = set(ClimateRiskServiceOutput.model_fields) - {"narclim"}
+    assert contract == set(served.keys()) - {"lat", "lng"}, (
+        f"contract={sorted(contract)} vs served={sorted(served.keys())}"
+    )
+    for banned in ("score", "band", "interaction_bonus"):
+        assert banned not in served
+        assert banned not in ClimateRiskServiceOutput.model_fields
 
 
 # ── housing SEPP eligibility ─────────────────────────────────────────────────
