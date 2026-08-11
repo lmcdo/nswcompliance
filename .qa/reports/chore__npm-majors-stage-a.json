@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Executes stage (a) of the staged plan in issue #770. Five dependency majors plus a rewrite of 12 URL stubs across 5 test suites. No product code changes, but the test harness is what every other gate depends on, so a wrong move here makes future checks unreliable rather than loud.",
-  "commit_hash": "PENDING",
+  "commit_hash": "e5fb5946",
   "files": [
     "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx",
     "frontend-nextjs/__tests__/components/tools/GrannyFlatTool-paywall.test.tsx",
