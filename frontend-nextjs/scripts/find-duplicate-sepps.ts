@@ -79,7 +79,8 @@ async function findDuplicates() {
       SELECT
         d.id,
         d.pdf_name,
-        COUNT(rp.id) as provision_count
+        COUNT(rp.id) as provision_count,
+        COUNT(rp.id) FILTER (WHERE rp.is_current) as current_provision_count
       FROM documents d
       LEFT JOIN regulatory_provisions rp ON rp.document_id = d.id
       WHERE d.id = ANY($1)

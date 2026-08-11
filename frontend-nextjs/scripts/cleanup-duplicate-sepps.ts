@@ -48,9 +48,14 @@ async function cleanupDuplicates() {
 
     for (const pair of duplicatePairs) {
       const countQuery = `
+        -- Both totals matter here. The overall count decides which duplicate is
+        -- the fuller document; the is_current count shows how much of each is
+        -- still live, so a document that is larger only because it carries more
+        -- superseded rows cannot win the comparison by accident.
         SELECT
           d.id,
-          COUNT(rp.id) as provision_count
+          COUNT(rp.id) as provision_count,
+          COUNT(rp.id) FILTER (WHERE rp.is_current) as current_provision_count
         FROM documents d
         LEFT JOIN regulatory_provisions rp ON rp.document_id = d.id
         WHERE d.id IN ($1, $2)

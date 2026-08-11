@@ -1,0 +1,103 @@
+{
+  "tier": "standard",
+  "justification": "Tracks 116 files that existed only in the working tree and adds 30 .gitignore lines that keep 1.9 GB of re-fetchable downloads out. 29 of the newly-tracked files are code the repo has been running untracked, so this is the first time any gate has seen them — which is why it is not Minor.",
+  "commit_hash": "0054b38e",
+  "files": [
+    "frontend-nextjs/scripts/add-version-columns-direct.ts",
+    "frontend-nextjs/scripts/apply-sepp-amendments.ts",
+    "frontend-nextjs/scripts/auto-research-sepps.ts",
+    "frontend-nextjs/scripts/check-constraints.ts",
+    "frontend-nextjs/scripts/cleanup-duplicate-sepps.ts",
+    "frontend-nextjs/scripts/complete-sepp-research.ts",
+    "frontend-nextjs/scripts/debug-db.ts",
+    "frontend-nextjs/scripts/extract-existing-amendments.ts",
+    "frontend-nextjs/scripts/extract-sepp-structured.ts",
+    "frontend-nextjs/scripts/finalize-sepp-research.ts",
+    "frontend-nextjs/scripts/find-duplicate-sepps.ts",
+    "frontend-nextjs/scripts/fix-versioning-dates.ts",
+    "frontend-nextjs/scripts/generate-granny-pdf.ts",
+    "frontend-nextjs/scripts/generate-shadow-paid-test.tsx",
+    "frontend-nextjs/scripts/investigate-sepp-splits.ts",
+    "frontend-nextjs/scripts/monitor-nsw-legislation-notifications.ts",
+    "frontend-nextjs/scripts/populate-dcp-version-metadata.ts",
+    "frontend-nextjs/scripts/populate-sepp-version-metadata.ts",
+    "frontend-nextjs/scripts/render-all-pdfs.tsx",
+    "frontend-nextjs/scripts/research-remaining-sepps.ts",
+    "frontend-nextjs/scripts/research-sepp-amendments.ts",
+    "frontend-nextjs/scripts/run-version-migration.ts",
+    "frontend-nextjs/scripts/standardize-amendment-references.ts",
+    "frontend-nextjs/scripts/test-extraction-minimal.ts",
+    "frontend-nextjs/scripts/test-extraction-with-transaction.ts",
+    "frontend-nextjs/scripts/test-insert.ts",
+    "frontend-nextjs/scripts/verify-duplicate-provisions.ts",
+    "frontend-nextjs/scripts/verify-versioning-system.ts",
+    "services/scripts/update_rental_data.py",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "bash -c \"git ls-files | wc -l; du -sh data/coastal_inundation data/flood_calibration 2>/dev/null | tail -2\"",
+    "fails_when": "The tracked-file count does not rise by 116, or the ignored data directories are tracked. Measured before merge: the branch adds 3.4 MB across 116 files with NO file over 1 MB, while the two data directories it excludes hold ~1.9 GB. The check is falsifiable in both directions: committing the payload would blow the added size past 3.4 MB, and dropping the ignore lines would put those directories into git ls-files. It reads the repository rather than the diff that produced it, so a file added by accident still shows up.",
+    "external_authority": "Sizes come from git cat-file and du against the real objects and the real directories, not from anything this change asserts."
+  },
+  "pre_impl": {
+    "existing_data": "116 files were untracked, 29 of them code under frontend-nextjs/scripts. Measured with git diff --name-only against origin/main; total added weight 3.4 MB, largest single file under 1 MB.",
+    "assumption_mismatch": "The headline '1.9 GB' reads like the PR commits 1.9 GB. It does the opposite: the 1.9 GB is what the new .gitignore lines EXCLUDE, and what is actually added is 3.4 MB. Anyone reviewing on the title alone would reject this for the wrong reason.",
+    "external_source_error": "No external system is consulted. The excluded payloads are re-fetchable and their download recipes are kept beside them (copernicus_manifest.json, the .urls files), so exclusion loses reproducibility of nothing.",
+    "new_vs_existing": "No new mechanism. It uses the existing whitelist-ignore convention, and follows the documented `dir/*` form rather than `dir/` because git cannot re-include a file whose parent directory is excluded — the trap already recorded in .gitignore's own comments."
+  },
+  "functions": [
+    {
+      "name": "run",
+      "file_line": "services/scripts/update_rental_data.py:38",
+      "input": "the newly-tracked rental update script, previously running untracked and never read by a gate",
+      "output": "unchanged behaviour; the file is tracked rather than altered, so CI reads it for the first time",
+      "if_none": "nothing changes at runtime — the risk this documents is that 29 such files enter the repo with no prior gate history, not that this function behaves differently"
+    }
+  ],
+  "values": [
+    {
+      "value": "adds 3.4 MB across 116 files, no file over 1 MB; excludes ~1.9 GB",
+      "read_at": "git cat-file -s over every added path at origin/chore/commit-working-tree, 2026-08-12",
+      "if_missing": "without this the PR would be judged on its title, which sounds like the reverse of what it does"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A reviewer reads '1.9 GB' in the title and assumes the repository grows by that much.",
+      "what_happens": "The PR is rejected, or merged with alarm, on a misreading. The 1.9 GB is excluded; 3.4 MB is added.",
+      "mitigated": true,
+      "how": "Measured and recorded above, and the falsifiable check re-measures both numbers rather than restating them.",
+      "repro": "git diff --name-only origin/main...HEAD | wc -l"
+    },
+    {
+      "scenario": "The ignore lines are written as `data/dir/` instead of `data/dir/*`.",
+      "what_happens": "Every `!data/dir/keepme` re-inclusion below silently stops working, because git cannot re-include a file whose parent directory is excluded — so the manifests and .urls files meant to be kept would vanish from the repo.",
+      "mitigated": true,
+      "how": "The lines use the `dir/*` form and the reason is written in .gitignore beside them, so the next person editing it sees why.",
+      "repro": "git check-ignore -v data/flood_calibration/copernicus_manifest.json"
+    },
+    {
+      "scenario": "29 code files enter the repo having never been seen by a gate.",
+      "what_happens": "Whatever defects they carry land in one commit. They have been running untracked, so no linter, type check or QA gate has ever read them.",
+      "mitigated": false,
+      "how": "Not fully mitigated, and this is the real risk of the PR. CI now runs over them for the first time and the branch is green, which covers the checks CI performs — but the fabricated-verdict lint, null-guard and type-boundary scanners are diff-scoped, so they only judge lines this PR touches. Two null-safety defects were already found and fixed in an earlier commit on this branch, which is evidence the class exists rather than evidence it is exhausted.",
+      "repro": "git diff --name-only origin/main...HEAD -- 'frontend-nextjs/scripts/*.ts' | wc -l"
+    },
+    {
+      "scenario": "The duplicate-document comparison counts superseded provisions as if they were live.",
+      "what_happens": "A document that is bigger only because it carries more superseded rows wins the keep-vs-supersede comparison, and the fuller LIVE document is the one retired. The QA gate flagged this line as querying regulatory_provisions with no currency filter — on code that had been running untracked and had never been read by any gate.",
+      "mitigated": true,
+      "how": "The query now returns both counts: provision_count for overall size and current_provision_count for how much is still live. A filter would have been the WRONG fix here, since the total is genuinely wanted; the defect was that currency was not visible at all.",
+      "repro": "grep -n 'current_provision_count' frontend-nextjs/scripts/cleanup-duplicate-sepps.ts"
+    }
+  ],
+  "mutation_analysis": "Nothing executable is authored here, so classical mutation testing does not apply. The equivalent was done on the two claims that matter. Delete the ignore lines and the excluded directories appear in git ls-files, so the check goes red. Commit one payload file and the added-size measurement rises past 3.4 MB. Both were confirmed by measuring the real objects rather than by re-reading the diff.",
+  "residual_risk": "29 code files land having never been read by any gate, and the scanners that would judge them are diff-scoped, so being green means the touched lines are clean, not the files. The excluded 1.9 GB is re-fetchable only while the recorded URLs stay live; if Copernicus retires those archives the recipe remains but the data does not.",
+  "post_merge": {
+    "db_reset": "No. No schema or data change.",
+    "secrets": "None added. The tracked scripts were checked against the same key patterns swept in #921 and are clean.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes. Confirm data/coastal_inundation and data/flood_calibration are still ignored after merge, and spot-check that the kept manifests and .urls files survived the re-inclusion rules."
+  }
+}

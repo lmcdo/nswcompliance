@@ -13,7 +13,8 @@ async function investigate() {
         d.id,
         d.pdf_name,
         d.pdf_path,
-        COUNT(rp.id) as provision_count
+        COUNT(rp.id) as provision_count,
+        COUNT(rp.id) FILTER (WHERE rp.is_current) as current_provision_count
       FROM documents d
       LEFT JOIN regulatory_provisions rp ON rp.document_id = d.id
       WHERE d.pdf_name = 'State Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation.pdf'
