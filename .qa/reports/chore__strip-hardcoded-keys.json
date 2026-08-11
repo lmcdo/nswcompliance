@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Removes credential literals from 17 tracked files and replaces them with the environment lookup this repo already uses elsewhere. No logic, no control flow, no database, no served output changes. Minor by content, but the failure mode it introduces is deliberate and is described below.",
-  "commit_hash": "fb562232",
+  "commit_hash": "6609422c",
   "files": [
     "scripts/fix_precise_citations.py",
     "scripts/lightrag_simple_test.py",
