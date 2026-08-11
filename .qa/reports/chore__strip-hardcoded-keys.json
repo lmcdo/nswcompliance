@@ -1,0 +1,41 @@
+{
+  "tier": "minor",
+  "justification": "Removes credential literals from 17 tracked files and replaces them with the environment lookup this repo already uses elsewhere. No logic, no control flow, no database, no served output changes. Minor by content, but the failure mode it introduces is deliberate and is described below.",
+  "commit_hash": "fb562232",
+  "files": [
+    "scripts/fix_precise_citations.py",
+    "scripts/lightrag_simple_test.py",
+    "scripts/secondary_dwelling_stats.py",
+    "scripts/real_lightrag_processor.py",
+    "scripts/working_nsw_query.py"
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone runs one of these scripts with no OPENAI_API_KEY in the environment and no repo .env.",
+      "what_happens": "It now fails instead of working. That is the intended change: it previously 'worked' only because a live credential was inlined in the file. os.environ.get returns None and the OpenAI client raises on construction, naming the missing key. The alternative — a silent fallback — is what put the key in 16 files in the first place.",
+      "mitigated": true,
+      "how": "This matches the convention already in the codebase: scripts/openai_semantic_processor.py:15 is the identical os.environ.get form, and scripts/sol_common.py:load_api_key resolves env then repo .env/.env.local and raises a message naming exactly what to set. Anyone with a working .env is unaffected.",
+      "repro": "env -u OPENAI_API_KEY python -c \"import os;print(os.environ.get('OPENAI_API_KEY'))\""
+    },
+    {
+      "scenario": "secondary_dwelling_stats.py loses its Supabase anon-key default and a scheduled job depends on that default.",
+      "what_happens": "DA_SUPABASE_KEY becomes an empty string unless DA_SUPABASE_ANON_KEY is set, so the Supabase call is unauthenticated and fails. Callers are scripts/json_to_ts_stats.py and scripts/refresh_stats_job.py, so a stats refresh could break until the variable is set.",
+      "mitigated": false,
+      "how": "Not mitigated, and called out rather than hidden. The line was already os.environ.get(\"DA_SUPABASE_ANON_KEY\", <literal>) so the environment was always preferred; only the inline fallback is gone. This key is the lowest-risk of the four — Supabase anon keys are designed to be shipped to browsers and are guarded by RLS — but it should still not sit in a tracked file. Set DA_SUPABASE_ANON_KEY wherever refresh_stats_job runs.",
+      "repro": "grep -n 'DA_SUPABASE_ANON_KEY' scripts/secondary_dwelling_stats.py"
+    },
+    {
+      "scenario": "This PR is mistaken for having fixed the credential exposure.",
+      "what_happens": "The keys stay valid and remain in git history on every prior commit, so anyone with the repo, a fork, or a stale clone still has working credentials. Removing them from the tip changes nothing about that.",
+      "mitigated": true,
+      "how": "Stated in the PR body and in ~/.claude/plans/meta-session-reconciliation-2026-08-11.md: ROTATION is the fix, this PR only stops the bleeding forward. A history rewrite is deliberately not attempted here — it would rewrite every SHA and break all 13 open PRs, and after rotation it is cosmetic.",
+      "repro": "git log --oneline -S'sk-proj-' --all -- scripts/query_lep_lightrag.py | head"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. No schema or data change. One Supabase anon-key default is removed; set DA_SUPABASE_ANON_KEY where refresh_stats_job runs.",
+    "secrets": "This IS the secrets change. Four distinct credentials removed from 17 tracked files. They remain valid and remain in history until rotated — rotation is a separate, required action.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes, and it is the point: rotate the OpenAI, Anthropic and TfNSW keys. Then confirm any job that used the Supabase anon-key default has DA_SUPABASE_ANON_KEY set."
+  }
+}

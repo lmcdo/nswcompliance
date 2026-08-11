@@ -53,7 +53,7 @@ DA_SUPABASE_URL = os.environ.get(
 )
 DA_SUPABASE_KEY = os.environ.get(
     "DA_SUPABASE_ANON_KEY",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmenZ2Z2hteXdiaGh3ZGhoYmpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY0NDUzMjgsImV4cCI6MjA2MjAyMTMyOH0.U_0Wj-7lwtjLeWmSf2wG9iHjrTBirHTqc7Om18mx5BE",
+    "",
 )
 
 # NSW Planning Portal DevelopmentType taxonomy values for secondary dwellings.
