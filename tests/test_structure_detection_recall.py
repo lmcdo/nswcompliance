@@ -225,3 +225,50 @@ def test_thresholds_are_the_committed_values():
     assert recall.RECALL_FLOOR == 0.70
     assert recall.PRECISION_FLOOR == 0.60
     assert recall.MIN_LABELLED == 40
+
+
+# --- malformed geometry ---------------------------------------------------
+#
+# The QA gate flagged two `float(v) for v in box` loops that assumed every
+# coordinate was a number. A null in a bbox — from the labelling UI, from the
+# detector, or from a hand-edited row — took the whole measurement down with a
+# TypeError partway through. Coercing to 0.0 would have been worse: the box
+# silently changes shape, points that were inside read as outside, and the miss
+# count climbs with nothing to show anything went wrong.
+
+def test_a_null_in_a_box_is_malformed_not_zero():
+    assert recall.numeric4([10, None, 20, 30]) is None
+    assert recall.numeric4([10, "20", 20, 30]) is None
+    assert recall.numeric4(None) is None
+    assert recall.numeric4([1, 2, 3]) is None
+    assert recall.numeric4([0, 0, 10, 10]) == (0.0, 0.0, 10.0, 10.0)
+
+
+def test_booleans_are_not_coordinates():
+    """isinstance(True, int) is True in Python, so a bare numeric check lets
+    `[True, 0, 10, 10]` through as (1.0, 0.0, 10.0, 10.0) — a real box built
+    from junk."""
+    assert recall.numeric4([True, 0, 10, 10]) is None
+
+
+def test_a_malformed_truth_label_is_skipped_not_crashed():
+    assert recall.label_point({"bbox_pixel": [10, None, 20, 30]}) is None
+
+
+def test_a_malformed_prediction_counts_as_spurious_not_a_match():
+    """Conservative direction on purpose.
+
+    A prediction whose box is unusable cannot pair with anything, so it lands
+    in spurious — counting against precision — rather than disappearing from
+    both numerator and denominator, which would flatter the detector.
+    """
+    truth = [point(5, 5)]
+    pred = [box(0, 0, 10, 10), {"bbox_pixel": [1, None, 9, 9]}]
+    matched, missed, spurious = recall.match_boxes(truth, pred)
+    assert (matched, missed, spurious) == (1, 0, 1)
+
+
+def test_a_lot_of_only_malformed_predictions_finds_nothing():
+    truth = [point(5, 5)]
+    pred = [{"bbox_pixel": [None, None, None, None]}]
+    assert recall.match_boxes(truth, pred) == (0, 1, 1)

@@ -90,11 +90,34 @@ def label_point(label: dict) -> tuple[float, float] | None:
     p = label.get("point_pixel")
     if isinstance(p, (list, tuple)) and len(p) == 2:
         return float(p[0]), float(p[1])
-    b = label.get("bbox_pixel")
-    if isinstance(b, (list, tuple)) and len(b) == 4:
-        x0, y0, x1, y1 = (float(v) for v in b)
+    b = numeric4(label.get("bbox_pixel"))
+    if b is not None:
+        x0, y0, x1, y1 = b
         return (x0 + x1) / 2.0, (y0 + y1) / 2.0
     return None
+
+
+def numeric4(v) -> tuple[float, float, float, float] | None:
+    """Four real numbers, or None for anything else.
+
+    A bbox carrying a null — `[10, null, 20, 30]` — is MALFORMED DATA, not a
+    box. Both callers previously did `float(v) for v in box`, which raises
+    TypeError on the null and takes the whole measurement down partway through.
+    Coercing the null to 0.0 would be worse: it silently turns the box into a
+    different shape, so a point that really was inside reads as outside and the
+    miss count climbs with no sign anything went wrong.
+
+    Booleans are rejected explicitly because `isinstance(True, int)` is True in
+    Python, and a `true` in a coordinate slot is malformed data too.
+    """
+    if not isinstance(v, (list, tuple)) or len(v) != 4:
+        return None
+    out = []
+    for x in v:
+        if isinstance(x, bool) or not isinstance(x, (int, float)):
+            return None
+        out.append(float(x))
+    return out[0], out[1], out[2], out[3]
 
 
 def point_in_box(pt: tuple[float, float], box: list[int]) -> bool:
@@ -165,10 +188,14 @@ def match_boxes(truth: list[dict], pred: list[dict]) -> tuple[int, int, int]:
         if pt is None:
             continue
         for pi, p in enumerate(pred):
-            box = p.get("bbox_pixel")
-            if not box or not point_in_box(pt, box):
+            # A malformed prediction box cannot contain anything, so it never
+            # pairs and falls through to SPURIOUS. That is the conservative
+            # direction: it counts against the detector's precision rather than
+            # quietly vanishing from both numerator and denominator.
+            box = numeric4(p.get("bbox_pixel"))
+            if box is None or not point_in_box(pt, list(box)):
                 continue
-            x0, y0, x1, y1 = (float(v) for v in box)
+            x0, y0, x1, y1 = box
             area = abs(x1 - x0) * abs(y1 - y0)
             pairs.append((-area, ti, pi))   # sort desc => smallest area first
     pairs.sort(reverse=True)
