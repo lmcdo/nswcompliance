@@ -1,0 +1,125 @@
+{
+  "tier": "standard",
+  "justification": "City of Sydney is the biggest keyed council (462 rows) but had no derivation rule, so audit_precinct_keying_coverage.py flagged it EXPOSED: the next re-extraction would silently null every key via the [4/4] auto-keying step (which only re-keys councils that HAVE a rule). This adds three page_range rules (sections 2/5/6) keyed off pdf_page, which reproduce all 462 existing keys exactly (validate:True). CoS refs are garbled (only 101/152/128 of rows encode the key) so ref_regex is unusable; pdf_page is clean and each precinct occupies a contiguous, non-overlapping page span. No DB write is needed - the keys are already correct; the rule makes them survive re-extraction. Sydney flips EXPOSED->protected in the audit. ADDED THIS COMMIT: a parallel session hand-keyed Parramatta (532 rows, 2026-07-29) with no reproducible rule, leaving it newly EXPOSED to the same churn. A new `ref_components` strategy (mixed-depth dotted-number parsing from ref_number, gated by a components_map that also decides ELIGIBILITY not just depth) reproduces 525/532 exactly, 0 wrong, 7 legitimate no-derivation. Audit lookup table also fixed (stale 'Parramatta' key vs live lga value 'City of Parramatta'). Parramatta flips EXPOSED->protected; Woollahra remains EXPOSED (name-keyed, no safe automated rule — needs a different, human-preserving mechanism, out of scope here).",
+  "commit_hash": "b1c27469",
+  "files": [
+    "scripts/derive_precinct_keys.py",
+    "scripts/audit_precinct_keying_coverage.py",
+    "data/cos_precinct_page_ranges.json",
+    "tests/test_derive_precinct_keys.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Live analysis of the 462 keyed CoS rows: pdf_page has 0 nulls; per-chapter the precinct page spans are non-overlapping (0 overlapping-adjacent) - section-2 107 rows/102 precincts, section-5 183/13, section-6 172/44. Contiguous [min,max] spans (gaps folded forward to next span-1) reproduce 462/462 keys. Confirmed through the real code path: python scripts/derive_precinct_keys.py --council city_of_sydney --validate => new=0 changed=0 already-ok=462 no-derivation=0, VALIDATION PASSED.",
+    "assumption_mismatch": "The page->precinct map only holds while the source PDF's pagination is unchanged (pdf_page is the physical heading page, so a byte-identical PDF reproduces it, but a new amendment shifts it). This is now GUARDED: each CoS rule carries a fingerprint (max_page + min_coverage) that run() re-checks every invocation via _fingerprint_reasons and FAILS CLOSED on mismatch — keys are left un-written so rows serve council-wide + precinct_warning instead of confident wrong-precinct keys. The disjoint-span test additionally catches an overlapping/gapped regeneration.",
+    "new_vs_existing": "Reuses the existing page_range strategy (same as Ashfield ch-D) - no new strategy code. Difference: CoS spans reproduce exactly, so these rules are validate:True (Ashfield ch-D is validate:False because its current rows were hand-patched)."
+  },
+  "functions": [
+    {
+      "name": "_derive",
+      "file_line": "scripts/derive_precinct_keys.py:189",
+      "input": "strategy {type, ...} + row; reads the field(s) the strategy type needs (row[pdf_page] for page_range, row[ref_number] for ref_components, row[provision_text] for text_heading)",
+      "output": "the precinct_id per strategy: page_range = the span containing pdf_page; ref_components (new) = the ref_number's final __-segment parsed to a dotted number, trimmed to the depth the LONGEST matching components_map prefix specifies (Parramatta's mixed depth per top-level part); else None",
+      "if_none": "NULL/unmatched input, or (ref_components) no components_map key matches at all -> None -> row untouched, NEVER the raw untrimmed number (see break_it: an earlier draft's fallback was a caught-and-fixed bug that would have mis-keyed 142 non-precinct rows)"
+    },
+    {
+      "name": "_fingerprint_reasons",
+      "file_line": "scripts/derive_precinct_keys.py:275",
+      "input": "fp {max_page, min_coverage} + the rows' pdf_pages + n_none + n_total",
+      "output": "list of human-readable reasons the page structure no longer matches (last page shifted / coverage dropped); empty list means the fingerprint still holds",
+      "if_none": "empty list -> run() writes the keys; non-empty -> run() fails closed and skips the writes"
+    },
+    {
+      "name": "run",
+      "file_line": "scripts/derive_precinct_keys.py:292",
+      "input": "council='city_of_sydney'|'parramatta', apply, validate; iterates RULES matching the council",
+      "output": "buffers each rule's would-be writes, checks the fingerprint (CoS only), then writes only if it holds; --validate asserts every derived key reproduces the existing key and rolls back",
+      "if_none": "a fingerprint mismatch (or a validate disagreement) is collected and the writes for that rule are skipped; validate returns non-zero (none today: CoS 462/462 + Parramatta 525/525 match)"
+    }
+  ],
+  "values": [
+    {
+      "value": "3 CoS page_range rules (loaded from _COS_RANGES, 159 spans) each carrying a fingerprint {max_page: 169/366/265, min_coverage: 0.95}",
+      "read_at": "scripts/derive_precinct_keys.py:146 (RULES: city_of_sydney_section_2/5/6)",
+      "if_missing": "CoS stays EXPOSED and the next re-extraction nulls all 462 keys with no self-heal; without the fingerprint a re-paginated PDF would be keyed against stale spans"
+    },
+    {
+      "value": "parramatta_ref_components rule: components_map {'7':3, '8':3, '9.10':3, '9':1}, max_top_digits:1",
+      "read_at": "scripts/derive_precinct_keys.py:176 (RULES: parramatta_ref_components)",
+      "if_missing": "Parramatta stays EXPOSED (hand-keyed by a parallel session with no rule) and the next re-extraction nulls all 532 keys with no self-heal"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "select CoS rows in a chapter to derive keys by pdf_page",
+      "file_line": "scripts/derive_precinct_keys.py:313",
+      "where_clause": "WHERE is_current = true AND source_council = 'city_of_sydney' AND (source_chapter_key = 'section-2-locality-statements' | 'section-5-specific-areas' | 'section-6-specific-sites')"
+    },
+    {
+      "purpose": "select Parramatta rows in the single DCP document to derive keys by ref_number",
+      "file_line": "scripts/derive_precinct_keys.py:313",
+      "where_clause": "WHERE is_current = true AND source_council = 'parramatta' AND document_id = 'Parramatta_DCP_2023_(Amendment_4)__parramatta_dcp_2023_full'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A bad regeneration of cos_precinct_page_ranges.json overlaps two precincts' page spans.",
+      "what_happens": "A page could match two spans; the first-listed precinct wins and silently mis-keys every row on the overlapped pages.",
+      "mitigated": true,
+      "how": "test_cos_page_ranges_are_contiguous_and_ordered asserts, per chapter, spans are strictly contiguous (lo == prev_hi + 1) and lo<=hi; a regeneration that overlaps OR opens a gap fails the suite before merge.",
+      "repro": "edit the JSON so section-5 span B starts inside span A, run pytest tests/test_derive_precinct_keys.py"
+    },
+    {
+      "scenario": "Re-extraction produces a CoS row on a page that sits in a gap between two spans.",
+      "what_happens": "That row would get no key (None) and fall back to city-wide serving.",
+      "mitigated": true,
+      "how": "Spans are folded forward (each hi extended to next lo-1) so within a chapter there are no interior gaps, and test_cos_page_ranges_are_contiguous_and_ordered asserts that contiguity (lo == prev_hi + 1) so a regeneration cannot silently reopen a gap; only pages before the first span or after the last stay unkeyed, matching current preamble handling. Validation confirms no current row lands unkeyed (no-derivation=0).",
+      "repro": "python scripts/derive_precinct_keys.py --council city_of_sydney --validate and confirm no-derivation=0"
+    },
+    {
+      "scenario": "Auto-keying step [4/4] runs --apply for CoS after a re-extraction and mis-keys because a rule is validate:True.",
+      "what_happens": "validate:True rules are applied on bulk --apply (unlike validate:False which are skipped); a wrong span would write a wrong key.",
+      "mitigated": true,
+      "how": "The spans reproduce the human-verified keys exactly (462/462), so applying them writes the same keys the rows already hold; the disjoint-span test guards the only way that could drift.",
+      "repro": "re-extract a CoS chapter in commit mode and confirm [4/4] re-keys to the same 462 precinct_ids"
+    },
+    {
+      "scenario": "City of Sydney publishes a new DCP amendment that re-paginates the PDF, but keeps source_chapter_key='section-5-specific-areas'; a re-extraction (auto-keying [4/4] --apply) then maps shifted pages onto the old spans.",
+      "what_happens": "Without a guard, rows on shifted pages would silently receive wrong-precinct keys — the worst failure (confident, invisible, wrong area's controls served).",
+      "mitigated": true,
+      "how": "Each CoS rule carries a fingerprint {max_page, min_coverage}; run() calls _fingerprint_reasons every invocation and FAILS CLOSED when the last page moved or coverage dropped — it skips the writes and prints a mismatch warning, so rows stay un-keyed (council-wide + precinct_warning, the safe failure) until the ranges are regenerated against the new PDF. Covered by test_fingerprint_fails_closed_on_repagination and test_fingerprint_fails_closed_on_low_coverage.",
+      "repro": "set a rule's fingerprint max_page to 168 and run --council city_of_sydney --validate; expect a FINGERPRINT MISMATCH and no writes"
+    },
+    {
+      "scenario": "The row-selection query (scripts/derive_precinct_keys.py:254) drops its is_current filter or matches the wrong source_chapter_key, so the page_range rule keys the wrong rows.",
+      "what_happens": "Without is_current=true it could key superseded generations; a wrong source_chapter_key would apply section-5 spans to section-6 rows and mis-key an area city-wide.",
+      "mitigated": true,
+      "how": "The SELECT hardcodes WHERE is_current = true AND source_council = 'city_of_sydney' AND the exact source_chapter_key per rule (no LIKE), and --validate re-runs the same query and asserts 462/462 derived keys equal the existing keys, so a selector change that touched the wrong rows would fail validation before apply.",
+      "repro": "python scripts/derive_precinct_keys.py --council city_of_sydney --validate after altering a rule's source_chapter_key; expect VALIDATION FAILED"
+    },
+    {
+      "scenario": "CAUGHT DURING DEV, FIXED BEFORE COMMIT: the ref_components strategy's first draft fell back to the raw untrimmed number when no components_map key matched, instead of returning None.",
+      "what_happens": "Parramatta Parts 1-6 (Design in Context, Residential Development, Environmental Management etc. — general topic chapters, NOT precincts) would derive plausible-looking ids like '3', '2.3', '1.8' from their own heading numbers. Simulated against the live 188 currently-unkeyed rows: 142 would have been newly, wrongly keyed as if they were precincts — silently overriding the OTHER session's deliberate decision to leave them unkeyed pending re-chunk work.",
+      "mitigated": true,
+      "how": "Fixed so an unmatched top-level part always returns None (the components_map now decides ELIGIBILITY, not just depth). Re-simulated against the full live 720-row Parramatta corpus (532 keyed + 188 unkeyed): 525/532 keyed rows still reproduce exactly, 0/188 unkeyed rows get a new key. test_ref_components_rejects_non_precinct_parts is a permanent regression guard.",
+      "repro": "pytest tests/test_derive_precinct_keys.py::test_ref_components_rejects_non_precinct_parts; or run --council parramatta --apply on a checkout without the fix and diff the newly-keyed row count against 0"
+    },
+    {
+      "scenario": "The ref_components regex misreads a bare chunk-counter ref (e.g. tail '387', an extraction artifact unrelated to the section number) as a real single-component precinct id.",
+      "what_happens": "A row would be confidently keyed to the wrong precinct (e.g. id=105526 in Part 9's 79-row block, tail='387', would derive '387' instead of staying unmatched) — would trip a validate:True failure if the row already carries the correct key '9', or silently mis-key it if applied fresh.",
+      "mitigated": true,
+      "how": "max_top_digits=1 rejects any first digit-group longer than the real corpus's top-level parts (verified: Parramatta's only top-level parts are single digits 7/8/9 across all 72 distinct precinct ids) — '387' (3 digits) and '45' (2 digits) both correctly return None. Covered by test_ref_components_rejects_bare_chunk_counters.",
+      "repro": "pytest tests/test_derive_precinct_keys.py::test_ref_components_rejects_bare_chunk_counters"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Not required - no DB write in this PR; both CoS and Parramatta's keys are already correct, the rules only make them reproducible.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Yes - run python scripts/audit_precinct_keying_coverage.py and confirm Sydney AND City of Parramatta show rule?=YES status=protected; only Woollahra (name-keyed, needs a different mechanism) remains EXPOSED."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_derive_precinct_keys.py -q",
+    "fails_when": "Any keying rule stops producing the recorded key for a recorded ref. The tests are not a self-comparison: every expected value is hand-written from the source document, not recomputed from the code under test, and they assert in BOTH directions — positive cases pin the depth per part (7.10.1 at depth 3, 9 at depth 1) and negative cases pin what must NOT match (a bare chunk counter '__387', an 'R4' zone token, a '1__bedroom_10_20_of' fragment all return None), which is what catches over-matching rather than under-matching. Measured falsifiable on 2026-08-12 with scripts/falsifiability.py: replacing one `return` in scripts/derive_precinct_keys.py with `return None` turned 4 of the 19 tests red, and the harness restored the file byte-identically. A green run therefore means the derivation still produces these exact keys, not merely that the code ran.",
+    "external_authority": "The expected keys come from the councils' own DCP part numbering as written in the source documents, not from anything this change computes. The 19 cases were authored against those documents before the rules were tuned to satisfy them."
+  }
+}

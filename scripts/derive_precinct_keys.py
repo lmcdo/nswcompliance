@@ -17,10 +17,19 @@ A keyed row is a precinct-layer row, so a derived key also sets v2_dcp_layer='pr
 (matches how the for-property route filters). Nothing else is touched; provision_text
 is never modified.
 
+FINGERPRINT GATE (page_range rules): a page->precinct map only holds while the source
+PDF's pagination is unchanged. pdf_page is the physical page a heading sits on, so a
+byte-identical PDF reproduces the ranges exactly; a re-paginated/replaced amendment
+would shift pages and silently mis-key. Rules carrying a `fingerprint` (max_page +
+min_coverage) re-check the structure on every run and FAIL CLOSED on mismatch — keys
+are left un-written so rows serve council-wide + precinct_warning (the safe failure)
+instead of confident wrong-precinct keys. Regenerate the ranges, then re-run.
+
 RULE STRATEGIES
   doc_regex  : capture a group from document_id, format into a template   (Marrickville)
   ref_regex  : capture group(s) from ref_number, format into a template   (Leichhardt C2 / G)
-  page_range : map pdf_page to a precinct via [(precinct, lo, hi)] ranges  (Ashfield ch-D — GOING-FORWARD; current hand-patched rows won't all match, that's expected)
+  page_range : map pdf_page to a precinct via [(precinct, lo, hi)] ranges  (City of Sydney 2/5/6 — reproduces exactly; Ashfield ch-D — going-forward, current hand-patched rows won't all match)
+  text_heading: the precinct number in the provision's own leading markdown heading, trimmed to `components` (CONTENT anchor — survives re-pagination; the durable default when refs are garbled but headings are clean)
   constant   : one precinct_id for every row the selector matches          (Ashfield E2)
   chapter_map: precinct_id from a source_chapter_key -> id map             (KG single-site)
 
@@ -34,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import re
 import sys
@@ -64,6 +74,17 @@ _KG_SINGLE_SITE = {
     "section-b-part-14n-8a-14-16-buckingham-road-killara": "14N",
     "section-b-part-14o-pymble-golf-club": "14O",
 }
+
+# ── City of Sydney sections 2/5/6: page ranges derived 2026-07-29 directly from
+#    the existing keyed rows (min..max pdf_page per precinct, gaps folded forward
+#    so ranges are contiguous and non-overlapping). CoS refs are garbled (only
+#    101/152/128 encode the key) but pdf_page is clean: these ranges reproduce all
+#    462 keys exactly, so the CoS rules are validate:True. Sidecar JSON keeps the
+#    159 ranges out of the rule body; regenerate with scripts/cos_build_ranges
+#    logic if the CoS DCP is re-paginated. ──────────────────────────────────────
+with open(REPO / "data" / "cos_precinct_page_ranges.json", encoding="utf-8") as _f:
+    _COS_RANGES: dict = json.load(_f)
+
 
 # ── The rule set. Each rule: a SELECTOR (which rows) + a STRATEGY (derive key). ──
 # `validate`: True means --validate asserts the derived key reproduces the key
@@ -116,6 +137,52 @@ RULES: list[dict] = [
         "strategy": {"type": "column_copy", "column": "v2_dcp_part", "match": r"^E[0-9]$"},
         "validate": False,
     },
+    # City of Sydney (biggest keyed council: 462 rows). CoS has no precinct
+    # boundaries yet, so these keys drive the for-property EXCLUSION + precinct_warning
+    # (task 1, 2026-07-29). Keyed from page footers/refs by hand originally; these
+    # page_range rules reproduce all 462 exactly, so re-extraction now self-heals
+    # instead of un-keying CoS (it was EXPOSED per audit_precinct_keying_coverage.py).
+    {
+        "name": "city_of_sydney_section_2_locality",
+        "council": "city_of_sydney",
+        "where": "source_chapter_key = 'section-2-locality-statements'",
+        "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_2_locality_statements"]},
+        "validate": True,
+        "fingerprint": {"max_page": 169, "min_coverage": 0.95},
+    },
+    {
+        "name": "city_of_sydney_section_5_areas",
+        "council": "city_of_sydney",
+        "where": "source_chapter_key = 'section-5-specific-areas'",
+        "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_5_specific_areas"]},
+        "validate": True,
+        "fingerprint": {"max_page": 366, "min_coverage": 0.95},
+    },
+    {
+        "name": "city_of_sydney_section_6_sites",
+        "council": "city_of_sydney",
+        "where": "source_chapter_key = 'section-6-specific-sites'",
+        "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_6_specific_sites"]},
+        "validate": True,
+        "fingerprint": {"max_page": 265, "min_coverage": 0.95},
+    },
+    # Parramatta (532 rows, hand-keyed by a parallel session 2026-07-29 with no
+    # reproducible rule — audit_precinct_keying_coverage.py flags it EXPOSED). Its
+    # refs carry the precinct number at mixed depth per top-level part; ref_components
+    # reproduces 525/532 exactly (validated against every live keyed row), the other
+    # 7 are chunk-counter/zone-prefixed refs with no derivable structure and correctly
+    # return None (matches the other session's note of ~8 page-evidence exceptions).
+    {
+        "name": "parramatta_ref_components",
+        "council": "parramatta",
+        "where": "document_id = 'Parramatta_DCP_2023_(Amendment_4)__parramatta_dcp_2023_full'",
+        "strategy": {
+            "type": "ref_components",
+            "components_map": {"7": 3, "8": 3, "9.10": 3, "9": 1},
+            "max_top_digits": 1,
+        },
+        "validate": True,
+    },
 ]
 
 
@@ -146,7 +213,80 @@ def _derive(strategy: dict, row: dict) -> str | None:
             if lo <= p <= hi:
                 return pid
         return None
+    if t == "ref_components":
+        # Content anchor for refs that carry a dotted/underscored precinct number in
+        # their FINAL "__"-delimited segment, at MIXED depth per top-level part
+        # (Parramatta: Part 7/8 = 3 components; Part 9 = 1, except its 9.10 sub-group
+        # = 3). `components_map` picks the depth by the longest matching dotted prefix
+        # — but only if the ref actually HAS that many components (a bare "9_10"
+        # section-overview heading has 2, not 3, so it correctly falls back to the
+        # shorter "9" prefix instead of deriving the invalid id "9.10").
+        # `max_top_digits` rejects bare chunk-counter refs (e.g. tail "387") that
+        # would otherwise be silently misread as a real (wrong) precinct number.
+        tail = (row.get("ref_number") or "").split("__")[-1]
+        m = re.match(r"([0-9]+[A-Z]?)((?:_[0-9]+)*)", tail)
+        if not m:
+            return None
+        head, rest = m.group(1), m.group(2)
+        dm = re.match(r"([0-9]+)([A-Z]?)", head)
+        top_digits, letter = dm.group(1), dm.group(2)
+        if len(top_digits) > strategy.get("max_top_digits", 1):
+            return None
+        # The map ALSO decides eligibility, not just depth: a top-level part with no
+        # matching key (e.g. Parramatta Part 3 "Residential Development" — a general
+        # topic chapter, not a precinct) must derive None, never fall back to the raw
+        # untrimmed number — otherwise a topic chapter's own heading number ("3",
+        # "2.3") would be mistaken for a precinct id.
+        comps = [top_digits] + [c for c in rest.split("_") if c]
+        joined = ".".join(comps)
+        cmap = strategy.get("components_map") or {}
+        match = None
+        for key in sorted(cmap, key=len, reverse=True):
+            depth = cmap[key]
+            if (joined == key or joined.startswith(key + ".")) and len(comps) >= depth:
+                match = depth
+                break
+        if match is None:
+            return None
+        # The letter belongs to the TOP-LEVEL part (e.g. Part "9B"), so it must attach
+        # to the first kept component, not be appended after the last one — otherwise
+        # a hypothetical letter-suffixed part with depth>1 (none exist in Parramatta's
+        # corpus today, but the map is general) would derive "7.10.1B" instead of the
+        # correct "7B.10.1".
+        trimmed = comps[:match]
+        return trimmed[0] + letter + ("." + ".".join(trimmed[1:]) if len(trimmed) > 1 else "")
+    if t == "text_heading":
+        # Content anchor: the precinct number in the provision's own leading markdown
+        # heading (e.g. "# 5.1.1.4 ..."). Travels WITH the text, so it survives
+        # re-pagination — unlike page_range. `components` trims the dotted number to the
+        # precinct granularity (2 -> "5.1" area; 3 -> "6.1.4" site; None -> full "2.1.1").
+        m = re.match(r"\s*#\s*([0-9]+(?:\.[0-9]+)*)", row.get("provision_text") or "")
+        if not m:
+            return None
+        num = m.group(1)
+        n = strategy.get("components")
+        if n is None:
+            return num
+        parts = num.split(".")   # regex guarantees ≥1 numeric part; slice is empty-safe
+        return ".".join(parts[:n])
     raise ValueError(f"unknown strategy {t}")
+
+
+def _fingerprint_reasons(fp: dict, pdf_pages: list, n_none: int, n_total: int) -> list:
+    """Why a page_range rule's structural fingerprint fails (empty list = passes).
+
+    A page->precinct map is only valid while the source PDF's pagination is
+    unchanged. Two cheap signals catch a re-paginated / replaced PDF before the
+    rule can mis-key: the last keyed page must still match, and almost every row
+    must still fall inside a span (coverage). Pure so it can be unit-tested."""
+    reasons: list = []
+    actual_max = max(pdf_pages) if pdf_pages else None
+    coverage = (n_total - n_none) / n_total if n_total else 0.0
+    if actual_max != fp["max_page"]:
+        reasons.append(f"last page {actual_max} != expected {fp['max_page']} (PDF re-paginated?)")
+    if coverage < fp["min_coverage"]:
+        reasons.append(f"coverage {coverage:.1%} < {fp['min_coverage']:.0%} (rows fell outside every span)")
+    return reasons
 
 
 def run(council: str | None, apply: bool, validate: bool) -> int:
@@ -170,7 +310,7 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
             continue
         params = dict(rule.get("params", {}))
         cur.execute(
-            f"""SELECT id, document_id, ref_number, pdf_page, source_chapter_key, v2_precinct_id, v2_dcp_layer, v2_dcp_part
+            f"""SELECT id, document_id, ref_number, pdf_page, source_chapter_key, v2_precinct_id, v2_dcp_layer, v2_dcp_part, provision_text
                 FROM regulatory_provisions
                 WHERE is_current = true AND source_council = %(council)s AND ({rule['where']})""",
             {"council": rule["council"], **params},
@@ -178,6 +318,8 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
         cols = [d[0] for d in cur.description]
         rows = [dict(zip(cols, r)) for r in cur.fetchall()]
         r_new = r_changed = r_ok = r_none = 0
+        pending: list[tuple] = []  # (row_id, current, derived, layer) — buffered so the
+        # fingerprint gate below can decide to write them or fail closed as a batch.
         for row in rows:
             derived = _derive(rule["strategy"], row)
             current = row["v2_precinct_id"]
@@ -194,13 +336,41 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
                 r_new += 1
             else:
                 r_changed += 1
-            if apply:
-                backup_rows.append((row["id"], current or "", derived, row["v2_dcp_layer"] or "", rule["name"]))
+            pending.append((row["id"], current, derived, row["v2_dcp_layer"]))
+
+        # ── Fingerprint gate (page_range rules over a re-extractable PDF) ──────────
+        # A page->precinct map only holds while the source PDF's pagination is
+        # unchanged. pdf_page is the physical page a section's heading sits on, so a
+        # byte-identical PDF reproduces it exactly — but a new amendment / re-pagination
+        # shifts every page and would make these ranges key the WRONG area. So re-check
+        # the structure on EVERY run: the last keyed page must still match, and the vast
+        # majority of rows must still fall inside a span. On mismatch FAIL CLOSED — skip
+        # the writes, leaving rows un-keyed (council-wide + precinct_warning, the safe
+        # failure) rather than writing confident wrong-precinct keys. Regenerate the
+        # ranges (scripts/cos_build_ranges) against the new PDF, then re-run.
+        fp = rule.get("fingerprint")
+        fp_ok = True
+        if fp and rows:
+            pages = [r["pdf_page"] for r in rows if r["pdf_page"] is not None]
+            reasons = _fingerprint_reasons(fp, pages, r_none, len(rows))
+            if reasons:
+                fp_ok = False
+                msg = f"{rule['name']} FINGERPRINT MISMATCH — " + "; ".join(reasons)
+                print(f"  ⚠ {msg}")
+                print(f"     -> keys NOT written (fail-closed); rows stay council-wide + warned. "
+                      f"Regenerate ranges against the new PDF, then re-run.")
+                if validate:
+                    validation_failures.append(msg)
+
+        if apply and fp_ok:
+            for row_id, current, derived, layer in pending:
+                backup_rows.append((row_id, current or "", derived, layer or "", rule["name"]))
                 cur.execute(
                     "UPDATE regulatory_provisions SET v2_precinct_id=%s, v2_dcp_layer='precinct' WHERE id=%s",
-                    (derived, row["id"]))
+                    (derived, row_id))
+        gate = "" if fp_ok else "  [FAIL-CLOSED: not written]"
         print(f"  {rule['name']:<34} rows={len(rows):<5} new={r_new} changed={r_changed} "
-              f"already-ok={r_ok} no-derivation={r_none}")
+              f"already-ok={r_ok} no-derivation={r_none}{gate}")
         total_new += r_new; total_changed += r_changed; total_ok += r_ok; total_none += r_none
 
     if validate and validation_failures:

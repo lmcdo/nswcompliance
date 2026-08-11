@@ -31,6 +31,7 @@ LGA_COUNCILS = {
     "Sydney": ["city_of_sydney"],
     "Woollahra": ["woollahra"],
     "Parramatta": ["parramatta"],
+    "City of Parramatta": ["parramatta"],  # live lga value post-flip (portal's LGA Name string)
 }
 
 
