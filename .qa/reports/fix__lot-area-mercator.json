@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Rewrites lot_area_m2 on 2.5M production rows and changes the source expression in the index builder, plus a keyset-cursor fix in the builder's compute loop. Live data, no schema change, deterministic rollback.",
-  "commit_hash": "31f5a19e",
+  "commit_hash": "ee587bb7",
   "files": [
     "scripts/fix_lot_area_mercator.py",
     "scripts/build_lot_search_index.py",
