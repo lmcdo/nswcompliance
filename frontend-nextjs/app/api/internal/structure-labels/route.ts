@@ -157,7 +157,10 @@ export async function GET(req: NextRequest) {
         lng: Number(item.lng),
         lga_name: item.lga_name,
         zone_code: item.zone_code,
-        lot_area_m2: item.lot_area_m2 === null ? null : Number(item.lot_area_m2),
+        // == null, not === null: the driver can return undefined for an
+        // absent numeric, and Number(undefined) is NaN, which would render as
+        // "NaN m²" beside the address. Loose equality catches both.
+        lot_area_m2: item.lot_area_m2 == null ? null : Number(item.lot_area_m2),
       },
       tile: {
         urls,

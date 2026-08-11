@@ -220,9 +220,14 @@ def main() -> int:
         if not det:
             unpaired += 1
             continue
+        # `or []` rather than a .get default: the key can be PRESENT with a
+        # value of null, in which case the default is not used and iterating
+        # would raise. A detector run that stored an explicit null is exactly
+        # the "failed, not empty" case this project keeps mishandling, and it
+        # must degrade to an empty list here rather than crash the whole run.
         truth = [t for t in (r["labels"] or []) if not t.get("is_main_dwelling")]
         pred = [
-            p for p in det.get("detected_structures", [])
+            p for p in (det.get("detected_structures") or [])
             if not p.get("is_main_dwelling")
         ]
         m, miss, spur = match_boxes(truth, pred)
