@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "User-facing copy and documentation only. No logic, no query, no data path changes. The substance is replacing a published accuracy figure (~85-90%) with the measured one (recall 0.368, precision 0.483), and removing 'AI structure detection' from two meta descriptions. The measurement itself was produced and verified separately in scripts/measure_structure_detection_recall.py; nothing in this diff computes anything.",
-  "commit_hash": "80058217",
+  "commit_hash": "7dc445a6",
   "files": [
     "frontend-nextjs/app/how-it-works/page.tsx",
     "frontend-nextjs/app/reports/granny-flat/layout.tsx",
