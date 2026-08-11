@@ -1,0 +1,469 @@
+{
+  "sample_id": "gf-recall-001",
+  "thresholds": {
+    "recall_floor": 0.7,
+    "precision_floor": 0.6,
+    "iou_match": 0.3,
+    "min_labelled": 40
+  },
+  "labelled": 56,
+  "lots_compared": 56,
+  "unpaired_excluded": 0,
+  "failed_detector_runs_excluded": 0,
+  "recall": 0.3684210526315789,
+  "precision": 0.4827586206896552,
+  "matched": 14,
+  "missed": 24,
+  "spurious": 15,
+  "passed": false,
+  "per_lot": [
+    {
+      "address": "16/9/DP11234",
+      "truth": 2,
+      "pred": 1,
+      "matched": 1,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "//SP15446",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "131//DP11099",
+      "truth": 3,
+      "pred": 1,
+      "matched": 1,
+      "missed": 2,
+      "spurious": 0
+    },
+    {
+      "address": "126//DP16897",
+      "truth": 1,
+      "pred": 1,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "21/16/DP11234",
+      "truth": 0,
+      "pred": 1,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "3//DP18405",
+      "truth": 0,
+      "pred": 2,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 2
+    },
+    {
+      "address": "92//DP7517",
+      "truth": 0,
+      "pred": 1,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "5//DP15357",
+      "truth": 0,
+      "pred": 1,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "101//DP1141723",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "19//DP10320",
+      "truth": 0,
+      "pred": 1,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "55/A/DP1663",
+      "truth": 1,
+      "pred": 1,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "1//DP1282191",
+      "truth": 1,
+      "pred": 1,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "126//DP12782",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "2//DP1184665",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "7//DP13718",
+      "truth": 1,
+      "pred": 1,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "15//DP15541",
+      "truth": 0,
+      "pred": 2,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 2
+    },
+    {
+      "address": "82//DP858693",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "51//DP35369",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "B//DP405413",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "100//DP16187",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "6//DP839131",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "22//DP285276",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "98//DP16889",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "1//DP1037440",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "20//DP237392",
+      "truth": 1,
+      "pred": 1,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 1
+    },
+    {
+      "address": "201//DP1177989",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "1114//DP242479",
+      "truth": 1,
+      "pred": 1,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "18//DP204648",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "2//DP262592",
+      "truth": 2,
+      "pred": 0,
+      "matched": 0,
+      "missed": 2,
+      "spurious": 0
+    },
+    {
+      "address": "976//DP246999",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "2031//DP255977",
+      "truth": 0,
+      "pred": 1,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "F//DP401262",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "606//DP1162744",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "602//DP862931",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "70/9/DP1128",
+      "truth": 1,
+      "pred": 1,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "27//DP252636",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "17/A/DP979498",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "6//DP1280",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "1212//DP242087",
+      "truth": 1,
+      "pred": 2,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "96//DP13324",
+      "truth": 2,
+      "pred": 0,
+      "matched": 0,
+      "missed": 2,
+      "spurious": 0
+    },
+    {
+      "address": "1//DP304516",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "//SP22177",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "51//DP136",
+      "truth": 0,
+      "pred": 1,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "13//DP2318",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "4/2/DP529",
+      "truth": 1,
+      "pred": 2,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "20/H/DP1474",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "1//DP504634",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "8/J/DP876",
+      "truth": 1,
+      "pred": 2,
+      "matched": 1,
+      "missed": 0,
+      "spurious": 1
+    },
+    {
+      "address": "1//DP123988",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "30/B1/DP3129",
+      "truth": 0,
+      "pred": 0,
+      "matched": 0,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "19//DP20459",
+      "truth": 2,
+      "pred": 1,
+      "matched": 1,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "47//DP660210",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "1//DP301527",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    },
+    {
+      "address": "1//DP913058",
+      "truth": 2,
+      "pred": 2,
+      "matched": 2,
+      "missed": 0,
+      "spurious": 0
+    },
+    {
+      "address": "35//DP12677",
+      "truth": 1,
+      "pred": 1,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 1
+    },
+    {
+      "address": "14/A/DP876",
+      "truth": 1,
+      "pred": 0,
+      "matched": 0,
+      "missed": 1,
+      "spurious": 0
+    }
+  ]
+}
