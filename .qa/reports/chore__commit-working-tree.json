@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Tracks 116 files that existed only in the working tree and adds 30 .gitignore lines that keep 1.9 GB of re-fetchable downloads out. 29 of the newly-tracked files are code the repo has been running untracked, so this is the first time any gate has seen them — which is why it is not Minor.",
-  "commit_hash": "0054b38e",
+  "commit_hash": "207aba66",
   "files": [
     "frontend-nextjs/scripts/add-version-columns-direct.ts",
     "frontend-nextjs/scripts/apply-sepp-amendments.ts",
