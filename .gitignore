@@ -386,6 +386,11 @@ docs/*
 !docs/intelligence-brief/**
 !docs/architecture/
 !docs/architecture/**
+# Pitch-package sources. The 2026-08-09 edition was generated and its markdown thrown
+# away, so correcting it meant reverse-engineering seven documents out of their own HTML.
+# The generated .docx/.html/.pdf stay untracked — they rebuild from these.
+!docs/pitch/
+!docs/pitch/**
 !docs/*.md
 
 # PDF page images (stored in cloud, not git)
@@ -453,6 +458,10 @@ scripts/*
 # breaks every fresh clone — which is exactly the trap this line block warns
 # about four comments above.
 !scripts/falsifiability.py
+# The lot-area repair. Tracked because the run against production is only
+# auditable if the exact statement that rewrote 2.5M rows is in the history,
+# and because it is the documented rollback path for that run.
+!scripts/fix_lot_area_mercator.py
 !scripts/doc_claims.py
 # Builds the cdc_lot_link table (certificates -> cadastral lots). The table is
 # live in production, so the recipe that produced it has to be in the repo or
@@ -716,3 +725,12 @@ latent-scope-data/
 # `test_*.json` rule above is aimed at scratch output and silently swallowed
 # it, so the fixture could never be committed and the test could never run.
 !tests/fixtures/test_addresses.json
+
+# Keyset cursor for scripts/fix_lot_area_mercator.py — run state, not source.
+.lot_area_fix_cursor
+
+# Per-session hook markers. Rewritten by every session that runs /pre-impl, and
+# tracked until 2026-08-11, so they conflicted on EVERY branch rebased that day —
+# the same shared-path defect #913 removed for the QA report. They describe a
+# session, not the codebase, and CI never reads them.
+.claude/.pre-impl-done.json

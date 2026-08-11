@@ -45,7 +45,7 @@ import openai
 import os
 from pathlib import Path
 
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 async def process_small_text():

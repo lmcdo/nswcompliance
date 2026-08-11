@@ -37,35 +37,47 @@ So "128 councils" is true but 86 councils is the number with usable depth. Say t
 
 **Field completeness**, of 181,750 rows: description, address, latitude/longitude, submission
 date and determination date are all **100%**. Cost of development, dwelling count and storey
-count are all **98.2%** — 178,510 rows carry a positive cost, median **$186,885**, totalling
-**$89.37B** of approved construction, of which **$20.61B across 39,214 certificates** falls in
-the last twelve months.
+count are all **98.2%**.
 
 **Elapsed time to determination**: median **18 days**, 90th percentile **81 days**, across
 181,730 rows holding both dates.
 
-That is the asset. It is a record of what was approved, so there is nothing to calibrate and no
-confidence story to tell. It is also the one thing here that survives the NSW planning reforms —
-those publish the *rules* at source, which erodes the rules-based products and does nothing to a
-record of outcomes.
+**The lot join is built and works** — `cdc_lot_link`, created 2026-08-10 by a parallel session:
+**178,259 matched (98.1%)**, 3,466 with no lot at the point, 25 with no coordinates. 128,098
+distinct lots carry at least one certificate. Limits: for a strata address the linked lot is the
+parcel footprint, not the unit, and unmatched rows cluster in dense councils (City of Sydney 687,
+Parramatta 283).
 
-**The lot join is now built and works** — `cdc_lot_link`, created 2026-08-10 by a parallel
-session. 181,750 rows: **178,259 matched (98.1%)**, 3,466 with no lot at the point, 25 with no
-coordinates. 128,098 distinct lots carry at least one certificate and 26,434 carry more than one.
+### ⛔ Retracted 2026-08-10 — do not pitch this asset
 
-That turns the asset from a table into a product, because it answers the question in the form a
-buyer asks it:
+An earlier version of this section, merged in #906 the same day, told you to lead applications
+with these certificates and gave a worked example to use verbatim. **That is withdrawn.** The
+numbers were measured and correct; the argument built on them was never tested and fails.
 
-> **Blacktown · lot 450–750 m² · dwelling house → 245 approvals, median cost $501,074, median
-> 20 days to determination, 90th percentile 85 days.**
+- **The moat claim was false.** It said the archive could not be copied without eight years of
+  collecting. The source is the NSW Planning Portal — public and unauthenticated.
+  `memory/reference-da-tracking-mapserver.md` records a no-auth ArcGIS endpoint with 324,000
+  application records including outcome, cost, dwellings, floor area and coordinates, paginated
+  4,000 at a time. Rebuildable in days.
+- **Complying development has no discretion**, so "what the council actually approved" observes
+  nothing. Meeting the standards produces the certificate. The discretionary pathway is
+  development applications, where we hold 62,016 rows and only since May 2025.
+- **Approval is near-universal anyway** — the same public source shows **149,118 approved against
+  4,272 refused**, about 97% of determined applications. It does not discriminate between sites.
+- **The dollar figures were fee declarations.** `cost_of_development` is stated by the applicant
+  and sets the fee they pay, so it is structurally understated. The retracted text presented
+  "$89.37B of approved construction", "$20.61B in the last twelve months" and "median build cost
+  $186,885" as market size. **Those three figures must not be used.**
 
-Cross-council comparison works too — median determination 21–29 days and median cost $374k–$520k
-across the top five councils. **Use that worked example in applications.** It is concrete, it is
-checkable, and no competitor can produce it.
+**What survives is a field, not a pitch:** for a specific property, what has been approved on it
+and immediately next door. A purchaser cannot see an approved-but-unbuilt development on the
+adjoining block, and that is a real due-diligence signal. It belongs in the existing report.
 
-Two honest limits to keep with it: for a strata address the linked lot is the parcel footprint,
-not the unit (a point inside stacked parcels takes the first match), and unmatched rows cluster
-in dense urban councils — City of Sydney 687, Parramatta 283.
+**What to lead with instead is OPEN.** The candidate on the record is the 1,071 source-linked
+setback controls, which unlike portal data had to be extracted from council PDFs and cannot be
+scraped — see `~/.claude/plans/ce-reliability-retrospective-and-asset-inventory-2026-08.md`. It
+is a real asset and a small one (30 councils, 42 with a clause join). **Test that argument before
+building on it** — not testing the argument is precisely what went wrong here.
 
 ⚠ **`development_type` is double-encoded on 5.9% of rows** — 171,002 are a jsonb array but 10,748
 are a jsonb *string* containing a JSON array. The obvious `jsonb_typeof = 'array'` guard silently
@@ -115,7 +127,15 @@ Per-product detail: `~/.claude/plans/ce-product-status-ledger-2026-08.md`.
 - ❌ **Traction implying users.** The 981 stored report runs are development traffic;
   `property_reports` has no identity column. There are no paying customers. Say "no revenue".
 - ❌ **Unsourced market figures.** The old "~90,000 DAs/year / $1.5B granny flat / $200M advisory
-  / 3.5M properties" paragraph is retired — the measured $20.61B/12mo replaces it.
+  / 3.5M properties" paragraph is retired. **Its replacement was retired too** — see below.
+- ❌ **"$89.37B of approved construction" / "$20.61B in the last twelve months" / "median build
+  cost $186,885".** `cost_of_development` is the applicant's fee declaration, structurally
+  understated. It is not a construction-value series and is not market size. This one is listed
+  separately because it was written *by this document* on 2026-08-10 and looked rigorous —
+  it carried a query, which is exactly why it would have got through.
+- ❌ **Any claim that the certificate archive cannot be copied, or took eight years to build.**
+- ❌ **"What actually got approved" as a differentiator** — ~97% of determined applications are
+  approved and complying development has no discretion at all.
 - ❌ **Internal pipeline names** (see `.claude/rules/blog-content.md`).
 
 ---

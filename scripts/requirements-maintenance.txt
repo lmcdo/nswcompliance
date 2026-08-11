@@ -6,10 +6,10 @@ requests>=2.34.2
 python-dotenv>=1.2.2
 
 # security_scan.py
-semgrep>=1.169.0
+semgrep>=1.172.0
 
 # mutation_health.py (mutmut drives pytest over services/*)
-mutmut>=2.5,<3
+mutmut>=3.6.0,<4
 pytest>=8.0
 hypothesis>=6.0
 icontract>=2.7.3

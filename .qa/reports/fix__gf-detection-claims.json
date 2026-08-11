@@ -1,0 +1,78 @@
+{
+  "tier": "minor",
+  "justification": "User-facing copy and documentation only. No logic, no query, no data path changes. The substance is replacing a published accuracy figure (~85-90%) with the measured one (recall 0.368, precision 0.483), and removing 'AI structure detection' from two meta descriptions. The measurement itself was produced and verified separately in scripts/measure_structure_detection_recall.py; nothing in this diff computes anything.",
+  "commit_hash": "7dc445a6",
+  "files": [
+    "frontend-nextjs/app/how-it-works/page.tsx",
+    "frontend-nextjs/app/reports/granny-flat/layout.tsx",
+    "docs/CONFIGURATION.md",
+    "docs/FEATURES_CAPABILITIES.md",
+    "services/CLAUDE.md"
+  ],
+  "pre_impl": {
+    "existing_data": "The claim being corrected was found by grepping the public site for accuracy language, not assumed to exist. how-it-works/page.tsx:39 carried 'Structure detection accuracy is ~85-90% for standard residential lots' inside the LIMITATIONS field, where it read as candid disclosure. The granny-flat layout led both its meta description and its OpenGraph description with 'AI structure detection'.",
+    "assumption_mismatch": "Two assumptions were wrong and were corrected before writing. (1) The 70-80%/40-60% reliability bands in gf-detection-strategy-2026-05-02 predicted Western Sydney as the strong case; measured per-council recall is Canterbury-Bankstown 0.42, Inner West 0.38, Ku-ring-gai 0.33, Blacktown 0.30 — Blacktown IS that band and scored worst, so the segmentation is backwards and scoping cannot rescue it. (2) services/CLAUDE.md justified building this over buying it because it 'solves the small-structure gap that Microsoft footprints (64.95% recall) cannot'; at 0.368 it is roughly half the recall of the dataset it claimed to beat.",
+    "new_vs_existing": "No new surface. Existing strings edited in place. COMPONENT_MAP.md has no granny-flat entries, which is a known gap recorded for the follow-up removal work rather than fixed here."
+  },
+  "functions": [],
+  "values": [
+    {
+      "value": "recall 0.368, precision 0.483, 14 of 38 found, 15 spurious, 56 lots compared",
+      "read_at": "data/gf_recall_001_result.json, written by scripts/measure_structure_detection_recall.py against the live database on 2026-08-10",
+      "if_missing": "Every figure in the new copy is quoted from that file. If it is deleted the copy becomes unverifiable prose, which is the exact failure being corrected here."
+    },
+    {
+      "value": "the 95% confidence interval 0.23-0.53 supporting 'conclusively below the floor'",
+      "read_at": "Wilson interval on 14/38, computed from the stored result rather than asserted",
+      "if_missing": "Without it the small denominator (38) would leave 'below the mark' open to the objection that the sample is too thin. The interval is what makes the recall verdict conclusive while the precision verdict (CI 0.31-0.66, straddling 0.60) is honestly reported as inconclusive."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The denominator is quietly rebased to exclude pools and 'other', lifting recall to 0.407, and that figure is published instead.",
+      "what_happens": "The published number improves without the detector changing. This is exactly the renegotiation the pre-committed threshold exists to prevent, and is how the earlier '13 of 16 confirmations' figure came about.",
+      "mitigated": true,
+      "how": "0.368 is published as the result and 0.407 appears only as a labelled sensitivity check. Both are outside the 0.70 floor, so nothing turns on the choice.",
+      "repro": "Read data/gf_recall_001_result.json: 'recall': 0.368 is the published figure. Any page or doc quoting 0.407 as THE result contradicts it."
+    },
+    {
+      "scenario": "A reader takes 'not used to decide eligibility' as already true everywhere.",
+      "what_happens": "It is true in production today because MODAL_STRUCTURES_URL is unset, but MULTIPLE_SECONDARY_STRUCTURES in lib/pdf/granny-flat-report.tsx still derives an eligibility line from detector output if it is ever set.",
+      "mitigated": true,
+      "how": "docs/CONFIGURATION.md gains an explicit warning that leaving the variable unset is the CORRECT production state, not an outage, and names the SEPP eligibility consequence of setting it.",
+      "repro": "Unset MODAL_STRUCTURES_URL, run a granny-flat report, and confirm the PDF shows no MULTIPLE_SECONDARY_STRUCTURES line and the review state reads not_assessed."
+    },
+    {
+      "scenario": "Someone re-enables the detector later, not knowing it was measured.",
+      "what_happens": "The product silently resumes asserting a structure count that is wrong about two thirds of the time.",
+      "mitigated": true,
+      "how": "The measurement is recorded next to the environment variable in docs/CONFIGURATION.md, in services/CLAUDE.md, and in memory, each citing data/gf_recall_001_result.json and the structure_labels ground truth so it can be re-run rather than re-argued.",
+      "repro": "grep -n 'MODAL_STRUCTURES_URL' docs/CONFIGURATION.md services/CLAUDE.md — both must carry the measured recall next to the variable."
+    },
+    {
+      "scenario": "The new copy introduces liability language.",
+      "what_happens": "Replacing an overclaim with a different overclaim.",
+      "mitigated": true,
+      "how": "The new text states counts only ('located 14 of the 38', 'reported a further 15 that were not there') and carries no accuracy, reliability, comprehensive, verified or ensure adjectives.",
+      "repro": "grep -inE 'accurate|reliable|comprehensive|verified|ensure' on the changed limitations string in frontend-nextjs/app/how-it-works/page.tsx — must return nothing."
+    },
+    {
+      "scenario": "The old estimate is deleted rather than marked, so the failure mode is forgotten.",
+      "what_happens": "The next estimate written from one test address repeats it.",
+      "mitigated": true,
+      "how": "The 70-80% band in gf-detection-strategy-2026-05-02 is struck through and left visible, with the per-council numbers that falsify it and a note that it came from a single address and fed planning for three months.",
+      "repro": "grep -n '70.80' on the gf-detection-strategy-2026-05-02 memory — the band must still be present, struck through, not deleted."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No schema or data change in this diff.",
+    "secrets": "None added. MODAL_STRUCTURES_URL is referenced by name in documentation only; no value is committed.",
+    "other_repo": "None.",
+    "manual_verify": "Load /how-it-works and confirm the Granny Flat Eligibility limitations paragraph shows the measured counts and no longer says 85-90%. Confirm the /reports/granny-flat meta and OpenGraph descriptions no longer contain 'AI structure detection'."
+  },
+  "falsifiable_check": {
+    "command": "grep -n \"Structure detection accuracy is\\|'AI structure detection\" frontend-nextjs/app/how-it-works/page.tsx frontend-nextjs/app/reports/granny-flat/layout.tsx",
+    "fails_when": "Either the superseded accuracy sentence or the removed feature phrasing is still rendered on a public page. Matches the old code strings only, not the comments this change added, which quote the old wording to explain why it went."
+  }
+}

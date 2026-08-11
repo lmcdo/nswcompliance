@@ -172,3 +172,20 @@ These must be set under repo Settings → Secrets and variables → Actions:
 ### Granny flat structure detection
 
 - `MODAL_STRUCTURES_URL` — Modal GPU endpoint for LangSAM structure detection. When unset or unreachable, the Secondary Dwelling card reports the building count as UNKNOWN (three-state, #745 D4) — never a confident zero.
+
+> ⚠ **DO NOT SET THIS IN PRODUCTION WITHOUT READING THIS FIRST.**
+> The detector behind this variable was measured on 2026-08-10 against human
+> review of 56 lots in four councils: it found **14 of 38** visible secondary
+> structures (recall **0.368**) and reported **15** that were not there
+> (precision 0.483). The pass mark, committed before any label existed, was
+> recall ≥ 0.70 and precision ≥ 0.60. It failed in every council measured
+> (0.30–0.42), so it cannot be scoped to easier areas.
+>
+> Leaving it unset is therefore the CORRECT production state, not an outage —
+> the report then says "not assessed", which is true. Setting it makes the
+> product assert a structure count that is wrong about two-thirds of the time,
+> on the question that gates Housing SEPP eligibility.
+>
+> Evidence: `data/gf_recall_001_result.json`, ground truth in the
+> `structure_labels` table (`sample_id = 'gf-recall-001'`), comparison in
+> `scripts/measure_structure_detection_recall.py`.
