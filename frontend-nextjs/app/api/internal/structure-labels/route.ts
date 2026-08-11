@@ -46,8 +46,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getPool } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * The page component gates on auth, but a page gate protects a page, not an
+ * endpoint — anyone could POST here directly and inject labels that steer the
+ * eventual recall figure, or mark rows skipped. Both handlers check
+ * independently. Returns null when allowed, a response when not.
+ */
+async function denyIfUnauthenticated(): Promise<NextResponse | null> {
+  if (process.env.NEXT_PUBLIC_AUTH_ENABLED !== 'true') return null;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'unauthorised' }, { status: 401 });
+  }
+  return null;
+}
 
 // Mirrors services/nsw_imagery.py — same provider, zoom and grid, so the
 // labeller sees the same framing the detector would get for these coordinates.
@@ -84,13 +103,23 @@ function tileUrls(lat: number, lng: number): { urls: string[]; cx: number; cy: n
 }
 
 /**
- * Hash the bytes actually fetched, in render order.
+ * Hash the tile bytes as fetched BY THE SERVER, in render order.
  *
- * This is evidence of what was on screen. It is NOT a join key: the detector
- * stores no tile hash (measured 2026-08-08 — no stored report row carries one),
- * so the recall script joins on coordinates and reports pixel equality as
- * unproven. Recording the hash now means that once the detector also hashes,
- * the two become directly comparable without a migration.
+ * WHAT THIS IS AND IS NOT — the honest version. An earlier comment here called
+ * it "evidence of what was on screen". It is not, and overclaiming inside the
+ * evidence layer is the failure this whole exercise exists to avoid. The
+ * browser makes its OWN request for each tile; if the mosaic is refreshed
+ * between the two fetches, or a tile fails to load in the browser but not
+ * here, the labeller saw something this hash does not describe.
+ *
+ * What it IS: a record of the tile bytes the server could retrieve for these
+ * coordinates at this moment. That is genuinely useful — it dates the imagery
+ * and would expose a wholesale mosaic refresh between labelling and detection
+ * — and it is weaker than "what was on screen".
+ *
+ * Making it exact would mean proxying these bytes to the browser and rendering
+ * the proxied copy, so one fetch serves both. That is the right fix and is not
+ * done here; it is recorded in the QA report rather than implied away.
  *
  * Returns null on any fetch failure rather than a hash of partial bytes — a
  * hash silently covering 7 of 9 tiles would be worse than no hash.
@@ -116,6 +145,9 @@ async function hashTiles(urls: string[]): Promise<string | null> {
 }
 
 export async function GET(req: NextRequest) {
+  const denied = await denyIfUnauthenticated();
+  if (denied) return denied;
+
   const sampleId = req.nextUrl.searchParams.get('sample_id') || 'gf-recall-001';
   try {
     const pool = getPool();
@@ -197,6 +229,9 @@ const STRUCTURE_TYPES = new Set([
 ]);
 
 export async function POST(req: NextRequest) {
+  const denied = await denyIfUnauthenticated();
+  if (denied) return denied;
+
   try {
     const body = await req.json();
     const { id, status, labels, skip_reason, labelled_by, seconds_spent, tile } =
@@ -225,13 +260,25 @@ export async function POST(req: NextRequest) {
         );
       }
       const pool = getPool();
-      await pool.query(
+      // RETURNING + rowCount: the WHERE is conditional on status='pending', so
+      // a second labeller submitting the same id updates nothing. Returning
+      // ok:true there would advance their UI and silently discard a human
+      // answer — the most expensive kind of loss in this whole exercise,
+      // because the answer cannot be reconstructed.
+      const skipRes = await pool.query(
         `UPDATE structure_labels
             SET status = 'skipped', skip_reason = $2, labelled_by = $3,
                 labelled_at = now(), seconds_spent = $4
-          WHERE id = $1 AND status = 'pending'`,
+          WHERE id = $1 AND status = 'pending'
+        RETURNING id`,
         [id, skip_reason, labelled_by, seconds_spent ?? null],
       );
+      if (skipRes.rowCount === 0) {
+        return NextResponse.json(
+          { error: 'already answered by someone else — your answer was not saved' },
+          { status: 409 },
+        );
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -261,10 +308,30 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         );
       }
+      // The recall script trusts is_main_dwelling to exclude the house from
+      // the truth set. If it were absent, non-boolean, or inconsistent with
+      // structure_type, the main house would be counted as a secondary
+      // structure the detector "missed" and recall would be corrupted.
+      // Enforced rather than derived so a malformed client cannot slip one in.
+      if (typeof l?.is_main_dwelling !== 'boolean') {
+        return NextResponse.json(
+          { error: 'is_main_dwelling must be a boolean' },
+          { status: 400 },
+        );
+      }
+      if (l.is_main_dwelling !== (l.structure_type === 'main_dwelling')) {
+        return NextResponse.json(
+          {
+            error:
+              'is_main_dwelling must be true for structure_type main_dwelling and false otherwise',
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const pool = getPool();
-    await pool.query(
+    const res = await pool.query(
       `UPDATE structure_labels
           SET status = 'labelled',
               labels = $2::jsonb,
@@ -279,7 +346,8 @@ export async function POST(req: NextRequest) {
               tile_grid = $10,
               tile_centre_x = $11,
               tile_centre_y = $12
-        WHERE id = $1 AND status = 'pending'`,
+        WHERE id = $1 AND status = 'pending'
+      RETURNING id`,
       [
         id,
         JSON.stringify(labels),
@@ -295,6 +363,15 @@ export async function POST(req: NextRequest) {
         tile?.centre_y ?? null,
       ],
     );
+
+    // Same reasoning as the skip path: a zero-row update means someone else
+    // already answered this lot. Saying ok would throw away a human reading.
+    if (res.rowCount === 0) {
+      return NextResponse.json(
+        { error: 'already answered by someone else — your answer was not saved' },
+        { status: 409 },
+      );
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

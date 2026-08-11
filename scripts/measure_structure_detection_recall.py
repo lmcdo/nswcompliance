@@ -171,10 +171,14 @@ def main() -> int:
     print()
 
     if labelled < MIN_LABELLED:
-        # Three states, never two. Too little data is not a failure and is
-        # certainly not a pass -- it is unknowable, and that is reportable.
+        # A cheap early exit only. It is NECESSARY but NOT SUFFICIENT: you
+        # cannot have more comparable lots than labelled ones, but you can
+        # easily have far fewer. The gate that decides the verdict is the
+        # comparable-lot count further down, after pairing. Relying on this
+        # one alone is exactly the defect Sol caught -- 40 labelled rows with
+        # one paired lot would have printed PASS.
         print(f"VERDICT: UNKNOWABLE -- {labelled} labelled rows, "
-              f"{MIN_LABELLED} required.")
+              f"{MIN_LABELLED} required before comparison is even attempted.")
         print("Not a pass and not a fail. Label more tiles, then re-run.")
         return 0
 
@@ -213,6 +217,7 @@ def main() -> int:
 
     tot_matched = tot_missed = tot_spurious = 0
     unpaired = 0
+    unusable = 0
     per_lot = []
 
     for r in rows:
@@ -220,16 +225,26 @@ def main() -> int:
         if not det:
             unpaired += 1
             continue
-        # `or []` rather than a .get default: the key can be PRESENT with a
-        # value of null, in which case the default is not used and iterating
-        # would raise. A detector run that stored an explicit null is exactly
-        # the "failed, not empty" case this project keeps mishandling, and it
-        # must degrade to an empty list here rather than crash the whole run.
+
+        # THREE STATES, not two. This is the distinction the project keeps
+        # collapsing and it matters more here than anywhere:
+        #   detected_structures == []    the detector RAN and found nothing.
+        #                                A real zero. Include it — this is
+        #                                where false positives would show.
+        #   detected_structures is null  the detector FAILED. Not a zero.
+        #   or the key is absent         Excluding it is the only honest
+        #   or detection_failed is set   option; counting it as "found
+        #                                nothing" would turn every structure
+        #                                on that lot into a miss and push
+        #                                recall DOWN for a run that never
+        #                                happened.
+        raw_pred = det.get("detected_structures")
+        if raw_pred is None or det.get("detection_failed"):
+            unusable += 1
+            continue
+
         truth = [t for t in (r["labels"] or []) if not t.get("is_main_dwelling")]
-        pred = [
-            p for p in (det.get("detected_structures") or [])
-            if not p.get("is_main_dwelling")
-        ]
+        pred = [p for p in raw_pred if not p.get("is_main_dwelling")]
         m, miss, spur = match_boxes(truth, pred)
         tot_matched += m
         tot_missed += miss
@@ -241,18 +256,37 @@ def main() -> int:
 
     if unpaired:
         print(f"  ! {unpaired} labelled lots have no detector run at the same "
-              f"coordinates -- EXCLUDED from the numbers below rather than "
-              f"matched against a different lot. Run the detector on these "
-              f"before treating the result as covering the whole sample.")
+              f"coordinates -- EXCLUDED rather than matched against a "
+              f"different lot.")
+    if unusable:
+        print(f"  ! {unusable} paired lots had a FAILED detector run (null "
+              f"detected_structures or detection_failed) -- EXCLUDED. Counting "
+              f"a failure as 'found nothing' would turn every structure on "
+              f"those lots into a miss and understate recall for a scan that "
+              f"never happened.")
     print("  ! Pixel equality is UNPROVEN: the detector records no tile hash, "
           "so this compares a human reading and a machine reading of the same "
           "LOCATION, not provably the same image.")
+    print()
+
+    # THE MINIMUM APPLIES TO COMPARABLE LOTS, NOT LABELLED ONES.
+    # Checking it earlier (on the labelled count) let 40 labelled rows with a
+    # single paired lot compute recall on that one lot and print PASS. The
+    # sample size that matters is the number actually compared.
+    if len(per_lot) < MIN_LABELLED:
+        print(f"VERDICT: UNKNOWABLE -- {len(per_lot)} comparable lots, "
+              f"{MIN_LABELLED} required.")
+        print(f"  ({labelled} labelled, {unpaired} unpaired, {unusable} failed "
+              f"detector runs.)")
+        print("Not a pass and not a fail. Run the detector over the sample, "
+              "then re-run.")
+        return 0
 
     truth_total = tot_matched + tot_missed
     pred_total = tot_matched + tot_spurious
 
     if truth_total == 0:
-        print("VERDICT: UNKNOWABLE -- no secondary structures in the labelled "
+        print("VERDICT: UNKNOWABLE -- no secondary structures in the compared "
               "set, so recall has no denominator.")
         return 0
 
@@ -294,6 +328,7 @@ def main() -> int:
                 "labelled": labelled,
                 "lots_compared": len(per_lot),
                 "unpaired_excluded": unpaired,
+                "failed_detector_runs_excluded": unusable,
                 "recall": recall,
                 "precision": precision,
                 "matched": tot_matched,

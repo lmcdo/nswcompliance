@@ -154,8 +154,13 @@ def draw_sample(
     ordering would let the largest council dominate the sample purely by
     having more lots.
     """
-    per_lga = max(1, n_total // len(lgas))
-    remainder = n_total - per_lga * len(lgas)
+    # divmod, not max(1, ...). With max(1, n//k) a request for 1 lot across 4
+    # councils drew 4, and --n 0 also drew 4 — the sampler quietly exceeding
+    # the total it was asked for. divmod gives some councils a zero quota
+    # instead, which is the honest reading of "I want fewer lots than strata".
+    if n_total <= 0:
+        raise ValueError(f"--n must be positive, got {n_total}")
+    per_lga, remainder = divmod(n_total, len(lgas))
 
     rows: list[dict] = []
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -165,6 +170,12 @@ def draw_sample(
 
     for i, slug in enumerate(lgas):
         quota = per_lga + (1 if i < remainder else 0)
+        if quota == 0:
+            # Reported, not silent: a council contributing nothing changes what
+            # the resulting recall figure describes.
+            print(f"  -  {slug}: quota 0 (asked for {n_total} lots across "
+                  f"{len(lgas)} councils)", file=sys.stderr)
+            continue
         index_name = lga_slug_to_index_name(slug)
         cur.execute(
             """
