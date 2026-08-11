@@ -233,7 +233,7 @@ async function main() {
     rental_yield_annual_pct: 7.2,
     assumed_build_cost_aud: 180000,
     confidence: 'high',
-    confidence_reason: 'Lot area, zone, and structure count confirmed via spatial data.',
+    confidence_reason: 'Lot area, zone, and structure count derived from spatial data.',
     warnings: [],
     data_sources: ['NSW ePlanning Portal', 'SEPP (Exempt and Complying Development Codes) 2008', 'SIX Maps'],
     lot_polygon: LOT_POLYGON as any,
