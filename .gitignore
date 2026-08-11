@@ -723,3 +723,9 @@ latent-scope-data/
 
 # Keyset cursor for scripts/fix_lot_area_mercator.py — run state, not source.
 .lot_area_fix_cursor
+
+# Per-session hook markers. Rewritten by every session that runs /pre-impl, and
+# tracked until 2026-08-11, so they conflicted on EVERY branch rebased that day —
+# the same shared-path defect #913 removed for the QA report. They describe a
+# session, not the codebase, and CI never reads them.
+.claude/.pre-impl-done.json
