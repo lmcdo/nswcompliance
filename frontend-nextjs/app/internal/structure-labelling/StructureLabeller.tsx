@@ -241,13 +241,22 @@ export default function StructureLabeller() {
       </div>
 
       <p className="text-sm text-slate-600 mb-4 max-w-3xl">
-        Mark <strong>every roofed structure you can see</strong> on this block.
+        Mark <strong>every roofed structure inside the dashed boundary</strong>.
         Drag a box around each one, then pick what it is. If the block has
         nothing but the house, mark the house and save — an empty answer is a
         real answer. You are not being shown what the scan found, deliberately:
         the whole point is to get a reading that does not agree with the machine
         by construction.
       </p>
+
+      <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-slate-700">
+        <strong>Boxes stay upright — don&apos;t try to match the roof angle.</strong>{' '}
+        Buildings sit at all angles to the image, but the scan reports each one as an
+        upright rectangle too (two corners, no rotation). So draw the{' '}
+        <strong>smallest upright box that fully contains the structure</strong> and the
+        two are compared like for like. A box that looks loose around a
+        diagonal roof is the correct answer here, not a sloppy one.
+      </div>
 
       {error && (
         <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
