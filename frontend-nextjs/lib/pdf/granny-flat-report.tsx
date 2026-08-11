@@ -18,6 +18,7 @@ import {
 } from '@react-pdf/renderer';
 import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 import { AerialWithOverlay } from './map-overlay';
+import { resolveGrannyReviewState, reviewStateSeverity } from '../granny-flat-review-state';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,8 +46,17 @@ export interface GrannyFlatReportData {
   estimated_weekly_rent_aud: number | null;
   rental_yield_annual_pct: number | null;
   assumed_build_cost_aud: number | null;
+  // Internal grade — retained on the row and in the type because the column
+  // is also the job state machine, but NOT rendered on this document.
   confidence: string;
   confidence_reason: string;
+  // What actually happened to the structure list. Absent on rows written
+  // before 2026-08-06; resolveGrannyReviewState derives those.
+  review_state?: string | null;
+  review_state_label?: string | null;
+  review_state_detail?: string | null;
+  samgeo_structure_count?: number | null;
+  detected_structures?: unknown[] | null;
   warnings: string[];
   data_sources: string[];
   is_paid?: boolean;
@@ -320,13 +330,31 @@ function buildFindings(data: GrannyFlatReportData): Finding[] {
     });
   }
 
-  // Confidence
-  if (data.confidence && data.confidence !== 'high') {
+  // What happened to the structure list. This finding is ALWAYS pushed —
+  // the old version only appeared when the grade was below "high", so a
+  // report that had never been checked by anyone and one a person had
+  // reviewed were told apart by the PRESENCE of a caveat block. Silence read
+  // as the strongest possible statement while asserting nothing that could
+  // be held to. The state is stated on every report, including `reviewed`.
+  const review = resolveGrannyReviewState(
+    data as unknown as Record<string, unknown>,
+  );
+  findings.push({
+    label: 'Structure detection — what was checked',
+    value: review.label,
+    detail: sanitise(review.detail),
+    severity: reviewStateSeverity(review.state),
+  });
+  // A stored reason on a pre-2026-08-06 row asserts a confirmation that could
+  // not have happened ("you confirmed N — counts agree"): the count was seeded
+  // from the detector and the control that would change it was never wired.
+  // 18 of 20 completed rows carry that phrasing (measured 2026-08-06).
+  if (data.confidence_reason && !review.derived) {
     findings.push({
-      label: 'Assessment confidence level',
-      value: `${data.confidence.charAt(0).toUpperCase() + data.confidence.slice(1)} confidence`,
-      detail: data.confidence_reason ? sanitise(data.confidence_reason) : 'Some data inputs could not be fully verified. Review the warnings below and consult a professional before proceeding.',
-      severity: data.confidence === 'medium' ? 'amber' : 'red',
+      label: 'Structure count basis',
+      value: 'How the count in this report was arrived at',
+      detail: sanitise(data.confidence_reason),
+      severity: review.state === 'reviewed' ? 'green' : 'amber',
     });
   }
 
@@ -799,6 +827,8 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             {
               n: '3',
               title: 'Check adjacent properties',
+              // verdict-ok: next-steps advice about OTHER addresses, hedged with "may";
+              // asserts nothing about the subject site.
               body: 'Nearby properties with larger lots or different zone/heritage status may be eligible. Use plotdetect.com.au to run checks on alternative addresses.',
             },
           ]).map((step) => (

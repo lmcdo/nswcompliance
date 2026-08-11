@@ -160,15 +160,27 @@ COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] =
         ("C-Part4",  "Tree Management",                77,  85),
         ("C-Part5",  "GreenWay",                       86,  90),
     ],
+    # Chapter D has 13 Parts (source-verified 2026-07-29 against the adopted PDF's
+    # per-page 'Part N – Name' running headers; R2 v1.1-2026-03-02). The previous
+    # 8-entry manifest here used wrong names (locality names, incl. 'Haberfield'
+    # which is chapter E2) and wrong ranges — the root cause of the unreliable
+    # D-numbers in refs, the missing Part 9, and the bad auto-derived
+    # dcp_precinct_localities names. Keys carry the Part number so refs and the
+    # v2_precinct_id backfill ('Part N') stay aligned with dcp_precinct_boundaries.
     ("ashfield", "chapter-d-precinct-guidelines"): [
-        ("D-Part1",  "Ashfield Town Centre",            3,  42),
-        ("D-Part2",  "Ashfield East",                  43,  59),
-        ("D-Part3",  "Croydon South",                  60,  85),
-        ("D-Part4",  "Haberfield",                     86, 111),
-        ("D-Part5",  "Hurlstone Park",                112, 157),
-        ("D-Part6",  "Summer Hill",                   158, 170),
-        ("D-Part7",  "Ashfield South",                171, 181),
-        ("D-Part8",  "Canterbury Road",               182, 204),
+        ("D-Part1",  "Ashfield Town Centre",              3,  40),
+        ("D-Part2",  "Ashfield East",                    41,  57),
+        ("D-Part3",  "Ashfield West",                    58,  83),
+        ("D-Part4",  "Croydon Town Centre",              84,  95),
+        ("D-Part5",  "Neighbourhood Centre (B1) Zone",   96, 106),
+        ("D-Part6",  "Enterprise Zone (B6) Parramatta Road", 107, 155),
+        ("D-Part7",  "Enterprise Zone (B6) Hurlstone Park",  156, 168),
+        ("D-Part8",  "SummerHill Town Centre",          169, 180),
+        ("D-Part9",  "Summer Hill Flour Mills Site",    181, 182),
+        ("D-Part10", "Edwards Street B4 Zone",          183, 187),
+        ("D-Part11", "Industrial Zones",                188, 192),
+        ("D-Part12", "55-63 Smith Street Summer Hill",  193, 196),
+        ("D-Part13", "120C Old Canterbury Road",        197, 204),
     ],
     ("ashfield", "chapter-e1-heritage"): [
         # E1 has 392 pages and high SECTION_RE hit rate (175%) — let regex handle it.
@@ -361,6 +373,155 @@ COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] =
         ("9c_15",  "Fencing",                              33, 33),
         ("9c_16",  "Services",                             34, 35),
     ],
+    # ── Ku-ring-gai DCP Part 14 (Local Centres + specific sites), registered 2026-07-29.
+    # Section ranges derived from each PDF's '14X.n' headings (incl. -separated
+    # variants) with contiguous fill; page 1 TOC/cover as intro. One row per section,
+    # matching the existing Ku-ring-gai granularity convention.
+    ("ku_ring_gai", "section-b-part-14a-st-ives-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14a_1", "St Ives Local Centre Context", 2, 2),
+        ("14a_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14a_3", "Proposed Community Infrastructure", 4, 5),
+        ("14a_4", "Setbacks", 6, 6),
+        ("14a_5", "Built Form", 7, 7),
+        ("14a_6", "Building Entries, Car Parking And Service Access", 8, 8),
+        ("14a_7", "Precinct S1: St Ives Shopping Village", 9, 13),
+        ("14a_8", "Precinct S2: Stanley Street Shops", 14, 19),
+        ("14a_9", "Precinct S3: Buildings In R4 Zones", 20, 22),
+    ],
+    ("ku_ring_gai", "section-b-part-14b-turramurra-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14b_1", "Turramurra Local Centre Context", 2, 2),
+        ("14b_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14b_3", "Proposed Community Infrastructure", 4, 5),
+        ("14b_4", "Setbacks", 6, 6),
+        ("14b_5", "Built Form", 7, 7),
+        ("14b_6", "Building Entries, Car Parking And Service Access", 8, 8),
+        ("14b_7", "Environmental Protection And Bush Fire Protection", 9, 9),
+        ("14b_8", "Precinct T1: Pacific Highway And Ray Street Retail Area", 10, 20),
+        ("14b_9", "Precinct T2: Rohini Street And Eastern Road Retail Cent", 21, 22),
+        ("14b_3", "Proposed Community Infrastructure", 23, 23),
+        ("14b_9", "Precinct T2: Rohini Street And Eastern Road Retail Cent", 24, 26),
+        ("14b_10", "Precinct T3: Kissing Point Road Retail Area", 27, 34),
+        ("14b_11", "Precinct T4: Hillview Area", 35, 38),
+    ],
+    ("ku_ring_gai", "section-b-part-14c-pymble-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14c_1", "Pymble Local Centre Context", 2, 2),
+        ("14c_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14c_3", "Proposed Community Infrastructure", 4, 5),
+        ("14c_4", "Setbacks", 6, 6),
+        ("14c_5", "Built Form", 7, 7),
+        ("14c_6", "Building Entries, Car Parking And Service", 8, 8),
+        ("14c_7", "Precinct 1: Grandview Street And Pacific", 9, 14),
+    ],
+    ("ku_ring_gai", "section-b-part-14d-gordon-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14d_1", "Gordon Local Centre Context", 2, 2),
+        ("14d_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14d_3", "Proposed Community Infrastructure", 4, 5),
+        ("14d_4", "Setbacks", 6, 7),
+        ("14d_5", "Built Form", 8, 8),
+        ("14d_6", "Building Entries, Car Parking And Service", 9, 9),
+        ("14d_7", "Precinct G1: St Johns Avenue And Henry", 10, 15),
+        ("14d_8", "Precinct G2: Pacific Highway Retail", 16, 21),
+        ("14d_9", "Precinct G3: Civic Hub", 22, 27),
+        ("14d_10", "Precinct G4: Mixed Use", 28, 33),
+        ("14d_11", "Precinct G5: Buildings In R4 Zones", 34, 36),
+    ],
+    ("ku_ring_gai", "section-b-part-14e-lindfield-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14e_1", "Lindfield Local Centre Context", 2, 2),
+        ("14e_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14e_3", "Proposed Community Infrastructure", 4, 6),
+        ("14e_4", "Setbacks", 7, 8),
+        ("14e_5", "Built Form", 9, 9),
+        ("14e_6", "Building Entries, Car Parking And Service Access", 10, 10),
+        ("14e_7", "Precinct L1: Balfour Street Retail Area", 11, 17),
+        ("14e_8", "Precinct L2: Pacific Highway Retail Area", 18, 23),
+        ("14e_9", "Precinct L3: Tryon Place Mixed Use Area", 24, 29),
+        ("14e_10", "Precinct L4: Tryon Road And Lindfield Avenue Retail", 30, 42),
+        ("14e_11", "Precinct L5: Lindfield Community Hub", 43, 55),
+        ("14e_12", "Precinct L6: 259-271 Pacific Highway, Lindfield", 56, 64),
+        ("14e_13", "Precinct L7: Buildings In R4 Zones", 65, 66),
+        ("14e_14", "Precinct L8: Buildings In R4 Zones", 67, 70),
+    ],
+    ("ku_ring_gai", "section-b-part-14f-roseville-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14f_1", "Roseville Local Centre Context", 2, 2),
+        ("14f_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14f_3", "Proposed Community Infrastructure", 4, 5),
+        ("14f_4", "Setbacks", 6, 6),
+        ("14f_5", "Built Form", 7, 7),
+        ("14f_6", "Building Entries, Car Parking And Service", 8, 8),
+        ("14f_7", "Precinct R1: Hill Street Shops", 9, 14),
+        ("14f_8", "Precinct R2: Pacific Highway Shops", 15, 19),
+        ("14f_9", "Precinct R3: Pacific Highway To Roseville Station", 20, 24),
+    ],
+    ("ku_ring_gai", "section-b-part-14g-pymble-business-park"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14g_1", "Urban Precinct", 2, 3),
+        ("14g_2", "Public Domain And Pedestrian Access", 4, 5),
+        ("14g_3", "Proposed Community Infrastructure", 6, 7),
+        ("14g_4", "Building Setbacks", 8, 9),
+        ("14g_5", "Built Form", 10, 12),
+        ("14g_6", "Heritage", 13, 14),
+        ("14g_7", "Shared On-Site Parking", 15, 16),
+    ],
+    ("ku_ring_gai", "section-b-part-14h-screen-australia-site"): [
+        ("14h_1", "Urban Precinct", 1, 3),
+        ("14h_2", "Public Domain And", 4, 5),
+        ("14h_3", "Building Setbacks", 6, 8),
+    ],
+    ("ku_ring_gai", "section-b-part-14i-killara-golf-club"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14i_1", "Urban Precinct", 2, 4),
+        ("14i_2", "Pedestrian And Vehicular Access", 5, 7),
+        ("14i_3", "Building Setbacks", 8, 9),
+        ("14i_4", "Built Form", 10, 11),
+        ("14i_5", "Heritage", 12, 14),
+    ],
+    ("ku_ring_gai", "section-b-part-14j-holford-crescent-gordon"): [
+        ("14j_1", "Building Setbacks", 1, 4),
+    ],
+    ("ku_ring_gai", "section-b-part-14k-45-47-tennyson-avenue-and-105-eastern-road-turramurra"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14k_1", "Urban Precinct", 2, 3),
+        ("14k_2", "Pedestrian And Vehicular Access", 4, 5),
+        ("14k_3", "Building Setbacks", 6, 7),
+        ("14k_4", "Built Form", 8, 9),
+        ("14k_5", "Public Domain", 10, 12),
+    ],
+    ("ku_ring_gai", "section-b-part-14l-62-and-64-66-pacific-highway-roseville"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14l_1", "Urban Precinct", 2, 3),
+        ("14l_2", "Pedestrian And Vehicular Access", 4, 5),
+        ("14l_3", "Building Setbacks", 6, 7),
+        ("14l_4", "Built Form", 8, 9),
+        ("14l_5", "Heritage", 10, 11),
+        ("14l_6", "Public Domain", 12, 14),
+    ],
+    ("ku_ring_gai", "section-b-part-14m-47-warrane-road-roseville-chase"): [
+        ("14m_1", "Urban Precinct", 1, 3),
+        ("14m_2", "Public Domain, Pedestrian And", 4, 5),
+        ("14m_3", "Building Setbacks", 6, 7),
+    ],
+    ("ku_ring_gai", "section-b-part-14n-8a-14-16-buckingham-road-killara"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14n_1", "Urban Precinct", 2, 3),
+        ("14n_2", "Pedestrian And Vehicular Access", 4, 5),
+        ("14n_3", "Building Setbacks", 6, 7),
+        ("14n_4", "Built Form", 8, 9),
+        ("14n_5", "Heritage", 10, 11),
+    ],
+    ("ku_ring_gai", "section-b-part-14o-pymble-golf-club"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14o_1", "Urban Precinct", 2, 3),
+        ("14o_2", "Pedestrian And Vehicular Access", 4, 5),
+        ("14o_3", "Building Setbacks", 6, 7),
+        ("14o_4", "Built Form", 8, 9),
+        ("14o_5", "Heritage", 10, 11),
+    ],
     ("ku_ring_gai", "section-b-part-19-heritage"): [
         ("intro",   "Introduction",                         1,  4),
         ("19a",     "Subdivision and Site Consolidation",   5,  6),
@@ -429,11 +590,20 @@ COUNCIL_SUBSECTION_PATTERNS: dict[str, list[re.Pattern]] = {
     # Waverley DCP 2022: two-level split.
     # Level 1: numbered sub-sections like "1.1 DEMOLITION AND CONSTRUCTION"
     # Level 2: Objectives/Controls keyword headings within each sub-section
+    # Waverley DCP 2022: three-level split.
+    # Level 1: numbered sub-sections like "1.1 DEMOLITION AND CONSTRUCTION"
+    # Level 2: numbered sub-subsections like "7.2.1 Vehicle Access" (mixed case).
+    #   Without this level these headings are swallowed as body text, so every
+    #   Objectives/Controls block under 7.2.1..7.2.6 collides onto the parent
+    #   7.2 ref — the ref-collision defect found by the 2026-07-28 fidelity
+    #   sweep. Title must start with a letter to avoid matching numbered lists.
+    # Level 3: Objectives/Controls keyword headings within each (sub-)subsection
     "waverley": [
         re.compile(r"(?m)^(\d+\.\d+)\s+([A-Z][A-Z0-9\s/&(),.-]+)$"),
+        re.compile(r"(?m)^(\d+\.\d+\.\d+)\s+([A-Za-z][^\n]{0,80})$"),
         re.compile(
             r"(?m)^()(General Objectives|General Controls|Objectives|Controls"
-            r"|Design Guidance|Performance Criteria)\s*$"
+            r"|Design Guidance|Performance Criteria|Prescriptive Controls)\s*$"
         ),
     ],
     # Marrickville DCP 2011: two-level split.
@@ -520,6 +690,103 @@ def _clean_page_text(text: str, council: str | None) -> str:
 #   Page width: 595 (A4)
 #   'Objectives' header at x0=56.7, 'Controls' header at x0=209.8 (same y)
 #   Column boundary: x=195 (midpoint between ~180 and ~209)
+# Councils whose two-column body layout has NO reliable header-pair anchor
+# (Objectives|Controls) to trigger COUNCIL_COLUMN_CONFIGS — read them with the
+# geometric columnar reader instead (gutter found from word x-geometry, no
+# per-council boundary_x). Added 2026-07-29 after the semantic sweep showed
+# two-column reading-order interleave dropped whole sections (CoS 5.2.4 table,
+# Ashfield ch.D setback legends, Marrickville part-2/9).
+# hornsby added 2026-07-30: preflight SUSPECT triage confirmed genuine
+# interleave — a "Note:" sidebar column mixed mid-sentence into the main body
+# text on multiple pages (part-1-general pp11/21), same failure class as the
+# councils above; no header-pair anchor exists so the geometric reader (not
+# COUNCIL_COLUMN_CONFIGS) is the fit.
+GEOMETRIC_COLUMN_COUNCILS = {"ashfield", "marrickville", "city_of_sydney", "hornsby"}
+
+
+def _find_gutter(words: list[dict], page_width: float) -> float | None:
+    """Return the x of a clear vertical two-column gutter, or None.
+
+    Scans the central 40-60% band for the x that the fewest words straddle.
+    A gutter is real only when <5% of words cross it AND each side holds >=25%
+    of the words — otherwise the page is single-column (many words straddle
+    centre) and the caller falls back to plain extraction. Pure."""
+    if len(words) < 30 or page_width <= 0:
+        return None
+    lo, hi, step = page_width * 0.40, page_width * 0.60, max(1.0, page_width * 0.01)
+    n = len(words)
+    best_x, best_cross = None, None
+    x = lo
+    while x <= hi:
+        cross = sum(1 for w in words if w["x0"] < x < w["x1"])
+        if best_cross is None or cross < best_cross:
+            best_cross, best_x = cross, x
+        x += step
+    if best_x is None or best_cross / n >= 0.05:
+        return None
+    left = sum(1 for w in words if (w["x0"] + w["x1"]) / 2 < best_x)
+    if left / n < 0.25 or (n - left) / n < 0.25:
+        return None
+    return best_x
+
+
+def _columnar_text(page: Any) -> str | None:
+    """Read a two-column page in true reading order (full-width headings kept
+    in place, then left column, then right column, per horizontal band).
+
+    Returns None when the page is not clearly two-column, so the caller falls
+    back to plain extract_text(). Band algorithm: group words into lines, a line
+    that spans the gutter is a full-width break; runs of non-spanning lines
+    between breaks are emitted left-then-right. Pure aside from extract_words()."""
+    from collections import defaultdict
+    words = page.extract_words() or []
+    W = float(page.width or 0)
+    cx = _find_gutter(words, W)
+    if cx is None:
+        return None
+    # A line is TWO-COLUMN when it has words on both sides of cx AND a wide empty
+    # gap at the gutter; it is FULL-WIDTH (heading) when text runs continuously
+    # across cx (a straddling word, or only a normal word-space gap). This gap
+    # test is what separates "5.2.4 Local Infrastructure" (heading) from an
+    # "L… | R…" body row that shares the same y.
+    gap_min = max(30.0, W * 0.05)
+    lines: dict[int, list[dict]] = defaultdict(list)
+    for w in words:
+        lines[round(w["top"] / 3.0)].append(w)
+
+    def line_text(lw: list[dict]) -> str:
+        return " ".join(w["text"] for w in sorted(lw, key=lambda w: w["x0"]))
+
+    out: list[str] = []
+    block: dict[str, list[list[dict]]] | None = None
+
+    def flush() -> None:
+        nonlocal block
+        if block:
+            out.extend(line_text(l) for l in block["left"])
+            out.extend(line_text(l) for l in block["right"])
+            block = None
+
+    for _, lw in sorted(lines.items()):
+        left = [w for w in lw if (w["x0"] + w["x1"]) / 2 < cx]
+        right = [w for w in lw if (w["x0"] + w["x1"]) / 2 >= cx]
+        straddle = any(w["x0"] < cx - 5 and w["x1"] > cx + 5 for w in lw)
+        two_col = False
+        if left and right and not straddle:
+            gap = min(w["x0"] for w in right) - max(w["x1"] for w in left)
+            two_col = gap >= gap_min
+        if two_col:
+            if block is None:
+                block = {"left": [], "right": []}
+            block["left"].append(left)
+            block["right"].append(right)
+        else:
+            flush()
+            out.append(line_text(lw))
+    flush()
+    return "\n".join(out)
+
+
 COUNCIL_COLUMN_CONFIGS: dict[str, dict] = {
     "ku_ring_gai": {
         # Left column (Objectives): x=0–195
@@ -593,7 +860,9 @@ _STANDALONE_SECTION_CODE_RE = re.compile(
 # Councils whose PDFs contain rotated figure/diagram labels (sidebar labels,
 # figure callouts, diagram text) that pdfplumber extracts as reversed or
 # garbled characters. Filtering to upright-only chars removes them.
-UPRIGHT_ONLY_COUNCILS = {"ku_ring_gai"}
+# ashfield added 2026-07-29: chapter D carries a rotated 'Part N – <name>'
+# side banner on every page, extracted reversed ('ertneC nwoT –1 traP').
+UPRIGHT_ONLY_COUNCILS = {"ku_ring_gai", "ashfield"}
 
 
 # ── TOC-driven extraction ────────────────────────────────────────────────────
@@ -743,6 +1012,14 @@ def _extract_page_text(page: Any, council: str | None) -> str:
         page = _upright_only(page)
 
     if not council or council not in COUNCIL_COLUMN_CONFIGS:
+        # Geometric two-column reader for councils without a header-pair anchor.
+        # Runs AFTER the upright filter so rotated banner words are already gone
+        # (they otherwise scramble the gutter reading). Returns None on any page
+        # that is not clearly two-column, falling back to plain extraction.
+        if council in GEOMETRIC_COLUMN_COUNCILS:
+            columnar = _columnar_text(page)
+            if columnar is not None:
+                return columnar
         return page.extract_text() or ""
 
     cfg = COUNCIL_COLUMN_CONFIGS[council]
@@ -818,6 +1095,14 @@ class DCPExtractor:
         self.document_id = document_id
         self.council = council
         self.page_count: int = 0
+        # Set when the text layer proved garbled and OCR page texts were
+        # fetched — _page_text then serves these instead of pdfplumber's.
+        self.ocr_pages: list[str] | None = None
+
+    def _page_text(self, page: Any, page_num: int) -> str:
+        if self.ocr_pages and 0 < page_num <= len(self.ocr_pages):
+            return self.ocr_pages[page_num - 1]
+        return _extract_page_text(page, self.council)
 
     def extract(self) -> list[dict[str, Any]]:
         """Top-level extraction: sequential body-heading detection, with a
@@ -833,6 +1118,7 @@ class DCPExtractor:
         if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
             from scripts.ai_extractor import ai_extract_chapter
             return ai_extract_chapter(self.pdf_path, self.council)
+        self._maybe_route_via_ocr()
         sections = self._extract_sequential()
         if self.council in TOC_DRIVEN_COUNCILS:
             override = self._maybe_toc_override(sections)
@@ -850,8 +1136,8 @@ class DCPExtractor:
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
             page_texts = [
-                _clean_page_text(_extract_page_text(p, self.council), self.council)
-                for p in pdf.pages
+                _clean_page_text(self._page_text(p, i + 1), self.council)
+                for i, p in enumerate(pdf.pages)
             ]
         entries = parse_toc_entries(page_texts)
         seq_codes = [(s.get("section_number") or "") for s in sequential]
@@ -890,9 +1176,11 @@ class DCPExtractor:
             for page_num, page in enumerate(pdf.pages, start=1):
                 print(f"    page {page_num}/{total}", end="\r")
 
-                text = _extract_page_text(page, self.council)
+                text = self._page_text(page, page_num)
                 text = _clean_page_text(text, self.council)
-                page_tables = page.extract_tables() or []
+                # OCR mode: tables arrive inline in the page text (flattened
+                # markup) — pdfplumber's table finder reads the garbled layer.
+                page_tables = [] if self.ocr_pages else (page.extract_tables() or [])
 
                 section_re = COUNCIL_SECTION_RE_OVERRIDES.get(self.council, self.SECTION_RE)
                 # TOC page guard: if the page contains 5+ section-code matches it is
@@ -1016,6 +1304,32 @@ class DCPExtractor:
         print()  # clear progress line
         return sections
 
+    def _maybe_route_via_ocr(self) -> None:
+        """OCR fallback trigger (#832): a garbled text layer means every reader
+        of it produces junk — route the chapter through the OCR endpoint and
+        let the SAME splitter run over clean page texts. Called from BOTH the
+        sequential path (extract) and the page-range path (extract_by_page_ranges);
+        before 2026-07-29 only extract() checked, so manifest-driven councils
+        (all of Ku-ring-gai) silently kept garbled text layers."""
+        if self.ocr_pages is not None or not os.getenv("MODAL_OCR_URL", "").strip():
+            return
+        with pdfplumber.open(self.pdf_path) as _pdf:
+            _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
+        # Empty text layers are as unreadable as garbled ones: scanned pages
+        # yield no text at all (Marrickville part9 chapters, 2026-07-29) and
+        # previously never triggered OCR because the garble heuristic needs
+        # doubled glyphs to exist.
+        empty_frac = (sum(1 for t in _raw if len(t.strip()) < 40) / len(_raw)) if _raw else 0.0
+        if text_layer_garbled(_raw):
+            print("    [OCR] garbled text layer detected — fetching OCR page texts")
+        elif empty_frac >= PREFLIGHT_EMPTY_RATIO:
+            print(f"    [OCR] {empty_frac:.0%} of pages have no text layer (scanned) — fetching OCR page texts")
+        else:
+            return
+        self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
+        if self.ocr_pages:
+            print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
+
     def extract_by_page_ranges(
         self,
         ranges: list[tuple[str, str, int, int]],
@@ -1033,6 +1347,7 @@ class DCPExtractor:
                                   Group 1 (sub_num) may be empty for keyword-only headings.
                                   Configured per-council in COUNCIL_SUBSECTION_PATTERNS.
         """
+        self._maybe_route_via_ocr()
         sections: list[dict[str, Any]] = []
         with pdfplumber.open(self.pdf_path) as pdf:
             self.page_count = len(pdf.pages)
@@ -1043,14 +1358,15 @@ class DCPExtractor:
                 clipped_end = min(page_end, self.page_count)
                 for page_num in range(page_start, clipped_end + 1):
                     page = pdf.pages[page_num - 1]
-                    text = _extract_page_text(page, self.council)
+                    text = self._page_text(page, page_num)
                     text = _clean_page_text(text, self.council)
                     content += f"\n\n{text}"
                     pages_included.append(page_num)
-                    for tbl in page.extract_tables() or []:
-                        html = self._table_to_html(tbl)
-                        if html:
-                            tables.append({"html": html, "page": page_num})
+                    if not self.ocr_pages:
+                        for tbl in page.extract_tables() or []:
+                            html = self._table_to_html(tbl)
+                            if html:
+                                tables.append({"html": html, "page": page_num})
 
                 if subsection_patterns:
                     # First pattern splits the raw page-range content
@@ -1445,6 +1761,299 @@ def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
     return serious_flagged / total_provisions > SCHEMA_FAIL_RATIO
 
 
+# ── Per-row fidelity gate (2026-07 review-queue triage findings) ────────────
+# The 2026-07 backlog reached review with 105/307 rows garbled and NULL
+# fidelity_status everywhere: pdfplumber reads letter-spaced running headers as
+# doubled glyphs (CoS "GGEENNEERRAALL"), interleaves two-column text
+# (Ku-ring-gai), keys provisions off bare years, and can collapse a 43k-char
+# section into a 2.7k stub when tables migrate. Every queue row now carries an
+# explicit fidelity verdict at insert time — garbage flags itself instead of
+# waiting for a human to notice.
+
+_GARBLE_RUN = re.compile(r"(?:([A-Za-z])\1){3,}")
+_JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table", re.IGNORECASE)
+
+
+# ── Preflight layout check (2026-07-29) ─────────────────────────────────────
+# prior-art-checked: the guard's hits are SEPP markdown parsers (different
+# corpus, post-extraction parsing); no existing pre-extraction layout detector
+# exists — this extends this file's own fidelity toolkit in place.
+# Structural problems (two-column bodies, rotated banners, garbled layers,
+# empty text layers) previously surfaced only AFTER extraction, as schema_fail
+# artifacts or interleaved text the post-gates flagged. The preflight measures
+# the layout BEFORE any parse so the operator summary names the problem class
+# up front and the chapter is flagged suspect even when downstream heuristics
+# would miss it (e.g. the Ashfield PC|DS two-column interleave, 2026-07-29).
+
+PREFLIGHT_TWO_COL_RATIO = 0.20   # >=20% of text pages two-column -> flag
+PREFLIGHT_EMPTY_RATIO = 0.30     # >=30% of pages with no text layer -> flag
+
+# A source PDF whose front matter carries a council repeal stamp ("Repealed by
+# WDCP 2015 Amendment No. 13 on 12 October 2020") is an archive document, not
+# the in-force chapter. Extracting one silently replaces current controls with
+# repealed ones — 20/23 Woollahra chapters shipped exactly that way before the
+# 2026-07-29 re-source. Unlike the layout flags above this is a HARD REJECT:
+# extract_chapter refuses the chapter and keeps needs_extraction=TRUE so the
+# fix is always a registry re-point, never an approval.
+# Line-anchored so amendment-history prose deeper in a sentence ("...was
+# repealed by Amendment 5") cannot false-positive; only front matter is read.
+PREFLIGHT_REPEALED_PAGES = 4
+_REPEALED_STAMP = re.compile(r"^\s*repealed\s+by\b", re.IGNORECASE)
+
+# Councils whose two-column/margin layout handling is PROVEN by a full source
+# fidelity sweep — the geometric detector still measures them, but the suspect
+# flag is suppressed (Waverley: margin-note layout, 2026-07-28 sweep = zero
+# missing provisions / zero wrong values). Add a council here only with that
+# level of evidence.
+# blacktown + georges_river added 2026-07-30: preflight SUSPECT triage —
+# multiple body pages sampled (part-a-car-parking pp21/31; both georges_river
+# chapters pp16/26) read as clean single-column prose in correct order. The
+# geometric detector false-positives on their heavily indented
+# lettered/numbered sub-item lists (a)/b)/1./2. hanging indents read as a
+# second lateral band). No extraction change needed — flag was noise.
+PREFLIGHT_TWO_COL_VERIFIED = {"waverley", "blacktown", "georges_river"}
+
+
+def detect_two_column_words(word_spans: list[tuple[float, float]], page_width: float) -> bool:
+    """True when a page's word x-spans form two lateral bands with a clear
+    gutter: both halves carry >=25% of words and <5% of words cross the middle
+    band. Pure — word_spans are (x0, x1) pairs."""
+    if len(word_spans) < 30 or page_width <= 0:
+        return False
+    mid_lo, mid_hi = page_width * 0.42, page_width * 0.58
+    left = right = crossing = 0
+    for x0, x1 in word_spans:
+        if x0 < mid_lo and x1 > mid_hi:
+            crossing += 1  # spans the gutter — single-column prose
+        elif (x0 + x1) / 2 < page_width * 0.5:
+            left += 1
+        else:
+            right += 1
+    n = len(word_spans)
+    return left / n >= 0.25 and right / n >= 0.25 and crossing / n < 0.05
+
+
+# prior-art-checked: guard hits (council-config.ts, intelligence_brief.py,
+# document_finder.py, ...) are council/document lookups sharing only generic
+# tokens — no existing repeal-stamp/front-matter currency detector anywhere in
+# the pipeline; this extends the file's own preflight toolkit in place.
+def detect_repealed_stamp(front_page_texts: list[str]) -> str | None:
+    """Return the repeal-stamp line found in a document's front matter, or
+    None. Pure — front_page_texts are the first PREFLIGHT_REPEALED_PAGES
+    pages' texts."""
+    for text in front_page_texts:
+        for line in (text or "").splitlines():
+            if _REPEALED_STAMP.match(line):
+                return line.strip()[:120]
+    return None
+
+
+def preflight_layout(pdf_path, council: str) -> dict:
+    """Measure layout hazards before parsing. Returns counts + flag booleans.
+    Never raises — a preflight failure must not block extraction (the post
+    gates still stand); it reports {} on any error."""
+    try:
+        two_col = rotated = garbled = empty = text_pages = 0
+        front_texts: list[str] = []
+        with pdfplumber.open(pdf_path) as pdf:
+            total = len(pdf.pages)
+            for idx, page in enumerate(pdf.pages):
+                if idx < PREFLIGHT_REPEALED_PAGES:
+                    try:
+                        front_texts.append(page.extract_text() or "")
+                    except Exception:
+                        front_texts.append("")
+                try:
+                    words = page.extract_words() or []
+                except Exception:
+                    words = []
+                if len(words) < 12:
+                    empty += 1
+                    continue
+                text_pages += 1
+                spans = [(w["x0"], w["x1"]) for w in words]
+                if detect_two_column_words(spans, float(page.width or 0)):
+                    two_col += 1
+                chars = page.chars or []
+                if chars:
+                    non_upright = sum(1 for c in chars if not c.get("upright", True))
+                    if non_upright / len(chars) > 0.15:
+                        rotated += 1
+                if _garble_evidence(page.extract_text() or ""):
+                    garbled += 1
+        report = {
+            "total_pages": total,
+            "text_pages": text_pages,
+            "two_column_pages": two_col,
+            "rotated_pages": rotated,
+            "garbled_pages": garbled,
+            "empty_text_pages": empty,
+        }
+        report["two_column_fail"] = (
+            text_pages > 0
+            and two_col / text_pages >= PREFLIGHT_TWO_COL_RATIO
+            and council not in PREFLIGHT_TWO_COL_VERIFIED
+        )
+        report["empty_layer_fail"] = (
+            total > 0 and empty / total >= PREFLIGHT_EMPTY_RATIO
+        )
+        report["repealed_stamp"] = detect_repealed_stamp(front_texts)
+        return report
+    except Exception as exc:  # pragma: no cover - defensive
+        print(f"    [preflight] skipped ({exc})")
+        return {}
+
+# ── OCR fallback (issue #832, Phase-0 passed 2026-07-28) ────────────────────
+# When a chapter's PDF text layer is garbled (letter-spaced doubled glyphs,
+# two-column interleave — classes NO text-layer reader can fix), page texts
+# are fetched from the Unlimited-OCR Modal endpoint (pixels, not text layer)
+# and fed to the SAME section splitter. Fail-visible: endpoint unset or
+# unreachable → None → extraction proceeds on the text layer exactly as
+# before, and the fidelity gates flag the rows.
+
+_OCR_DET_TAG = re.compile(
+    r"<\|det\|>\s*[a-z_]+\s*\[\d+(?:,\s*\d+){3}\]\s*<\|/det\|>"   # full unit: tag + block type + coords
+    r"|<\|/?(?:det|image(?:_caption)?)\|>|\[\d+(?:,\s*\d+){3}\]"  # any stragglers
+)
+_OCR_ROW_TAG = re.compile(r"</tr>|<tr[^>]*>", re.IGNORECASE)
+_OCR_CELL = re.compile(r"</?t[dh][^>]*>", re.IGNORECASE)
+_OCR_TABLE_TAG = re.compile(r"</?(?:table|tbody|thead)[^>]*>", re.IGNORECASE)
+
+
+def _garble_evidence(text: str) -> bool:
+    """True when doubled-glyph runs are strong evidence of a garbled layer.
+
+    Legitimate English carries short doubled runs INSIDE longer words
+    ('bookkeeping' = b·ookkee·ping — un-doubled letters on both sides; Sol
+    review of PR #836). Doubling artifacts double whole tokens ('nneeww',
+    'GGEENNEERRAALL'), so their runs sit at word boundaries. Evidence:
+      - any run of 8+ chars (4+ doubled pairs), or
+      - 2+ short runs that are word-boundary-adjacent (not word-internal).
+    """
+    t = text or ""
+    boundary_runs = 0
+    for m in _GARBLE_RUN.finditer(t):
+        if len(m.group(0)) >= 8:
+            return True
+        before = t[m.start() - 1] if m.start() > 0 else " "
+        after = t[m.end()] if m.end() < len(t) else " "
+        if not (before.isalpha() and after.isalpha()):
+            boundary_runs += 1
+    return boundary_runs >= 2
+
+
+def normalise_ocr_page(text: str) -> str:
+    """Model output → plain text the section splitter understands: detection
+    tags dropped, table markup flattened to ' | '-separated rows. Empty cells
+    are PRESERVED as empty delimiters — collapsing them shifts values into
+    the wrong column (Sol review of PR #836: a setback under Zone B must not
+    read as Zone A's)."""
+    t = _OCR_DET_TAG.sub("", text or "")
+    t = _OCR_ROW_TAG.sub("\n", t)
+    # Cell BOUNDARIES (</td><td>) become single pipes — an empty cell keeps
+    # its slot ('Setback |  | 3m'), so values never shift columns.
+    t = re.sub(r"</t[dh]>\s*<t[dh][^>]*>", " | ", t, flags=re.IGNORECASE)
+    t = _OCR_CELL.sub("", t)
+    t = _OCR_TABLE_TAG.sub("\n", t)
+    t = re.sub(r"[ \t]+\n", "\n", t)
+    return re.sub(r"\n{3,}", "\n\n", t).strip()
+
+
+def text_layer_garbled(page_texts: list[str]) -> bool:
+    """True when any page's text layer carries STRONG doubled-glyph evidence
+    — the trigger for routing the chapter through OCR. A single short run on
+    a page is not enough (legitimate words like 'bookkeeping' match the bare
+    pattern)."""
+    return any(_garble_evidence(t) for t in page_texts)
+
+
+def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
+    """POST the PDF to the Modal OCR endpoint; return normalised per-page
+    texts, or None on ANY failure (caller stays on the text layer). The
+    response must carry EXACTLY expected_pages entries — a short response
+    would serve OCR text for the wrong source pages (Sol review of PR #836)."""
+    url = os.getenv("MODAL_OCR_URL", "").strip()
+    token = os.getenv("MODAL_OCR_TOKEN", "").strip()
+    if not url or not token:
+        print("    [OCR] MODAL_OCR_URL/TOKEN not set — staying on text layer")
+        return None
+    try:
+        import requests
+
+        resp = requests.post(
+            url,
+            data=open(pdf_path, "rb").read(),
+            headers={"X-OCR-Token": token},
+            timeout=1800,
+        )
+        if resp.status_code != 200:
+            print(f"    [OCR] endpoint returned {resp.status_code} — staying on text layer")
+            return None
+        pages = resp.json().get("pages")
+        if not isinstance(pages, list) or not pages:
+            print("    [OCR] endpoint returned no pages — staying on text layer")
+            return None
+        if len(pages) != expected_pages:
+            print(f"    [OCR] page count mismatch ({len(pages)} vs {expected_pages} in PDF) — staying on text layer")
+            return None
+        return [normalise_ocr_page(p) for p in pages]
+    except Exception as e:
+        print(f"    [OCR] fetch failed ({e}) — staying on text layer")
+        return None
+
+
+def strip_garbled_header_lines(text: str | None) -> str | None:
+    """Drop lines dominated by doubled-glyph runs (letter-spaced running
+    headers whose text layer duplicates every glyph). Only whole LINES are
+    removed, and only when the doubled run covers most of the line's letters —
+    body text containing a legitimate 'LLoyd' or 'III' is untouched."""
+    if not text:
+        return text
+    kept = []
+    for line in text.splitlines():
+        letters = sum(ch.isalpha() for ch in line)
+        doubled = sum(len(m.group(0)) for m in _GARBLE_RUN.finditer(line))
+        if letters >= 8 and doubled / max(letters, 1) > 0.6:
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
+def classify_row_fidelity(ref: str | None, old_text: str | None,
+                          new_text: str | None,
+                          change_type: str = "changed") -> tuple[str, str | None]:
+    """Verdict for one queue row: ('ok', None) or ('failed', reason).
+
+    Checks (each proven against a real 2026-07 defect, plus Sol review of
+    PR #830):
+      garbled_glyphs — doubled-glyph runs survived the header strip
+      junk_ref       — provision keyed off a bare year / zone code / 'table'
+      emptied_by_strip — a non-removal whose stripped text is empty (the
+                          extraction produced ONLY header garbage; approving
+                          would erase the provision)
+      section_collapsed — new text < 30% of a substantial old text (content
+                          migrated to another key; approving would gut it)
+      oversize_new_provision — a brand-new >20k-char provision (a mis-keyed
+                          section split, not a genuine new clause)
+    """
+    reasons = []
+    short = (ref or "").split("__")[-1]
+    if _garble_evidence(new_text or ""):
+        reasons.append("garbled_glyphs")
+    if _JUNK_REF.match(short):
+        reasons.append("junk_ref")
+    if change_type != "removed" and new_text is not None and not new_text.strip():
+        reasons.append("emptied_by_strip")
+    if (old_text and new_text is not None and len(old_text) > 2000
+            and len(new_text) < 0.3 * len(old_text)):
+        reasons.append("section_collapsed")
+    if not old_text and new_text and len(new_text) > 20000:
+        reasons.append("oversize_new_provision")
+    if reasons:
+        return "failed", "+".join(reasons)
+    return "ok", None
+
+
 def suspect_reason(review_data: dict) -> str | None:
     """Return a short SUSPECT reason for a review chapter, or None if it looks fine.
 
@@ -1465,6 +2074,13 @@ def suspect_reason(review_data: dict) -> str | None:
     if review_data.get("truncation_fail"):
         return (f"truncation_fail ({review_data.get('truncation_flagged')}/"
                 f"{review_data.get('total_provisions')} provisions truncated)")
+    pf = review_data.get("preflight") or {}
+    if pf.get("two_column_fail"):
+        return (f"preflight_two_column ({pf.get('two_column_pages')}/"
+                f"{pf.get('text_pages')} text pages two-column — interleave likely)")
+    if pf.get("empty_layer_fail"):
+        return (f"preflight_empty_layer ({pf.get('empty_text_pages')}/"
+                f"{pf.get('total_pages')} pages without text layer — scanned source)")
     return None
 
 
@@ -1784,6 +2400,30 @@ def extract_chapter(
 
         extractor = DCPExtractor(pdf_path, document_id, council=council)
 
+        preflight = preflight_layout(pdf_path, council)
+        if preflight:
+            print(
+                f"    Preflight: {preflight['text_pages']} text pages — "
+                f"two-column {preflight['two_column_pages']}, rotated {preflight['rotated_pages']}, "
+                f"garbled {preflight['garbled_pages']}, empty-layer {preflight['empty_text_pages']}"
+            )
+            if preflight.get("two_column_fail"):
+                print("    [preflight] ⚠ TWO-COLUMN body layout — text-order interleave likely; "
+                      "review output before approving")
+            if preflight.get("empty_layer_fail"):
+                print("    [preflight] ⚠ EMPTY TEXT LAYERS on many pages — scanned source; "
+                      "OCR routing required for full coverage")
+            if preflight.get("repealed_stamp"):
+                # Hard reject — an archive document must never reach extraction,
+                # let alone the review queue. needs_extraction stays TRUE so the
+                # chapter keeps surfacing until the registry URL is re-pointed
+                # at the in-force version (Woollahra failure class, 2026-07-29).
+                print(f"    [preflight] ✗ REPEALED SOURCE: \"{preflight['repealed_stamp']}\"")
+                print("    [preflight] chapter REJECTED — re-point council_url at the "
+                      "in-force chapter, re-mirror, then re-run")
+                cur.close()
+                return False, None
+
         # If a page-range config exists for this council/chapter, use it directly.
         # This handles DCPs where SECTION_RE matches TOC entries instead of real
         # section headings (e.g. Waverley: 297 TOC hits vs ~24 real sections).
@@ -1968,6 +2608,7 @@ def extract_chapter(
                 "document_id": document_id,
                 "content_hash": chapter.get("content_hash"),
                 "diff": review_diff,
+                "preflight": preflight,
             }
 
         # 3. Provision count gate — before touching the DB.
@@ -2326,23 +2967,42 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
         )
 
         # Refresh: drop stale pending rows for this chapter, then insert fresh.
-        # Only 'pending' rows are cleared — approved/rejected history is preserved.
+        # Only 'pending' rows are cleared — approved history is preserved.
         cur.execute(
             "DELETE FROM dcp_review_queue "
             "WHERE council = %s AND chapter_key = %s AND status = 'pending'",
             (council, chapter_key),
         )
+        # Prior rejections are SUPERSEDED by this fresh extraction, not kept
+        # blocking: the content hash is the source PDF's hash, so an
+        # extractor-side fix re-extracts under the SAME hash and hash-scoped
+        # blocking alone would wedge the chapter forever (Sol review of
+        # PR #830). Rows stay in the table as labelled audit history.
+        cur.execute(
+            "UPDATE dcp_review_queue SET status = 'superseded' "
+            "WHERE council = %s AND chapter_key = %s AND status = 'rejected'",
+            (council, chapter_key),
+        )
         for change_type, ref, old_t, new_t, old_p, new_p, has_num in rows:
+            # Fidelity gate: strip doubled-glyph running headers, then verdict
+            # the row. A 'failed' row still lands in the queue (it blocks the
+            # chapter's commit and the watchdog reports it) but carries its
+            # reason so nobody has to diagnose garbage by eye again.
+            new_t = strip_garbled_header_lines(new_t)
+            fidelity, row_reason = classify_row_fidelity(ref, old_t, new_t)
+            merged_reason = "; ".join(x for x in (reason, row_reason) if x) or None
             cur.execute(
                 """
                 INSERT INTO dcp_review_queue
                     (council, chapter_key, document_id, ref_number, change_type,
                      old_text, new_text, old_page, new_page, has_numeric_change,
-                     source_content_hash, suspect_reason, is_full_replace, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                     source_content_hash, suspect_reason, is_full_replace, status,
+                     fidelity_status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending', %s)
                 """,
                 (council, chapter_key, document_id, ref, change_type,
-                 old_t, new_t, old_p, new_p, has_num, content_hash, reason, is_full_replace),
+                 old_t, new_t, old_p, new_p, has_num, content_hash, merged_reason,
+                 is_full_replace, fidelity),
             )
             total += 1
 

@@ -32,6 +32,12 @@ export function HomeNav() {
             Tools
           </Link>
           <Link
+            href="/what-you-get"
+            className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
+          >
+            What you get
+          </Link>
+          <Link
             href="/browse"
             className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
           >
@@ -53,7 +59,7 @@ export function HomeNav() {
             href="/assessment"
             className="hidden sm:inline-flex items-center px-4 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
           >
-            Try Verify
+            Open Site Controls
           </Link>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, ChevronDown, ChevronUp, AlertTriangle, TrendingDown } from 'lucide-react';
 import { zoneFamily } from '@/lib/regulatory-constants';
+import { DcpRequestCta } from '@/components/compliance/DcpRequestCta';
 
 // ---------------------------------------------------------------------------
 // Types matching Python ConstraintArithmeticResult
@@ -105,15 +106,23 @@ const YIELD_INPUTS: Array<{ label: string; has: (r: ConstraintArithmeticResult) 
   { label: 'SEPP standards', has: (r) => (r.sepp_overrides_applied?.length ?? 0) > 0 },
 ];
 
-function yieldInputsBadge(result: ConstraintArithmeticResult): { text: string; title: string } {
+function yieldInputsBadge(result: ConstraintArithmeticResult): { text: string; sentence: string } {
   const used = YIELD_INPUTS.filter((i) => i.has(result));
   const missing = YIELD_INPUTS.filter((i) => !i.has(result));
+  const joinLabels = (items: typeof YIELD_INPUTS) => {
+    const labels = items.map((i) => i.label);
+    return labels.length > 1
+      ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+      : labels[0];
+  };
   return {
     text: `Calculated from ${used.length} of ${YIELD_INPUTS.length} planning controls`,
-    title: [
-      used.length ? `In this calculation: ${used.map((i) => i.label).join(', ')}` : '',
-      missing.length ? `Not mapped for this lot: ${missing.map((i) => i.label).join(', ')}` : '',
-    ].filter(Boolean).join(' · '),
+    sentence: [
+      used.length ? `This estimate is computed from the ${joinLabels(used)}.` : '',
+      missing.length
+        ? `No ${joinLabels(missing)} ${missing.length > 1 ? 'are' : 'is'} mapped for this lot, so ${missing.length > 1 ? 'those controls' : 'that control'} could not narrow the estimate.`
+        : '',
+    ].filter(Boolean).join(' '),
   };
 }
 
@@ -166,6 +175,8 @@ interface ConstraintArithmeticCardProps {
   inputProvenance?: InputLedgerRow[] | null;
   /** Named-missing-control context, shown when the envelope could not compute. */
   envelopeGap?: EnvelopeGap | null;
+  /** Subject address, threaded into the missing-DCP request for alert context. */
+  address?: string | null;
 }
 
 export function ConstraintArithmeticCard({
@@ -181,6 +192,7 @@ export function ConstraintArithmeticCard({
   briefData,
   inputProvenance,
   envelopeGap,
+  address,
 }: ConstraintArithmeticCardProps) {
   const [result, setResult] = useState<ConstraintArithmeticResult | null>(briefData ?? null);
   const [loading, setLoading] = useState(false);
@@ -295,11 +307,15 @@ export function ConstraintArithmeticCard({
           </div>
           <Badge
             className={CONFIDENCE_COLORS[result.confidence] || 'bg-gray-100 text-gray-800'}
-            title={inputsBadge.title}
           >
             {inputsBadge.text}
           </Badge>
         </div>
+        {inputsBadge.sentence && (
+          <p className="text-xs text-gray-600 mt-1.5 leading-relaxed">
+            {inputsBadge.sentence}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* The envelope could not be computed — name the exact missing control
@@ -317,6 +333,11 @@ export function ConstraintArithmeticCard({
                 ? <> — see the DCP Controls card ({envelopeGap.dcpName}).</>
                 : <> — see the DCP Controls card.</>
               : <>, which is not in our structured dataset for this council yet — check the DCP on the council&rsquo;s website.</>}
+            {/* Point-of-pain CTA: when the DCP isn't loaded, let the user ask us to
+                prioritise it (records demand + pings ops). Reuses /api/dcp-interest. */}
+            {!envelopeGap.dcpOnboarded && (
+              <DcpRequestCta council={lga || formerCouncil || ''} address={address} />
+            )}
           </div>
         )}
 
@@ -385,6 +406,16 @@ export function ConstraintArithmeticCard({
                     {' '}up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
                     ({humanizeForm(result.max_permitted_form)}) with council approval.
                   </div>
+                  {/* #745 D6: the two ceilings rest on different legal pathways.
+                      Without a label, "up to 3 (multi-dwelling)" reads as a
+                      contradiction of the SEPP card's "Not eligible" above. */}
+                  {!result.ceiling_from_lmr && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      The higher figure rests on the LEP land use table for this
+                      zone (a merit-assessed development application) — it is a
+                      separate pathway from the SEPP Housing standards shown above.
+                    </div>
+                  )}
                   {/* LMR note — shown ONLY when a real clause backs it (no citation, no claim). */}
                   {result.ceiling_from_lmr && result.lmr_source_clause && (
                     <div className="text-xs text-teal-700 mt-1">

@@ -3,7 +3,11 @@
  * Each function returns a <script type="application/ld+json"> element.
  */
 
-const BASE_URL = 'https://plotdetect.com.au';
+// Apex canibuildit — the domain this app's content actually serves on.
+// plotdetect.com.au is the separate info-site project: JSON-LD URLs built on
+// it 404'd, telling engines the structured data described dead pages
+// (found 2026-07-23).
+const BASE_URL = 'https://canibuildit.com.au';
 const PUBLISHER = {
   '@type': 'Organization',
   name: 'PlotDetect',

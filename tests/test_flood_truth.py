@@ -350,11 +350,16 @@ def test_s1_gap_warning_without_ems_detected_false_mentions_ingest():
 # _build_data_sources
 # ---------------------------------------------------------------------------
 
-def test_data_sources_always_includes_epi_and_s1():
+def test_data_sources_epi_always_s1_only_with_result():
+    """FLIPPED 2026-08-03 (campaign item 4 / DQ-44): previously pinned the S1
+    source as unconditional, but no S1 query has ever run — a served source
+    claim with no query behind it. S1 appears only with a SAR result."""
     out = _outputs()
     sources = _build_data_sources(out)
     assert "NSW SEED EPI WFS" in sources
-    assert "Microsoft Planetary Computer S1 RTC" in sources
+    assert "Microsoft Planetary Computer S1 RTC" not in sources
+    with_sar = _outputs(sar_flood_detected=True)
+    assert "Microsoft Planetary Computer S1 RTC" in _build_data_sources(with_sar)
 
 
 def test_data_sources_includes_ems_when_available():
@@ -1515,6 +1520,10 @@ _EXPECTED_OUTPUT_KEYS = {
     "hawkesbury_flood_level_200aep", "hawkesbury_flood_level_500aep",
     "hawkesbury_flood_level_pmf", "hawkesbury_flood_study",
     "flood_studies", "ground_elevation_m_ahd", "in_100yr_flood_zone",
+    # Names the sources that could have answered the 1% AEP question and were
+    # not reachable. Required by the "not assessed" copy, which has to say what
+    # was tried — an unexplained absence reads as evasion.
+    "in_100yr_flood_zone_unconsulted",
     "compound_heritage", "compound_riparian", "compound_wetlands", "compound_landslide",
     "compound_risk_layers", "compound_risk_notes", "flood_signal",
 }
@@ -1942,17 +1951,23 @@ def test_db_contract_write_report_columns():
 
 
 def test_db_contract_cache_read_columns():
-    """Cache lookup SELECT must read outputs, confidence, data_sources — the 3 fields
-    that run_flood uses from the cached row."""
+    """Cache lookup SELECT must read outputs, confidence, data_sources AND
+    run_date — run_date is load-bearing since output-grounding fix 2: the
+    cached row's ORIGINAL run_date is served and re-written, never re-stamped
+    with today. The regex tolerates the quote-join of adjacent string
+    literals in the multi-line SQL."""
     from services import flood_truth
     src = inspect.getsource(flood_truth.run_flood)
-    match = re.search(r"SELECT\s+([\w\s,]+)\s+FROM\s+property_reports", src)
+    match = re.search(r"SELECT\s+([\w\s,\"]+?)FROM\s+property_reports", src)
     assert match, "run_flood must contain SELECT ... FROM property_reports"
-    columns = {c.strip() for c in match.group(1).split(",")}
-    required = {"outputs", "confidence", "data_sources"}
+    columns = {c.strip() for c in match.group(1).replace('"', " ").split(",")}
+    required = {"outputs", "confidence", "data_sources", "run_date"}
     assert required <= columns, (
         f"Cache query missing columns: {required - columns}"
     )
+    # The age policy is part of the read contract (fix 2): rows older than the
+    # max age are recomputed, not served.
+    assert "90 days" in src, "cache read must carry the 90-day max-age filter"
 
 
 def test_db_contract_normalise_roundtrip():
@@ -2046,14 +2061,34 @@ def test_icontract_signal_contract_active():
 
 
 def _check_postcondition(func, name):
-    """Helper: assert icontract postcondition exists.
+    """Assert the icontract postcondition is actually attached to `func`.
 
-    Skips if icontract isn't installed or if the conftest mock chain prevents
-    icontract from setting __postconditions__ (known WSL + conftest_mocks issue).
-    In CI (GitHub Actions), icontract is installed cleanly and these tests run.
+    This used to skip whenever `__postconditions__` was absent — which is the
+    same observable state as THE DECORATOR HAVING BEEN DELETED, the exact
+    mutant each caller below claims to kill. So the check could never fail,
+    and it never did: it skipped in every environment from the day it was
+    written, because icontract was declared only in
+    scripts/requirements-maintenance.txt and so was never installed anywhere.
+    That also concealed a real defect — `_compute_flood_signal` had no
+    decorator at all, in any commit that ever touched it.
+
+    The old docstring asserted "In CI (GitHub Actions), icontract is installed
+    cleanly and these tests run." That was untrue, and it is why nobody chased
+    the skip for as long as it existed.
+
+    Now: if icontract is importable, a missing postcondition is a FAILURE.
+    Only a genuinely absent library skips, and scripts/check_dependency_skips.py
+    counts that so it cannot go unnoticed either.
     """
-    if not hasattr(func, '__postconditions__'):
-        pytest.skip(f"icontract postconditions not active on {name} (env issue or not installed)")
+    try:
+        import icontract  # noqa: F401
+    except ImportError:
+        pytest.skip(
+            f"icontract not installed, so {name}'s postcondition cannot be checked "
+            "(it is pinned in services/requirements.txt and requirements-test.txt)")
+    assert hasattr(func, '__postconditions__'), (
+        f"{name} has no __postconditions__. icontract IS installed, so the "
+        "@icontract.ensure decorator has been removed or was never added.")
     assert len(func.__postconditions__) > 0, \
         f"{name} must have at least one postcondition"
 
@@ -2097,3 +2132,172 @@ def test_count_sources_upper_bound_exactly_9():
         compound_heritage=True,
     )
     assert _count_available_sources(out) == 9  # exact upper bound
+
+
+# ===========================================================================
+# Redbank Creek Flood Study 2025 — config contract + valid-range guard
+# ===========================================================================
+
+def test_flood_studies_redbank_values_exact():
+    """Redbank config values must match the source dataset facts exactly.
+    CRS from shapefile .prj in the same portal package; nodata from .hdr."""
+    from services.flood_truth import FLOOD_STUDIES
+    rb = FLOOD_STUDIES["redbank"]
+    assert rb["name"] == "Redbank Creek Flood Study 2025"
+    assert rb["source"] == "Hawkesbury City Council"
+    assert rb["crs"] == "EPSG:7856"
+    assert rb["nodata"] == -999.0
+    assert rb["has_depth"] is True
+    assert rb["valid_depth_range"] == (0.0, 100.0)
+    assert rb["valid_level_range"] == (-10.0, 250.0)
+
+
+def test_flood_studies_redbank_design_ladder_complete():
+    """All 11 design events present (incl. 1-in-1000/2000/5000) and {type}-templated,
+    plus the March 2022 historical event."""
+    from services.flood_truth import FLOOD_STUDIES
+    rb = FLOOD_STUDIES["redbank"]
+    expected = {
+        "20pct", "10pct", "5pct", "2pct", "1pct",
+        "0_5pct", "0_2pct", "0_1pct", "0_05pct", "0_02pct", "pmf",
+    }
+    assert set(rb["design"].keys()) == expected
+    for template in rb["design"].values():
+        assert "{type}" in template, f"Redbank template must be typed: {template}"
+        assert template.endswith(".tif")
+    assert rb["historical"] == {
+        "2022": "historical/RedBank_DES_Hist_March2022_{type}_Max_ProcessedOutput.tif",
+    }
+
+
+def test_aep_labels_cover_every_configured_design_key():
+    """Every design key in every study must have a display label — an unlabeled
+    key reaches the API as a raw token the UI cannot present."""
+    from services.flood_truth import FLOOD_STUDIES, _AEP_LABELS
+    for study_key, cfg in FLOOD_STUDIES.items():
+        for aep_key in cfg["design"]:
+            assert aep_key in _AEP_LABELS, \
+                f"FLOOD_STUDIES['{study_key}'] design key {aep_key!r} missing from _AEP_LABELS"
+
+
+def test_redbank_missing_raster_dir_no_match(monkeypatch):
+    """Rasters absent on this host → redbank silently skipped, no error."""
+    import services.flood_truth as ft
+    pytest.importorskip("rasterio")
+    monkeypatch.setitem(ft.FLOOD_STUDIES["redbank"], "dir", "/nonexistent/redbank")
+    result = ft._query_flood_study_rasters(-33.574, 150.732)
+    assert all(s["study_key"] != "redbank" for s in result["flood_studies"])
+
+
+# --- _sample_raster valid-range guard (uses a real 2x2 raster on disk) ------
+
+def _write_probe_raster(tmp_path, values, nodata=-999.0):
+    """2x2 float32 GTiff at origin (1000, 2000), 1 m pixels, EPSG:7856."""
+    rasterio = pytest.importorskip("rasterio")
+    import numpy as np
+    from rasterio.transform import from_origin
+    path = str(tmp_path / "probe.tif")
+    arr = np.array(values, dtype="float32")
+    with rasterio.open(
+        path, "w", driver="GTiff",
+        height=arr.shape[0], width=arr.shape[1], count=1, dtype="float32",
+        crs="EPSG:7856", transform=from_origin(1000.0, 2000.0, 1.0, 1.0),
+        nodata=nodata,
+    ) as ds:
+        ds.write(arr, 1)
+    return path
+
+
+def test_sample_raster_valid_value_inside_range_returned(tmp_path):
+    """Expected use: plausible value passes the guard unchanged."""
+    from services.flood_truth import _sample_raster
+    path = _write_probe_raster(tmp_path, [[14.51, -999.0], [-999.0, -999.0]])
+    val = _sample_raster(path, 1000.5, 1999.5, -999.0, valid_range=(-10.0, 250.0))
+    assert val is not None and abs(val - 14.51) < 1e-4
+
+
+def test_sample_raster_artifact_value_rejected(tmp_path):
+    """TUFLOW glitch cell (e.g. level -252.98 m AHD) must be treated as nodata —
+    serving it would be a silent wrong result."""
+    from services.flood_truth import _sample_raster
+    path = _write_probe_raster(tmp_path, [[-252.98, -999.0], [-999.0, -999.0]])
+    assert _sample_raster(path, 1000.5, 1999.5, -999.0, valid_range=(-10.0, 250.0)) is None
+
+
+def test_sample_raster_no_range_returns_raw_value(tmp_path):
+    """Backward compat: valid_range omitted → no filtering (existing studies unchanged)."""
+    from services.flood_truth import _sample_raster
+    path = _write_probe_raster(tmp_path, [[-252.98, -999.0], [-999.0, -999.0]])
+    val = _sample_raster(path, 1000.5, 1999.5, -999.0)
+    assert val is not None and abs(val - (-252.98)) < 1e-2
+
+
+def test_sample_raster_range_bounds_inclusive(tmp_path):
+    """Edge: value exactly at a range bound is kept (<= semantics, not <)."""
+    from services.flood_truth import _sample_raster
+    path = _write_probe_raster(tmp_path, [[250.0, -10.0], [-999.0, -999.0]])
+    assert _sample_raster(path, 1000.5, 1999.5, -999.0, valid_range=(-10.0, 250.0)) == 250.0
+    assert _sample_raster(path, 1001.5, 1999.5, -999.0, valid_range=(-10.0, 250.0)) == -10.0
+
+
+def test_sample_raster_nodata_still_none_with_range(tmp_path):
+    """Failure case: nodata short-circuits before the range check."""
+    from services.flood_truth import _sample_raster
+    path = _write_probe_raster(tmp_path, [[-999.0, -999.0], [-999.0, -999.0]])
+    assert _sample_raster(path, 1000.5, 1999.5, -999.0, valid_range=(-10.0, 250.0)) is None
+
+
+def test_bounds_proxy_uses_pmf_extent_not_smaller_1pct_grid(tmp_path, monkeypatch):
+    """Silent false negative: event grids can differ in extent (Redbank PMF
+    extends ~86 m past its 1% grid). A point inside the PMF grid but outside
+    the 1% grid must still match the study — the study-level bounds pre-check
+    must proxy on the maximal (PMF) grid, not the 1% grid."""
+    import services.flood_truth as ft
+    rasterio = pytest.importorskip("rasterio")
+    import numpy as np
+    from rasterio.transform import from_origin
+
+    ddir = tmp_path / "design"
+    ddir.mkdir()
+
+    def write(name, origin_x, origin_y, value):
+        arr = np.full((2, 2), value, dtype="float32")
+        with rasterio.open(
+            str(ddir / name), "w", driver="GTiff",
+            height=2, width=2, count=1, dtype="float32",
+            crs="EPSG:7856", transform=from_origin(origin_x, origin_y, 1.0, 1.0),
+            nodata=-999.0,
+        ) as ds:
+            ds.write(arr, 1)
+
+    # 1pct grid at (1000, 2000); pmf grid disjoint at (5000, 6000)
+    for t in ("d", "h"):
+        write(f"small_1pct_{t}.tif", 1000.0, 2000.0, 1.0)
+        write(f"big_pmf_{t}.tif", 5000.0, 6000.0, 2.0)
+
+    probe = {
+        "name": "Proxy Extent Probe", "source": "test",
+        "dir": str(tmp_path), "crs": "EPSG:7856", "nodata": -999.0,
+        "has_depth": True,
+        "design": {
+            "1pct": "design/small_1pct_{type}.tif",
+            "pmf":  "design/big_pmf_{type}.tif",
+        },
+        "historical": {},
+    }
+    monkeypatch.setattr(ft, "FLOOD_STUDIES", {"probe": probe})
+
+    # Identity transformer: feed projected coords straight through
+    class _IdentityTransformer:
+        @staticmethod
+        def transform(lng, lat):
+            return (lng, lat)
+
+    monkeypatch.setitem(ft._STUDY_TRANSFORMERS, "EPSG:7856", _IdentityTransformer())
+
+    # Point inside the pmf grid only (x=5000.5, y=5999.5)
+    result = ft._query_flood_study_rasters(5999.5, 5000.5)
+    matched = {s["study_key"]: s for s in result["flood_studies"]}
+    assert "probe" in matched, "study skipped — bounds proxy used the smaller 1% grid"
+    assert matched["probe"]["design"]["pmf"] == {"depth_m": 2.0, "level_m_ahd": 2.0}
+    assert "1pct" not in matched["probe"]["design"]  # point is outside the 1% grid

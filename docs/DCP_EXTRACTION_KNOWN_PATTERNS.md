@@ -602,3 +602,56 @@ mycouncil: {
 | DQ-28 | Leichhardt | Coarse extraction (underscore doc_id format) coexisted with correct extraction — dual is_current=TRUE, v2_dcp_part='unknown' for all 508 new provisions, granularity 62 vs 516 for same chapter | 528 retired | 2026-03-30 |
 
 See `.claude/DATA_QUALITY_TRACKER.md` for full issue history.
+
+---
+
+## §10 — Precinct keying: every keyed council needs a REPRODUCIBLE rule (added 2026-07-29)
+
+**What "a rule" is (plain):** one line that says how to work out which precinct /
+neighbourhood a provision belongs to, for one council, from information already in the
+row. It is a lookup recipe, not AI. The label it produces is `v2_precinct_id`, which is
+what joins a provision to its map boundary so it serves to the right address.
+
+The recipes live in `scripts/derive_precinct_keys.py` (`RULES`). The five recipe types:
+
+| type | "the precinct is…" | example council |
+|---|---|---|
+| `doc_regex`   | …the number in the document name | Marrickville (`part9_p13…` → `13_`) |
+| `ref_regex`   | …the code in the clause number | Leichhardt (`C2.2.1.1`) |
+| `page_range`  | …whichever Part's page-range this row's page falls in | Ashfield ch-D Parts |
+| `constant`    | …a fixed value for the whole chapter | Ashfield E2 → `Haberfield` |
+| `chapter_map` | …this chapter maps to this site | Ku-ring-gai Part 14 sites |
+| `column_copy` | …copy an existing structural tag (`v2_dcp_part`) | Waverley → `E1`..`E7` |
+
+**Why it MUST be a rule and not hand-labelling:** keying runs automatically as enrichment
+step [4/4] after every extraction (see `docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md §8`).
+A rule re-computes the label from stable inputs the extractor always reproduces, so a
+re-extraction re-keys itself. Hand-labelling is lost on the next re-extraction — this is
+how Waverley silently lost all its precinct labels overnight (2026-07-29). **If you key a
+council by hand without adding a rule, the next re-extraction un-keys it.**
+
+### Onboarding step (do this whenever a council gets precinct boundaries)
+1. Decide the recipe: how does the precinct fall out of the row? (filename / clause ref /
+   page range / constant / chapter map / an existing tag). Pick the type above.
+2. Add a `RULES` entry in `scripts/derive_precinct_keys.py` with `validate: True` if the
+   recipe should reproduce keys already in the DB (deterministic), else `False`.
+3. Verify it reproduces existing keys: `python scripts/derive_precinct_keys.py --validate`
+   (green = the DB labels match what the rule produces from source).
+4. Apply: `python scripts/derive_precinct_keys.py --council <name> --apply` (backup + idempotent).
+
+### Check ALL councils for rule coverage (run any time)
+```
+python scripts/audit_precinct_keying_coverage.py
+```
+Lists every LGA with boundaries and flags **EXPOSED** = keyed but no rule (a re-extraction
+would silently un-key it). As of 2026-07-29:
+- **protected:** Inner West (Marrickville/Leichhardt/Ashfield), Ku-ring-gai, Waverley.
+- **EXPOSED — need a rule:** **City of Sydney** (145 boundaries, keyed by page-footer analysis;
+  a ref-regex only reproduces 121/462, so a clean rule needs a re-extraction that produces
+  clean refs first — do NOT re-extract CoS until it has a rule) and **Parramatta** (other
+  session's lane).
+- **not keyed yet:** Woollahra (other session's lane).
+
+**The gate:** a council with boundaries but no rule shows the honest "site-specific rules may
+exist" warning and never serves wrong-area data — but it must not be re-extracted until its
+rule exists, or its keys vanish. Adding the rule is part of onboarding, not an afterthought.

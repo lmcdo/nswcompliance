@@ -20,7 +20,8 @@ const FREE_TOOL_LINKS = [
 ];
 
 const PLATFORM_LINKS = [
-  { label: 'Verify (Compliance)', href: '/assessment' },
+  { label: 'What You Get', href: '/what-you-get' },
+  { label: 'Site Controls', href: '/assessment' },
   { label: 'Scout (Map Explorer)', href: 'https://map.plotdetect.com.au' },
   { label: 'Validate (DA Analytics)', href: 'https://charts.plotdetect.com.au' },
   { label: 'Climate Risk', href: '/climate-risk' },
@@ -34,12 +35,14 @@ const PLATFORM_LINKS = [
 const COMPANY_LINKS = [
   { label: 'How it works', href: '/how-it-works' },
   { label: 'Pricing', href: '/pricing' },
+  { label: 'For Homeowners', href: '/for/homebuyers' },
   { label: 'For Buyers Agents', href: '/for/buyers-agents' },
   { label: 'For Conveyancers', href: '/for/conveyancers' },
   { label: 'For Builders', href: '/for/builders' },
   { label: 'For Planners', href: '/for/planners' },
   { label: 'Developers / API', href: '/developers' },
   { label: 'Contact', href: '/contact' },
+  { label: 'Site directory', href: '/site-directory' },
   { label: 'Privacy', href: '/privacy' },
   { label: 'Terms', href: '/terms' },
 ];

@@ -1,0 +1,50 @@
+flowchart LR
+  subgraph PA["① PILE A — the system works these out. Every one was broken."]
+    A1["Shadow<br/>checked against pvlib<br/>0.21° of a 0.50° limit"]
+    A2["Flood<br/>reproducible<br/>7 points, inconclusive"]
+    A3["Granny flat<br/>reproducible<br/>accuracy unmeasured"]
+    A4["Solar<br/>source-linked"]
+    A5["Climate score<br/>source-linked<br/>uncheckable"]
+    A6["Neighbour build<br/>REMOVED<br/>0 readings of 538"]
+    A1 ~~~ A2 ~~~ A3 ~~~ A4 ~~~ A5 ~~~ A6
+  end
+
+  subgraph PB["② PILE B — passed straight through. Basically none were broken."]
+    B1["Zone"]
+    B2["Height limit"]
+    B3["Floor space ratio"]
+    B4["Hazard + heritage overlays"]
+    B5["Applications · 243,753"]
+    B6["Setback with its clause · 1,071"]
+    B1 ~~~ B2 ~~~ B3 ~~~ B4 ~~~ B5 ~~~ B6
+  end
+
+  subgraph GATES["③ The seven gates that now stand behind both piles"]
+    G1["falsifiability.py<br/>plant a defect,<br/>prove the test reddens"]
+    G3["lint_fabricated_verdicts.py<br/>is the verdict backed<br/>by data received?"]
+    G4["liability_language_check.py<br/>changed wording"]
+    G2["validate_schema_contract.py<br/>table names vs live DB"]
+    G5["qa_gate.py<br/>report bound to commit"]
+    G6["doc_claims.py<br/>reports only, blocks nothing"]
+    G7["pre-push + CI<br/>runs all of it, twice"]
+    G1 ~~~ G3 ~~~ G4 ~~~ G2 ~~~ G5 ~~~ G6 ~~~ G7
+  end
+
+  PA ==>|"guarded by"| GATES
+  PB ==>|"guarded by"| GATES
+
+  classDef rung3 fill:#d6efdc,stroke:#2e7d52,color:#0e2c1c
+  classDef rung2 fill:#fdf0cf,stroke:#9a7500,color:#3a2f08
+  classDef rung1 fill:#dfeafc,stroke:#3b6fb6,color:#0f2340
+  classDef gone fill:#ececec,stroke:#8a8a8a,color:#2b2b2b,stroke-dasharray:4 3
+  classDef pass fill:#d7f0f2,stroke:#2b7f89,color:#0c2b2f
+  classDef gate fill:#f3e8fd,stroke:#7b4fbe,color:#241038
+  classDef gateoff fill:#f0f0f0,stroke:#888,color:#333,stroke-dasharray:4 3
+
+  class A1 rung3
+  class A2,A3 rung2
+  class A4,A5 rung1
+  class A6 gone
+  class B1,B2,B3,B4,B5,B6 pass
+  class G1,G2,G3,G4,G5,G7 gate
+  class G6 gateoff

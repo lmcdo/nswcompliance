@@ -124,9 +124,10 @@ export function RegulatoryCurrencyBanner() {
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
           <span className="text-xl">⚠️</span>
+          {/* prior-art-checked: copy edit to this existing banner component itself, no new capability */}
           <p className="text-sm text-amber-900">
-            <strong>Important:</strong> Always verify provisions are current before issuing
-            certificates. Check{' '}
+            <strong>Important:</strong> Provisions are shown as published and may be
+            superseded. Check{' '}
             <a
               href="https://legislation.nsw.gov.au"
               target="_blank"
@@ -135,7 +136,7 @@ export function RegulatoryCurrencyBanner() {
             >
               legislation.nsw.gov.au
             </a>{' '}
-            for SEPPs/LEPs.
+            for current SEPPs/LEPs before relying on them.
           </p>
         </div>
         <button

@@ -1,0 +1,188 @@
+# Tell someone when main is broken.
+#
+# ORIGIN: main was red from 2026-08-03 to 2026-08-06. `gates` ran, failed, and
+# went on failing for three days. Every signal existed — a red X sat on the
+# commit list the whole time — and none of them was addressed to anybody. The
+# defect fixed alongside this file was a missing dependency; the defect fixed
+# HERE is that nothing raised its hand.
+#
+# Two triggers, because there are two ways to be broken and only one of them
+# announces itself:
+#
+#   1. workflow_run — `gates` finished on main. Failure opens (or updates) an
+#      issue; success closes it. This is the fast path: minutes, not days.
+#
+#   2. schedule — a daily sweep. The fast path assumes `gates` RAN. If the
+#      workflow is disabled, its trigger is edited away, the runner quota is
+#      exhausted, or a push silently never fired it, then no failure event is
+#      ever emitted and silence looks exactly like health. The sweep asserts
+#      the opposite: main's CURRENT HEAD must have a successful run, and
+#      absence is treated as breakage rather than as nothing to report.
+#
+#      Note what the sweep does NOT do: complain about the clock. A green run
+#      on the current HEAD means main is verified however long ago it ran, so
+#      a quiet weekend is silent. An alarm that fires every Monday morning
+#      teaches people to dismiss it, which is the failure this file exists to
+#      prevent, reintroduced one layer up.
+#
+# The issue is deliberately a single reused one, found by its title, so a long
+# outage is one loud thing rather than seventy-two hourly ones. Alarm fatigue
+# is how the next three-day outage gets ignored.
+name: main-red-alarm
+
+on:
+  workflow_run:
+    workflows: ["gates"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    # 21:00 UTC daily — 07:00–08:00 Sydney, so a failure is waiting at the
+    # start of the working day rather than discovered at the end of it.
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  actions: read
+  contents: read
+
+env:
+  ISSUE_TITLE: "🔴 main is red — gates failing"
+
+jobs:
+  alarm:
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - name: Assess main
+        id: assess
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # The newest COMPLETED gates run on main. `workflow_run` gives us the
+          # triggering run directly, but the scheduled sweep has to go looking,
+          # and asking the API for both keeps one code path.
+          RUN_JSON=$(gh run list --workflow gates.yml --branch main \
+                       --status completed --limit 1 \
+                       --json databaseId,conclusion,url,headSha,updatedAt \
+                     | jq '.[0] // empty')
+
+          if [ -z "$RUN_JSON" ]; then
+            # No completed run at all. Not "fine" — unknown, and unknown about
+            # a gate is the state this alarm exists to refuse.
+            echo "state=broken"                                  >> "$GITHUB_OUTPUT"
+            echo "detail=No completed \`gates\` run found on main. The workflow may be disabled, or has never run." >> "$GITHUB_OUTPUT"
+            echo "url=https://github.com/${GH_REPO}/actions/workflows/gates.yml" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CONCLUSION=$(echo "$RUN_JSON" | jq -r .conclusion)
+          URL=$(echo "$RUN_JSON" | jq -r .url)
+          SHA=$(echo "$RUN_JSON" | jq -r .headSha)
+          UPDATED=$(echo "$RUN_JSON" | jq -r .updatedAt)
+          AGE_H=$(( ( $(date -u +%s) - $(date -u -d "$UPDATED" +%s) ) / 3600 ))
+          HEAD_SHA=$(gh api "repos/${GH_REPO}/commits/main" --jq .sha)
+
+          echo "main HEAD: ${HEAD_SHA:0:8}"
+          echo "Latest gates run on main: $CONCLUSION on ${SHA:0:8}, ${AGE_H}h old, $URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "state=broken" >> "$GITHUB_OUTPUT"
+            echo "detail=The latest \`gates\` run on main concluded **${CONCLUSION}** (commit \`${SHA:0:8}\`, ${AGE_H}h ago)." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Staleness is about COVERAGE, not the clock. A green run on main's
+          # current HEAD means main is verified, however long ago it ran — a
+          # quiet weekend is not a fault, and an alarm that cries wolf every
+          # Monday is how the next real one gets ignored. What is a fault is
+          # HEAD having no run at all: something was pushed and nothing
+          # checked it.
+          if [ "$SHA" = "$HEAD_SHA" ]; then
+            echo "state=ok" >> "$GITHUB_OUTPUT"
+            echo "detail=Latest gates run on main: success, on current HEAD \`${HEAD_SHA:0:8}\` (${AGE_H}h ago)." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # HEAD is newer than the last completed run. Allow a window for a run
+          # that is genuinely still in flight before calling it unverified.
+          HEAD_TIME=$(gh api "repos/${GH_REPO}/commits/main" --jq .commit.committer.date)
+          HEAD_AGE_H=$(( ( $(date -u +%s) - $(date -u -d "$HEAD_TIME" +%s) ) / 3600 ))
+          # A committer date is author-supplied and can be in the future, which
+          # would make HEAD_AGE_H negative and grant an unbounded grace period
+          # to a head nothing has verified. Anything not plainly within the
+          # in-flight window is treated as unverified — fail closed.
+          if [ "$HEAD_AGE_H" -lt 0 ]; then
+            echo "state=broken" >> "$GITHUB_OUTPUT"
+            echo "detail=main is at \`${HEAD_SHA:0:8}\`, whose committer date is in the FUTURE, and the newest completed \`gates\` run is for \`${SHA:0:8}\`. The current head of main is unverified; a future-dated commit cannot be used to argue its run is still in flight." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$HEAD_AGE_H" -gt 3 ]; then
+            echo "state=broken" >> "$GITHUB_OUTPUT"
+            echo "detail=main is at \`${HEAD_SHA:0:8}\` (${HEAD_AGE_H}h old) but the newest completed \`gates\` run is for \`${SHA:0:8}\`. Nothing has verified the current head of main — the workflow may no longer be firing." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "state=ok" >> "$GITHUB_OUTPUT"
+          echo "detail=Last completed run succeeded; HEAD \`${HEAD_SHA:0:8}\` is only ${HEAD_AGE_H}h old and its run may still be in flight." >> "$GITHUB_OUTPUT"
+
+      - name: Raise or update the alarm
+        if: steps.assess.outputs.state == 'broken'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          DETAIL: ${{ steps.assess.outputs.detail }}
+          RUN_URL: ${{ steps.assess.outputs.url }}
+        run: |
+          set -euo pipefail
+          # printf, not a heredoc: an indented terminator does not close a
+          # <<EOF, and indented heredoc content renders as a markdown code
+          # block. Both are silent — the issue would still be filed, just
+          # unreadable or malformed.
+          BODY=$(printf '%s\n' \
+            "${DETAIL}" \
+            "" \
+            "Run: ${RUN_URL}" \
+            "" \
+            "**main is not verified while this is open.** Anything merged on top is landing on an unknown base, and a second failure underneath a first one is invisible until the first is cleared." \
+            "" \
+            "Raised automatically by \`.github/workflows/main-red-alarm.yml\`. It closes itself when a \`gates\` run on main succeeds — no need to close it by hand, and closing it early only hides the state again.")
+
+          EXISTING=$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" \
+                       --json number,title \
+                     | jq -r --arg t "$ISSUE_TITLE" '.[] | select(.title == $t) | .number' \
+                     | head -1)
+
+          if [ -n "$EXISTING" ]; then
+            echo "Alarm already open as #${EXISTING} — commenting rather than duplicating."
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body "$BODY" --label "ci" \
+              || gh issue create --title "$ISSUE_TITLE" --body "$BODY"
+          fi
+
+          # Fail the job too, so the alarm is visible in the Actions list and
+          # not only to whoever reads issues.
+          echo "::error::${DETAIL}"
+          exit 1
+
+      - name: Stand the alarm down
+        if: steps.assess.outputs.state == 'ok'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          EXISTING=$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" \
+                       --json number,title \
+                     | jq -r --arg t "$ISSUE_TITLE" '.[] | select(.title == $t) | .number' \
+                     | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "main is green again — ${{ steps.assess.outputs.detail }} Closing."
+            gh issue close "$EXISTING"
+          else
+            echo "main green, no alarm open. Nothing to do."
+          fi

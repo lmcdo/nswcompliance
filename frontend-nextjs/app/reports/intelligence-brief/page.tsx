@@ -12,6 +12,7 @@ import { DAOutcomesDisplay, RefusalStatsSentence, type DAOutcomesPayload, type R
 import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/components/reports/BriefIntentOverlay';
 import { SeppContextCard } from '@/components/reports/SeppContextCard';
 import { GrannyFlatBriefCard } from '@/components/reports/GrannyFlatBriefCard';
+import { describeUnavailable, type UnavailableTone } from './unavailable';
 import { ShadowDisplay, type ShadowData } from '@/components/reports/ShadowDetailDisplay';
 import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
 import { collectSources } from './provenance';
@@ -121,141 +122,10 @@ function confidenceBadge(confidence: string) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Honest "why is this empty" mapping. NEVER show the raw internal reason
-// string ("Layer not ingested for this LGA", "Premium data not requested") to
-// a user — translate it into one of five plain states with an honest tone:
-//   clear    — we checked, there's nothing here (good news for the owner)
-//   optional — an add-on that wasn't requested
-//   pending  — we haven't assessed this for this area yet (an honest gap)
-//   error    — a genuine retrieval failure
-//   neutral  — simply not part of this report
-// ---------------------------------------------------------------------------
-type UnavailableTone = 'clear' | 'optional' | 'pending' | 'error' | 'neutral';
-
-// Satellite layers are opt-in behind the "Include satellite analysis" checkbox —
-// so the real reason they're blank is that the box wasn't ticked, and the real
-// path is to tick it and re-run. (Verified against include_satellite gating.)
-const SATELLITE_SECTIONS = new Set([
-  'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
-  'satellite.granny_flat', 'satellite.terrain', 'satellite.solar',
-]);
-
-interface Unavailable { label: string; detail: string; tone: UnavailableTone; }
-
-function describeUnavailable(reason?: string | null, section?: string, satelliteRan = false): Unavailable {
-  const r = (reason ?? '').toLowerCase();
-  const isSatellite = !!section && (SATELLITE_SECTIONS.has(section) || section === 'satellite.bushfire');
-  // What this layer actually assesses, so a "no" explains itself (e.g.
-  // "bushfire attack level and vegetation category") rather than a bare "none".
-  const what = (section && SECTION_LABELS[section]?.description
-    ? SECTION_LABELS[section].description.toLowerCase()
-    : '');
-
-  // Satellite opt-in layers.
-  if (isSatellite) {
-    // If satellite analysis WAS requested but this layer is empty, it couldn't be
-    // produced for this property — say that plainly, don't blame the user's tickbox
-    // and don't imply a false finding ("no structures" on a clearly built lot).
-    if (satelliteRan) {
-      // Surface the real failure reason (e.g. a missing model or a DEM/raster
-      // error) so the cause is diagnosable, not hidden behind a generic line.
-      const why = reason && !r.includes('not requested') ? ` (${String(reason).slice(0, 180)})` : '';
-      return {
-        label: 'Couldn’t complete',
-        detail: `We couldn’t complete ${what ? `the ${what} analysis` : 'this analysis'} for this property${why}. Try running the brief again.`,
-        tone: 'pending',
-      };
-    }
-    return {
-      label: 'Not run',
-      detail: `Tick “Include satellite analysis” above and re-run to add ${what || 'this layer'}.`,
-      tone: 'optional',
-    };
-  }
-  // Pre-DA site history. Distinguish "not requested" (tick the box) from
-  // "requested but didn't finish" (it ran and timed out / failed) — don't tell a
-  // user who already ticked the box to tick it again.
-  if (section === 'satellite.pre_da_history' || r.includes('premium') || r.includes('site history')) {
-    if (r.includes('not requested')) {
-      return {
-        label: 'Not run',
-        detail: 'Tick “Include site history (slower)” above and run the brief again to add this.',
-        tone: 'optional',
-      };
-    }
-    // A genuine timeout — it ran out of time. Tell the user to retry.
-    if (r.includes('timeout') || r.includes("didn't finish") || r.includes('did not finish')) {
-      return {
-        label: 'Couldn’t complete',
-        detail: 'The site-history analysis didn’t finish in time for this property — please run the brief again.',
-        tone: 'pending',
-      };
-    }
-    // It errored fast (e.g. a backend model/service issue) — surface the real
-    // reason so it can be diagnosed, rather than pretending it timed out.
-    const why = reason ? String(reason).slice(0, 160) : '';
-    return {
-      label: 'Couldn’t complete',
-      detail: `The site-history analysis couldn’t run for this property — this is a backend issue, not your input${why ? ` (${why})` : ''}.`,
-      tone: 'pending',
-    };
-  }
-  // No reason recorded on a field this brief's sections DO promise (e.g. the VG
-  // land value when the valuation lookup returned nothing) — that's a retrieval
-  // miss, not an out-of-scope field. Say so, and route to a retry.
-  if (!r) {
-    return {
-      label: 'Unavailable',
-      detail: 'This field could not be retrieved on this run — run the brief again to retry.',
-      tone: 'error',
-    };
-  }
-  // Only a genuine resolution failure ("No prop_id resolved") is the user's
-  // address problem. A bare "could not ..." from any backend layer used to land
-  // here too, so a council we simply haven't onboarded (e.g. Wingecarribee DCP)
-  // rendered as "Address not matched — check the address".
-  if (r.includes('prop_id') || r.includes('address not')) {
-    return {
-      label: 'Address not matched',
-      detail: 'We could not match this address to a property in the NSW register — check the address.',
-      tone: 'error',
-    };
-  }
-  if (r.includes('not ingested') || r.includes('not yet') || r.includes('not onboarded')) {
-    return {
-      label: 'Not assessed',
-      detail: `${what ? `This council's ${what} isn't in our dataset yet` : 'This layer is not yet mapped for this council'} — confirm directly with the council or the NSW Planning Portal.`,
-      tone: 'pending',
-    };
-  }
-  if (r.startsWith('no ') || r.includes('none found') || r.includes('at this location')) {
-    return {
-      label: 'None here',
-      detail: `Checked${what ? ` for ${what}` : ''} — none recorded at this property.`,
-      tone: 'clear',
-    };
-  }
-  // The ONLY branch that may say "not part of this brief": the layer was
-  // genuinely not requested (an opt-in that wasn't ticked).
-  if (r.includes('not requested')) {
-    return { label: 'Not included', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
-  }
-  if (r.includes('fail') || r.includes('unavailable') || r.includes('error') || r.includes('timeout') || r.includes('timed out')) {
-    return {
-      label: 'Unavailable',
-      detail: `The source for ${what || 'this layer'} did not respond — run the brief again to retry.`,
-      tone: 'error',
-    };
-  }
-  // Unrecognised reason on a promised field — a retrieval miss, never "not part
-  // of this brief" (the section header promised it).
-  return {
-    label: 'Unavailable',
-    detail: 'This field could not be retrieved on this run — run the brief again to retry.',
-    tone: 'error',
-  };
-}
+// SECTION_LABELS stays here (page-level copy); describeUnavailable takes the
+// section's description as a parameter so the wording module has no page deps.
+const sectionDesc = (s?: string): string | undefined =>
+  s ? SECTION_LABELS[s]?.description : undefined;
 
 const UNAVAILABLE_TONE_STYLES: Record<UnavailableTone, string> = {
   clear: 'bg-emerald-50 text-emerald-700',
@@ -275,6 +145,7 @@ const UNAVAILABLE_TEXT_STYLES: Record<UnavailableTone, string> = {
 
 // Acronyms + units expanded in field labels; '' drops the word (internal terms).
 const KEY_WORDS: Record<string, string> = {
+  r3r4: 'R3/R4',
   jrc: 'JRC', wofs: 'WOfS', bom: 'BoM', epi: 'EPI', anef: 'ANEF', gfa: 'GFA',
   fsr: 'FSR', lep: 'LEP', dcp: 'DCP', sepp: 'SEPP', hca: 'HCA', tod: 'TOD',
   da: 'DA', das: 'DAs', cdc: 'CDC', url: 'URL', ahd: 'AHD', bal: 'BAL', id: 'ID',
@@ -307,7 +178,7 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
             detail: 'Checked the RFS Bushfire Prone Land map — this property is not designated bushfire-prone.',
             tone: 'clear' as UnavailableTone,
           }
-        : describeUnavailable(reason, section, satelliteRan))
+        : describeUnavailable(reason, section, satelliteRan, sectionDesc(section)))
     : null;
 
   return (
@@ -484,12 +355,44 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
         // Unwrap DataField: extract .value and show confidence badge
         if (isDataField(val)) {
           const df = val;
-          if (df.confidence === 'not_available') {
-            const u = describeUnavailable(df.reason, section, satelliteRan);
+          const dfValueEmpty = df.value == null ||
+            (Array.isArray(df.value) && df.value.length === 0);
+          if (df.confidence === 'not_available' && dfValueEmpty) {
+            // #745 D7-2: only short-circuit when there is genuinely nothing to
+            // show — a populated list (e.g. permitted uses) must render even if
+            // the confidence badge is not_available.
+            const u = describeUnavailable(df.reason, section, satelliteRan, sectionDesc(section));
+            // describeUnavailable already writes the plain-English sentence; the
+            // field used to render only u.label and throw u.detail away. A bare
+            // "None here" or "Not assessed" cannot tell the reader whether
+            // anything was checked — the same absence-vs-failure ambiguity the
+            // section-level renderer (and every other call site) avoids by
+            // showing the detail. Labels must be self-explanatory without
+            // context, so show both.
             return (
               <div key={key} className="flex flex-col">
                 <FieldLabel fieldKey={key} />
                 <dd className={`text-sm mt-0.5 ${UNAVAILABLE_TEXT_STYLES[u.tone]}`}>{u.label}</dd>
+                {u.detail && u.detail !== u.label && (
+                  <p className="text-xs text-slate-500 mt-0.5 break-words [overflow-wrap:anywhere]">
+                    {u.detail}
+                  </p>
+                )}
+              </div>
+            );
+          }
+          // #745 D7-3: lot dimensions rendered readably, not "8 fields".
+          if (key === 'lot_dimensions' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
+            const ld = df.value as Record<string, unknown>;
+            const bits: string[] = [];
+            if (typeof ld.frontage_m === 'number') bits.push(`${(ld.frontage_m as number).toFixed(1)} m frontage`);
+            if (typeof ld.depth_m === 'number') bits.push(`${(ld.depth_m as number).toFixed(1)} m depth`);
+            if (ld.is_corner === true) bits.push('corner lot');
+            if (typeof ld.lot_type === 'string' && ld.lot_type && ld.lot_type !== 'standard') bits.push(formatKey(String(ld.lot_type)).toLowerCase());
+            return (
+              <div key={key} className="flex flex-col">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">{bits.length > 0 ? bits.join(' · ') : '—'}</dd>
               </div>
             );
           }
@@ -924,6 +827,7 @@ function valueWithUnit(key: string, raw: unknown, unit?: string): string {
 const FIELD_LABEL_OVERRIDES: Record<string, string> = {
   coastal_land_application: 'Coastal Management Area',
   coastal_hazards: 'Coastal Management Area',
+  servicing: 'Water & Sewer Servicing',
   // Flood pass-through rows (PR-B) — plain-English labels for composite rows.
   ems_flood_detected: 'Copernicus emergency mapping',
   sar_flood_detected: 'Radar flood detection (Sentinel-1)',
@@ -988,6 +892,8 @@ const FIELD_HINTS: Record<string, string> = {
     'Sites on the EPA contaminated-land register within 500 m, with the nearest site’s details and measured distance.',
   mine_subsidence_district:
     'The proclaimed mine subsidence district this lot falls within.',
+  servicing:
+    'Sydney Water Growth Servicing Plan status for this lot (water & sewer). Guide only — trunk capacity is not service-readiness; confirm with Sydney Water.',
   lot_total: 'Number of lots in the strata scheme (NSW Strata Hub).',
   dwelling_type: 'Building form classified from the strata scheme’s lot count (NSW Strata Hub).',
   registration_date: 'Date the strata plan was registered (NSW Strata Hub).',
@@ -1030,7 +936,7 @@ function FieldLabel({ fieldKey }: { fieldKey: string }) {
   const hint = FIELD_HINTS[fieldKey];
   return (
     <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-      {formatKey(fieldKey)}
+      {FIELD_LABEL_OVERRIDES[fieldKey] ?? formatKey(fieldKey)}
       {hint && (
         <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">{hint}</span>
       )}
@@ -1077,6 +983,9 @@ const HIDE_WHEN_NULL_KEYS = new Set([
   'ground_elevation_m_ahd', 's1_gap_warning', 'jrc_data_year',
   // LGA determination stats — null means the layer holds none for this council.
   'da_refusal_stats',
+  // Sydney Water servicing — null = lookup failed/unavailable this run; the
+  // summary row only shows when there's a real answer (found or not-in-precinct).
+  'servicing',
 ]);
 
 // Satellite fields folded into a neighbouring composite row (rendered inside
@@ -1351,7 +1260,7 @@ function MarketContextCard({ data, satelliteRan }: { data: Record<string, unknow
   );
 
   if (!mc) {
-    const u = describeUnavailable(df.reason, 'market_context', satelliteRan);
+    const u = describeUnavailable(df.reason, 'market_context', satelliteRan, sectionDesc('market_context'));
     return (
       <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
         {header}
@@ -2398,9 +2307,17 @@ function LiveStatusPanel({
             {state === 'triggering' ? 'Starting...' : state === 'complete' ? 'Complete' : 'Generating brief'}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-slate-500 tabular-nums">{formatElapsed(elapsed)}</span>
-          <span className="font-medium text-slate-700 tabular-nums">{progress}%</span>
+        <div className="flex items-baseline gap-4">
+          <span className="text-sm text-slate-500 tabular-nums">{formatElapsed(elapsed)}</span>
+          <span
+            className={`tabular-nums ${
+              state === 'complete'
+                ? 'text-sm font-medium text-slate-700'
+                : 'text-lg font-semibold text-teal-600'
+            }`}
+          >
+            {progress}%
+          </span>
         </div>
       </div>
 
@@ -2965,7 +2882,7 @@ function IntelligenceBriefInner() {
       {state !== 'idle' && (
         <div className="mb-8">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700 mb-1.5">PlotDetect · Property Dossier</div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-900">Intelligence Brief</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-900">Site Report</h1>
           <p className="text-sm text-slate-500 mt-2 max-w-3xl leading-relaxed">
             For a single NSW property: what the rules allow, what physically constrains the site,
             what environmental risk applies, what it&apos;s worth, and what&apos;s happening
@@ -3007,7 +2924,7 @@ function IntelligenceBriefInner() {
             disabled={!selectedAddress.trim()}
             className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Generate Intelligence Brief
+            Generate Site Report
           </button>
         </div>
       )}
@@ -3091,15 +3008,19 @@ function IntelligenceBriefInner() {
             </div>
           )}
 
-          {/* Live status panel — elapsed time, section timeline, progress */}
+          {/* Live status panel — elapsed time, section timeline, progress.
+              #745 D7-1: hidden once complete — its section timeline duplicated
+              the jump bar's list at the top of the finished report. */}
+          {state !== 'complete' && (
           <LiveStatusPanel
-            elapsed={state === 'complete' && completeEvent ? completeEvent.data.elapsed_seconds : elapsed}
-            progress={state === 'triggering' ? 0 : state === 'complete' ? 100 : latestProgress}
+            elapsed={elapsed}
+            progress={state === 'triggering' ? 0 : latestProgress}
             receivedSections={sectionEvents.map((e) => e.data.section)}
             briefType={briefType}
             includeSatellite={includeSatellite}
             state={state}
           />
+          )}
 
           {/* Sticky jump bar — one card per row makes the page long; this tracks
               the sections that have streamed in and jumps to them. */}

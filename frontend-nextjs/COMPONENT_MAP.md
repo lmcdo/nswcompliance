@@ -179,6 +179,32 @@ PropertySearch → POST /api/upzoning (proxy, rate-limited)
 "not determinable" (never green); `status=unavailable` → visible outage box (an outage
 must never render as "nothing possible").
 
+### `/duplex-check` — Ads landing page (duplex verdict + builder referral)
+
+**Page Component:** `app/duplex-check/page.tsx` (client) + `layout.tsx` (metadata, noindex)
+
+Same engine + `/api/upzoning` proxy as the tool page, conversion-optimised shell:
+no SiteNav/SiteFooter (1:1 attention ratio), verdict banner as the hero,
+`BuilderReferralCard` directly under an eligible verdict, planning detail in a
+`<details>` accordion, one-line disclaimer. Shared types/labels in `lib/upzoning.ts`
+(also imported by the tool page). `tool_run` posthog event carries `source: 'ads_landing'`.
+SEO traffic keeps landing on `/tools/upzoning-check`; this route is noindexed.
+
+### `/embed/upzoning` + `/widget-demo/[slug]` — White-label duplex checker (builder partners)
+
+**Components:** `app/embed/upzoning/page.tsx` (embed route, server) →
+`components/tools/DuplexCheckWidget.tsx` (client) · `app/widget-demo/[slug]/page.tsx`
+(per-builder demo shell, server) · config in `lib/widget-partners.ts` (20 partners).
+
+Third surface over the same engine + `/api/upzoning` proxy: compact, iframe-embeddable,
+carries the PARTNER's name, and on an eligible verdict the CTA links to the partner's
+own contact page (no `BuilderReferralCard` — the enquiry belongs to the partner). Embed
+branding resolves by `?ref=<slug>` from the registry; free-form `?partner=`/`?cta=`
+params pass through `sanitizePartnerName`/`sanitizeCtaUrl` and are ignored when `ref`
+is registered. Demo pages are noindexed, reached only from outreach emails; posthog:
+`tool_run` with `source: 'widget'` + `partner`, and `widget_cta_click`. Verdict is
+never conditioned on partner presence (neutrality rule).
+
 ---
 
 ## Reports - Intelligence Brief

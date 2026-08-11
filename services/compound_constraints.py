@@ -167,8 +167,13 @@ def evaluate_compound_constraints(
         ))
 
     # ── Rule 6: Fix B — Zone permits higher density ────────────────────
+    # DQ-30 (.claude/DATA_QUALITY_TRACKER.md): B1/B2 are retired NSW zone
+    # codes (April 2023 Employment Zones Reform); zone_code here is a live
+    # property's CURRENT zone from the Planning Portal, which is never a
+    # legacy code, so this check silently never fired for commercial-zoned
+    # properties. Real current equivalent is E1 (was B1/B2).
     zone_prefix = _zone_prefix(zone_code)
-    if zone_prefix in ("R3", "R4", "B1", "B2", "MU1"):
+    if zone_prefix in ("R3", "R4", "E1", "MU1"):  # noqa: zone-codes -- current-era codes only, no legacy alias needed (see comment above)
         constraints.append(CompoundConstraint(
             id="zone_higher_density_advisory",
             description=(
@@ -333,9 +338,11 @@ def detect_staleness(brief) -> list[str]:
             age_days = (today - field_date).days
             if age_days > threshold_days:
                 obj.confidence = ConfidenceLevel.STALE
+                # #745 D7-7: user-facing copy, not a log line.
+                years = age_days / 365.25
                 warnings.append(
-                    f"empirical/{obj.hazard}: data is {age_days} days old "
-                    f"(threshold: {threshold_days} days)"
+                    f"The {obj.hazard.replace('_', ' ')} reading is about "
+                    f"{years:.0f} years old — the most recent published dataset."
                 )
         elif isinstance(obj, DataField):
             if obj.confidence != ConfidenceLevel.NOT_AVAILABLE:

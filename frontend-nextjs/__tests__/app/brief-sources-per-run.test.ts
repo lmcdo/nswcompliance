@@ -130,4 +130,28 @@ describe('humanizeSource', () => {
     expect(humanizeSource('planning_portal')).toBe('NSW Planning Portal');
     expect(humanizeSource('some_new_pipeline')).toBe('Some New Pipeline');
   });
+
+  // #745 D7-8: these slugs reach the footer from the DCP, DA, valuation and
+  // satellite sections. Unmapped, each renders as its title-cased slug — the
+  // footer then names an internal pipeline instead of the real-world source.
+  it.each([
+    ['plotdetect_dcp', 'Council DCP (extracted controls)'],
+    ['da_tracking_mapserver', 'NSW DA tracking extract'],
+    ['eplanning_da_api', 'NSW ePlanning DA feed'],
+    ['nsw_valuer_general_sales', 'NSW Valuer General sales records'],
+    ['lep_land_use_table', 'LEP land use table'],
+    ['sepp_resilience_hazards', 'SEPP (Resilience and Hazards) 2021'],
+    ['shadow_detector', 'Computed — shadow model'],
+    ['google_solar', 'Google Solar API'],
+  ])('maps %s to its real-world source name', (slug, label) => {
+    expect(humanizeSource(slug)).toBe(label);
+  });
+
+  it('the three Valuer General slugs share one label so the footer lists it once', () => {
+    const labels = ['vg_valuation', 'nsw_valuation_service', 'nsw_valuer_general'].map(
+      humanizeSource,
+    );
+    expect(new Set(labels).size).toBe(1);
+    expect(labels[0]).toBe('NSW Valuer General');
+  });
 });

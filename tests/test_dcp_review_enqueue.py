@@ -13,15 +13,27 @@ from unittest.mock import MagicMock
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _load_enqueue():
-    src = (ROOT / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
-    start = src.index("def enqueue_review_changes(")
+def _extract_def(src: str, name: str) -> str:
+    start = src.index(f"def {name}(")
     nxt = re.search(r"\n(?:def |class |# ── )", src[start + 10:])
     end = start + 10 + nxt.start() if nxt else len(src)
-    # enqueue_review_changes calls the module-level suspect_reason(); provide a stub
-    # since we exec only this function's source in isolation.
-    ns: dict = {"suspect_reason": lambda ch: ch.get("suspect_reason")}
-    exec(src[start:end], ns)
+    return src[start:end]
+
+
+def _load_enqueue():
+    src = (ROOT / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
+    # enqueue_review_changes calls module-level suspect_reason() (stubbed) and
+    # the fidelity helpers (real implementations — they're pure and part of the
+    # behaviour under test since the 2026-07 fidelity gate).
+    ns: dict = {"suspect_reason": lambda ch: ch.get("suspect_reason"), "re": re}
+    garble = re.search(r"_GARBLE_RUN = .+", src).group(0)
+    junk = re.search(r"_JUNK_REF = .+", src).group(0)
+    exec(garble, ns)
+    exec(junk, ns)
+    exec(_extract_def(src, "_garble_evidence"), ns)
+    exec(_extract_def(src, "strip_garbled_header_lines"), ns)
+    exec(_extract_def(src, "classify_row_fidelity"), ns)
+    exec(_extract_def(src, "enqueue_review_changes"), ns)
     return ns["enqueue_review_changes"]
 
 

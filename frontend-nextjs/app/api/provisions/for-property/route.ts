@@ -122,9 +122,37 @@ function normalizePrecinctId(precinctId: string): string {
  */
 const MARRICKVILLE_OCR_HEADER = /^PART \d+:\s+[^\n]+\n\d+\s*\n(?:\s*Marrickville[^\n]*\n)?(?:\s*\n)*/;
 
+/**
+ * Strip OCR "doubled-glyph" running-header lines (e.g. City of Sydney DCP 2012).
+ *
+ * Some council DCP PDFs were OCR'd with running page headers where every glyph
+ * is duplicated, e.g. "SSeeccttiioonn 11", "IINNTTRROODDUUCCTTIIOONN". These
+ * land as standalone header lines; the provision body is unaffected (verified:
+ * garbled lines are ~1.6% of characters and 0 rows retain doubling once removed).
+ * Drop any line genuinely dominated by the doubled-character pattern. Applied
+ * unconditionally — a no-op for councils without the artifact.
+ */
+const DOUBLED_GLYPH_RUN = /([A-Za-z])\1([A-Za-z])\2([A-Za-z])\3/;
+
+function stripDoubledOcrLines(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => {
+      if (!DOUBLED_GLYPH_RUN.test(line)) return true; // normal line — keep
+      // Only drop lines truly dominated by doubling, so a real line that merely
+      // contains a garbled fragment survives. Collapsing consecutive duplicate
+      // letters must shrink the line's letters by > 30%.
+      const letters = (line.match(/[A-Za-z]/g) || []).length;
+      const collapsed = (line.replace(/([A-Za-z])\1/g, '$1').match(/[A-Za-z]/g) || []).length;
+      return letters === 0 || (letters - collapsed) / letters < 0.3;
+    })
+    .join('\n');
+}
+
 function stripOcrHeaderPrefix(text: string | null): string | null {
   if (!text) return text;
-  const cleaned = text.replace(MARRICKVILLE_OCR_HEADER, '').trim();
+  let cleaned = text.replace(MARRICKVILLE_OCR_HEADER, '');
+  cleaned = stripDoubledOcrLines(cleaned).trim();
   return cleaned || text; // never blank out a provision
 }
 
@@ -182,6 +210,22 @@ async function resolveHcaCode(client: any, hcaCode: string): Promise<string | nu
 // Module-level cache: former_council values known to have precinct provisions.
 // Populated on first request per LGA; avoids repeated EXISTS queries.
 const formerCouncilsWithPrecinctProvisions = new Set<string>();
+
+// Module-level cache: LGA -> whether dcp_precinct_boundaries has any rows for it.
+// Used by the precinct warning when a council has boundaries but no keyed
+// provisions (content not yet extracted) — negative results are cached too.
+const lgasWithPrecinctBoundaries = new Map<string, boolean>();
+
+// former_council slug -> LGA name as stored in dcp_precinct_boundaries.lga.
+// Callers don't always pass ?lga=, so the warning derives it here.
+const COUNCIL_TO_LGA: Record<string, string> = {
+  ashfield: 'Inner West',
+  marrickville: 'Inner West',
+  leichhardt: 'Inner West',
+  waverley: 'Waverley',
+  ku_ring_gai: 'Ku-ring-gai',
+  city_of_sydney: 'Sydney',
+};
 
 /**
  * Deduplicate provisions across all layers
@@ -354,22 +398,58 @@ export async function GET(request: NextRequest) {
       const totalCount = adjustedResults.reduce((sum, r) => sum + r.count, 0);
       const responseTime = Date.now() - startTime;
 
-      // Precinct warning: if no precinct_id was provided, check whether this
-      // former_council has any precinct-layer provisions at all. If it does,
-      // the caller should warn that site-specific precinct controls may be missing.
+      // Precinct warning: fires when site-specific (precinct) controls may exist for
+      // this council that this response does not attribute to the address. Three cases:
+      //   1. No precinct_id given and precinct-layer provisions exist for the council.
+      //   2. precinct_id(s) given but they match ZERO precinct provisions (e.g. locality
+      //      fallback passed name-shaped ids) — same exposure as case 1, previously
+      //      silently suppressed.
+      //   3. Precinct BOUNDARIES exist for the LGA but no provisions are keyed to them
+      //      (content not yet extracted, e.g. Ku-ring-gai Part 14) — matched or not,
+      //      the site-specific rules cannot be shown.
       let precinctWarning = false;
-      if (!filters.precinct_id && filters.former_council) {
+      if (filters.former_council) {
         const fc = filters.former_council;
-        if (!formerCouncilsWithPrecinctProvisions.has(fc)) {
+
+        let idsMatchProvisions = false;
+        if (filters.precinct_id) {
+          const ids = filters.precinct_id.split(',').map(s => s.trim()).filter(Boolean);
           const { rows } = await client.query(
             `SELECT 1 FROM regulatory_provisions
-             WHERE source_council = $1 AND v2_dcp_layer = 'precinct'
-               AND v2_is_actionable = true AND is_current = true LIMIT 1`,
-            [fc]
+             WHERE source_council = $1 AND v2_precinct_id = ANY($2::text[])
+               AND is_current = true LIMIT 1`,
+            [fc, ids]
           );
-          if (rows.length > 0) formerCouncilsWithPrecinctProvisions.add(fc);
+          idsMatchProvisions = rows.length > 0;
         }
-        precinctWarning = formerCouncilsWithPrecinctProvisions.has(fc);
+
+        if (!idsMatchProvisions) {
+          if (!formerCouncilsWithPrecinctProvisions.has(fc)) {
+            const { rows } = await client.query(
+              `SELECT 1 FROM regulatory_provisions
+               WHERE source_council = $1 AND v2_dcp_layer = 'precinct'
+                 AND v2_is_actionable = true AND is_current = true LIMIT 1`,
+              [fc]
+            );
+            if (rows.length > 0) formerCouncilsWithPrecinctProvisions.add(fc);
+          }
+          precinctWarning = formerCouncilsWithPrecinctProvisions.has(fc);
+
+          if (!precinctWarning) {
+            const lgaName = filters.lga || COUNCIL_TO_LGA[fc.toLowerCase().replace(/[-\s]+/g, '_')];
+            if (lgaName) {
+              if (!lgasWithPrecinctBoundaries.has(lgaName)) {
+                const { rows } = await client.query(
+                  `SELECT 1 FROM dcp_precinct_boundaries WHERE LOWER(lga) = LOWER($1) LIMIT 1`,
+                  [lgaName]
+                );
+                if (rows.length > 0) lgasWithPrecinctBoundaries.set(lgaName, true);
+                else lgasWithPrecinctBoundaries.set(lgaName, false);
+              }
+              precinctWarning = lgasWithPrecinctBoundaries.get(lgaName) === true;
+            }
+          }
+        }
       }
 
       // Fetch chapter registry: PDF URLs + chapter labels for part-name derivation.

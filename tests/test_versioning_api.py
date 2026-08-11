@@ -1,6 +1,3 @@
-import pytest
-pytestmark = pytest.mark.stale
-
 #!/usr/bin/env python3
 """
 Integration tests for versioning API endpoints.

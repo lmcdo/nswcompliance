@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { CDC_HOUSING_CODE_ZONES } from '@/lib/regulatory-constants';
 import { ChevronDown, ChevronRight, ChevronUp, ExternalLink, FileText, FileImage, Clock, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +57,7 @@ interface Props {
 }
 
 export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = false, heritageAffected = false, isStrata = false }: Props) {
-  const residentialZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
+  const residentialZones = CDC_HOUSING_CODE_ZONES;
   const [expanded, setExpanded] = useState(residentialZones.includes(zoneCode));
   const [selectedType, setSelectedType] = useState<WorkTypeKey | null>(null);
   const [provisions, setProvisions] = useState<Provision[]>([]);

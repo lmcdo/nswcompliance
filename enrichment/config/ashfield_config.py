@@ -15,16 +15,21 @@ The document_id patterns in database:
 - "Inner_West_Ashfield_DCP_2016___Chapter_D..."
 """
 
-# Inner West LEP 2022 zone codes (Ashfield area)
+# Inner West LEP 2022 zone codes (Ashfield area), current as of the 26 April
+# 2023 NSW Employment Zones Reform (DQ-30, .claude/DATA_QUALITY_TRACKER.md).
+# Confirmed against lep_zone_coverage: Inner West has ZERO B-zones and ZERO
+# IN-zones today — the constants below previously hardcoded the retired
+# codes (B1/B2/B4, IN1/IN2), which stopped matching any real property after
+# the reform. Values here are each legacy code's real current equivalent
+# (see enrichment/config/zone_taxonomy.py): B1,B2->E1; B4->MU1; IN1,IN2->E4.
 # Only zones that actually exist in the former Ashfield LGA boundaries.
-# Generic NSW constants (R5, B5-B8, IN3-IN4, E1/E3/E4) removed — they
+# Generic NSW constants (R5, B5-B8, IN3-IN4, E2/E3/E5) removed — they
 # produced false-positive tags on provisions that can never apply.
 RESIDENTIAL_ZONES = ['R1', 'R2', 'R3', 'R4']
-BUSINESS_ZONES = ['B1', 'B2', 'B4']
-INDUSTRIAL_ZONES = ['IN1', 'IN2']
+BUSINESS_ZONES = ['E1', 'MU1']
+INDUSTRIAL_ZONES = ['E4']
 SPECIAL_ZONES = ['SP1', 'SP2']
 RECREATION_ZONES = ['RE1', 'RE2']
-ENVIRONMENT_ZONES = ['E2']
 MIXED_USE_ZONES = ['MU1']
 
 ALL_ZONES = ['ALL']
@@ -114,7 +119,7 @@ ASHFIELD_CONFIG = {
         "Part_4": {
             "description": "F4 - Residential Flat Buildings",
             "applicable_dev_types": ["residential_flat_building", "shop_top_housing"],
-            "applicable_zones": ['R3', 'R4', 'B1', 'B2', 'B4', 'MU1'],
+            "applicable_zones": ['R3', 'R4', 'E1', 'MU1'],
         },
         "Part_5": {
             "description": "F5 - Boarding Houses",
@@ -139,7 +144,7 @@ ASHFIELD_CONFIG = {
         "Part_9": {
             "description": "F9 - Sex Services Premises",
             "applicable_dev_types": ["sex_services_premises"],
-            "applicable_zones": ['B4', 'IN1', 'IN2'],
+            "applicable_zones": ['E4', 'MU1'],
         },
         "Part_10": {
             "description": "F10 - Other Development",

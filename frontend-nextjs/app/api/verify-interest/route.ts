@@ -6,6 +6,11 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const VALID_ROLES = ['planner', 'certifier', 'architect', 'conveyancer', 'agent', 'developer', 'other'];
 
+// Off-domain recipient: from/to both @plotdetect.com.au via Resend is
+// quarantined by Google Workspace as self-domain spoofing (shows "delivered"
+// but never lands). Keep this on a different domain than the sender.
+const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || 'lawrence.mcdonell@gmail.com';
+
 export async function POST(request: NextRequest) {
   try {
     const { email, role, council_name, address, source } = await request.json();
@@ -36,8 +41,8 @@ export async function POST(request: NextRequest) {
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       resend.emails.send({
-        from: 'PlotDetect <onboarding@resend.dev>',
-        to: 'info@plotdetect.com.au',
+        from: 'PlotDetect <info@plotdetect.com.au>',
+        to: NOTIFY_EMAIL,
         subject: `Verify interest: ${safeRole || 'unknown role'} — ${council_name || 'no council'}`,
         text: `New Verify registration\n\nEmail: ${normalised}\nRole: ${safeRole || '(not provided)'}\nCouncil: ${council_name || '(not provided)'}\nAddress: ${address || '(not provided)'}\nSource: ${safeSource}`,
       }).catch(err => console.error('[verify-interest] resend error:', err));

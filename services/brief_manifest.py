@@ -476,6 +476,26 @@ def _fmt_leaf_value(path: str, value: Any) -> Optional[str]:
     return None
 
 
+# Field names that carry their unit as a name suffix (max_gfa_m2) get the unit
+# in the rendered value — otherwise "345.2" ships unitless (observed live).
+# Longest suffix first so "_m" never shadows "_m2"/"_km".
+_UNIT_LEAF_SUFFIXES: tuple[tuple[str, str], ...] = (
+    ("_m2", "m²"),
+    ("_sqm", "m²"),
+    ("_km", "km"),
+    ("_ha", "ha"),
+    ("_m", "m"),
+)
+
+
+def _unit_from_leaf(path: str) -> Optional[str]:
+    leaf = path.rsplit(".", 1)[-1].lower()
+    for suffix, unit in _UNIT_LEAF_SUFFIXES:
+        if leaf.endswith(suffix):
+            return unit
+    return None
+
+
 def _emit_datafield(
     node: dict,
     path: str,
@@ -552,6 +572,9 @@ def _emit_datafield(
     formatted = _fmt_leaf_value(path, value)
     if formatted is None:
         formatted = _render_value(value)
+        if (unit is None and isinstance(value, (int, float))
+                and not isinstance(value, bool)):
+            unit = _unit_from_leaf(path)
         if unit and not isinstance(value, (dict, list)) and value is not None:
             formatted = f"{formatted} {unit}"
     fields.append({

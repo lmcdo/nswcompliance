@@ -100,6 +100,13 @@ class ShadowScenario(BaseModel):
     overlap_pct: Optional[float] = None
     shadow_direction_deg: Optional[float] = None  # compass bearing the shadow falls toward (opposite of sun azimuth)
     overlaps_subject_lot: Optional[bool] = None
+    # "computed" | "unavailable". Absent on rows written before the typed-absence
+    # fix, which were all computed. Carried to the surface DELIBERATELY: without
+    # it every measurement field is simply null and the page renders three em
+    # dashes, which a reader skims as "nothing to worry about" rather than "we
+    # have no answer".
+    status: Optional[str] = None
+    error_note: Optional[str] = None
 
 
 class ShadowResult(BaseModel):
@@ -111,14 +118,13 @@ class ShadowResult(BaseModel):
     scenarios: list[ShadowScenario] = []
     worst_case_scenario: Optional[str] = None
     # Run-level confidence from the shadow service ("low" when the height fell
-    # back to the two-storey default) + Sentinel-2 change-detection passthrough.
+    # back to the two-storey default).
     confidence: Optional[str] = None
-    construction_change_detected: Optional[bool] = None
-    construction_change_note: Optional[str] = None
     temporal_caveat: str = (
-        "Shadow analysis reflects current height controls only. "
-        "Does not account for approved or pending development applications "
-        "on adjacent lots."
+        "Shadow analysis reflects the height control mapped at this property "
+        "only. The modelled building north of the lot is an offset rectangle, "
+        "not the neighbouring parcel, and approved or pending development "
+        "applications are not accounted for."
     )
 
 

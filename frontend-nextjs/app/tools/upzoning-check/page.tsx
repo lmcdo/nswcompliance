@@ -20,57 +20,11 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
+import { BuilderReferralCard } from '@/components/tools/BuilderReferralCard';
 import { TrendingUp, ArrowRight, CheckCircle2, XCircle, AlertTriangle, HelpCircle } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
-
-interface FormResult {
-  development_type: string;
-  eligible: boolean;
-  reason: string;
-  unconfirmed: boolean;
-  requires_lmr_area: boolean;
-  min_lot_size_m2: number | null;
-  min_lot_width_m: number | null;
-  source_clause: string | null;
-  legislation_url: string | null;
-  effective_date: string | null;
-}
-
-interface UpzoningResult {
-  address: string;
-  zone: string | null;
-  zone_full: string | null;
-  zone_epi: string | null;
-  legislation_url: string | null;
-  lot_area_m2: number | null;
-  lot_width_m: number | null;
-  lot_type: 'rectangular' | 'battleaxe' | 'irregular' | null;
-  lga_name: string | null;
-  heritage: { flag: boolean; items: string[]; hca: string[] };
-  gates: { in_lmr_area: boolean; in_tod: boolean; dual_occ_prohibited: boolean };
-  status: 'ok' | 'not_residential' | 'unavailable';
-  forms: FormResult[];
-}
-
-const FORM_LABELS: Record<string, string> = {
-  dwelling_houses: 'Dwelling house',
-  dwelling_house: 'Dwelling house',
-  dual_occupancy: 'Dual occupancy (duplex)',
-  secondary_dwelling: 'Secondary dwelling (granny flat)',
-  terraces: 'Terraces (row houses)',
-  terrace_house: 'Terraces (row houses)',
-  manor_house: 'Manor house (3–4 dwellings)',
-  multi_dwelling: 'Multi-dwelling housing (townhouses)',
-  multi_dwelling_housing: 'Multi-dwelling housing (townhouses)',
-  residential_flat_r1r2: 'Low-rise apartments (R1/R2)',
-  residential_flat_r3r4_inner: 'Mid-rise apartments (inner TOD)',
-  residential_flat_r3r4_outer: 'Mid-rise apartments (outer TOD)',
-};
-
-function formLabel(devType: string): string {
-  return FORM_LABELS[devType] ?? devType.replace(/_/g, ' ');
-}
+import { formLabel, type UpzoningResult } from '@/lib/upzoning';
 
 function deslug(devType: string): string {
   const words = devType.replace(/_/g, ' ');
@@ -445,6 +399,12 @@ export default function UpzoningCheckPage() {
 
               {result.zone && result.lga_name && (
                 <LepLandUsePanel zone={result.zone} lga={result.lga_name} zoneEpi={result.zone_epi} />
+              )}
+
+              {/* Builder referral — ONLY on an eligible dual-occ result; the
+                  computed result above is never conditioned on this card. */}
+              {eligibleForms.some((f) => f.development_type.startsWith('dual_occupancy')) && (
+                <BuilderReferralCard address={result.address} lgaName={result.lga_name} />
               )}
 
               {/* CTA */}

@@ -1,0 +1,311 @@
+# Server-side enforcement of the gates that, until now, only ever ran locally.
+#
+# Why this file exists: every quality gate in this repo lived in .githooks/, which
+# runs only if someone has executed `git config core.hooksPath .githooks` in that
+# particular checkout, on that particular machine, and did not pass --no-verify.
+# With ~17 worktrees in play that is an unknown subset. Nothing re-checked on the
+# server: .github/ contained dependabot.yml and no workflows at all.
+#
+# MAPPING TO .githooks/pre-push — every step accounted for, nothing dropped silently.
+#
+#   pre-push step                       where it lands here
+#   ----------------------------------  --------------------------------------------
+#   0.  push-to-main guard              NOT PORTABLE. It inspects the refs being
+#                                       pushed, which CI never sees. The server-side
+#                                       equivalent is a GitHub branch-protection rule
+#                                       on `main` — not yet configured. GAP.
+#   --  pr_overlap_guard (advisory)     DROPPED. Warns an author that their files
+#                                       overlap an open PR. Useful before pushing,
+#                                       meaningless after.
+#   1.  pytest                          python-tests
+#   1a. dependency-skip ratchet         python-tests  (new 2026-08-06 — the
+#                                       counter-measure to the three-day red
+#                                       main; see scripts/check_dependency_skips.py)
+#   1b. mutation-count baselines        python-tests
+#   1c. brief field-coverage ratchet    python-tests
+#   1d. schema contract                 schema-contract
+#   1e. controls provenance             schema-contract (shares its live DB access)
+#   2.  jest                            frontend-tests
+#   3.  qa_gate                         qa-and-liability, PR-only step (see job)
+#   4.  liability language scan         qa-and-liability, BOTH events — on main
+#                                       it diffs HEAD^..HEAD, so a direct push
+#                                       is still scanned
+#   5.  mutmut (opt-in, MUTMUT=1)       DROPPED. Already opt-in and non-blocking
+#                                       locally, and needs a WSL venv. Worth
+#                                       revisiting: the last measured kill rate was
+#                                       13%, so test COUNT is not evidence of cover.
+#   6.  jscpd duplication ratchet       duplication
+#   6b. fabricated-verdict lint         python-tests (no DB or network needed)
+#   7.  Sol cross-review (advisory)     DROPPED. Non-blocking by design, needs a paid
+#                                       API key, and is a review aid not a gate.
+#
+# Where pre-push SKIPS a check because a local checkout lacks node_modules, CI always
+# has them — so for everything it does run, CI is the stronger of the two.
+name: gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on PULL REQUESTS only.
+#
+# `cancel-in-progress: true` unscoped also cancelled runs on main, and that is not
+# a saving — it is a hole. main-red-alarm asks "does main's HEAD have a successful
+# gates run?", so a main run cancelled by the next merge leaves a commit that
+# nothing ever checked, which is the precise condition the alarm exists to catch.
+# Observed 2026-08-11: #888 and #834 merged seconds apart, and the first merge
+# commit's run died without a verdict.
+#
+# On a pull request the opposite is true — a force-push during a rebase makes the
+# older run answer a question about a sha nobody will merge, so cancelling it is
+# free. Rebases are routine here, so this is where the waste actually was.
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # pre-push [1/4] + [1b] + [1c]
+  python-tests:
+    name: Python tests + ratchets
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      # No `cache:` input on setup-python/setup-node.
+      #
+      # On a SELF-HOSTED runner GitHub's cache action is redundant and actively
+      # harmful: pip and npm keep their own caches on the machine between jobs,
+      # while the post-job cache UPLOAD has to reach GitHub's cache service. On
+      # 2026-08-11 that upload returned `"statusCode": "http_timeout"` and sat
+      # retrying for ~40 minutes AFTER every real check had already passed, so a
+      # green run looked hung. Restore the cache inputs if RUNNER_LABEL is ever
+      # unset and jobs go back to GitHub-hosted runners.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-test.txt
+      # No -x. It was there until 2026-08-06, and it is why a single missing
+      # dependency (PyMuPDF, absent from requirements-test.txt) hid the state
+      # of ~1,800 tests for three days: pytest stopped at the first failure,
+      # so the run reported one broken test and said nothing about the rest.
+      # Fail-fast saves runner minutes and costs diagnostic information at
+      # exactly the moment it is most needed. The whole suite runs in ~30s.
+      - name: pytest
+        run: |
+          # Remove any census before the run so the ratchet can never read a
+          # file this run did not produce. conftest does this too; doing it
+          # here as well means a failure to remove it fails the step visibly
+          # rather than being absorbed inside pytest.
+          rm -f .pytest-skips.json
+          python -m pytest tests/ -q --tb=short
+      # A skipped test is not a passing test. tests/conftest.py writes every
+      # dependency-driven skip to .pytest-skips.json; this ratchets the count
+      # so the silent version of the same failure cannot grow unnoticed.
+      # `if: always()` because this is most informative precisely when pytest
+      # has just failed.
+      - name: Tests that did not run (dependency-skip ratchet)
+        if: always()
+        run: python scripts/check_dependency_skips.py
+      # The sibling of the above, for the OTHER way a test stops running. A
+      # dependency skip at least prints "skipped"; a file in collect_ignore is
+      # never collected, so it produces no output at all and `pytest -m stale`
+      # returns zero. All 16 were quarantined in the single commit that turned
+      # these gates on (#362, 2026-05-23) and nothing re-checked for 15 months.
+      # Shrink-only: a new quarantine fails, and so does a listed file that has
+      # started passing, so fixed means deleted rather than forgiven.
+      - name: Quarantined tests (shrink-only ratchet)
+        if: always()
+        run: python scripts/check_test_quarantine.py
+      - name: Mutation-count baselines (counts never drop)
+        run: |
+          if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
+            python scripts/check_test_baselines.py mutation-baselines.json
+          else
+            echo "::warning::mutation-baselines.json absent — ratchet NOT enforced"
+          fi
+      - name: Fabricated-verdict lint (report surfaces)
+        run: python scripts/lint_fabricated_verdicts.py
+      - name: Brief field-coverage ratchet
+        run: |
+          if [ -f scripts/brief_field_coverage_ratchet.py ]; then
+            python scripts/brief_field_coverage_ratchet.py
+          else
+            echo "::warning::ratchet script absent — NOT enforced"
+          fi
+
+  # pre-push [2/4] — and unlike pre-push, this can never self-skip for missing deps
+  frontend-tests:
+    name: Jest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+        working-directory: frontend-nextjs
+      - run: npx jest --ci --silent
+        working-directory: frontend-nextjs
+
+  # pre-push [3/4] + [4/4]
+  #
+  # The job runs on both events; the QA-REPORT STEP is the PR-only part.
+  #
+  # HISTORY, because the original reason is now fixed and the scoping is not.
+  # qa_gate.py used to bind the report to one of the branch's last 5 commits,
+  # which a SQUASH merge necessarily destroys: the squash is a new hash and the
+  # branch's commits never enter main's history, so the report hash was
+  # guaranteed absent. Every push to main failed on "Commit hash mismatch" — a
+  # second, independent reason main was red from 2026-08-03, underneath the
+  # PyMuPDF one and invisible while that was being blamed for everything. The
+  # binding is now ancestry-based (check_commit_hash_binding in qa_gate.py) and
+  # SKIPS when the branch has no commits of its own, so it no longer forces
+  # main red.
+  #
+  # The step stays PR-only for a different and still-live reason: the report is
+  # per-branch (.qa/reports/<slug>.json), and on main there is no branch whose
+  # report this is — the resolver correctly finds nothing and the step would
+  # warn on every single push. Diff-coverage against main's own last commit is
+  # meaningless too. So it runs where its question is answerable, while the
+  # liability scan keeps running on both. Scoping the WHOLE job to pull
+  # requests (the first attempt here) would have let a direct push to main land
+  # prohibited wording with nothing scanning it.
+  qa-and-liability:
+    name: QA report + liability language
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # both checks diff against the merge-base
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-test.txt
+      # PR only, and for the same reason as the QA report below: a squash merge
+      # re-authors the commit as the merging GitHub account, so on main this is
+      # always trivially green and proves nothing. The branch commits are the
+      # only place a bad author identity is still visible.
+      - name: Commit author identity
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          python scripts/check_commit_authors.py --range "$BASE..HEAD"
+      # PR only — see the note above the job. The liability scan below still
+      # runs on main; only THIS check is unanswerable after a squash merge.
+      - name: QA report validation
+        if: github.event_name == 'pull_request'
+        run: |
+          # Per-branch report. GITHUB_HEAD_REF is what names the branch here:
+          # a pull_request event checks out a DETACHED merge commit, so git
+          # itself cannot say which branch this is.
+          REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null || true)
+          if [ -z "$REPORT" ] || [ ! -f "$REPORT" ]; then
+            TARGET=$(python scripts/qa_report_path.py --target --relative 2>/dev/null || true)
+            echo "::warning::QA report absent (expected ${TARGET:-.qa/reports/<slug>.json}) — QA gate NOT enforced on this ref"
+            exit 0
+          fi
+          echo "QA report: $REPORT"
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          FILES=$(git diff --name-only "$BASE"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' || true)
+          if [ -n "$FILES" ]; then
+            python scripts/qa_gate.py "$REPORT" --diff-files $FILES
+          else
+            python scripts/qa_gate.py "$REPORT"
+          fi
+      # Runs on BOTH events. Scoping the whole job to pull requests would have
+      # meant a direct push to main — an admin, or any automation with write
+      # access — landing prohibited wording with nothing scanning it. On a PR
+      # the base is the merge-base; on a main push it is the previous commit,
+      # which is exactly the change that just landed.
+      - name: Liability language scan
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          else
+            # github.event.before, not HEAD^: a push can carry SEVERAL commits,
+            # and HEAD^ would scan only the last one — prohibited wording
+            # introduced in an earlier commit of the same push would sail
+            # through. Falls back to HEAD^ when `before` is the all-zero SHA
+            # (first push of a ref) or is no longer reachable.
+            BASE="${{ github.event.before }}"
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]                || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              BASE=$(git rev-parse HEAD^ 2>/dev/null || echo HEAD)
+            fi
+          fi
+          echo "Scanning against base: $BASE"
+          python scripts/liability_language_check.py --diff-base "$BASE"
+
+  # pre-push [6] — copy-paste ratchet. Threshold 8% lives in .jscpd.json
+  # (baseline 6.77%, 2026-06-19). Blocks on a real breach, never on tool failure,
+  # matching the local step.
+  duplication:
+    name: Duplication ratchet
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: jscpd
+        run: |
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          CHANGED=$(git diff --name-only "$BASE"...HEAD \
+            | grep -E '^(services|scripts|src|frontend-nextjs/(app|components|lib))/.*\.(py|ts|tsx)$' \
+            | grep -vE '(test|__tests__|\.spec\.)' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No source code changed — ratchet not applicable."
+            exit 0
+          fi
+          set +e
+          OUT=$(npx --yes jscpd@4 2>&1); RC=$?
+          set -e
+          echo "$OUT" | grep -iE "duplicated lines|too many duplicates" | tail -2
+          if [ $RC -ne 0 ] && echo "$OUT" | grep -qi "too many duplicates"; then
+            echo "::error::Duplication exceeds the 8% ratchet. Reuse or refactor rather than copy-paste."
+            exit 1
+          fi
+          if [ $RC -ne 0 ]; then
+            echo "::warning::jscpd could not run cleanly — ratchet NOT enforced on this run"
+          fi
+
+  # New. Needs the live catalog, so it needs the DATABASE_URL secret.
+  #
+  # Three-state at the CI level, deliberately: this job is SKIPPED (not passed) on
+  # forks and Dependabot PRs, which cannot see repository secrets. A skipped job
+  # reads as "not checked" in the UI; a green one would read as "checked and fine",
+  # which is the exact conflation this gate exists to prevent. When the job DOES
+  # run and the secret is missing, the script exits 2 and the job fails — silence
+  # is never treated as a pass.
+  schema-contract:
+    name: Schema contract (code vs live catalog)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-test.txt
+      - name: Validate every SQL identifier against the live schema
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_schema_contract.py
+      # Mirrors pre-push step [1e/5]. Lives in this job because it is the one with
+      # live DB access; exits 1 if any numeric control is unattributable.
+      - name: Validate controls provenance
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_controls_provenance.py --quiet
+      # Mirrors pre-push step [1f/5]. Covers all 1,069 controls rather than the 42
+      # the corpus can reach, because it checks each number against the quote
+      # stored beside it. Exits 1 on any value no named rule derives that is not
+      # already in the baseline.
+      # Also gates fabricated_values over all 1,069 rows: a value whose own
+      # condition/review_reason admits it was assumed must not be SERVED. All 28
+      # such rows are already is_current=FALSE, so this passes today.
+      - name: Validate control values against their own source text
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_control_source_values.py

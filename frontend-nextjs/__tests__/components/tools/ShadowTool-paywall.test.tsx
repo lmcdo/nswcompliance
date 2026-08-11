@@ -81,8 +81,6 @@ const SHADOW_RESULT = {
       { scenario: 'sep21_12pm', label: '21 Sep 12pm', date: '2026-09-21', time_local: '12:00', shadow_length_m: 8.4,  shadow_overlap_fraction: 0.05, shadow_direction_deg: 5,   overlaps_subject_lot: false, shadow_on_lot: null, shadow_polygon: null },
       { scenario: 'dec21_12pm', label: '21 Dec 12pm', date: '2026-12-21', time_local: '12:00', shadow_length_m: 5.2,  shadow_overlap_fraction: 0.00, shadow_direction_deg: 358, overlaps_subject_lot: false, shadow_on_lot: null, shadow_polygon: null },
     ],
-    construction_change_score: 0.18,
-    construction_change_detected: true,
     adg_compliant: false,
     worst_case_scenario: 'jun21_9am',
   },

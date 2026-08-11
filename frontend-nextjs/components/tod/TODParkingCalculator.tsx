@@ -49,6 +49,7 @@ export default function TODParkingCalculator({
  const [manualParkingRate, setManualParkingRate] = useState<number | null>(null);
  const [selectedTransport, setSelectedTransport] = useState<TransportService[]>([]);
  const [rateSource, setRateSource] = useState<string>('');
+ const [sourcesUnavailable, setSourcesUnavailable] = useState<string[]>([]);
 
  // NO HARDCODED RATES - User must provide or fetch from regulations
 
@@ -162,9 +163,16 @@ const bonus = Math.min(50 - totalReduction, 0); // Bonus must be set by council 
  const response = await fetch(`/api/tod/parking-rates?${params}`);
  const data = await response.json();
 
+ // A source that failed to load is NOT the same as a source that had nothing.
+ // The API reports the difference; surface it instead of absorbing it, otherwise
+ // a partial lookup reads to the user as a complete one.
+ setSourcesUnavailable(Array.isArray(data.degraded) ? data.degraded : []);
+
  if (data.found && data.rate) {
  setManualParkingRate(data.rate);
  setRateSource(data.source || 'Regulatory provisions database');
+ } else if (data.unavailable) {
+ setRateSource('Parking rates unavailable - the sources could not be read. This is not a finding that no rate applies.');
  } else {
  // No rate found - user must enter manually
  setRateSource(data.message || 'Rate not found in database - enter manually');
@@ -172,6 +180,7 @@ const bonus = Math.min(50 - totalReduction, 0); // Bonus must be set by council 
  } catch (error) {
  console.error('Failed to fetch parking rate:', error);
  setRateSource('Failed to fetch rate - enter manually');
+ setSourcesUnavailable(['The parking rate service could not be reached.']);
  } finally {
  setIsFetchingRate(false);
  }
@@ -181,6 +190,21 @@ const bonus = Math.min(50 - totalReduction, 0); // Bonus must be set by council 
  return (
  <Card className="bg-gray-50">
  <CardContent className="p-6">
+ {sourcesUnavailable.length > 0 && (
+ <div
+ role="alert"
+ className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+ >
+ <strong>Some parking sources could not be read.</strong> The figures below may be
+ incomplete. This is not a finding that no requirement applies.
+ <ul className="mt-1 list-disc pl-5">
+ {sourcesUnavailable.map((reason) => (
+ <li key={reason}>{reason}</li>
+ ))}
+ </ul>
+ </div>
+ )}
+
  <p className="text-gray-500 text-center">
  Select a development type to calculate TOD parking requirements
  </p>

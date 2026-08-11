@@ -148,9 +148,11 @@ def test_bushfire_genuine_empty_preserved():
 
 EXPECTED_SHADOW_KEYS = {
     "height_m", "height_source", "adg_compliant", "worst_case_scenario", "scenarios",
-    # Run-level passthrough: envelope confidence (merged in by get_shadow_risk)
-    # + Sentinel-2 construction change detection.
-    "confidence", "construction_change_detected", "construction_change_note",
+    # Run-level passthrough: envelope confidence (merged in by get_shadow_risk).
+    # The three construction_change_* keys were REMOVED 2026-08-07 (§4h) with the
+    # adjacent-lot check itself — 0 readings in 538 attempts, and unable to
+    # resolve a single lot at 20 m SWIR.
+    "confidence",
 }
 
 

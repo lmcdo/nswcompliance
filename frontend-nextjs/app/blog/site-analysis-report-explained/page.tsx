@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
@@ -401,9 +402,9 @@ export default function SiteAnalysisReportPage() {
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
           The data comes from the NSW Planning Portal API, council flood studies, RFS bushfire
-          layers, and extracted DCP provisions. Coverage: 128 councils for zone and LEP controls,
-          29 LGAs for DCP numeric controls (with full structured provisions for 7 councils), and
-          71 LGAs for flood depth data.
+          layers, and extracted DCP provisions. Coverage: {COVERAGE_DISPLAY.totalNswCouncils} councils for zone and LEP controls,
+          {' '}{COVERAGE_DISPLAY.dcpNumericCouncils} LGAs for DCP numeric controls (with full structured provisions for {COVERAGE_DISPLAY.dcpFullCouncils} councils), and
+          {' '}{COVERAGE_DISPLAY.floodLgas} LGAs for flood depth data.
         </p>
         <p className="text-slate-600 leading-relaxed">
           This does not replace professional judgement — it replaces the manual data lookup. The

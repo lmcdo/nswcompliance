@@ -178,10 +178,10 @@ export default function AssessmentPage() {
         {/* Page title */}
         <div className="flex-1">
           <h1 className="text-lg md:text-xl font-semibold tracking-tight text-white">
-            NSW Planning Assessment
+            Site Controls
           </h1>
           <p className="text-slate-400 text-xs hidden sm:block">
-            Professional compliance assessment using real-time planning data
+            Every control cited to its clause and page — live NSW planning data
           </p>
         </div>
         {/* Quick Guide */}
@@ -582,6 +582,8 @@ export default function AssessmentPage() {
                         lotArea={selectedProperty.lotDimensions?.area}
                         strataInfo={(selectedProperty as any).strataInfo}
                         developmentType={developmentType}
+                        lat={mapLat}
+                        lng={mapLng}
                       />
                     </ErrorBoundary>
                   </div>
@@ -719,7 +721,7 @@ export default function AssessmentPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-700 mb-1">Need help using PlotDetect?</p>
-              <p className="text-xs text-gray-500">Comprehensive guides with examples and workflows</p>
+              <p className="text-xs text-gray-500">Guides with worked examples and workflows</p>
             </div>
             <div className="flex gap-3">
               <a

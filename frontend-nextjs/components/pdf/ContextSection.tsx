@@ -3,6 +3,7 @@
 import { Page, Text, View } from '@react-pdf/renderer';
 import { PropertyContext } from '@/lib/pdf/types';
 import { styles } from './styles';
+import { HOUSING_SEPP_ZONES } from '@/lib/regulatory-constants';
 
 interface ContextSectionProps {
   property: PropertyContext;
@@ -46,11 +47,9 @@ function determineDevelopmentPathway(property: PropertyContext): {
     };
   }
 
-  // R1/R2/R3/R4/B1/B2/B4 zones = Housing SEPP applies (CDC available)
-  const SEPP_HOUSING_ZONES = ['R1', 'R2', 'R3', 'R4', 'B1', 'B2', 'B4'];
   const zoneCode = zone.split(' ')[0]; // "R4 High Density" -> "R4"
 
-  if (SEPP_HOUSING_ZONES.includes(zoneCode)) {
+  if (HOUSING_SEPP_ZONES.includes(zoneCode)) {
     return {
       pathway: 'Complying (CDC)',
       reason: `${zoneCode} zone - Housing SEPP 2021 CDC pathway available for eligible development`
@@ -72,7 +71,42 @@ export function ContextSection({
   isEmbedded = false
 }: ContextSectionProps) {
   const { pathway, reason } = determineDevelopmentPathway(property);
+
   const zoneDisplay = property.zone || 'Unknown';
+
+  /**
+   * Housing SEPP status, gated the SAME way as determineDevelopmentPathway().
+   *
+   * This line used to test the zone alone, while the function above correctly
+   * checked heritage first. On a heritage-listed property the one PDF therefore
+   * said both "Development Pathway: Development Application (DA) — CDC and exempt
+   * development not permitted" AND "Housing SEPP 2021: ✓ Applies — eligible for
+   * complying development (CDC) pathway". Two contradictory answers to the same
+   * question, in the same table, one of them definitive and wrong.
+   *
+   * Zone membership is necessary but not sufficient, so a zone match is now
+   * reported as what it is — the zone test passing — not as an eligibility
+   * verdict on a proposal this report has never seen.
+   */
+  const zoneCode = zoneDisplay.split(' ')[0];
+  const isHeritage = Boolean(
+    property.heritage_status?.in_hca || property.heritage_status?.heritage_item
+  );
+  // An absent zone must not become a verdict. `zoneDisplay` falls back to
+  // 'Unknown', which is not in HOUSING_SEPP_ZONES, so without this the PDF would
+  // print "Does not apply - Unknown zone not covered by Housing SEPP" — a
+  // definitive negative derived from missing data, the same defect as the
+  // hardcoded TOD line below.
+  const hasZone = Boolean(property.zone && property.zone.trim());
+  const housingSeppStatus = !hasZone
+    ? 'Not assessed - zoning data unavailable for this property'
+    : !HOUSING_SEPP_ZONES.includes(zoneCode)
+    ? `✗ Does not apply - ${zoneCode} zone not covered by Housing SEPP`
+    : isHeritage
+      ? `Zone test met (${zoneCode}), but the CDC pathway is not available on `
+        + `heritage-listed land - see Development Pathway below`
+      : `Zone test met (${zoneCode}) - CDC pathway may be available depending on `
+        + `the proposal, lot and site constraints`;
   const { lot_dimensions, lep_controls, planning_portal_layers, additional_local_provisions, environmental_constraints } = property;
 
   return (
@@ -189,9 +223,11 @@ export function ContextSection({
           <View style={styles.dataTable}>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellValue}>
-                {additional_local_provisions && additional_local_provisions.length > 0
-                  ? additional_local_provisions.join('; ')
-                  : 'Not applicable - no additional local provisions apply to this property'}
+                {additional_local_provisions === undefined
+                  ? 'Not assessed - local provision data unavailable for this property'
+                  : additional_local_provisions.length > 0
+                    ? additional_local_provisions.join('; ')
+                    : 'None apply to this property'}
               </Text>
             </View>
           </View>
@@ -304,36 +340,38 @@ export function ContextSection({
         <View style={styles.dataTable}>
           <View style={styles.contextTableRow}>
             <Text style={styles.tableCellLabel}>Housing SEPP 2021:</Text>
-            <Text style={styles.tableCellValue}>
-              {['R1', 'R2', 'R3', 'R4', 'B1', 'B2', 'B4'].includes(zoneDisplay.split(' ')[0])
-                ? `✓ Applies - ${zoneDisplay.split(' ')[0]} zone eligible for complying development (CDC) pathway`
-                : `✗ Does not apply - ${zoneDisplay.split(' ')[0]} zone not covered by Housing SEPP`}
-            </Text>
+            <Text style={styles.tableCellValue}>{housingSeppStatus}</Text>
           </View>
 
           <View style={styles.contextTableRow}>
             <Text style={styles.tableCellLabel}>Transport Oriented Development:</Text>
-            <Text style={styles.tableCellValue}>✗ Not applicable - Property not within 400m of metro station or 800m of strategic centre</Text>
+            {/* Was hardcoded to "✗ Not applicable - Property not within 400m of a
+                metro station or 800m of a strategic centre". That is a claim about
+                THIS SITE, and this component is passed no TOD/LMR catchment data at
+                all — so for any property that IS in a catchment the PDF stated a
+                falsehood, with no code path that could ever say otherwise. Not
+                assessed is the truth; asserting a negative was not. */}
+            <Text style={styles.tableCellValue}>Not assessed in this report - TOD and low/mid-rise catchments are proximity-based; confirm against the NSW Planning Portal TOD maps</Text>
           </View>
 
           <View style={styles.contextTableRow}>
             <Text style={styles.tableCellLabel}>Design Quality SEPP:</Text>
-            <Text style={styles.tableCellValue}>✗ Not applicable - Applies to developments over $30M CIV or State significant development only</Text>
+            <Text style={styles.tableCellValue}>Depends on the proposal - Applies to development over $30M CIV or State significant development</Text>
           </View>
 
           <View style={styles.contextTableRow}>
             <Text style={styles.tableCellLabel}>Affordable Rental Housing:</Text>
-            <Text style={styles.tableCellValue}>✗ Not applicable - Only applies to registered community housing providers or 100% affordable housing developments</Text>
+            <Text style={styles.tableCellValue}>Depends on the proposal - Applies to registered community housing providers or 100% affordable housing development</Text>
           </View>
 
           <View style={styles.contextTableRow}>
             <Text style={styles.tableCellLabel}>Housing for Seniors/Disability:</Text>
-            <Text style={styles.tableCellValue}>✗ Not applicable - Only applies to developments for seniors living or people with a disability (requires certification)</Text>
+            <Text style={styles.tableCellValue}>Depends on the proposal - Applies to development for seniors living or people with a disability (requires certification)</Text>
           </View>
 
           <View style={styles.contextTableRow}>
             <Text style={styles.tableCellLabel}>Build-to-Rent SEPP:</Text>
-            <Text style={styles.tableCellValue}>✗ Not applicable - Only applies to dedicated build-to-rent developments with minimum 15-year rental period</Text>
+            <Text style={styles.tableCellValue}>Depends on the proposal - Applies to dedicated build-to-rent development with a minimum 15-year rental period</Text>
           </View>
 
           <View style={styles.contextTableRow}>
