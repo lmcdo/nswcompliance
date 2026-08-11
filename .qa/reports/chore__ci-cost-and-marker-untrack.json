@@ -1,0 +1,38 @@
+{
+  "tier": "minor",
+  "justification": "Two config lines and no code: scope an existing cancel-in-progress to pull requests, and stop tracking a per-session hook marker. No product behaviour changes and nothing is served differently.",
+  "commit_hash": "fb562232",
+  "files": [
+    ".github/workflows/gates.yml",
+    ".gitignore"
+  ],
+  "break_it": [
+    {
+      "scenario": "Two merges land on main seconds apart, as #888 and #834 did on 2026-08-11.",
+      "what_happens": "Under the old unscoped cancel-in-progress the first merge commit's gates run was cancelled, leaving a commit on main that nothing ever checked — the exact condition main-red-alarm exists to detect. Scoping cancellation to pull_request means main runs always finish and always produce a verdict.",
+      "mitigated": true,
+      "how": "cancel-in-progress is now the expression github.event_name == 'pull_request', so it is false on a push to main. PR force-pushes, which are routine during rebases here, still cancel their superseded runs.",
+      "repro": "python -c \"import yaml;print(yaml.safe_load(open('.github/workflows/gates.yml',encoding='utf-8'))['concurrency'])\""
+    },
+    {
+      "scenario": "A session runs /pre-impl, the marker is rewritten, and the branch is later rebased onto a main where another session did the same.",
+      "what_happens": "Before this change .claude/.pre-impl-done.json was tracked, so every such rebase stopped on a conflict in a file that describes a session rather than the codebase. It conflicted on every branch rebased on 2026-08-11. Now it is ignored and untracked, so it cannot conflict.",
+      "mitigated": true,
+      "how": "git rm --cached plus a .gitignore entry. The file stays on disk, so the pre-impl gate that reads it keeps working locally; only git stops tracking it.",
+      "repro": "git check-ignore -v .claude/.pre-impl-done.json && git ls-files --error-unmatch .claude/.pre-impl-done.json"
+    },
+    {
+      "scenario": "Someone reads this PR as a fix for the exhausted GitHub Actions allowance.",
+      "what_happens": "They stop looking for the real cause and CI stays dead. This changes no run COUNT — concurrency already existed, so superseded runs were already being cancelled. The allowance is exhausted because of run volume and a $0 spending limit with no card on file, which no workflow edit can fix.",
+      "mitigated": true,
+      "how": "Stated in the PR body and in ~/.claude/plans/meta-session-reconciliation-2026-08-11.md: the free fix is a self-hosted runner. This PR is a correctness fix that happens to live in the same file.",
+      "repro": "gh api repos/lmcdo/nswcompliance/check-runs/$(gh api repos/lmcdo/nswcompliance/commits/fb562232/check-runs --jq '.check_runs[0].id')/annotations --jq '.[0].message'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. No database access of any kind.",
+    "secrets": "No credentials read or written. Note separately that 4 distinct secrets sit in 17 tracked files; that is not addressed here and needs rotation.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes. After the next two merges to main land close together, confirm both merge commits have a completed gates run rather than a cancelled one."
+  }
+}

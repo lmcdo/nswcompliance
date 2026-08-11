@@ -48,9 +48,21 @@ on:
   push:
     branches: [main]
 
+# Cancel superseded runs on PULL REQUESTS only.
+#
+# `cancel-in-progress: true` unscoped also cancelled runs on main, and that is not
+# a saving — it is a hole. main-red-alarm asks "does main's HEAD have a successful
+# gates run?", so a main run cancelled by the next merge leaves a commit that
+# nothing ever checked, which is the precise condition the alarm exists to catch.
+# Observed 2026-08-11: #888 and #834 merged seconds apart, and the first merge
+# commit's run died without a verdict.
+#
+# On a pull request the opposite is true — a force-push during a rebase makes the
+# older run answer a question about a sha nobody will merge, so cancelling it is
+# free. Rebases are routine here, so this is where the waste actually was.
 concurrency:
   group: gates-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # pre-push [1/4] + [1b] + [1c]
