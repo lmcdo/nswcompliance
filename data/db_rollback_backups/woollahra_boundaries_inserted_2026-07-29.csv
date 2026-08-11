@@ -1,0 +1,15 @@
+id,precinct_id,precinct_name,lep_h_id,area_sqm,lga,rollback
+463,Paddington HCA,Paddington Heritage Conservation Area,C8,1247127,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=463
+464,Woollahra HCA,Woollahra Heritage Conservation Area,C15,997985,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=464
+465,Watsons Bay HCA,Watsons Bay Heritage Conservation Area,C14,413137,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=465
+466,Etham Avenue HCA,"Etham Avenue HCA, Darling Point",C4,27460,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=466
+467,Darling Point Road HCA,"Darling Point Road HCA, Darling Point",C3,15493,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=467
+468,Mona Road HCA,"Mona Road HCA, Darling Point",C6,12316,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=468
+469,Loftus Street and Mona Road HCA,"Loftus Street and Mona Road HCA, Darling Point (DCP B2.5: 'Loftus Road and Mona Road')",C5,3103,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=469
+470,Aston Gardens HCA,"Aston Gardens HCA, Bellevue Hill",C1,10665,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=470
+471,Victoria Road HCA,"Victoria Road HCA, Bellevue Hill",C2,4036,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=471
+472,Balfour Road HCA,"Balfour Road HCA, Rose Bay/Bellevue Hill",C9,61046,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=472
+473,Beresford Estate HCA,"Beresford Estate HCA, Rose Bay",C10,8244,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=473
+474,Rose Bay Gardens Estate HCA,"Rose Bay Gardens Estate HCA, Rose Bay",C12,25943,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=474
+475,Kent Road HCA,"Kent Road HCA, Rose Bay",C11,65712,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=475
+476,Bell Street HCA,"Bell Street HCA, Vaucluse",C13,9850,Woollahra-staged,DELETE FROM dcp_precinct_boundaries WHERE id=476
