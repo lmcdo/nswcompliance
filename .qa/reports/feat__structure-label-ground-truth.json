@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds the tooling to measure secondary-structure detection recall, which has never been measured and cannot be measured from stored data. Four parts: migration 065 creating structure_labels; a seeded sampling script; an internal-only labelling surface; and the recall comparison script carrying a pre-committed pass mark. Standard rather than critical: it adds a new table and a new internal route, but writes no production product data, changes no served customer output, and the migration is NOT applied in this PR. The risk it manages is not breakage — it is producing a flattering recall number that nobody can trust, which is why the anti-self-agreement design is structural rather than procedural.",
-  "commit_hash": "ff065cfa",
+  "commit_hash": "d26c9ca5",
   "files": [
     "migrations/065_structure_labels.sql",
     "scripts/sample_structure_label_set.py",
