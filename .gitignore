@@ -386,6 +386,11 @@ docs/*
 !docs/intelligence-brief/**
 !docs/architecture/
 !docs/architecture/**
+# Pitch-package sources. The 2026-08-09 edition was generated and its markdown thrown
+# away, so correcting it meant reverse-engineering seven documents out of their own HTML.
+# The generated .docx/.html/.pdf stay untracked — they rebuild from these.
+!docs/pitch/
+!docs/pitch/**
 !docs/*.md
 
 # PDF page images (stored in cloud, not git)

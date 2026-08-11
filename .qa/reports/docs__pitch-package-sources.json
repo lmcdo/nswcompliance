@@ -1,0 +1,52 @@
+{
+  "tier": "minor",
+  "justification": "Documentation only. Seven markdown sources plus a README added under docs/pitch/, and one whitelist entry in .gitignore so they are trackable at all. No code path, no served output, no database access, no dependency change.",
+  "commit_hash": "1315f97a",
+  "files": [
+    ".gitignore",
+    "docs/pitch/README.md",
+    "docs/pitch/audit-sow-template.md",
+    "docs/pitch/cheat-sheet.md",
+    "docs/pitch/demo-runbook.md",
+    "docs/pitch/positioning-paragraph.md",
+    "docs/pitch/qualifying-diagnostic.md",
+    "docs/pitch/red-flags.md",
+    "docs/pitch/rehearsal.md"
+  ],
+  "pre_impl": {
+    "skipped": "Minor tier — no data, schema or state interaction."
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A reader trusts a PR number in docs/pitch/cheat-sheet.md and opens it to find something unrelated.",
+      "what_happens": "The pitch's whole subject is verifying claims, so one wrong citation discredits the rest of it.",
+      "mitigated": true,
+      "how": "docs/pitch/cheat-sheet.md — every PR link re-verified against origin/main on 2026-08-10. Rows 4 and 6 cited #835, which contains neither script; corrected to #363 and #347. Recorded in the file's own verification note."
+    },
+    {
+      "scenario": "The generated .docx a buyer receives drifts from the markdown committed here, so the repo and the buyer disagree.",
+      "what_happens": "A correction lands in git and never reaches anyone, which is the failure that made this PR necessary.",
+      "mitigated": true,
+      "how": "docs/pitch/README.md carries the exact pandoc regeneration commands, and states the markdown is the source and the binaries are rebuildable."
+    },
+    {
+      "scenario": "docs/pitch/ is added but stays untracked because docs/* is ignored, so the source is lost again.",
+      "what_happens": "Silent — git add appears to work and the files never reach the remote.",
+      "mitigated": true,
+      "how": ".gitignore whitelist entries !docs/pitch/ and !docs/pitch/**; confirmed with git ls-files --error-unmatch docs/pitch/cheat-sheet.md before commit."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No database access anywhere in the diff.",
+    "secrets": "None. No credential, token or environment variable is read or written.",
+    "other_repo": "None. The generated docx/html/pdf live outside git in pitch-package/; they rebuild from these sources and nothing consumes them programmatically.",
+    "manual_verify": "Optional: regenerate the buyer-facing docx/pdf from these sources using the pandoc commands in docs/pitch/README.md, so the pack a buyer receives matches the corrected markdown."
+  },
+  "falsifiable_check": {
+    "command": "git ls-files --error-unmatch docs/pitch/cheat-sheet.md docs/pitch/README.md",
+    "fails_when": "The docs/pitch whitelist entry is removed or misspelled, so the sources silently stop being tracked and this exits non-zero."
+  }
+}
