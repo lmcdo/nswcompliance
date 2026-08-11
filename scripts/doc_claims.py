@@ -91,7 +91,26 @@ DEFAULT_DOC_GLOBS = (
     ".claude/DATA_QUALITY_TRACKER.md",
 )
 
-DEFAULT_REPORTS = (".qa_report.json",)
+# The QA report is per-branch (.qa/reports/<slug>.json); resolve it rather than
+# naming one path. REPORT_PREFIXES is what keeps report findings OUT of the
+# baseline, and as a prefix it covers every branch's report plus the legacy root
+# file — a single filename would have stopped covering anything the moment the
+# path became per-branch, silently letting report claims into the baseline.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import qa_report_path  # noqa: E402  (path must be set first)
+
+REPORT_PREFIXES = qa_report_path.REPORT_PREFIXES
+
+
+def default_reports(project_dir: str | Path) -> list[str]:
+    """The current branch's QA report, repo-relative, or [] if it has none."""
+    found = qa_report_path.resolve(project_dir)
+    if found is None:
+        return []
+    try:
+        return [found.relative_to(Path(project_dir).resolve()).as_posix()]
+    except ValueError:
+        return [found.as_posix()]
 
 # Extensions worth resolving. .md and .json are deliberately out of scope: doc
 # to doc links are a different problem with a different failure mode, and prose
@@ -936,9 +955,7 @@ def scan(
 
     doc_list = list(docs) if docs is not None else default_docs(project_dir, tracked)
     report_list = (
-        list(reports)
-        if reports is not None
-        else [r for r in DEFAULT_REPORTS if (project_dir / r).is_file()]
+        list(reports) if reports is not None else default_reports(project_dir)
     )
 
     constants = code_version_constants(project_dir, tracked)
@@ -1064,7 +1081,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         # report makes it for real. Docs and requirements files are baselined;
         # the per-change report always reports fresh.
         baselineable = [
-            v for v in result.violations if not v.doc.startswith(tuple(DEFAULT_REPORTS))
+            v for v in result.violations if not v.doc.startswith(REPORT_PREFIXES)
         ]
         head = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -1077,7 +1094,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         payload = {
             "generated_against": head,
             "mode": "observation",
-            "excluded_from_baseline": list(DEFAULT_REPORTS),
+            "excluded_from_baseline": list(REPORT_PREFIXES),
             # Counted from what was actually WRITTEN. Counting all violations
             # here while writing only the baselineable ones gave a header that
             # disagreed with its own findings list.

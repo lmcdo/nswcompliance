@@ -32,11 +32,14 @@ const TOOLS = [
     sources: [
       { name: 'NSW Planning Portal (lot API)', use: 'Zone, lot size, strata status, heritage, and LEP controls for the property' },
       { name: 'SEPP Housing 2021 criteria', use: 'State-wide eligibility rules: minimum 450 m² lot, permitted zones, not strata' },
-      { name: 'NSW SIX Maps aerial imagery', use: 'High-resolution aerial tiles for automated structure detection on the lot' },
+      { name: 'NSW SIX Maps aerial imagery', use: 'High-resolution aerial tiles of the lot, shown with its boundary so you can see what is already built on it' },
       { name: 'Council DCP setback controls', use: 'Secondary dwelling setback, landscaping, and parking standards by LGA' },
     ],
     cadence: 'Planning Portal data is queried live at time of check. Aerial imagery is updated by NSW Spatial Services (typically annually). DCP controls are updated when new LGAs are onboarded.',
-    limitations: 'Structure detection accuracy is ~85–90% for standard residential lots. Heritage overlays and strata restrictions may introduce exceptions. DCP setback data is available for councils with structured controls. Always confirm with a certifier before committing.',
+    // The figure below replaces "~85-90% for standard residential lots", which
+    // was an estimate written from a single test address and was never
+    // measured. It is published here because it was published wrong here.
+    limitations: 'Structures already on the lot are identified by you from the aerial image, not found automatically. An automated scan was measured in August 2026 against human review of 56 lots across four councils: it located 14 of the 38 secondary structures a person could see, and reported a further 15 that were not there. It is not used to decide eligibility. Heritage overlays and strata restrictions may introduce exceptions. DCP setback data is available for councils with structured controls. Always confirm with a certifier before committing.',
   },
   {
     name: 'Flood Screening',

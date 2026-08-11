@@ -208,11 +208,15 @@ echo ""
 # ── 3. QA report validation ──────────────────────────────────────────────────
 
 echo "=== [3/4] Validating QA report ==="
-if [ -f .qa_report.json ]; then
+# The report is per-branch (.qa/reports/<slug>.json). Resolve it rather than
+# hardcoding a path, so this hook and CI can never disagree about which file
+# they are checking — a disagreement would present as "the gate passed".
+QA_REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null)
+if [ -n "$QA_REPORT" ] && [ -f "$QA_REPORT" ]; then
   # Auto-detect changed files vs merge-base (works correctly in worktrees where origin/main may have diverged)
   MERGE_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
   DIFF_FILES=$(git diff --name-only "$MERGE_BASE"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' 2>/dev/null)
-  QA_ARGS=".qa_report.json"
+  QA_ARGS="$QA_REPORT"
   if [ -n "$DIFF_FILES" ]; then
     QA_ARGS="$QA_ARGS --diff-files $DIFF_FILES"
   fi
@@ -221,12 +225,14 @@ if [ -f .qa_report.json ]; then
   if [ $QA_RESULT -ne 0 ]; then
     echo ""
     echo "QA report validation FAILED. Push blocked."
-    echo "Fix .qa_report.json and re-run: python scripts/qa_gate.py .qa_report.json"
+    echo "Fix $QA_REPORT and re-run: python scripts/qa_gate.py $QA_REPORT"
     exit 1
   fi
 else
-  echo "WARNING: No .qa_report.json found. Skipping QA validation."
-  echo "  Create one before committing non-trivial changes."
+  TARGET=$(python scripts/qa_report_path.py --target --relative 2>/dev/null)
+  echo "WARNING: No QA report for this branch. Skipping QA validation."
+  echo "  Expected at: ${TARGET:-.qa/reports/<branch-slug>.json}"
+  echo "  Create one from scripts/qa_report_template.json before non-trivial changes."
 fi
 echo ""
 
@@ -352,25 +358,91 @@ fi
 # on everything would train people to bypass it, which is worse than not having
 # it. So: HIGH severity AND the diff touches output a customer reads. Everything
 # else stays advisory.
-SOL_SCOPED_PATHS='^(frontend-nextjs/(app/api|components/pdf|lib/pdf)/|scripts/generate_conveyancing_report\.py|scripts/conveyancing_db\.py|services/conveyancing\.py)'
-SOL_TOUCHES_OUTPUT=$(echo "$CHANGED_CODE" | grep -E "$SOL_SCOPED_PATHS" || true)
+# ── The review base is INCREMENTAL, and this is load-bearing ────────────────
+# It used to be the merge-base with main, so every push re-read the ENTIRE
+# branch. Three things followed, and all three were observed on fix/flood-finish
+# on 2026-08-10 across four consecutive blocked pushes:
+#
+#   1. The same 2,500-line diff was re-reviewed each time. A model reading that
+#      much does not return the same subset twice, so each run surfaced
+#      different findings from an unchanged pool — including files last touched
+#      days earlier that earlier runs had said nothing about.
+#   2. Fixing everything found in run N did not reduce what run N+1 could find,
+#      because run N+1 read the same diff afresh — and each fix made it bigger.
+#   3. Scope was decided on the cumulative diff too, so ONE api/ file touched in
+#      the branch's first commit made every later push a blocking review, even
+#      pushes that changed only Python and docs.
+#
+# A non-deterministic sampler is a reasonable reviewer and a bad gate. Reading
+# only the new commits gives it a fixed point: clear the findings and the next
+# push has nothing to re-sample.
+# Base selection lives in scripts/sol_review_base.sh so it can be tested
+# against real git histories (tests/test_sol_review_base.py) instead of only
+# ever running inside a hook, where a wrong answer is invisible.
+SOL_BASE=$(bash scripts/sol_review_base.sh "$DUP_BASE" 2>/dev/null || echo "$DUP_BASE")
+SOL_CHANGED=$(git diff --name-only "$SOL_BASE"...HEAD 2>/dev/null   | grep -E '^(services|scripts|src|frontend-nextjs/(app|components|lib))/.*\.(py|ts|tsx)$'   | grep -vE '(test|__tests__|\.spec\.)' || true)
 
-if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$CHANGED_CODE" ] && [ -f scripts/cross_review.py ]; then
+SOL_SCOPED_PATHS='^(frontend-nextjs/(app/api|components/pdf|lib/pdf)/|scripts/generate_conveyancing_report\.py|scripts/conveyancing_db\.py|services/conveyancing\.py)'
+SOL_TOUCHES_OUTPUT=$(echo "$SOL_CHANGED" | grep -E "$SOL_SCOPED_PATHS" || true)
+
+# ── Per-branch memory of what has already been adjudicated ──────────────────
+# Kept under .git/, NOT committed, so it dies with the branch. A finding that
+# was raised once and dealt with is reported on later runs but does not gate.
+# Deliberately not a committed baseline like the quarantine ratchet: that one
+# describes durable code state, this one describes one branch's review cycle,
+# and a permanent record here would be a standing amnesty.
+# The readable part is for humans; the hash is what makes it unique. Slashes
+# were simply replaced with dashes, so feat/x and feat-x shared one state file
+# and one branch's adjudications would have exempted the other's findings —
+# amnesty leaking across branches, which is precisely what this record must not
+# do. The hash is of the exact ref, so no two branch names can collide.
+SOL_REF=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached)
+SOL_HASH=$(printf '%s' "$SOL_REF" | sha1sum 2>/dev/null | cut -c1-10)
+SOL_BRANCH="$(printf '%s' "$SOL_REF" | tr '/' '-')-${SOL_HASH:-nohash}"
+SOL_STATE_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/sol-review"
+SOL_ADJUDICATED="$SOL_STATE_DIR/$SOL_BRANCH.json"
+SOL_ROUNDS="$SOL_STATE_DIR/$SOL_BRANCH.rounds"
+mkdir -p "$SOL_STATE_DIR" 2>/dev/null || true
+
+if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_review.py ]; then
   echo ""
   if [ -n "$SOL_TOUCHES_OUTPUT" ]; then
     echo "=== [7] Sol cross-review (BLOCKING on HIGH — diff touches served/printed output) ==="
+    echo "    reviewing $SOL_BASE..HEAD (new commits only, not the whole branch)"
     SOL_RC=0
-    python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 --fail-on high || SOL_RC=$?
+    python scripts/cross_review.py --base "$SOL_BASE" --max-diff-kb 512 --fail-on high       --adjudicated "$SOL_ADJUDICATED" --record-adjudicated || SOL_RC=$?
     if [ "$SOL_RC" -ne 0 ]; then
+      SOL_ROUND_N=$(( $(cat "$SOL_ROUNDS" 2>/dev/null || echo 0) + 1 ))
+      echo "$SOL_ROUND_N" > "$SOL_ROUNDS" 2>/dev/null || true
       # A HIGH finding can still be wrong. The escape is deliberate and costs a
       # sentence: verify it, and if it is a false positive say why in one line.
       if [ -n "$SOL_OVERRIDE" ] && [ ${#SOL_OVERRIDE} -ge 15 ]; then
         echo ""
         echo "⚠  Sol HIGH finding overridden: $SOL_OVERRIDE"
         echo "   (recorded here only — repeat it in the PR body)"
+      elif [ "$SOL_ROUND_N" -ge 3 ]; then
+        # ── The round cap ───────────────────────────────────────────────────
+        # Three blocked pushes on one branch is no longer a review finding
+        # defects, it is a loop. Keep blocking, but stop implying that another
+        # fix round will clear it: make the human decision explicit instead of
+        # something that emerges after an hour of grinding.
+        echo ""
+        echo "Sol has now blocked this branch $SOL_ROUND_N times. STOP FIXING."
+        echo ""
+        echo "Past two rounds the findings are usually about the fixes themselves,"
+        echo "and each fix adds code for the next round to read. Decide, do not"
+        echo "iterate:"
+        echo ""
+        echo "  - the finding is REAL and worth it  -> fix it, and expect another round"
+        echo "  - it is real but not worth blocking -> SOL_OVERRIDE=\"...\" git push"
+        echo "  - it is wrong                       -> SOL_OVERRIDE=\"...\" git push"
+        echo ""
+        echo "  Reset the counter: rm \"$SOL_ROUNDS\""
+        exit 1
       else
         echo ""
         echo "Sol reported a HIGH finding on output a customer reads. Push blocked."
+        echo "(round $SOL_ROUND_N on this branch; at 3 the guidance changes)"
         echo ""
         echo "  1. Verify the finding against the code. It is wrong roughly 1 time in 3."
         echo "  2. If it is REAL   — fix it."
@@ -384,10 +456,14 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$CHANGED_CODE" ] && [ -f scripts/cross_
   else
     echo "=== [7] Sol cross-review (advisory — diff does not touch served/printed output) ==="
     # `|| true`: set -e is active, and a review outage must never stop a push.
-    python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 || true
+    python scripts/cross_review.py --base "$SOL_BASE" --max-diff-kb 512       --adjudicated "$SOL_ADJUDICATED" --record-adjudicated || true
     echo "(advisory only — verify each finding against the code; never a merge gate)"
   fi
 fi
+
+# A push that gets through resets the round counter: the next block is round 1,
+# not a continuation of a cycle that already ended.
+rm -f "$SOL_ROUNDS" 2>/dev/null || true
 
 echo ""
 echo "All pre-push checks passed."

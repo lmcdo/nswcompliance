@@ -4,20 +4,55 @@ globs:
   - "frontend-nextjs/__tests__/**"
   - "frontend-nextjs/**/*.test.*"
   - "scripts/qa_*"
+  - ".qa/reports/**"
   - ".qa_report.json"
 ---
 
 # Testing & QA
 
+## The QA report is per-branch and committed
+- Path: `.qa/reports/<branch-slug>.json`, slashes in the branch name become `__`.
+  Never type it — `python scripts/qa_report_path.py --target --relative` prints it,
+  and every consumer (post-commit, pre-push, CI, the gate, the Claude commit hook)
+  resolves it the same way.
+- `python scripts/qa_gate.py` with no path resolves this branch's report itself.
+- **It stays committed.** CI treats an absent report as a warning and `exit 0`, so
+  an ignored or untracked report is a gate that silently stops enforcing. `#398`
+  untracked it for the conflict problem and `#434` — a sitemap PR — re-added it
+  three days later; `.gitignore` line 4 made that invisible for ten weeks.
+- `commit_hash` must name one of **this branch's own** commits: an ancestor of
+  HEAD that is not already on `origin/main`. Commit, let `post-commit` restamp,
+  include the restamped report in the next commit. Amending to fix the stamp does
+  not work — the amend changes the hash just recorded.
+- Orphans (branch merged and deleted) are cleaned up with
+  `python scripts/prune_qa_reports.py` — dry-run by default, `--apply` to delete.
+  It refuses to do anything if `git ls-remote` cannot answer.
+
 ## Running Tests
-- `python -m pytest` — all active Python tests (~1794 tests, <1s)
+> Counts measured 2026-08-08 at `origin/main` f5acb080. **Re-run rather than quote** —
+> `python -m pytest --collect-only -q | tail -1` prints the current number.
+- `python -m pytest` — all active Python tests (**4,101 passed, 16 skipped, ~90s**)
 - `python -m pytest tests/test_flood_truth.py -v` — single file
 - `python -m pytest -m database` — DB-dependent tests (needs DATABASE_URL)
-- `cd frontend-nextjs && npx jest` — all frontend Jest tests (~615 tests, ~6s)
+- `cd frontend-nextjs && npx jest` — all frontend Jest tests (**80 suites, 1,034 tests**)
 - `cd frontend-nextjs && npx jest --testPathPattern=council-config` — single test file
 - Test deps: `pip install -r requirements-test.txt` (pytest, pydantic, fastapi)
 - Mock injection: `tests/conftest_mocks.py` stubs psycopg2/requests/pyproj so pure-logic tests run without native deps
-- Stale tests quarantined in `collect_ignore` (conftest.py) — not deleted, can be revived
+
+## Quarantined tests — now ZERO
+- **No test file is excluded from collection.** The list was 16 on 2026-05-23 and is now empty.
+- `python scripts/check_test_quarantine.py` — the ratchet, in CI. **Two rules:** adding a file
+  to `collect_ignore` without a recorded reason FAILS, and a listed file that starts PASSING
+  also FAILS, so it is released rather than left as standing amnesty.
+- **What the 16 turned out to be:** six already passed · two were broken BY the quarantining
+  (a marker inserted above a `from __future__` import — a SyntaxError) · two had drifted
+  behind the code · five were not tests at all (1,090 lines, **zero assertions**, deleted) ·
+  three needed a live server or a real database and now carry skip guards.
+- **Integration tests:** `pytest -m integration` with the dev server running. They skip with an
+  actionable reason otherwise, rather than being hidden.
+- **Database tests:** `PYTEST_REAL_DB=1 DATABASE_URL=... pytest tests/test_lga_coverage.py -o addopts=`.
+  The opt-in is required because `conftest_mocks.py` stubs psycopg2 by default, so a DB test
+  would otherwise get a MagicMock and fail on nonsense comparisons.
 
 ## QA Three-Phase Workflow (Critical/Standard tier)
 1. `/qa-write` — defensive patterns (null boundaries, three-state semantics, error isolation). No tests yet.

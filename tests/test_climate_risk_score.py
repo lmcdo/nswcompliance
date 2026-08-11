@@ -321,16 +321,55 @@ class TestClimateRiskResultSerialization:
             interaction_bonus=0.0,
         )
         d = result.to_dict()
-        assert d["score"] == 42
-        assert d["band"] == "High"
         assert d["lat"] == -33.87
         assert d["lng"] == 151.21
         assert len(d["hazards"]) == 1
         assert d["hazards"][0]["hazard"] == "flood"
         assert d["hazards"][0]["present"] is True
-        assert d["interaction_bonus"] == 0.0
         assert "methodology_version" in d
         assert "disclaimer" in d
+        # The composite still computes on the object — it is the model.
+        assert result.score == 42
+        assert result.band == "High"
+        assert result.hazards[0].weighted_score == 0.2
+
+    def test_to_dict_omits_the_unvalidatable_composite(self):
+        """The composite model must not cross the serialisation boundary.
+
+        It cannot be validated against any available reference and #699 bars it
+        from every customer surface, yet it reached the API response because
+        ``climate_risk_pipeline`` spreads ``**to_dict()``. This test is the pin:
+        if it fails, someone has re-opened that leak.
+
+        Falsifiable: re-adding any one of these keys to ``to_dict`` fails here.
+        """
+        result = ClimateRiskResult(
+            score=42, band="High", lat=-33.87, lng=151.21,
+            hazards=[
+                HazardScore(
+                    hazard="flood", raw_score=1.0, weight=0.2,
+                    weighted_score=0.2, present=True, detail="Flood: Yes",
+                    confidence="high", data_source="NSW Planning Portal",
+                    confidence_reason="spatial overlay hit",
+                )
+            ],
+            interaction_bonus=0.05,
+        )
+        d = result.to_dict()
+
+        for banned in ("score", "band", "interaction_bonus"):
+            assert banned not in d, f"{banned} must not be serialised"
+        for banned in ("raw_score", "weight", "weighted_score"):
+            assert banned not in d["hazards"][0], (
+                f"per-hazard {banned} must not be serialised — weight and "
+                f"weighted_score make the composite reconstructible"
+            )
+
+        # What a consumer legitimately gets: the factual per-hazard exposure.
+        assert set(d["hazards"][0]) == {
+            "hazard", "present", "detail", "confidence",
+            "confidence_reason", "data_source", "available",
+        }
 
     def test_to_dict_empty_hazards(self):
         result = ClimateRiskResult(score=1, band="Low", lat=0, lng=0)

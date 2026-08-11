@@ -1,0 +1,42 @@
+{
+  "tier": "minor",
+  "justification": "One markdown file under docs/. No code path, no query, no served output, no data. Minor rather than standard because nothing a customer can see changes and no function is added or altered. Not lower than minor because the file's whole purpose is to gate what goes into external funding applications, and the version being corrected was merged the same day and actively instructed the reader to use figures that are wrong.",
+  "commit_hash": "efbf3426",
+  "files": [
+    "docs/SUPPORT_AVENUES.md"
+  ],
+  "pre_impl": {
+    "existing_data": "None written or read. The document quotes measurements taken read-only from complying_development_certificates and cdc_lot_link on 2026-08-10, but this change stores nothing and queries nothing at runtime.",
+    "assumption_mismatch": "The retraction rests on two external facts rather than on our database: that the NSW Planning Portal source is publicly reachable without authentication, and that determined applications are approved at roughly 97%. Both are recorded with their source in memory/reference-da-tracking-mapserver.md (no-auth ArcGIS endpoint, 324k records, ASSESMENT_RESULT split 149,118 approved / 4,272 refused, smoke-tested 2026-06-15). If that endpoint were in fact gated, the moat claim would be arguable again and this retraction would be too strong.",
+    "new_vs_existing": "Applies to any future reader of the document. It does not reach the merged copy of the same guidance in the parallel plans file, which was corrected separately in the same session, nor the strategy document that originated the claim."
+  },
+  "break_it": [
+    {
+      "scenario": "A reader takes the retracted figures from the git history, or from the still-merged PR #906 description, rather than from the current file.",
+      "what_happens": "$89.37B of 'approved construction', $20.61B over twelve months, or a $186,885 'median build cost' goes into a grant or accelerator application as market size. All three are sums over cost_of_development, which is the applicant's own declaration and sets the fee they pay, so it is structurally understated and is not a construction-value series. An assessor who knows the sector recognises it, and the application's credibility goes with it.",
+      "mitigated": true,
+      "how": "docs/SUPPORT_AVENUES.md — the three figures are now banned by name in the 'Never put these in an application' list, listed as a separate entry from the older bad numbers with the reason spelled out: this one carried a query, which is why it would otherwise have survived review. The retraction block also states them explicitly rather than silently deleting them, so a reader who encounters them elsewhere can match them to the retraction.",
+      "repro": "git show 8724aba5:docs/SUPPORT_AVENUES.md | grep -n '89.37B' — returns the retracted text as merged."
+    },
+    {
+      "scenario": "The retraction is read as 'the certificate data is worthless' and the lot linkage built the same morning is abandoned.",
+      "what_happens": "cdc_lot_link (178,259 of 181,750 matched, 98.1%) stops being maintained, and the one defensible use is lost with the indefensible one — a purchaser being able to see an approved-but-unbuilt development on the adjoining block, which is invisible from the street and is a real due-diligence signal.",
+      "mitigated": true,
+      "how": "docs/SUPPORT_AVENUES.md — the retraction block keeps a 'what survives' paragraph that states the per-property use plainly and calls it a field rather than a pitch, and the lot-join measurements and their limits (strata resolves to the parcel footprint, unmatched rows cluster in dense councils) are retained above it rather than deleted.",
+      "repro": "Read the section heading: it is scoped 'do not pitch this asset', not 'the data is wrong'."
+    },
+    {
+      "scenario": "A later session fills the deliberately empty lead with a fresh untested headline, because an open question reads like an oversight.",
+      "what_happens": "The exact failure being corrected repeats — a confident claim written over an untested premise, this time with the retraction's own authority behind it. The 1,071 setback controls are the obvious candidate and would be overstated the same way if their size were not stated with them.",
+      "mitigated": true,
+      "how": "docs/SUPPORT_AVENUES.md — the replacement lead is left explicitly OPEN with the instruction to test the argument first, and the candidate is given with its real dimensions (30 councils, 989 live, 42 with a clause join) rather than as a platform claim. Recorded durably in memory/feedback-verify-the-claim-not-just-the-number.md.",
+      "repro": "N/A — process failure, not a runtime one."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. Documentation only; no schema change, no migration, no write of any kind.",
+    "secrets": "None added, removed or rotated.",
+    "other_repo": "No change needed elsewhere in this repository. The companion correction to ~/.claude/plans/biz-application-assets-guide.md lives outside version control and was applied in the same session; assets 1, 2, 3, 7 and 9 there are withdrawn and not replaced.",
+    "manual_verify": "Confirm the three banned dollar figures no longer appear anywhere in docs/SUPPORT_AVENUES.md except inside the retraction that names them: grep -n '89.37B\\|20.61B\\|186,885' docs/SUPPORT_AVENUES.md should return only lines within the retraction block and the banned list."
+  }
+}

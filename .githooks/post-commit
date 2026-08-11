@@ -1,19 +1,22 @@
 #!/bin/sh
-# post-commit hook — stamps the current commit hash into .qa_report.json
+# post-commit hook — stamps the current commit hash into this branch's QA report
 #
 # This does NOT amend the commit (that creates circular hash problems).
-# Instead it updates the working copy of .qa_report.json so that the
-# NEXT commit or the pre-push QA gate check will see a valid hash.
+# Instead it updates the working copy of the report so that the NEXT commit
+# or the pre-push QA gate check will see a valid hash.
 #
-# The qa_gate.py commit hash check already accepts any hash from the
-# last 5 commits on the branch, so the hash from the most recent commit
-# will pass validation on push.
+# qa_gate.py requires the hash to name one of THIS BRANCH'S OWN commits — an
+# ancestor of HEAD that is not already on origin/main. The hash stamped here is
+# HEAD, so it satisfies that both now and after further commits land on top.
 #
-# Only runs if .qa_report.json exists and has a commit_hash field.
+# The path is resolved by scripts/qa_report_path.py rather than hardcoded: the
+# report is per-branch (.qa/reports/<slug>.json) precisely so two branches
+# never write the same file, and five callers must agree on where it is.
 
-QA_REPORT=".qa_report.json"
+QA_REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null)
 
-# Skip if no report
+# No report for this branch, or python unavailable — nothing to stamp.
+[ -n "$QA_REPORT" ] || exit 0
 [ -f "$QA_REPORT" ] || exit 0
 
 # Skip during rebase/merge

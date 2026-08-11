@@ -17,7 +17,7 @@ import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock,
 import { AerialWithOverlay } from './map-overlay';
 import {
   SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
-} from '../shadow-scenario-availability';
+} from '../not-assessed';
 
 // ---------------------------------------------------------------------------
 // Types

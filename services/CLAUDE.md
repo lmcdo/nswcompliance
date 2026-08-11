@@ -37,7 +37,18 @@ The Southern-Hemisphere direction caveat is CLOSED (#883, 2026-08-07): `tests/te
 **Flood Truth** — Sentinel-1 RTC from Microsoft Planetary Computer (`sentinel-1-rtc`, free but requires `PC_SDK_SUBSCRIPTION_KEY` env var — verify free key availability before build). VH change detection against dry-season baseline (ratio > 1.25 = flood, NOT fixed dB threshold — no universal values exist). `odc-stac` with `groupby='solar_day'` for multi-temporal stacking. SEED EPI Flood WFS (`https://mapprod3.environment.nsw.gov.au/arcgis/services/Planning/Hazard/MapServer/WFSServer`) confirmed live, free. Note: Sentinel-1B dead Dec 2021–Mar 2025 — document gap in output.
 > ⚠ **NOT BUILT.** Everything in the Sentinel-1 half of this paragraph is a FUTURE Phase-3B design, not running code. `flood_truth.py` makes no S1 query: it nulls every `sar_*` field and its execution manifest records `sentinel1_sar.queried = False`. The `ratio > 1.25` constant and the Planetary Computer catalogue address were deleted from the module on 2026-08-06 (Lane 1 / D2) precisely because they were unreachable. The live flood screen is EPI + EMS + JRC + WOfS + BOM + SES + study rasters + DEM. Do not cite S1/SAR as a flood source.
 
-**Granny Flat** — **samgeo (MIT) + NSW SIX Maps 10cm (CC-BY, free).** Same pipeline as Solar Yield: download SIX Maps tile → SAM segmentation → filter by area/shape → intersect with lot boundary. Detects main dwelling, garages, sheds, carports — solves the small-structure gap that Microsoft footprints (64.95% recall, 2013–2018) and OSM (20.1% Sydney completeness) cannot. User confirmation step mandatory: show detected footprints on aerial tile, user confirms before calculation runs. Geoscape Buildings API requires Team plan ($300/month) — Buildings not available on free tier, Clip tool costs credits even on free. Defer Geoscape until post-revenue. NSW Fair Trading bond data for rent: `https://www.nsw.gov.au/housing-and-construction/rental-forms-surveys-and-data/rental-bond-data`.
+**Granny Flat** — **samgeo (MIT) + NSW SIX Maps 10cm (CC-BY, free).** Same pipeline as Solar Yield: download SIX Maps tile → SAM segmentation → filter by area/shape → intersect with lot boundary. ⚠ **MEASURED 2026-08-10 AND IT DOES NOT DO THIS.** Against human labels on 56 lots
+across four councils it found **14 of 38** visible secondary structures (recall
+**0.368**, 95% CI 0.23–0.53) and reported 15 that were not there (precision 0.483).
+The pass mark, committed before any label existed, was recall ≥ 0.70 / precision ≥ 0.60.
+The claim this sentence used to make — that it *"solves the small-structure gap that
+Microsoft footprints (64.95% recall, 2013–2018) and OSM (20.1% Sydney completeness)
+cannot"* — is inverted: 0.368 is roughly **half** the recall of the dataset it claimed
+to beat, and that 64.95% was the stated reason for building this instead of buying it.
+Recall is 0.30–0.42 in **every** council measured, including the "clean suburban lots"
+band predicted at 70–80%, so it cannot be rescued by scoping. It is reliable on the
+**main dwelling only** (46 of 50 placed correctly). See
+`scripts/measure_structure_detection_recall.py` and `data/gf_recall_001_result.json`. User confirmation step mandatory: show detected footprints on aerial tile, user confirms before calculation runs. Geoscape Buildings API requires Team plan ($300/month) — Buildings not available on free tier, Clip tool costs credits even on free. Defer Geoscape until post-revenue. NSW Fair Trading bond data for rent: `https://www.nsw.gov.au/housing-and-construction/rental-forms-surveys-and-data/rental-bond-data`.
 
 ### GEE client
 

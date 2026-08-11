@@ -48,21 +48,41 @@ on:
   push:
     branches: [main]
 
+# Cancel superseded runs on PULL REQUESTS only.
+#
+# `cancel-in-progress: true` unscoped also cancelled runs on main, and that is not
+# a saving — it is a hole. main-red-alarm asks "does main's HEAD have a successful
+# gates run?", so a main run cancelled by the next merge leaves a commit that
+# nothing ever checked, which is the precise condition the alarm exists to catch.
+# Observed 2026-08-11: #888 and #834 merged seconds apart, and the first merge
+# commit's run died without a verdict.
+#
+# On a pull request the opposite is true — a force-push during a rebase makes the
+# older run answer a question about a sha nobody will merge, so cancelling it is
+# free. Rebases are routine here, so this is where the waste actually was.
 concurrency:
   group: gates-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # pre-push [1/4] + [1b] + [1c]
   python-tests:
     name: Python tests + ratchets
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
+      # No `cache:` input on setup-python/setup-node.
+      #
+      # On a SELF-HOSTED runner GitHub's cache action is redundant and actively
+      # harmful: pip and npm keep their own caches on the machine between jobs,
+      # while the post-job cache UPLOAD has to reach GitHub's cache service. On
+      # 2026-08-11 that upload returned `"statusCode": "http_timeout"` and sat
+      # retrying for ~40 minutes AFTER every real check had already passed, so a
+      # green run looked hung. Restore the cache inputs if RUNNER_LABEL is ever
+      # unset and jobs go back to GitHub-hosted runners.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: pip
       - run: pip install -r requirements-test.txt
       # No -x. It was there until 2026-08-06, and it is why a single missing
       # dependency (PyMuPDF, absent from requirements-test.txt) hid the state
@@ -86,6 +106,16 @@ jobs:
       - name: Tests that did not run (dependency-skip ratchet)
         if: always()
         run: python scripts/check_dependency_skips.py
+      # The sibling of the above, for the OTHER way a test stops running. A
+      # dependency skip at least prints "skipped"; a file in collect_ignore is
+      # never collected, so it produces no output at all and `pytest -m stale`
+      # returns zero. All 16 were quarantined in the single commit that turned
+      # these gates on (#362, 2026-05-23) and nothing re-checked for 15 months.
+      # Shrink-only: a new quarantine fails, and so does a listed file that has
+      # started passing, so fixed means deleted rather than forgiven.
+      - name: Quarantined tests (shrink-only ratchet)
+        if: always()
+        run: python scripts/check_test_quarantine.py
       - name: Mutation-count baselines (counts never drop)
         run: |
           if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
@@ -106,14 +136,12 @@ jobs:
   # pre-push [2/4] — and unlike pre-push, this can never self-skip for missing deps
   frontend-tests:
     name: Jest
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
-          cache-dependency-path: frontend-nextjs/package-lock.json
       - run: npm ci
         working-directory: frontend-nextjs
       - run: npx jest --ci --silent
@@ -121,25 +149,30 @@ jobs:
 
   # pre-push [3/4] + [4/4]
   #
-  # The job runs on both events; the QA-REPORT STEP is the PR-only part, and
-  # not by preference — on main it could never pass. qa_gate.py binds
-  # .qa_report.json to one of the branch's last 5 commits
-  # (scripts/qa_gate.py:1285-1302), which a SQUASH merge necessarily destroys:
-  # the squash commit is a new hash and the branch's commits never enter
-  # main's history, so the report hash is guaranteed absent. Every push to
-  # main failed on "Commit hash mismatch" — a second, independent reason main
-  # was red from 2026-08-03, underneath the PyMuPDF one and invisible while
-  # that was being blamed for everything.
+  # The job runs on both events; the QA-REPORT STEP is the PR-only part.
   #
-  # A gate that can only ever be red teaches people that red means nothing —
-  # the same disease as the outage this commit fixes. So that ONE step runs
-  # where its question is answerable and is skipped on main, while the
-  # liability scan keeps running on both. Scoping the whole job to pull
-  # requests (the first attempt here) would have let a direct push to main
-  # land prohibited wording with nothing scanning it.
+  # HISTORY, because the original reason is now fixed and the scoping is not.
+  # qa_gate.py used to bind the report to one of the branch's last 5 commits,
+  # which a SQUASH merge necessarily destroys: the squash is a new hash and the
+  # branch's commits never enter main's history, so the report hash was
+  # guaranteed absent. Every push to main failed on "Commit hash mismatch" — a
+  # second, independent reason main was red from 2026-08-03, underneath the
+  # PyMuPDF one and invisible while that was being blamed for everything. The
+  # binding is now ancestry-based (check_commit_hash_binding in qa_gate.py) and
+  # SKIPS when the branch has no commits of its own, so it no longer forces
+  # main red.
+  #
+  # The step stays PR-only for a different and still-live reason: the report is
+  # per-branch (.qa/reports/<slug>.json), and on main there is no branch whose
+  # report this is — the resolver correctly finds nothing and the step would
+  # warn on every single push. Diff-coverage against main's own last commit is
+  # meaningless too. So it runs where its question is answerable, while the
+  # liability scan keeps running on both. Scoping the WHOLE job to pull
+  # requests (the first attempt here) would have let a direct push to main land
+  # prohibited wording with nothing scanning it.
   qa-and-liability:
     name: QA report + liability language
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -147,23 +180,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: pip
       - run: pip install -r requirements-test.txt
+      # PR only, and for the same reason as the QA report below: a squash merge
+      # re-authors the commit as the merging GitHub account, so on main this is
+      # always trivially green and proves nothing. The branch commits are the
+      # only place a bad author identity is still visible.
+      - name: Commit author identity
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          python scripts/check_commit_authors.py --range "$BASE..HEAD"
       # PR only — see the note above the job. The liability scan below still
       # runs on main; only THIS check is unanswerable after a squash merge.
       - name: QA report validation
         if: github.event_name == 'pull_request'
         run: |
-          if [ ! -f .qa_report.json ]; then
-            echo "::warning::.qa_report.json absent — QA gate NOT enforced on this ref"
+          # Per-branch report. GITHUB_HEAD_REF is what names the branch here:
+          # a pull_request event checks out a DETACHED merge commit, so git
+          # itself cannot say which branch this is.
+          REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null || true)
+          if [ -z "$REPORT" ] || [ ! -f "$REPORT" ]; then
+            TARGET=$(python scripts/qa_report_path.py --target --relative 2>/dev/null || true)
+            echo "::warning::QA report absent (expected ${TARGET:-.qa/reports/<slug>.json}) — QA gate NOT enforced on this ref"
             exit 0
           fi
+          echo "QA report: $REPORT"
           BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
           FILES=$(git diff --name-only "$BASE"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' || true)
           if [ -n "$FILES" ]; then
-            python scripts/qa_gate.py .qa_report.json --diff-files $FILES
+            python scripts/qa_gate.py "$REPORT" --diff-files $FILES
           else
-            python scripts/qa_gate.py .qa_report.json
+            python scripts/qa_gate.py "$REPORT"
           fi
       # Runs on BOTH events. Scoping the whole job to pull requests would have
       # meant a direct push to main — an admin, or any automation with write
@@ -193,7 +240,7 @@ jobs:
   # matching the local step.
   duplication:
     name: Duplication ratchet
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -234,13 +281,12 @@ jobs:
   schema-contract:
     name: Schema contract (code vs live catalog)
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: pip
       - run: pip install -r requirements-test.txt
       - name: Validate every SQL identifier against the live schema
         env:
