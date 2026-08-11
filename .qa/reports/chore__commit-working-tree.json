@@ -1,8 +1,9 @@
 {
   "tier": "standard",
   "justification": "Tracks 116 files that existed only in the working tree and adds 30 .gitignore lines that keep 1.9 GB of re-fetchable downloads out. 29 of the newly-tracked files are code the repo has been running untracked, so this is the first time any gate has seen them — which is why it is not Minor.",
-  "commit_hash": "207aba66",
+  "commit_hash": "db3abb91",
   "files": [
+    ".gitignore",
     "frontend-nextjs/scripts/add-version-columns-direct.ts",
     "frontend-nextjs/scripts/apply-sepp-amendments.ts",
     "frontend-nextjs/scripts/auto-research-sepps.ts",
@@ -31,8 +32,8 @@
     "frontend-nextjs/scripts/test-insert.ts",
     "frontend-nextjs/scripts/verify-duplicate-provisions.ts",
     "frontend-nextjs/scripts/verify-versioning-system.ts",
-    "services/scripts/update_rental_data.py",
-    ".gitignore"
+    "scripts/liability_language_check.py",
+    "services/scripts/update_rental_data.py"
   ],
   "falsifiable_check": {
     "command": "bash -c \"git ls-files | wc -l; du -sh data/coastal_inundation data/flood_calibration 2>/dev/null | tail -2\"",
@@ -90,6 +91,13 @@
       "mitigated": true,
       "how": "The query now returns both counts: provision_count for overall size and current_provision_count for how much is still live. A filter would have been the WRONG fix here, since the total is genuinely wanted; the defect was that currency was not visible at all.",
       "repro": "grep -n 'current_provision_count' frontend-nextjs/scripts/cleanup-duplicate-sepps.ts"
+    },
+    {
+      "scenario": "A regex written from a non-raw Python string silently becomes a control character.",
+      "what_happens": "The DA-status exclusion was emitted with \b interpreted, so the pattern began with 0x08 and matched nothing. It read correctly in the source and in a grep, and the only symptom was that the scanner kept flagging lines the exclusion was supposed to cover — a rule that looks present and does nothing.",
+      "mitigated": true,
+      "how": "Rewritten from a raw string in a file rather than an inline heredoc, and asserted in both directions: Status: 'Approved' is excluded, while 'your application is approved' and 'Approved by council' are still scanned.",
+      "repro": "python -c \"import importlib.util;s=importlib.util.spec_from_file_location('m','scripts/liability_language_check.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.is_excluded_line(chr(34)+'Status: '+chr(39)+'Approved'+chr(39)+chr(34)))\""
     }
   ],
   "mutation_analysis": "Nothing executable is authored here, so classical mutation testing does not apply. The equivalent was done on the two claims that matter. Delete the ignore lines and the excluded directories appear in git ls-files, so the check goes red. Commit one payload file and the added-size measurement rises past 3.4 MB. Both were confirmed by measuring the real objects rather than by re-reading the diff.",
