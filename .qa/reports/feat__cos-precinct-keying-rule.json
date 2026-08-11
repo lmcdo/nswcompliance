@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "City of Sydney is the biggest keyed council (462 rows) but had no derivation rule, so audit_precinct_keying_coverage.py flagged it EXPOSED: the next re-extraction would silently null every key via the [4/4] auto-keying step (which only re-keys councils that HAVE a rule). This adds three page_range rules (sections 2/5/6) keyed off pdf_page, which reproduce all 462 existing keys exactly (validate:True). CoS refs are garbled (only 101/152/128 of rows encode the key) so ref_regex is unusable; pdf_page is clean and each precinct occupies a contiguous, non-overlapping page span. No DB write is needed - the keys are already correct; the rule makes them survive re-extraction. Sydney flips EXPOSED->protected in the audit. ADDED THIS COMMIT: a parallel session hand-keyed Parramatta (532 rows, 2026-07-29) with no reproducible rule, leaving it newly EXPOSED to the same churn. A new `ref_components` strategy (mixed-depth dotted-number parsing from ref_number, gated by a components_map that also decides ELIGIBILITY not just depth) reproduces 525/532 exactly, 0 wrong, 7 legitimate no-derivation. Audit lookup table also fixed (stale 'Parramatta' key vs live lga value 'City of Parramatta'). Parramatta flips EXPOSED->protected; Woollahra remains EXPOSED (name-keyed, no safe automated rule — needs a different, human-preserving mechanism, out of scope here).",
-  "commit_hash": "e27765d7",
+  "commit_hash": "b1c27469",
   "files": [
     "scripts/derive_precinct_keys.py",
     "scripts/audit_precinct_keying_coverage.py",
