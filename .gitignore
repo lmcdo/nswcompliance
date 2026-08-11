@@ -720,3 +720,6 @@ latent-scope-data/
 # `test_*.json` rule above is aimed at scratch output and silently swallowed
 # it, so the fixture could never be committed and the test could never run.
 !tests/fixtures/test_addresses.json
+
+# Keyset cursor for scripts/fix_lot_area_mercator.py — run state, not source.
+.lot_area_fix_cursor

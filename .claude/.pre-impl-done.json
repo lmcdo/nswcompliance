@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-10T03:47:04.461054+00:00",
-  "target": "scripts/fix_lot_area_mercator.py + build_lot_search_index.py area source \u2014 repair lot_search_index.lot_area_m2 filled from Web Mercator shape_area",
-  "findings_summary": "Both geoms SRID 4326 so ::geography needs no transform; lotidstring join has 0 unmatched rows; 0 NULL geom/area; 50k batch = 12.4s (under 120s cap), ~51 batches; loop sentinel is IS DISTINCT FROM so the set strictly shrinks; added geom IS NOT NULL guard so a NULL geom cannot blank an area. planlotarea/true=1.0003 (keep), shape_area/true=1.4390 and 1.0028 after cos^2(lat) correction."
+  "timestamp": "2026-08-10T09:20:00+00:00",
+  "target": "scripts/build_lot_search_index.py - keyset cursor on the compute-phase batch SELECT",
+  "findings_summary": "Measured live: small LGAs compute at ~490 lots/s (24,903 done in 51s) WITH all indexes present, so index maintenance is NOT the bottleneck. A 102,934-lot LGA runs at ~23 lots/s and DEGRADES (10k per 7min, then 10k per 10min) because the batch SELECT filters on lga_name plus computed_at IS NULL, ordered by lotidstring with a LIMIT and no cursor, so every batch re-scans the rows it already stamped. Fix: add a lotidstring > cursor bound. Correctness: every selected row is stamped computed_at=NOW() in the same execute_values UPDATE, so all rows below the cursor are stamped and the extra predicate is a seek hint rather than a semantic change; a batch returning fewer than LIMIT rows still means the LGA is exhausted. It is also strictly SAFER than the current code: a row that somehow fails to be stamped loops forever today, whereas the cursor advances past it."
 }

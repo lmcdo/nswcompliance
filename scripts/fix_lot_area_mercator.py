@@ -47,6 +47,17 @@ hold a corrected area beside a capacity figure derived from the old one, with
 nothing marking the disagreement. A null reads as "not computed", which is
 true, rather than as a number that is quietly wrong.
 
+WHY THERE IS NO WHOLE-TABLE PROGRESS QUERY
+------------------------------------------
+Three runs died on the statement timeout, and the third died on the query that
+was only there to FIND the resume point. Any predicate of the form
+``lot_area_m2 IS DISTINCT FROM ST_Area(geom::geography)`` over the full target
+set computes geodesic area for ~2.5M polygons, and it gets slower as the run
+proceeds because each repaired row leaves a dead tuple behind for the scan to
+step over. Raising statement_timeout does not save it -- 300s was tried and
+also expired. So progress is tracked by a CURSOR FILE, which costs nothing,
+and the run never asks the database a whole-table question.
+
 ROLLBACK
 --------
 No CSV -- 2.5M rows of it would be unusable. The previous value is exactly
@@ -57,17 +68,10 @@ old state is fully reconstructible:
       FROM nsw_cadastre_lots c
      WHERE c.lotidstring = l.lotidstring AND c.planlotarea IS NULL;
 
-RESUMABILITY
-------------
-The batch filter is ``lot_area_m2 IS DISTINCT FROM ST_Area(geom::geography)``,
-so a repaired row stops matching and the pending set strictly shrinks. Killing
-the script and re-running it resumes rather than repeating, and running it on
-an already-clean table is a no-op. That costs a re-scan per batch (~12s per
-50,000) and is worth it for a job against production.
-
 USAGE
     python scripts/fix_lot_area_mercator.py --dry-run
     python scripts/fix_lot_area_mercator.py --apply
+    python scripts/fix_lot_area_mercator.py --apply --restart   # ignore cursor
 """
 
 from __future__ import annotations
@@ -76,18 +80,39 @@ import argparse
 import os
 import sys
 import time
+from pathlib import Path
 
 import psycopg2
 import psycopg2.extras
 
-#: Measured against production 2026-08-10: a 20,000-row keyset batch scans in
-#: 12.3s, and writing 20,000 rows costs roughly a further 36s at the ~550
-#: rows/s this table sustains -- about 48s, comfortably inside the ceiling.
-#: 50,000 was tried first and is NOT safe: ~31s of scan plus ~91s of writes
-#: lands past the 120s statement timeout, which is how the first run died.
-BATCH = 20_000
-#: Supabase's hard per-statement limit.
-STATEMENT_TIMEOUT_MS = 120_000
+#: The batch size is ADAPTIVE, because two fixed guesses both died.
+#:
+#: Writing a row here costs ~5.5ms, not the ~1.8ms first assumed: lot_area_m2
+#: appears in three indexes (idx_lsi_area, idx_lsi_lga_zone_area,
+#: idx_lsi_zone_area_gfa), so each row rewrites three index entries and the
+#: update cannot be HOT. Measured batch times at 20,000 rows climbed 13s, 10s,
+#: 47s, 85s, 99s, 103s as the run moved from already-repaired rows into
+#: unrepaired ones -- then past the cap. So rather than guess a third time,
+#: aim at a wall-clock target and let the loop find its own size.
+#: With the cursor bound on both sides of the join (see the batch query) the
+#: per-batch cost is once again proportional to rows, so growing the batch
+#: genuinely helps. It did not before, which is what made the earlier
+#: shrink-on-slow behaviour actively harmful.
+BATCH_START = 20_000
+BATCH_MIN = 500
+BATCH_MAX = 50_000
+TARGET_LOW_S = 30.0
+TARGET_HIGH_S = 70.0
+
+#: Raised from the 120s default. Verified settable on this connection (SHOW
+#: reported 5min), so a slow batch degrades into a retry rather than a death.
+STATEMENT_TIMEOUT_MS = 300_000
+
+#: Where the keyset cursor lives between runs. Kill the script at any point and
+#: the next run resumes from the last committed batch instead of re-scanning.
+CURSOR_FILE = Path(
+    os.environ.get("LOT_AREA_FIX_CURSOR_FILE", ".lot_area_fix_cursor")
+)
 
 
 def connect():
@@ -97,22 +122,34 @@ def connect():
     return psycopg2.connect(url, connect_timeout=25)
 
 
-def survey(cur) -> dict:
-    """Counts over the target set. Safe to call before and after the write."""
+def load_cursor() -> str:
+    if CURSOR_FILE.exists():
+        return CURSOR_FILE.read_text(encoding="utf-8").strip()
+    return ""
+
+
+def save_cursor(value: str) -> None:
+    CURSOR_FILE.write_text(value, encoding="utf-8")
+
+
+def target_count(cur) -> int:
+    """How many rows are in scope at all.
+
+    Deliberately does NOT evaluate ST_Area: this is a plain join on
+    planlotarea IS NULL, which stays affordable. The count of rows still
+    holding the wrong value is the expensive question and is not asked --
+    see the module docstring.
+    """
     cur.execute(
         """
-        SELECT count(*) AS affected,
-               count(*) FILTER (WHERE l.computed_at IS NOT NULL) AS with_capacity,
-               count(*) FILTER (
-                   WHERE l.lot_area_m2 IS DISTINCT FROM ST_Area(l.geom::geography)
-               ) AS still_wrong
+        SELECT count(*) AS n
           FROM lot_search_index l
           JOIN nsw_cadastre_lots c ON c.lotidstring = l.lotidstring
          WHERE c.planlotarea IS NULL
            AND l.geom IS NOT NULL
         """
     )
-    return dict(cur.fetchone())
+    return cur.fetchone()["n"]
 
 
 def main() -> int:
@@ -120,51 +157,55 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--dry-run", action="store_true", help="Counts only, no writes.")
     g.add_argument("--apply", action="store_true", help="Perform the repair.")
+    ap.add_argument("--restart", action="store_true",
+                    help="Ignore any saved cursor and start from the beginning.")
     args = ap.parse_args()
 
     conn = connect()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"SET statement_timeout = {STATEMENT_TIMEOUT_MS}")
 
-    before = survey(cur)
-    print("BEFORE")
-    print(f"  rows whose area came from shape_area : {before['affected']:,}")
-    print(f"  ...still holding the wrong value     : {before['still_wrong']:,}")
-    print(f"  ...with capacity derived from it     : {before['with_capacity']:,}")
-
     if args.dry_run:
+        print(f"rows in scope (planlotarea IS NULL): {target_count(cur):,}")
+        print(f"saved cursor: {load_cursor() or '(none — would start at the beginning)'}")
         print("\nDRY RUN — nothing written.")
         conn.close()
         return 0
 
-    print(f"\nAPPLYING in batches of {BATCH:,}...")
+    cursor = "" if args.restart else load_cursor()
+    inclusive = False
+    if cursor:
+        print(f"resuming from saved cursor {cursor}")
+    else:
+        print("starting from the beginning of the key order")
+
+    print(f"APPLYING, adaptive batch from {BATCH_START:,} "
+          f"(target {TARGET_LOW_S:.0f}-{TARGET_HIGH_S:.0f}s/batch)...")
     total = 0
     scanned = 0
-    cursor = ""      # sorts before every lotidstring
+    batch = BATCH_START
     t0 = time.time()
+
     while True:
         # KEYSET PAGINATION, and the reason matters.
         #
         # The first version selected candidates with
         # ``lot_area_m2 IS DISTINCT FROM ST_Area(...) LIMIT 50000`` and no
-        # cursor. Every batch then had to scan PAST all the rows it had
-        # already repaired to find 50,000 that still needed work, so batch
-        # cost grew with progress and the run died on the statement timeout
-        # after 250,000 rows. Walking the primary key instead makes each
-        # batch a bounded index range whatever has gone before.
+        # cursor, so every batch scanned PAST the rows it had already repaired
+        # and batch cost grew with progress. Walking the primary key instead
+        # makes each batch a bounded index range whatever has gone before.
         #
-        # The consequence: the cursor must advance over EVERY target row, so
-        # the already-repaired ones cannot be filtered out of the candidate
-        # SELECT -- doing that would return 0 rows for a fully-repaired range
-        # and read as "finished". The skip belongs in the UPDATE's WHERE,
-        # below, where it saves the write without stalling the cursor.
+        # The consequence: the cursor must advance over EVERY row in scope, so
+        # already-repaired rows cannot be filtered out of the candidate SELECT
+        # -- a fully-repaired range would return 0 and read as "finished". The
+        # skip belongs in the UPDATE's WHERE, where it saves the write without
+        # stalling the cursor.
         #
         # geom IS NOT NULL is load-bearing, not decoration: without it a row
         # with no geometry would take ST_Area(NULL) = NULL and have its area
         # blanked. There are no such rows today; the invariant should not
         # depend on that staying true.
-        cur.execute(
-            """
+        sql = f"""
             WITH todo AS (
                 SELECT l.lotidstring,
                        ST_Area(l.geom::geography) AS true_area
@@ -172,7 +213,20 @@ def main() -> int:
                   JOIN nsw_cadastre_lots c ON c.lotidstring = l.lotidstring
                  WHERE c.planlotarea IS NULL
                    AND l.geom IS NOT NULL
-                   AND l.lotidstring > %s
+                   AND l.lotidstring {'>=' if inclusive else '>'} %s
+                   -- THE SAME BOUND ON BOTH SIDES, and it is not redundant.
+                   -- The join is a merge of two lotidstring index scans. With
+                   -- the bound on l alone, the cadastre side still began at
+                   -- the start of its index and fast-forwarded to the cursor
+                   -- on EVERY batch -- a cost that grew as the cursor advanced
+                   -- and was identical for a 500-row batch and a 20,000-row
+                   -- one (~70s either way). That is why shrinking the batch
+                   -- cut throughput 16x for no saving. Measured 2026-08-10:
+                   -- 60,271ms to the first row without this line, 331ms for
+                   -- the whole 20,000 with it. The join key is UNIQUE, so
+                   -- c.lotidstring = l.lotidstring and bounding both is
+                   -- semantically free -- it only lets the planner seek.
+                   AND c.lotidstring {'>=' if inclusive else '>'} %s
                  ORDER BY l.lotidstring
                  LIMIT %s
             ), upd AS (
@@ -187,30 +241,59 @@ def main() -> int:
             SELECT (SELECT count(*) FROM todo)  AS seen,
                    (SELECT count(*) FROM upd)   AS written,
                    (SELECT max(lotidstring) FROM todo) AS next_cursor
-            """,
-            (cursor, BATCH),
-        )
+        """
+        t_batch = time.time()
+        try:
+            cur.execute(sql, (cursor, cursor, batch))
+        except psycopg2.errors.QueryCanceled:
+            # A timeout is information, not a failure: this batch was too big
+            # for the current stretch of the table. Roll back, halve, retry the
+            # SAME cursor. Dying here is what cost the earlier runs.
+            conn.rollback()
+            if batch <= BATCH_MIN:
+                print(f"  ! timeout at the minimum batch of {BATCH_MIN:,} — "
+                      f"stopping rather than spinning.", flush=True)
+                raise
+            batch = max(BATCH_MIN, batch // 2)
+            print(f"  ! batch timed out — retrying at {batch:,}", flush=True)
+            continue
+
         row = cur.fetchone()
         conn.commit()
+        elapsed = time.time() - t_batch
 
         seen = row["seen"]
         total += row["written"]
         scanned += seen
         if row["next_cursor"] is not None:
             cursor = row["next_cursor"]
+            inclusive = False
+            save_cursor(cursor)      # only after the commit it describes
         if seen:
             rate = scanned / max(time.time() - t0, 0.001)
             print(f"  scanned {scanned:,} / written {total:,} "
-                  f"({rate:,.0f} rows/s)", flush=True)
-        if seen < BATCH:
+                  f"({rate:,.0f} rows/s, batch {batch:,} in {elapsed:.0f}s)",
+                  flush=True)
+        if seen < batch:
             break
 
-    after = survey(cur)
-    print("\nAFTER")
-    print(f"  rows updated                 : {total:,}")
-    print(f"  still holding a wrong area   : {after['still_wrong']:,}   (0 = done)")
-    print(f"  still holding stale capacity : {after['with_capacity']:,}"
-          f"   (0 = all marked for recompute)")
+        # Steer toward the target window. Grow gently, shrink hard -- an
+        # oversized batch costs a whole wasted attempt, an undersized one only
+        # costs a little overhead.
+        if elapsed < TARGET_LOW_S:
+            batch = min(BATCH_MAX, int(batch * 1.5))
+        elif elapsed > TARGET_HIGH_S:
+            batch = max(BATCH_MIN, int(batch * 0.6))
+
+    print(f"\nDONE — reached the end of the key order.")
+    print(f"  rows scanned in scope : {scanned:,}")
+    print(f"  rows rewritten        : {total:,}")
+    print("  (rows already correct from an earlier run are scanned but not "
+          "rewritten, so 'rewritten' counts only this run's work.)")
+    if CURSOR_FILE.exists():
+        CURSOR_FILE.unlink()
+        print(f"  cleared {CURSOR_FILE}")
+
     print("\nNEXT, deliberately and separately:")
     print("  python scripts/build_lot_search_index.py --phase compute "
           "--all-lgas --trigger lot_area_mercator_fix")
