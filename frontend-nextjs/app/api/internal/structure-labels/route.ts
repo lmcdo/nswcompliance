@@ -88,6 +88,56 @@ function latLngToTile(lat: number, lng: number, zoom: number): [number, number] 
   return [x, y];
 }
 
+/**
+ * Fractional slippy-map coordinates — the same maths as latLngToTile but
+ * WITHOUT the floor, so a point can be located inside a tile rather than
+ * merely identified with one.
+ */
+function latLngToTileFractional(lat: number, lng: number, zoom: number): [number, number] {
+  const n = 2 ** zoom;
+  const x = ((lng + 180) / 360) * n;
+  const latRad = (lat * Math.PI) / 180;
+  const y = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+  return [x, y];
+}
+
+/**
+ * Project a lat/lng ring into pixel coordinates on the stitched 3x3 image.
+ *
+ * WHY THE LOT BOUNDARY IS NOT OPTIONAL
+ * ------------------------------------
+ * The tile is 768px at ~10cm/pixel — roughly 77 metres across. In a dense
+ * suburb that spans several properties. Without the boundary drawn, a labeller
+ * cannot tell which structures belong to the sampled lot, and would mark the
+ * neighbours' sheds. The detector intersects its findings with the parcel and
+ * would not. The two sides would then be measuring different populations and
+ * the resulting recall figure would be meaningless — a confident number built
+ * on a mismatch.
+ *
+ * Returns null rather than a partial outline if anything is missing, so the UI
+ * can refuse to show the tile at all instead of showing an unbounded one.
+ */
+function projectRingToPixels(
+  ring: [number, number][],
+  cx: number,
+  cy: number,
+  grid: number,
+  zoom: number,
+): [number, number][] | null {
+  if (!Array.isArray(ring) || ring.length < 3) return null;
+  const half = Math.floor(grid / 2);
+  // Top-left corner of the stitched image, in fractional tile units.
+  const originX = cx - half;
+  const originY = cy - half;
+  const out: [number, number][] = [];
+  for (const [lat, lng] of ring) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    const [fx, fy] = latLngToTileFractional(lat, lng, zoom);
+    out.push([(fx - originX) * TILE_SIZE, (fy - originY) * TILE_SIZE]);
+  }
+  return out;
+}
+
 function tileUrls(lat: number, lng: number): { urls: string[]; cx: number; cy: number } {
   const [cx, cy] = latLngToTile(lat, lng, ZOOM);
   const half = Math.floor(GRID / 2);
@@ -154,11 +204,17 @@ export async function GET(req: NextRequest) {
 
     // Explicit column list. structure_labels holds no detector output, and
     // naming the columns keeps it that way if the table ever gains one.
+    // The lot polygon comes from the SAME table the sampler drew from, joined
+    // on the same lotidstring, so the outline is guaranteed to be the lot that
+    // was sampled — not a re-geocoded approximation of it.
     const { rows } = await pool.query(
-      `SELECT id, address, lat, lng, lga_name, zone_code, lot_area_m2
-         FROM structure_labels
-        WHERE sample_id = $1 AND status = 'pending'
-        ORDER BY id
+      `SELECT sl.id, sl.address, sl.lat, sl.lng, sl.lga_name, sl.zone_code,
+              sl.lot_area_m2, sl.lotidstring,
+              ST_AsGeoJSON(ST_Transform(l.geom, 4326)) AS lot_geojson
+         FROM structure_labels sl
+         LEFT JOIN lot_search_index l ON l.lotidstring = sl.lotidstring
+        WHERE sl.sample_id = $1 AND sl.status = 'pending'
+        ORDER BY sl.id
         LIMIT 1`,
       [sampleId],
     );
@@ -179,11 +235,36 @@ export async function GET(req: NextRequest) {
     const { urls, cx, cy } = tileUrls(Number(item.lat), Number(item.lng));
     const tileSha = await hashTiles(urls);
 
+    // Outer ring only. A lot with holes is vanishingly rare here and an inner
+    // ring drawn as if it were the boundary would mislead — better to show the
+    // outline we are sure of.
+    let lotOutline: [number, number][] | null = null;
+    if (item.lot_geojson) {
+      try {
+        const g = JSON.parse(item.lot_geojson);
+        const coords =
+          g.type === 'MultiPolygon' ? g.coordinates?.[0]?.[0] : g.coordinates?.[0];
+        if (Array.isArray(coords)) {
+          // GeoJSON is [lng, lat]; the projector takes [lat, lng].
+          const ring = coords.map((c: number[]) => [c[1], c[0]] as [number, number]);
+          lotOutline = projectRingToPixels(ring, cx, cy, GRID, ZOOM);
+        }
+      } catch {
+        lotOutline = null; // malformed geometry -> no outline, and the UI refuses
+      }
+    }
+
     return NextResponse.json({
       done: false,
       counts,
       item: {
-        id: item.id,
+        // Number(), not the raw value: structure_labels.id is BIGSERIAL, and
+        // node-postgres returns int8 as a STRING to avoid precision loss. Left
+        // as-is it round-trips to the POST as "1", which the numeric guard
+        // there rejected with "id required" — the save failed on the very
+        // first label. Ids here are small; Number is safe well past any
+        // realistic sample size.
+        id: Number(item.id),
         address: item.address,
         lat: Number(item.lat),
         lng: Number(item.lng),
@@ -206,6 +287,12 @@ export async function GET(req: NextRequest) {
         sha256: tileSha, // null when any tile failed — never a partial hash
         licence: LICENCE,
       },
+      // Pixel ring for the sampled lot, or null if the geometry was missing or
+      // malformed. The UI must refuse to accept labels when this is null: a
+      // tile covering ~77m of a dense suburb spans several properties, and
+      // without the boundary the labeller cannot know which structures belong
+      // to the lot the detector will be scored against.
+      lot_outline: lotOutline,
     });
   } catch (err) {
     console.error('[structure-labels GET]', err);
@@ -237,8 +324,16 @@ export async function POST(req: NextRequest) {
     const { id, status, labels, skip_reason, labelled_by, seconds_spent, tile } =
       body ?? {};
 
-    if (typeof id !== 'number') {
-      return NextResponse.json({ error: 'id required' }, { status: 400 });
+    // Accept a numeric string as well as a number. The GET now coerces, but a
+    // bigint arriving as a string is the normal shape from this driver and a
+    // guard that rejects it is guarding the wrong thing. Still refuses
+    // anything that is not a positive integer.
+    const rowId = Number(id);
+    if (!Number.isInteger(rowId) || rowId <= 0) {
+      return NextResponse.json(
+        { error: `id must be a positive integer, got ${JSON.stringify(id)}` },
+        { status: 400 },
+      );
     }
     if (status !== 'labelled' && status !== 'skipped') {
       return NextResponse.json(
@@ -271,7 +366,7 @@ export async function POST(req: NextRequest) {
                 labelled_at = now(), seconds_spent = $4
           WHERE id = $1 AND status = 'pending'
         RETURNING id`,
-        [id, skip_reason, labelled_by, seconds_spent ?? null],
+        [rowId, skip_reason, labelled_by, seconds_spent ?? null],
       );
       if (skipRes.rowCount === 0) {
         return NextResponse.json(
@@ -349,7 +444,7 @@ export async function POST(req: NextRequest) {
         WHERE id = $1 AND status = 'pending'
       RETURNING id`,
       [
-        id,
+        rowId,
         JSON.stringify(labels),
         labelled_by,
         seconds_spent ?? null,

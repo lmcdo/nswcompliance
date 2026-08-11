@@ -52,6 +52,7 @@ export default function StructureLabeller() {
   const [item, setItem] = useState<Item | null>(null);
   const [tile, setTile] = useState<Tile | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [lotOutline, setLotOutline] = useState<[number, number][] | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,6 +84,7 @@ export default function StructureLabeller() {
       setDone(Boolean(d.done));
       setItem(d.item ?? null);
       setTile(d.tile ?? null);
+      setLotOutline(d.lot_outline ?? null);
       startedAt.current = Date.now();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'load failed');
@@ -147,6 +149,18 @@ export default function StructureLabeller() {
     if (!item) return;
     if (!labeller.trim()) {
       setError('Enter your name first — a label with no author is not evidence.');
+      return;
+    }
+    if (status === 'labelled' && !lotOutline) {
+      // Refuse rather than accept a guess. Labels drawn without knowing the
+      // lot boundary would be scored against a detector that DOES know it, so
+      // they would not measure recall — they would measure the disagreement
+      // between two different questions.
+      setError(
+        'No lot boundary for this parcel — cannot label it. Skip it instead. ' +
+        'Labelling without the boundary would score structures on neighbouring ' +
+        'land against this lot.',
+      );
       return;
     }
     setSaving(true);
@@ -294,6 +308,25 @@ export default function StructureLabeller() {
                 />
               ))}
             </div>
+
+            {/* The sampled lot. Without this the labeller cannot tell which
+                structures belong to the property being scored — the tile spans
+                roughly 77 m and covers several parcels in a dense suburb. */}
+            {lotOutline && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                viewBox={`0 0 ${tile.width} ${tile.height}`}
+                preserveAspectRatio="none"
+              >
+                <polygon
+                  points={lotOutline.map(([x, y]) => `${x},${y}`).join(' ')}
+                  fill="rgba(56,189,248,0.10)"
+                  stroke="#38bdf8"
+                  strokeWidth={4}
+                  strokeDasharray="10 6"
+                />
+              </svg>
+            )}
 
             {/* Committed boxes */}
             {boxes.map((b, i) => (
