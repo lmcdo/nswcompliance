@@ -1,0 +1,78 @@
+{
+  "tier": "standard",
+  "justification": "Executes stage (a) of the staged plan in issue #770. Five dependency majors plus a rewrite of 12 URL stubs across 5 test suites. No product code changes, but the test harness is what every other gate depends on, so a wrong move here makes future checks unreliable rather than loud.",
+  "commit_hash": "e5fb5946",
+  "files": [
+    "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/GrannyFlatTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/ShadowTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/SolarYieldTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/ThreatRadarTool-paywall.test.tsx",
+    "frontend-nextjs/package-lock.json",
+    "frontend-nextjs/package.json"
+  ],
+  "falsifiable_check": {
+    "command": "npx jest --ci --silent",
+    "fails_when": "Any of the 5 Tool-paywall suites cannot set a test URL, or any assertion that depended on the old window.location stub now reads a different value. Measured in both directions on this branch: BEFORE the rewrite, jest-environment-jsdom 30 gave 5 failed suites and 45 failed tests, every one TypeError: Cannot redefine property: location. AFTER, 83 suites and 1100 tests pass. Not a self-comparison: the suites assert rendered paywall behaviour authored before this change, and the rewrite alters only how the URL is set.",
+    "external_authority": "jsdom decides whether location is redefinable, not this change. Probed directly before editing anything: history.replaceState DOES update location.pathname and search under jsdom 26, defineProperty on window.location DOES throw, and window.history IS still configurable."
+  },
+  "pre_impl": {
+    "existing_data": "Issue #770 (2026-07-17) already ran a full battery on the predecessor PR #732 and concluded the 23-major bundle cannot land as one PR, with a 5-stage plan. Its stage (a) list was re-verified today and still holds. The failure it predicted, that jsdom 26 makes window.location non-configurable and breaks 5 Tool-paywall suites, matches exactly what CI reported on #863 three weeks later.",
+    "assumption_mismatch": "I expected better-sqlite3 13 to be the risk and briefly had evidence for it: it segfaulted on load. Testing main as a CONTROL disproved that, because the current 9.6.0 fails to load its native binding on this machine too. The bump was not the cause, and reporting it as one would have been a false finding. Separately the package has NO source imports at all, so the correct action is deletion, not upgrade.",
+    "external_source_error": "No network or database access. The only external authority is jsdom behaviour, which was probed rather than assumed, and npm resolution, pinned by the lockfile in this commit.",
+    "new_vs_existing": "No new test utility beyond a two-line helper per file. The helper captures replaceState at module load specifically because beforeEach replaces window.history with a mock: a later lookup would find the mock and the URL would silently never change, which is a failure that passes."
+  },
+  "functions": [
+    {
+      "name": "setTestUrl",
+      "file_line": "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx:23",
+      "input": "a path plus query string, e.g. /reports/flood?payment=success&report_id=x",
+      "output": "navigates the jsdom document so window.location.pathname and .search actually change, replacing 12 stubs that jsdom 26 now rejects",
+      "if_none": "it cannot return nothing; the failure mode is silent, not empty — if the captured replaceState were looked up after beforeEach installed the history mock, the call would hit a jest.fn(), the URL would not change, and the test would assert against the wrong URL while passing"
+    }
+  ],
+  "values": [
+    {
+      "value": "before: 5 suites and 45 tests failed on Cannot redefine property: location; after: 83 suites and 1100 tests pass, tsc exit 0",
+      "read_at": "npx jest --ci --silent and npx tsc --noEmit in frontend-nextjs on this branch, 2026-08-12",
+      "if_missing": "without the before-number the after-number proves only that tests run, not that this change fixed anything"
+    },
+    {
+      "value": "npm audit on main: 33 advisories, 17 high; 19 need majors; next and postcss (both HIGH) are fixed only by Next 16",
+      "read_at": "npm audit --json in frontend-nextjs at origin/main, 2026-08-12",
+      "if_missing": "without it these upgrades look like bot noise; this is the only real reason to continue past stage (a)"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "beforeEach mocks window.history before a test tries to set its URL.",
+      "what_happens": "setTestUrl would call the jest.fn() mock instead of the real History, the URL would never change, and the test would assert paywall behaviour against the WRONG url while still passing: a green test proving nothing.",
+      "mitigated": true,
+      "how": "The helper binds window.history.replaceState at module load, before any beforeEach runs, and calls that captured reference. Proven by the suites themselves: the payment-success cases read window.location.search and only pass when the URL actually changed.",
+      "repro": "grep -n realReplaceState frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx"
+    },
+    {
+      "scenario": "A future jsdom makes window.history unforgeable too, as it did to location.",
+      "what_happens": "The history mock in beforeEach starts throwing and all 5 suites break again, the same way and for the same reason.",
+      "mitigated": false,
+      "how": "Not mitigated. Recorded so the next person recognises the shape instead of re-diagnosing it. The durable fix would be to stop stubbing browser globals and read the URL through an injectable source, which is a component change and out of scope for a dependency stage.",
+      "repro": "npx jest __tests__/components/tools --ci"
+    },
+    {
+      "scenario": "better-sqlite3 is bumped later on the strength of the stage (a) list in #770.",
+      "what_happens": "It cannot be verified on this machine at any version, so the bump lands unverified. Worse, it is dead weight: nothing imports it, so a green build says nothing about whether it works.",
+      "mitigated": true,
+      "how": "Excluded from this commit, with the reason in the commit message and in ~/.claude/plans/ce-CURRENT-AIM.md, which now says DELETE rather than bump. The README claim that SQLite is the database is also wrong and flagged there.",
+      "repro": "git grep -lI better-sqlite3 -- '*.ts' '*.tsx'"
+    }
+  ],
+  "mutation_analysis": "The rewrite is the mutation. Reverting any one setTestUrl call to the old defineProperty form reintroduces Cannot redefine property: location for that suite, which is how the 45 failures were produced in the first place. Removing the module-load binding and calling window.history.replaceState directly is the subtler mutation: the URL silently stops changing because beforeEach has already swapped history for a mock, and the payment-success tests then fail on a missing element rather than on a thrown error, which is exactly why the binding is captured at module scope rather than inside the helper.",
+  "residual_risk": "Stage (a) is tooling only; the two HIGH advisories that motivate this work (next, postcss) are untouched and remain until stage (c). The 5 suites now depend on window.history staying configurable, the same class of assumption that just broke. better-sqlite3 remains declared, unused, unverifiable, and documented as the database in a README that is wrong.",
+  "post_merge": {
+    "db_reset": "No. No schema, data or query change.",
+    "secrets": "None read or written.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes. Confirm the CI jest job passes on the self-hosted runner, since the local run is Windows and CI is Linux. The jsdom behaviour is platform-independent but the native better-sqlite3 binding is not, and that difference is what made the control test necessary."
+  }
+}
