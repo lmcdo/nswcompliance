@@ -1,9 +1,10 @@
 {
   "tier": "minor",
   "justification": "Two config lines and no code: scope an existing cancel-in-progress to pull requests, and stop tracking a per-session hook marker. No product behaviour changes and nothing is served differently.",
-  "commit_hash": "703f2288",
+  "commit_hash": "21232940",
   "files": [
     ".github/workflows/gates.yml",
+    ".github/workflows/main-red-alarm.yml",
     ".gitignore"
   ],
   "break_it": [
@@ -27,6 +28,13 @@
       "mitigated": true,
       "how": "Stated in the PR body and in ~/.claude/plans/meta-session-reconciliation-2026-08-11.md: the free fix is a self-hosted runner. This PR is a correctness fix that happens to live in the same file.",
       "repro": "gh api repos/lmcdo/nswcompliance/check-runs/$(gh api repos/lmcdo/nswcompliance/commits/fb562232/check-runs --jq '.check_runs[0].id')/annotations --jq '.[0].message'"
+    },
+    {
+      "scenario": "The Windows machine is asleep or WSL is shut down when someone pushes a PR.",
+      "what_happens": "No runner is listening, so every job QUEUES instead of failing. The PR shows checks pending forever, which reads as 'still running' — the same misleading state a conflicting PR produced, and the reason check_pr_gates.py exists.",
+      "mitigated": true,
+      "how": "runs-on reads the repo variable RUNNER_LABEL rather than a literal, so unsetting it returns every job to ubuntu-latest with no code change and no PR. check_pr_gates.py still refuses to merge while no successful run exists for the head sha, so a queued job cannot be mistaken for a pass.",
+      "repro": "gh api repos/lmcdo/nswcompliance/actions/runners --jq '.runners[] | \"\\(.name) \\(.status)\"'"
     }
   ],
   "post_merge": {
