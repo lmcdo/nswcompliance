@@ -1,0 +1,84 @@
+{
+  "generated_at": "2026-02-20T01:13:05.901Z",
+  "total_duplicates": 7,
+  "total_to_supersede": 7,
+  "actions": [
+    {
+      "pdf_name": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf",
+      "action": "keep",
+      "document_id": "State_Environmental_Planning_Policy_(Biodiversity_and_Conservation)_2021___NSW_Legislation",
+      "supersede": [
+        {
+          "document_id": "State_Environmental_Planning_Policy_Biodiversity_and_Conservation_2021__NSW_Legislation",
+          "action": "mark_superseded"
+        }
+      ]
+    },
+    {
+      "pdf_name": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf",
+      "action": "keep",
+      "document_id": "State_Environmental_Planning_Policy_(Industry_and_Employment)_2021___NSW_Legislation",
+      "supersede": [
+        {
+          "document_id": "State_Environmental_Planning_Policy_Industry_and_Employment_2021__NSW_Legislation",
+          "action": "mark_superseded"
+        }
+      ]
+    },
+    {
+      "pdf_name": "State Environmental Planning Policy (Planning Systems) 2021 - NSW Legislation.pdf",
+      "action": "keep",
+      "document_id": "State_Environmental_Planning_Policy_(Planning_Systems)_2021___NSW_Legislation",
+      "supersede": [
+        {
+          "document_id": "State_Environmental_Planning_Policy_Planning_Systems_2021__NSW_Legislation",
+          "action": "mark_superseded"
+        }
+      ]
+    },
+    {
+      "pdf_name": "State Environmental Planning Policy (Primary Production) 2021 - NSW Legislation.pdf",
+      "action": "keep",
+      "document_id": "State_Environmental_Planning_Policy_(Primary_Production)_2021___NSW_Legislation",
+      "supersede": [
+        {
+          "document_id": "State_Environmental_Planning_Policy_Primary_Production_2021__NSW_Legislation",
+          "action": "mark_superseded"
+        }
+      ]
+    },
+    {
+      "pdf_name": "State Environmental Planning Policy (Resilience and Hazards) 2021 - NSW Legislation.pdf",
+      "action": "keep",
+      "document_id": "State_Environmental_Planning_Policy_(Resilience_and_Hazards)_2021___NSW_Legislation",
+      "supersede": [
+        {
+          "document_id": "State_Environmental_Planning_Policy_Resilience_and_Hazards_2021__NSW_Legislation",
+          "action": "mark_superseded"
+        }
+      ]
+    },
+    {
+      "pdf_name": "State Environmental Planning Policy (Sustainable Buildings) 2022 - NSW Legislation.pdf",
+      "action": "keep",
+      "document_id": "State_Environmental_Planning_Policy_(Sustainable_Buildings)_2022___NSW_Legislation",
+      "supersede": [
+        {
+          "document_id": "State_Environmental_Planning_Policy_Sustainable_Buildings_2022__NSW_Legislation",
+          "action": "mark_superseded"
+        }
+      ]
+    },
+    {
+      "pdf_name": "State Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation.pdf",
+      "action": "keep",
+      "document_id": "State_Environmental_Planning_Policy_(Transport_and_Infrastructure)_2021___NSW_Legislation",
+      "supersede": [
+        {
+          "document_id": "State_Environmental_Planning_Policy_Transport_and_Infrastructure_2021__NSW_Legislation",
+          "action": "mark_superseded"
+        }
+      ]
+    }
+  ]
+}

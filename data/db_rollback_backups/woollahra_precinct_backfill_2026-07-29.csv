@@ -1,0 +1,351 @@
+id,chapter,bare_ref,old_v2_precinct_id,old_v2_dcp_layer,new_v2_precinct_id
+121756,chapter-b1-residential-precincts,B1_1,,use_specific,Woollahra Residential Precincts
+121757,chapter-b1-residential-precincts,B1_1_2,,use_specific,Woollahra Residential Precincts
+121758,chapter-b1-residential-precincts,B1_1_4,,use_specific,Woollahra Residential Precincts
+121759,chapter-b1-residential-precincts,B1_1_5,,use_specific,Woollahra Residential Precincts
+121777,chapter-b1-residential-precincts,B1_10,,,Vaucluse West Precinct
+121778,chapter-b1-residential-precincts,B1_10_1,,use_specific,Vaucluse West Precinct
+121779,chapter-b1-residential-precincts,B1_11,,,Vaucluse East Precinct
+121780,chapter-b1-residential-precincts,B1_11_1,,use_specific,Vaucluse East Precinct
+121760,chapter-b1-residential-precincts,B1_2,,,Darling Point Precinct
+121761,chapter-b1-residential-precincts,B1_2_1,,use_specific,Darling Point Precinct
+121762,chapter-b1-residential-precincts,B1_2_2,,use_specific,Darling Point Precinct
+121763,chapter-b1-residential-precincts,B1_3,,,Double Bay Precinct
+121764,chapter-b1-residential-precincts,B1_3_1,,use_specific,Double Bay Precinct
+121765,chapter-b1-residential-precincts,B1_4,,,Wallaroy Precinct
+121766,chapter-b1-residential-precincts,B1_4_1,,use_specific,Wallaroy Precinct
+121767,chapter-b1-residential-precincts,B1_5,,,Manning Road Precinct
+121768,chapter-b1-residential-precincts,B1_5_1,,use_specific,Manning Road Precinct
+121769,chapter-b1-residential-precincts,B1_6,,,Point Piper Precinct
+121770,chapter-b1-residential-precincts,B1_6_1,,use_specific,Point Piper Precinct
+121771,chapter-b1-residential-precincts,B1_7,,,Bellevue Hill South Precinct
+121772,chapter-b1-residential-precincts,B1_7_1,,use_specific,Bellevue Hill South Precinct
+121773,chapter-b1-residential-precincts,B1_8,,,Bellevue Hill North Precinct
+121774,chapter-b1-residential-precincts,B1_8_1,,use_specific,Bellevue Hill North Precinct
+121775,chapter-b1-residential-precincts,B1_9,,,Rose Bay Precinct
+121776,chapter-b1-residential-precincts,B1_9_1,,use_specific,Rose Bay Precinct
+121755,chapter-b1-residential-precincts,preamble,,,Woollahra Residential Precincts
+121782,chapter-b2-neighbourhood-hcas,B2_1,,,Woollahra Neighbourhood HCAs
+121783,chapter-b2-neighbourhood-hcas,B2_1_2,,condition,Woollahra Neighbourhood HCAs
+121784,chapter-b2-neighbourhood-hcas,B2_1_4,,condition,Woollahra Neighbourhood HCAs
+121785,chapter-b2-neighbourhood-hcas,B2_1_6,,condition,Woollahra Neighbourhood HCAs
+121786,chapter-b2-neighbourhood-hcas,B2_1_7,,condition,Woollahra Neighbourhood HCAs
+121796,chapter-b2-neighbourhood-hcas,B2_10,,condition,Rose Bay Gardens Estate HCA
+121797,chapter-b2-neighbourhood-hcas,B2_11,,condition,Kent Road HCA
+121798,chapter-b2-neighbourhood-hcas,B2_12,,condition,Bell Street HCA
+121787,chapter-b2-neighbourhood-hcas,B2_2,,condition,Etham Avenue HCA
+121788,chapter-b2-neighbourhood-hcas,B2_3,,condition,Darling Point Road HCA
+121789,chapter-b2-neighbourhood-hcas,B2_4,,condition,Mona Road HCA
+121790,chapter-b2-neighbourhood-hcas,B2_5,,condition,Loftus Street and Mona Road HCA
+121791,chapter-b2-neighbourhood-hcas,B2_6,,condition,Aston Gardens HCA
+121792,chapter-b2-neighbourhood-hcas,B2_7,,,Victoria Road HCA
+121794,chapter-b2-neighbourhood-hcas,B2_8,,condition,Balfour Road HCA
+121795,chapter-b2-neighbourhood-hcas,B2_9,,condition,Beresford Estate HCA
+121781,chapter-b2-neighbourhood-hcas,preamble,,,Woollahra Neighbourhood HCAs
+121544,chapter-c1-paddington-hca,B3_8,,generic,Paddington HCA
+121520,chapter-c1-paddington-hca,C1_1,,condition,Paddington HCA
+121521,chapter-c1-paddington-hca,C1_1_2,,condition,Paddington HCA
+121522,chapter-c1-paddington-hca,C1_1_3,,condition,Paddington HCA
+121523,chapter-c1-paddington-hca,C1_1_6,,condition,Paddington HCA
+121524,chapter-c1-paddington-hca,C1_1_7,,condition,Paddington HCA
+121525,chapter-c1-paddington-hca,C1_2,,condition,Paddington HCA
+121526,chapter-c1-paddington-hca,C1_2_2,,condition,Paddington HCA
+121527,chapter-c1-paddington-hca,C1_2_4,,condition,Paddington HCA
+121528,chapter-c1-paddington-hca,C1_2_5,,condition,Paddington HCA
+121529,chapter-c1-paddington-hca,C1_3,,condition,Paddington HCA
+121530,chapter-c1-paddington-hca,C1_3_1,,condition,Paddington HCA
+121540,chapter-c1-paddington-hca,C1_3_10,,condition,Paddington HCA
+121541,chapter-c1-paddington-hca,C1_3_11,,condition,Paddington HCA
+121542,chapter-c1-paddington-hca,C1_3_12,,condition,Paddington HCA
+121543,chapter-c1-paddington-hca,C1_3_13,,condition,Paddington HCA
+121545,chapter-c1-paddington-hca,C1_3_14,,condition,Paddington HCA
+121532,chapter-c1-paddington-hca,C1_3_2,,condition,Paddington HCA
+121533,chapter-c1-paddington-hca,C1_3_3,,condition,Paddington HCA
+121534,chapter-c1-paddington-hca,C1_3_4,,condition,Paddington HCA
+121535,chapter-c1-paddington-hca,C1_3_5,,condition,Paddington HCA
+121536,chapter-c1-paddington-hca,C1_3_6,,condition,Paddington HCA
+121537,chapter-c1-paddington-hca,C1_3_7,,condition,Paddington HCA
+121538,chapter-c1-paddington-hca,C1_3_8,,condition,Paddington HCA
+121539,chapter-c1-paddington-hca,C1_3_9,,condition,Paddington HCA
+121546,chapter-c1-paddington-hca,C1_4,,condition,Paddington HCA
+121547,chapter-c1-paddington-hca,C1_4_1,,condition,Paddington HCA
+121556,chapter-c1-paddington-hca,C1_4_10,,condition,Paddington HCA
+121531,chapter-c1-paddington-hca,C1_4_10,,condition,Paddington HCA
+121557,chapter-c1-paddington-hca,C1_4_11,,condition,Paddington HCA
+121548,chapter-c1-paddington-hca,C1_4_2,,condition,Paddington HCA
+121549,chapter-c1-paddington-hca,C1_4_3,,condition,Paddington HCA
+121550,chapter-c1-paddington-hca,C1_4_4,,condition,Paddington HCA
+121551,chapter-c1-paddington-hca,C1_4_5,,condition,Paddington HCA
+121552,chapter-c1-paddington-hca,C1_4_6,,condition,Paddington HCA
+121553,chapter-c1-paddington-hca,C1_4_7,,condition,Paddington HCA
+121554,chapter-c1-paddington-hca,C1_4_8,,condition,Paddington HCA
+121555,chapter-c1-paddington-hca,C1_4_9,,condition,Paddington HCA
+121558,chapter-c1-paddington-hca,C1_5,,condition,Paddington HCA
+121559,chapter-c1-paddington-hca,C1_5_1,,condition,Paddington HCA
+121568,chapter-c1-paddington-hca,C1_5_10,,condition,Paddington HCA
+121569,chapter-c1-paddington-hca,C1_5_11,,condition,Paddington HCA
+121560,chapter-c1-paddington-hca,C1_5_2,,condition,Paddington HCA
+121561,chapter-c1-paddington-hca,C1_5_3,,condition,Paddington HCA
+121562,chapter-c1-paddington-hca,C1_5_4,,condition,Paddington HCA
+121563,chapter-c1-paddington-hca,C1_5_5,,condition,Paddington HCA
+121564,chapter-c1-paddington-hca,C1_5_6,,condition,Paddington HCA
+121565,chapter-c1-paddington-hca,C1_5_7,,condition,Paddington HCA
+121566,chapter-c1-paddington-hca,C1_5_8,,condition,Paddington HCA
+121567,chapter-c1-paddington-hca,C1_5_9,,condition,Paddington HCA
+121570,chapter-c1-paddington-hca,C1_6,,condition,Paddington HCA
+121571,chapter-c1-paddington-hca,C1_6_2,,condition,Paddington HCA
+121572,chapter-c1-paddington-hca,C1_6_3,,condition,Paddington HCA
+121519,chapter-c1-paddington-hca,preamble,,,Paddington HCA
+121811,chapter-c2-woollahra-hca,C2_1,,,Woollahra HCA
+121812,chapter-c2-woollahra-hca,C2_1_3,,condition,Woollahra HCA
+121813,chapter-c2-woollahra-hca,C2_1_5,,condition,Woollahra HCA
+121814,chapter-c2-woollahra-hca,C2_1_7,,condition,Woollahra HCA
+121815,chapter-c2-woollahra-hca,C2_2,,condition,Woollahra HCA
+121816,chapter-c2-woollahra-hca,C2_2_2,,condition,Woollahra HCA
+121817,chapter-c2-woollahra-hca,C2_2_3,,condition,Woollahra HCA
+121818,chapter-c2-woollahra-hca,C2_2_5,,condition,Woollahra HCA
+121819,chapter-c2-woollahra-hca,C2_2_7,,condition,Woollahra HCA
+121820,chapter-c2-woollahra-hca,C2_3,,condition,Woollahra HCA
+121821,chapter-c2-woollahra-hca,C2_3_1,,condition,Woollahra HCA
+121822,chapter-c2-woollahra-hca,C2_3_2,,condition,Woollahra HCA
+121823,chapter-c2-woollahra-hca,C2_3_3,,condition,Woollahra HCA
+121824,chapter-c2-woollahra-hca,C2_3_4,,condition,Woollahra HCA
+121825,chapter-c2-woollahra-hca,C2_3_5,,condition,Woollahra HCA
+121826,chapter-c2-woollahra-hca,C2_3_6,,condition,Woollahra HCA
+121827,chapter-c2-woollahra-hca,C2_3_7,,condition,Woollahra HCA
+121828,chapter-c2-woollahra-hca,C2_4,,condition,Woollahra HCA
+121829,chapter-c2-woollahra-hca,C2_4_1,,condition,Woollahra HCA
+121837,chapter-c2-woollahra-hca,C2_4_10,,condition,Woollahra HCA
+121838,chapter-c2-woollahra-hca,C2_4_11,,condition,Woollahra HCA
+121839,chapter-c2-woollahra-hca,C2_4_12,,condition,Woollahra HCA
+121830,chapter-c2-woollahra-hca,C2_4_2,,condition,Woollahra HCA
+121831,chapter-c2-woollahra-hca,C2_4_3,,condition,Woollahra HCA
+121832,chapter-c2-woollahra-hca,C2_4_4,,condition,Woollahra HCA
+121833,chapter-c2-woollahra-hca,C2_4_5,,condition,Woollahra HCA
+121834,chapter-c2-woollahra-hca,C2_4_6,,condition,Woollahra HCA
+121835,chapter-c2-woollahra-hca,C2_4_7,,condition,Woollahra HCA
+121836,chapter-c2-woollahra-hca,C2_4_8,,condition,Woollahra HCA
+121841,chapter-c2-woollahra-hca,C2_5,,condition,Woollahra HCA
+121842,chapter-c2-woollahra-hca,C2_5_1,,condition,Woollahra HCA
+121851,chapter-c2-woollahra-hca,C2_5_10,,condition,Woollahra HCA
+121852,chapter-c2-woollahra-hca,C2_5_11,,condition,Woollahra HCA
+121853,chapter-c2-woollahra-hca,C2_5_12,,condition,Woollahra HCA
+121854,chapter-c2-woollahra-hca,C2_5_13,,condition,Woollahra HCA
+121843,chapter-c2-woollahra-hca,C2_5_2,,condition,Woollahra HCA
+121844,chapter-c2-woollahra-hca,C2_5_3,,condition,Woollahra HCA
+121845,chapter-c2-woollahra-hca,C2_5_4,,condition,Woollahra HCA
+121846,chapter-c2-woollahra-hca,C2_5_5,,condition,Woollahra HCA
+121847,chapter-c2-woollahra-hca,C2_5_6,,condition,Woollahra HCA
+121848,chapter-c2-woollahra-hca,C2_5_7,,condition,Woollahra HCA
+121849,chapter-c2-woollahra-hca,C2_5_8,,condition,Woollahra HCA
+121850,chapter-c2-woollahra-hca,C2_5_9,,condition,Woollahra HCA
+121855,chapter-c2-woollahra-hca,C2_6,,condition,Woollahra HCA
+121856,chapter-c2-woollahra-hca,C2_6_1,,condition,Woollahra HCA
+121857,chapter-c2-woollahra-hca,C2_6_2,,condition,Woollahra HCA
+121858,chapter-c2-woollahra-hca,C2_6_3,,condition,Woollahra HCA
+121859,chapter-c2-woollahra-hca,C2_7,,condition,Woollahra HCA
+121810,chapter-c2-woollahra-hca,preamble,,,Woollahra HCA
+121861,chapter-c3-watsons-bay-hca,C3_1,,,Watsons Bay HCA
+121862,chapter-c3-watsons-bay-hca,C3_1_4,,condition,Watsons Bay HCA
+121863,chapter-c3-watsons-bay-hca,C3_1_7,,condition,Watsons Bay HCA
+121864,chapter-c3-watsons-bay-hca,C3_2,,condition,Watsons Bay HCA
+121865,chapter-c3-watsons-bay-hca,C3_2_2,,condition,Watsons Bay HCA
+121866,chapter-c3-watsons-bay-hca,C3_2_3,,condition,Watsons Bay HCA
+121867,chapter-c3-watsons-bay-hca,C3_2_4,,condition,Watsons Bay HCA
+121868,chapter-c3-watsons-bay-hca,C3_2_5,,condition,Watsons Bay HCA
+121869,chapter-c3-watsons-bay-hca,C3_3,,condition,Watsons Bay HCA
+121870,chapter-c3-watsons-bay-hca,C3_3_1,,condition,Watsons Bay HCA
+121879,chapter-c3-watsons-bay-hca,C3_3_10,,condition,Watsons Bay HCA
+121871,chapter-c3-watsons-bay-hca,C3_3_2,,condition,Watsons Bay HCA
+121872,chapter-c3-watsons-bay-hca,C3_3_3,,condition,Watsons Bay HCA
+121873,chapter-c3-watsons-bay-hca,C3_3_4,,condition,Watsons Bay HCA
+121874,chapter-c3-watsons-bay-hca,C3_3_5,,condition,Watsons Bay HCA
+121875,chapter-c3-watsons-bay-hca,C3_3_6,,condition,Watsons Bay HCA
+121876,chapter-c3-watsons-bay-hca,C3_3_7,,condition,Watsons Bay HCA
+121877,chapter-c3-watsons-bay-hca,C3_3_8,,condition,Watsons Bay HCA
+121878,chapter-c3-watsons-bay-hca,C3_3_9,,condition,Watsons Bay HCA
+121880,chapter-c3-watsons-bay-hca,C3_4,,condition,Watsons Bay HCA
+121881,chapter-c3-watsons-bay-hca,C3_4_1,,condition,Watsons Bay HCA Precinct A
+121890,chapter-c3-watsons-bay-hca,C3_4_10,,condition,Watsons Bay HCA Precinct K
+121891,chapter-c3-watsons-bay-hca,C3_4_11,,condition,Watsons Bay HCA Precinct L
+121892,chapter-c3-watsons-bay-hca,C3_4_12,,condition,Watsons Bay HCA Precinct M
+121893,chapter-c3-watsons-bay-hca,C3_4_13,,condition,Watsons Bay HCA Precinct N
+121894,chapter-c3-watsons-bay-hca,C3_4_14,,condition,Watsons Bay HCA Precinct O
+121895,chapter-c3-watsons-bay-hca,C3_4_15,,condition,Watsons Bay HCA Precinct P
+121896,chapter-c3-watsons-bay-hca,C3_4_16,,condition,Watsons Bay HCA Precinct Q
+121897,chapter-c3-watsons-bay-hca,C3_4_17,,condition,Watsons Bay HCA Precinct R
+121898,chapter-c3-watsons-bay-hca,C3_4_18,,condition,Watsons Bay HCA Precinct S
+121899,chapter-c3-watsons-bay-hca,C3_4_19,,condition,Watsons Bay HCA Precinct T
+121882,chapter-c3-watsons-bay-hca,C3_4_2,,condition,Watsons Bay HCA Precinct B
+121883,chapter-c3-watsons-bay-hca,C3_4_3,,condition,Watsons Bay HCA Precinct C
+121884,chapter-c3-watsons-bay-hca,C3_4_4,,condition,Watsons Bay HCA Precinct D
+121885,chapter-c3-watsons-bay-hca,C3_4_5,,condition,Watsons Bay HCA Precinct E
+121886,chapter-c3-watsons-bay-hca,C3_4_6,,condition,Watsons Bay HCA Precinct F
+121887,chapter-c3-watsons-bay-hca,C3_4_7,,condition,Watsons Bay HCA Precinct G
+121888,chapter-c3-watsons-bay-hca,C3_4_8,,condition,Watsons Bay HCA Precinct H
+121889,chapter-c3-watsons-bay-hca,C3_4_9,,condition,Watsons Bay HCA Precinct J
+121900,chapter-c3-watsons-bay-hca,C3_5,,condition,Watsons Bay HCA
+121901,chapter-c3-watsons-bay-hca,C3_5_1,,condition,Watsons Bay HCA
+121910,chapter-c3-watsons-bay-hca,C3_5_10,,condition,Watsons Bay HCA
+121902,chapter-c3-watsons-bay-hca,C3_5_2,,condition,Watsons Bay HCA
+121903,chapter-c3-watsons-bay-hca,C3_5_3,,condition,Watsons Bay HCA
+121904,chapter-c3-watsons-bay-hca,C3_5_4,,condition,Watsons Bay HCA
+121905,chapter-c3-watsons-bay-hca,C3_5_5,,condition,Watsons Bay HCA
+121906,chapter-c3-watsons-bay-hca,C3_5_6,,condition,Watsons Bay HCA
+121907,chapter-c3-watsons-bay-hca,C3_5_7,,condition,Watsons Bay HCA
+121908,chapter-c3-watsons-bay-hca,C3_5_8,,condition,Watsons Bay HCA
+121909,chapter-c3-watsons-bay-hca,C3_5_9,,condition,Watsons Bay HCA
+121911,chapter-c3-watsons-bay-hca,C3_6,,condition,Watsons Bay HCA
+121912,chapter-c3-watsons-bay-hca,C3_6_2,,condition,Watsons Bay HCA
+121913,chapter-c3-watsons-bay-hca,C3_6_3,,condition,Watsons Bay HCA
+121914,chapter-c3-watsons-bay-hca,C3_7,,condition,Watsons Bay HCA
+121915,chapter-c3-watsons-bay-hca,C3_7_1,,condition,Watsons Bay HCA
+121916,chapter-c3-watsons-bay-hca,C3_7_2,,condition,Watsons Bay HCA
+121860,chapter-c3-watsons-bay-hca,preamble,,,Watsons Bay HCA
+122023,chapter-d1-neighbourhood-centres,D1_1,,use_specific,Woollahra Neighbourhood Centres
+122024,chapter-d1-neighbourhood-centres,D1_1_3,,use_specific,Woollahra Neighbourhood Centres
+122025,chapter-d1-neighbourhood-centres,D1_1_5,,use_specific,Woollahra Neighbourhood Centres
+122047,chapter-d1-neighbourhood-centres,D1_10,,,Darling Point Road Centre
+122022,chapter-d1-neighbourhood-centres,D1_10,,use_specific,Darling Point Road Centre
+122048,chapter-d1-neighbourhood-centres,D1_10_2,,use_specific,Darling Point Road Centre
+122026,chapter-d1-neighbourhood-centres,D1_2,,,Hopetoun Avenue Centre
+122027,chapter-d1-neighbourhood-centres,D1_2_2,,use_specific,Hopetoun Avenue Centre
+122028,chapter-d1-neighbourhood-centres,D1_2_3,,use_specific,Hopetoun Avenue Centre
+122029,chapter-d1-neighbourhood-centres,D1_3,,,South Head Roundabout Centre
+122030,chapter-d1-neighbourhood-centres,D1_3_2,,use_specific,South Head Roundabout Centre
+122031,chapter-d1-neighbourhood-centres,D1_3_3,,use_specific,South Head Roundabout Centre
+122032,chapter-d1-neighbourhood-centres,D1_4,,,Vaucluse Shopping Village
+122033,chapter-d1-neighbourhood-centres,D1_4_2,,use_specific,Vaucluse Shopping Village
+122034,chapter-d1-neighbourhood-centres,D1_5,,use_specific,Plumer Road Centre
+122035,chapter-d1-neighbourhood-centres,D1_5_2,,use_specific,Plumer Road Centre
+122036,chapter-d1-neighbourhood-centres,D1_5_3,,use_specific,Plumer Road Centre
+122037,chapter-d1-neighbourhood-centres,D1_6,,use_specific,O'Sullivan Road Centre
+122038,chapter-d1-neighbourhood-centres,D1_6_2,,use_specific,O'Sullivan Road Centre
+122039,chapter-d1-neighbourhood-centres,D1_7,,,Streatfield Road Centre
+122040,chapter-d1-neighbourhood-centres,D1_7_2,,use_specific,Streatfield Road Centre
+122041,chapter-d1-neighbourhood-centres,D1_8,,use_specific,Bellevue Hill Shops
+122042,chapter-d1-neighbourhood-centres,D1_8_2,,use_specific,Bellevue Hill Shops
+122043,chapter-d1-neighbourhood-centres,D1_8_3,,use_specific,Bellevue Hill Shops
+122044,chapter-d1-neighbourhood-centres,D1_9,,use_specific,Manning Road Centre
+122045,chapter-d1-neighbourhood-centres,D1_9_2,,use_specific,Manning Road Centre
+122046,chapter-d1-neighbourhood-centres,D1_9_3,,use_specific,Manning Road Centre
+122021,chapter-d1-neighbourhood-centres,preamble,,,Woollahra Neighbourhood Centres
+121962,chapter-d2-mixed-use-centres,D2_1,,use_specific,Woollahra Mixed Use Centres
+121963,chapter-d2-mixed-use-centres,D2_2,,use_specific,New South Head Road Corridor Edgecliff
+121964,chapter-d2-mixed-use-centres,D2_3,,use_specific,Rose Bay North Centre
+121965,chapter-d2-mixed-use-centres,D2_4,,use_specific,Rose Bay South Centre
+121961,chapter-d2-mixed-use-centres,preamble,,,Woollahra Mixed Use Centres
+121975,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_1,,use_specific,Woollahra Business Centres
+121984,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_10,,use_specific,Woollahra Business Centres
+121976,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_2,,use_specific,Woollahra Business Centres
+121977,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_3,,use_specific,Woollahra Business Centres
+121978,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_4,,use_specific,Woollahra Business Centres
+121979,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_5,,use_specific,Woollahra Business Centres
+121980,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_6,,use_specific,Woollahra Business Centres
+121981,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_7,,use_specific,Woollahra Business Centres
+121982,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_8,,use_specific,Woollahra Business Centres
+121983,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,D3_9,,use_specific,Woollahra Business Centres
+121974,chapter-d3-general-controls-for-neighbourhood-and-mixed-use-centres,preamble,,,Woollahra Business Centres
+121918,chapter-d4-edgecliff-centre,D4_1,,use_specific,Edgecliff Centre
+121919,chapter-d4-edgecliff-centre,D4_1_2,,use_specific,Edgecliff Centre
+121920,chapter-d4-edgecliff-centre,D4_1_4,,use_specific,Edgecliff Centre
+121921,chapter-d4-edgecliff-centre,D4_2,,use_specific,Edgecliff Centre
+121922,chapter-d4-edgecliff-centre,D4_2_2,,use_specific,Edgecliff Centre
+121923,chapter-d4-edgecliff-centre,D4_2_3,,use_specific,Edgecliff Centre
+121917,chapter-d4-edgecliff-centre,preamble,,,Edgecliff Centre
+121679,chapter-d5-double-bay-centre,A1_1,,generic,Double Bay Centre
+121680,chapter-d5-double-bay-centre,A1_4,,generic,Double Bay Centre
+121681,chapter-d5-double-bay-centre,A1_5,,generic,Double Bay Centre
+121683,chapter-d5-double-bay-centre,A2_1,,,Double Bay Centre
+121684,chapter-d5-double-bay-centre,A2_2,,generic,Double Bay Centre
+121685,chapter-d5-double-bay-centre,A2_3,,,Double Bay Centre
+121686,chapter-d5-double-bay-centre,A2_3_2,,generic,Double Bay Centre
+121687,chapter-d5-double-bay-centre,A2_3_3,,generic,Double Bay Centre
+121688,chapter-d5-double-bay-centre,A2_4,,generic,Double Bay Centre
+121689,chapter-d5-double-bay-centre,A2_5,,generic,Double Bay Centre
+121696,chapter-d5-double-bay-centre,A2_5_11,,generic,Double Bay Centre
+121697,chapter-d5-double-bay-centre,A2_5_13,,generic,Double Bay Centre
+121690,chapter-d5-double-bay-centre,A2_5_3,,generic,Double Bay Centre
+121691,chapter-d5-double-bay-centre,A2_5_4,,generic,Double Bay Centre
+121692,chapter-d5-double-bay-centre,A2_5_5,,generic,Double Bay Centre
+121693,chapter-d5-double-bay-centre,A2_5_6,,generic,Double Bay Centre
+121694,chapter-d5-double-bay-centre,A2_5_7,,generic,Double Bay Centre
+121695,chapter-d5-double-bay-centre,A2_5_9,,generic,Double Bay Centre
+121639,chapter-d5-double-bay-centre,D5_1,,,Double Bay Centre
+121640,chapter-d5-double-bay-centre,D5_1_2,,use_specific,Double Bay Centre
+121642,chapter-d5-double-bay-centre,D5_2,,,Double Bay Centre
+121643,chapter-d5-double-bay-centre,D5_2_3,,use_specific,Double Bay Centre
+121644,chapter-d5-double-bay-centre,D5_2_5,,use_specific,Double Bay Centre
+121645,chapter-d5-double-bay-centre,D5_3,,use_specific,Double Bay Centre
+121646,chapter-d5-double-bay-centre,D5_3_2,,use_specific,Double Bay Centre
+121641,chapter-d5-double-bay-centre,D5_4,,use_specific,Double Bay Centre
+121647,chapter-d5-double-bay-centre,D5_4,,,Double Bay Centre
+121653,chapter-d5-double-bay-centre,D5_4_10,,use_specific,Double Bay Centre
+121654,chapter-d5-double-bay-centre,D5_4_11,,use_specific,Double Bay Centre
+121655,chapter-d5-double-bay-centre,D5_4_12,,use_specific,Double Bay Centre
+121656,chapter-d5-double-bay-centre,D5_4_13,,use_specific,Double Bay Centre
+121648,chapter-d5-double-bay-centre,D5_4_4,,use_specific,Double Bay Centre
+121649,chapter-d5-double-bay-centre,D5_4_5,,use_specific,Double Bay Centre
+121650,chapter-d5-double-bay-centre,D5_4_6,,use_specific,Double Bay Centre
+121651,chapter-d5-double-bay-centre,D5_4_7,,use_specific,Double Bay Centre
+121652,chapter-d5-double-bay-centre,D5_4_8,,use_specific,Double Bay Centre
+121657,chapter-d5-double-bay-centre,D5_5,,use_specific,Double Bay Centre
+121666,chapter-d5-double-bay-centre,D5_5_10,,use_specific,Double Bay Centre
+121667,chapter-d5-double-bay-centre,D5_5_11,,use_specific,Double Bay Centre
+121668,chapter-d5-double-bay-centre,D5_5_12,,use_specific,Double Bay Centre
+121669,chapter-d5-double-bay-centre,D5_5_13,,use_specific,Double Bay Centre
+121658,chapter-d5-double-bay-centre,D5_5_2,,use_specific,Double Bay Centre
+121659,chapter-d5-double-bay-centre,D5_5_3,,use_specific,Double Bay Centre
+121660,chapter-d5-double-bay-centre,D5_5_4,,,Double Bay Centre
+121661,chapter-d5-double-bay-centre,D5_5_5,,use_specific,Double Bay Centre
+121662,chapter-d5-double-bay-centre,D5_5_6,,use_specific,Double Bay Centre
+121663,chapter-d5-double-bay-centre,D5_5_7,,use_specific,Double Bay Centre
+121664,chapter-d5-double-bay-centre,D5_5_8,,use_specific,Double Bay Centre
+121665,chapter-d5-double-bay-centre,D5_5_9,,use_specific,Double Bay Centre
+121682,chapter-d5-double-bay-centre,D5_6,,use_specific,Double Bay Centre
+121670,chapter-d5-double-bay-centre,D5_6,,use_specific,Double Bay Centre
+121671,chapter-d5-double-bay-centre,D5_6_2,,use_specific,Double Bay Centre
+121672,chapter-d5-double-bay-centre,D5_6_3,,use_specific,Double Bay Centre
+121673,chapter-d5-double-bay-centre,D5_6_4,,use_specific,Double Bay Centre
+121674,chapter-d5-double-bay-centre,D5_6_5,,use_specific,Double Bay Centre
+121675,chapter-d5-double-bay-centre,D5_6_6,,use_specific,Double Bay Centre
+121676,chapter-d5-double-bay-centre,D5_6_7,,use_specific,Double Bay Centre
+121677,chapter-d5-double-bay-centre,D5_6_8,,use_specific,Double Bay Centre
+121678,chapter-d5-double-bay-centre,D5_6_9,,use_specific,Double Bay Centre
+121638,chapter-d5-double-bay-centre,preamble,,,Double Bay Centre
+121987,chapter-d6-rose-bay-centre,D6_1,,,Rose Bay Centre
+121988,chapter-d6-rose-bay-centre,D6_1_2,,use_specific,Rose Bay Centre
+121989,chapter-d6-rose-bay-centre,D6_1_4,,use_specific,Rose Bay Centre
+121990,chapter-d6-rose-bay-centre,D6_2,,use_specific,Rose Bay Centre
+121991,chapter-d6-rose-bay-centre,D6_2_4,,use_specific,Rose Bay Centre
+121992,chapter-d6-rose-bay-centre,D6_3,,,Rose Bay Centre
+121993,chapter-d6-rose-bay-centre,D6_4,,use_specific,Rose Bay Centre
+121994,chapter-d6-rose-bay-centre,D6_4_1,,use_specific,Rose Bay Centre
+122003,chapter-d6-rose-bay-centre,D6_4_10,,,Rose Bay Centre
+121995,chapter-d6-rose-bay-centre,D6_4_2,,use_specific,Rose Bay Centre
+121996,chapter-d6-rose-bay-centre,D6_4_3,,,Rose Bay Centre
+121997,chapter-d6-rose-bay-centre,D6_4_4,,use_specific,Rose Bay Centre
+121998,chapter-d6-rose-bay-centre,D6_4_5,,use_specific,Rose Bay Centre
+121999,chapter-d6-rose-bay-centre,D6_4_6,,use_specific,Rose Bay Centre
+122000,chapter-d6-rose-bay-centre,D6_4_7,,use_specific,Rose Bay Centre
+122001,chapter-d6-rose-bay-centre,D6_4_8,,use_specific,Rose Bay Centre
+122002,chapter-d6-rose-bay-centre,D6_4_9,,use_specific,Rose Bay Centre
+122004,chapter-d6-rose-bay-centre,D6_5,,use_specific,Rose Bay Centre
+122005,chapter-d6-rose-bay-centre,D6_5_2,,use_specific,Rose Bay Centre
+122006,chapter-d6-rose-bay-centre,D6_5_3,,use_specific,Rose Bay Centre
+122007,chapter-d6-rose-bay-centre,D6_5_4,,use_specific,Rose Bay Centre
+122008,chapter-d6-rose-bay-centre,D6_5_5,,use_specific,Rose Bay Centre
+122009,chapter-d6-rose-bay-centre,D6_5_6,,use_specific,Rose Bay Centre
+122010,chapter-d6-rose-bay-centre,D6_5_7,,use_specific,Rose Bay Centre
+122011,chapter-d6-rose-bay-centre,D6_5_8,,use_specific,Rose Bay Centre
+122012,chapter-d6-rose-bay-centre,D6_6,,use_specific,Rose Bay Centre
+122020,chapter-d6-rose-bay-centre,D6_6_10,,use_specific,Rose Bay Centre
+122013,chapter-d6-rose-bay-centre,D6_6_2,,use_specific,Rose Bay Centre
+122014,chapter-d6-rose-bay-centre,D6_6_3,,use_specific,Rose Bay Centre
+122015,chapter-d6-rose-bay-centre,D6_6_4,,use_specific,Rose Bay Centre
+122016,chapter-d6-rose-bay-centre,D6_6_5,,use_specific,Rose Bay Centre
+122017,chapter-d6-rose-bay-centre,D6_6_6,,use_specific,Rose Bay Centre
+122018,chapter-d6-rose-bay-centre,D6_6_7,,use_specific,Rose Bay Centre
+121986,chapter-d6-rose-bay-centre,D6_6_7,,,Rose Bay Centre
+122019,chapter-d6-rose-bay-centre,D6_6_8,,use_specific,Rose Bay Centre
+121985,chapter-d6-rose-bay-centre,preamble,,,Rose Bay Centre

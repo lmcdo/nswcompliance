@@ -1,0 +1,186 @@
+{
+  "metadata": {
+    "description": "Stratified test addresses for validation suite",
+    "total_count": 24,
+    "by_category": {
+      "standard": 16,
+      "heritage": 5,
+      "rejected": 3
+    },
+    "by_council": {
+      "Marrickville": 8,
+      "Ashfield": 7,
+      "Leichhardt": 6
+    }
+  },
+  "addresses": [
+    {
+      "address": "180 Addison Road Marrickville 2204",
+      "council": "Marrickville",
+      "expected_zone": "R2",
+      "test_category": "standard",
+      "notes": "R2 zone"
+    },
+    {
+      "address": "45 Denison Road Dulwich Hill 2203",
+      "council": "Marrickville",
+      "expected_zone": "R2",
+      "test_category": "standard",
+      "notes": "R2 zone"
+    },
+    {
+      "address": "12 Pile Street Dulwich Hill 2203",
+      "council": "Marrickville",
+      "expected_zone": "R2",
+      "test_category": "standard",
+      "notes": "R2 zone"
+    },
+    {
+      "address": "100 Marrickville Road Marrickville 2204",
+      "council": "Marrickville",
+      "expected_zone": "R3",
+      "test_category": "standard",
+      "notes": "R3 zone"
+    },
+    {
+      "address": "55 Livingstone Road Marrickville 2204",
+      "council": "Marrickville",
+      "expected_zone": "R3",
+      "test_category": "standard",
+      "notes": "R3 zone"
+    },
+    {
+      "address": "250 Marrickville Road Marrickville 2204",
+      "council": "Marrickville",
+      "expected_zone": "B2",
+      "test_category": "standard",
+      "notes": "B2 zone"
+    },
+    {
+      "address": "80 Victoria Road Marrickville 2204",
+      "council": "Marrickville",
+      "expected_zone": "B2",
+      "test_category": "standard",
+      "notes": "B2 zone"
+    },
+    {
+      "address": "2 Carrington Road Marrickville 2204",
+      "council": "Marrickville",
+      "expected_zone": null,
+      "test_category": "heritage",
+      "notes": "Heritage area"
+    },
+    {
+      "address": "15 Alt Street Ashfield 2131",
+      "council": "Ashfield",
+      "expected_zone": "R2",
+      "test_category": "standard",
+      "notes": "R2 zone"
+    },
+    {
+      "address": "22 Orpington Street Ashfield 2131",
+      "council": "Ashfield",
+      "expected_zone": "R2",
+      "test_category": "standard",
+      "notes": "R2 zone"
+    },
+    {
+      "address": "8 Bland Street Ashfield 2131",
+      "council": "Ashfield",
+      "expected_zone": "R2",
+      "test_category": "standard",
+      "notes": "R2 zone"
+    },
+    {
+      "address": "200 Liverpool Road Ashfield 2131",
+      "council": "Ashfield",
+      "expected_zone": "R3",
+      "test_category": "standard",
+      "notes": "R3 zone"
+    },
+    {
+      "address": "260 Liverpool Road Ashfield 2131",
+      "council": "Ashfield",
+      "expected_zone": "E1",
+      "test_category": "standard",
+      "notes": "E1 zone"
+    },
+    {
+      "address": "1 The Parade Haberfield 2045",
+      "council": "Ashfield",
+      "expected_zone": null,
+      "test_category": "heritage",
+      "notes": "Heritage area"
+    },
+    {
+      "address": "5 Ramsay Street Haberfield 2045",
+      "council": "Ashfield",
+      "expected_zone": null,
+      "test_category": "heritage",
+      "notes": "Heritage area"
+    },
+    {
+      "address": "10 Norton Street Leichhardt 2040",
+      "council": "Leichhardt",
+      "expected_zone": "R2",
+      "test_category": "standard",
+      "notes": "R2 zone"
+    },
+    {
+      "address": "25 Marion Street Leichhardt 2040",
+      "council": "Leichhardt",
+      "expected_zone": "R2",
+      "test_category": "standard",
+      "notes": "R2 zone"
+    },
+    {
+      "address": "150 Balmain Road Leichhardt 2040",
+      "council": "Leichhardt",
+      "expected_zone": "R3",
+      "test_category": "standard",
+      "notes": "R3 zone"
+    },
+    {
+      "address": "120 Norton Street Leichhardt 2040",
+      "council": "Leichhardt",
+      "expected_zone": "B2",
+      "test_category": "standard",
+      "notes": "B2 zone"
+    },
+    {
+      "address": "5 Lombard Street Glebe 2037",
+      "council": "Leichhardt",
+      "expected_zone": null,
+      "test_category": "heritage",
+      "notes": "Heritage area"
+    },
+    {
+      "address": "12 Darghan Street Glebe 2037",
+      "council": "Leichhardt",
+      "expected_zone": null,
+      "test_category": "heritage",
+      "notes": "Heritage area"
+    },
+    {
+      "address": "14 Lamrock Avenue Russell Lea 2046",
+      "council": "NOT_INNER_WEST",
+      "expected_zone": null,
+      "test_category": "rejected",
+      "notes": "Should be rejected - not in Inner West LGA"
+    },
+    {
+      "address": "100 Burwood Road Burwood 2134",
+      "council": "NOT_INNER_WEST",
+      "expected_zone": null,
+      "test_category": "rejected",
+      "notes": "Should be rejected - not in Inner West LGA"
+    },
+    {
+      "address": "1 George Street Sydney 2000",
+      "council": "NOT_INNER_WEST",
+      "expected_zone": null,
+      "test_category": "rejected",
+      "notes": "Should be rejected - not in Inner West LGA"
+    }
+  ]
+}

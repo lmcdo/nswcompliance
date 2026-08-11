@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# TypeScript error count gate — runs on git push.
+# Fails if new TS errors have been introduced above the established baseline.
+# Baseline: 177 errors (set 2026-03-07 after deleting 6 confirmed dead files).
+
+BASELINE=177
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+FRONTEND_DIR="$REPO_ROOT/frontend-nextjs"
+
+# Skip if frontend-nextjs doesn't exist (shouldn't happen, but defensive)
+if [ ! -d "$FRONTEND_DIR" ]; then
+  echo "tsc-gate: frontend-nextjs not found, skipping"
+  exit 0
+fi
+
+echo "tsc-gate: counting TypeScript errors..."
+COUNT=$(cd "$FRONTEND_DIR" && npx tsc --noEmit --skipLibCheck 2>&1 | grep -c "error TS" || true)
+
+if [ "$COUNT" -gt "$BASELINE" ]; then
+  echo ""
+  echo "❌ tsc-gate FAILED: $COUNT errors (baseline $BASELINE, +$((COUNT - BASELINE)) new)"
+  echo "   Fix new TypeScript errors before pushing."
+  echo "   Run: cd frontend-nextjs && npx tsc --noEmit --skipLibCheck 2>&1 | grep 'error TS'"
+  exit 1
+fi
+
+echo "✅ tsc-gate passed: $COUNT errors (baseline $BASELINE)"
+exit 0

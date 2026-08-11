@@ -54,6 +54,13 @@ EXCLUDE_PATTERNS = [
     r'console\.\w+\(', r'logger\.\w+\(', r'logging\.\w+\(',
     r':\s*(?:boolean|string|number|Optional)',
     r'assert\s', r'expect\(',
+    # A quoted DA determination status is the NSW Planning Portal's own
+    # vocabulary appearing as a DATA VALUE, not as prose about a property —
+    # rule (a), 'a direct regulatory quotation', which this checker prints in
+    # its own failure message. Narrow on purpose: it matches a quoted value
+    # assigned to a Status key, so prose such as "your application is
+    # approved" is still caught.
+    r"\b[Ss]tatus:\s*['\"](?:Approved|Determined|Refused|Withdrawn)['\"]",
 ]
 
 

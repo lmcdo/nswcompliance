@@ -1,0 +1,462 @@
+id,action,reason
+31782,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 96%)
+31783,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 97%)
+31784,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 96%)
+31788,pending->approved,auto-verified vs adopted PDF: new text 97% source-verbatim (old 97%)
+31793,pending->approved,auto-verified vs adopted PDF: new text 97% source-verbatim (old 97%)
+31796,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31799,pending->approved,auto-verified vs adopted PDF: new text 97% source-verbatim (old 90%)
+31805,pending->approved,auto-verified vs adopted PDF: new text 95% source-verbatim (old 95%)
+31806,pending->approved,auto-verified vs adopted PDF: new text 98% source-verbatim (old 100%)
+31807,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31808,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31809,pending->approved,auto-verified vs adopted PDF: new text 98% source-verbatim (old 100%)
+31813,pending->approved,auto-verified vs adopted PDF: new text 99% source-verbatim (old 100%)
+31822,pending->approved,auto-verified vs adopted PDF: new text 98% source-verbatim (old 100%)
+31823,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31824,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31825,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31826,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31827,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31828,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31829,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 100%)
+31831,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 97%)
+31835,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 96%)
+31837,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31848,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 92%)
+31850,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 96%)
+31851,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 96%)
+31867,pending->approved,auto-verified vs adopted PDF: new text 95% source-verbatim (old 95%)
+31878,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 96%)
+31883,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31887,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31889,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31891,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31895,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 89%)
+31896,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 94%)
+31897,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31898,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 96%)
+31899,pending->approved,auto-verified vs adopted PDF: new text 98% source-verbatim (old 79%)
+31900,pending->approved,auto-verified vs adopted PDF: new text 95% source-verbatim (old 95%)
+31904,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 100%)
+31905,pending->approved,auto-verified vs adopted PDF: new text 96% source-verbatim (old 77%)
+31906,pending->approved,auto-verified vs adopted PDF: new text 100% source-verbatim (old 91%)
+31913,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+31914,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31918,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31921,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+31922,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+31928,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+31931,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31933,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+31936,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+31939,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+31949,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+31951,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31952,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+31954,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31962,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31963,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+31969,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+31973,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31976,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31981,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31983,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+31988,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31992,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31993,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31995,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31997,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31998,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31999,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32000,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32001,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32002,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32003,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32004,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32005,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32006,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32007,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32008,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32013,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32015,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32017,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+32020,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32025,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32027,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32031,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32034,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32036,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32037,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32042,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32045,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32049,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32053,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+32054,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32056,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32058,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32060,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+32062,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+32064,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32071,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32078,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32079,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32080,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+32083,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32085,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32086,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32087,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32089,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32094,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32095,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32098,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32103,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32108,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32110,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32115,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32121,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+32192,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32193,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32194,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32196,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32197,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32198,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32199,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32201,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32203,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32204,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32205,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32209,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32212,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32213,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32214,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32216,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32218,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32219,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 95% source-verbatim"
+32221,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 96% source-verbatim"
+32234,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 97% source-verbatim"
+32236,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 98% source-verbatim"
+32237,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32247,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+32248,pending->approved,"auto-verified vs adopted PDF (Amendment 5, hash-matched): added text 100% source-verbatim"
+31778,KEEP pending (changed),new 64% vs old 78% in source
+31779,KEEP pending (changed),new 84% vs old 100% in source
+31780,KEEP pending (changed),new 92% vs old 95% in source
+31781,KEEP pending (changed),new 94% vs old 100% in source
+31785,KEEP pending (changed),new 72% vs old 91% in source
+31786,KEEP pending (changed),new 78% vs old 67% in source
+31787,KEEP pending (changed),new 93% vs old 93% in source
+31789,KEEP pending (changed),new 17% vs old 50% in source
+31790,KEEP pending (changed),new 83% vs old 100% in source
+31791,KEEP pending (changed),new 87% vs old 87% in source
+31792,KEEP pending (changed),new 80% vs old 91% in source
+31794,KEEP pending (changed),new 88% vs old 82% in source
+31795,KEEP pending (changed),new 63% vs old 81% in source
+31797,KEEP pending (changed),new 92% vs old 100% in source
+31798,KEEP pending (changed),new 89% vs old 91% in source
+31800,KEEP pending (changed),new 82% vs old 66% in source
+31801,KEEP pending (changed),new 0% vs old 94% in source
+31802,KEEP pending (changed),new 33% vs old 62% in source
+31803,KEEP pending (changed),new 76% vs old 100% in source
+31804,KEEP pending (changed),new 53% vs old 77% in source
+31810,KEEP pending (changed),new 83% vs old 76% in source
+31811,KEEP pending (changed),new 0% vs old 96% in source
+31812,KEEP pending (changed),new 0% vs old 97% in source
+31814,KEEP pending (changed),new 0% vs old 100% in source
+31815,KEEP pending (changed),new 0% vs old 100% in source
+31816,KEEP pending (changed),new 0% vs old 100% in source
+31817,KEEP pending (changed),new 0% vs old 100% in source
+31818,KEEP pending (changed),new 0% vs old 100% in source
+31819,KEEP pending (changed),new 0% vs old 100% in source
+31820,KEEP pending (changed),new 0% vs old 100% in source
+31821,KEEP pending (changed),new 0% vs old 99% in source
+31830,KEEP pending (changed),new 90% vs old 100% in source
+31832,KEEP pending (changed),new 92% vs old 100% in source
+31833,KEEP pending (changed),new 71% vs old 83% in source
+31834,KEEP pending (changed),new 92% vs old 92% in source
+31836,KEEP pending (changed),new 94% vs old 94% in source
+31838,KEEP pending (changed),new 0% vs old 94% in source
+31839,KEEP pending (changed),new 89% vs old 100% in source
+31840,KEEP pending (changed),new 0% vs old 94% in source
+31841,KEEP pending (changed),new 95% vs old 95% in source
+31842,KEEP pending (changed),new 0% vs old 93% in source
+31843,KEEP pending (changed),new 41% vs old 90% in source
+31844,KEEP pending (changed),new 87% vs old 87% in source
+31845,KEEP pending (changed),new 95% vs old 95% in source
+31846,KEEP pending (changed),new 90% vs old 90% in source
+31847,KEEP pending (changed),new 73% vs old 73% in source
+31849,KEEP pending (changed),new 86% vs old 86% in source
+31852,KEEP pending (changed),new 89% vs old 100% in source
+31853,KEEP pending (changed),new 0% vs old 100% in source
+31854,KEEP pending (changed),new 0% vs old 96% in source
+31855,KEEP pending (changed),new 0% vs old 100% in source
+31856,KEEP pending (changed),new 0% vs old 68% in source
+31857,KEEP pending (changed),new 0% vs old 50% in source
+31858,KEEP pending (changed),new 0% vs old 100% in source
+31859,KEEP pending (changed),new 0% vs old 100% in source
+31860,KEEP pending (changed),new 0% vs old 83% in source
+31861,KEEP pending (changed),new 40% vs old 91% in source
+31862,KEEP pending (changed),new 50% vs old 75% in source
+31863,KEEP pending (changed),new 60% vs old 55% in source
+31864,KEEP pending (changed),new 85% vs old 85% in source
+31865,KEEP pending (changed),new 86% vs old 83% in source
+31866,KEEP pending (changed),new 77% vs old 77% in source
+31868,KEEP pending (changed),new 83% vs old 83% in source
+31869,KEEP pending (changed),new 86% vs old 86% in source
+31870,KEEP pending (changed),new 85% vs old 85% in source
+31871,KEEP pending (changed),new 91% vs old 91% in source
+31872,KEEP pending (changed),new 91% vs old 91% in source
+31873,KEEP pending (changed),new 86% vs old 86% in source
+31874,KEEP pending (changed),new 91% vs old 91% in source
+31875,KEEP pending (changed),new 92% vs old 92% in source
+31876,KEEP pending (changed),new 92% vs old 92% in source
+31877,KEEP pending (changed),new 91% vs old 91% in source
+31879,KEEP pending (changed),new 85% vs old 85% in source
+31880,KEEP pending (changed),new 75% vs old 76% in source
+31881,KEEP pending (changed),new 80% vs old 90% in source
+31885,KEEP pending (changed),new 91% vs old 91% in source
+31890,KEEP pending (changed),new 80% vs old 80% in source
+31893,KEEP pending (changed),new 93% vs old 93% in source
+31894,KEEP pending (changed),new 89% vs old 91% in source
+31901,KEEP pending (changed),new 94% vs old 98% in source
+31902,KEEP pending (changed),new 77% vs old 96% in source
+31903,KEEP pending (changed),new 46% vs old 90% in source
+31907,KEEP pending (changed),new 58% vs old 94% in source
+31908,KEEP pending (changed),new 0% vs old 96% in source
+31909,KEEP pending (changed),new 0% vs old 82% in source
+31910,KEEP pending (changed),new 0% vs old 96% in source
+31911,KEEP pending (changed),new 0% vs old 89% in source
+31912,KEEP pending (changed),new 0% vs old 90% in source
+31915,KEEP pending (added),added text only 86% in source
+31916,KEEP pending (added),added text only 91% in source
+31917,KEEP pending (added),added text only 91% in source
+31919,KEEP pending (added),added text only 87% in source
+31920,KEEP pending (added),added text only 83% in source
+31924,KEEP pending (added),added text only 86% in source
+31926,KEEP pending (added),added text only 93% in source
+31930,KEEP pending (added),added text only 94% in source
+31932,KEEP pending (added),added text only 92% in source
+31934,KEEP pending (added),added text only 76% in source
+31937,KEEP pending (added),added text only 0% in source
+31940,KEEP pending (added),added text only 0% in source
+31941,KEEP pending (added),added text only 82% in source
+31943,KEEP pending (added),added text only 84% in source
+31946,KEEP pending (added),added text only 94% in source
+31955,KEEP pending (added),added text only 40% in source
+31957,KEEP pending (added),added text only 83% in source
+31959,KEEP pending (added),added text only 76% in source
+31961,KEEP pending (added),added text only 91% in source
+31965,KEEP pending (added),added text only 93% in source
+31968,KEEP pending (added),added text only 75% in source
+31972,KEEP pending (added),added text only 91% in source
+31979,KEEP pending (added),added text only 51% in source
+31985,KEEP pending (added),added text only 0% in source
+31987,KEEP pending (added),added text only 92% in source
+31990,KEEP pending (added),added text only 0% in source
+31994,KEEP pending (added),added text only 92% in source
+31996,KEEP pending (added),added text only 95% in source
+32009,KEEP pending (added),added text only 93% in source
+32010,KEEP pending (added),added text only 93% in source
+32011,KEEP pending (added),added text only 94% in source
+32019,KEEP pending (added),added text only 0% in source
+32021,KEEP pending (added),added text only 95% in source
+32022,KEEP pending (added),added text only 65% in source
+32024,KEEP pending (added),added text only 0% in source
+32029,KEEP pending (added),added text only 0% in source
+32039,KEEP pending (added),added text only 0% in source
+32047,KEEP pending (added),added text only 89% in source
+32052,KEEP pending (added),added text only 0% in source
+32067,KEEP pending (added),added text only 0% in source
+32068,KEEP pending (added),added text only 94% in source
+32070,KEEP pending (added),added text only 0% in source
+32073,KEEP pending (added),added text only 65% in source
+32074,KEEP pending (added),added text only 91% in source
+32075,KEEP pending (added),added text only 95% in source
+32076,KEEP pending (added),added text only 90% in source
+32077,KEEP pending (added),added text only 88% in source
+32081,KEEP pending (added),added text only 93% in source
+32082,KEEP pending (added),added text only 87% in source
+32084,KEEP pending (added),added text only 81% in source
+32088,KEEP pending (added),added text only 53% in source
+32093,KEEP pending (added),added text only 89% in source
+32096,KEEP pending (added),added text only 83% in source
+32101,KEEP pending (added),added text only 90% in source
+32105,KEEP pending (added),added text only 92% in source
+32114,KEEP pending (added),added text only 92% in source
+32118,KEEP pending (added),added text only 91% in source
+32122,KEEP pending (added),added text only 70% in source
+32124,KEEP pending (added),added text only 0% in source
+32127,KEEP pending (added),added text only 83% in source
+32129,KEEP pending (added),added text only 88% in source
+32130,KEEP pending (added),added text only 71% in source
+32131,KEEP pending (added),added text only 54% in source
+32132,KEEP pending (added),added text only 66% in source
+32133,KEEP pending (added),added text only 82% in source
+32136,KEEP pending (added),added text only 62% in source
+32137,KEEP pending (added),added text only 0% in source
+32138,KEEP pending (added),added text only 0% in source
+32139,KEEP pending (added),added text only 0% in source
+32140,KEEP pending (added),added text only 2% in source
+32141,KEEP pending (added),added text only 0% in source
+32142,KEEP pending (added),added text only 0% in source
+32143,KEEP pending (added),added text only 0% in source
+32144,KEEP pending (added),added text only 0% in source
+32145,KEEP pending (added),added text only 0% in source
+32146,KEEP pending (added),added text only 5% in source
+32147,KEEP pending (added),added text only 0% in source
+32148,KEEP pending (added),added text only 10% in source
+32149,KEEP pending (added),added text only 4% in source
+32150,KEEP pending (added),added text only 0% in source
+32151,KEEP pending (added),added text only 0% in source
+32152,KEEP pending (added),added text only 5% in source
+32153,KEEP pending (added),added text only 28% in source
+32155,KEEP pending (added),added text only 89% in source
+32157,KEEP pending (added),added text only 89% in source
+32161,KEEP pending (added),added text only 79% in source
+32162,KEEP pending (added),added text only 94% in source
+32164,KEEP pending (added),added text only 91% in source
+32165,KEEP pending (added),added text only 0% in source
+32166,KEEP pending (added),added text only 90% in source
+32167,KEEP pending (added),added text only 40% in source
+32168,KEEP pending (added),added text only 88% in source
+32169,KEEP pending (added),added text only 40% in source
+32173,KEEP pending (added),added text only 70% in source
+32177,KEEP pending (added),added text only 0% in source
+32178,KEEP pending (added),added text only 95% in source
+32182,KEEP pending (added),added text only 79% in source
+32183,KEEP pending (added),added text only 91% in source
+32186,KEEP pending (added),added text only 79% in source
+32189,KEEP pending (added),added text only 90% in source
+32195,KEEP pending (added),added text only 93% in source
+32200,KEEP pending (added),added text only 94% in source
+32202,KEEP pending (added),added text only 95% in source
+32206,KEEP pending (added),added text only 95% in source
+32207,KEEP pending (added),added text only 95% in source
+32208,KEEP pending (added),added text only 94% in source
+32210,KEEP pending (added),added text only 94% in source
+32211,KEEP pending (added),added text only 91% in source
+32215,KEEP pending (added),added text only 93% in source
+32217,KEEP pending (added),added text only 81% in source
+32220,KEEP pending (added),added text only 94% in source
+32223,KEEP pending (added),added text only 94% in source
+32225,KEEP pending (added),added text only 94% in source
+32227,KEEP pending (added),added text only 93% in source
+32229,KEEP pending (added),added text only 90% in source
+32233,KEEP pending (added),added text only 94% in source
+32235,KEEP pending (added),added text only 92% in source
+32242,KEEP pending (added),added text only 90% in source
+32246,KEEP pending (added),added text only 88% in source
+32249,KEEP pending (added),added text only 87% in source
+32250,KEEP pending (added),added text only 92% in source
+32262,KEEP pending (removed),removed text 95% IS in source — possible content loss
+32264,KEEP pending (removed),removed text 78% IS in source — possible content loss
+32265,KEEP pending (removed),removed text 96% IS in source — possible content loss
+32266,KEEP pending (removed),removed text 92% IS in source — possible content loss
+32267,KEEP pending (removed),removed text 94% IS in source — possible content loss
+32268,KEEP pending (removed),removed text 97% IS in source — possible content loss
+32269,KEEP pending (removed),removed text 96% IS in source — possible content loss
+32270,KEEP pending (removed),removed text 97% IS in source — possible content loss
+32271,KEEP pending (removed),removed text 95% IS in source — possible content loss
+32272,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32282,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32286,KEEP pending (removed),removed text 99% IS in source — possible content loss
+32288,KEEP pending (removed),removed text 84% IS in source — possible content loss
+32290,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32291,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32293,KEEP pending (removed),removed text 89% IS in source — possible content loss
+32294,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32295,KEEP pending (removed),removed text 98% IS in source — possible content loss
+32302,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32310,KEEP pending (removed),removed text 99% IS in source — possible content loss
+32312,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32323,KEEP pending (removed),removed text 99% IS in source — possible content loss
+32324,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32325,KEEP pending (removed),removed text 99% IS in source — possible content loss
+32329,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32331,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32334,KEEP pending (removed),removed text 99% IS in source — possible content loss
+32349,KEEP pending (removed),removed text 98% IS in source — possible content loss
+32353,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32354,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32355,KEEP pending (removed),removed text 81% IS in source — possible content loss
+32356,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32357,KEEP pending (removed),removed text 95% IS in source — possible content loss
+32358,KEEP pending (removed),removed text 86% IS in source — possible content loss
+32359,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32360,KEEP pending (removed),removed text 95% IS in source — possible content loss
+32361,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32362,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32363,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32364,KEEP pending (removed),removed text 95% IS in source — possible content loss
+32365,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32366,KEEP pending (removed),removed text 91% IS in source — possible content loss
+32367,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32368,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32369,KEEP pending (removed),removed text 91% IS in source — possible content loss
+32370,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32371,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32372,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32373,KEEP pending (removed),removed text 94% IS in source — possible content loss
+32374,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32402,KEEP pending (removed),removed text 80% IS in source — possible content loss
+32403,KEEP pending (removed),removed text 94% IS in source — possible content loss
+32405,KEEP pending (removed),removed text 74% IS in source — possible content loss
+32406,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32410,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32411,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32412,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32413,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32418,KEEP pending (removed),removed text 67% IS in source — possible content loss
+32425,KEEP pending (removed),removed text 80% IS in source — possible content loss
+32433,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32434,KEEP pending (removed),removed text 80% IS in source — possible content loss
+32436,KEEP pending (removed),removed text 81% IS in source — possible content loss
+32438,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32464,KEEP pending (removed),removed text 86% IS in source — possible content loss
+32466,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32471,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32475,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32476,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32477,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32478,KEEP pending (removed),removed text 94% IS in source — possible content loss
+32479,KEEP pending (removed),removed text 88% IS in source — possible content loss
+32480,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32481,KEEP pending (removed),removed text 96% IS in source — possible content loss
+32482,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32483,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32484,KEEP pending (removed),removed text 97% IS in source — possible content loss
+32485,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32486,KEEP pending (removed),removed text 89% IS in source — possible content loss
+32487,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32488,KEEP pending (removed),removed text 83% IS in source — possible content loss
+32489,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32490,KEEP pending (removed),removed text 94% IS in source — possible content loss
+32491,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32492,KEEP pending (removed),removed text 95% IS in source — possible content loss
+32493,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32494,KEEP pending (removed),removed text 89% IS in source — possible content loss
+32495,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32496,KEEP pending (removed),removed text 95% IS in source — possible content loss
+32497,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32498,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32499,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32500,KEEP pending (removed),removed text 89% IS in source — possible content loss
+32501,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32502,KEEP pending (removed),removed text 96% IS in source — possible content loss
+32503,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32504,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32505,KEEP pending (removed),removed text 91% IS in source — possible content loss
+32506,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32507,KEEP pending (removed),removed text 92% IS in source — possible content loss
+32508,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32509,KEEP pending (removed),removed text 93% IS in source — possible content loss
+32510,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32511,KEEP pending (removed),removed text 91% IS in source — possible content loss
+32512,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32513,KEEP pending (removed),removed text 96% IS in source — possible content loss
+32514,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32515,KEEP pending (removed),removed text 98% IS in source — possible content loss
+32516,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32517,KEEP pending (removed),removed text 100% IS in source — possible content loss
+32518,KEEP pending (removed),removed text 95% IS in source — possible content loss
+32519,KEEP pending (removed),removed text 100% IS in source — possible content loss

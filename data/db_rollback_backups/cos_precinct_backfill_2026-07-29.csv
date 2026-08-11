@@ -1,0 +1,463 @@
+id,ref_number,v2_precinct_id_before,v2_precinct_id_after,evidence
+95308,Sydney_DCP_2012__section_2_locality_statements__preamble,,2.0,cover page 'Document Information' — document apparatus
+95309,Sydney_DCP_2012__section_2_locality_statements__2,,2.0,contents page p2 — document apparatus
+95310,Sydney_DCP_2012__section_2_locality_statements__toc_p3,,2.0,contents page p3 (TOC continuation) — document apparatus
+95311,Sydney_DCP_2012__section_2_locality_statements__toc_p4,,2.0,contents page p4 (TOC continuation) — document apparatus
+95312,Sydney_DCP_2012__section_2_locality_statements__2_13_6__kettle_street_2_13,,2.0,contents page p5 (TOC continuation) — document apparatus
+95313,Sydney_DCP_2012__section_2_locality_statements__2_6__woollahra_municipal_council,,2.0,"locality index map p7, inside 2.0 intro (p6=2.0-1, p8=2.1-1); content = LGA overview map"
+95314,Sydney_DCP_2012__section_2_locality_statements__2_1,,2.1,ref+footer agree (footer p8=2.1)
+95315,Sydney_DCP_2012__section_2_locality_statements__2_1_1,,2.1.1,ref+footer agree (footer p9=2.1)
+95316,Sydney_DCP_2012__section_2_locality_statements__2_1_2,,2.1.2,ref+footer agree (footer p11=2.1)
+95317,Sydney_DCP_2012__section_2_locality_statements__2_1_3,,2.1.3,ref+footer agree (footer p13=2.1)
+95318,Sydney_DCP_2012__section_2_locality_statements__2_1_4,,2.1.4,ref+footer agree (footer p15=2.1)
+95319,Sydney_DCP_2012__section_2_locality_statements__2_1_5,,2.1.5,ref+footer agree (footer p17=2.1)
+95320,Sydney_DCP_2012__section_2_locality_statements__2_1_6,,2.1.6,ref+footer agree (footer p19=2.1)
+95321,Sydney_DCP_2012__section_2_locality_statements__2_1_7,,2.1.7,ref+footer agree (footer p21=2.1)
+95322,Sydney_DCP_2012__section_2_locality_statements__2_1_8,,2.1.8,ref+footer agree (footer p23=2.1)
+95323,Sydney_DCP_2012__section_2_locality_statements__2_1_9,,2.1.9,ref+footer agree (footer p24=2.1)
+95324,Sydney_DCP_2012__section_2_locality_statements__2_1_10,,2.1.10,ref+footer agree (footer p26=2.1)
+95325,Sydney_DCP_2012__section_2_locality_statements__2_1_11,,2.1.11,ref+footer agree (footer p28=2.1)
+95326,Sydney_DCP_2012__section_2_locality_statements__2_1_12,,2.1.12,ref+footer agree (footer p30=2.1)
+95327,Sydney_DCP_2012__section_2_locality_statements__2_1_13,,2.1.13,ref+footer agree (footer p32=2.1)
+95328,Sydney_DCP_2012__section_2_locality_statements__2_2,,2.2,ref+footer agree (footer p34=2.2)
+95329,Sydney_DCP_2012__section_2_locality_statements__2_3,,2.3,ref+footer agree (footer p36=2.3)
+95330,Sydney_DCP_2012__section_2_locality_statements__2_3_2,,2.3.2,ref+footer agree (footer p38=2.3)
+95331,Sydney_DCP_2012__section_2_locality_statements__2_3_3,,2.3.3,ref+footer agree (footer p40=2.3)
+95332,Sydney_DCP_2012__section_2_locality_statements__2_3_4,,2.3.4,ref+footer agree (footer p42=2.3)
+95333,Sydney_DCP_2012__section_2_locality_statements__2_3_5,,2.3.5,ref+footer agree (footer p43=2.3)
+95334,Sydney_DCP_2012__section_2_locality_statements__2_4,,2.4,ref+footer agree (footer p45=2.4)
+95335,Sydney_DCP_2012__section_2_locality_statements__2_4_2,,2.4.2,ref+footer agree (footer p47=2.4)
+95336,Sydney_DCP_2012__section_2_locality_statements__2_4_3,,2.4.3,ref+footer agree (footer p49=2.4)
+95337,Sydney_DCP_2012__section_2_locality_statements__2_4_4,,2.4.4,ref+footer agree (footer p51=2.4)
+95338,Sydney_DCP_2012__section_2_locality_statements__2_4_5,,2.4.5,ref+footer agree (footer p53=2.4)
+95339,Sydney_DCP_2012__section_2_locality_statements__2_4_6,,2.4.6,ref+footer agree (footer p54=2.4)
+95340,Sydney_DCP_2012__section_2_locality_statements__2_4_7,,2.4.7,ref+footer agree (footer p56=2.4)
+95341,Sydney_DCP_2012__section_2_locality_statements__2_4_8,,2.4.8,ref+footer agree (footer p58=2.4)
+95342,Sydney_DCP_2012__section_2_locality_statements__2_4_9,,2.4.9,ref+footer agree (footer p60=2.4)
+95343,Sydney_DCP_2012__section_2_locality_statements__2_4_10,,2.4.10,ref+footer agree (footer p62=2.4)
+95344,Sydney_DCP_2012__section_2_locality_statements__2_4_11,,2.4.11,ref+footer agree (footer p64=2.4)
+95345,Sydney_DCP_2012__section_2_locality_statements__2_4_12,,2.4.12,ref+footer agree (footer p65=2.4)
+95346,Sydney_DCP_2012__section_2_locality_statements__2_5,,2.5,ref+footer agree (footer p67=2.5)
+95347,Sydney_DCP_2012__section_2_locality_statements__2_5_2,,2.5.2,ref+footer agree (footer p69=2.5)
+95348,Sydney_DCP_2012__section_2_locality_statements__2_5_3,,2.5.3,ref+footer agree (footer p71=2.5)
+95349,Sydney_DCP_2012__section_2_locality_statements__2_5_4,,2.5.4,ref+footer agree (footer p73=2.5)
+95350,Sydney_DCP_2012__section_2_locality_statements__2_5_5,,2.5.5,ref+footer agree (footer p74=2.5)
+95351,Sydney_DCP_2012__section_2_locality_statements__2_5_6,,2.5.6,ref+footer agree (footer p76=2.5)
+95352,Sydney_DCP_2012__section_2_locality_statements__2_5_7,,2.5.7,ref+footer agree (footer p77=2.5)
+95353,Sydney_DCP_2012__section_2_locality_statements__2_5_8,,2.5.8,ref+footer agree (footer p79=2.5)
+95354,Sydney_DCP_2012__section_2_locality_statements__2_5_9,,2.5.9,ref+footer agree (footer p80=2.5)
+95355,Sydney_DCP_2012__section_2_locality_statements__2_5_10,,2.5.10,ref+footer agree (footer p82=2.5)
+95356,Sydney_DCP_2012__section_2_locality_statements__2_5_11,,2.5.11,ref+footer agree (footer p84=2.5)
+95357,Sydney_DCP_2012__section_2_locality_statements__2_6__glebe_and_forest_lodge,,2.6,ref+footer agree (footer p85=2.6)
+95358,Sydney_DCP_2012__section_2_locality_statements__2_6_2,,2.6.2,ref+footer agree (footer p87=2.6)
+95359,Sydney_DCP_2012__section_2_locality_statements__2_6_3,,2.6.3,ref+footer agree (footer p88=2.6)
+95360,Sydney_DCP_2012__section_2_locality_statements__2_6_4,,2.6.4,ref+footer agree (footer p89=2.6)
+95361,Sydney_DCP_2012__section_2_locality_statements__2_6_5,,2.6.5,ref+footer agree (footer p90=2.6)
+95362,Sydney_DCP_2012__section_2_locality_statements__2_6_6,,2.6.6,ref+footer agree (footer p91=2.6)
+95363,Sydney_DCP_2012__section_2_locality_statements__2_6_7,,2.6.7,ref+footer agree (footer p92=2.6)
+95364,Sydney_DCP_2012__section_2_locality_statements__2_6_8,,2.6.8,ref+footer agree (footer p93=2.6)
+95365,Sydney_DCP_2012__section_2_locality_statements__2_6_9,,2.6.9,ref+footer agree (footer p94=2.6)
+95366,Sydney_DCP_2012__section_2_locality_statements__2_6_10,,2.6.10,ref+footer agree (footer p95=2.6)
+95367,Sydney_DCP_2012__section_2_locality_statements__2_6_11,,2.6.11,ref+footer agree (footer p96=2.6)
+95368,Sydney_DCP_2012__section_2_locality_statements__2_7,,2.7,ref+footer agree (footer p98=2.7)
+95369,Sydney_DCP_2012__section_2_locality_statements__2_7_2,,2.7.2,ref+footer agree (footer p100=2.7)
+95370,Sydney_DCP_2012__section_2_locality_statements__2_7_3,,2.7.3,ref+footer agree (footer p101=2.7)
+95371,Sydney_DCP_2012__section_2_locality_statements__2_7_4,,2.7.4,ref+footer agree (footer p103=2.7)
+95372,Sydney_DCP_2012__section_2_locality_statements__2_7_5,,2.7.5,ref+footer agree (footer p105=2.7)
+95373,Sydney_DCP_2012__section_2_locality_statements__2_7_6,,2.7.6,ref+footer agree (footer p107=2.7)
+95374,Sydney_DCP_2012__section_2_locality_statements__2_7_7,,2.7.7,ref+footer agree (footer p109=2.7)
+95375,Sydney_DCP_2012__section_2_locality_statements__2_7_8,,2.7.8,ref+footer agree (footer p110=2.7)
+95376,Sydney_DCP_2012__section_2_locality_statements__2_7_9,,2.7.9,ref+footer agree (footer p112=2.7)
+95377,Sydney_DCP_2012__section_2_locality_statements__2_7_10,,2.7.10,ref+footer agree (footer p114=2.7)
+95378,Sydney_DCP_2012__section_2_locality_statements__2_7_11,,2.7.11,ref+footer agree (footer p115=2.7)
+95379,Sydney_DCP_2012__section_2_locality_statements__2_8,,2.8,ref+footer agree (footer p116=2.8)
+95380,Sydney_DCP_2012__section_2_locality_statements__2_9,,2.9,ref+footer agree (footer p118=2.9)
+95381,Sydney_DCP_2012__section_2_locality_statements__2_9_2,,2.9.2,ref+footer agree (footer p120=2.9)
+95382,Sydney_DCP_2012__section_2_locality_statements__2_9_3,,2.9.3,ref+footer agree (footer p122=2.9)
+95383,Sydney_DCP_2012__section_2_locality_statements__2_9_4,,2.9.4,ref+footer agree (footer p124=2.9)
+95384,Sydney_DCP_2012__section_2_locality_statements__2_9_5,,2.9.5,ref+footer agree (footer p125=2.9)
+95385,Sydney_DCP_2012__section_2_locality_statements__2_10,,2.10,ref+footer agree (footer p126=2.10)
+95386,Sydney_DCP_2012__section_2_locality_statements__2_10_2,,2.10.2,ref+footer agree (footer p128=2.10)
+95387,Sydney_DCP_2012__section_2_locality_statements__2_10_3,,2.10.3,ref+footer agree (footer p130=2.10)
+95388,Sydney_DCP_2012__section_2_locality_statements__2_10_4,,2.10.4,ref+footer agree (footer p132=2.10)
+95389,Sydney_DCP_2012__section_2_locality_statements__2_11,,2.11,ref+footer agree (footer p134=2.11)
+95390,Sydney_DCP_2012__section_2_locality_statements__2_11_2,,2.11.2,ref+footer agree (footer p136=2.11)
+95391,Sydney_DCP_2012__section_2_locality_statements__2_11_3,,2.11.3,ref+footer agree (footer p137=2.11)
+95392,Sydney_DCP_2012__section_2_locality_statements__2_11_4,,2.11.4,ref+footer agree (footer p139=2.11)
+95393,Sydney_DCP_2012__section_2_locality_statements__2_11_5,,2.11.5,ref+footer agree (footer p140=2.11)
+95394,Sydney_DCP_2012__section_2_locality_statements__2_11_6,,2.11.6,ref+footer agree (footer p141=2.11)
+95395,Sydney_DCP_2012__section_2_locality_statements__2_11_7,,2.11.7,ref+footer agree (footer p143=2.11)
+95396,Sydney_DCP_2012__section_2_locality_statements__2_11_8,,2.11.8,ref+footer agree (footer p145=2.11)
+95397,Sydney_DCP_2012__section_2_locality_statements__2_12,,2.12,ref+footer agree (footer p147=2.12)
+95398,Sydney_DCP_2012__section_2_locality_statements__2_12_2,,2.12.2,ref+footer agree (footer p148=2.12)
+95399,Sydney_DCP_2012__section_2_locality_statements__2_12_3,,2.12.3,ref+footer agree (footer p149=2.12)
+95400,Sydney_DCP_2012__section_2_locality_statements__2_12_4,,2.12.4,ref+footer agree (footer p150=2.12)
+95401,Sydney_DCP_2012__section_2_locality_statements__2_13,,2.13,ref+footer agree (footer p151=2.13)
+95402,Sydney_DCP_2012__section_2_locality_statements__2_13_2,,2.13.2,ref+footer agree (footer p153=2.13)
+95403,Sydney_DCP_2012__section_2_locality_statements__2_13_3,,2.13.3,ref+footer agree (footer p154=2.13)
+95404,Sydney_DCP_2012__section_2_locality_statements__2_13_4,,2.13.4,ref+footer agree (footer p155=2.13)
+95405,Sydney_DCP_2012__section_2_locality_statements__2_13_5,,2.13.5,ref+footer agree (footer p156=2.13)
+95406,Sydney_DCP_2012__section_2_locality_statements__2_13_6__kettle_street,,2.13.6,ref+footer agree (footer p157=2.13)
+95407,Sydney_DCP_2012__section_2_locality_statements__2_13_7,,2.13.7,ref+footer agree (footer p159=2.13)
+95408,Sydney_DCP_2012__section_2_locality_statements__2_13_8,,2.13.8,ref+footer agree (footer p160=2.13)
+95409,Sydney_DCP_2012__section_2_locality_statements__2_13_9,,2.13.9,ref+footer agree (footer p162=2.13)
+95410,Sydney_DCP_2012__section_2_locality_statements__2_13_10,,2.13.10,ref+footer agree (footer p163=2.13)
+95411,Sydney_DCP_2012__section_2_locality_statements__2_13_11,,2.13.11,ref+footer agree (footer p164=2.13)
+95412,Sydney_DCP_2012__section_2_locality_statements__2_13_12,,2.13.12,ref+footer agree (footer p165=2.13)
+95413,Sydney_DCP_2012__section_2_locality_statements__2_13_13,,2.13.13,ref+footer agree (footer p166=2.13)
+95414,Sydney_DCP_2012__section_2_locality_statements__2_13_14,,2.13.14,ref+footer agree (footer p169=2.13)
+95578,Sydney_DCP_2012__section_5_specific_areas__preamble,,5.0,cover page 'Document Information' — document apparatus
+95579,Sydney_DCP_2012__section_5_specific_areas__5__specific_areas,,5.0,contents page p2 — document apparatus
+95580,Sydney_DCP_2012__section_5_specific_areas__5_4__green_square_lachlan_5,,5.0,contents page p3 (TOC continuation) — document apparatus
+95582,Sydney_DCP_2012__section_5_specific_areas__5_1,,5.1,footer (footer p7)
+95583,Sydney_DCP_2012__section_5_specific_areas__5_1_1_1,,5.1,footer (footer p8)
+95584,Sydney_DCP_2012__section_5_specific_areas__5_1_1_2,,5.1,footer (footer p12)
+95597,Sydney_DCP_2012__section_5_specific_areas__5_1_1_3,,5.1,footer (footer p28)
+95598,Sydney_DCP_2012__section_5_specific_areas__5_1_1_4,,5.1,footer (footer p31)
+95599,Sydney_DCP_2012__section_5_specific_areas__5_1_2,,5.1,footer (footer p33)
+95600,Sydney_DCP_2012__section_5_specific_areas__5_1_3,,5.1,footer (footer p37)
+95601,Sydney_DCP_2012__section_5_specific_areas__5_1_3_1,,5.1,footer (footer p38)
+95602,Sydney_DCP_2012__section_5_specific_areas__5_1_3_2,,5.1,footer (footer p39)
+95603,Sydney_DCP_2012__section_5_specific_areas__5_1_3_4,,5.1,footer (footer p40)
+95604,Sydney_DCP_2012__section_5_specific_areas__5_1_4,,5.1,footer (footer p41)
+95605,Sydney_DCP_2012__section_5_specific_areas__5_1_5,,5.1,footer (footer p42)
+95606,Sydney_DCP_2012__section_5_specific_areas__5_1_6,,5.1,footer (footer p43)
+95607,Sydney_DCP_2012__section_5_specific_areas__5_1_6_1,,5.1,footer (footer p44)
+95608,Sydney_DCP_2012__section_5_specific_areas__5_1_6_4,,5.1,footer (footer p45)
+95609,Sydney_DCP_2012__section_5_specific_areas__5_1_6_7,,5.1,footer (footer p46)
+95610,Sydney_DCP_2012__section_5_specific_areas__5_1_6_9,,5.1,footer (footer p47)
+95611,Sydney_DCP_2012__section_5_specific_areas__5_1_7_1,,5.1,footer (footer p48)
+95613,Sydney_DCP_2012__section_5_specific_areas__0__figure_5_38,,5.1,footer (sandwich p61)
+95614,Sydney_DCP_2012__section_5_specific_areas__5_1_7_2,,5.1,footer (footer p62)
+95615,Sydney_DCP_2012__section_5_specific_areas__0__rl_300m,,5.1,footer (sandwich p68)
+95617,Sydney_DCP_2012__section_5_specific_areas__5_1_8,,5.1,footer (footer p71)
+95618,Sydney_DCP_2012__section_5_specific_areas__4__clear_to,,5.1,footer (sandwich p73)
+95619,Sydney_DCP_2012__section_5_specific_areas__5_1_9,,5.1,footer (footer p75)
+95620,Sydney_DCP_2012__section_5_specific_areas__5_2,,5.2,footer (footer p77)
+95621,Sydney_DCP_2012__section_5_specific_areas__5_2_3,,5.2,footer (footer p80)
+95623,Sydney_DCP_2012__section_5_specific_areas__5_2_5,,5.2,footer (footer p84)
+95624,Sydney_DCP_2012__section_5_specific_areas__5_2_5_1,,5.2,footer (footer p85)
+95625,Sydney_DCP_2012__section_5_specific_areas__5_2_6,,5.2,footer (footer p86)
+95626,Sydney_DCP_2012__section_5_specific_areas__5_2_7,,5.2,footer (footer p90)
+95627,Sydney_DCP_2012__section_5_specific_areas__5_2_7_3,,5.2,footer (footer p91)
+95628,Sydney_DCP_2012__section_5_specific_areas__5_2_9,,5.2,footer (footer p92)
+95629,Sydney_DCP_2012__section_5_specific_areas__5_2_10,,5.2,footer (footer p94)
+95630,Sydney_DCP_2012__section_5_specific_areas__5_2_11,,5.2,footer (footer p95)
+95631,Sydney_DCP_2012__section_5_specific_areas__5_2_13,,5.2,footer (footer p96)
+95632,Sydney_DCP_2012__section_5_specific_areas__5_3,,5.3,footer (footer p97)
+95633,Sydney_DCP_2012__section_5_specific_areas__5_3_2,,5.3,footer (footer p99)
+95634,Sydney_DCP_2012__section_5_specific_areas__5_3_3,,5.3,footer (footer p100)
+95635,Sydney_DCP_2012__section_5_specific_areas__1_4__metre_footpath_widening_landscape,,5.3,footer (sandwich p101)
+95636,Sydney_DCP_2012__section_5_specific_areas__5_3_3_1,,5.3,footer (footer p102)
+95637,Sydney_DCP_2012__section_5_specific_areas__5_3_3_2,,5.3,footer (footer p103)
+95638,Sydney_DCP_2012__section_5_specific_areas__A2__g1,,5.3,footer (sandwich p104)
+95639,Sydney_DCP_2012__section_5_specific_areas__3_2,,5.3,footer (footer p111)
+95640,Sydney_DCP_2012__section_5_specific_areas__9_0,,5.3,footer (footer p113)
+95641,Sydney_DCP_2012__section_5_specific_areas__5_3_3_4,,5.3,footer (footer p115)
+95643,Sydney_DCP_2012__section_5_specific_areas__4__storeys,,5.3,footer (sandwich p118)
+95644,Sydney_DCP_2012__section_5_specific_areas__5_3_4_1,,5.3,footer (footer p121)
+95645,Sydney_DCP_2012__section_5_specific_areas__5_3_4_2,,5.3,footer (footer p122)
+95646,Sydney_DCP_2012__section_5_specific_areas__5_3_5,,5.3,footer (footer p125)
+95647,Sydney_DCP_2012__section_5_specific_areas__5_3_6_2,,5.3,footer (footer p126)
+95649,Sydney_DCP_2012__section_5_specific_areas__5_3_6_3,,5.3,footer (footer p128)
+95651,Sydney_DCP_2012__section_5_specific_areas__5_3_6_5,,5.3,footer (footer p131)
+95652,Sydney_DCP_2012__section_5_specific_areas__5_4__green_square_lachlan,,5.4,footer (footer p133)
+95653,Sydney_DCP_2012__section_5_specific_areas__5_4_2,,5.4,footer (footer p135)
+95654,Sydney_DCP_2012__section_5_specific_areas__5_4_2_2,,5.4,footer (footer p146)
+95655,Sydney_DCP_2012__section_5_specific_areas__5_4_2_3,,5.4,footer (footer p148)
+95656,Sydney_DCP_2012__section_5_specific_areas__5_4_3,,5.4,footer (footer p151)
+95657,Sydney_DCP_2012__section_5_specific_areas__5_4_3_2,,5.4,footer (footer p154)
+95658,Sydney_DCP_2012__section_5_specific_areas__5_4_3_3,,5.4,footer (footer p156)
+95659,Sydney_DCP_2012__section_5_specific_areas__5_4_3_4,,5.4,footer (footer p158)
+95660,Sydney_DCP_2012__section_5_specific_areas__5_4_3_5,,5.4,footer (footer p160)
+95661,Sydney_DCP_2012__section_5_specific_areas__5_4_3_6,,5.4,footer (footer p162)
+95662,Sydney_DCP_2012__section_5_specific_areas__3__sydney_dcp_2012_december,,5.4,footer (footer p163)
+95663,Sydney_DCP_2012__section_5_specific_areas__5_4_3_8,,5.4,footer (footer p165)
+95664,Sydney_DCP_2012__section_5_specific_areas__5_4_3_9,,5.4,footer (footer p166)
+95665,Sydney_DCP_2012__section_5_specific_areas__5_4_3_10,,5.4,footer (footer p167)
+95666,Sydney_DCP_2012__section_5_specific_areas__5_5,,5.5,footer (footer p168)
+95667,Sydney_DCP_2012__section_5_specific_areas__5_5_1,,5.5,footer (footer p169)
+95668,Sydney_DCP_2012__section_5_specific_areas__5__storey_street_frontage_height,,5.5,footer (sandwich p170)
+95669,Sydney_DCP_2012__section_5_specific_areas__5_5_2,,5.5,footer (footer p171)
+95670,Sydney_DCP_2012__section_5_specific_areas__5_5_3,,5.5,footer (footer p173)
+95671,Sydney_DCP_2012__section_5_specific_areas__12,,5.5,footer (sandwich p175)
+95672,Sydney_DCP_2012__section_5_specific_areas__5_5_3_2,,5.5,footer (footer p180)
+95673,Sydney_DCP_2012__section_5_specific_areas__5_5_3_3,,5.5,footer (footer p182)
+95674,Sydney_DCP_2012__section_5_specific_areas__3__metre_landscaped_setback_public,,5.5,footer (sandwich p184)
+95675,Sydney_DCP_2012__section_5_specific_areas__5_5_4,,5.5,footer (footer p185)
+95676,Sydney_DCP_2012__section_5_specific_areas__5_5_4_3,,5.5,footer (footer p186)
+95677,Sydney_DCP_2012__section_5_specific_areas__5_5_5,,5.5,footer (footer p188)
+95679,Sydney_DCP_2012__section_5_specific_areas__5_5_7,,5.5,footer (footer p190)
+95680,Sydney_DCP_2012__section_5_specific_areas__5_5_8,,5.5,footer (footer p192)
+95681,Sydney_DCP_2012__section_5_specific_areas__5_5_8_1,,5.5,footer (footer p193)
+95683,Sydney_DCP_2012__section_5_specific_areas__5_5_8_2,,5.5,footer (footer p195)
+95684,Sydney_DCP_2012__section_5_specific_areas__5_5_8_3,,5.5,footer (footer p196)
+95685,Sydney_DCP_2012__section_5_specific_areas__5_5_8_4,,5.5,footer (footer p198)
+95686,Sydney_DCP_2012__section_5_specific_areas__5_5_8_5,,5.5,footer (footer p199)
+95687,Sydney_DCP_2012__section_5_specific_areas__2__storeys_5_storeys,,5.5,footer (sandwich p200)
+95688,Sydney_DCP_2012__section_5_specific_areas__5_5_8_6,,5.5,footer (footer p201)
+95689,Sydney_DCP_2012__section_5_specific_areas__5_5_8_8,,5.5,footer (footer p202)
+95690,Sydney_DCP_2012__section_5_specific_areas__5_5_9,,5.5,footer (footer p204)
+95691,Sydney_DCP_2012__section_5_specific_areas__5_5_9_1,,5.5,footer (footer p205)
+95692,Sydney_DCP_2012__section_5_specific_areas__5_6,,5.6,footer (footer p208)
+95693,Sydney_DCP_2012__section_5_specific_areas__5_6_2,,5.6,footer (footer p209)
+95694,Sydney_DCP_2012__section_5_specific_areas__5_6_4,,5.6,footer (footer p210)
+95695,Sydney_DCP_2012__section_5_specific_areas__5_6_5,,5.6,footer (footer p211)
+95696,Sydney_DCP_2012__section_5_specific_areas__5_6_5_2,,5.6,footer (footer p213)
+95697,Sydney_DCP_2012__section_5_specific_areas__5_6_7_2,,5.6,footer (footer p215)
+95698,Sydney_DCP_2012__section_5_specific_areas__5_6_7_4,,5.6,footer (footer p216)
+95699,Sydney_DCP_2012__section_5_specific_areas__5_6_7_5,,5.6,footer (footer p217)
+95700,Sydney_DCP_2012__section_5_specific_areas__5_6_7_6,,5.6,footer (footer p218)
+95701,Sydney_DCP_2012__section_5_specific_areas__5_7,,5.7,footer (footer p219)
+95702,Sydney_DCP_2012__section_5_specific_areas__F1,,5.7,footer (sandwich p227)
+95703,Sydney_DCP_2012__section_5_specific_areas__5_7_1_2,,5.7,footer (footer p228)
+95704,Sydney_DCP_2012__section_5_specific_areas__1_4__metres_easement_for_public,,5.7,footer (sandwich p230)
+95705,Sydney_DCP_2012__section_5_specific_areas__5_7_2,,5.7,footer (footer p231)
+95706,Sydney_DCP_2012__section_5_specific_areas__3__storeys,,5.7,footer (sandwich p234)
+95707,Sydney_DCP_2012__section_5_specific_areas__5_7_2_2,,5.7,footer (footer p235)
+95708,Sydney_DCP_2012__section_5_specific_areas__5_7_4,,5.7,footer (footer p237)
+95709,Sydney_DCP_2012__section_5_specific_areas__5_7_6,,5.7,footer (footer p239)
+95710,Sydney_DCP_2012__section_5_specific_areas__5_7_6_1,,5.7,footer (footer p240)
+95712,Sydney_DCP_2012__section_5_specific_areas__5_8_2,,5.8,footer (footer p243)
+95713,Sydney_DCP_2012__section_5_specific_areas__5_8_2_2,,5.8,footer (footer p244)
+95714,Sydney_DCP_2012__section_5_specific_areas__5_8_2_3,,5.8,footer (footer p245)
+95715,Sydney_DCP_2012__section_5_specific_areas__5_8_2_4,,5.8,footer (footer p246)
+95716,Sydney_DCP_2012__section_5_specific_areas__5_8_3,,5.8,footer (footer p247)
+95717,Sydney_DCP_2012__section_5_specific_areas__5_8_3_2,,5.8,footer (footer p248)
+95718,Sydney_DCP_2012__section_5_specific_areas__5_8_3_4,,5.8,footer (footer p249)
+95719,Sydney_DCP_2012__section_5_specific_areas__5_8_3_5,,5.8,footer (footer p250)
+95720,Sydney_DCP_2012__section_5_specific_areas__5_8_3_6,,5.8,footer (footer p252)
+95721,Sydney_DCP_2012__section_5_specific_areas__5_8_3_6_2,,5.8,footer (footer p253)
+95722,Sydney_DCP_2012__section_5_specific_areas__5_8_3_8,,5.8,footer (footer p255)
+95723,Sydney_DCP_2012__section_5_specific_areas__5_8_3_9,,5.8,footer (footer p256)
+95724,Sydney_DCP_2012__section_5_specific_areas__5_8_4_2,,5.8,footer (footer p259)
+95725,Sydney_DCP_2012__section_5_specific_areas__5_8_4_2_2,,5.8,footer (footer p261)
+95726,Sydney_DCP_2012__section_5_specific_areas__1__bourke,,5.8,footer (sandwich p263)
+95727,Sydney_DCP_2012__section_5_specific_areas__2__u_e_s_t,,5.8,footer (sandwich p267)
+95728,Sydney_DCP_2012__section_5_specific_areas__4__s_w,,5.8,footer (footer p268)
+95729,Sydney_DCP_2012__section_5_specific_areas__10000,,5.8,footer (footer p269)
+95730,Sydney_DCP_2012__section_5_specific_areas__20000,,5.8,footer (footer p270)
+95731,Sydney_DCP_2012__section_5_specific_areas__4__se,,5.8,footer (footer p271)
+95732,Sydney_DCP_2012__section_5_specific_areas__7,,5.8,footer (footer p272)
+95738,Sydney_DCP_2012__section_5_specific_areas__5_8_4_2_3,,5.8,footer (footer p280)
+95739,Sydney_DCP_2012__section_5_specific_areas__5_8_4_4,,5.8,footer (footer p285)
+95740,Sydney_DCP_2012__section_5_specific_areas__5_8_5,,5.8,footer (footer p286)
+95741,Sydney_DCP_2012__section_5_specific_areas__5_8_6,,5.8,footer (footer p287)
+95742,Sydney_DCP_2012__section_5_specific_areas__5_9,,5.9,footer (footer p289)
+95743,Sydney_DCP_2012__section_5_specific_areas__5_9_2,,5.9,footer (footer p291)
+95744,Sydney_DCP_2012__section_5_specific_areas__5_9_3,,5.9,footer (footer p293)
+95746,Sydney_DCP_2012__section_5_specific_areas__5_9_3_2,,5.9,footer (footer p301)
+95747,Sydney_DCP_2012__section_5_specific_areas__5_9_3_3,,5.9,footer (footer p303)
+95748,Sydney_DCP_2012__section_5_specific_areas__5_9_3_4,,5.9,footer (footer p305)
+95749,Sydney_DCP_2012__section_5_specific_areas__5_9_3_6,,5.9,footer (footer p306)
+95750,Sydney_DCP_2012__section_5_specific_areas__5_9_4_1,,5.9,footer (footer p307)
+95751,Sydney_DCP_2012__section_5_specific_areas__2__s_t,,5.9,footer (sandwich p308)
+95753,Sydney_DCP_2012__section_5_specific_areas__1__storey_6_storeys,,5.9,footer (sandwich p310)
+95755,Sydney_DCP_2012__section_5_specific_areas__5_9_4_4,,5.9,footer (footer p312)
+95756,Sydney_DCP_2012__section_5_specific_areas__A2__d1_a,,5.9,footer (sandwich p313)
+95757,Sydney_DCP_2012__section_5_specific_areas__5_9_4_5,,5.9,footer (footer p314)
+95758,Sydney_DCP_2012__section_5_specific_areas__5_9_4_6,,5.9,footer (footer p317)
+95759,Sydney_DCP_2012__section_5_specific_areas__5_9_4_8,,5.9,footer (footer p318)
+95760,Sydney_DCP_2012__section_5_specific_areas__5_9_4_9,,5.9,footer (footer p321)
+95761,Sydney_DCP_2012__section_5_specific_areas__5_9_4_15,,5.9,footer (footer p322)
+95762,Sydney_DCP_2012__section_5_specific_areas__5_9_5,,5.9,footer (footer p323)
+95763,Sydney_DCP_2012__section_5_specific_areas__5_9_6,,5.9,footer (footer p324)
+95764,Sydney_DCP_2012__section_5_specific_areas__5_237,,5.9,footer (footer p325)
+95765,Sydney_DCP_2012__section_5_specific_areas__5_10,,5.10,footer (footer p326)
+95766,Sydney_DCP_2012__section_5_specific_areas__5_10_2_2,,5.10,footer (footer p328)
+95767,Sydney_DCP_2012__section_5_specific_areas__5_10_2_3,,5.10,footer (footer p329)
+95768,Sydney_DCP_2012__section_5_specific_areas__5_10_3,,5.10,footer (footer p331)
+95769,Sydney_DCP_2012__section_5_specific_areas__5_10_3_3,,5.10,footer (footer p332)
+95770,Sydney_DCP_2012__section_5_specific_areas__5_10_3_4,,5.10,footer (footer p335)
+95771,Sydney_DCP_2012__section_5_specific_areas__5_10_4_2,,5.10,footer (footer p338)
+95772,Sydney_DCP_2012__section_5_specific_areas__5_10_4_4,,5.10,footer (footer p341)
+95773,Sydney_DCP_2012__section_5_specific_areas__5_10_5,,5.10,footer (footer p342)
+95774,Sydney_DCP_2012__section_5_specific_areas__5_10_5_2,,5.10,footer (footer p343)
+95775,Sydney_DCP_2012__section_5_specific_areas__5_10_6,,5.10,footer (footer p345)
+95776,Sydney_DCP_2012__section_5_specific_areas__5_10_6_4_1,,5.10,footer (footer p346)
+95777,Sydney_DCP_2012__section_5_specific_areas__5_11,,5.11,footer (footer p347)
+95778,Sydney_DCP_2012__section_5_specific_areas__5_11_2,,5.11,footer (footer p351)
+95779,Sydney_DCP_2012__section_5_specific_areas__9,,5.11,footer (footer p354)
+95780,Sydney_DCP_2012__section_5_specific_areas__5_11_4,,5.11,footer (footer p355)
+95781,Sydney_DCP_2012__section_5_specific_areas__5_11_4_1,,5.11,footer (footer p356)
+95782,Sydney_DCP_2012__section_5_specific_areas__5_11_4_2,,5.11,footer (footer p357)
+95783,Sydney_DCP_2012__section_5_specific_areas__5_11_5_2,,5.11,footer (footer p358)
+95784,Sydney_DCP_2012__section_5_specific_areas__5_11_5_3,,5.11,footer (footer p359)
+95785,Sydney_DCP_2012__section_5_specific_areas__5_11_5_4,,5.11,footer (footer p361)
+95786,Sydney_DCP_2012__section_5_specific_areas__5_11_5_5,,5.11,footer (footer p362)
+95787,Sydney_DCP_2012__section_5_specific_areas__5_11_6,,5.11,footer (footer p363)
+95788,Sydney_DCP_2012__section_5_specific_areas__5_11_7,,5.11,footer (footer p364)
+95789,Sydney_DCP_2012__section_5_specific_areas__5_11_8,,5.11,footer (footer p365)
+95790,Sydney_DCP_2012__section_5_specific_areas__5_12,,5.12,footer (footer p366)
+95791,Sydney_DCP_2012__section_6_specific_sites__preamble,,6.0,cover page 'Document Information' — document apparatus
+95792,Sydney_DCP_2012__section_6_specific_sites__6,,6.0,contents page p2 — document apparatus
+95793,Sydney_DCP_2012__section_6_specific_sites__6_0,,6.0,contents page p3 (TOC continuation) — document apparatus
+95795,Sydney_DCP_2012__section_6_specific_sites__6_1,,6.1.3,footer p6=6.1-1 -> 6.1.3
+95797,Sydney_DCP_2012__section_6_specific_sites__6_1_4_1,,6.1.4,footer p9=6.1-4 -> 6.1.4
+95798,Sydney_DCP_2012__section_6_specific_sites__6_9,,6.1.4,footer p11=6.1-6 -> 6.1.4
+95799,Sydney_DCP_2012__section_6_specific_sites__6_1_4_2,,6.1.4,footer p12=6.1-7 -> 6.1.4
+95800,Sydney_DCP_2012__section_6_specific_sites__6_1_4_3,,6.1.4,footer p15=6.1-10 -> 6.1.4
+95801,Sydney_DCP_2012__section_6_specific_sites__6_1_5,,6.1.4,APDG figure page p16; bounded by 6.1.4 range p8-p36; text names APDG/Cahill
+95802,Sydney_DCP_2012__section_6_specific_sites__A1,,6.1.4,APDG figure page p17; bounded by 6.1.4 range p8-p36; text names APDG/Cahill
+95803,Sydney_DCP_2012__section_6_specific_sites__77,,6.1.4,APDG figure page p20; bounded by 6.1.4 range p8-p36; text names APDG/Cahill
+95805,Sydney_DCP_2012__section_6_specific_sites__2,,6.1.4,APDG figure page p24; bounded by 6.1.4 range p8-p36; text names APDG/Cahill
+95807,Sydney_DCP_2012__section_6_specific_sites__6_1_6,,6.1.4,APDG figure page p29; bounded by 6.1.4 range p8-p36; text names APDG/Cahill
+95809,Sydney_DCP_2012__section_6_specific_sites__6_1_5_1,,6.1.5,footer p37=6.1-32 -> 6.1.5
+95810,Sydney_DCP_2012__section_6_specific_sites__6_1_5_2,,6.1.5,footer p38=6.1-33 -> 6.1.5
+95811,Sydney_DCP_2012__section_6_specific_sites__6_1_5_3,,6.1.5,footer p39=6.1-34 -> 6.1.5
+95812,Sydney_DCP_2012__section_6_specific_sites__6_1_5_5,,6.1.5,footer p40=6.1-35 -> 6.1.5
+95813,Sydney_DCP_2012__section_6_specific_sites__6_1_7,,6.1.7,footer p43=6.1-38 -> 6.1.7
+95814,Sydney_DCP_2012__section_6_specific_sites__6_1_7_2,,6.1.7,footer p44=6.1-39 -> 6.1.7
+95815,Sydney_DCP_2012__section_6_specific_sites__6_1_7_4,,6.1.7,footer p45=6.1-40 -> 6.1.7
+95816,Sydney_DCP_2012__section_6_specific_sites__6_1_8,,6.1.8,footer p46=6.1-41 -> 6.1.8
+95817,Sydney_DCP_2012__section_6_specific_sites__6_1_8_2,,6.1.8,footer p47=6.1-42 -> 6.1.8
+95819,Sydney_DCP_2012__section_6_specific_sites__6_1_9,,6.1.9,footer p49=6.1-44 -> 6.1.9
+95820,Sydney_DCP_2012__section_6_specific_sites__6_1_9_1,,6.1.9,footer p50=6.1-45 -> 6.1.9
+95821,Sydney_DCP_2012__section_6_specific_sites__6_1_9_2,,6.1.9,footer p52=6.1-47 -> 6.1.9
+95822,Sydney_DCP_2012__section_6_specific_sites__6_1_9_3,,6.1.9,footer p53=6.1-48 -> 6.1.9
+95824,Sydney_DCP_2012__section_6_specific_sites__6_1_9_5,,6.1.9,footer p55=6.1-50 -> 6.1.9
+95825,Sydney_DCP_2012__section_6_specific_sites__6_1_9_6,,6.1.9,footer p56=6.1-51 -> 6.1.9
+95826,Sydney_DCP_2012__section_6_specific_sites__6_1_9_8,,6.1.9,footer p57=6.1-52 -> 6.1.9
+95827,Sydney_DCP_2012__section_6_specific_sites__6_2,,6.2.4,footer p58=6.2-1 -> 6.2.4
+95828,Sydney_DCP_2012__section_6_specific_sites__18__huntley_street_principles_august,,6.2.4,footer p59=6.2-2 -> 6.2.4
+95829,Sydney_DCP_2012__section_6_specific_sites__6_2_4,,6.2.4,footer p60=6.2-3 -> 6.2.4
+95830,Sydney_DCP_2012__section_6_specific_sites__6_2_4_2,,6.2.4,footer p61=6.2-4 -> 6.2.4
+95831,Sydney_DCP_2012__section_6_specific_sites__8,,6.2.4,footer p62=6.2-5 -> 6.2.4
+95832,Sydney_DCP_2012__section_6_specific_sites__18__huntley_street_setbacks_residential,,6.2.4,footer p64=6.2-7 -> 6.2.4
+95833,Sydney_DCP_2012__section_6_specific_sites__6_2_4_5,,6.2.4,footer p65=6.2-8 -> 6.2.4
+95834,Sydney_DCP_2012__section_6_specific_sites__18__huntley_street_landscape_august,,6.2.4,footer p66=6.2-9 -> 6.2.4
+95835,Sydney_DCP_2012__section_6_specific_sites__18__huntley_street_uses_august,,6.2.4,"shared page 67: row text = Huntley Fig 6.44 (6.2.4), page heading starts 6.2.6"
+95837,Sydney_DCP_2012__section_6_specific_sites__3__existing_site_boundary,,6.2.8,footer p74=6.2-17 -> 6.2.8
+95839,Sydney_DCP_2012__section_6_specific_sites__6_2_19,,6.2.8,footer p76=6.2-19 -> 6.2.8
+95840,Sydney_DCP_2012__section_6_specific_sites__6_2_20,,6.2.8,footer p77=6.2-20 -> 6.2.8
+95841,Sydney_DCP_2012__section_6_specific_sites__6_2_24,,6.2.8,footer p81=6.2-24 -> 6.2.8
+95842,Sydney_DCP_2012__section_6_specific_sites__3__cleveland_street,,6.2.8,footer p82=6.2-25 -> 6.2.8
+95843,Sydney_DCP_2012__section_6_specific_sites__14__s_t_6_st,,6.2.9,footer p84=6.2-27 -> 6.2.9
+95844,Sydney_DCP_2012__section_6_specific_sites__6_2_10_1,,6.2.10,footer p85=6.2-28 -> 6.2.10
+95845,Sydney_DCP_2012__section_6_specific_sites__6_2_11_1,,6.2.11,footer p86=6.2-29 -> 6.2.11
+95846,Sydney_DCP_2012__section_6_specific_sites__6_2_12,,6.2.12,footer p87=6.2-30 -> 6.2.12
+95847,Sydney_DCP_2012__section_6_specific_sites__6_2_12_1,,6.2.12,footer p89=6.2-32 -> 6.2.12
+95848,Sydney_DCP_2012__section_6_specific_sites__6_2_12_3,,6.2.12,footer p90=6.2-33 -> 6.2.12
+95849,Sydney_DCP_2012__section_6_specific_sites__6_2_12_5,,6.2.12,footer p91=6.2-34 -> 6.2.12
+95850,Sydney_DCP_2012__section_6_specific_sites__6_2_12_8,,6.2.12,footer p92=6.2-35 -> 6.2.12
+95852,Sydney_DCP_2012__section_6_specific_sites__6_2_12_10,,6.2.12,footer p95=6.2-38 -> 6.2.12
+95854,Sydney_DCP_2012__section_6_specific_sites__6_2_12_13,,6.2.12,footer p97=6.2-40 -> 6.2.12
+95855,Sydney_DCP_2012__section_6_specific_sites__6_2_12_15,,6.2.12,footer p98=6.2-41 -> 6.2.12
+95856,Sydney_DCP_2012__section_6_specific_sites__6_3,,6.3.1,footer p99=6.3-1 -> 6.3.1
+95857,Sydney_DCP_2012__section_6_specific_sites__6_3_1_2,,6.3.1,footer p100=6.3-2 -> 6.3.1
+95861,Sydney_DCP_2012__section_6_specific_sites__6_3_2_1,,6.3.2,footer p104=6.3-6 -> 6.3.2
+95862,Sydney_DCP_2012__section_6_specific_sites__6_3_3,,6.3.3,footer p105=6.3-7 -> 6.3.3
+95863,Sydney_DCP_2012__section_6_specific_sites__6_3_3_1,,6.3.3,footer p106=6.3-8 -> 6.3.3
+95864,Sydney_DCP_2012__section_6_specific_sites__6_3_3_2,,6.3.3,footer p108=6.3-10 -> 6.3.3
+95865,Sydney_DCP_2012__section_6_specific_sites__6_3_3_3,,6.3.3,footer p109=6.3-11 -> 6.3.3
+95866,Sydney_DCP_2012__section_6_specific_sites__6_3_3_4,,6.3.3,footer p110=6.3-12 -> 6.3.3
+95868,Sydney_DCP_2012__section_6_specific_sites__6_3_3_5,,6.3.3,footer p112=6.3-14 -> 6.3.3
+95870,Sydney_DCP_2012__section_6_specific_sites__6_3_3_6,,6.3.3,footer p115=6.3-17 -> 6.3.3
+95871,Sydney_DCP_2012__section_6_specific_sites__6_3_4_1,,6.3.4,footer p116=6.3-18 -> 6.3.4
+95872,Sydney_DCP_2012__section_6_specific_sites__6_3_4_4,,6.3.4,footer p117=6.3-19 -> 6.3.4
+95874,Sydney_DCP_2012__section_6_specific_sites__6_3_5,,6.3.5,footer p120=6.3-22 -> 6.3.5
+95875,Sydney_DCP_2012__section_6_specific_sites__65,,6.3.5,footer p121=6.3-23 -> 6.3.5
+95876,Sydney_DCP_2012__section_6_specific_sites__6_3_6_1,,6.3.6,footer p122=6.3-24 -> 6.3.6
+95877,Sydney_DCP_2012__section_6_specific_sites__6_3_6_2,,6.3.6,footer p123=6.3-25 -> 6.3.6
+95878,Sydney_DCP_2012__section_6_specific_sites__4__storeys_r_e_e,,6.3.6,footer p124=6.3-26 -> 6.3.6
+95879,Sydney_DCP_2012__section_6_specific_sites__6_3_6_5,,6.3.6,footer p125=6.3-27 -> 6.3.6
+95880,Sydney_DCP_2012__section_6_specific_sites__6_3_7_1,,6.3.7,footer p127=6.3-29 -> 6.3.7
+95882,Sydney_DCP_2012__section_6_specific_sites__38_000,,6.3.8,footer p133=6.3-35 -> 6.3.8
+95884,Sydney_DCP_2012__section_6_specific_sites__6_3_9_1,,6.3.9,footer p135=6.3-37 -> 6.3.9
+95885,Sydney_DCP_2012__section_6_specific_sites__6_3_9_2,,6.3.9,footer p136=6.3-38 -> 6.3.9
+95886,Sydney_DCP_2012__section_6_specific_sites__6_3_9_3,,6.3.9,footer p137=6.3-39 -> 6.3.9
+95887,Sydney_DCP_2012__section_6_specific_sites__6_3_10_1,,6.3.10,footer p139=6.3-41 -> 6.3.10
+95888,Sydney_DCP_2012__section_6_specific_sites__3__bourke,,6.3.10,footer p141=6.3-43 -> 6.3.10
+95889,Sydney_DCP_2012__section_6_specific_sites__555,,6.3.10,footer p144=6.3-46 -> 6.3.10
+95890,Sydney_DCP_2012__section_6_specific_sites__6_3_10_3,,6.3.10,footer p146=6.3-48 -> 6.3.10
+95891,Sydney_DCP_2012__section_6_specific_sites__40,,6.3.10,footer p147=6.3-49 -> 6.3.10
+95892,Sydney_DCP_2012__section_6_specific_sites__6_3_11_1,,6.3.11,footer p148=6.3-50 -> 6.3.11
+95893,Sydney_DCP_2012__section_6_specific_sites__6_3_11_2,,6.3.11,footer p149=6.3-51 -> 6.3.11
+95894,Sydney_DCP_2012__section_6_specific_sites__6_3_11_5,,6.3.11,footer p150=6.3-52 -> 6.3.11
+95896,Sydney_DCP_2012__section_6_specific_sites__6_3_12_1,,6.3.12,footer p152=6.3-54 -> 6.3.12
+95897,Sydney_DCP_2012__section_6_specific_sites__6_3_12_2,,6.3.12,footer p153=6.3-55 -> 6.3.12
+95898,Sydney_DCP_2012__section_6_specific_sites__6_3_12_3,,6.3.12,footer p155=6.3-57 -> 6.3.12
+95899,Sydney_DCP_2012__section_6_specific_sites__6_3_12_6,,6.3.12,footer p156=6.3-58 -> 6.3.12
+95900,Sydney_DCP_2012__section_6_specific_sites__6_3_13_1,,6.3.13,footer p158=6.3-60 -> 6.3.13
+95902,Sydney_DCP_2012__section_6_specific_sites__6_3_13_3,,6.3.13,footer p161=6.3-63 -> 6.3.13
+95903,Sydney_DCP_2012__section_6_specific_sites__6_3_13_5,,6.3.13,footer p162=6.3-64 -> 6.3.13
+95904,Sydney_DCP_2012__section_6_specific_sites__6_3_14_1,,6.3.14,footer p163=6.3-65 -> 6.3.14
+95905,Sydney_DCP_2012__section_6_specific_sites__6_3_14_2,,6.3.14,footer p164=6.3-66 -> 6.3.14
+95906,Sydney_DCP_2012__section_6_specific_sites__6_3_14_4,,6.3.14,footer p165=6.3-67 -> 6.3.14
+95907,Sydney_DCP_2012__section_6_specific_sites__6_3_15_1,,6.3.15,footer p166=6.3-68 -> 6.3.15
+95908,Sydney_DCP_2012__section_6_specific_sites__6_3_15_2,,6.3.15,footer p167=6.3-69 -> 6.3.15
+95909,Sydney_DCP_2012__section_6_specific_sites__6_3_15_4,,6.3.15,footer p168=6.3-70 -> 6.3.15
+95910,Sydney_DCP_2012__section_6_specific_sites__6_3_16_1,,6.3.16,footer p170=6.3-72 -> 6.3.16
+95912,Sydney_DCP_2012__section_6_specific_sites__6_3_74,,6.3.16,footer p172=6.3-74 -> 6.3.16
+95913,Sydney_DCP_2012__section_6_specific_sites__9,,6.3.16,footer p173=6.3-75 -> 6.3.16
+95914,Sydney_DCP_2012__section_6_specific_sites__6_3_16_4,,6.3.16,footer p174=6.3-76 -> 6.3.16
+95915,Sydney_DCP_2012__section_6_specific_sites__6_3_16_5,,6.3.16,footer p175=6.3-77 -> 6.3.16
+95916,Sydney_DCP_2012__section_6_specific_sites__6_3_17_1,,6.3.17,footer p176=6.3-78 -> 6.3.17
+95917,Sydney_DCP_2012__section_6_specific_sites__6_3_17,,6.3.17,footer p177=6.3-79 -> 6.3.17
+95918,Sydney_DCP_2012__section_6_specific_sites__6_3_17_2,,6.3.17,footer p178=6.3-80 -> 6.3.17
+95919,Sydney_DCP_2012__section_6_specific_sites__6_3_17_4,,6.3.17,footer p179=6.3-81 -> 6.3.17
+95920,Sydney_DCP_2012__section_6_specific_sites__6_3_18_1,,6.3.18,footer p181=6.3-83 -> 6.3.18
+95921,Sydney_DCP_2012__section_6_specific_sites__6_3_84,,6.3.18,footer p182=6.3-84 -> 6.3.18
+95922,Sydney_DCP_2012__section_6_specific_sites__6_3_85,,6.3.18,footer p183=6.3-85 -> 6.3.18
+95923,Sydney_DCP_2012__section_6_specific_sites__6_3_18_2,,6.3.18,footer p184=6.3-86 -> 6.3.18
+95924,Sydney_DCP_2012__section_6_specific_sites__6_3_18_3,,6.3.18,footer p186=6.3-88 -> 6.3.18
+95925,Sydney_DCP_2012__section_6_specific_sites__6_3_18_4,,6.3.18,footer p187=6.3-89 -> 6.3.18
+95926,Sydney_DCP_2012__section_6_specific_sites__6_3_19_1,,6.3.19,footer p188=6.3-90 -> 6.3.19
+95927,Sydney_DCP_2012__section_6_specific_sites__6_3_19_2,,6.3.19,footer p190=6.3-92 -> 6.3.19
+95928,Sydney_DCP_2012__section_6_specific_sites__6_3_20_1,,6.3.20,footer p192=6.3-94 -> 6.3.20
+95929,Sydney_DCP_2012__section_6_specific_sites__14__wentworth_avenue_which_is,,6.3.20,footer p193=6.3-95 -> 6.3.20
+95930,Sydney_DCP_2012__section_6_specific_sites__6_3_20_3,,6.3.20,footer p194=6.3-96 -> 6.3.20
+95931,Sydney_DCP_2012__section_6_specific_sites__6_3_20_6,,6.3.20,footer p195=6.3-97 -> 6.3.20
+95932,Sydney_DCP_2012__section_6_specific_sites__6_3_20_7,,6.3.20,footer p198=6.3-100 -> 6.3.20
+95933,Sydney_DCP_2012__section_6_specific_sites__6_3_20_8,,6.3.20,footer p199=6.3-101 -> 6.3.20
+95934,Sydney_DCP_2012__section_6_specific_sites__148,,6.3.20,footer p201=6.3-103 -> 6.3.20
+95935,Sydney_DCP_2012__section_6_specific_sites__6_3_20_9,,6.3.21,footer p202=6.3-104 -> 6.3.21
+95936,Sydney_DCP_2012__section_6_specific_sites__6_3_21_1,,6.3.21,footer p203=6.3-105 -> 6.3.21
+95937,Sydney_DCP_2012__section_6_specific_sites__6_3_21_2,,6.3.21,footer p204=6.3-106 -> 6.3.21
+95938,Sydney_DCP_2012__section_6_specific_sites__6_3_21_4,,6.3.21,footer p205=6.3-107 -> 6.3.21
+95939,Sydney_DCP_2012__section_6_specific_sites__6_3_21_7,,6.3.21,footer p206=6.3-108 -> 6.3.21
+95940,Sydney_DCP_2012__section_6_specific_sites__6_3_21_10,,6.3.21,footer p207=6.3-109 -> 6.3.21
+95941,Sydney_DCP_2012__section_6_specific_sites__6_3_110,,6.3.21,footer p208=6.3-110 -> 6.3.21
+95942,Sydney_DCP_2012__section_6_specific_sites__6_3_111,,6.3.21,footer p209=6.3-111 -> 6.3.21
+95943,Sydney_DCP_2012__section_6_specific_sites__6_3_112,,6.3.21,footer p210=6.3-112 -> 6.3.21
+95944,Sydney_DCP_2012__section_6_specific_sites__6_3_22_1,,6.3.22,footer p212=6.3-114 -> 6.3.22
+95945,Sydney_DCP_2012__section_6_specific_sites__6_3_22_3,,6.3.22,footer p213=6.3-115 -> 6.3.22
+95946,Sydney_DCP_2012__section_6_specific_sites__6_3_22_4,,6.3.22,footer p214=6.3-116 -> 6.3.22
+95947,Sydney_DCP_2012__section_6_specific_sites__6_3_22_5,,6.3.22,footer p217=6.3-119 -> 6.3.22
+95948,Sydney_DCP_2012__section_6_specific_sites__F5,,6.3.22,footer p218=6.3-120 -> 6.3.22
+95949,Sydney_DCP_2012__section_6_specific_sites__6_3_22_6,,6.3.22,footer p219=6.3-121 -> 6.3.22
+95950,Sydney_DCP_2012__section_6_specific_sites__6_3_22_9,,6.3.22,footer p220=6.3-122 -> 6.3.22
+95951,Sydney_DCP_2012__section_6_specific_sites__6_3_22_10,,6.3.22,footer p221=6.3-123 -> 6.3.22
+95952,Sydney_DCP_2012__section_6_specific_sites__6_3_23_1,,6.3.23,footer p222=6.3-124 -> 6.3.23
+95953,Sydney_DCP_2012__section_6_specific_sites__6_3_23_2,,6.3.23,footer p223=6.3-125 -> 6.3.23
+95954,Sydney_DCP_2012__section_6_specific_sites__6_3_23_3,,6.3.24,footer p224=6.3-126 -> 6.3.24
+95955,Sydney_DCP_2012__section_6_specific_sites__6_3_24_2,,6.3.24,footer p226=6.3-128 -> 6.3.24
+95956,Sydney_DCP_2012__section_6_specific_sites__6_3_24_4,,6.3.24,footer p227=6.3-129 -> 6.3.24
+95957,Sydney_DCP_2012__section_6_specific_sites__6_3_24_6,,6.3.24,footer p228=6.3-130 -> 6.3.24
+95958,Sydney_DCP_2012__section_6_specific_sites__6_3_24_9,,6.3.24,footer p229=6.3-131 -> 6.3.24
+95959,Sydney_DCP_2012__section_6_specific_sites__6_3_24_10,,6.3.25,footer p230=6.3-132 -> 6.3.25
+95960,Sydney_DCP_2012__section_6_specific_sites__6_3_25_1,,6.3.25,footer p231=6.3-133 -> 6.3.25
+95961,Sydney_DCP_2012__section_6_specific_sites__6_3_25_2,,6.3.25,footer p232=6.3-134 -> 6.3.25
+95962,Sydney_DCP_2012__section_6_specific_sites__6_3_25_5,,6.3.25,footer p233=6.3-135 -> 6.3.25
+95963,Sydney_DCP_2012__section_6_specific_sites__6_3_25_9,,6.3.25,footer p234=6.3-136 -> 6.3.25
+95964,Sydney_DCP_2012__section_6_specific_sites__6_3_25_10,,6.3.25,footer p235=6.3-137 -> 6.3.25
+95967,Sydney_DCP_2012__section_6_specific_sites__6_3_26_2,,6.3.26,footer p240=6.3-142 -> 6.3.26
+95968,Sydney_DCP_2012__section_6_specific_sites__6_3_26_3,,6.3.26,footer p241=6.3-143 -> 6.3.26
+95970,Sydney_DCP_2012__section_6_specific_sites__6_3_26_6,,6.3.26,footer p243=6.3-145 -> 6.3.26
+95971,Sydney_DCP_2012__section_6_specific_sites__6_3_26_7,,6.3.27,footer p245=6.3-147 -> 6.3.27
+95972,Sydney_DCP_2012__section_6_specific_sites__6_3_27_2,,6.3.27,footer p246=6.3-148 -> 6.3.27
+95973,Sydney_DCP_2012__section_6_specific_sites__4__tree_retention,,6.3.27,footer p247=6.3-149 -> 6.3.27
+95974,Sydney_DCP_2012__section_6_specific_sites__6_3_27_4,,6.3.27,footer p248=6.3-150 -> 6.3.27
+95975,Sydney_DCP_2012__section_6_specific_sites__6_3_27_7,,6.3.27,footer p249=6.3-151 -> 6.3.27
+95976,Sydney_DCP_2012__section_6_specific_sites__6_3_27_10,,6.3.27,footer p250=6.3-152 -> 6.3.27
+95977,Sydney_DCP_2012__section_6_specific_sites__6_3_27_11,,6.3.27,footer p252=6.3-154 -> 6.3.27
+95978,Sydney_DCP_2012__section_6_specific_sites__6_3_28_1,,6.3.28,footer p253=6.3-155 -> 6.3.28
+95979,Sydney_DCP_2012__section_6_specific_sites__6_3_28_4,,6.3.28,footer p254=6.3-156 -> 6.3.28
+95981,Sydney_DCP_2012__section_6_specific_sites__6_3_29_1,,6.3.29,footer p256=6.3-158 -> 6.3.29
+95982,Sydney_DCP_2012__section_6_specific_sites__6_3_29_3,,6.3.29,footer p257=6.3-159 -> 6.3.29
+95983,Sydney_DCP_2012__section_6_specific_sites__6_3_30_1,,6.3.30,footer p258=6.3-160 -> 6.3.30
+95984,Sydney_DCP_2012__section_6_specific_sites__6_3_30_2,,6.3.31,footer p259=6.3-161 -> 6.3.31
+95985,Sydney_DCP_2012__section_6_specific_sites__6_3_31_2,,6.3.31,footer p262=6.3-164 -> 6.3.31
+95986,Sydney_DCP_2012__section_6_specific_sites__6_3_31_3,,6.3.31,footer p263=6.3-165 -> 6.3.31
+95987,Sydney_DCP_2012__section_6_specific_sites__6_3_31_4,,6.3.31,footer p264=6.3-166 -> 6.3.31
+95988,Sydney_DCP_2012__section_6_specific_sites__6_3_31_5,,6.3.31,footer p265=6.3-167 -> 6.3.31

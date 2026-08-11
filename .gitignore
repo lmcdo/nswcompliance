@@ -80,6 +80,35 @@ images/
 # Flood study shapefiles and raw spatial data (large binaries, not for VCS)
 data/flood_studies/
 data/spatial_raw/
+# Downloaded spatial payloads — 1.9 GB as at 2026-08-11, same class as the two
+# lines above. Re-fetchable, so the RECIPE is kept and the payload is not:
+# coastal_inundation is 16 shapefile sets + their zips; flood_calibration is 47
+# Copernicus EMS archives whose download URLs are recorded beside them.
+# Written as `dir/*` not `dir/`, because git cannot re-include a file whose
+# PARENT DIRECTORY is excluded — with `dir/` every `!` below would be inert.
+data/coastal_inundation/*
+!data/coastal_inundation/readme.txt
+data/flood_calibration/*
+!data/flood_calibration/copernicus_manifest.json
+!data/flood_calibration/copernicus/
+data/flood_calibration/copernicus/*
+!data/flood_calibration/copernicus/*.urls
+
+# Saved HTTP error page from a failed council scrape (an "Access Denied" body,
+# not a document). Kept out rather than deleted in case the failure is evidence.
+/kg_dcp_page.html
+
+# Per-session tool output, like .qa_report.json above: a hook marker and a
+# cross-review result. Both are regenerated and neither describes the codebase.
+.claude/.prior-art-surfaces.json
+.claude/sol-shadow-review.json
+
+# One rollback backup exceeds the 2 MB pre-commit gate (8.3 MB): the predicted
+# December-DST shadow values behind the #883/#885 regeneration. Kept ON DISK as
+# evidence — memory records that these backups must not be deleted — but out of
+# git, because the gate is right that an 8 MB JSON does not belong in history.
+# Every other backup in that directory is under 600 KB and IS committed.
+data/db_rollback_backups/shadow_december_dst_predicted_2026-08-07.json
 
 # Generated conveyancing PDF reports (outputs, not source)
 reports/conveyancing/*.pdf

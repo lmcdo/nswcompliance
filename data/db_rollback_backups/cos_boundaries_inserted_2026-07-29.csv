@@ -1,0 +1,147 @@
+boundary_row_id,precinct_id,name,layer,n_parts,centroid_in,area_sqm
+305,2.1.1,"York Street, Clarence Street and Kent Street",11,1,True,130503
+306,2.1.10,"Sydney Square, Town Hall and St Andrews",11,1,True,53095
+307,2.1.11,Railway Square and Central Station,11,1,True,229761
+308,2.1.12,Chifley Square,11,1,True,26479
+309,2.1.13,Farrer Place,11,1,True,20383
+310,2.1.2,College Street and Hyde Park,11,1,True,376040
+311,2.1.3,Haymarket and Chinatown,11,1,True,160928
+312,2.1.4,Circular Quay,11,1,True,70345
+313,2.1.5,"Bridge Street, Macquarie Place and Bulletin Place",11,1,True,57998
+314,2.1.6,Macquarie Street,11,1,True,79735
+315,2.1.7,Martin Place,11,1,True,62856
+316,2.1.8,Pitt Street Mall,11,1,True,31684
+317,2.1.9,Wynyard Park and Lang Park,11,1,True,63359
+318,2.10.2,North Alexandria,11,1,True,328313
+319,2.10.3,Enterprise Corridor,11,1,True,1214134
+320,2.10.4,Rosebery West,11,1,True,412847
+321,2.11.2,Riley,11,1,True,150345
+322,2.11.3,Surry Hills North,11,1,True,238727
+323,2.11.4,Flinders,11,1,True,23523
+324,2.11.5,Surry Hills East,11,1,True,175021
+325,2.11.6,Surry Hills South,11,1,True,167210
+326,2.11.7,Surry Hills Central,11,1,True,222002
+327,2.11.8,Prince Alfred Park East,11,1,True,195183
+328,2.12.2,Pyrmont,11,1,True,368563
+329,2.12.3,Ultimo,11,1,True,271518
+330,2.12.4,Student Precinct,11,1,True,135294
+331,2.13.10,Redfern Park South,11,1,True,183969
+332,2.13.11,Redfern Park West,11,1,True,128300
+333,2.13.12,Waterloo Estate (Central and North),11,1,True,61635
+334,2.13.13,Botany Road Precinct,11,1,True,220810
+335,2.13.14,Waterloo Estate (South),11,1,True,126071
+336,2.13.2,Thurlow Street,11,1,True,73493
+337,2.13.3,Moore Park Gardens,11,1,True,59108
+338,2.13.4,Baptist Street,11,1,True,137660
+339,2.13.5,Cooper Street,11,1,True,40895
+340,2.13.6,Kettle Street,11,1,True,139734
+341,2.13.7,Young Street,11,1,True,40050
+342,2.13.8,Prince Alfred Park South,11,1,True,199999
+343,2.13.9,Redfern Street and Redfern Park,11,1,False,104473
+344,2.2,Rosebery Estate,11,1,True,687524
+345,2.3.2,Darlington and West Redfern,11,1,True,255955
+346,2.3.3,North Newtown,11,1,True,441647
+347,2.3.4,Camperdown,11,1,True,355930
+348,2.3.5,University of Sydney and Royal Prince Alfred Hospital,11,1,True,939141
+349,2.4.10,"Oxford Street, Darlinghurst",11,1,True,73005
+350,2.4.11,Darlinghurst Civic Precinct,11,1,True,133229
+351,2.4.12,Darlinghurst West,11,1,True,117210
+352,2.4.2,Cathedral Street Area,11,1,True,65388
+353,2.4.3,Woolloomooloo,11,1,True,248279
+354,2.4.4,Potts Point,11,1,True,128817
+355,2.4.5,Macleay Street/Wylde Street,11,1,True,34491
+356,2.4.6,The Bays,11,1,True,332175
+357,2.4.7,Kings Cross,11,1,True,198780
+358,2.4.8,Darlinghurst East,11,1,True,176839
+359,2.4.9,East Sydney,11,1,True,224226
+360,2.5.10,Victoria Park,11,1,True,247555
+361,2.5.11,Waterloo Park,11,1,True,294622
+362,2.5.2,Beaconsfield,11,1,True,432435
+363,2.5.3,Danks Street,11,1,True,238120
+364,2.5.4,North Alexandria,11,1,True,328313
+365,2.5.5,Epsom Park,11,1,True,210139
+366,2.5.6,Green Square Town Centre,11,1,True,149545
+367,2.5.7,Lachlan,11,1,True,187115
+368,2.5.8,Mary O'Brien Park,11,1,True,136562
+369,2.5.9,North Rosebery,11,1,True,360708
+370,2.6.10,Glebe Point,11,1,True,236695
+371,2.6.11,Mountain Street,11,1,True,245018
+372,2.6.2,Ross Street,11,1,True,106988
+373,2.6.3,Wenworth Park,11,1,True,59782
+374,2.6.4,Bishopthorpe,11,1,True,132002
+375,2.6.5,Toxteth,11,1,True,286586
+376,2.6.6,Western Parklands,11,1,True,289794
+377,2.6.7,Hereford,11,1,True,173876
+378,2.6.8,Forest Lodge,11,1,True,238860
+379,2.6.9,St Phillips,11,1,True,266292
+380,2.7.10,Euston Road/McEvoy Street,11,1,True,101584
+381,2.7.11,Sydney Park Residential Edge,11,1,True,530399
+382,2.7.2,Erskineville Neighbourhood North,11,1,True,72647
+383,2.7.3,Erskineville Neighbourhood South,11,1,True,151619
+384,2.7.4,King Street Retail Strip,11,1,True,91693
+385,2.7.5,Pleasant Avenue/Macdonald Street,11,1,True,149389
+386,2.7.6,Erskineville Oval,11,1,True,405799
+387,2.7.7,Alexandria Park and Wyndham Street,11,1,True,88543
+388,2.7.8,Ashmore,11,1,True,174056
+389,2.7.9,Belmont Street (Coopers Estate),11,1,True,154363
+390,2.8,Millers Point,11,1,True,168576
+391,2.9.2,Selwyn Street,11,1,True,89589
+392,2.9.3,South Paddington,11,1,True,152880
+393,2.9.4,Furber Road,11,1,True,48683
+394,2.9.5,Centennial Park,11,1,True,237269
+395,5.1,Central Sydney,15,1,True,3218777
+396,5.10,Botany Road Precinct,15,1,True,220936
+397,5.11,Oxford Street Cultural and Creative Precinct,15,1,True,137023
+398,5.12,Waterloo Estate (South),15,1,True,117642
+399,5.2,Green Square,15,1,True,2765829
+400,5.3,Green Square - Epsom Park,15,1,True,210173
+401,5.4,Green Square - Lachlan,15,1,True,195143
+402,5.5,Ashmore Neighbourhood,15,1,True,163428
+403,5.6,"Rosebery Estate, Rosebery",15,1,True,601738
+404,5.7,Green Square - North Rosebery,15,1,True,181722
+405,5.8,Southern Enterprise Area,15,1,True,2718385
+406,5.9,Danks Street South,15,1,True,76185
+407,6.1.3,"Commonwealth Bank 'Money Box' site 108-120 Pitt Street, Sydney",16,1,True,3347
+408,6.1.4,"The APDG site (bounded by Alfred, Pitt, Dalley and George Streets)",16,1,True,18196
+409,6.1.5,"261-263 Oxford Street, St. John's Church, Hall & Manse, Paddington",16,1,True,2638
+410,6.1.7,Victoria Park - South Dowling Corridor,16,1,True,33383
+411,6.1.8,"Email Site - 13 Joynton Avenue, Zetland",16,1,True,25091
+412,6.1.9,AMP Circular Quay Precinct,16,1,True,12822
+413,6.2.10,219-241 Cleveland Street (Australia Post site),16,1,True,15013
+414,6.2.11,"97-101 Pyrmont Bridge Road, Pyrmont",16,1,True,2174
+415,6.2.12,"Darlinghurst Road, Potts Point",16,5,True,16778
+416,6.2.4,"18 Huntley Street, Alexandria (Huntley St and Sydney Park Rd)",16,1,True,5590
+417,6.2.8,"397-399 Cleveland Street and 2-38 Baptist Street,",16,1,True,12240
+418,6.2.9,"164-172 and 174-194 William Street, Bayswater Car",16,1,True,6401
+419,6.3.1,"87 Bay Street, Glebe",16,1,True,5428
+420,6.3.10,"296-298 Botany Road and 284 Wyndham Street,",16,1,True,9141
+421,6.3.11,"7-15 Randle Street, Surry Hills",16,1,True,824
+422,6.3.12,"2-32 Junction Street, Forest Lodge",16,1,True,4812
+423,6.3.13,"102-106 Dunning Avenue, Rosebery",16,1,True,4947
+424,6.3.14,"4-6 Bligh Street, Sydney",16,1,True,1219
+425,6.3.15,"225-279 Broadway, Glebe",16,1,True,4749
+426,6.3.16,"12-22 and 24 Rothschild Avenue, Rosebery",16,1,True,8390
+427,6.3.17,"72-84 Foveaux Street, Surry Hills",16,1,True,828
+428,6.3.18,"1-11 Oxford Street, Paddington",16,1,True,1579
+429,6.3.19,"1-3 Burrows Road, St Peters",16,1,True,34712
+430,6.3.2,"287-289 Crown Street, Surry Hills",16,1,True,389
+431,6.3.20,"4-44 Wentworth Avenue, Surry Hills",16,1,True,2744
+432,6.3.21,"187 Thomas Street, Haymarket",16,1,True,2351
+433,6.3.22,7-31 Cowper Street and 2A-2D Wentworth Park,16,1,True,1968
+434,6.3.23,"30-62 Barcom Avenue, Darlinghurst",16,1,True,1005
+435,6.3.24,"2 Chifley Square, Sydney",16,1,True,6443
+436,6.3.25,"757-763 George Street, Haymarket",16,1,True,1031
+437,6.3.26,"15-23 Hunter Street and 103-107 Pitt Street, Sydney",16,1,True,2107
+438,6.3.27,"923-935 Bourke Street, Waterloo",16,1,True,6504
+439,6.3.28,"232-236A & 238 Elizabeth Street, Surry Hills",16,1,True,904
+440,6.3.29,"8-24 Kippax Street, Surry Hills",16,1,True,1019
+441,6.3.3,"904 Bourke Street, Zetland",16,1,True,14681
+442,6.3.30,"47-51 Riley Street, Woolloomooloo",16,1,True,580
+443,6.3.31,"383-395A Kent Street, Sydney",16,1,True,3605
+444,6.3.4,60 Martin Place,16,1,True,1181
+445,6.3.6,"230-238 Sussex Street, Sydney",16,1,True,2086
+446,6.3.7,"505-523 George Street, Sydney",16,1,True,4310
+447,6.3.8,"45 Murray Street, Pyrmont",16,1,True,398
+448,6.3.9,"51-55 Missenden Road, Camperdown",16,1,True,443
+449,6.3.5,"65-79 Sussex Street, Sydney",16,1,True,
+,6.3.4,geometry corrected to Section-6.3.4 feature (GIS names swapped),16,1,,

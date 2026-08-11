@@ -1,0 +1,14 @@
+id,precinct_id,precinct_name,source_parts,area_sqm,lga,rollback
+450,7.10.1,North Parramatta and Sorrell Street Conservation Areas,2,149615,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=450
+451,7.10.2,South Parramatta Conservation Area,1,111796,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=451
+452,7.10.3,Harris Park West Conservation Area,1,78790,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=452
+453,7.10.4,Experiment Farm Conservation Area,1,113879,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=453
+454,7.10.5,Elizabeth Farm Conservation Area,1,103608,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=454
+455,7.10.6,Tottenham Street Conservation Area,1,4316,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=455
+456,7.10.7,Silverwater Prison Complex,1,264382,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=456
+457,7.10.8,East Epping Conservation Area,1,297464,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=457
+458,7.10.9,Essex Street Conservation Area,1,66443,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=458
+459,7.10.10,Rosebank Avenue Conservation Area,1,11985,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=459
+460,7.10.11,"Epping/Eastwood, Boronia Avenue and Wyralla Avenue Conservation Areas",3,1001482,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=460
+461,7.10.12,"Burnside Homes Conservation Area, North Parramatta",1,90639,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=461
+462,9,Parramatta City Centre,1,2680388,Parramatta-staged,DELETE FROM dcp_precinct_boundaries WHERE id=462
