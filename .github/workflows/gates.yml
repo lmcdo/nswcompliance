@@ -70,7 +70,7 @@ jobs:
     name: Python tests + ratchets
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # No `cache:` input on setup-python/setup-node.
       #
       # On a SELF-HOSTED runner GitHub's cache action is redundant and actively
@@ -80,7 +80,7 @@ jobs:
       # retrying for ~40 minutes AFTER every real check had already passed, so a
       # green run looked hung. Restore the cache inputs if RUNNER_LABEL is ever
       # unset and jobs go back to GitHub-hosted runners.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: pip install -r requirements-test.txt
@@ -138,8 +138,8 @@ jobs:
     name: Jest
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - run: npm ci
@@ -174,10 +174,10 @@ jobs:
     name: QA report + liability language
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0          # both checks diff against the merge-base
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: pip install -r requirements-test.txt
@@ -242,10 +242,10 @@ jobs:
     name: Duplication ratchet
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - name: jscpd
@@ -283,8 +283,8 @@ jobs:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: pip install -r requirements-test.txt
