@@ -68,7 +68,7 @@ jobs:
   # pre-push [1/4] + [1b] + [1c]
   python-tests:
     name: Python tests + ratchets
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -128,7 +128,7 @@ jobs:
   # pre-push [2/4] — and unlike pre-push, this can never self-skip for missing deps
   frontend-tests:
     name: Jest
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -166,7 +166,7 @@ jobs:
   # prohibited wording with nothing scanning it.
   qa-and-liability:
     name: QA report + liability language
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -235,7 +235,7 @@ jobs:
   # matching the local step.
   duplication:
     name: Duplication ratchet
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -276,7 +276,7 @@ jobs:
   schema-contract:
     name: Schema contract (code vs live catalog)
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
