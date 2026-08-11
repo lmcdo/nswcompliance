@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "No product code and no database, but this changes the gate every session depends on to commit and push. A mistake here is not a wrong number on a page — it is either every commit blocked repo-wide, or worse, a gate that reports PASSED while reading a file belonging to a different branch. The second failure is silent and is the exact class this repo's railguard work exists to stop, so it gets Standard scrutiny rather than Minor.",
-  "commit_hash": "d9405adf",
+  "commit_hash": "6609422c",
   "files": [
     "scripts/qa_report_path.py",
     "scripts/qa_gate.py",
