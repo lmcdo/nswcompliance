@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Removes credential literals from 17 tracked files. The gate is right to refuse 'minor' here: 15 substantive files change, and the edit alters how every one of them obtains a credential at runtime. No logic, control flow, database or served output changes, but the failure mode moves from 'works with a smuggled key' to 'fails without a configured one', which is a real behaviour change across a wide surface.",
-  "commit_hash": "f5f49f0d",
+  "commit_hash": "17580861",
   "files": [
     ".claude/docs/history/2026-01-implementation/EMAIL_INDEPENDENT_OF_WIX.md",
     ".claude/docs/history/2026-01-implementation/VERCEL_DASHBOARD_DEPLOYMENT.md",
