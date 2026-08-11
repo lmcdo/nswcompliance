@@ -1,12 +1,24 @@
 {
-  "tier": "minor",
-  "justification": "Removes credential literals from 17 tracked files and replaces them with the environment lookup this repo already uses elsewhere. No logic, no control flow, no database, no served output changes. Minor by content, but the failure mode it introduces is deliberate and is described below.",
-  "commit_hash": "6609422c",
+  "tier": "standard",
+  "justification": "Removes credential literals from 17 tracked files. The gate is right to refuse 'minor' here: 15 substantive files change, and the edit alters how every one of them obtains a credential at runtime. No logic, control flow, database or served output changes, but the failure mode moves from 'works with a smuggled key' to 'fails without a configured one', which is a real behaviour change across a wide surface.",
+  "commit_hash": "f5f49f0d",
   "files": [
+    ".claude/docs/history/2026-01-implementation/EMAIL_INDEPENDENT_OF_WIX.md",
+    ".claude/docs/history/2026-01-implementation/VERCEL_DASHBOARD_DEPLOYMENT.md",
     "scripts/fix_precise_citations.py",
     "scripts/lightrag_simple_test.py",
-    "scripts/secondary_dwelling_stats.py",
+    "scripts/process_lep_subprocess.py",
+    "scripts/process_real_documents.py",
+    "scripts/prove_lightrag_integration.py",
+    "scripts/query_lep_lightrag.py",
+    "scripts/query_lep_lightrag_fixed.py",
+    "scripts/query_sepp_lightrag.py",
     "scripts/real_lightrag_processor.py",
+    "scripts/secondary_dwelling_stats.py",
+    "scripts/simple_lep_query.py",
+    "scripts/test_lep_lightrag_working.py",
+    "scripts/test_lightrag_query_simple.py",
+    "scripts/test_small_lep_lightrag.py",
     "scripts/working_nsw_query.py"
   ],
   "break_it": [
@@ -37,5 +49,38 @@
     "secrets": "This IS the secrets change. Four distinct credentials removed from 17 tracked files. They remain valid and remain in history until rotated — rotation is a separate, required action.",
     "other_repo": "No. Single repository.",
     "manual_verify": "Yes, and it is the point: rotate the OpenAI, Anthropic and TfNSW keys. Then confirm any job that used the Supabase anon-key default has DA_SUPABASE_ANON_KEY set."
-  }
+  },
+  "falsifiable_check": {
+    "command": "bash -c \"git grep -lIE 'sk-ant-api03-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}' | wc -l\"",
+    "fails_when": "It prints anything other than 0. Measured: 16 at origin/main, 0 at this branch's HEAD. 16 rather than 17 because this command matches the two sk- key families; the 17th file holds the Supabase anon JWT, which is checked by the same sweep in the PR body but is deliberately not in this pattern because a JWT regex also matches ordinary base64. The check is falsifiable in both directions and is not self-referential: it SEARCHES the tracked tree with git rather than diffing the change that produced it, so a literal I failed to notice still fails it, and re-introducing any sk- key makes it non-zero.",
+    "external_authority": "The pattern set comes from the vendors' own key formats (sk-ant-api03, sk-proj, JWT), not from anything this change defines, and git ls-files decides what is tracked. Rotation was confirmed independently by hashing the .env values against the values published in the repo: the Anthropic key matched before rotation and does not match after."
+  },
+  "pre_impl": {
+    "existing_data": "Audited before editing: 4 distinct secrets across 17 tracked files, not the 3 files first reported. One OpenAI key appears in 15 scripts and 2 docs; an Anthropic key in 2 docs; a TfNSW JWT in 1 doc; a Supabase anon key in 1 script. Counted by hashing every match over git ls-files rather than by eyeballing grep output.",
+    "assumption_mismatch": "I expected these to be dead experiment scripts that could simply be deleted. They are not: lightrag-hku==1.5.4 is still a declared dependency in requirements.txt, src/processing/__init__.py imports real_lightrag_processor, and refresh_stats_job.py calls secondary_dwelling_stats. So deletion was wrong and substitution was the only safe option.",
+    "external_source_error": "No network call is made. The replacement resolves from os.environ, and the repo's own resolver (scripts/sol_common.py:load_api_key) additionally falls back to .env/.env.local and raises a message naming the variable. A missing key now fails loudly at the point of use instead of silently succeeding with an inlined credential.",
+    "new_vs_existing": "No new pattern is introduced. os.environ.get(\"OPENAI_API_KEY\") is the form already used at scripts/openai_semantic_processor.py:15, so this makes 15 outliers match the existing convention."
+  },
+  "functions": [
+    {
+      "name": "process_lep_with_subprocess",
+      "file_line": "scripts/process_lep_subprocess.py:11",
+      "input": "a LEP document path, in a module whose module-level OPENAI_API_KEY assignment this change rewrote",
+      "output": "unchanged behaviour when the key is configured; the function itself is untouched",
+      "if_none": "with no OPENAI_API_KEY set, the module-level value is None and the OpenAI client raises at construction, naming the missing variable rather than proceeding"
+    }
+  ],
+  "values": [
+    {
+      "value": "4 distinct secrets across 17 tracked files; the OpenAI key alone in 16 of them",
+      "read_at": "hashing every regex match over `git ls-files` at origin/main fb562232, 2026-08-11",
+      "if_missing": "an undercount would leave a live credential in the tree while the PR claimed otherwise, which is why the falsifiable check counts rather than trusts the diff"
+    },
+    {
+      "value": "the leaked Anthropic key was byte-identical to the live one in .env; the leaked OpenAI key was not",
+      "read_at": "sha256 comparison of .env values against values extracted from the tracked docs, 2026-08-11",
+      "if_missing": "without this the urgency ordering would have been guesswork; it is what established that Anthropic had to be rotated first"
+    }
+  ],
+  "queries": []
 }
