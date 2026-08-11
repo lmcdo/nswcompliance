@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "City of Sydney is the biggest keyed council (462 rows) but had no derivation rule, so audit_precinct_keying_coverage.py flagged it EXPOSED: the next re-extraction would silently null every key via the [4/4] auto-keying step (which only re-keys councils that HAVE a rule). This adds three page_range rules (sections 2/5/6) keyed off pdf_page, which reproduce all 462 existing keys exactly (validate:True). CoS refs are garbled (only 101/152/128 of rows encode the key) so ref_regex is unusable; pdf_page is clean and each precinct occupies a contiguous, non-overlapping page span. No DB write is needed - the keys are already correct; the rule makes them survive re-extraction. Sydney flips EXPOSED->protected in the audit. ADDED THIS COMMIT: a parallel session hand-keyed Parramatta (532 rows, 2026-07-29) with no reproducible rule, leaving it newly EXPOSED to the same churn. A new `ref_components` strategy (mixed-depth dotted-number parsing from ref_number, gated by a components_map that also decides ELIGIBILITY not just depth) reproduces 525/532 exactly, 0 wrong, 7 legitimate no-derivation. Audit lookup table also fixed (stale 'Parramatta' key vs live lga value 'City of Parramatta'). Parramatta flips EXPOSED->protected; Woollahra remains EXPOSED (name-keyed, no safe automated rule — needs a different, human-preserving mechanism, out of scope here).",
-  "commit_hash": "54931d85",
+  "commit_hash": "e27765d7",
   "files": [
     "scripts/derive_precinct_keys.py",
     "scripts/audit_precinct_keying_coverage.py",
@@ -116,5 +116,10 @@
     "secrets": "None.",
     "other_repo": "None.",
     "manual_verify": "Yes - run python scripts/audit_precinct_keying_coverage.py and confirm Sydney AND City of Parramatta show rule?=YES status=protected; only Woollahra (name-keyed, needs a different mechanism) remains EXPOSED."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_derive_precinct_keys.py -q",
+    "fails_when": "Any keying rule stops producing the recorded key for a recorded ref. The tests are not a self-comparison: every expected value is hand-written from the source document, not recomputed from the code under test, and they assert in BOTH directions — positive cases pin the depth per part (7.10.1 at depth 3, 9 at depth 1) and negative cases pin what must NOT match (a bare chunk counter '__387', an 'R4' zone token, a '1__bedroom_10_20_of' fragment all return None), which is what catches over-matching rather than under-matching. Measured falsifiable on 2026-08-12 with scripts/falsifiability.py: replacing one `return` in scripts/derive_precinct_keys.py with `return None` turned 4 of the 19 tests red, and the harness restored the file byte-identically. A green run therefore means the derivation still produces these exact keys, not merely that the code ran.",
+    "external_authority": "The expected keys come from the councils' own DCP part numbering as written in the source documents, not from anything this change computes. The 19 cases were authored against those documents before the rules were tuned to satisfy them."
   }
 }
