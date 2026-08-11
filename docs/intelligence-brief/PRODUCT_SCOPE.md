@@ -55,7 +55,7 @@ No conclusions. No recommendations. Every statement cites a data source. Every g
 
 | Data Point | Pipeline | Coverage | Confidence |
 |---|---|---|---|
-| Shadow impact at ADG hours (Jun/Mar/Sep/Dec solstice/equinox) | shadow_detector.py (pybdshadow + pvlib) | Any address | Medium (geometric model, not 3D scan) |
+| Shadow impact at ADG hours (Jun/Mar/Sep/Dec solstice/equinox) | shadow_detector.py (pybdshadow) | Any address | Medium (geometric model, not 3D scan) |
 | ADG solar access compliance | shadow_detector.py | Any address | Medium |
 | Shadow from neighbour's allowable envelope | shadow_model.py + LEP height limits | Any address with height data | Medium |
 | Flood truth (6-source fusion) | flood_truth.py (EPI + EMS + JRC + DEA WOfS + BoM gauge + S-1 SAR) | ~71 LGAs EPI, JRC/WOfS all NSW | Medium-High (multi-source convergence) |
@@ -73,7 +73,7 @@ No conclusions. No recommendations. Every statement cites a data source. Every g
 | Climate risk score (6-hazard composite) | climate_risk_score.py + climate_risk_raster.py | All NSW | Medium (equal-weight model, documented limitations) |
 | NARCliM climate projections (heat, precipitation) | climate_risk_raster.py (AdaptNSW 4km) | All NSW | Medium (single GCM) |
 | Construction change detection (SAR coherence) | drawdown_verify.py | Any address | Low-Medium (79% baseline, needs validation) |
-| Solar yield estimate | solar_yield.py (pvlib + PVGIS) | Any address | Medium (model-based, not measured) |
+| Solar yield estimate | solar_yield.py (Google Solar API pass-through — neither pvlib nor PVGIS is used; corrected 2026-08-06) | Any address | Medium (Google's model, not measured generation) |
 
 ### Layer C — Valuation / Economics (context)
 

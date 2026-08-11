@@ -3,6 +3,7 @@ import { getPool } from '@/lib/db';
 import { TODSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 import { toLgaSlug } from '@/lib/lga-slug';
 import { selectParkingRate, type ParkingControlRow } from '@/lib/parking-rate-selection';
+import { fetchDcpControls } from '@/lib/dcp-controls-client';
 
 
 export const dynamic = 'force-dynamic';
@@ -161,21 +162,43 @@ export async function GET(request: NextRequest) {
     // `rate` is only stated when exactly one unconditioned row exists; otherwise
     // every row is returned with its condition for the reader to apply.
     if (lgaSlug) {
+      // Item 5 consolidation: rows come from the ONE guarded implementation
+      // via /pipeline/dcp-controls (is_current strict, needs_review excluded
+      // at source). The exact-dev-type-first / unconditioned-first / value
+      // ordering the selector expects is reproduced deterministically here —
+      // it is presentation ordering over already-guarded rows, not a guard.
       const dcpTier = await runTier<ParkingControlRow>('DCP numeric query', degraded,
         'Council DCP numeric parking rates could not be read; showing provision text only.',
-        () => pool.query(`
-          SELECT value_min, value_max, unit, condition, source_text,
-                 section_ref, dcp_version, pdf_page, dev_type
-          FROM dcp_setback_controls
-          WHERE lga = $1
-            AND dev_type IN ($2, 'universal_residential')
-            AND control_type = 'car_parking'
-            AND (is_current IS NULL OR is_current = TRUE)
-            AND (needs_review IS NULL OR needs_review = FALSE)
-          ORDER BY CASE WHEN dev_type = $2 THEN 0 ELSE 1 END,
-                   CASE WHEN nullif(trim(coalesce(condition, '')), '') IS NULL THEN 0 ELSE 1 END,
-                   value_min
-        `, [lgaSlug, developmentType]));
+        async () => {
+          const dcp = await fetchDcpControls(lgaSlug);
+          const rows = (dcp.available && dcp.rows ? dcp.rows : [])
+            .filter((r) =>
+              r.semantic_type === 'car_parking' &&
+              (r.dev_type === developmentType || r.dev_type === 'universal_residential'))
+            .map((r) => ({
+              value_min: r.value_min,
+              value_max: r.value_max,
+              unit: r.unit,
+              condition: r.notes || null,
+              source_text: r.source_text,
+              section_ref: r.clause || null,
+              dcp_version: r.dcp_version,
+              pdf_page: r.pdf_page,
+              dev_type: r.dev_type,
+            }))
+            .sort((a, b) => {
+              const exactA = a.dev_type === developmentType ? 0 : 1;
+              const exactB = b.dev_type === developmentType ? 0 : 1;
+              if (exactA !== exactB) return exactA - exactB;
+              const condA = (a.condition ?? '').trim() ? 1 : 0;
+              const condB = (b.condition ?? '').trim() ? 1 : 0;
+              if (condA !== condB) return condA - condB;
+              const vA = a.value_min ?? Number.POSITIVE_INFINITY;
+              const vB = b.value_min ?? Number.POSITIVE_INFINITY;
+              return vA - vB;
+            });
+          return { rows } as { rows: ParkingControlRow[] };
+        });
 
       if (dcpTier.ok) {
         const selection = selectParkingRate(dcpTier.rows);

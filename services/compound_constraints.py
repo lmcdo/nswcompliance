@@ -338,9 +338,11 @@ def detect_staleness(brief) -> list[str]:
             age_days = (today - field_date).days
             if age_days > threshold_days:
                 obj.confidence = ConfidenceLevel.STALE
+                # #745 D7-7: user-facing copy, not a log line.
+                years = age_days / 365.25
                 warnings.append(
-                    f"empirical/{obj.hazard}: data is {age_days} days old "
-                    f"(threshold: {threshold_days} days)"
+                    f"The {obj.hazard.replace('_', ' ')} reading is about "
+                    f"{years:.0f} years old — the most recent published dataset."
                 )
         elif isinstance(obj, DataField):
             if obj.confidence != ConfidenceLevel.NOT_AVAILABLE:

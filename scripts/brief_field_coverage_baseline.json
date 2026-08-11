@@ -66,23 +66,18 @@
   "ClimateHazardOutput": [
     "available",
     "confidence",
+    "confidence_reason",
     "data_source",
     "detail",
     "hazard",
-    "present",
-    "raw_score",
-    "weight",
-    "weighted_score"
+    "present"
   ],
   "ClimateRiskServiceOutput": [
-    "band",
     "data_date",
     "disclaimer",
     "hazards",
-    "interaction_bonus",
     "methodology_version",
-    "narclim",
-    "score"
+    "narclim"
   ],
   "ComparableAnalysis": [
     "assessment_signal",
@@ -187,6 +182,8 @@
     "value_min"
   ],
   "DCPControls": [
+    "as_at_note",
+    "as_at_status",
     "controls",
     "dcp_name",
     "dcp_url",
@@ -258,6 +255,7 @@
     "overlay_coverage",
     "overlays",
     "riparian_land",
+    "servicing",
     "terrestrial_biodiversity",
     "wetlands"
   ],
@@ -492,8 +490,6 @@
   "ShadowResult": [
     "adg_compliant",
     "confidence",
-    "construction_change_detected",
-    "construction_change_note",
     "height_m",
     "height_source",
     "scenarios",
@@ -519,8 +515,6 @@
   "ShadowServiceOutput": [
     "adg_compliant",
     "confidence",
-    "construction_change_detected",
-    "construction_change_note",
     "height_m",
     "height_source",
     "scenarios",

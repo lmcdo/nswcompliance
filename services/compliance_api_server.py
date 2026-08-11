@@ -32,6 +32,7 @@ try:
     from services.upzoning_check import router as upzoning_router
     from services.brief_overlay_api import router as brief_overlay_router
     from services.cdc_screen_api import router as cdc_screen_router
+    from services.dcp_controls_api import router as dcp_controls_router
 except ImportError:
     from solar_yield import router as solar_yield_router  # Local (run from services/)
     from shadow_detector import router as shadow_router
@@ -52,6 +53,7 @@ except ImportError:
     from upzoning_check import router as upzoning_router
     from brief_overlay_api import router as brief_overlay_router
     from cdc_screen_api import router as cdc_screen_router
+    from dcp_controls_api import router as dcp_controls_router
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
@@ -92,6 +94,7 @@ app.include_router(lot_search_router)
 app.include_router(upzoning_router)
 app.include_router(brief_overlay_router)
 app.include_router(cdc_screen_router)
+app.include_router(dcp_controls_router)
 
 # Initialize the compliance API
 compliance_api = EnhancedComplianceAPI()

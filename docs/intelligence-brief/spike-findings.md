@@ -109,10 +109,12 @@ The 1,500m² threshold catches high-rise apartments (large parent lot = apartmen
 ### Why shadow is slow and nothing else is
 
 Shadow is the ONLY satellite product wired into the intelligence brief pipeline. It makes an HTTP POST to Railway (`PYTHON_API_URL/pipeline/shadow`), which runs:
-1. pybdshadow geometric shadow polygon calculation for multiple sun positions (solstice/equinox x morning/midday/afternoon)
-2. pvlib solar position calculation for each time point
-3. Building envelope model from LEP height limits
-4. Result assembly and response
+1. pybdshadow geometric shadow polygon calculation for multiple modelled instants (solstice/equinox x morning/midday/afternoon); pybdshadow derives the sun position itself
+2. Building envelope model from LEP height limits
+3. Result assembly and response
+
+(Corrected 2026-08-06, Lane 1 / D1: this list previously named a separate "pvlib
+solar position calculation" step. pvlib is not imported anywhere in the repo.)
 
 The other satellite products (granny flat, solar yield, flood truth, threat radar, climate risk) are NOT called — they are separate standalone pipelines not yet integrated into the intelligence brief. Shadow was already part of the conveyancing report, so it transferred over when the intelligence brief was built on top of the conveyancing orchestrator.
 

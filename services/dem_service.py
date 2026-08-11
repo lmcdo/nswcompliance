@@ -212,6 +212,34 @@ def _fetch_sixmaps(
 # ---------------------------------------------------------------------------
 
 
+# prior-art-checked: this module's own fetch gains a provider-returning
+# variant so consumers can record WHICH source actually served the DEM —
+# previously the GA-vs-SIX-Maps decision was only logged, and terrain's
+# static "Geoscience Australia 5m DEM" claim was asserted even for SIX Maps
+# fallback data (campaign item 4 census). No new source is added.
+def fetch_dem_region_with_provider(
+    lat: float,
+    lng: float,
+    buffer_m: float = 500,
+    timeout: float = _TIMEOUT,
+) -> tuple[io.BytesIO, str]:
+    """As fetch_dem_region, but also returns which provider actually served
+    the raster: 'ga_wcs_5m' or 'six_maps_elevation'."""
+    result = _fetch_ga_wcs(lat, lng, buffer_m, timeout)
+    if result is not None:
+        return result, "ga_wcs_5m"
+
+    logger.info("GA WCS unavailable, falling back to SIX Maps for (%.4f,%.4f)", lat, lng)
+    result = _fetch_sixmaps(lat, lng, buffer_m, timeout)
+    if result is not None:
+        return result, "six_maps_elevation"
+
+    raise RuntimeError(
+        f"DEM fetch failed for ({lat:.4f}, {lng:.4f}) buffer={buffer_m}m — "
+        "both GA WCS and SIX Maps returned no data"
+    )
+
+
 def fetch_dem_region(
     lat: float,
     lng: float,
@@ -232,16 +260,5 @@ def fetch_dem_region(
     Returns:
         io.BytesIO containing a GeoTIFF raster
     """
-    result = _fetch_ga_wcs(lat, lng, buffer_m, timeout)
-    if result is not None:
-        return result
-
-    logger.info("GA WCS unavailable, falling back to SIX Maps for (%.4f,%.4f)", lat, lng)
-    result = _fetch_sixmaps(lat, lng, buffer_m, timeout)
-    if result is not None:
-        return result
-
-    raise RuntimeError(
-        f"DEM fetch failed for ({lat:.4f}, {lng:.4f}) buffer={buffer_m}m — "
-        "both GA WCS and SIX Maps returned no data"
-    )
+    data, _provider = fetch_dem_region_with_provider(lat, lng, buffer_m, timeout)
+    return data

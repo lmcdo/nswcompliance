@@ -1,0 +1,30 @@
+{
+  "tier": "minor",
+  "justification": "One Docker HEALTHCHECK flag value. No code path, no served output, no data. The container's start-period (10s) was 27s shorter than its measured 37s cold start, so a healthy boot spent 27s failing health checks and survived only on retry margin. Minor rather than standard because nothing a customer can see changes and the instruction may currently be inert on Railway, which gates on its own healthcheckPath.",
+  "commit_hash": "c82ff574",
+  "files": [
+    "Dockerfile.python"
+  ],
+  "break_it": [
+    {
+      "scenario": "R2 throughput degrades and the ~2.5 GB of Hawkesbury, Redbank and NARCliM rasters take longer than the health-check grace period to download.",
+      "what_happens": "The orchestrator marks a container unhealthy while it is downloading normally and kills it. The replacement starts with an empty /tmp, so it re-downloads all 2.5 GB from scratch and is killed at the same point — a crash loop that looks like an application fault but is purely a timing setting.",
+      "mitigated": true,
+      "how": "start-period raised from 10s to 300s, roughly 8x the measured 37s cold start and enough to absorb a 7x throughput degradation. The generosity is close to free because a start-period ends the moment one probe succeeds, so a normal fast boot is marked healthy at the first check and the longer window is never used.",
+      "repro": "Compare the container log timestamps against the setting: 05:57:13 'Starting Container' to 05:57:50 'Application startup complete' is 37s, against a former start-period of 10s."
+    },
+    {
+      "scenario": "The raised start-period is assumed to have fixed Railway, when Railway may not honour the Dockerfile HEALTHCHECK at all.",
+      "what_happens": "A real gap stays open while looking closed. Railway gates deployments on its own healthcheckPath setting, which is configured in none of the ten railway*.toml files in this repo, so Railway is currently using its default behaviour and this instruction may never be evaluated there.",
+      "mitigated": false,
+      "how": "NOT mitigated, and deliberately not silently 'fixed': adding healthcheckPath would newly gate production deploys on /health, which changes deployment behaviour and is a decision for the owner rather than a side effect of a timing fix. The uncertainty is recorded in the Dockerfile comment and raised in the PR. The change is still correct for any runtime that does honour HEALTHCHECK — plain docker run, Compose, Swarm, and local builds.",
+      "repro": "grep -rn healthcheck railway*.toml   (returns nothing)"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No schema change, no migration, no data write. This edits a single Dockerfile instruction and touches nothing at runtime beyond container health reporting.",
+    "secrets": "None added, removed or rotated. The health check calls localhost:8000/health, which requires no credential and is already the endpoint the Dockerfile probed before this change.",
+    "other_repo": "No change needed in any other repository. Vercel is unaffected — it calls the Railway service over its public URL and does not observe container health state.",
+    "manual_verify": "On the next deploy, confirm in Railway's Deployments tab that the container reaches a running state without an intervening unhealthy or restart event, and that the startup log still ends in 'Application startup complete'. Separately decide whether healthcheckPath should be added to railway.toml — that is the setting Railway actually gates on, and it is unset today."
+  }
+}

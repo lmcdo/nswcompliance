@@ -4,8 +4,16 @@ POST /pipeline/shadow
   Input:  { address, prop_id, lat, lng, report_id }
   Output: ShadowResult matching frontend ShadowResult interface
 
-VERIFIED 2026-04-06: shadows extend SOUTHWARD for Sydney (pvlib confirmed).
-pybdshadow computes Southern Hemisphere solar position correctly.
+Shadow polygons come from pybdshadow, which derives sun position internally
+from the modelled UTC instant via `suncalc`. The bearing reported beside each
+polygon comes from `services.solar_position`, which calls that same `suncalc`
+function -- so the Direction column and the drawn shadow cannot disagree.
+
+The "shadows extend SOUTHWARD for Sydney" claim, open as an unverified caveat
+since April, IS now closed by tests/test_shadow_calibration.py, which asserts it
+across latitude, season and hour against pvlib's independent NREL SPA
+implementation. pvlib is a TEST dependency only and must never be named as our
+method on any customer surface (PR #878, migration 064).
 
 Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
 {
@@ -26,9 +34,8 @@ Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
         "overlaps_subject_lot": bool
       }
     ],
-    "construction_change_score": float | null,
-    "construction_change_detected": bool,
-    "adg_compliant": bool,       # True if Jun 21 noon shadow does NOT overlap subject lot (noon-only gate)
+    "adg_compliant": bool|null,  # noon-only gate; null = NOT ASSESSED (noon scenario
+                                 # missing/errored/overlap unknown) — never a verdict
     "worst_case_scenario": str   # scenario key with longest shadow
   },
   "confidence": str,
@@ -52,29 +59,61 @@ from pydantic import BaseModel
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
 
+# prior-art-checked: the added imports pull the NEW shared item-4 modules
+# (execution_manifest, geometry_checks) into this service's existing import
+# block — extending this file's own pipeline, not adding a parallel one.
 try:
     from services.shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
         shadow_on_lot_geojson, lot_depth_m,
-        SHADOW_SCENARIOS, northern_neighbour_proxy,
+        SHADOW_SCENARIOS, SCENARIO_YEAR, northern_neighbour_proxy,
+        scenario_shadow_bearing_deg,
     )
-    from services.sentinel2 import compute_change_score
+    from services.solar_position import sun_position, max_shadow_length_m
+    from services.execution_manifest import MANIFEST_KEY, build_manifest
+    from services.geometry_checks import (
+        check_point_nsw, check_polygon_wgs84, check_rings_epsg3857,
+    )
 except ImportError:
     from shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
         shadow_on_lot_geojson, lot_depth_m,
-        SHADOW_SCENARIOS, northern_neighbour_proxy,
+        SHADOW_SCENARIOS, SCENARIO_YEAR, northern_neighbour_proxy,
+        scenario_shadow_bearing_deg,
     )
-    from sentinel2 import compute_change_score
+    from solar_position import sun_position, max_shadow_length_m
+    from execution_manifest import MANIFEST_KEY, build_manifest
+    from geometry_checks import (
+        check_point_nsw, check_polygon_wgs84, check_rings_epsg3857,
+    )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
 DEFAULT_HEIGHT_M = 9.0
 LOT_API = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot"
-DATA_SOURCES = ["NSW Planning Portal API", "Element84 Sentinel-2 (free)", "pybdshadow"]
+DATA_SOURCES = ["NSW Planning Portal API", "pybdshadow"]
+
+# Algorithm revision for execution manifests (campaign item 4): the scenario
+# set + proxy model + ADG overlap rule. Bump on method change, not per deploy.
+# 2.0: per-address bearing, DST-derived instants, reach plausibility ceiling.
+ALGORITHM_VERSION = "shadow-adg-scenarios-2.0"
+
+# How far past the physical maximum h/tan(altitude) a reported reach may sit
+# before it is treated as impossible rather than measured.
+#
+# CHOSEN FROM THE DATA, not picked for roundness. Across all 2,690 scenario-rows
+# in the 538 stored reports (measured 2026-08-07) the ratio reach/ceiling is
+# sharply bimodal: p50 0.732, p90 1.003, p95 1.004 — the legitimate mass sits AT
+# the ceiling, because the proxy building's south edge coincides with the lot's
+# north bound, so reach is geometrically capped at h/tan(A). Above that there is
+# an empty band and then a jump to p99 = 13.5. Thresholds of 1.1, 1.25 and 1.5
+# all select the SAME 19 reports (95, 95 and 93 rows), so the exact value is not
+# load-bearing; 1.25 sits in the middle of the gap and leaves 25% headroom for
+# the 111,000 m/deg flat-earth approximation and pybdshadow's aeqd round-trip.
+REACH_CEILING_TOLERANCE = 1.25
 
 
 class ShadowRequest(BaseModel):
@@ -255,39 +294,173 @@ def _build_scenario_list(
     lot_geojson: dict,
     lot_centroid_lng: float,
     lot_centroid_lat: float,
+    height_m: Optional[float] = None,
 ) -> list:
-    """Convert raw shadow GeoJSON dict → list of ShadowScenario objects."""
-    meta_by_key = {s[0]: s for s in SHADOW_SCENARIOS}
+    """Convert raw shadow GeoJSON dict → list of ShadowScenario objects.
+
+    `lot_centroid_lng/lat` were passed in but never read: the bearing served as
+    `shadow_direction_deg` was one of five constants identical for every
+    address. They are now used, which is the whole of the per-address compass
+    fix. The bearing comes from the same `suncalc` call pybdshadow makes to cast
+    the polygon, so the reported direction and the drawn shadow agree by
+    construction.
+    """
+    meta_by_key = {s.key: s for s in SHADOW_SCENARIOS}
     scenarios = []
-    for key, *_ in SHADOW_SCENARIOS:
-        _, month, day, hour_utc, description, date_str, time_local, direction_deg = meta_by_key[key]
+    for scenario in SHADOW_SCENARIOS:
+        key = scenario.key
+        meta = meta_by_key[key]
+        description, date_str, time_local = meta.description, meta.date_str, meta.time_local
+        # None when the bearing is not meaningful (sun below horizon, or so near
+        # the zenith it is ill-conditioned). Never a fabricated fallback.
+        direction_deg = scenario_shadow_bearing_deg(
+            key, lot_centroid_lat, lot_centroid_lng)
         shadow_geojson = shadow_map.get(key) or {}
-        if "error" in shadow_geojson:
-            length = 0.0
-            fraction = 0.0
-            overlaps = False
-            on_lot = None
-        else:
-            length = shadow_reach_m(shadow_geojson, lot_geojson)
-            fraction = shadow_overlap_fraction(shadow_geojson, lot_geojson)
-            overlaps = overlaps_lot(shadow_geojson, lot_geojson)
-            on_lot = shadow_on_lot_geojson(shadow_geojson, lot_geojson)
+        if "error" in shadow_geojson or not shadow_geojson:
+            # Typed absence (output-grounding fix 1, 2026-08-03). An errored
+            # scenario previously served shadow_length_m=0.0 and
+            # overlaps_subject_lot=False — a crash rendered as a numeric
+            # "no shadow" claim, which then fed adg_compliant=True. A failed
+            # computation is UNAVAILABLE: every measurement field is None and
+            # the status says why the numbers are missing.
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": str(shadow_geojson.get("error") or "no shadow output")[:160],
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
+
+        reach_m = shadow_reach_m(shadow_geojson, lot_geojson)
+
+        # PHYSICAL CEILING. A vertical object of height h at solar altitude A
+        # cannot cast a shadow longer than h/tan(A); `shadow_reach_m` measures
+        # from the lot's northern bound to the southernmost intersection, so an
+        # oversized or multi-part lot polygon yields a reach no sun could
+        # produce. 10 of 538 stored reports exceeded it — one served 1,779 m
+        # from a 9 m building (42 Audley St Petersham, measured 2026-08-07).
+        # An impossible number is UNAVAILABLE, not a measurement: the same
+        # typed-absence rule the errored branch above already applies.
+        ceiling_m = None
+        ceiling_failure = None
+        if height_m is not None:
+            try:
+                alt_deg, _ = sun_position(
+                    scenario.instant_utc(), lot_centroid_lat, lot_centroid_lng)
+                ceiling_m = max_shadow_length_m(height_m, alt_deg)
+            except Exception as e:
+                # FAIL CLOSED (Sol pre-push round). A swallowed exception here
+                # silently disabled the guard: the 1,779 m reach this check
+                # exists to block would have been served as status='computed'
+                # whenever sun_position raised. An unvalidatable reach is
+                # UNAVAILABLE, exactly like an unavailable polygon. Distinct
+                # from max_shadow_length_m returning None (altitude <= 0):
+                # there no finite ceiling physically exists and the skip is
+                # legitimate; here we simply do not know it.
+                ceiling_failure = str(e)[:120]
+
+        if ceiling_failure is not None:
+            logger.warning(
+                "reach ceiling could not be computed for %s: %s — reporting "
+                "unavailable", key, ceiling_failure)
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": (
+                    f"shadow reach could not be validated against the physical "
+                    f"ceiling ({ceiling_failure})"),
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
+
+        if reach_m is not None and ceiling_m is not None and reach_m > ceiling_m * REACH_CEILING_TOLERANCE:
+            logger.warning(
+                "shadow reach %.1f m exceeds the physical ceiling %.1f m for a "
+                "%.1f m building at solar altitude %.2f deg (%s) — reporting "
+                "unavailable", reach_m, ceiling_m, height_m, alt_deg, key)
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": (
+                    f"computed reach {reach_m:.0f} m exceeds the {ceiling_m:.0f} m "
+                    f"physical maximum for a {height_m:.0f} m building at this sun "
+                    f"altitude — lot geometry implausible"),
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
+
+        overlap_fraction = shadow_overlap_fraction(shadow_geojson, lot_geojson)
+        overlaps = overlaps_lot(shadow_geojson, lot_geojson)
+
+        # A scenario is only 'computed' if its claim-bearing measurements were
+        # actually measured. shadow_reach_m / shadow_overlap_fraction return
+        # None when the GEOS intersection could not be evaluated at all — a
+        # self-touching or unclosed cadastral ring raises TopologyException,
+        # which used to be swallowed and served as 0.0. Serving None fields
+        # under status='computed' would just move that lie one level down: the
+        # PDF prints an em dash for a null reach, which reads as "no shadow".
+        if reach_m is None or overlap_fraction is None:
+            logger.warning(
+                "scenario %s has no computable overlap/reach (lot geometry "
+                "could not be intersected) — reporting unavailable", key)
+            scenarios.append({
+                "scenario": key,
+                "label": description,
+                "date": date_str,
+                "time_local": time_local,
+                "status": "unavailable",
+                "error_note": ("the shadow could not be intersected with this "
+                               "lot's boundary — no overlap was measured"),
+                "shadow_length_m": None,
+                "shadow_overlap_fraction": None,
+                "shadow_direction_deg": direction_deg,
+                "overlaps_subject_lot": None,
+                "shadow_on_lot": None,
+                "shadow_polygon": None,
+            })
+            continue
+
         scenarios.append({
             "scenario": key,
             "label": description,
             "date": date_str,
             "time_local": time_local,
-            "shadow_length_m": length,
-            "shadow_overlap_fraction": fraction,
+            "status": "computed",
+            "shadow_length_m": reach_m,
+            "shadow_overlap_fraction": overlap_fraction,
             "shadow_direction_deg": direction_deg,
             "overlaps_subject_lot": overlaps,
-            "shadow_on_lot": on_lot,          # shadow clipped to subject lot
-            "shadow_polygon": shadow_geojson if "error" not in shadow_geojson else None,
+            "shadow_on_lot": shadow_on_lot_geojson(shadow_geojson, lot_geojson),
+            "shadow_polygon": shadow_geojson,
         })
     return scenarios
 
 
-def _adg_compliant(scenarios: list) -> bool:
+def _adg_compliant(scenarios: list) -> Optional[bool]:
     """
     ADG requires 2 hours solar access 9am–3pm Jun 21 on principal private open space.
 
@@ -301,11 +474,23 @@ def _adg_compliant(scenarios: list) -> bool:
     low solar altitude — treating them as hard gates produces false "always concern"
     results for all suburban lots.  They are retained in the scenario output for
     context but do not drive the ADG compliance verdict.
+
+    THREE-STATE (output-grounding fix 1, 2026-08-03): returns None — "not
+    assessed" — when the noon scenario is missing, its computation errored
+    (status "unavailable"), or its overlap is unknown. The previous code
+    returned True on every one of those paths ("can't assess — default to
+    compliant"): a crash became a compliance pass, the DQ-36 class. A verdict
+    is only issued from a computed noon scenario.
     """
     noon = next((s for s in scenarios if s["scenario"] == "jun21_12pm"), None)
     if noon is None:
-        return True  # can't assess — default to compliant
-    return not bool(noon.get("overlaps_subject_lot"))
+        return None  # not assessed — no noon scenario to gate on
+    if noon.get("status") == "unavailable":
+        return None  # not assessed — noon computation failed
+    overlaps = noon.get("overlaps_subject_lot")
+    if overlaps is None:
+        return None  # not assessed — overlap unknown is not overlap absent
+    return not bool(overlaps)
 
 
 def _worst_case(scenarios: list) -> str:
@@ -341,7 +526,37 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confid
 
 @router.post("/shadow")
 def run_shadow(request: ShadowRequest):
-    """Shadow Detector: 5 ADG scenarios + S2 construction change score."""
+    """Shadow Detector: the 5 ADG solar-access scenarios."""
+    # Units/CRS entry check (campaign item 4): a swapped or projected
+    # coordinate reproduces identically on every recompute — this is the only
+    # defence. Failure is typed unavailable (422 with the reason), never a
+    # number computed from wrong-CRS input.
+    coord_reason = check_point_nsw(request.lat, request.lng)
+    if coord_reason:
+        raise HTTPException(
+            422, f"Shadow analysis could not be determined: {coord_reason}")
+
+    # Civil-time supportability. Every scenario wall-clock label is resolved
+    # in Australia/Sydney (services/solar_position.py NSW_TZ), but Lord Howe
+    # Island keeps its own IANA zone (Australia/Lord_Howe: +10:30 outside
+    # daylight saving), so a winter scenario there would be modelled 30
+    # minutes early while displaying the Sydney label. Refusing east of
+    # longitude 154.0 states a geographic fact, not an approximated civil
+    # boundary: the NSW mainland ends at Cape Byron (153.64 E), so the only
+    # land the accepted envelope admits past 154.0 is the Lord Howe group.
+    # (The far-west Broken Hill zone has no such clean line — towns on both
+    # civil times sit in the same longitude band — so it stays a documented
+    # limitation in solar_position.py.) Exposure of this refusal, measured
+    # 2026-08-07: 0 of 538 stored shadow reports lie east of 154.0
+    # (easternmost 153.61).
+    if request.lng > 154.0:
+        raise HTTPException(
+            422, "Shadow analysis could not be determined: this location is "
+                 "in the Lord Howe Island region, which keeps a different "
+                 "civil time from the rest of NSW. Shadow scenarios are "
+                 "modelled in NSW mainland time only, so this address is "
+                 "refused rather than modelled with mislabelled times.")
+
     # Audit trail: track lot geometry fetch
     ds_lot = DataSourceQuery("NSW Planning Portal lot API", LOT_API, {"propId": request.prop_id})
     lot_geometry = _fetch_lot_geometry(request.prop_id)
@@ -350,7 +565,28 @@ def run_shadow(request: ShadowRequest):
         raise HTTPException(422, f"Cannot fetch lot geometry for {request.prop_id}")
     ds_lot.record_response(lot_geometry, features_returned=1)
 
+    # _arcgis_to_geojson ASSUMES EPSG:3857 — verify the response actually
+    # says so before converting (it never checked; a CRS change upstream
+    # would silently produce garbage coordinates).
+    sr = (lot_geometry.get("spatialReference") or {})
+    lot_wkid = sr.get("latestWkid") or sr.get("wkid")
+    if lot_wkid is not None and lot_wkid not in (3857, 102100):
+        ds_lot.record_error(f"unexpected lot CRS wkid={lot_wkid}")
+        raise HTTPException(
+            422, f"Shadow analysis could not be determined: lot geometry "
+                 f"arrived in CRS wkid={lot_wkid}, expected Web Mercator")
+    rings_reason = check_rings_epsg3857(lot_geometry.get("rings"))
+    if rings_reason:
+        ds_lot.record_error(f"implausible lot rings: {rings_reason}")
+        raise HTTPException(
+            422, f"Shadow analysis could not be determined: {rings_reason}")
+
     lot_geojson = _arcgis_to_geojson(lot_geometry)
+    polygon_reason = check_polygon_wgs84(lot_geojson)
+    if polygon_reason:
+        raise HTTPException(
+            422, f"Shadow analysis could not be determined: converted lot "
+                 f"polygon failed plausibility — {polygon_reason}")
     if request.height_m:
         height_m = request.height_m
         height_source = "planning_portal"
@@ -377,35 +613,17 @@ def run_shadow(request: ShadowRequest):
     else:
         height_m, lep_name, height_source = _get_height_limit(request.lat, request.lng)
 
-    # Audit trail: track Sentinel-2 change score
-    ds_sentinel = DataSourceQuery(
-        "Element84 Sentinel-2 BSI change detection",
-        "https://earth-search.aws.element84.com/v1",
-        {"lat": request.lat, "lng": request.lng, "buffer_m": 200},
-    )
-    try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            fut = ex.submit(compute_change_score, request.lat, request.lng, 200)
-            change = fut.result(timeout=25)
-        ds_sentinel.record_response(change, features_returned=1 if change.get("change_score") is not None else 0)
-    except concurrent.futures.TimeoutError:
-        logger.warning("Sentinel-2 change score timed out after 25s — skipping")
-        change = {"change_score": None, "construction_detected": False, "note": "Sentinel-2 timeout"}
-        ds_sentinel.record_error("Timeout after 25s")
-    except Exception as e:
-        logger.warning(f"Change score: {e}")
-        change = {"change_score": None, "construction_detected": False, "note": str(e)}
-        ds_sentinel.record_error(str(e))
-
     # Proxy building: max-height structure at the north lot boundary.
     # Models worst-case shadow — the closest a neighbour could build.
     # Road width is not accounted for: roads reduce real-world impact but
     # are not reflected here, keeping the model conservative.
     north_proxy = northern_neighbour_proxy(lot_geojson)
 
-    # Audit trail: track pybdshadow + pvlib shadow modelling
+    # Audit trail: track the shadow model actually invoked. pvlib was named
+    # here for 381 audit rows while never being imported anywhere in the repo
+    # (Lane 1 / D1) — pybdshadow derives sun position itself.
     ds_shadow = DataSourceQuery(
-        "pybdshadow shadow casting + pvlib solar position",
+        "pybdshadow shadow casting",
         "local:model_all_scenarios",
         {"height_m": height_m, "scenarios": len(SHADOW_SCENARIOS)},
     )
@@ -420,7 +638,7 @@ def run_shadow(request: ShadowRequest):
         raise HTTPException(500, str(e))
 
     scenarios = _build_scenario_list(
-        shadow_map, lot_geojson, request.lng, request.lat
+        shadow_map, lot_geojson, request.lng, request.lat, height_m
     )
 
     # Resolve LGA for council name on report
@@ -444,19 +662,39 @@ def run_shadow(request: ShadowRequest):
         "lot_polygon": lot_geojson,
         "north_proxy_polygon": north_proxy,
         "scenarios": scenarios,
-        "construction_change_score": change.get("change_score"),
-        "construction_change_detected": bool(change.get("construction_detected", False)),
-        "construction_change_note": change.get("note"),
         "adg_compliant": _adg_compliant(scenarios),
         "worst_case_scenario": _worst_case(scenarios),
     }
     confidence = "medium" if height_m != DEFAULT_HEIGHT_M and lep_name != "Local Environmental Plan" else "low"
+    # A run with any unavailable scenario must not out-claim its own data:
+    # cap to "low" (the conveyancing _cap_confidence doctrine; fix 1).
+    if any(s.get("status") == "unavailable" for s in scenarios):
+        confidence = "low"
+
+    # Execution manifest (campaign item 4): every identity below comes from
+    # the objects this run actually consumed — lot_wkid is the CRS the lot API
+    # actually declared, height names the control that was found.
+    manifest = build_manifest(
+        product="shadow",
+        algorithm_version=ALGORITHM_VERSION,
+        inputs={
+            "lot_geometry": {"api": LOT_API, "prop_id": request.prop_id,
+                             "wkid": lot_wkid},
+            "height": {"value_m": height_m, "source": height_source,
+                       "lep_name": lep_name},
+            "scenario_year": SCENARIO_YEAR,
+        },
+        query_params={"lat": request.lat, "lng": request.lng,
+                      "s2_radius_m": 200},
+        parcel_identity={"prop_id": request.prop_id},
+    )
 
     try:
         _write_report(
             request.report_id, request.address, request.lat, request.lng,
             request.prop_id,
-            {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
+            {"prop_id": request.prop_id, "lat": request.lat,
+             "lng": request.lng, MANIFEST_KEY: manifest},
             outputs, confidence,
         )
     except Exception as e:
@@ -489,7 +727,7 @@ def run_shadow(request: ShadowRequest):
             "lng": request.lng,
             "height_m_override": request.height_m,
         },
-        data_sources=[ds_lot, ds_height, ds_shadow, ds_sentinel],
+        data_sources=[ds_lot, ds_height, ds_shadow],
         output_summary=outputs,
         disclaimer_version=get_current_disclaimer_version("shadow"),
         intermediate_calculations={
@@ -497,8 +735,6 @@ def run_shadow(request: ShadowRequest):
             "height_source": height_source,
             "adg_compliant": outputs["adg_compliant"],
             "worst_case_scenario": outputs["worst_case_scenario"],
-            "construction_change_score": outputs["construction_change_score"],
-            "construction_change_detected": outputs["construction_change_detected"],
             "shadow_overlap_fractions": {
                 s["scenario"]: s.get("shadow_overlap_fraction", 0.0)
                 for s in scenarios

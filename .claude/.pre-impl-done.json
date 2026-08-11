@@ -1,6 +1,0 @@
-{
-  "status": "passed",
-  "timestamp": "2026-08-01T00:00:00Z",
-  "target": "scripts/validate_schema_contract.py + scripts/schema_contract_baseline.json + .github/workflows/gates.yml — schema-contract gate (read-only catalog validator, shrink-only baseline, CI enforcement)",
-  "findings_summary": "Read-only: two information_schema SELECTs, no writes, ~4s, 30s timeout. 18 invalid references found and each re-verified individually against information_schema (18/18 genuinely absent, zero false positives). No entity mapping, no batch loop, no numeric parsing. Main risk was English prose misread as SQL (60 raw findings, 34 phantoms) — closed via AST docstring exclusion + SQL-opener test, locked by 22 tests."
-}

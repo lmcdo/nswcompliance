@@ -64,6 +64,11 @@ const CONFIRM_OK = {
   confidence: 'medium',
   confidence_reason:
     'User selections matched the aerial detection; rent derived from postcode-level bond lodgement data.',
+  // Served since 2026-08-06: what happened to the structure list, not a grade.
+  review_state: 'reviewed',
+  review_state_label: 'Reviewed by you',
+  review_state_detail:
+    'You classified each structure the scan found on this lot, and your answers give the same total.',
   data_sources: ['NSW SIX Maps', 'NSW Fair Trading rental bond data'],
   warnings: [],
 };
@@ -202,8 +207,13 @@ describe('confirm success', () => {
     expect(screen.getByText(`${CONFIRM_OK.rental_yield_annual_pct}% p.a.`)).toBeInTheDocument();
     expect(screen.getByText('Assumed build cost')).toBeInTheDocument();
     expect(screen.getByText(`$${CONFIRM_OK.assumed_build_cost_aud.toLocaleString('en-AU')}`)).toBeInTheDocument();
-    // confidence + reason verbatim from the response fixture
-    expect(screen.getByText(CONFIRM_OK.confidence)).toBeInTheDocument();
+    // The review STATE is rendered; the high/medium/low grade is not. A card
+    // that printed "medium" told someone whose scan found nothing that we
+    // were middlingly sure, when nothing had been checked against anything.
+    expect(screen.getByText(CONFIRM_OK.review_state_label)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(CONFIRM_OK.review_state_detail.slice(0, 40)))).toBeInTheDocument();
+    expect(screen.queryByText(/Confidence:/i)).toBeNull();
+    expect(screen.queryByText(CONFIRM_OK.confidence)).toBeNull();
     expect(screen.getByText(new RegExp(CONFIRM_OK.confidence_reason.slice(0, 40)))).toBeInTheDocument();
     // the selection affordance is replaced by the result
     expect(screen.queryByRole('button', { name: CALC_BUTTON })).toBeNull();
@@ -231,6 +241,72 @@ describe('confirm success', () => {
       main_dwelling_area_m2: DETECT_OK.detected_structures[0].area_m2,
       lot_area_m2: LOT_AREA, // #745 D3 — the brief's reconciled figure
     });
+  });
+
+  it('transmits the per-structure decisions and the count provenance', async () => {
+    // Lane 1 item 4: the deselect used to collapse into a bare count and the
+    // per-structure judgement was discarded. This pins that it survives the
+    // wire, bound to the structure index it was made about, and that the
+    // count is labelled as human-reviewed rather than inferred downstream.
+    const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+
+    fireEvent.click(screen.getByRole('button', { name: /Shed/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
+    await flush();
+
+    // Only the structure the user actually touched is reported…
+    expect(confirmBodies[0].structure_types).toEqual([
+      { index: 1, answer: 'rejected' },  // shed deselected
+    ]);
+    // …and every SECONDARY structure has been touched, which is the whole
+    // coverage rule — the detector designates the principal dwelling and the
+    // backend's check ignores it (Sol round 13).
+    expect(confirmBodies[0].confirmed_count_source).toBe('secondary_detections_classified');
+  });
+
+  it('claims a classified count only once every secondary structure has been touched', async () => {
+    const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+
+    fireEvent.click(screen.getByRole('button', { name: /House/ }));  // deselect
+    fireEvent.click(screen.getByRole('button', { name: /House/ }));  // and back — still touched
+    fireEvent.click(screen.getByRole('button', { name: /Shed/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
+    await flush();
+
+    expect(confirmBodies[0].confirmed_count_source).toBe('secondary_detections_classified');
+    expect(confirmBodies[0].structure_types).toEqual([
+      { index: 0, answer: 'kept' },
+      { index: 1, answer: 'rejected' },
+    ]);
+  });
+
+  it('sends no answers and no review claim when the user touches nothing', async () => {
+    // Clicking Calculate on untouched defaults must not become two human
+    // "kept" judgements — that is manufacturing the label.
+    const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
+    await flush();
+
+    expect(confirmBodies[0].structure_types).toEqual([]);
+    expect(confirmBodies[0].confirmed_count_source).toBe('machine_default');
+  });
+
+  it('never labels a structure with a type the brief card does not ask for', async () => {
+    // The card only asks keep-or-reject. Emitting 'garage'/'part_of_main'
+    // here would invent a classification the person never gave.
+    const { confirmBodies } = await renderThroughDetect(DETECT_OK);
+    // Deselect and re-select: touched, and left in the count.
+    fireEvent.click(screen.getByRole('button', { name: /House/ }));
+    fireEvent.click(screen.getByRole('button', { name: /House/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: CALC_BUTTON }));
+    await flush();
+
+    const answers = (confirmBodies[0].structure_types as { answer: string }[]).map(s => s.answer);
+    expect(new Set(answers)).toEqual(new Set(['kept']));
   });
 
   it('renders "Not available" for null money fields — never a zero', async () => {

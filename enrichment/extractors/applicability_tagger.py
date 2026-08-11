@@ -194,9 +194,112 @@ class ApplicabilityTagger:
 
         return None
 
+    # ── DQ-33: the document_id naming convention changed ────────────────────────
+    #
+    # The matchers below were written for a verbose convention ("Chapter E1",
+    # "4.1", "_4_1_"). Every document_id in production now uses a slug:
+    #
+    #     Marrickville_DCP_2011__part4_s1_low_density
+    #     Inner_West_Ashfield_DCP_2016__chapter_e1_heritage
+    #     Leichhardt_DCP_2013__part_c_s2_urban_character
+    #
+    # The council still matched; the PART never did, so every row fell through to
+    # ALL/ALL. Measured 2026-08-01: 9,854 served rows across these three councils,
+    # 85 of 100 sampled recording `no_config`.
+    #
+    # THE SAFETY RULE, because this NARROWS what a property is shown:
+    # a slug only resolves if the derived key EXISTS in the council's config. No
+    # key is invented and no part is guessed to improve the numbers. Anything
+    # unrecognised returns None and stays ALL with source `no_config`, which is a
+    # missed improvement rather than a hidden control. Hiding a rule that applies
+    # is the DQ-30 harm; showing an extra one is only noise.
+
+    @staticmethod
+    def _slug_tail(document_id: str) -> str:
+        """The part after the document prefix, lower-cased."""
+        d = document_id or ""
+        return (d.split("__", 1)[1] if "__" in d else d).lower()
+
+    def _marrickville_slug_key(self, document_id: str):
+        """('precinct'|'part', key) for a slug document_id, or None."""
+        t = self._slug_tail(document_id)
+        parts = MARRICKVILLE_CONFIG.get("parts") or {}
+        precincts = MARRICKVILLE_CONFIG.get("precincts") or {}
+
+        m = re.match(r"part9_p(\d+)(?:_|$)", t)
+        if m:
+            key = f"9_{int(m.group(1))}"
+            return ("precinct", key) if key in precincts else None
+
+        m = re.match(r"part(\d+)_s(\d+)(?:_|$)", t)
+        if m:
+            n, s = int(m.group(1)), int(m.group(2))
+            for key in (f"{n}.{s}", f"{n}_{s}", str(n)):
+                if key in parts:
+                    return ("part", key)
+            return None
+
+        m = re.match(r"part(\d+)(?:_|$)", t)
+        if m:
+            n = int(m.group(1))
+            for key in (str(n), f"{n}_0", f"{n}.0"):
+                if key in parts:
+                    return ("part", key)
+        return None
+
+    def _ashfield_slug_key(self, document_id: str):
+        t = self._slug_tail(document_id)
+        chapters = ASHFIELD_CONFIG.get("chapters") or {}
+        fparts = ASHFIELD_CONFIG.get("chapter_f_parts") or {}
+
+        m = re.match(r"chapter_f_part_?(\d+)(?:_|$)", t)
+        if m:
+            key = f"Part_{int(m.group(1))}"
+            return ("chapter_f_part", key) if key in fparts else None
+
+        # `chapter_e2_haberfield` deliberately does NOT resolve: ASHFIELD_CONFIG
+        # declares no 'Chapter E2'. Inventing one to cover 118 rows is exactly the
+        # guess this rule forbids.
+        m = re.match(r"chapter_([a-z]\d?)(?:_|$)", t)
+        if m:
+            key = f"Chapter {m.group(1).upper()}"
+            return ("chapter", key) if key in chapters else None
+        return None
+
+    def _leichhardt_slug_key(self, document_id: str):
+        t = self._slug_tail(document_id)
+        parts = LEICHHARDT_CONFIG.get("parts") or {}
+
+        m = re.match(r"part_([a-g])_s(\d+)(?:_|$)", t)
+        if m:
+            x, s = m.group(1).upper(), int(m.group(2))
+            for key in (f"Part {x} Section {s}", f"Part {x}"):
+                if key in parts:
+                    return ("part", key)
+            return None
+
+        m = re.match(r"part_([a-g])(?:_|$)", t)
+        if m:
+            key = f"Part {m.group(1).upper()}"
+            if key in parts:
+                return ("part", key)
+        return None
+
     def _get_ashfield_config(self, document_id: str) -> Dict[str, Any]:
         """Get applicability config for Ashfield DCP provision."""
         config = ASHFIELD_CONFIG
+
+        # Current slug convention first; the verbose patterns below remain for any
+        # document_id still using the old form.
+        hit = self._ashfield_slug_key(document_id)
+        if hit:
+            kind, key = hit
+            source = ('chapter_f_parts' if kind == 'chapter_f_part' else 'chapters')
+            entry = (config.get(source) or {}).get(key) or {}
+            return self._from_entry(
+                entry,
+                is_precinct_specific=entry.get('is_precinct_specific', False),
+            )
 
         # Normalize document_id for matching
         doc = document_id.replace('_', ' ').replace('  ', ' ')
@@ -243,6 +346,15 @@ class ApplicabilityTagger:
     def _get_leichhardt_config(self, document_id: str) -> Dict[str, Any]:
         """Get applicability config for Leichhardt DCP provision."""
         config = LEICHHARDT_CONFIG
+
+        hit = self._leichhardt_slug_key(document_id)
+        if hit:
+            _kind, key = hit
+            entry = (config.get('parts') or {}).get(key) or {}
+            return self._from_entry(
+                entry,
+                is_precinct_specific=entry.get('is_precinct_specific', False),
+            )
 
         # Normalize for matching
         doc = document_id.replace('_', ' ').replace('  ', ' ')
@@ -311,6 +423,19 @@ class ApplicabilityTagger:
     def _get_marrickville_config(self, document_id: str) -> Dict[str, Any]:
         """Get applicability config for Marrickville DCP provision."""
         config = MARRICKVILLE_CONFIG
+
+        hit = self._marrickville_slug_key(document_id)
+        if hit:
+            kind, key = hit
+            if kind == 'precinct':
+                # Precinct rows inherit the shared precinct defaults, exactly as the
+                # legacy Part-9 branch below does.
+                defaults = config.get('precinct_defaults') or {}
+                out = self._from_entry(defaults, site_conditions=None)
+                out['is_precinct_specific'] = True
+                out['precinct_id'] = key
+                return out
+            return self._marrickville_part_entry(config, key)
 
         # Normalize for matching
         doc = document_id.replace('__', '_').replace('_', ' ')

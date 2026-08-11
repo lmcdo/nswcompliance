@@ -61,7 +61,7 @@ const leadRateLimiter = redis
 // INPUT SCHEMA
 // ============================================================================
 
-const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request'] as const;
+const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief'] as const;
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),
@@ -192,10 +192,28 @@ export async function POST(req: NextRequest) {
   // --- 7. Send confirmation email ---
   const addressLabel = cleanAddress ?? 'your property';
   const { subject, body: emailBody } = buildEmailContent(interest_type ?? 'granny-flat', addressLabel);
+  // Sender brand follows the product, not one hardcoded consumer identity —
+  // intelligence-brief is the PlotDetect (verify./brief. subdomain) product,
+  // distinct from the canibuildit.com.au consumer tools every other
+  // interest_type here belongs to.
+  const { fromLine, replyTo, footerLabel, footerUrl } =
+    interest_type === 'intelligence-brief'
+      ? {
+          fromLine: 'PlotDetect <info@plotdetect.com.au>',
+          replyTo: undefined,
+          footerLabel: 'PlotDetect',
+          footerUrl: 'https://verify.plotdetect.com.au',
+        }
+      : {
+          fromLine: 'Can I Build It <info@plotdetect.com.au>',
+          replyTo: 'hello@canibuildit.com.au',
+          footerLabel: 'Can I Build It?',
+          footerUrl: 'https://canibuildit.com.au',
+        };
   try {
     await resend.emails.send({
-      from: 'Can I Build It <info@plotdetect.com.au>',
-      replyTo: 'hello@canibuildit.com.au',
+      from: fromLine,
+      ...(replyTo ? { replyTo } : {}),
       to: [cleanEmail],
       subject,
       html: `
@@ -203,7 +221,7 @@ export async function POST(req: NextRequest) {
           ${emailBody}
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">
-            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            ${footerLabel} &middot; <a href="${footerUrl}" style="color: #0d9488;">${footerUrl.replace('https://', '')}</a>
           </p>
         </div>
       `,
@@ -215,7 +233,25 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+// address is user-submitted (Zod only bounds its length, not its character set)
+// and gets interpolated into an HTML email body — every case below uses the
+// escaped value (see safeAddress in buildEmailContent), never the raw address.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function buildEmailContent(product: string, address: string): { subject: string; body: string } {
+  // address is user-submitted (Zod bounds length only, not character set) and
+  // gets interpolated into an HTML email body across every case below —
+  // escape once here rather than per-case. Subjects use the raw `address`
+  // (plain text, never HTML-rendered; escaping there would show literal
+  // "&amp;" etc. for a genuine address containing "&").
+  const safeAddress = escapeHtml(address);
   switch (product) {
     case 'flood':
     case 'flood-truth':
@@ -224,7 +260,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your flood risk result is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your flood risk check for <strong>${address}</strong> is complete.
+            Your flood risk check for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/flood" style="color: #0d9488;">canibuildit.com.au/reports/flood</a>
             to run it again or check another address.
           </p>`,
@@ -236,7 +272,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your solar estimate is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your solar yield check for <strong>${address}</strong> is complete.
+            Your solar yield check for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/solar-yield" style="color: #0d9488;">canibuildit.com.au/reports/solar-yield</a>
             to run it again or check another address.
           </p>`,
@@ -247,7 +283,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your shadow analysis is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your shadow analysis for <strong>${address}</strong> is complete.
+            Your shadow analysis for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/shadow" style="color: #0d9488;">canibuildit.com.au/reports/shadow</a>
             to run it again or check another address.
           </p>`,
@@ -258,7 +294,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your Threat Radar result is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your DA activity check for <strong>${address}</strong> is complete.
+            Your DA activity check for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/threat-radar" style="color: #0d9488;">canibuildit.com.au/reports/threat-radar</a>
             to monitor this address or check another.
           </p>`,
@@ -270,7 +306,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your request is in.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
             You asked for an introduction to a builder who does dual occupancies,
-            for <strong>${address}</strong>. We'll email you to arrange it.
+            for <strong>${safeAddress}</strong>. We'll email you to arrange it.
           </p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
             Your upzoning result stays available — run it again any time at
@@ -292,6 +328,18 @@ export function buildEmailContent(product: string, address: string): { subject: 
             counts toward that. We'll email you here when it's ready.
           </p>`,
       };
+    case 'intelligence-brief':
+      return {
+        subject: `Your Site Report — ${address}`,
+        body: `
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your Site Report is ready.</p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Your Site Report for <strong>${safeAddress}</strong> is complete — planning controls,
+            environmental constraints and development capacity, each figure traced to its source.
+            Visit <a href="https://verify.plotdetect.com.au/reports/intelligence-brief" style="color: #0d9488;">verify.plotdetect.com.au/reports/intelligence-brief</a>
+            to run this or another address again.
+          </p>`,
+      };
     case 'granny-flat':
     default:
       return {
@@ -299,7 +347,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">We're on it.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your granny flat check for <strong>${address}</strong> is running.
+            Your granny flat check for <strong>${safeAddress}</strong> is running.
             We're pulling live aerial imagery, running satellite structure detection,
             and cross-referencing NSW Planning Portal rules — this takes 1–3 minutes.
           </p>

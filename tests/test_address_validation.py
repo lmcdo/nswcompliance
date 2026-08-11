@@ -1,5 +1,4 @@
 import pytest
-pytestmark = pytest.mark.stale
 
 """
 Address Validation Test Suite
@@ -532,3 +531,35 @@ def print_report(report: ValidationReport):
 if __name__ == "__main__":
     report = run_all_tests()
     print_report(report)
+
+_PROBE_URL = "http://localhost:3007"
+
+# ── Live-server guard ────────────────────────────────────────────────────────
+# This is a genuine integration test: it drives a running local server, not a
+# pure function. It was quarantined on 2026-05-23 and became invisible, which
+# is worse than being skipped — an uncollected file reports nothing at all.
+#
+# So instead of hiding it, it now SKIPS with a reason when the server is not
+# up, and carries the `integration` marker so it stays out of the default run
+# while remaining visible and runnable on demand:
+#
+#     pytest -m integration        (with the dev server running)
+#
+# The probe uses a short timeout and is evaluated once at import, so a missing
+# server costs a fraction of a second rather than a hung suite.
+def _server_is_up(url: str, timeout: float = 1.0) -> bool:
+    try:
+        import urllib.request
+        urllib.request.urlopen(url, timeout=timeout)
+        return True
+    except Exception:
+        return False
+
+
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not _server_is_up(_PROBE_URL),
+        reason=f"needs a local server at {_PROBE_URL} — start the dev server, then: pytest -m integration",
+    ),
+]

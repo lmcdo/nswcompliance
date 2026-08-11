@@ -1,46 +1,64 @@
 /**
- * DCP structured-controls — cross-council contamination guards
+ * DCP structured-controls — consolidated onto the guarded proxy (item 5).
  *
- * Regression for the bug where a generic chapter_key (e.g. "part-e-s4.6")
- * shared across councils fanned one control into several rows carrying foreign
- * councils' DCP names. Two layers under test:
- *   1. the SQL scopes the registry join to the council (cr.council = sc.lga)
- *   2. the runtime output invariant drops any leaked foreign row and alerts
+ * REWRITTEN 2026-08-03: the previous suite mocked pool.query and pinned the
+ * route's own SQL (registry-join scoping + the runtime cross-council leak
+ * sentinel). Both are gone by construction: rows and the per-council PDF-URL
+ * map now come from /pipeline/dcp-controls (conveyancing_db.
+ * fetch_dcp_setbacks — the ONE guarded implementation), so a foreign
+ * council's registry row can never attach. What this suite pins instead:
+ *   1. no inline SQL — rows come from the client, filtered by dev_type
+ *   2. needs_review rows cannot be served (excluded at source; the old route
+ *      served a flagged row as a normal number whenever it had a value —
+ *      35 rows measured 2026-08-03)
+ *   3. the empty case reports available_dev_types from the guarded rows
+ *   4. source-unavailable is a visible 503, never an empty success
  * @jest-environment node
  */
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/dcp/structured-controls/route';
 
-const mockQuery = jest.fn();
-jest.mock('@/lib/db', () => ({ getPool: () => ({ query: mockQuery }) }));
-
-const mockCapture = jest.fn();
-jest.mock('@/lib/posthog-server', () => ({
-  captureServerException: (...args: unknown[]) => mockCapture(...args),
+const mockFetchDcpControls = jest.fn();
+jest.mock('@/lib/dcp-controls-client', () => ({
+  fetchDcpControls: (...args: unknown[]) => mockFetchDcpControls(...args),
+  DcpControlsUnavailableError: class DcpControlsUnavailableError extends Error {},
 }));
+
+import { GET } from '@/app/api/dcp/structured-controls/route';
+import { DcpControlsUnavailableError } from '@/lib/dcp-controls-client';
 
 function req(params: string): NextRequest {
   return new NextRequest(`http://localhost/api/dcp/structured-controls?${params}`);
 }
 
-function row(overrides: Record<string, unknown> = {}) {
+function proxyRow(overrides: Record<string, unknown> = {}) {
   return {
-    control_type: 'front_setback',
-    value_min: '6',
+    type: 'Front Setback',
+    dev_type: 'dwelling_house',
+    control_type: 'prescribed',
+    semantic_type: 'front_setback',
+    requirement: '6 m minimum',
+    value_min: 6,
     value_max: null,
     unit: 'm',
-    condition: null,
-    section_ref: 'B2.1',
+    clause: 'B2.1',
+    notes: '',
     source_text: 'Front setback minimum 6m',
-    dcp_version: 'Waverley DCP 2022',
-    pdf_page: 12,
     source_chapter_key: 'part-b-s2',
-    needs_review: false,
+    pdf_page: 12,
+    dcp_version: 'Waverley DCP 2022',
+    ...overrides,
+  };
+}
+
+function proxyResult(rows: unknown[], overrides: Record<string, unknown> = {}) {
+  return {
+    available: true,
     lga: 'waverley',
-    r2_public_pdf_url: 'https://r2.example/waverley.pdf',
-    chapter_label: 'Part B2',
     dcp_name: 'Waverley DCP 2022',
-    registry_council: 'waverley',
+    registry_pdf_urls: { 'part-b-s2': 'https://r2.example/waverley.pdf' },
+    as_at: { date: '2022-01-01', precision: 'year', kind: 'effective', basis: 'stated_in_document' },
+    as_at_line: 'In force from 2022 (date stated in the plan document)',
+    rows,
     ...overrides,
   };
 }
@@ -48,66 +66,57 @@ function row(overrides: Record<string, unknown> = {}) {
 beforeEach(() => jest.clearAllMocks());
 
 describe('GET /api/dcp/structured-controls', () => {
-  test('registry join is scoped to the council in the SQL itself', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [row()] });
-    await GET(req('council=waverley'));
-    const [sql] = mockQuery.mock.calls[0];
-    expect(sql).toMatch(/cr\.council = sc\.lga/);
-    expect(sql).toMatch(/cr\.is_active = true/);
-  });
-
-  test('seeded collision: a leaked foreign-council row is dropped and alerts', async () => {
-    // Same chapter_key under two councils — the exact contamination shape.
-    mockQuery.mockResolvedValueOnce({
-      rows: [
-        row(),
-        row({
-          registry_council: 'randwick',
-          dcp_name: 'Randwick Comprehensive DCP 2013 (Amendment 9)',
-          control_type: 'rear_setback',
-        }),
-      ],
-    });
-    const res = await GET(req('council=waverley'));
+  test('serves guarded proxy rows for the requested dev_type with anchored PDF links', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
+      proxyRow(),
+      proxyRow({ dev_type: 'secondary_dwelling', semantic_type: 'rear_setback' }),
+    ]));
+    const res = await GET(req('council=waverley&dev_type=dwelling_house'));
     const data = await res.json();
 
+    expect(mockFetchDcpControls).toHaveBeenCalledWith('waverley');
     const served = data.categories.flatMap(
-      (c: { controls: { dcp_name: string }[] }) => c.controls,
+      (c: { controls: { pdf_url: string | null }[] }) => c.controls,
     );
-    expect(served).toHaveLength(1);
-    expect(served[0].dcp_name).toBe('Waverley DCP 2022');
-    // top-level dcp_name prefers the LONGEST name — must not pick the foreign one
+    expect(served).toHaveLength(1); // dev_type filter applied
+    expect(served[0].pdf_url).toBe('https://r2.example/waverley.pdf#page=12');
     expect(data.dcp_name).toBe('Waverley DCP 2022');
-
-    expect(mockCapture).toHaveBeenCalledTimes(1);
-    const [err, ctx] = mockCapture.mock.calls[0];
-    expect((err as Error).message).toMatch(/cross-council leak/);
-    expect(ctx).toMatchObject({
-      endpoint: '/api/dcp/structured-controls',
-      leaked_rows: 1,
-    });
+    expect(data.as_at_line).toMatch(/In force from 2022/);
   });
 
-  test('clean rows pass through untouched with no alert', async () => {
-    mockQuery.mockResolvedValueOnce({
-      rows: [
-        row(),
-        // LEFT JOIN miss — no registry row attached; must not be treated as a leak
-        row({
-          registry_council: null,
-          dcp_name: null,
-          r2_public_pdf_url: null,
-          control_type: 'rear_setback',
-        }),
-      ],
-    });
+  test('under_review can never be emitted — flagged rows are excluded at the source', async () => {
+    // The proxy (fetch_dcp_setbacks) excludes needs_review rows in SQL and
+    // per-row; whatever arrives here is clean, so status is numeric or
+    // not_applicable only.
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
+      proxyRow(),
+      proxyRow({ semantic_type: 'rear_setback', value_min: null, value_max: null }),
+    ]));
     const res = await GET(req('council=waverley'));
     const data = await res.json();
-
-    const served = data.categories.flatMap(
-      (c: { controls: unknown[] }) => c.controls,
+    const statuses = data.categories.flatMap(
+      (c: { controls: { data_status: string }[] }) => c.controls.map((x) => x.data_status),
     );
-    expect(served).toHaveLength(2);
-    expect(mockCapture).not.toHaveBeenCalled();
+    expect(statuses.sort()).toEqual(['not_applicable', 'numeric']);
+    expect(statuses).not.toContain('under_review');
+  });
+
+  test('empty dev_type reports the dev types the guarded rows actually carry', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
+      proxyRow({ dev_type: 'secondary_dwelling' }),
+    ]));
+    const res = await GET(req('council=waverley&dev_type=dwelling_house'));
+    const data = await res.json();
+    expect(data.has_controls).toBe(false);
+    expect(data.available_dev_types).toEqual(['secondary_dwelling']);
+  });
+
+  test('source-unavailable is a visible 503, never an empty success', async () => {
+    mockFetchDcpControls.mockRejectedValueOnce(
+      new DcpControlsUnavailableError('down'));
+    const res = await GET(req('council=waverley'));
+    expect(res.status).toBe(503);
+    const data = await res.json();
+    expect(data.error).toMatch(/unavailable/);
   });
 });

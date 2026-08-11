@@ -99,13 +99,18 @@ describe('parking-rates route source', () => {
   // repointed away from. Matching prose would forbid documenting the fix.
   const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|\s)\/\/[^\n]*/g, ' ');
 
-  it('reads the maintained dcp_setback_controls, fail-closed on currency and review', () => {
-    // Kept as one assertion block so the currency guard sits beside the table it
-    // guards — the QA DB-scanner looks for is_current within ±10 lines of a
-    // dcp_setback_controls reference, and splitting them tripped it.
-    expect(src).toMatch(/FROM dcp_setback_controls/);
-    expect(src).toMatch(/is_current IS NULL OR is_current = TRUE/);
-    expect(src).toMatch(/needs_review IS NULL OR needs_review = FALSE/);
+  it('sources DCP rows from the guarded proxy, never inline SQL (item 5 FLIP)', () => {
+    // FLIPPED 2026-08-03: previously pinned the route's own
+    // `FROM dcp_setback_controls` query and its guard predicates. The guards
+    // (is_current strict, needs_review exclusion, zone, deterministic order)
+    // now live solely in conveyancing_db.fetch_dcp_setbacks behind
+    // /pipeline/dcp-controls; this route filters car_parking rows and sorts
+    // for presentation.
+    // (is_current = TRUE + needs_review guards live in fetch_dcp_setbacks
+    // behind the proxy — that is the point of the flip.)
+    expect(src).not.toMatch(/FROM dcp_setback_controls/);
+    expect(src).toMatch(/fetchDcpControls\(/);
+    expect(src).toMatch(/semantic_type === 'car_parking'/);
   });
 
   it('never queries the dropped `dcps` table or its phantom columns', () => {

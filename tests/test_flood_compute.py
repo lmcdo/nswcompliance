@@ -672,16 +672,24 @@ class TestBuildCompoundRiskNotes:
 
 class TestBuildDataSources:
 
-    def test_always_includes_epi_and_planetary(self):
-        """NSW SEED EPI WFS is always first, Planetary Computer always last."""
+    def test_epi_always_first_planetary_never_unconditional(self):
+        """FLIPPED 2026-08-03 (campaign item 4 / DQ-44): this test previously
+        pinned 'Planetary Computer always last' — but no S1 query has ever
+        run (sar_flood_detected is hard-nulled), so the pinned behaviour was
+        a named source that was never queried. The S1 source may appear ONLY
+        when a SAR result exists."""
         sources = _build_data_sources({})
         assert sources[0] == "NSW SEED EPI WFS"
+        assert "Microsoft Planetary Computer S1 RTC" not in sources
+
+    def test_s1_source_claimed_only_with_a_sar_result(self):
+        sources = _build_data_sources({"sar_flood_detected": False})
         assert sources[-1] == "Microsoft Planetary Computer S1 RTC"
 
     def test_minimal_inputs(self):
-        """No optional data → only EPI + Planetary Computer."""
+        """No optional data → only EPI (S1 no longer falsely claimed)."""
         sources = _build_data_sources({})
-        assert len(sources) == 2
+        assert len(sources) == 1
 
     def test_ses_included(self):
         sources = _build_data_sources({"ses_in_flood_planning_area": True})
@@ -829,15 +837,19 @@ class TestBuildDataSources:
             "compound_wetlands": True,
             "compound_landslide": True,
         })
-        # EPI + SES + EMS + JRC + DEA + BOM + 1 study + DEM + 4 compound + Planetary = 13
-        assert len(sources) == 13
+        # EPI + SES + EMS + JRC + DEA + BOM + 1 study + DEM + 4 compound = 12
+        # (S1 appears only with a SAR result — FLIPPED 2026-08-03, DQ-44).
+        assert len(sources) == 12
+        assert "Microsoft Planetary Computer S1 RTC" not in sources
 
     def test_source_order(self):
-        """Sources follow insertion order: EPI first, compound, then Planetary last."""
+        """EPI first; S1 last ONLY when a SAR result exists (FLIPPED
+        2026-08-03, DQ-44 — it was unconditionally claimed before)."""
         sources = _build_data_sources({
             "ses_in_flood_planning_area": True,
             "ems_flood_detected": True,
             "jrc_water_occurrence_pct": 10.0,
+            "sar_flood_detected": True,
         })
         assert sources[0] == "NSW SEED EPI WFS"
         assert sources[-1] == "Microsoft Planetary Computer S1 RTC"

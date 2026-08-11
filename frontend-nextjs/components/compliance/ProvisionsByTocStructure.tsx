@@ -673,6 +673,15 @@ export function ProvisionsByTocStructure({
 
     return deduped;
   }, [tocStructure]);
+  // True when ANY provision in scope carries a dev-type narrower than ALL.
+  // Drives the copy above so it cannot claim 'removes nothing' once the
+  // applicability tagger starts producing real dev types for this council.
+  const anyDevTypeSpecific = allProvisions.some(
+    (p: { v2_applicable_dev_types?: string[] | null }) =>
+      Array.isArray(p.v2_applicable_dev_types)
+      && p.v2_applicable_dev_types.length > 0
+      && !p.v2_applicable_dev_types.includes('ALL'),
+  );
 
   // Compute DCP numeric reference results whenever check values or provisions change.
   useEffect(() => {
@@ -1949,7 +1958,15 @@ export function ProvisionsByTocStructure({
             <p className="text-base font-semibold text-gray-800">Define your works</p>
             <p className="text-sm text-gray-700 mt-0.5 mb-2">
               {daDevTypeRole === 'sort_only'
-                ? `Select your development type. For ${formerCouncil ? `${formerCouncil} DCP` : 'this council'}, all ${globalProgress?.total ?? allProvisions.length} provisions apply regardless of dev type — your selection re-orders them by relevance but does not remove any.`
+                ? (anyDevTypeSpecific
+                    // DQ-33: this used to assert "all N provisions apply regardless of
+                    // dev type … does not remove any" unconditionally. Correcting the
+                    // applicability tagger gave Leichhardt Part F (food premises) real
+                    // dev types, at which point that sentence was simply false. It is now
+                    // derived from the data rather than assumed, so it stays true whichever
+                    // way the corpus goes.
+                    ? `Select your development type. For ${formerCouncil ? `${formerCouncil} DCP` : 'this council'}, most of the ${globalProgress?.total ?? allProvisions.length} provisions apply regardless of dev type and are re-ordered by relevance; a small number are written for specific development types and are filtered out when they do not apply.`
+                    : `Select your development type. For ${formerCouncil ? `${formerCouncil} DCP` : 'this council'}, all ${globalProgress?.total ?? allProvisions.length} provisions apply regardless of dev type — your selection re-orders them by relevance but does not remove any.`)
                 : daDevTypeRole === 'chapter_selector'
                 ? 'Select your development type. Chapters that don\'t apply to your dev type are automatically removed from scope.'
                 : 'Select your development type and any ancillary development. Controls that don\'t apply are automatically removed.'}

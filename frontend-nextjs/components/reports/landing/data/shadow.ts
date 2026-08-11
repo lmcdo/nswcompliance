@@ -1,4 +1,4 @@
-import { Sun, Building2, Map, Satellite } from "lucide-react"
+import { Sun, Building2, Map } from "lucide-react"
 import type { ProductLandingConfig } from "../types"
 
 export const shadowConfig: ProductLandingConfig = {
@@ -17,11 +17,10 @@ export const shadowConfig: ProductLandingConfig = {
   dataSources: [
     { icon: Building2, name: "NSW Planning", description: "Height controls" },
     { icon: Sun, name: "ADG Standards", description: "Solar access tests" },
-    { icon: Satellite, name: "ESA Sentinel", description: "Construction detection" },
   ],
 
   featuresTitle: "What This Report Checks",
-  featuresSubtitle: "Shadow modelling from the maximum-height building envelope on the adjacent lot.",
+  featuresSubtitle: "Shadow modelling from a maximum-height building envelope placed immediately north of your lot.",
   features: [
     {
       icon: Sun,
@@ -31,17 +30,12 @@ export const shadowConfig: ProductLandingConfig = {
     {
       icon: Building2,
       title: "Maximum-Height Building Envelope",
-      description: "Shadow is cast from the tallest building permitted on the adjacent lot under the applicable planning controls. This is the worst case — the actual development may be shorter.",
+      description: "Shadow is cast from a building at the tallest height mapped at your location, modelled as a rectangle immediately north of your boundary. It is a hypothetical screening scenario, not a survey and not an upper bound: the neighbouring parcel's real shape, position and height control are not looked up, and its own control may allow more shadow than this model shows.",
     },
     {
       icon: Map,
       title: "Shadow Path and Overlap",
-      description: "For each scenario, the exact shadow direction, length, and whether it crosses onto your property. Displayed on an interactive map so you can see precisely which part of your lot is affected.",
-    },
-    {
-      icon: Satellite,
-      title: "Construction Activity Detection",
-      description: "High-resolution satellite imagery analysis to check whether construction has already begun on the adjacent lot. If earthworks or building activity is detected, you may need to act faster.",
+      description: "For each scenario, the shadow direction, length, and whether it crosses onto your property. Direction is calculated for your address from the sun's position at that date and time. Displayed on an interactive map showing which part of your lot is affected.",
     },
   ],
 
@@ -54,9 +48,8 @@ export const shadowConfig: ProductLandingConfig = {
     { name: "Worst-case scenario summary", free: true, paid: true },
     { name: "All 5 scenario breakdowns", free: false, paid: true },
     { name: "Hourly shadow diagrams", free: false, paid: true },
-    { name: "Construction detection detail", free: false, paid: true },
     { name: "Objection-ready summary paragraph", free: false, paid: true },
     { name: "Downloadable PDF report", free: false, paid: true },
   ],
-  methodology: "Solar position is calculated using astronomical algorithms for your exact latitude and longitude at each test date and time. Shadow length and direction are derived geometrically from the maximum permissible building height on the adjacent lot, sourced from NSW Government planning controls. No assumptions are made about the design — the model uses the full height envelope. Construction detection uses spectral analysis of high-resolution satellite imagery to identify disturbed ground.",
+  methodology: "Solar position is calculated for your exact latitude and longitude at each test date and time, using local NSW wall-clock times with daylight saving applied where it is in force. Shadow length and direction are derived geometrically from the maximum permissible building height mapped at your location, sourced from NSW Government planning controls, modelled as a rectangle immediately north of your boundary — the neighbouring parcel itself is not retrieved. In place of any proposed design, the model assumes the full height envelope: the rectangle described above, at the height control mapped at your own property. The neighbouring parcel's own control, and any building actually proposed, may differ.",
 }

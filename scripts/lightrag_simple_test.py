@@ -11,7 +11,8 @@ from pathlib import Path
 import logging
 
 # Set up environment
-os.environ['OPENAI_API_KEY'] = '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'
+# OPENAI_API_KEY is read from the environment (or the repo .env); line 30
+# already does os.getenv for it. It must never be inlined here.
 
 from lightrag import LightRAG, QueryParam
 from lightrag.utils import EmbeddingFunc

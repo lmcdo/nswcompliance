@@ -111,8 +111,12 @@ class TestGrannyFlatConfidenceCap:
             confirmed_count=2,
             samgeo_count=2,
             rent_available=True,
+            # FLIPPED 2026-08-06 (Lane 1, item 3): "high" now also requires a
+            # human-reviewed count. This test is about the CAP, so it needs a
+            # genuine "high" to cap — hence the explicit provenance.
+            count_source="secondary_detections_classified",
         )
-        # Base confidence is "high" (counts agree + rent available)
+        # Base confidence is "high" (human reviewed + counts agree + rent available)
         assert conf == "high"
 
         # Now simulate the cap logic from confirm_and_calculate
