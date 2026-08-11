@@ -41,6 +41,13 @@ async function verifyProvisions() {
     let allSafe = true;
 
     for (const pair of duplicatePairs) {
+      // NO is_current FILTER, DELIBERATELY. This counts EVERY provision attached
+      // to each document, superseded ones included, because the count is what
+      // decides which of two duplicate documents to keep and which to supersede.
+      // Filtering to is_current = TRUE would make a document whose provisions had
+      // already been marked non-current look empty, and the script would then
+      // recommend superseding the wrong one — losing the larger corpus.
+      // Currency is the caller's question here, not this query's.
       const countQuery = `
         SELECT
           d.id,
