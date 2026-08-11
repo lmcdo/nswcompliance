@@ -17,7 +17,7 @@
 | **spatial_overlays (height)** | Derived from LEP HOB maps (NSW Planning Portal) | Secondary — LEP instrument is authoritative | PostGIS `ST_Contains` point-in-polygon query | Coverage: ~33 LGAs with height polygons. Value format varies ("9", "9m", "9.0"). | N/A (our derived dataset) |
 | **regulatory_provisions (height)** | Extracted from DCP text (Inner West only) | Tertiary — text extraction from provisions | SQL text search with regex | Inner West only. Text extraction may miss non-standard formatting. | N/A (our derived dataset) |
 | **Element84 Sentinel-2 L2A** | ESA (via Element84 Earth Search) | Open access satellite imagery (CC-BY-SA 3.0 IGO) | STAC API, free, no auth | 10m resolution. Cloud cover affects availability. BSI change detection is heuristic. | Copernicus Sentinel data |
-| **pybdshadow + pvlib** | Computational model | N/A — analytical, not data | Local Python libraries | Geometric model only. Does not account for existing buildings, trees, terrain, or infrastructure. | N/A |
+| **pybdshadow** | Computational model | N/A — analytical, not data | Local Python library; derives sun position internally from the modelled UTC instant | Geometric model only. Does not account for existing buildings, trees, terrain, or infrastructure. The served `shadow_direction_deg` is a stored per-scenario constant, not a per-report calculation. | N/A |
 
 **Assessment:** Primary data (lot boundary) is from the authoritative cadastral source. Height controls are derived from LEP maps with clear fallback chain. Shadow model is computational with documented methodology. **PASS.**
 
@@ -167,7 +167,7 @@ Never returns "high" — maximum is "medium" when a real height control is found
 | 258 | "ADG solar access requirements **are met**" | ADG compliant finding | **MEDIUM** | Compliance determination. Add qualifier: "based on this model". |
 | 307 | "This is a **strong result** for solar access" | No overlap detected | **MEDIUM** | Evaluative judgment. Change to factual: "No shadow overlap was detected in any test scenario." |
 | 557-560 | "NSW Building Footprints" + "NSW DEM" in DataCurrencyTable | Data sources | **BUG-9** | Pipeline does NOT use Building Footprints or DEM. Two false data source attributions. |
-| 567 | "**pysolar**" in methodology | Methodology section | **BUG-10** | Pipeline uses pvlib, not pysolar. Wrong library name. |
+| 567 | "**pysolar**" in methodology | Methodology section | **BUG-10** | Wrong library name. ⚠ 2026-08-06 (Lane 1 / D1): the replacement text this audit recommended was ALSO wrong — the pipeline uses pybdshadow only; pvlib is not imported anywhere in the repo. |
 
 ### 5.3 Bugs found
 
@@ -236,15 +236,19 @@ Pipeline does NOT query NSW Building Footprints or NSW DEM. Same class as bushfi
 
 **Severity:** Medium. False attribution undermines audit trail credibility.
 
-**Fix:** Replace with actual data sources (NSW Planning Portal lot API, spatial_overlays height, pybdshadow + pvlib, Sentinel-2).
+**Fix:** Replace with actual data sources (NSW Planning Portal lot API, spatial_overlays height, pybdshadow, Sentinel-2).
 
 **BUG-9: Wrong library name in methodology (PDF line 567)**
 
-States "pysolar" but the pipeline uses pvlib for solar position and pybdshadow for shadow casting.
+States "pysolar". The pipeline uses pybdshadow for shadow casting; pybdshadow
+derives sun position itself.
 
 **Severity:** Low. Methodology section names a library not used.
 
-**Fix:** Change to "pvlib Solar Position Algorithm + pybdshadow shadow casting".
+**Fix:** Change to "pybdshadow shadow casting". ⚠ **Superseded 2026-08-06 (Lane 1 / D1):**
+this entry originally prescribed "pvlib Solar Position Algorithm + pybdshadow
+shadow casting", which was itself a false attribution — pvlib has zero import
+sites in the repo. The PDF now says pybdshadow only.
 
 ---
 

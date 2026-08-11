@@ -7,6 +7,8 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 import { getCachedAddressCheck, setCachedAddressCheck } from '@/lib/cache';
+import { toLgaSlug } from '@/lib/lga-slug';
+import { fetchDcpControls } from '@/lib/dcp-controls-client';
 import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
 
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
@@ -381,30 +383,37 @@ export async function POST(req: NextRequest) {
     source_text: string | null;
     section_ref: string | null;
   }> = [];
+  let dcpSetbacksUnavailable = false;
   if (lgaName) {
     try {
-      let normLga = lgaName.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
-      // Map Portal LGA names to dcp_setback_controls.lga slugs
-      const LGA_SLUG_MAP: Record<string, string> = {
-        sydney: 'city_of_sydney',
-        city_of_parramatta: 'parramatta',
-        the_hills_shire: 'the_hills',
-        city_of_canada_bay: 'canada_bay',
-        city_of_ryde: 'ryde',
-        strathfield_municipal: 'strathfield',
-      };
-      normLga = LGA_SLUG_MAP[normLga] || normLga;
-      const dcpRes = await query(
-        `SELECT control_type, value_min, value_max, unit, condition, applicability, source_text, section_ref
-         FROM dcp_setback_controls
-         WHERE lga = $1 AND dev_type = 'secondary_dwelling'
-           AND is_current = TRUE
-         ORDER BY control_type`,
-        [normLga],
-      );
-      dcpSetbacks = dcpRes.rows;
+      // Item 5 consolidation: rows come from the ONE guarded implementation
+      // via /pipeline/dcp-controls — this route previously ran its own SQL
+      // with NO needs_review guard (4 flagged secondary-dwelling rows were
+      // served, measured 2026-08-03) and its own third copy of the slug map
+      // (now lib/lga-slug.ts, the single mapper).
+      const normLga = toLgaSlug(lgaName);
+      if (normLga) {
+        const dcp = await fetchDcpControls(normLga);
+        dcpSetbacks = (dcp.available && dcp.rows ? dcp.rows : [])
+          .filter((r) => r.dev_type === 'secondary_dwelling')
+          .map((r) => ({
+            control_type: r.semantic_type,
+            value_min: r.value_min,
+            value_max: r.value_max,
+            unit: r.unit,
+            condition: r.notes || null,
+            // Passed through unchanged — fabricating a plausible value here
+            // would erase real qualifications (Sol, 2026-08-04).
+            applicability: r.applicability ?? 'unspecified',
+            source_text: r.source_text,
+            section_ref: r.clause || null,
+          }));
+      }
     } catch {
-      // dcp_setbacks stays [] — non-blocking
+      // Typed absence: an unreachable source is NOT the same response as a
+      // completed zero-row lookup — the flag makes the difference visible
+      // to consumers (Sol, 2026-08-04) while keeping the check non-blocking.
+      dcpSetbacksUnavailable = true;
     }
   }
 
@@ -493,6 +502,9 @@ export async function POST(req: NextRequest) {
     sepp_ineligible_reason,
     checks,
     dcp_setbacks: dcpSetbacks,
+    // true when the guarded source could not be reached — distinguishes
+    // "no controls found" from "the lookup did not complete".
+    dcp_setbacks_unavailable: dcpSetbacksUnavailable,
     confirmation_required: false,
   };
 

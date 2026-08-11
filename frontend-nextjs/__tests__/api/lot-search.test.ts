@@ -294,7 +294,7 @@ describe('POST /api/lot-search', () => {
     expect(res.status).toBe(500);
   });
 
-  test('null heritage/flood/bushfire default to false in response', async () => {
+  test('null heritage/flood/bushfire stay null — never coerced to false', async () => {
     const lotWithNulls = { ...SAMPLE_LOT_ROW, heritage: null, flood_prone: null, bushfire_prone: null };
     mockQuery
       .mockResolvedValueOnce({ rows: [] } as any)
@@ -303,9 +303,12 @@ describe('POST /api/lot-search', () => {
 
     const res = await POST(makeRequest({}));
     const data = await res.json();
-    expect(data.lots[0].heritage).toBe(false);
-    expect(data.lots[0].flood_prone).toBe(false);
-    expect(data.lots[0].bushfire_prone).toBe(false);
+    // A NULL overlay was never resolved for this lot. Served as `false` it
+    // read as three clean hazard flags off a lookup that never happened. This
+    // test asserted that coercion as intended behaviour until 2026-08-08.
+    expect(data.lots[0].heritage).toBeNull();
+    expect(data.lots[0].flood_prone).toBeNull();
+    expect(data.lots[0].bushfire_prone).toBeNull();
   });
 });
 

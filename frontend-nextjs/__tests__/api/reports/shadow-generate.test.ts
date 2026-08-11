@@ -69,7 +69,9 @@ const COMPLETE_ROW = {
   lng: 151.18,
   run_date: '2026-05-01',
   confidence: 'high',
-  data_sources: ['pybdshadow', 'pvlib'],
+  // Mirrors services/shadow_detector.DATA_SOURCES — pvlib was in this fixture
+  // but is not imported anywhere in the repo (Lane 1 / D1).
+  data_sources: ['pybdshadow'],
   outputs: {
     height_m: 9,
     scenarios: [],

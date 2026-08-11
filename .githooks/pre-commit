@@ -143,4 +143,25 @@ if [ "$ZONECODE_EXIT" -ne 0 ]; then
 fi
 echo "✅ Zone-code lint passed"
 
+echo ""
+echo "🔍 Running fabricated-verdict lint on report surfaces..."
+python scripts/lint_fabricated_verdicts.py --quiet
+VERDICT_RESULT=$?
+if [ $VERDICT_RESULT -ne 0 ]; then
+  echo ""
+  echo "   A report asserted a verdict about a property using data it does not have."
+  echo "   State what was actually assessed instead, or annotate with a reason:"
+  echo "     {/* verdict-ok: <why this is not fabricated> */}"
+  echo "   Detail: python scripts/lint_fabricated_verdicts.py"
+  exit 1
+fi
+echo "✅ Fabricated-verdict lint passed"
+
+echo "🔍 Checking the commit author identity..."
+python scripts/check_commit_authors.py --staged
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+echo "✅ Commit author is plausible"
+
 echo "✅ Pre-commit checks complete"

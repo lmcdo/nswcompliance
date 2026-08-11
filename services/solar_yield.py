@@ -57,6 +57,19 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 GOOGLE_SOLAR_API = "https://solar.googleapis.com/v1/buildingInsights:findClosest"
 DATA_SOURCES = ["Google Solar API"]
 
+# prior-art-checked: shared item-4 modules created this session — extending
+# this pipeline's own envelope, not adding a parallel data source.
+try:
+    from services.execution_manifest import MANIFEST_KEY, build_manifest
+    from services.geometry_checks import check_point_nsw, check_polygon_wgs84
+except ImportError:
+    from execution_manifest import MANIFEST_KEY, build_manifest
+    from geometry_checks import check_point_nsw, check_polygon_wgs84
+
+# Algorithm revision for execution manifests (campaign item 4). Bump on
+# method change, not per deploy (deploy identity = manifest deploy_sha).
+ALGORITHM_VERSION = "solar-google-insights-1.0"
+
 
 # ---------------------------------------------------------------------------
 # Google Solar API response models
@@ -533,6 +546,24 @@ def _lookup_neighbour_hob(lat: float, lng: float) -> Optional[float]:
 def run_solar_yield(request: SolarYieldRequest):
     logger.info(f"Solar yield: {request.address} ({request.lat}, {request.lng})")
 
+    # Units/CRS entry checks (campaign item 4). A wrong-CRS coordinate is a
+    # typed 422, never a yield computed from the wrong place. An implausible
+    # lot polygon is DEMOTED to not-provided — the old behaviour let an
+    # invalid polygon silently skip clipping while confidence still said
+    # "high (clipped to lot)", serving whole-building numbers as lot numbers.
+    coord_reason = check_point_nsw(request.lat, request.lng)
+    if coord_reason:
+        raise HTTPException(
+            422, f"Solar assessment could not be determined: {coord_reason}")
+    lot_polygon = request.lot_polygon_wgs84
+    lot_polygon_reason = None
+    if lot_polygon is not None:
+        lot_polygon_reason = check_polygon_wgs84(lot_polygon)
+        if lot_polygon_reason:
+            logger.warning(f"Lot polygon failed plausibility — treated as "
+                           f"not provided: {lot_polygon_reason}")
+            lot_polygon = None
+
     # Audit trail: track data source queries
     ds_google = DataSourceQuery(
         "Google Solar API", GOOGLE_SOLAR_API,
@@ -560,7 +591,7 @@ def run_solar_yield(request: SolarYieldRequest):
     )
 
     try:
-        outputs = _parse_solar_response(raw, lot_polygon_wgs84=request.lot_polygon_wgs84)
+        outputs = _parse_solar_response(raw, lot_polygon_wgs84=lot_polygon)
     except Exception as e:
         logger.exception(f"Solar response parse failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to parse solar data")
@@ -587,14 +618,38 @@ def run_solar_yield(request: SolarYieldRequest):
         if _lga_conn:
             _lga_conn.close()
 
+    # Confidence keys off the VALIDATED polygon — an implausible one was
+    # demoted to not-provided above, so "high (clipped to lot)" can no longer
+    # ride on a clip that silently never happened.
     if not outputs.coverage_available:
         confidence = "low"
-    elif request.lot_polygon_wgs84 and outputs.max_panels > 0:
+    elif lot_polygon and outputs.max_panels > 0:
         confidence = "high"   # clipped to lot, panels found
-    elif request.lot_polygon_wgs84:
+    elif lot_polygon:
         confidence = "medium"  # clipped but no panels in lot boundary
     else:
         confidence = "medium"  # no lot polygon — raw Google result, building may not match lot
+
+    # Execution manifest (campaign item 4): identity read from the response
+    # objects this run actually consumed.
+    manifest = build_manifest(
+        product="solar-yield",
+        algorithm_version=ALGORITHM_VERSION,
+        inputs={
+            "google_solar": {
+                "imagery_date": outputs.imagery_date,
+                "coverage_available": outputs.coverage_available,
+            },
+            "lot_polygon": {
+                "provided": request.lot_polygon_wgs84 is not None,
+                "used_for_clipping": lot_polygon is not None,
+                "rejected_reason": lot_polygon_reason,
+            },
+        },
+        query_params={"lat": request.lat, "lng": request.lng,
+                      "requiredQuality": "MEDIUM"},
+        parcel_identity={"prop_id": request.prop_id},
+    )
 
     try:
         _write_report(
@@ -608,6 +663,7 @@ def run_solar_yield(request: SolarYieldRequest):
                 "lat": request.lat,
                 "lng": request.lng,
                 "lot_polygon_provided": request.lot_polygon_wgs84 is not None,
+                MANIFEST_KEY: manifest,
             },
             outputs=outputs.model_dump(),
             confidence=confidence,

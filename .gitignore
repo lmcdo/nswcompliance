@@ -1,6 +1,16 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# QA railguards (ephemeral per-commit)
+# QA railguards.
+#
+# The per-branch reports in .qa/reports/ are COMMITTED and must stay that way:
+# CI treats an absent report as a warning and exit 0, so an ignored report is a
+# gate that silently stops enforcing. Do not add .qa/ here.
+#
+# The legacy shared root path stays ignored so a stray local copy cannot be
+# re-committed. That is not theoretical: #398 untracked this file on
+# 2026-05-28 and #434 — a sitemap PR — re-added it three days later, and the
+# line below made it look untracked for ten weeks. gitignore does not apply to
+# files that are already tracked.
 .qa_report.json
 
 # Ad-hoc scratch DB query scripts (may contain connection strings) — never commit
@@ -190,6 +200,7 @@ diagnose_*.py
 !package.json
 !tsconfig.json
 !mutation-baselines.json
+!dependency-skip-baseline.json
 
 # Database backups (large binary files)
 backups/
@@ -373,6 +384,13 @@ docs/*
 !docs/user-stories/
 !docs/intelligence-brief/
 !docs/intelligence-brief/**
+!docs/architecture/
+!docs/architecture/**
+# Pitch-package sources. The 2026-08-09 edition was generated and its markdown thrown
+# away, so correcting it meant reverse-engineering seven documents out of their own HTML.
+# The generated .docx/.html/.pdf stay untracked — they rebuild from these.
+!docs/pitch/
+!docs/pitch/**
 !docs/*.md
 
 # PDF page images (stored in cloud, not git)
@@ -407,11 +425,55 @@ frontend-nextjs/public/pdfjs/
 scripts/*
 !scripts/pr_overlap_guard.py
 !scripts/r2_pdf_uploader.py
+# Sol cross-review base selection. The pre-push hook shells out to this, and
+# the hook FALLS BACK SILENTLY to the old whole-branch base if it is missing —
+# so an untracked copy here would revert the fix on every other clone while
+# leaving the hook looking fixed. Tested by tests/test_sol_review_base.py.
+!scripts/sol_review_base.sh
 # Cross-reference resolution pre-task artifacts (permanent QA artifacts)
 !scripts/xref_pretask_setup.py
 !scripts/xref_detection_audit.py
 # Precinct boundary health check (run before/after every boundary import)
 !scripts/verify_precinct_boundaries.py
+# Granny-flat review-state measurement — the read-only query behind the badge
+# change (which states are DISTINGUISHABLE in stored rows, and the before/after
+# for every existing report). Committed so the claims can cite a command.
+!scripts/measure_granny_confidence_states.py
+!scripts/measure_climate_reference_availability.py
+# Read-only census behind the flood three-state change: how many stored
+# reports served a 'not in a flood zone' that was never established.
+!scripts/measure_flood_zone_unassessed.py
+# Container startup: fetch the Tweed/Wollongong flood grids from R2.
+# Untracked here means every container starts without them, which is the
+# defect this script exists to end.
+!scripts/download_tweed_wollongong_rasters.py
+# The 2022 flood calibration runner. Committed so the number in
+# docs/qa/flood-calibration-2022-result.md can be reproduced, seed and all.
+!scripts/run_flood_calibration_2022.py
+# Read-only sweep for tests that assert an absence produces a NEGATIVE
+# verdict rather than an unknown one — the class that hid the flood defect.
+!scripts/sweep_absence_negative_tests.py
+# Falsifiability plant-restore harness + the doc-claim checker. Both are
+# imported by tests and invoked from .githooks/pre-push, so an untracked copy
+# breaks every fresh clone — which is exactly the trap this line block warns
+# about four comments above.
+!scripts/falsifiability.py
+# The lot-area repair. Tracked because the run against production is only
+# auditable if the exact statement that rewrote 2.5M rows is in the history,
+# and because it is the documented rollback path for that run.
+!scripts/fix_lot_area_mercator.py
+!scripts/doc_claims.py
+# Builds the cdc_lot_link table (certificates -> cadastral lots). The table is
+# live in production, so the recipe that produced it has to be in the repo or
+# nobody can reproduce, audit or re-run it — and it needs re-running, because
+# the certificate feed adds rows daily. Also the only place the development_type
+# double-encoding fix is written down.
+!scripts/build_cdc_lot_link.py
+# Pre-merge guard: refuses to merge a PR whose gates run never ran. A
+# CONFLICTING PR gets no Actions run at all, and an empty check list reads
+# as 'not finished yet'. CLAUDE.md's merge workflow invokes this by path, so
+# an untracked copy makes that instruction a lie in every fresh clone.
+!scripts/check_pr_gates.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py
@@ -434,6 +496,7 @@ scripts/*
 # DQ-30 guards — the pre-commit hook invokes the lint; if it is not tracked,
 # every commit in a fresh clone fails on a missing file.
 !scripts/lint_hardcoded_zone_codes.py
+!scripts/lint_hardcoded_confidence.py
 !scripts/validate_zone_code_validity.py
 !scripts/backfill_invalid_zone_codes.py
 !scripts/requirements-monitor.txt
@@ -469,6 +532,13 @@ scripts/*
 !scripts/dcp_commit_approved.py
 !scripts/backfill_source_chapter_key.py
 !scripts/verify_controls_monitoring.py
+# Controls checked against the council's own published PDF (rung 3) + its proof
+!scripts/validate_controls_against_source_pdf.py
+!scripts/prove_controls_pdf_check.py
+!scripts/measure_control_page_corrections.py
+!scripts/repair_control_pdf_pages.py
+!scripts/resolve_control_page_by_clause.py
+!scripts/check_commit_authors.py
 !scripts/insert_cb_parking.py
 !scripts/insert_penrith_parking.py
 !scripts/insert_cumberland_parking.py
@@ -516,8 +586,15 @@ scripts/*
 !scripts/insert_gap_fill_top_volume.py
 !scripts/insert_gap_fill_mid_volume.py
 !scripts/qa_gate.py
+# The QA report's path resolver, its cleanup script, and the harness proving the
+# commit binding can go red. qa_gate.py imports qa_report_path at module scope,
+# so leaving it ignored would ship a gate that cannot start in a fresh clone.
+!scripts/qa_report_path.py
+!scripts/prune_qa_reports.py
+!scripts/prove_qa_report_binding.py
 !scripts/qa_report_template.json
 !scripts/check_test_baselines.py
+!scripts/check_dependency_skips.py
 !scripts/satellite_freshness_monitor.py
 !scripts/run_monitors.py
 !scripts/run_alerts_dispatch.py
@@ -598,7 +675,62 @@ latent-scope-data/
 !docs/servicing/
 !docs/servicing/**
 
+# QA evidence docs — docs/ is whitelist-only (line 371), so a new file here is
+# silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
+!docs/qa/
+!docs/qa/**
+
 # Schema-contract gate — scripts/ is whitelist-only (line 402), so a new file here
 # is silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
 !scripts/validate_schema_contract.py
 !scripts/schema_contract_baseline.json
+!scripts/lint_fabricated_verdicts.py
+!scripts/retag_applicability_slug_docids.py
+!scripts/validate_controls_provenance.py
+!scripts/link_controls_to_provisions.py
+!scripts/measure_control_quote_gap.py
+!scripts/validate_control_source_values.py
+!scripts/control_source_values_baseline.json
+!scripts/repair_camden_front_setbacks.py
+!scripts/refile_secondary_street_setbacks.py
+!scripts/measure_control_type_mismatch.py
+!scripts/repair_canada_bay_rear_setback.py
+!scripts/repair_missing_primary_controls.py
+!scripts/repair_authorized_held_rows.py
+
+# Output-grounding item 3 — per-source "as at" dates (dcp_plan_as_at)
+!scripts/fetch_dcp_as_at_dates.py
+!scripts/extract_dcp_stated_dates.py
+!scripts/check_dcp_as_at_coverage.py
+!scripts/repair_dq41_null_label_derived_dates.py
+
+# Output-grounding item 4 — execution manifests + units/CRS checks
+!scripts/check_satellite_manifests.py
+
+# Output-grounding item 5 — TS direct-reader consolidation
+!scripts/check_ts_dcp_readers.py
+# Shadow calibration damage census (read-only; repair is a separate pass).
+!scripts/measure_shadow_calibration_damage.py
+# The authorized repair for the 19 impossible-reach reports — regenerates them
+# through the pipeline's own functions, with backup/predict/guard/verify/
+# idempotence/rollback. Committed so the production write can be audited and
+# rolled back from the repo rather than from memory.
+!scripts/repair_shadow_reports.py
+
+# Quarantine ratchet. Committed because it carries the enforcement rules --
+# a checker that lives on one machine enforces nothing.
+!scripts/check_test_quarantine.py
+
+# The address fixture for tests/test_address_validation.py. The broad
+# `test_*.json` rule above is aimed at scratch output and silently swallowed
+# it, so the fixture could never be committed and the test could never run.
+!tests/fixtures/test_addresses.json
+
+# Keyset cursor for scripts/fix_lot_area_mercator.py — run state, not source.
+.lot_area_fix_cursor
+
+# Per-session hook markers. Rewritten by every session that runs /pre-impl, and
+# tracked until 2026-08-11, so they conflicted on EVERY branch rebased that day —
+# the same shared-path defect #913 removed for the QA report. They describe a
+# session, not the codebase, and CI never reads them.
+.claude/.pre-impl-done.json

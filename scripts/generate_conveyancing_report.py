@@ -2262,6 +2262,19 @@ def build_shadow_row(shadow_result: Optional[dict]) -> tuple[str, str, str]:
     noon_pct = round((noon.get("shadow_overlap_fraction") or 0) * 100) if noon else 0
     height_source = shadow_result.get("height_source")
 
+    if adg_ok is None:
+        # Three-state (output-grounding fix 1): the noon scenario was missing,
+        # errored, or its overlap unknown — the model issued NO verdict. Checked
+        # BEFORE the height-provenance branches so no numeric noon-shadow claim
+        # (a noon_pct of 0 here would be an errored scenario, not a measurement)
+        # is made either. The old fallthrough rendered this as "ADG concern".
+        text = (
+            "Not assessed — the shadow model could not compute the Jun 21 noon "
+            "scenario for this lot, so the ADG solar-access test was not run. "
+            "No shadow verdict is made in this report."
+        )
+        return (text, "note", "shadow model")
+
     if height_source == "default":
         # Assumed envelope — no LEP height limit is mapped for this lot.
         text = (
@@ -3062,9 +3075,15 @@ def build_tod_uplift_lines(
              "disclosure": str|None, "baseline": str|None, "held_line": str|None,
              "ledger": [str], "scope": str|None}.
 
-    Three-state:
-      - not in a TOD catchment, or the catchment lookup failed, or strata
-        → render False (silent by design; no false "not in TOD" claim).
+    Four-state (output-grounding fix 4, 2026-08-03):
+      - strata → render False (a single strata lot is not independently
+        redevelopable; suppressed whatever the catchment status).
+      - catchment lookup FAILED (tod is None) → render True + not_assessed
+        with an explicit could-not-be-completed disclosure. Previously this
+        rendered False — the section vanished, indistinguishable from
+        "checked, not in a catchment" (DQ-36's silent-omission twin).
+      - checked and NOT in a catchment → render False (genuinely not
+        applicable; the opportunity block stays silent).
       - in a TOD catchment but the engine baseline failed
         → render True + not_assessed (the catchment IS disclosed; the baseline
           states "Not assessed", never a fabricated figure).
@@ -3075,12 +3094,34 @@ def build_tod_uplift_lines(
            "disclosure": None, "baseline": None, "held_line": None,
            "ledger": [], "scope": None}
 
-    # A None result from fetch_tod_catchment means both layer queries failed —
-    # we cannot claim the lot is in a catchment, and the block is an OPPORTUNITY
-    # disclosure (its absence is not a false safety claim), so stay silent.
-    if not tod or not tod.get("in_tod"):
-        return out
     if is_strata:
+        # A single strata lot is not independently redevelopable — the block
+        # is suppressed whatever the catchment status (unchanged behaviour).
+        return out
+
+    # tod is None ⇔ both catchment-layer queries failed. The section must
+    # RENDER saying so (output-grounding fix 4): a vanished section is
+    # indistinguishable from "checked, not in a catchment" — DQ-36's
+    # silent-omission twin. The earlier doctrine ("absence is not a false
+    # safety claim, so stay silent") conflated the two absence states.
+    if tod is None:
+        out["render"] = True
+        out["not_assessed"] = True
+        out["disclosure"] = (
+            "Not assessed — the Transport Oriented Development (TOD) catchment "
+            "check could not be completed at report generation. This report "
+            "makes no claim about TOD status either way; the catchment layers "
+            "can be checked directly on the NSW Planning Portal spatial viewer."
+        )
+        out["baseline"] = (
+            "No development baseline is computed while the catchment status "
+            "is unknown."
+        )
+        return out
+
+    # Checked and NOT in a catchment — genuinely not applicable; the
+    # opportunity block stays silent (unchanged behaviour).
+    if not tod.get("in_tod"):
         return out
 
     epi = tod.get("epi_name") or "State Environmental Planning Policy (Housing) 2021"
@@ -3643,6 +3684,11 @@ def generate_pdf(
     shadow_result: Optional[dict] = None,
     lep_clauses: Optional[list] = None,
     dcp_setbacks_db: Optional[dict] = None,
+    # Per-fetch DB-failure map from _fetch_db_data (output-grounding fix 3):
+    # {"das","lep","dcp","heritage"} → True when that check could not be
+    # completed. A failed check renders "could not be determined", never a
+    # clean absence. None (older callers) = nothing reported failed.
+    db_fetch_failed: Optional[dict] = None,
     proximity_m: Optional[dict] = None,
     bushfire_live: Optional[dict] = None,
     anef_live: Optional[dict] = None,
@@ -4056,10 +4102,29 @@ def generate_pdf(
         "extent detail:",
         S("ch", fontSize=9, textColor=WHITE, fontName="Helvetica-Bold", leading=13),
     )
-    alert_suffix = (
-        f"  <b>{len(flagged)} constraint(s) identified at this property — see Risk Summary.</b>"
-        if flagged else "  No constraints identified for this property."
-    )
+    # Three states, not two (DQ-36 class).
+    #
+    # `get_unique_overlays` catches every exception and returns ([], set(), {}), so a
+    # PostGIS outage produces exactly the same empty `flagged` list as a genuinely
+    # unconstrained property. This line then printed "No constraints identified for
+    # this property" — a clean bill of health on a paid conveyancing report, off the
+    # back of a query that never ran. Flood, bushfire, biodiversity and landslide are
+    # precisely what the report is bought for.
+    #
+    # `covered_layers` is the discriminator: non-empty means the screen actually ran.
+    _screen_ran = bool(covered_layers)
+    if flagged:
+        alert_suffix = (
+            f"  <b>{len(flagged)} constraint(s) identified at this property — "
+            f"see Risk Summary.</b>"
+        )
+    elif _screen_ran:
+        alert_suffix = "  No constraints identified for this property."
+    else:
+        alert_suffix = (
+            "  <b>Constraint screening did not complete — this is not a finding that "
+            "the property is unconstrained. Re-run before relying on this section.</b>"
+        )
     callout_body = Paragraph(
         delta_body_text + alert_suffix,
         S("cb", fontSize=8, textColor=colors.HexColor("#134E4A"), leading=12),
@@ -4080,13 +4145,25 @@ def generate_pdf(
     # ------------------------------------------------------------------
     # COVERAGE PANEL
     # ------------------------------------------------------------------
+    _db_failed = db_fetch_failed or {}
     if dcp_setbacks_db:
         dcp_note = dcp_setbacks_db["dcp_name"]
+    elif _db_failed.get("dcp"):
+        # The query failed — say so; the old fallthrough claimed coverage facts
+        # ("not extracted for this LGA") about a check that never ran (fix 3).
+        dcp_note = "DCP setback controls: could not be retrieved this run (not assessed)"
     elif dcp_former_council:
         # DB fetch succeeded during main() but was not passed in — fallback
         dcp_note = dcp_former_council.replace("_", " ").title() + " DCP controls"
     else:
         dcp_note = "DCP setback controls: contact council for your LGA"
+
+    _failed_check_labels = [label for key, label in (
+        ("das", "nearby development applications"),
+        ("lep", "Key Sites clause summaries"),
+        ("dcp", "DCP setback controls"),
+        ("heritage", "PostGIS heritage supplement"),
+    ) if _db_failed.get(key)]
 
     included_items = [
         "Zone, height limit, FSR, minimum lot size — all 128 NSW councils",
@@ -4143,6 +4220,18 @@ def generate_pdf(
         ("VALIGN",        (0, 0), (-1, -1), "TOP"),
     ]))
     story.append(cov_tbl)
+    if _failed_check_labels:
+        # Typed absence, one honest line for the whole report (fix 3): these
+        # checks did not run to completion — "not assessed" is a different
+        # state to "checked, none found", and this is where the reader learns
+        # which one they got.
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            "<b>Checks that could not be completed for this report</b> (data "
+            "unavailable at generation — not assessed, not clear): "
+            + "; ".join(_failed_check_labels) + ".",
+            ss["warn"],
+        ))
     story.append(Spacer(1, 5 * mm))
 
     # ------------------------------------------------------------------
@@ -4398,7 +4487,9 @@ def generate_pdf(
         "apply; this report adds the mapped category and extent detail.",
         ss["note"]
     ))
-    if shadow_result is not None and not shadow_result.get("adg_compliant", True):
+    # `is False` (not falsy): adg_compliant None means NOT ASSESSED — the ADG
+    # methodology paragraph must not imply a concern verdict for it (fix 1).
+    if shadow_result is not None and shadow_result.get("adg_compliant") is False:
         story.append(Spacer(1, 2 * mm))
         story.append(Paragraph(
             "<b>Northern Development Shadow Risk</b> — modelled using the NSW Apartment Design Guide (ADG) "
@@ -4651,10 +4742,14 @@ def generate_pdf(
                 ))
         story.append(Spacer(1, 2 * mm))
     elif _ks_clause:
-        # lep_clauses not pre-fetched (e.g., non-Inner West council) — show raw ref
+        # lep_clauses not pre-fetched (non-Inner West council) or the lookup
+        # failed (fix 3) — show the raw ref either way, and say which it was.
         story.append(Paragraph("<b>Key Sites provisions:</b>", ss["body"]))
+        _ks_suffix = (" (clause summaries could not be retrieved this run — "
+                      "not assessed)") if _db_failed.get("lep") else ""
         story.append(Paragraph(
-            f"• {_ks_clause} — refer to {legislation_url or 'the applicable LEP'}.",
+            f"• {_ks_clause} — refer to {legislation_url or 'the applicable LEP'}."
+            f"{_ks_suffix}",
             ss["note"],
         ))
         story.append(Spacer(1, 2 * mm))
@@ -4719,6 +4814,13 @@ def generate_pdf(
             f"<b>{dcp_data['dcp_name']}</b> — {dcp_data['section']}",
             ss["body"]
         ))
+        # Per-source "as at" line (output-grounding item 3). Three states:
+        # a dated line with its basis; or nothing at all when no defensible
+        # date exists — an undated claim is visible-by-absence and counted by
+        # scripts/check_dcp_as_at_coverage.py, never papered over with the
+        # generation date.
+        if dcp_data.get("as_at_line"):
+            story.append(Paragraph(dcp_data["as_at_line"], ss["note"]))
         story.append(Paragraph(
             "Controls below apply to the DA (Development Application) pathway. "
             "If construction meets SEPP (Housing) 2021 CDC standards, complying development "
@@ -4827,6 +4929,18 @@ def generate_pdf(
             ss["note"]
         ))
 
+    elif _db_failed.get("dcp"):
+        # The DCP query failed — a coverage claim ("not extracted for this
+        # LGA") about a check that never ran is the fix-3 collapse. Say what
+        # actually happened.
+        story.append(Paragraph(
+            "DCP setback controls could not be retrieved for this report — "
+            "not assessed. This is a data-availability condition at report "
+            "generation, not a statement about the council's DCP. Obtain the "
+            "applicable DCP chapter directly from Council or the NSW Planning "
+            "Portal.",
+            ss["warn"]
+        ))
     else:
         story.append(Paragraph(
             "DCP setback controls have not been extracted for this LGA. "
@@ -5455,19 +5569,22 @@ def generate_pdf(
         _sec_no += 1
         story.append(Paragraph(_xml_escape(_tod_lines["disclosure"]), ss["warn"]))
         story.append(Spacer(1, 1 * mm))
-        if _tod_lines["not_assessed"]:
-            story.append(Paragraph(_xml_escape(_tod_lines["baseline"]), ss["note"]))
-        else:
-            story.append(Paragraph(_xml_escape(_tod_lines["baseline"]), ss["body"]))
-        story.append(Spacer(1, 1 * mm))
-        story.append(Paragraph(_xml_escape(_tod_lines["held_line"]), ss["body"]))
+        if _tod_lines["baseline"]:
+            style = ss["note"] if _tod_lines["not_assessed"] else ss["body"]
+            story.append(Paragraph(_xml_escape(_tod_lines["baseline"]), style))
+            story.append(Spacer(1, 1 * mm))
+        # held_line/scope are None in the failed-check variant (fix 4) —
+        # nothing about held-back uplift applies to an unknown catchment.
+        if _tod_lines["held_line"]:
+            story.append(Paragraph(_xml_escape(_tod_lines["held_line"]), ss["body"]))
         if _tod_lines["ledger"]:
             story.append(Spacer(1, 1 * mm))
             story.append(Paragraph("<b>Inputs used for this baseline:</b>", ss["note"]))
             for _row in _tod_lines["ledger"]:
                 story.append(Paragraph(f"• {_xml_escape(_row)}", ss["note"]))
-        story.append(Spacer(1, 1 * mm))
-        story.append(Paragraph(_xml_escape(_tod_lines["scope"]), ss["caveat"]))
+        if _tod_lines["scope"]:
+            story.append(Spacer(1, 1 * mm))
+            story.append(Paragraph(_xml_escape(_tod_lines["scope"]), ss["caveat"]))
 
     # ------------------------------------------------------------------
     # SECTION — Structures & records reconciliation (Stage 1, records-only).
@@ -5893,7 +6010,10 @@ def main():
                 lep_height = float(m.group(1))
         shadow_result = get_shadow_risk(args.address, prop_id, lat, lng, height_m=lep_height)
         if shadow_result:
-            adg = "ADG concern" if not shadow_result.get("adg_compliant") else "ADG compliant"
+            _adg_val = shadow_result.get("adg_compliant")
+            adg = ("ADG not assessed" if _adg_val is None
+                   else "ADG concern" if _adg_val is False
+                   else "ADG solar access test met")
             print(f"  {adg}  height: {shadow_result.get('height_m')} m ({shadow_result.get('height_source')})")
         else:
             print("  Shadow model unavailable — section omitted from PDF")

@@ -1,0 +1,130 @@
+{
+  "table": "dcp_setback_controls",
+  "column": "pdf_page",
+  "scope": "is_current = TRUE (the served population); superseded rows untouched",
+  "taken_at": "2026-08-09T05:51:40.094843+00:00",
+  "rollback": "UPDATE dcp_setback_controls SET pdf_page = <pdf_page> WHERE id = <id> AND is_current = TRUE",
+  "rows": [
+    {
+      "id": 557,
+      "lga": "waverley",
+      "control_type": "rear_setback",
+      "pdf_page": 223,
+      "section_ref": "C2.3(a)",
+      "value_min": "6",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 558,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "pdf_page": 223,
+      "section_ref": "C2.3(b) Table 3",
+      "value_min": "0.9",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 559,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "pdf_page": 223,
+      "section_ref": "C2.3(b) Table 3",
+      "value_min": "1.5",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 560,
+      "lga": "waverley",
+      "control_type": "side_setback",
+      "pdf_page": 223,
+      "section_ref": "C2.3(b) Table 3",
+      "value_min": "1.5",
+      "value_max": "2.5",
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 561,
+      "lga": "waverley",
+      "control_type": "rear_setback",
+      "pdf_page": 223,
+      "section_ref": "C2.3(a)",
+      "value_min": "6",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 629,
+      "lga": "waverley",
+      "control_type": "landscaping_min",
+      "pdf_page": 21,
+      "section_ref": "C1.9(c)",
+      "value_min": "20",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 630,
+      "lga": "waverley",
+      "control_type": "landscaping_min",
+      "pdf_page": 21,
+      "section_ref": "C1.9(c)",
+      "value_min": "20",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 631,
+      "lga": "waverley",
+      "control_type": "deep_soil_min",
+      "pdf_page": 21,
+      "section_ref": "C1.9(d)",
+      "value_min": "10",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 632,
+      "lga": "waverley",
+      "control_type": "deep_soil_min",
+      "pdf_page": 21,
+      "section_ref": "C1.9(d)",
+      "value_min": "10",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 633,
+      "lga": "waverley",
+      "control_type": "landscaping_min",
+      "pdf_page": 50,
+      "section_ref": "C2.9(b)",
+      "value_min": "30",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    },
+    {
+      "id": 634,
+      "lga": "waverley",
+      "control_type": "landscaping_min",
+      "pdf_page": 50,
+      "section_ref": "C2.9(b)",
+      "value_min": "30",
+      "value_max": null,
+      "source_chapter_key": "waverley-dcp-2022",
+      "is_current": true
+    }
+  ]
+}

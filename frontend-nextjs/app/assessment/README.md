@@ -36,13 +36,26 @@ These are preserved for reference but not actively used:
 
 When asked about "assessment page" or "provision display":
 1. **Always check `/assessment/page.tsx` FIRST**
-2. It shows unfiltered provisions in right column via ComplianceDashboard
+2. The right column renders **`ProvisionsByTocStructure`**, gated by
+   `isDcpEnabledForCouncil()`. When the gate is false, or the council has no provision
+   text, it falls back to `DcpStructuredControls` + `DCPInterestForm`.
 3. Left column shows NSW Planning API data via PropertyDetailsComprehensive
 4. Both columns populate after address search
 
+> **⚠ CORRECTED 2026-08-08.** This file previously said the right column was
+> `ComplianceDashboard`. **It is not, and has not been:** `git grep '<ComplianceDashboard'`
+> returns **zero** JSX usages anywhere in the repo. The component and its route
+> (`/api/compliance/dcp-complete`) are dead code — the route queries
+> `dcp_general_provisions` and `dcp_general_requirements`, both renamed to `zz_legacy_*`,
+> so it returns HTTP 500 for every address. Both are carried in
+> `scripts/schema_contract_baseline.json` as accepted dead-code entries.
+> Re-check with `git grep '<ComplianceDashboard'` rather than trusting this paragraph.
+
 ## Key Components
 - `PropertyDetailsComprehensive` - Left column (Planning API layers)
-- `ComplianceDashboard` - Right column (Database provisions)
+- `ProvisionsByTocStructure` - Right column (DCP provisions, TOC-structured)
+- `DcpStructuredControls` - Numeric DCP controls (renders where provision text is absent)
+- ~~`ComplianceDashboard`~~ - **DEAD CODE, never rendered. Do not cite as the right column.**
 - `ComplianceConstraint` - Individual provision cards
 - `ConstraintCard` - Expandable card with full legal text
 

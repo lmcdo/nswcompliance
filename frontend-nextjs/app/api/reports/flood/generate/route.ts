@@ -135,7 +135,19 @@ export async function POST(req: NextRequest) {
     hawkesbury_flood_level_pmf: raw.hawkesbury_flood_level_pmf != null ? Number(raw.hawkesbury_flood_level_pmf) : null,
     hawkesbury_flood_study: (raw.hawkesbury_flood_study as string | null) ?? null,
     ground_elevation_m_ahd: raw.ground_elevation_m_ahd != null ? Number(raw.ground_elevation_m_ahd) : null,
-    in_100yr_flood_zone: Boolean(raw.in_100yr_flood_zone ?? false),
+    // THREE states. `Boolean(x ?? false)` used to stand here, which collapsed
+    // "not assessed" into "not in a flood zone" at the API boundary — the PDF
+    // could never see the third state no matter what the pipeline produced.
+    // Only an explicit true/false is an answer; anything else is null.
+    in_100yr_flood_zone:
+      raw.in_100yr_flood_zone === true
+        ? true
+        : raw.in_100yr_flood_zone === false
+          ? false
+          : null,
+    in_100yr_flood_zone_unconsulted: Array.isArray(raw.in_100yr_flood_zone_unconsulted)
+      ? (raw.in_100yr_flood_zone_unconsulted as string[])
+      : [],
     flood_studies: Array.isArray(raw.flood_studies) ? raw.flood_studies : [],
     s1_gap_warning: (raw.s1_gap_warning as string | null) ?? null,
     data_currency: String(raw.data_currency ?? 'unknown'),

@@ -28,6 +28,16 @@ const SOURCE_LABELS: Record<string, string> = {
   vg_valuation: 'NSW Valuer General',
   nsw_spatial_services: 'NSW Spatial Services',
   epa_contaminated_sites: 'NSW EPA contaminated-land register',
+  plotdetect_dcp: 'Council DCP (extracted controls)',
+  da_tracking_mapserver: 'NSW DA tracking extract',
+  eplanning_da_api: 'NSW ePlanning DA feed',
+  nsw_valuation_service: 'NSW Valuer General',
+  nsw_valuer_general: 'NSW Valuer General',
+  nsw_valuer_general_sales: 'NSW Valuer General sales records',
+  lep_land_use_table: 'LEP land use table',
+  sepp_resilience_hazards: 'SEPP (Resilience and Hazards) 2021',
+  shadow_detector: 'Computed — shadow model',
+  google_solar: 'Google Solar API',
 };
 
 export function humanizeSource(slug: string): string {

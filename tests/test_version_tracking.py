@@ -1,6 +1,3 @@
-import pytest
-pytestmark = pytest.mark.stale
-
 #!/usr/bin/env python3
 """
 Unit tests for provision version tracking functionality.

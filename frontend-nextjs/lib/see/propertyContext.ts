@@ -184,8 +184,19 @@ export function buildPropertyContext(
     : undefined;
 
   // Additional local provisions (clause 6.x)
+  // Three states, not two (DQ-36 class).
+  //
+  //   undefined  local-provision data was never obtained — NOT a finding of "none"
+  //   []         obtained and assessed; nothing applies to this site
+  //   [...]      obtained; these apply
+  //
+  // Previously "assessed, nothing applies" and "never assessed" both collapsed to
+  // undefined, and both render sites printed "no additional local provisions apply
+  // to this property" — a definitive negative about a site that may never have been
+  // checked. Presence of `localProvisions` is the signal that the check ran; its
+  // length is the answer.
   const additionalLocalProvisions: string[] | undefined =
-    envC?.localProvisions && envC.localProvisions.length > 0
+    envC?.localProvisions
       ? envC.localProvisions
           .filter((p: { isNearby?: boolean }) => !p.isNearby)
           .map((p: { clauseNumber?: string; title: string; description?: string }) => {

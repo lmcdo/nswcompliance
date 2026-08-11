@@ -76,8 +76,23 @@ Origin: four prior-art misses in one session, 2026-07-27.
 
 ## Deployment & Branching [ENFORCED]
 Branch naming: `fix/` | `feat/` | `chore/`
-Workflow: branch → work → commit → `gh pr create` → share preview → user says "merge" → `gh pr merge --squash`
+Workflow: branch → work → commit → `gh pr create` → share preview → user says "merge" →
+**`python scripts/check_pr_gates.py <PR>`** → `gh pr merge --squash`
 PR body: `## What` (one-line) + `## Why` (problem/feature). No "Test plan". No attribution.
+
+**Never merge on an empty check list. [CRITICAL]**
+A PR that is **CONFLICTING gets no GitHub Actions run at all** — `pull_request` workflows execute
+against the merge commit, and a conflicting branch has none to build. Nothing fails; nothing
+starts. The PR page shows no checks, which looks exactly like "not finished yet".
+Measured 2026-08-10: PR #907 sat 40+ min with zero runs, rebasing cleared the conflict, and the
+run appeared **20 seconds** later. PR #902 was merged 10 seconds *before* its run was created.
+- `python scripts/check_pr_gates.py <PR>` exits non-zero unless a `gates` run exists for the
+  PR's current head sha **and** passed. Run it immediately before `gh pr merge`.
+- If it says NOT-RUN: `git fetch origin && git rebase origin/main`, resolve, force-push.
+- Branch protection would block this properly, but the API returns 403 "Upgrade to GitHub Pro" —
+  unavailable on a private repo on the free plan. Until then this check is the gate.
+- Safety net if one slips through: `gates` also runs on push to `main`, and `main-red-alarm.yml`
+  raises an issue if main's HEAD has no successful run. That catches it *after* landing, not before.
 
 ## Project Structure
 - `services/` — Python backend (compliance API, satellite product pipelines)
@@ -93,9 +108,25 @@ PR body: `## What` (one-line) + `## Why` (problem/feature). No "Test plan". No a
 
 ## Database Quick Reference
 - Always check `DB_SCHEMA.md` before writing queries
-- ~42 tables, 47,818 provisions in `regulatory_provisions`
-- Use `v2_precinct_id` (102 precincts), NOT `dcp_precinct_provisions` (legacy)
-- Common columns: `v2_topic`, `v2_marker`, `former_council`, `v2_precinct_id`
+- **Every figure here carries the query that produces it. Re-run it rather than quoting this
+  file — a number without its query is how this section was wrong for months.**
+
+| Fact | Value (measured 2026-08-08) | Query |
+|---|---|---|
+| Base tables | **116** (130 relations incl. views) | `SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'` |
+| `regulatory_provisions` rows | **55,696** | `SELECT count(*) FROM regulatory_provisions` |
+| …of which live + actionable (the served set) | **19,957** | `... WHERE is_current AND v2_is_actionable` |
+| Distinct `v2_precinct_id` | **433** (423 current, 418 live+actionable) | `SELECT count(DISTINCT v2_precinct_id) FROM regulatory_provisions WHERE v2_precinct_id IS NOT NULL` |
+| `dcp_setback_controls` rows | **1,071** | `SELECT count(*) FROM dcp_setback_controls` |
+
+- Use `v2_precinct_id`, NOT `dcp_precinct_provisions` (legacy, **0 rows**)
+- Common columns: `v2_topic`, `v2_marker`, `source_council`, `ref_number`, `v2_precinct_id`
+- ⚠ **`former_council` and `source_ref` DO NOT EXIST on `regulatory_provisions`.** Use
+  `source_council` (lowercase slugs, ~19.7k NULL for statewide instruments) and `ref_number`.
+  Several older docs and scripts still assume the old names.
+- **Never quote a flat council count** — coverage is layered. See
+  `memory/verify-dcp-coverage-status.md` and
+  `~/.claude/plans/ce-verified-capability-statement-2026-08.md` §3.2.
 
 ## Plan Files
 - Location: `~/.claude/plans/`

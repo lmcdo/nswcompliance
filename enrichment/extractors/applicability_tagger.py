@@ -26,6 +26,29 @@ from enrichment.config.marrickville_config import MARRICKVILLE_CONFIG
 from enrichment.config import COUNCIL_CONFIGS
 
 
+_UNSET = object()
+
+# Constrained vocabulary for v2_zone_source / v2_dev_type_source, mirrored by the
+# CHECK constraint in migrations/062_applicability_provenance.sql. Same pattern as
+# control_type_vocabulary.py: the DB refuses anything not in this list, so the two
+# cannot drift.
+APPLICABILITY_SOURCES = (
+    'config_specific',    # a structural config named actual zones / dev types
+    'config_all',         # a structural config explicitly asserted ALL
+    'config_silent',      # an entry matched but omitted the key — ALL was invented
+    'no_config',          # nothing matched — ALL by fallthrough (weakest)
+    'text_regex',         # derived from provision text (false-positive prone)
+    'filtered_to_all',    # values were found, then dropped by the zone-validity
+                          # gate, leaving ALL. Distinct from no_config: evidence
+                          # existed and was rejected.
+    'no_document_id',     # nothing to key off at all
+)
+
+# Sources where ALL was DECIDED rather than defaulted. Anything outside this set
+# should be read as "applicability undetermined", never as "applies everywhere".
+TRUSTED_ALL_SOURCES = frozenset({'config_specific', 'config_all', 'text_regex'})
+
+
 class ApplicabilityTagger:
     """
     Tag provisions with applicable zones and development types.
@@ -103,6 +126,58 @@ class ApplicabilityTagger:
             'marrickville': MARRICKVILLE_CONFIG,
         }
 
+    @staticmethod
+    def _resolve(entry: Optional[Dict[str, Any]], key: str) -> Tuple[List[str], str]:
+        """Return (value, source) for one applicability key of one config entry.
+
+        Exists because `['ALL']` has meant two irreconcilable things. Measured on
+        production 2026-08-01: 19,072 of 19,957 served provisions (95.6%) carried
+        `zones=['ALL'] AND dev_types=['ALL']`, and NOTHING recorded whether that
+        meant "this rule genuinely applies to every zone" or "no config matched,
+        so we gave up". Both wrote the identical value, so the question "is this
+        tag correct?" was unanswerable from the data — not wrong, unauditable.
+
+        The four outcomes are kept distinct because they carry different trust:
+          config_specific — the config named actual zones/dev types.
+          config_all      — the config explicitly said ALL. A real assertion of
+                            universality; trust it.
+          config_silent   — an entry matched but omitted this key, so `.get(k,
+                            ['ALL'])` invented the ALL. Nobody decided this.
+          no_config       — nothing matched at all. The weakest state.
+
+        `or`-style truthiness is deliberately NOT used: a config key present with
+        an explicit empty list is a different statement from an absent key, and
+        collapsing them would re-create the ambiguity this function removes.
+        """
+        if not entry:
+            return ['ALL'], 'no_config'
+        if key not in entry or entry[key] is None:
+            return ['ALL'], 'config_silent'
+        raw = entry[key]
+        if not raw:                      # present but empty — says nothing
+            return ['ALL'], 'config_silent'
+        if list(raw) == ['ALL']:
+            return ['ALL'], 'config_all'
+        return list(raw), 'config_specific'
+
+    @classmethod
+    def _from_entry(cls, entry: Optional[Dict[str, Any]],
+                    site_conditions: Any = _UNSET,
+                    **extra: Any) -> Dict[str, Any]:
+        """Build a config result dict carrying its own provenance."""
+        zones, zone_src = cls._resolve(entry, 'applicable_zones')
+        devs, dev_src = cls._resolve(entry, 'applicable_dev_types')
+        out = {
+            'applicable_zones': zones,
+            'applicable_dev_types': devs,
+            'zone_source': zone_src,
+            'dev_type_source': dev_src,
+            'site_conditions': (entry or {}).get('site_conditions')
+            if site_conditions is _UNSET else site_conditions,
+        }
+        out.update(extra)
+        return out
+
     def _detect_council(self, document_id: str) -> Optional[str]:
         """Detect which council's DCP this document belongs to."""
         if not document_id:
@@ -119,9 +194,112 @@ class ApplicabilityTagger:
 
         return None
 
+    # ── DQ-33: the document_id naming convention changed ────────────────────────
+    #
+    # The matchers below were written for a verbose convention ("Chapter E1",
+    # "4.1", "_4_1_"). Every document_id in production now uses a slug:
+    #
+    #     Marrickville_DCP_2011__part4_s1_low_density
+    #     Inner_West_Ashfield_DCP_2016__chapter_e1_heritage
+    #     Leichhardt_DCP_2013__part_c_s2_urban_character
+    #
+    # The council still matched; the PART never did, so every row fell through to
+    # ALL/ALL. Measured 2026-08-01: 9,854 served rows across these three councils,
+    # 85 of 100 sampled recording `no_config`.
+    #
+    # THE SAFETY RULE, because this NARROWS what a property is shown:
+    # a slug only resolves if the derived key EXISTS in the council's config. No
+    # key is invented and no part is guessed to improve the numbers. Anything
+    # unrecognised returns None and stays ALL with source `no_config`, which is a
+    # missed improvement rather than a hidden control. Hiding a rule that applies
+    # is the DQ-30 harm; showing an extra one is only noise.
+
+    @staticmethod
+    def _slug_tail(document_id: str) -> str:
+        """The part after the document prefix, lower-cased."""
+        d = document_id or ""
+        return (d.split("__", 1)[1] if "__" in d else d).lower()
+
+    def _marrickville_slug_key(self, document_id: str):
+        """('precinct'|'part', key) for a slug document_id, or None."""
+        t = self._slug_tail(document_id)
+        parts = MARRICKVILLE_CONFIG.get("parts") or {}
+        precincts = MARRICKVILLE_CONFIG.get("precincts") or {}
+
+        m = re.match(r"part9_p(\d+)(?:_|$)", t)
+        if m:
+            key = f"9_{int(m.group(1))}"
+            return ("precinct", key) if key in precincts else None
+
+        m = re.match(r"part(\d+)_s(\d+)(?:_|$)", t)
+        if m:
+            n, s = int(m.group(1)), int(m.group(2))
+            for key in (f"{n}.{s}", f"{n}_{s}", str(n)):
+                if key in parts:
+                    return ("part", key)
+            return None
+
+        m = re.match(r"part(\d+)(?:_|$)", t)
+        if m:
+            n = int(m.group(1))
+            for key in (str(n), f"{n}_0", f"{n}.0"):
+                if key in parts:
+                    return ("part", key)
+        return None
+
+    def _ashfield_slug_key(self, document_id: str):
+        t = self._slug_tail(document_id)
+        chapters = ASHFIELD_CONFIG.get("chapters") or {}
+        fparts = ASHFIELD_CONFIG.get("chapter_f_parts") or {}
+
+        m = re.match(r"chapter_f_part_?(\d+)(?:_|$)", t)
+        if m:
+            key = f"Part_{int(m.group(1))}"
+            return ("chapter_f_part", key) if key in fparts else None
+
+        # `chapter_e2_haberfield` deliberately does NOT resolve: ASHFIELD_CONFIG
+        # declares no 'Chapter E2'. Inventing one to cover 118 rows is exactly the
+        # guess this rule forbids.
+        m = re.match(r"chapter_([a-z]\d?)(?:_|$)", t)
+        if m:
+            key = f"Chapter {m.group(1).upper()}"
+            return ("chapter", key) if key in chapters else None
+        return None
+
+    def _leichhardt_slug_key(self, document_id: str):
+        t = self._slug_tail(document_id)
+        parts = LEICHHARDT_CONFIG.get("parts") or {}
+
+        m = re.match(r"part_([a-g])_s(\d+)(?:_|$)", t)
+        if m:
+            x, s = m.group(1).upper(), int(m.group(2))
+            for key in (f"Part {x} Section {s}", f"Part {x}"):
+                if key in parts:
+                    return ("part", key)
+            return None
+
+        m = re.match(r"part_([a-g])(?:_|$)", t)
+        if m:
+            key = f"Part {m.group(1).upper()}"
+            if key in parts:
+                return ("part", key)
+        return None
+
     def _get_ashfield_config(self, document_id: str) -> Dict[str, Any]:
         """Get applicability config for Ashfield DCP provision."""
         config = ASHFIELD_CONFIG
+
+        # Current slug convention first; the verbose patterns below remain for any
+        # document_id still using the old form.
+        hit = self._ashfield_slug_key(document_id)
+        if hit:
+            kind, key = hit
+            source = ('chapter_f_parts' if kind == 'chapter_f_part' else 'chapters')
+            entry = (config.get(source) or {}).get(key) or {}
+            return self._from_entry(
+                entry,
+                is_precinct_specific=entry.get('is_precinct_specific', False),
+            )
 
         # Normalize document_id for matching
         doc = document_id.replace('_', ' ').replace('  ', ' ')
@@ -135,11 +313,7 @@ class ApplicabilityTagger:
                 part_num = part_key.replace('Part_', '')
                 if (re.search(rf'Part_{part_num}(?!\d)', document_id)
                         or re.search(rf'Part {part_num}(?!\d)', doc)):
-                    return {
-                        'applicable_zones': part_config.get('applicable_zones', ['ALL']),
-                        'applicable_dev_types': part_config.get('applicable_dev_types', ['ALL']),
-                        'site_conditions': None,
-                    }
+                    return self._from_entry(part_config, site_conditions=None)
 
         # Check main chapters - use regex for better matching
         chapter_patterns = [
@@ -161,36 +335,52 @@ class ApplicabilityTagger:
             if pattern in document_id or pattern in doc:
                 chapter_config = config.get('chapters', {}).get(chapter_key, {})
                 if chapter_config:
-                    return {
-                        'applicable_zones': chapter_config.get('applicable_zones', ['ALL']),
-                        'applicable_dev_types': chapter_config.get('applicable_dev_types', ['ALL']),
-                        'site_conditions': chapter_config.get('site_conditions'),
-                        'is_precinct_specific': chapter_config.get('is_precinct_specific', False),
-                    }
+                    return self._from_entry(
+                        chapter_config,
+                        is_precinct_specific=chapter_config.get('is_precinct_specific', False),
+                    )
 
-        return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
+        # Nothing matched — ALL is a fallthrough here, and says so.
+        return self._from_entry(None, site_conditions=None)
 
     def _get_leichhardt_config(self, document_id: str) -> Dict[str, Any]:
         """Get applicability config for Leichhardt DCP provision."""
         config = LEICHHARDT_CONFIG
+
+        hit = self._leichhardt_slug_key(document_id)
+        if hit:
+            _kind, key = hit
+            entry = (config.get('parts') or {}).get(key) or {}
+            return self._from_entry(
+                entry,
+                is_precinct_specific=entry.get('is_precinct_specific', False),
+            )
 
         # Normalize for matching
         doc = document_id.replace('_', ' ').replace('  ', ' ')
 
         # Check for Distinctive Neighbourhoods (Part C Section 2)
         if 'Section_2' in document_id or 'Section 2' in doc or 'C2_2' in document_id:
+            # A deliberate assertion, not a fallthrough: these parts are keyed by
+            # neighbourhood, so they genuinely apply across every zone.
             return {
                 'applicable_zones': ['ALL'],
                 'applicable_dev_types': ['ALL'],
+                'zone_source': 'config_all',
+                'dev_type_source': 'config_all',
                 'site_conditions': None,
                 'is_precinct_specific': True,
             }
 
         # Check for Part G (Neighbourhoods)
         if 'Part G' in doc or 'Part_G' in document_id:
+            # A deliberate assertion, not a fallthrough: these parts are keyed by
+            # neighbourhood, so they genuinely apply across every zone.
             return {
                 'applicable_zones': ['ALL'],
                 'applicable_dev_types': ['ALL'],
+                'zone_source': 'config_all',
+                'dev_type_source': 'config_all',
                 'site_conditions': None,
                 'is_precinct_specific': True,
             }
@@ -200,14 +390,13 @@ class ApplicabilityTagger:
             # Match "Part X" patterns
             part_pattern = part_key.replace(' ', '_')
             if part_pattern in document_id or part_key in doc:
-                return {
-                    'applicable_zones': part_config.get('applicable_zones', ['ALL']),
-                    'applicable_dev_types': part_config.get('applicable_dev_types', ['ALL']),
-                    'site_conditions': part_config.get('site_conditions'),
-                    'is_precinct_specific': part_config.get('is_precinct_specific', False),
-                }
+                return self._from_entry(
+                    part_config,
+                    is_precinct_specific=part_config.get('is_precinct_specific', False),
+                )
 
-        return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
+        # Nothing matched — ALL is a fallthrough here, and says so.
+        return self._from_entry(None, site_conditions=None)
 
     @staticmethod
     def _marrickville_part_entry(config: Dict[str, Any], key: str,
@@ -224,16 +413,29 @@ class ApplicabilityTagger:
         # with an explicit None value (not merely absent) would otherwise
         # slip past the `.get(key, default)` default and propagate None into
         # the hard-filter query downstream.
-        entry = (config.get('parts') or {}).get(key) or {}
-        return {
-            'applicable_zones': entry.get('applicable_zones') or ['ALL'],
-            'applicable_dev_types': entry.get('applicable_dev_types') or ['ALL'],
-            'site_conditions': site_conditions if site_conditions is not None else entry.get('site_conditions'),
-        }
+        entry = (config.get('parts') or {}).get(key)
+        return ApplicabilityTagger._from_entry(
+            entry,
+            site_conditions=(site_conditions if site_conditions is not None
+                             else (entry or {}).get('site_conditions')),
+        )
 
     def _get_marrickville_config(self, document_id: str) -> Dict[str, Any]:
         """Get applicability config for Marrickville DCP provision."""
         config = MARRICKVILLE_CONFIG
+
+        hit = self._marrickville_slug_key(document_id)
+        if hit:
+            kind, key = hit
+            if kind == 'precinct':
+                # Precinct rows inherit the shared precinct defaults, exactly as the
+                # legacy Part-9 branch below does.
+                defaults = config.get('precinct_defaults') or {}
+                out = self._from_entry(defaults, site_conditions=None)
+                out['is_precinct_specific'] = True
+                out['precinct_id'] = key
+                return out
+            return self._marrickville_part_entry(config, key)
 
         # Normalize for matching
         doc = document_id.replace('__', '_').replace('_', ' ')
@@ -247,8 +449,10 @@ class ApplicabilityTagger:
             if precinct_key in config.get('precincts', {}):
                 defaults = config.get('precinct_defaults', {})
                 return {
-                    'applicable_zones': defaults.get('applicable_zones', ['ALL']),
-                    'applicable_dev_types': defaults.get('applicable_dev_types', ['ALL']),
+                    'applicable_zones': self._resolve(defaults, 'applicable_zones')[0],
+                    'applicable_dev_types': self._resolve(defaults, 'applicable_dev_types')[0],
+                    'zone_source': self._resolve(defaults, 'applicable_zones')[1],
+                    'dev_type_source': self._resolve(defaults, 'applicable_dev_types')[1],
                     'site_conditions': defaults.get('site_conditions'),
                     'is_precinct_specific': True,
                 }
@@ -257,8 +461,10 @@ class ApplicabilityTagger:
         if 'Precinct' in document_id:
             defaults = config.get('precinct_defaults', {})
             return {
-                'applicable_zones': defaults.get('applicable_zones', ['ALL']),
-                'applicable_dev_types': defaults.get('applicable_dev_types', ['ALL']),
+                'applicable_zones': self._resolve(defaults, 'applicable_zones')[0],
+                'applicable_dev_types': self._resolve(defaults, 'applicable_dev_types')[0],
+                'zone_source': self._resolve(defaults, 'applicable_zones')[1],
+                'dev_type_source': self._resolve(defaults, 'applicable_dev_types')[1],
                 'site_conditions': defaults.get('site_conditions'),
                 'is_precinct_specific': True,
             }
@@ -315,7 +521,10 @@ class ApplicabilityTagger:
             part2_key = f'2_{part2_match.group(1)}' if hasattr(part2_match, 'group') else None
             if part2_key and part2_key in (config.get('parts') or {}):
                 return self._marrickville_part_entry(config, part2_key)
-            return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
+            # A 2.x sub-section the config doesn't enumerate. Still a fallthrough,
+            # and stays INSIDE this branch — dedenting it to method level makes
+            # every check below unreachable.
+            return self._from_entry(None, site_conditions=None)
 
         # Part 1 - Statutory (apply to ALL)
         if '__1__' in document_id or '_1_' in document_id:
@@ -325,7 +534,8 @@ class ApplicabilityTagger:
         if '__3__' in document_id or '_3_' in document_id or 'Subdivision' in document_id:
             return self._marrickville_part_entry(config, '3')
 
-        return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
+        # Nothing matched — ALL is a fallthrough here, and says so.
+        return self._from_entry(None, site_conditions=None)
 
     def _get_config_driven(self, document_id: str, text: str) -> Optional[Dict[str, Any]]:
         """Get applicability from COUNCIL_CONFIGS (woollahra, waverley, etc.).
@@ -349,11 +559,7 @@ class ApplicabilityTagger:
         if chapter_topics:
             for chapter_key, entry in chapter_topics.items():
                 if chapter_key in doc_lower:
-                    return {
-                        'applicable_zones': entry.get('applicable_zones', ['ALL']),
-                        'applicable_dev_types': entry.get('applicable_dev_types', ['ALL']),
-                        'site_conditions': entry.get('site_conditions'),
-                    }
+                    return self._from_entry(entry)
             return None
 
         # parts path (Woollahra, Waverley) — extract section code from heading
@@ -384,11 +590,7 @@ class ApplicabilityTagger:
             entry = parts.get(section_code[0])
 
         if entry:
-            return {
-                'applicable_zones': entry.get('applicable_zones', ['ALL']),
-                'applicable_dev_types': entry.get('applicable_dev_types', ['ALL']),
-                'site_conditions': entry.get('site_conditions'),
-            }
+            return self._from_entry(entry)
 
         return None
 
@@ -460,9 +662,30 @@ class ApplicabilityTagger:
         Returns:
             Tuple of (zones, dev_types) where each is a list of applicable values
         """
+        zones, dev_types, _prov = self.tag_with_provenance(text, document_id, valid_zones)
+        return zones, dev_types
+
+    def tag_with_provenance(
+        self, text: str, document_id: str = None,
+        valid_zones: Optional[Set[str]] = None,
+    ) -> Tuple[List[str], List[str], Dict[str, str]]:
+        """As :meth:`tag`, plus WHY each value is what it is.
+
+        Returns ``(zones, dev_types, {'zone_source': …, 'dev_type_source': …})``
+        with sources drawn from APPLICABILITY_SOURCES. `tag()` remains the
+        two-value contract every existing caller already uses.
+
+        The point of the third value: `['ALL']` is by far the most common output
+        (95.6% of served rows on 2026-08-01) and, without this, is indistinguishable
+        between "genuinely applies everywhere" and "we could not tell". Only the
+        sources in TRUSTED_ALL_SOURCES represent a decision; the rest mean the
+        applicability is undetermined and should not be read as universal.
+        """
         zones: Set[str] = set()
         dev_types: Set[str] = set()
         config = None
+        zone_source = 'no_document_id'
+        dev_type_source = 'no_document_id'
 
         # 1. Get structural config based on document_id
         if document_id:
@@ -481,12 +704,17 @@ class ApplicabilityTagger:
             if config:
                 struct_zones = config.get('applicable_zones', ['ALL'])
                 struct_dev_types = config.get('applicable_dev_types', ['ALL'])
+                zone_source = config.get('zone_source', 'no_config')
+                dev_type_source = config.get('dev_type_source', 'no_config')
 
                 # Use structural config as base
                 if struct_zones != ['ALL']:
                     zones.update(struct_zones)
                 if struct_dev_types != ['ALL']:
                     dev_types.update(struct_dev_types)
+            else:
+                # _get_config_driven returns None when no council config matched.
+                zone_source = dev_type_source = 'no_config'
 
         # 2. Extract from text (supplement structural config)
         # Skip text extraction for config-driven councils — the config is
@@ -498,8 +726,10 @@ class ApplicabilityTagger:
 
             if text_zones:
                 zones.update(text_zones)
+                zone_source = 'text_regex'
             if text_dev_types:
                 dev_types.update(text_dev_types)
+                dev_type_source = 'text_regex'
 
         # 2.5 Drop any zone that does not exist in this LGA (DQ-30).
         # Applied to the FINAL set, not just the regex output, so the stored value
@@ -508,7 +738,13 @@ class ApplicabilityTagger:
         # honest state: the evidence was a false match, so applicability is
         # undetermined, exactly as if nothing had been found.
         if valid_zones:
+            before = set(zones)
             zones = {z for z in zones if z == 'ALL' or z in valid_zones}
+            if before and not zones:
+                # Evidence existed and was rejected as invalid for this LGA. That is
+                # a different state from "nothing was ever found", and conflating
+                # them would hide the fact that a bad code was caught.
+                zone_source = 'filtered_to_all'
 
         # 3. Default to ALL if nothing specific found
         if not zones:
@@ -516,7 +752,19 @@ class ApplicabilityTagger:
         if not dev_types:
             dev_types.add('ALL')
 
-        return sorted(list(zones)), sorted(list(dev_types))
+        # A source only describes a DECISION. If the value ended up ALL by any
+        # route other than an explicit assertion, the recorded source must say so
+        # rather than inherit a label implying someone chose it.
+        if zones == {'ALL'} and zone_source == 'config_specific':
+            zone_source = 'filtered_to_all'
+        if dev_types == {'ALL'} and dev_type_source == 'config_specific':
+            dev_type_source = 'config_silent'
+
+        return (
+            sorted(zones),
+            sorted(dev_types),
+            {'zone_source': zone_source, 'dev_type_source': dev_type_source},
+        )
 
 
 def tag_applicability(text: str, document_id: str = None) -> Tuple[List[str], List[str]]:
