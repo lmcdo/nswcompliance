@@ -140,6 +140,44 @@ export async function transaction<T>(
   }
 }
 
+// Short-lived cache for per-LGA valid zone lists (DQ-30). lep_zone_coverage
+// changes only when an LGA is (re-)scraped, not per-request, so a request-rate
+// query is wasted work — but it must stay a live query, not a committed
+// constant, since which LGAs are onboarded changes independent of deploys.
+const zoneCoverageCache = new Map<string, { zones: string[]; expiresAt: number }>();
+const ZONE_COVERAGE_CACHE_MS = 5 * 60 * 1000;
+
+/**
+ * Get the current, live-scraped set of valid zone codes for an LGA from
+ * lep_zone_coverage (DQ-30). Distinct from zone-translation.ts's legacy/current
+ * alias map: this answers "what zones exist in LGA X today", not "what did
+ * this legacy code become".
+ *
+ * @param lga - LGA name as stored in lep_zone_coverage (e.g. "Waverley")
+ * @returns Array of current zone codes for that LGA, or [] if the LGA has no
+ *          rows (not yet onboarded — callers should not treat this as "no
+ *          zones exist", just "we haven't scraped it").
+ */
+export async function getValidZonesForLga(lga: string): Promise<string[]> {
+  const cached = zoneCoverageCache.get(lga);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.zones;
+  }
+
+  // is_complete = TRUE: same coverage gate every other lep_zone_coverage
+  // consumer in this codebase already applies (see /api/lep/permissibility,
+  // /api/permissibility/check) -- an interrupted scrape must not be treated
+  // as "this is the complete valid zone list for the LGA."
+  const result = await query(
+    'SELECT zone FROM lep_zone_coverage WHERE lga = $1 AND is_complete = TRUE ORDER BY zone',
+    [lga]
+  );
+  const zones = result.rows.map((row: { zone: string }) => row.zone);
+
+  zoneCoverageCache.set(lga, { zones, expiresAt: Date.now() + ZONE_COVERAGE_CACHE_MS });
+  return zones;
+}
+
 /**
  * Get pool health metrics
  */

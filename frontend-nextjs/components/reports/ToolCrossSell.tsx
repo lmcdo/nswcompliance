@@ -38,7 +38,7 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
   }),
   'shadow-detector': (address) => ({
     title: 'Construction Shadow Detector',
-    body: 'Check if a maximum-height building on an adjacent lot would shadow your property.',
+    body: 'Check whether a maximum-height building immediately north of your lot would shadow your property.',
     href: `/reports/shadow?address=${encodeURIComponent(address)}`,
     label: 'Check shadow risk →',
   }),

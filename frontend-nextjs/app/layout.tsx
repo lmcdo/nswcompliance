@@ -11,7 +11,9 @@ import { PostHogProvider } from '@/components/providers/PostHogProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.canibuildit.com.au'),
+  // Apex, not www — the edge 307s www to the apex, so www-based canonicals
+  // point at redirects and split indexing signals (found 2026-07-23).
+  metadataBase: new URL('https://canibuildit.com.au'),
   title: {
     default: 'PlotDetect — NSW Property Intelligence',
     template: '%s | PlotDetect',
@@ -32,6 +34,10 @@ export const metadata: Metadata = {
     card: 'summary',
   },
   alternates: {
+    // Self-referencing canonical on every page, resolved against metadataBase.
+    // The same build serves 5+ hostnames (apex, www, verify/brief/conveyance
+    // subdomains) — without this, engines see duplicates with no owner.
+    canonical: './',
     types: {
       'application/rss+xml': '/blog/feed.xml',
     },

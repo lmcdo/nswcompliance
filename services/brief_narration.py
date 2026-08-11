@@ -162,6 +162,13 @@ def normalize_plan(plan: CompositionPlan, manifest: BriefManifest) -> Compositio
                 and item.fields[0].startswith("X")):
             logger.info("normalize_plan: X id under %s → T_FINDING", item.template)
             item.template = "T_FINDING"
+        # The reverse mismatch also occurred live: a plain fact row cited under
+        # T_FINDING has no 'severity=…' payload, so the caution renders its raw
+        # value ("True"). Fact rows get a fact renderer.
+        if (item.template == "T_FINDING" and len(item.fields) == 1
+                and item.fields[0].startswith("F")):
+            logger.info("normalize_plan: F id under T_FINDING → T_CONSTRAINT_FLAG")
+            item.template = "T_CONSTRAINT_FLAG"
     return plan
 
 

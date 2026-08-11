@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { HousingSEPPSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
+import { HOUSING_SEPP_LMR } from '@/lib/regulatory-constants';
 
 /**
  * Housing SEPP Eligibility API
@@ -27,6 +28,20 @@ interface EligibilityResult {
   displayName: string;
   description: string;
   isEligible: boolean;
+  /**
+   * Three states, because `isEligible: false` alone cannot say WHY.
+   *
+   * The first pass at DQ-31 fixed the INPUT (an absent isLMRArea no longer means
+   * "yes") and left the OUTPUT two-state — so a property whose LMR status was
+   * never assessed came back with the same `isEligible: false` as one confirmed
+   * outside a reform area. A consumer rendering the boolean would tell the user
+   * "not eligible" about a check that never ran, which is the same defect in the
+   * opposite direction.
+   *
+   * `isEligible` is kept and unchanged so existing consumers do not break;
+   * 'not_assessed' is additive and a consumer can adopt it when ready.
+   */
+  assessmentStatus: 'eligible' | 'ineligible' | 'not_assessed';
   eligibilityReason: string;
   standards: DevelopmentStandard[];
   effectiveDate: string;
@@ -119,8 +134,14 @@ export async function POST(request: NextRequest) {
     // Normalize zone code (e.g., "R2 Low Density Residential" -> "R2")
     const zone = zoneCode.split(' ')[0].toUpperCase();
 
-    // Check if zone is residential
-    const residentialZones = ['R1', 'R2', 'R3', 'R4'];
+    // Check if zone is residential.
+    // DQ-30 (.claude/DATA_QUALITY_TRACKER.md): this exact value is also
+    // HOUSING_SEPP_LMR.ELIGIBLE_ZONES — consolidated (was independently
+    // declared here; also a separate, independent reimplementation of the
+    // same eligibility check as services/housing_sepp_eligibility.py, which
+    // this route does not call — flagged as a further consolidation
+    // candidate, not resolved in this pass).
+    const residentialZones = HOUSING_SEPP_LMR.ELIGIBLE_ZONES as readonly string[];
     if (!residentialZones.includes(zone)) {
       return NextResponse.json({
         success: true,
@@ -194,8 +215,25 @@ export async function POST(request: NextRequest) {
     // Check eligibility for each development type
     const eligibilityResults: EligibilityResult[] = [];
 
-    // Default to true if isLMRArea not specified (most LMR areas are residential zones)
-    const inLMRArea = isLMRArea !== false;
+    // DQ-31. This used to read `const inLMRArea = isLMRArea !== false`, i.e. an
+    // ABSENT input meant "yes, this property is in an LMR reform area" — the
+    // single most consequential input to the whole endpoint, assumed in the
+    // claimant's favour whenever nobody supplied it. services/housing_sepp_
+    // eligibility.py was written specifically to replace this logic and names it
+    // in its docstring as "a silent over-eligibility bug"; that service computes
+    // the gate from the live 776 exclusion layer and fails CONSERVATIVE
+    // (ineligible) on any query failure.
+    //
+    // Three states, matching that service's contract:
+    //   true      caller confirmed the property is in an LMR area
+    //   false     caller confirmed it is not
+    //   undefined NOT ASSESSED — must not be read as either
+    //
+    // An unassessed gate now yields "cannot confirm" for the forms that depend on
+    // it, never "eligible". Telling someone they can build when they cannot is
+    // the expensive direction of this error.
+    const lmrAreaKnown = typeof isLMRArea === 'boolean';
+    const inLMRArea = isLMRArea === true;
 
     for (const [devType, standards] of Object.entries(standardsByType)) {
       const typeInfo = developmentTypeInfo[devType];
@@ -216,7 +254,15 @@ export async function POST(request: NextRequest) {
           displayName: displayInfo.name,
           description: displayInfo.description,
           isEligible: false,
-          eligibilityReason: 'Property is not in an LMR reform area',
+          // Not-assessed and confirmed-outside are both ineligible here, but they
+          // are not the same statement and must not read the same to a user — in
+          // the reason OR in the machine-readable status.
+          assessmentStatus: lmrAreaKnown ? 'ineligible' : 'not_assessed',
+          eligibilityReason: lmrAreaKnown
+            ? 'Property is not in an LMR reform area'
+            : 'LMR reform area not assessed for this property — this is not a '
+              + 'finding that the property is outside one. Confirm the LMR area '
+              + 'status to complete this check.',
           standards,
           effectiveDate: typeInfo.effectiveDate,
           legislationUrl: typeInfo.legislationUrl
@@ -232,6 +278,7 @@ export async function POST(request: NextRequest) {
           displayName: displayInfo.name,
           description: displayInfo.description,
           isEligible: false,
+          assessmentStatus: 'ineligible',
           eligibilityReason: `Lot size ${lotSize}m² is below minimum ${minLotSize.numericValue}m² (Clause ${minLotSize.sourceClause})`,
           standards,
           effectiveDate: typeInfo.effectiveDate,
@@ -248,6 +295,7 @@ export async function POST(request: NextRequest) {
           displayName: displayInfo.name,
           description: displayInfo.description,
           isEligible: false,
+          assessmentStatus: 'ineligible',
           eligibilityReason: `Lot width ${lotWidth}m is below minimum ${minLotWidth.numericValue}m (Clause ${minLotWidth.sourceClause})`,
           standards,
           effectiveDate: typeInfo.effectiveDate,
@@ -264,6 +312,10 @@ export async function POST(request: NextRequest) {
             displayName: displayInfo.name,
             description: displayInfo.description,
             isEligible: false,
+            // No distance supplied means the TOD test never ran. A mechanical
+            // patch had marked this 'ineligible', which asserts a negative
+            // determination from a check that did not happen.
+            assessmentStatus: 'not_assessed',
             eligibilityReason: 'Distance to station required for TOD eligibility check',
             standards,
             effectiveDate: typeInfo.effectiveDate,
@@ -288,6 +340,7 @@ export async function POST(request: NextRequest) {
             displayName: displayInfo.name,
             description: displayInfo.description,
             isEligible: false,
+            assessmentStatus: 'ineligible',
             eligibilityReason: `Property is ${stationDistance}m from station (max 800m for TOD benefits)`,
             standards,
             effectiveDate: typeInfo.effectiveDate,
@@ -303,6 +356,7 @@ export async function POST(request: NextRequest) {
         displayName: displayInfo.name,
         description: displayInfo.description,
         isEligible: true,
+        assessmentStatus: 'eligible',
         eligibilityReason: 'Meets minimum lot size and width requirements',
         standards,
         effectiveDate: typeInfo.effectiveDate,

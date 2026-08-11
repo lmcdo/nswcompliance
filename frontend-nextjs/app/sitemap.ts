@@ -10,6 +10,7 @@ import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas'
 import { CONVEYANCING_LGAS } from '@/lib/lga-data/conveyancing-lgas'
 import { COUNCIL_STATS } from '@/lib/lga-data/secondary-dwelling-stats'
 import { ARTICLES } from '@/lib/blog-articles'
+import { DATA_DICTIONARY_FIELDS } from '@/lib/data-dictionary'
 
 /**
  * Topic-clustered sitemaps for GEO (Generative Engine Optimization).
@@ -32,8 +33,10 @@ export async function generateSitemaps() {
 export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
   // The app's canonical consumer domain (Option B). plotdetect.com.au is the
   // separate info-site project and 404s for app routes — advertising it here
-  // sent search engines to dead URLs.
-  const base = 'https://www.canibuildit.com.au'
+  // sent search engines to dead URLs. APEX, not www: the edge 307s every www
+  // URL to the apex, so www URLs in a sitemap register as "page with redirect"
+  // and never index (found 2026-07-23).
+  const base = 'https://canibuildit.com.au'
   const now = new Date()
 
   switch (id) {
@@ -52,6 +55,13 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/glossary`,        priority: 0.85, changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/planning-standards`, priority: 0.85, changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/open-data`,          priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
+        { url: `${base}/site-directory`,     priority: 0.7,  changeFrequency: 'weekly',  lastModified: now },
+        ...DATA_DICTIONARY_FIELDS.map(f => ({
+          url: `${base}/open-data/fields/${f.slug}`,
+          priority: 0.75,
+          changeFrequency: 'monthly' as const,
+          lastModified: now,
+        })),
         { url: `${base}/tools/zoning-check`,      priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/tools/subdivision-check`, priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/tools/upzoning-check`,    priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
@@ -66,6 +76,8 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/reports/pre-da-history`, priority: 0.8, changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/dcp-browse`,      priority: 0.8,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/browse`,          priority: 0.7,  changeFrequency: 'weekly',  lastModified: now },
+        { url: `${base}/what-you-get`,    priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
+        { url: `${base}/for/homebuyers`,  priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/for/conveyancers`, priority: 0.8, changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/for/builders`,    priority: 0.7,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/for/buyers-agents`, priority: 0.7, changeFrequency: 'monthly', lastModified: now },

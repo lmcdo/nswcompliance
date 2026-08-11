@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { SoftwareAppJsonLd } from '@/lib/json-ld';
+import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
+import { resolveGrannyReviewState } from '@/lib/granny-flat-review-state';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 
@@ -63,6 +65,13 @@ interface ConfirmResult {
   assumed_build_cost_aud: number | null;
   confidence: string;
   confidence_reason: string;
+  // What actually happened to the structure list. Optional: a report loaded
+  // from a pre-2026-08-06 row has no stored state and is derived instead.
+  review_state?: string;
+  review_state_label?: string;
+  review_state_detail?: string;
+  detected_structures?: unknown[];
+  samgeo_structure_count?: number | null;
   data_sources: string[];
   warnings: string[];
   eplanning_history?: EplanningHistory;
@@ -75,7 +84,9 @@ interface ConfirmResult {
 
 type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'ineligible';
 
-const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
+// DQ-30 (.claude/DATA_QUALITY_TRACKER.md): consolidated onto
+// NSW_STANDARD_ZONES.RESIDENTIAL — was independently declared in 4 files.
+const ELIGIBLE_ZONE_PREFIXES = NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[];
 
 function deriveWhatToChange(reason: string | null, lotArea: number | null): string {
   if (lotArea != null && lotArea < 450) {
@@ -94,11 +105,10 @@ function deriveWhatToChange(reason: string | null, lotArea: number | null): stri
   return "A DA pathway may still be available at council's discretion — a town planner or certifier can advise on your options.";
 }
 
-const CONFIDENCE_LABEL: Record<string, string> = {
-  high: 'High confidence',
-  medium: 'Medium confidence',
-  low: 'Low confidence (pre-validation)',
-};
+// The high/medium/low grade is no longer shown. It graded a lot the scan
+// never checked as "medium", which reads as a middling amount of confidence
+// rather than an unverified result. Reports now say what happened instead —
+// see lib/granny-flat-review-state.ts.
 
 function GrannyFlatPageInner() {
   const searchParams = useSearchParams();
@@ -121,8 +131,10 @@ function GrannyFlatPageInner() {
   const [emailSubmitted, setEmailSubmitted] = useState(false);      // confirming-state resume-link capture
   const [reportEmailCaptured, setReportEmailCaptured] = useState(false); // post-result CTA capture
   const [existingSecondaryDwelling, setExistingSecondaryDwelling] = useState<boolean | null>(null);
-  const [selectedLat, setSelectedLat] = useState<number | null>(null);
-  const [selectedLng, setSelectedLng] = useState<number | null>(null);
+  // Per-structure answers. These used to live inside ConfirmationPanel and were
+  // thrown away when it unmounted — the answer a person gave about each
+  // building never reached the server. Lifted here so runConfirm can send them.
+  const [structureTypes, setStructureTypes] = useState<Record<number, StructureTypeAnswer>>({});
 
   // Named step progress — driven by elapsed time during detect phase only
   const DETECT_STEPS = [
@@ -177,6 +189,7 @@ function GrannyFlatPageInner() {
         const d = json.data;
         setDetectResult(d);
         setConfirmedCount(d.samgeo_validated && d.detected_structures?.length > 0 ? d.detected_structures.length : 1);
+        setStructureTypes({});
         setState('confirming');
         return;
       }
@@ -316,8 +329,12 @@ function GrannyFlatPageInner() {
           if (detectData.samgeo_validated && detectData.detected_structures?.length > 0) {
             setConfirmedCount(detectData.detected_structures.length);
           } else {
+            // Fallback default when detection found nothing. NOT a human
+            // figure — both historical "user disagreed with the detector"
+            // rows in the DB were this line, not a person.
             setConfirmedCount(1);
           }
+          setStructureTypes({});   // answers belong to the detect run they were given for
           setState('confirming');
           return;
         }
@@ -336,13 +353,41 @@ function GrannyFlatPageInner() {
     }
   };
 
-  const runConfirm = useCallback(async (detect: DetectResult, count: number, existingGF: boolean | null, pc: string, notifEmail: string) => {
+  const runConfirm = useCallback(async (
+    detect: DetectResult,
+    count: number,
+    existingGF: boolean | null,
+    pc: string,
+    notifEmail: string,
+    answers: Record<number, StructureTypeAnswer> = {},
+  ) => {
     setState('detecting'); // reuse spinner
     setFinalResult(null);
     setErrorMsg('');
+
+    // Provenance of the count, as a transmitted field rather than an
+    // assumption at the far end. 'secondary_detections_classified' is claimed only when
+    // a person answered for EVERY secondary structure they were shown; a
+    // partial pass leaves it as the detector's own figure. Note what it does
+    // NOT claim: this screen shows only what the detector found, so a person
+    // cannot report a structure it missed, and the value is named for
+    // classification coverage rather than for verifying the total.
+    //
+    // `count` arrives already adjusted — ConfirmationPanel.handleStructureType
+    // is what moves it. Do not subtract again here.
+    const secondary = detect.detected_structures.filter((s) => !s.is_main_dwelling);
+    const allAnswered = secondary.length > 0 && secondary.every((s) => s.index in answers);
+    const countSource = allAnswered ? 'secondary_detections_classified' : 'machine_default';
+    const structureTypesPayload = secondary
+      .filter((s) => s.index in answers)
+      .map((s) => ({ index: s.index, answer: answers[s.index] }));
+
     posthog?.capture('granny_flat_confirm', {
       address: detect.address,
       confirmed_count: count,
+      detected_count: detect.samgeo_structure_count,
+      count_source: countSource,
+      structures_answered: structureTypesPayload.length,
     });
 
     try {
@@ -354,6 +399,8 @@ function GrannyFlatPageInner() {
           action: 'confirm',
           detect_id: detect.detect_id,
           confirmed_structure_count: count,
+          confirmed_count_source: countSource,
+          structure_types: structureTypesPayload,
           samgeo_structure_count: detect.samgeo_structure_count,
           postcode: pc || detect.address.match(/\b(\d{4})\b/)?.[1] || null,
           existing_secondary_dwelling: existingGF,
@@ -383,7 +430,7 @@ function GrannyFlatPageInner() {
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detectResult) return;
-    await runConfirm(detectResult, confirmedCount, existingSecondaryDwelling, postcode, email);
+    await runConfirm(detectResult, confirmedCount, existingSecondaryDwelling, postcode, email, structureTypes);
   };
 
 
@@ -410,7 +457,7 @@ function GrannyFlatPageInner() {
             <AddressAutocomplete
               value={address}
               onChange={setAddress}
-              onSelect={(addr, lat, lng, pc) => { setAddress(addr); setSelectedLat(lat); setSelectedLng(lng); if (pc) setPostcode(pc); }}
+              onSelect={(addr, lat, lng, pc) => { setAddress(addr); if (pc) setPostcode(pc); }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               disabled={isRunning}
             />
@@ -492,7 +539,7 @@ function GrannyFlatPageInner() {
               <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
               <button
                 type="button"
-                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); setReportEmailCaptured(false); setSelectedLat(null); setSelectedLng(null); }}
+                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); setReportEmailCaptured(false); }}
                 className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
               >
                 Search another address
@@ -538,9 +585,16 @@ function GrannyFlatPageInner() {
             )}
           </div>
         </div>
-        {selectedLat !== null && selectedLng !== null && (
-          <NearbyEligible lat={selectedLat} lng={selectedLng} />
-        )}
+        {/* "Eligible properties nearby" removed 2026-08-06. It rendered only
+            on the INELIGIBLE result: a customer just told their lot fails was
+            shown named third-party addresses with a weekly rent figure each,
+            called "DA precedents". None had been through a DA, the rent was a
+            postcode median presented per-address, and the eligibility claim
+            was about someone else's land. No purpose survived: the reasons a
+            lot fails (area, heritage, flood, zone) are facts about that lot,
+            which a neighbour passing cannot change. See
+            ~/.claude/plans/ce-conveyancer-brief-consolidation-2026-07.md §6 —
+            named properties with money attached imply a valuation (ACL s18). */}
         <CrossSellCards buildable={false} address={inputAddress} />
         </>
       )}
@@ -562,10 +616,12 @@ function GrannyFlatPageInner() {
             inputAddress={inputAddress}
             confirmedCount={confirmedCount}
             onCountChange={setConfirmedCount}
+            structureTypes={structureTypes}
+            onStructureTypesChange={setStructureTypes}
             existingSecondaryDwelling={existingSecondaryDwelling}
             onExistingSecondaryDwellingChange={setExistingSecondaryDwelling}
             onConfirm={handleConfirm}
-            onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); }}
+            onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); setStructureTypes({}); }}
           />
           {!emailSubmitted ? (
             <form
@@ -599,7 +655,7 @@ function GrannyFlatPageInner() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
 
           {/* Satellite image + structure bounding boxes */}
           {detectResult ? (
@@ -624,7 +680,7 @@ function GrannyFlatPageInner() {
           {/* Check another address — shown immediately after result, before other content */}
           <div className="text-center">
             <button
-              onClick={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
             >
               Check another address
@@ -930,11 +986,16 @@ function getPositionLabel(bbox_pixel: number[], tileHeight: number | undefined):
   return 'mid-lot';
 }
 
-function ConfirmationPanel({
+// Exported for test only. The regression this guards is specific: onCountChange
+// was a prop this component accepted and never called, so the "user-confirmed"
+// structure count could only repeat the detector for the tool's whole life.
+export function ConfirmationPanel({
   detectResult,
   inputAddress,
   confirmedCount,
   onCountChange,
+  structureTypes,
+  onStructureTypesChange,
   existingSecondaryDwelling,
   onExistingSecondaryDwellingChange,
   onConfirm,
@@ -944,30 +1005,52 @@ function ConfirmationPanel({
   inputAddress: string;
   confirmedCount: number;
   onCountChange: (n: number) => void;
+  structureTypes: Record<number, StructureTypeAnswer>;
+  onStructureTypesChange: (v: Record<number, StructureTypeAnswer>) => void;
   existingSecondaryDwelling: boolean | null;
   onExistingSecondaryDwellingChange: (v: boolean | null) => void;
   onConfirm: (e: React.FormEvent) => void;
   onBack: () => void;
 }) {
-  const [structureTypes, setStructureTypes] = useState<Record<number, StructureTypeAnswer>>({});
+  // structureTypes is owned by the page, not this component. It was local
+  // state until 2026-08-06, which meant every answer a person gave about a
+  // building was discarded when this panel unmounted.
 
   const secondaryStructures = detectResult.detected_structures.filter(s => !s.is_main_dwelling);
   const usePerStructureQuestions = detectResult.samgeo_validated && secondaryStructures.length > 0;
 
   const handleStructureType = (idx: number, type: StructureTypeAnswer) => {
-    setStructureTypes(prev => {
-      const next = { ...prev, [idx]: type };
-      const values = Object.values(next);
-      if (values.some(t => t === 'existing_gf')) {
-        onExistingSecondaryDwellingChange(true);
-      } else if (secondaryStructures.every(s => s.index in next)) {
-        // All answered — false if no GF, null if any unsure
-        const anyUnsure = values.some(t => t === 'unsure');
-        onExistingSecondaryDwellingChange(anyUnsure ? null : false);
-      }
-      return next;
-    });
+    const next = { ...structureTypes, [idx]: type };
+    const values = Object.values(next);
+    if (values.some(t => t === 'existing_gf')) {
+      onExistingSecondaryDwellingChange(true);
+    } else if (secondaryStructures.every(s => s.index in next)) {
+      // All answered — false if no GF, null if any unsure
+      const anyUnsure = values.some(t => t === 'unsure');
+      onExistingSecondaryDwellingChange(anyUnsure ? null : false);
+    } else {
+      // No existing_gf among the answers and not everything answered yet.
+      // Without this branch, changing an 'existing_gf' answer to something
+      // else left existingSecondaryDwelling stuck at true, and the request
+      // then asserted an existing granny flat that no current answer says is
+      // there — serving an ineligible verdict off a retracted answer.
+      onExistingSecondaryDwellingChange(null);
+    }
+    onStructureTypesChange(next);
+    // The count control, finally connected. `onCountChange` was passed to this
+    // component from the day it was written and never called, so the
+    // "user-confirmed structure count" could only ever repeat the detector's
+    // own figure. A detection marked "part of the main dwelling" is not a
+    // separate building, so it comes out of the count.
+    const notSeparate = secondaryStructures.filter(
+      s => next[s.index] === 'part_of_main',
+    ).length;
+    onCountChange(Math.max(0, detectResult.detected_structures.length - notSeparate));
   };
+
+  const answeredCount = secondaryStructures.filter(s => s.index in structureTypes).length;
+  const allSecondaryAnswered = secondaryStructures.length > 0 &&
+    answeredCount === secondaryStructures.length;
 
   const canonical = detectResult.address;
   const showCanonical = canonical && canonical.toLowerCase() !== inputAddress.toLowerCase();
@@ -1022,6 +1105,17 @@ function ConfirmationPanel({
                   <p className="text-sm font-medium text-gray-700 mb-2">
                     AI detected {valid.length} structure{valid.length !== 1 ? 's' : ''} on lot
                   </p>
+                  {/* The count that will actually be submitted, and whether a
+                      person has stood behind it. Before this, the figure sent
+                      to the server was always the detector's own and nothing
+                      on screen said so. */}
+                  {usePerStructureQuestions && (
+                    <p className={`text-xs mb-2 ${allSecondaryAnswered ? 'text-teal-700' : 'text-gray-400'}`}>
+                      {allSecondaryAnswered
+                        ? `Count used for this check: ${confirmedCount} — based on your answers below. Only buildings the scan found are listed; if one is missing from the map, the count cannot account for it.`
+                        : `Count used for this check: ${confirmedCount} — the detector's own figure. Answer for each structure below and it will reflect your review (${answeredCount} of ${secondaryStructures.length} answered).`}
+                    </p>
+                  )}
                   <div className="space-y-1.5">
                     {valid.map((s) => (
                       <div key={s.index} className="flex items-start gap-2 text-xs text-gray-600">
@@ -1156,7 +1250,17 @@ function ConfirmationPanel({
               })}
               <p className="text-xs text-gray-400">
                 Eligibility depends on the accuracy of your structure classifications. If you selected the wrong type,{' '}
-                <button type="button" onClick={() => { setStructureTypes({}); onExistingSecondaryDwellingChange(null); }} className="underline hover:no-underline">reset answers</button>.
+                <button
+                  type="button"
+                  onClick={() => {
+                    onStructureTypesChange({});
+                    onExistingSecondaryDwellingChange(null);
+                    // Back to the detector's own figure, and back to
+                    // machine_default provenance with it.
+                    onCountChange(detectResult.detected_structures.length);
+                  }}
+                  className="underline hover:no-underline"
+                >reset answers</button>.
               </p>
             </div>
           ) : (
@@ -1232,58 +1336,6 @@ function ConfirmationPanel({
         </form>
           );
         })()}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// NearbyEligible — shows nearby properties with confirmed granny flat eligibility
-// Only shown on ineligible result. Fetches from /api/reports/granny-flat/nearby.
-// Graceful empty state — zero results = renders nothing.
-// ---------------------------------------------------------------------------
-
-interface NearbyResult {
-  address: string;
-  run_date: string | null;
-  max_floor_area_m2: number | null;
-  estimated_weekly_rent_aud: number | null;
-}
-
-function NearbyEligible({ lat, lng }: { lat: number; lng: number }) {
-  const [results, setResults] = useState<NearbyResult[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/reports/granny-flat/nearby?lat=${lat}&lng=${lng}`)
-      .then((r) => r.json())
-      .then((d) => { setResults(d.results ?? []); setLoaded(true); })
-      .catch(() => setLoaded(true)); // silent failure
-  }, [lat, lng]);
-
-  if (!loaded || results.length === 0) return null;
-
-  return (
-    <div className="rounded-xl border border-teal-100 bg-teal-50 p-5">
-      <h3 className="font-semibold text-teal-900 mb-1 text-sm">
-        Eligible properties nearby
-      </h3>
-      <p className="text-xs text-teal-700 mb-4">
-        These nearby properties passed the automated eligibility screening — use as reference or DA precedents.
-      </p>
-      <div className="space-y-2">
-        {results.map((r) => (
-          <a
-            key={r.address}
-            href={`/reports/granny-flat?address=${encodeURIComponent(r.address)}`}
-            className="flex items-center justify-between gap-4 rounded-lg bg-white border border-teal-100 px-4 py-3 hover:border-teal-300 transition-colors"
-          >
-            <span className="text-sm text-gray-800 truncate">{r.address}</span>
-            <span className="shrink-0 text-xs text-teal-600 font-medium">
-              {r.estimated_weekly_rent_aud ? `~$${r.estimated_weekly_rent_aud}/wk` : `${r.max_floor_area_m2 ?? '?'} m²`}
-            </span>
-          </a>
-        ))}
       </div>
     </div>
   );
@@ -1587,6 +1639,9 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
   const weeklyRent = result.estimated_weekly_rent_aud;
   const annualRent = weeklyRent ? weeklyRent * 52 : null;
   const displayAddr = inputAddress || result.address;
+  const reviewState = resolveGrannyReviewState(
+    result as unknown as Record<string, unknown>,
+  );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -1594,10 +1649,18 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-semibold text-gray-900">{displayAddr}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {CONFIDENCE_LABEL[result.confidence] ?? result.confidence}
+            <p className="text-xs font-medium text-gray-600 mt-0.5">
+              {reviewState.label}
             </p>
-            {result.confidence_reason && (
+            <p className="text-xs text-gray-500 mt-1 max-w-sm">{reviewState.detail}</p>
+            {/* A stored reason on a pre-2026-08-06 row credits the reader
+                with having personally checked the count ("counts agree") —
+                which could not have happened: the count was seeded from the
+                detector and the control that would change it was never
+                wired. Rendering it beside the state above would contradict
+                it in the next line. Measured 2026-08-06: 18 of 20 completed
+                rows carry that phrasing. */}
+            {result.confidence_reason && !reviewState.derived && (
               <p className="text-xs text-gray-500 mt-1 max-w-sm">{result.confidence_reason}</p>
             )}
             <button

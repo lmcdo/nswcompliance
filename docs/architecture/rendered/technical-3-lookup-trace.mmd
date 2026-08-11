@@ -1,0 +1,27 @@
+flowchart TD
+  U1["Someone types an address"] --> U2["/api/property/profile<br/>rate limited, 20 per minute"]
+  U2 --> U3["searchProperty<br/>address to propId"]
+  U3 --> P1["NSW Planning Portal<br/>ePlanningApi"]
+  P1 --> U4["getPlanningLayers<br/>zone · height · floor space · heritage"]
+  U4 --> U5["getLotGeometry<br/>the lot outline"]
+  U5 --> U6["calculateLotDimensions<br/>width, depth, area from the polygon"]
+  U6 --> U7["Profile page renders"]
+
+  U7 --> R1["User opens a report<br/>e.g. shadow"]
+  R1 --> R2["Next.js /api/satellite/shadow"]
+  R2 --> R3["FastAPI POST /pipeline/shadow"]
+  R3 --> R4["shadow_model.py<br/>sun position and shadow geometry"]
+  R4 --> R5["Row written to property_reports"]
+  R5 --> R6["PDF built, stored in R2"]
+  R6 --> R7["Report page or PDF download"]
+
+  U3 -.->|"if the portal is down there is<br/>no stored fallback — lookup fails"| X1["No result"]
+
+  classDef step fill:#e8f0fe,stroke:#3b6fb6,color:#10233d
+  classDef ext fill:#fff3e0,stroke:#c77700,color:#3d2a10
+  classDef out fill:#e9f7ef,stroke:#2e7d52,color:#102a1c
+  classDef bad fill:#f0f0f0,stroke:#888,color:#333,stroke-dasharray:4 3
+  class U1,U2,U3,U4,U5,U6,R1,R2,R3,R4 step
+  class P1 ext
+  class U7,R5,R6,R7 out
+  class X1 bad

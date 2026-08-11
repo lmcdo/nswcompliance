@@ -5,6 +5,9 @@ import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
+import {
+  SCENARIO_NOT_ASSESSED_LABEL, isScenarioUnavailable, scenarioUnavailableMessage,
+} from '@/lib/not-assessed';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
@@ -38,10 +41,14 @@ interface ShadowScenario {
   label: string;
   date: string;
   time_local: string;
-  shadow_length_m: number;
-  shadow_overlap_fraction: number;
-  shadow_direction_deg: number;
-  overlaps_subject_lot: boolean;
+  status?: 'computed' | 'unavailable';  // absent on pre-fix cached rows = computed
+  error_note?: string | null;           // why a scenario has no measurements
+  shadow_length_m: number | null;       // null when the scenario computation errored
+  shadow_overlap_fraction: number | null;
+  // null when the bearing is not meaningful: sun below the horizon, or so near
+  // the zenith that a direction says nothing about a centimetres-long shadow.
+  shadow_direction_deg: number | null;
+  overlaps_subject_lot: boolean | null;
   shadow_on_lot: GeoJSONCollection | null;
   shadow_polygon: GeoJSONCollection | null;
 }
@@ -53,9 +60,7 @@ interface ShadowOutputs {
   lot_polygon: GeoJSONGeometry | null;
   north_proxy_polygon: GeoJSONGeometry | null;
   scenarios: ShadowScenario[];
-  construction_change_score: number | null;
-  construction_change_detected: boolean;
-  adg_compliant: boolean;
+  adg_compliant: boolean | null;  // null = not assessed (noon scenario missing/errored)
   worst_case_scenario: string;
 }
 
@@ -309,25 +314,38 @@ function ShadowLockedPreviewCard({
 }) {
   const o = result.outputs;
   const overlapCount = o.scenarios.filter(s => s.overlaps_subject_lot).length;
+  // Unavailable scenarios must not be silently absorbed into an all-clear
+  // aggregate (Sol pre-push round); absence of status = legacy computed row.
+  const lockedUnavailable = o.scenarios.filter(s => s.status === 'unavailable').length;
+  const lockedComputed = o.scenarios.length - lockedUnavailable;
+  const lockedDenominator = lockedUnavailable > 0 ? `${lockedComputed} computed` : '5';
 
   // Find worst-case overlap fraction for blurred preview
   const worstScenario = o.scenarios.find(s => s.scenario === o.worst_case_scenario);
   const worstOverlapPct = worstScenario?.shadow_overlap_fraction != null
     ? `${Math.round(worstScenario.shadow_overlap_fraction * 100)}% of lot`
-    : `${overlapCount} of 5 scenarios`;
+    : `${overlapCount} of ${lockedDenominator} scenarios`;
 
   // Sort scenarios in standard order for consistent display
   const sortedScenarios = [...o.scenarios].sort(
     (a, b) => SCENARIO_ORDER.indexOf(a.scenario) - SCENARIO_ORDER.indexOf(b.scenario)
   );
   const teaserScenarios = sortedScenarios.slice(0, 2);
-  const alarmHeadline = !o.adg_compliant
-    ? `ADG concern — shadow impact on ${overlapCount} of 5 test scenarios`
+  // Three-state (output-grounding fix 1): null = not assessed. The old
+  // `!o.adg_compliant` rendered an "ADG concern" verdict from a failed run.
+  const alarmHeadline = o.adg_compliant == null
+    ? 'Shadow analysis incomplete — the ADG solar access test could not be run for this lot'
+    : o.adg_compliant === false
+    ? `ADG concern — shadow impact on ${overlapCount} of ${lockedDenominator} test scenarios`
     : overlapCount > 0
-    ? `Shadow impact on ${overlapCount} of 5 scenarios — get the diagrams for your records`
+    ? `Shadow impact on ${overlapCount} of ${lockedDenominator} scenarios — get the diagrams for your records`
+    : lockedUnavailable > 0
+    ? `No shadow concern in the ${lockedComputed} computed scenarios — ${lockedUnavailable} of 5 could not be assessed`
     : 'No shadow concern detected — save the full analysis for your records';
 
-  const alarmDetail = !o.adg_compliant
+  const alarmDetail = o.adg_compliant == null
+    ? 'The shadow model could not compute the 21 June noon scenario, so no shadow verdict is made. Re-run the analysis, or treat shadow as unassessed for this property.'
+    : o.adg_compliant === false
     ? 'This property may not meet the ADG 2-hour solar access requirement on 21 June. The full report has the scenario diagrams and objection paragraph you need.'
     : overlapCount > 0
     ? 'The full report includes hourly shadow diagrams and a ready-to-paste objection paragraph for your council submission.'
@@ -358,13 +376,30 @@ function ShadowLockedPreviewCard({
           </p>
           <div className="space-y-1.5">
             {teaserScenarios.map((s) => (
-              <div key={s.scenario} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-gray-50">
-                <span className="text-gray-600">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
-                <span className="font-medium text-gray-900 tabular-nums">
-                  {s.shadow_length_m.toFixed(0)}m shadow
-                  {s.overlaps_subject_lot ? ' · overlaps lot' : ''}
-                </span>
-              </div>
+              isScenarioUnavailable(s) ? (
+                // "not computed" is operator shorthand, and sitting in the
+                // value column it reads as a value. A scenario with no result
+                // gets its own amber block that says why and says it is
+                // neither a pass nor a fail.
+                <div key={s.scenario} className="text-sm py-1.5 px-2 border-b border-gray-50 bg-amber-50 rounded">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
+                    <span className="font-medium text-amber-900">{SCENARIO_NOT_ASSESSED_LABEL}</span>
+                  </div>
+                  <p className="text-xs text-amber-800 leading-snug mt-0.5">
+                    {scenarioUnavailableMessage(s.error_note)}
+                  </p>
+                </div>
+              ) : (
+                <div key={s.scenario} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-gray-50">
+                  <span className="text-gray-600">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
+                  <span className="font-medium text-gray-900 tabular-nums">
+                    {s.shadow_length_m != null
+                      ? `${s.shadow_length_m.toFixed(0)}m shadow${s.overlaps_subject_lot ? ' · overlaps lot' : ''}`
+                      : '—'}
+                  </span>
+                </div>
+              )
             ))}
             {/* Blurred remaining rows — use real scenario labels, blur real values */}
             {sortedScenarios.slice(2).map((s) => (
@@ -373,7 +408,9 @@ function ShadowLockedPreviewCard({
                   {SCENARIO_LABELS[s.scenario] ?? s.scenario}
                 </span>
                 <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums">
-                  {s.shadow_length_m.toFixed(0)}m shadow{s.overlaps_subject_lot ? ' · overlaps lot' : ''}
+                  {s.shadow_length_m != null
+                    ? `${s.shadow_length_m.toFixed(0)}m shadow${s.overlaps_subject_lot ? ' · overlaps lot' : ''}`
+                    : 'not computed'}
                 </span>
               </div>
             ))}
@@ -465,6 +502,10 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   }, [activeScenario, scenarios]);
 
   const overlapCount = scenarios.filter(s => s.overlaps_subject_lot).length;
+  // Same rule as the PDF findings: a scenario the model could not compute is
+  // excluded from every aggregate claim, and its exclusion is stated.
+  const unavailableCount = scenarios.filter(s => s.status === 'unavailable').length;
+  const computedCount = scenarios.length - unavailableCount;
   const worstScenario = scenarios.find(s => s.scenario === o.worst_case_scenario);
 
   const isNonResidential =
@@ -520,14 +561,18 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   if (overlapCount === 0) {
     findings.push({
       label: 'Shadow overlap analysis (5 ADG scenarios)',
-      value: 'No shadow reaches your lot',
-      detail: 'Across all 5 test scenarios (winter solstice morning, midday, afternoon + equinox + summer), a maximum-height building to the north would not cast shadow onto your property.',
-      severity: 'green',
+      value: unavailableCount > 0
+        ? `No shadow reaches your lot in the ${computedCount} computed scenarios`
+        : 'No shadow reaches your lot',
+      detail: unavailableCount > 0
+        ? `Across the ${computedCount} test scenarios that could be computed, a maximum-height building to the north would not cast shadow onto your property. ${unavailableCount} of the 5 scenarios could not be assessed, so this is not a result across all 5.`
+        : 'Across all 5 test scenarios (winter solstice morning, midday, afternoon + equinox + summer), a maximum-height building to the north would not cast shadow onto your property.',
+      severity: unavailableCount > 0 ? 'amber' : 'green',
     });
   } else {
     findings.push({
       label: 'Shadow overlap analysis (5 ADG scenarios)',
-      value: `Shadow overlaps your lot in ${overlapCount} of 5 scenarios`,
+      value: `Shadow overlaps your lot in ${overlapCount} of ${unavailableCount > 0 ? `${computedCount} computed` : '5'} scenarios`,
       detail: overlapCount >= 3
         ? 'Shadow reaches your property in the majority of test scenarios. This would affect winter sunlight, garden usability, and potentially solar panel output.'
         : 'Shadow reaches your property in some test scenarios. The map below shows the worst case.',
@@ -537,20 +582,38 @@ function ShadowCard({ result }: { result: ShadowResult }) {
 
   // Worst-case shadow length
   if (worstScenario) {
+    // null when the worst-case scenario itself errored (typed absence, fix 1).
+    // Never coalesce to 0 — a zero-metre "measurement" from a failed
+    // computation is the exact collapse this fix removes (Sol round 1).
+    if (worstScenario.shadow_length_m == null) {
+      findings.push({
+        label: `Worst case — ${SCENARIO_LABELS[worstScenario.scenario] ?? worstScenario.scenario}`,
+        value: 'Not computed — this scenario could not be modelled',
+        detail: 'The shadow computation for this scenario did not complete, so no length or coverage figure is reported for it.',
+        severity: 'amber',
+      });
+    } else {
     const len = worstScenario.shadow_length_m;
-    const dir = bearingToCompass(worstScenario.shadow_direction_deg);
+    // Guarded: shadow_direction_deg is nullable now. Math.round(null/45) is 0,
+    // so an unguarded call would silently render "N" — a fabricated direction —
+    // and Math.round(undefined/45) indexes the array with NaN and renders
+    // "undefined". Absent direction must read as absent.
+    const dir = worstScenario.shadow_direction_deg != null
+      ? bearingToCompass(worstScenario.shadow_direction_deg)
+      : null;
     const overlapPct = worstScenario.shadow_overlap_fraction != null
       ? Math.round(worstScenario.shadow_overlap_fraction * 100)
       : null;
 
     findings.push({
       label: `Worst case — ${SCENARIO_LABELS[worstScenario.scenario] ?? worstScenario.scenario}`,
-      value: `${len.toFixed(0)}m shadow cast ${dir}${overlapPct != null ? ` — ${overlapPct}% of lot covered` : ''}`,
+      value: `${len.toFixed(0)}m shadow${dir ? ` cast ${dir}` : ''}${overlapPct != null ? ` — ${overlapPct}% of lot covered` : ''}`,
       detail: len > 20
         ? 'At this length, the shadow would extend well beyond your immediate boundary. This is the scenario to reference if objecting to a neighbour\'s DA.'
         : 'A relatively short shadow. The impact on your property would be limited to the area nearest the boundary.',
       severity: len > 20 ? 'red' : len > 10 ? 'amber' : 'green',
     });
+    }
   }
 
   // Building height used
@@ -565,16 +628,6 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       : 'This is the maximum building height permitted under the planning controls. The shadow model assumes a building at this full height on the neighbouring lot.',
     severity: o.height_source === 'default' ? 'amber' : 'green',
   });
-
-  // Construction activity
-  if (o.construction_change_detected) {
-    findings.push({
-      label: 'Sentinel-2 satellite change detection',
-      value: 'Construction activity detected nearby',
-      detail: 'Satellite imagery shows recent ground disturbance near this property — likely demolition, excavation, or site clearing. This could mean a new building is going up next door. Check your council\'s DA tracker.',
-      severity: 'red',
-    });
-  }
 
   const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' };
 
@@ -667,8 +720,8 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         </summary>
         <div className="px-5 pb-4 text-xs text-gray-400 space-y-1.5">
           <p>1. We find your lot boundary from the NSW Planning Portal cadastre.</p>
-          <p>2. A hypothetical building is placed on the lot immediately to the north of yours, at the maximum height permitted by the LEP ({o.height_m}m).</p>
-          <p>3. Shadow is computed geometrically using solar position for each of the 5 ADG test scenarios (winter solstice 9am/12pm/3pm, equinox noon, summer noon).</p>
+          <p>2. A hypothetical building is modelled immediately north of your lot, at the maximum height mapped at your location ({o.height_m}m). Its outline is a rectangle offset north of your own boundary — we do not fetch the neighbouring parcel, so its real shape, position and height control are not known to this model.</p>
+          <p>3. Shadow is computed geometrically from the sun&apos;s position at each of the 5 ADG test scenarios (winter solstice 9am/12pm/3pm, equinox noon, summer noon). Times are NSW local wall-clock, with daylight saving applied where it applies — 21 December is AEDT.</p>
           <p>4. We check whether the shadow polygon overlaps your lot boundary.</p>
           <p className="pt-1 text-gray-500 font-medium">This model considers a hypothetical new building only — it does not account for shadow from existing structures, trees, or infrastructure (e.g. overpasses, bridges).</p>
         </div>

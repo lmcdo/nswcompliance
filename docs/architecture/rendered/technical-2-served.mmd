@@ -1,0 +1,78 @@
+flowchart LR
+  subgraph LIVE["Called live, never stored"]
+    L1["Planning Portal<br/>ePlanning API"]
+    L2["Google Solar API"]
+    L3["Satellite imagery<br/>Sentinel-2 Element84<br/>Sentinel-1 ASF"]
+    L4["BoM · RFS · Valuer Gen<br/>Sydney Water · legislation"]
+  end
+
+  subgraph STORE["From the database"]
+    D1["spatial_overlays"]
+    D3["lot_search_index"]
+    D4["certificates + applications"]
+    D6["regulatory_provisions"]
+    D7["dcp_setback_controls"]
+    D9["property_reports<br/>981 runs"]
+  end
+
+  subgraph SVC["Python · 76 modules"]
+    V4["Rules engine"]
+    V5["lot_search +<br/>constraint arithmetic"]
+    V1["Screening pipelines<br/>shadow flood solar<br/>bushfire granny<br/>no imagery"]
+    V6["pre_da_history +<br/>drawdown_verify<br/>the only imagery users"]
+    V2["intelligence_brief.py<br/>4,357 lines"]
+    V3["conveyancing.py<br/>13 fetchers"]
+  end
+
+  subgraph API["APIs"]
+    A1["FastAPI<br/>20 routers"]
+    A2["Next.js<br/>140 routes"]
+    A3["Trigger.dev"]
+  end
+
+  subgraph UI["Seen by a person · 123 pages"]
+    F1["10 report pages"]
+    F2["Property profile<br/>+ compliance UI"]
+    F3["3 internal review pages"]
+  end
+
+  D1 --> V4
+  D6 --> V4
+  D7 --> V4
+  D3 --> V5
+  D4 --> V2
+  L2 --> V1
+  L4 --> V1
+  L3 --> V6
+  V1 --> D9
+  V4 --> V2
+  V4 --> V3
+  V5 --> V2
+
+  V1 --> A1
+  V2 --> A1
+  V3 --> A1
+  V4 --> A1
+  V5 --> A1
+  V6 --> A1
+  A1 --> A2
+  A2 --> F1
+  A2 --> F2
+  A2 --> F3
+
+  L1 -.->|"no Python in the path"| A2
+  A2 -.-> A3
+  A3 -.->|"UNVERIFIED — sibling repo"| A1
+
+  classDef src fill:#e8f0fe,stroke:#3b6fb6,color:#10233d
+  classDef db fill:#e9f7ef,stroke:#2e7d52,color:#102a1c
+  classDef svc fill:#f3e8fd,stroke:#7b4fbe,color:#241038
+  classDef api fill:#fdeaea,stroke:#c0504d,color:#3d1414
+  classDef ui fill:#fdf6e3,stroke:#9a7500,color:#3d3210
+  classDef unver fill:#f0f0f0,stroke:#888,color:#333,stroke-dasharray:4 3
+  class L1,L2,L3,L4 src
+  class D1,D3,D4,D6,D7,D9 db
+  class V1,V2,V3,V4,V5,V6 svc
+  class A1,A2 api
+  class A3 unver
+  class F1,F2,F3 ui

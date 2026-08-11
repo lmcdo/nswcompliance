@@ -131,10 +131,10 @@ export async function POST(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       shadow_polygon: (sc as any).shadow_polygon ?? null,
     })),
-    construction_change_score: rawOutputs.construction_change_score != null
-      ? Number(rawOutputs.construction_change_score) : null,
-    construction_change_detected: Boolean(rawOutputs.construction_change_detected),
-    adg_compliant: Boolean(rawOutputs.adg_compliant),
+    // null = NOT ASSESSED (noon scenario missing/errored) — Boolean() coerced
+    // it to false, which rendered a "Concern" verdict from a failed model run
+    // (output-grounding fix 1, 2026-08-03).
+    adg_compliant: rawOutputs.adg_compliant == null ? null : Boolean(rawOutputs.adg_compliant),
     worst_case_scenario: String(rawOutputs.worst_case_scenario ?? 'jun21_12pm'),
     confidence: String(raw.confidence ?? 'medium'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],

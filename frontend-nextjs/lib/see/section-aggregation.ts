@@ -9,6 +9,7 @@ import type { IntakeAnswers } from '@/lib/see/intake';
 import { groupProvisionsByTopic } from '@/lib/pdf/formatProvisions';
 import { ANCILLARY_WORKS, AncillaryWork } from '@/lib/see/ancillaryWorks';
 import { determineDevelopmentPathway } from '@/lib/pdf/see-helpers';
+import { HOUSING_SEPP_ZONES } from '@/lib/regulatory-constants';
 
 // ---------------------------------------------------------------------------
 // Computed data shape — all derived values for SEE page components
@@ -124,7 +125,6 @@ export function buildSEEData(data: SEEDocumentData): SEEComputedData {
     heritage_status.heritage_item || false
   );
 
-  const HOUSING_SEPP_ZONES = ['R1', 'R2', 'R3', 'R4', 'B1', 'B2', 'B4'];
   const housingSeppApplies = HOUSING_SEPP_ZONES.includes(zoneCode);
 
   // DCP Assessment buckets

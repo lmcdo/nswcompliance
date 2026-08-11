@@ -5,7 +5,7 @@ import { SiteFooter } from '@/components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'Pricing — PlotDetect',
-  description: 'Free property risk checks for any NSW address. Professional reports from $39. Verify Pro for planning professionals at $49/month.',
+  description: 'Free property risk checks for any NSW address. Professional reports from $39. Site Controls Pro for planning professionals at $49/month.',
 };
 
 function Check() {
@@ -58,7 +58,7 @@ export default function PricingPage() {
                 { text: 'Threat Radar summary', sub: 'DA count within 500m — no detail' },
                 { text: 'Site history changes detected', sub: 'Change count — no timeline' },
                 { text: 'Climate Risk Score', sub: 'Composite score out of 100 — 5 hazards' },
-                { text: 'Verify — planning controls', sub: '3 lookups per day — SEPP, LEP, DCP' },
+                { text: 'Site Controls — planning provisions', sub: '3 lookups per day — SEPP, LEP, DCP' },
               ].map(({ text, sub }) => (
                 <li key={text} className="flex items-start gap-2">
                   <Check />
@@ -131,14 +131,14 @@ export default function PricingPage() {
               <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">For planning professionals</p>
               <h2 className="text-2xl font-bold text-gray-900">Professional</h2>
               <p className="text-gray-500 text-sm mt-2">
-                Unlimited Verify access, report credits, and property monitoring in one plan.
+                Unlimited Site Controls access, report credits, and property monitoring in one plan.
               </p>
             </div>
             <div className="text-4xl font-bold text-gray-900 mb-1">$149<span className="text-lg font-normal text-gray-400">/mo</span></div>
             <p className="text-sm text-gray-400 mb-8">Cancel anytime</p>
             <ul className="space-y-3 text-sm text-gray-700 mb-8 flex-1">
               {[
-                'Verify Pro — unlimited lookups, all LGAs',
+                'Site Controls Pro — unlimited lookups, all LGAs',
                 'DA Mode — triage + annotation',
                 'SEE scaffold export',
                 'Development type filtering',
@@ -201,22 +201,22 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Verify Pro standalone */}
+      {/* Site Controls Pro standalone */}
       <section className="px-6 pb-12 max-w-6xl mx-auto">
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Verify Pro — $49/mo</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Site Controls Pro — $49/mo</h3>
               <p className="text-sm text-gray-500 max-w-lg">
                 Unlimited compliance lookups across all LGAs. DA Mode, SEE scaffold export, development type filtering.
-                For planners who need Verify daily but buy reports individually.
+                For planners who need Site Controls daily but buy reports individually.
               </p>
               <p className="text-xs text-gray-400 mt-2">
                 Annual: $39/mo ($468/year). Free tier: 3 lookups/day, no DA Mode.
               </p>
             </div>
             <a
-              href="mailto:hello@plotdetect.com.au?subject=Verify%20Pro%20—%2014-day%20trial"
+              href="mailto:hello@plotdetect.com.au?subject=Site%20Controls%20Pro%20—%2014-day%20trial"
               className="shrink-0 inline-block px-5 py-2.5 border border-gray-300 text-sm font-medium text-gray-700 rounded-lg hover:bg-white transition-colors"
             >
               Start 14-day trial
@@ -311,7 +311,7 @@ export default function PricingPage() {
                 { feature: 'Quantified analysis (depths, BAL, kWh)', free: false, report: true, pro: true },
                 { feature: 'Compliance checklist', free: false, report: true, pro: true },
                 { feature: 'Shareable PDF report', free: false, report: true, pro: true },
-                { feature: 'Verify lookups', free: '3/day', report: '3/day', pro: 'Unlimited' },
+                { feature: 'Site Controls lookups', free: '3/day', report: '3/day', pro: 'Unlimited' },
                 { feature: 'DA Mode + SEE scaffold', free: false, report: false, pro: true },
                 { feature: 'Report credits', free: false, report: 'Pay per report', pro: '20/month' },
                 { feature: 'Property monitoring', free: false, report: '$9/mo add-on', pro: '5 included' },
@@ -362,8 +362,8 @@ export default function PricingPage() {
                 a: 'We\'re offering 50 planning professionals full Professional access at half price ($75/mo) for Year 1. In exchange: monthly feedback call, case study rights, and a LinkedIn testimonial. It\'s how we build a product that actually fits your workflow.',
               },
               {
-                q: 'What does Verify Pro add over the free tier?',
-                a: 'Free Verify gives you 3 lookups per day — enough to try it. Verify Pro removes the limit and adds DA Mode (triage + annotation), SEE scaffold export, and development type filtering. PropCode charges $49.95 per individual report for less coverage.',
+                q: 'What does Site Controls Pro add over the free tier?',
+                a: 'The free Site Controls tier gives you 3 lookups per day — enough to try it. Site Controls Pro removes the limit and adds DA Mode (triage + annotation), SEE scaffold export, and development type filtering. PropCode charges $49.95 per individual report for less coverage.',
               },
               {
                 q: 'What is the pre-auction bundle?',

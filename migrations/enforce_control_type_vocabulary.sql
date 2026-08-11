@@ -23,6 +23,10 @@ ALTER TABLE dcp_setback_controls
     ADD CONSTRAINT control_type_canonical CHECK (
         control_type IN (
             'front_setback',
+            -- Corner-lot setback to the secondary street; added by migration
+            -- 054 (applied 2026-08-02) after DQ-40 found the vocabulary had
+            -- nowhere to file it, so extractors used front_setback.
+            'secondary_street_setback',
             'side_setback',
             'rear_setback',
             'separation_from_dwelling',

@@ -12,6 +12,7 @@ import io
 import json
 import math
 import os
+import pathlib
 import sys
 import uuid
 from datetime import date
@@ -47,8 +48,6 @@ from services.granny_flat import (
     MIN_FILL_RATIO,
     MAX_BBOX_FRACTION,
     MAX_ASPECT_RATIO,
-    _SEPP_FALLBACK_MIN_LOT_M2,
-    _SEPP_FALLBACK_MAX_GF_AREA_M2,
     DETECTION_PROMPTS,
 )
 
@@ -360,16 +359,17 @@ class TestComputeLotAreaM2Mutation:
 
 
 # ---------------------------------------------------------------------------
-# _get_sepp_sd_standards — DB lookup with fallback
+# _get_sepp_sd_standards — DB lookup, NO fallback (#817): missing rows or an
+# unreachable DB return None and the endpoints fail closed (503)
 # ---------------------------------------------------------------------------
 
 class TestGetSeppSdStandards:
-    def test_no_conn_returns_fallbacks(self):
+    def test_no_conn_returns_none(self):
         min_lot, max_gf = _get_sepp_sd_standards(conn=None)
-        assert min_lot == _SEPP_FALLBACK_MIN_LOT_M2
-        assert max_gf == _SEPP_FALLBACK_MAX_GF_AREA_M2
+        assert min_lot is None
+        assert max_gf is None
 
-    def test_db_values_override_fallback(self):
+    def test_db_values_returned(self):
         cur = FakeCursor(fetchall_result=[
             ("min_lot_size", 500.0),
             ("max_floor_area", 75.0),
@@ -379,14 +379,16 @@ class TestGetSeppSdStandards:
         assert min_lot == 500.0
         assert max_gf == 75.0
 
-    def test_partial_db_values_use_fallback_for_missing(self):
+    def test_partial_db_values_none_for_missing(self):
+        """Mutation check: a half-loaded row set must not substitute any
+        default for the missing standard."""
         cur = FakeCursor(fetchall_result=[("min_lot_size", 400.0)])
         conn = FakeConn(cursor=cur)
         min_lot, max_gf = _get_sepp_sd_standards(conn)
         assert min_lot == 400.0
-        assert max_gf == _SEPP_FALLBACK_MAX_GF_AREA_M2
+        assert max_gf is None
 
-    def test_db_error_returns_fallback(self):
+    def test_db_error_returns_none(self):
         class ErrorCursor:
             def execute(self, *a, **kw):
                 raise Exception("DB error")
@@ -396,15 +398,15 @@ class TestGetSeppSdStandards:
                 pass
         conn = FakeConn(cursor=ErrorCursor())
         min_lot, max_gf = _get_sepp_sd_standards(conn)
-        assert min_lot == _SEPP_FALLBACK_MIN_LOT_M2
-        assert max_gf == _SEPP_FALLBACK_MAX_GF_AREA_M2
+        assert min_lot is None
+        assert max_gf is None
 
-    def test_empty_result_returns_fallback(self):
+    def test_empty_result_returns_none(self):
         cur = FakeCursor(fetchall_result=[])
         conn = FakeConn(cursor=cur)
         min_lot, max_gf = _get_sepp_sd_standards(conn)
-        assert min_lot == _SEPP_FALLBACK_MIN_LOT_M2
-        assert max_gf == _SEPP_FALLBACK_MAX_GF_AREA_M2
+        assert min_lot is None
+        assert max_gf is None
 
     def test_rows_dict_conversion(self):
         """Mutant: change float(r[1]) to r[1] — would break if DB returns Decimal."""
@@ -415,6 +417,53 @@ class TestGetSeppSdStandards:
         min_lot, _ = _get_sepp_sd_standards(conn)
         assert isinstance(min_lot, float)
         assert min_lot == 450.0
+
+
+# ---------------------------------------------------------------------------
+# SEPP standards unavailable — endpoints fail closed (#817): no fallback figure
+# may ever reach a response, so both endpoints 503 instead
+# ---------------------------------------------------------------------------
+
+class TestSeppStandardsUnavailableFailClosed:
+    def test_detect_503_when_standards_unavailable(self, monkeypatch):
+        from fastapi import HTTPException
+        _stub_detect_all(monkeypatch, sepp_standards=(None, None))
+        req = GrannyFlatDetectRequest(
+            address="1 Test St, Sydney NSW 2000", prop_id="12345",
+            lat=SYD_LAT, lng=SYD_LNG, lot_geometry=LOT_GEOMETRY,
+        )
+        with pytest.raises(HTTPException) as exc:
+            gf.detect_structures(req)
+        assert exc.value.status_code == 503
+        assert "450" not in str(exc.value.detail)
+
+    def test_confirm_503_when_standards_unavailable(self, monkeypatch):
+        from fastapi import HTTPException
+        _stub_confirm_all(monkeypatch, sepp_standards=(None, None))
+        req = _make_confirm_req()
+        with pytest.raises(HTTPException) as exc:
+            gf.confirm_and_calculate(req)
+        assert exc.value.status_code == 503
+        assert "450" not in str(exc.value.detail)
+
+    def test_confirm_503_when_max_floor_area_missing(self, monkeypatch):
+        """Mutation check: confirm derives floor area and cost from the max
+        standard — a half-loaded config must fail, not render a default."""
+        from fastapi import HTTPException
+        _stub_confirm_all(monkeypatch, sepp_standards=(450.0, None))
+        req = _make_confirm_req()
+        with pytest.raises(HTTPException) as exc:
+            gf.confirm_and_calculate(req)
+        assert exc.value.status_code == 503
+
+    def test_confirm_renders_injected_figures_not_constants(self, monkeypatch):
+        """Mutation check: inject non-default standards and they must flow
+        through to the response — a resurrected constant would pin 60.0."""
+        _stub_confirm_all(monkeypatch, sepp_standards=(500.0, 75.0))
+        req = _make_confirm_req()
+        resp = gf.confirm_and_calculate(req)
+        assert resp.max_floor_area_m2 == 75.0
+        assert resp.assumed_build_cost_aud == round(75.0 * 2500.0)
 
 
 # ---------------------------------------------------------------------------
@@ -661,10 +710,22 @@ class TestComputeConfidenceMutation:
         assert conf == "low"
         assert "pre-validation" in reason.lower()
 
-    def test_high_requires_all_three(self):
-        """Must be validated + counts agree + rent available."""
-        conf, _ = _compute_confidence(True, 2, 2, True)
+    def test_high_requires_all_four(self):
+        """Must be validated + a human reviewed the count + counts agree + rent.
+
+        FLIPPED 2026-08-06 (calibration Lane 1, item 3): the fourth condition
+        is new. Count equality alone used to earn "high", but the count was
+        seeded from the detector and the UI never let anyone change it, so
+        equality measured nothing.
+        """
+        conf, _ = _compute_confidence(True, 2, 2, True, count_source="secondary_detections_classified")
         assert conf == "high"
+
+    def test_high_needs_human_reviewed_count(self):
+        """Mutation killer: dropping the count_source check must fail here."""
+        assert _compute_confidence(True, 2, 2, True, count_source="unrecorded")[0] == "medium"
+        assert _compute_confidence(True, 2, 2, True, count_source="machine_default")[0] == "medium"
+        assert _compute_confidence(True, 2, 2, True)[0] == "medium"
 
     def test_counts_disagree_gives_medium(self):
         conf, reason = _compute_confidence(True, 2, 3, True)
@@ -704,22 +765,55 @@ class TestComputeConfidenceMutation:
         assert "structures" in reason
 
     def test_high_reason_mentions_bond_data(self):
-        _, reason = _compute_confidence(True, 1, 1, True)
+        _, reason = _compute_confidence(True, 1, 1, True, count_source="secondary_detections_classified")
         assert "bond" in reason.lower()
 
-    def test_medium_confirmed_1_was(self):
-        """1 confirmed → 'was', not 'were'."""
-        _, reason = _compute_confidence(True, 1, 3, True)
-        assert "was" in reason
+    def test_partial_answers_are_not_described_as_unchecked(self):
+        """Sol round-7: their answers already moved the count.
 
-    def test_medium_confirmed_2_were(self):
-        """2 confirmed → 'were', not 'was'."""
-        _, reason = _compute_confidence(True, 2, 3, True)
-        assert "were" in reason
+        Saying the total "has not been checked against the aerial image" when
+        the person classified some structures understates what they did — the
+        inverse of the overclaiming this branch removes, but still inaccurate.
+        """
+        _, reason = _compute_confidence(
+            True, 2, 3, True, count_source="machine_default", answers_given=1)
+        low = reason.lower()
+        assert "only partly been checked" in low
+        assert "was not reviewed structure by structure" not in low
+
+    def test_zero_answers_is_still_described_as_unchecked(self):
+        _, reason = _compute_confidence(
+            True, 3, 3, True, count_source="machine_default", answers_given=0)
+        assert "not reviewed structure by structure" in reason.lower()
+
+    def test_reason_never_claims_a_person_acted_when_none_did(self):
+        """The item-3 pin: no unreviewed reason string may imply human input.
+
+        The strings this replaces read "AI detected 1 structure, you confirmed
+        1 — counts agree" on reports where the user could not change the
+        count. Nine of the sixteen stored rows carry that sentence.
+        """
+        for confirmed, machine in ((1, 1), (2, 2), (1, 0), (2, 3)):
+            for source in ("unrecorded", "machine_default"):
+                _, reason = _compute_confidence(
+                    True, confirmed, machine, True, count_source=source
+                )
+                low = reason.lower()
+                assert "you confirmed" not in low, (confirmed, machine, source)
+                assert "you classified" not in low, (confirmed, machine, source)
+                assert "your answers" not in low, (confirmed, machine, source)
+                assert "not reviewed structure by structure" in low, (confirmed, machine, source)
+
+    def test_medium_disagreement_names_both_counts(self):
+        """Human recorded a different number from the detector — both appear."""
+        _, reason = _compute_confidence(True, 1, 3, True, count_source="secondary_detections_classified")
+        assert "3" in reason and "1" in reason
+        assert "your answers give" in reason.lower()
 
     def test_zero_counts_agree_high(self):
-        conf, _ = _compute_confidence(True, 0, 0, True)
-        assert conf == "high"
+        """FLIPPED 2026-08-06 (Lane 1, item 3) — needs a human reviewer now."""
+        assert _compute_confidence(True, 0, 0, True, count_source="secondary_detections_classified")[0] == "high"
+        assert _compute_confidence(True, 0, 0, True)[0] == "medium"
 
 
 # ---------------------------------------------------------------------------
@@ -1065,6 +1159,30 @@ def _stub_confirm_all(monkeypatch, heritage_auto=None, sepp_standards=None,
     return conn
 
 
+def _capture_json(monkeypatch):
+    """Make psycopg2.extras.Json a pass-through so the persisted dicts are readable.
+
+    conftest_mocks stubs psycopg2 with MagicMock, and MagicMock returns the
+    SAME object for every call — so the two Json(...) payloads in the confirm
+    INSERT are indistinguishable without this.
+    """
+    monkeypatch.setattr(gf.psycopg2.extras, "Json", lambda d: d)
+
+
+def _stored_inputs(conn):
+    """The `inputs` jsonb dict the confirm write actually persisted."""
+    rows = [p for sql, p in conn._cursor.executed
+            if p and "granny_flat_reports" in sql and "INSERT" in sql.upper()]
+    assert rows, (
+        "confirm must write a granny_flat_reports row; captured SQL: "
+        + repr([" ".join(s.split())[:60] for s, _ in conn._cursor.executed])
+    )
+    matches = [d for d in rows[-1]
+               if isinstance(d, dict) and "confirmed_structure_count" in d]
+    assert matches, "no inputs payload found in the INSERT params"
+    return matches[0]
+
+
 def _make_confirm_req(**overrides):
     defaults = dict(
         detect_id="test-detect-id",
@@ -1181,10 +1299,593 @@ class TestConfirmAndCalculate:
         assert resp.assumed_build_cost_aud is None
 
     def test_confidence_high_when_all_good(self, monkeypatch):
+        """FLIPPED 2026-08-06 (Lane 1, item 3): needs confirmed_count_source."""
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        # The detect row the review is checked against — without it the
+        # provenance is downgraded, which is the point of _resolve_count_source.
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        # Internally coherent: the detect row holds 2 structures, the one
+        # secondary structure is answered 'garage' (still a building), so the
+        # answers imply 2 — which is what is submitted.
+        req = _make_confirm_req(
+            confirmed_structure_count=2, samgeo_structure_count=2,
+            existing_secondary_dwelling=False,   # otherwise the >=2 cap applies
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        )
+        resp = gf.confirm_and_calculate(req)
+        assert resp.confidence == "high"
+
+    def test_secondary_detections_classified_is_downgraded_when_the_count_contradicts_the_answers(self, monkeypatch):
+        """Sol round-3 finding: index coverage alone was not enough.
+
+        Genuine answers can be paired with a count they do not support — by a
+        stale client or a crafted request — and index coverage would still
+        have granted 'secondary_detections_classified'.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        # Answers imply 2 (one of the three is part of the main dwelling)…
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=3,   # …but 3 is submitted
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "part_of_main"},
+                             {"index": 2, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "does not follow from the answers" in inputs["confirmed_count_source_note"]
+
+    def test_count_contradicting_its_answers_is_flagged_under_any_provenance(self, monkeypatch):
+        """Sol round-4: answers and a count that disagree matter whoever sent them.
+
+        The implied-count check used to run only when 'secondary_detections_classified' was
+        claimed, so the same contradiction went unrecorded under
+        machine_default.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "does not follow" in inputs["confirmed_count_source_note"]
+        assert any("not treated as reviewed" in w for w in resp.warnings), resp.warnings
+
+    def test_claim_is_refused_when_there_was_nothing_to_classify(self, monkeypatch):
+        """Sol round-8: a lot with only a principal dwelling.
+
+        `expected` is empty, so the coverage check passed vacuously and the
+        claim was granted for a review that could not have happened — the
+        self-agreement trap in the new field's clothes.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [{"index": 0, "is_main_dwelling": True}])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1,
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 0, "answer": "kept"}],
+        ))
+        assert resp.confidence == "medium"
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "nothing to classify" in inputs["confirmed_count_source_note"]
+
+    def test_eligibility_gate_uses_the_detected_count_not_the_submitted_one(self, monkeypatch):
+        """Sol round-11 (DQ-51 closed): the SEPP cl 53(1) gate keyed on caller input.
+
+        Three structures detected and both secondaries classified as garages,
+        but the request submits 1 — which used to clear the >=3 multi-structure
+        block and return a buildable result.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 1, "answer": "garage"},
+                             {"index": 2, "answer": "garage"}],
+        ))
+        assert resp.granny_flat_buildable is False
+        assert any("MULTIPLE_SECONDARY_STRUCTURES" in w for w in resp.warnings), resp.warnings
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_structure_count"] == 3
+        assert inputs["confirmed_structure_count_submitted"] == 1
+
+    def test_an_unknown_index_answer_cannot_reduce_the_effective_count(self, monkeypatch):
+        """Sol round-12: my own round-11 change introduced this.
+
+        `{index: 99, answer: 'rejected'}` excludes nothing — it names no real
+        structure — but it was counted, so it could pull a 3-structure lot
+        down to 2 and clear the cl 53(1) block on a structure that does not
+        exist.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 99, "answer": "rejected"}],
+        ))
+        assert _stored_inputs(conn)["confirmed_structure_count"] == 3
+        assert resp.granny_flat_buildable is False
+
+    def test_rejecting_the_main_dwelling_does_not_unblock_two_secondaries(self, monkeypatch):
+        """Sol round-15: the >=3 gate assumed the total included a principal dwelling.
+
+        Deselecting the main dwelling took a three-structure lot to two, so
+        the block did not fire even though both secondary candidates were
+        still there. Counting the secondaries directly says what cl 53(1)
+        actually means.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            structure_types=[{"index": 0, "answer": "rejected"},
+                             {"index": 1, "answer": "garage"},
+                             {"index": 2, "answer": "garage"}],
+        ))
+        assert resp.granny_flat_buildable is False
+        assert any("MULTIPLE_SECONDARY_STRUCTURES" in w for w in resp.warnings), resp.warnings
+
+    def test_an_unknown_index_cannot_force_the_existing_granny_flat_flag(self, monkeypatch):
+        """Sol round-15: the override read answers that storage had discarded.
+
+        {index: 99, answer: 'existing_gf'} names no detected structure, so it
+        must not flip the lot to ineligible under cl 53(1).
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            existing_secondary_dwelling=False,
+            structure_types=[{"index": 99, "answer": "existing_gf"}],
+        ))
+        assert _stored_inputs(conn)["existing_secondary_dwelling"] is False
+
+    def test_no_answers_falls_back_to_the_detector_not_the_caller(self, monkeypatch):
+        """Sol round-14: the last gap in the count chain.
+
+        With the detect run in hand and nobody having classified anything,
+        there is no basis for departing from what the detector found —
+        returning the caller's figure let a request submit 1 against a
+        three-structure run and skip the cl 53(1) block entirely.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1, structure_types=None))
+        assert _stored_inputs(conn)["confirmed_structure_count"] == 3
+        assert resp.granny_flat_buildable is False
+        assert any("MULTIPLE_SECONDARY_STRUCTURES" in w for w in resp.warnings), resp.warnings
+
+    def test_an_unmatched_detect_row_is_surfaced_like_a_failed_one(self, monkeypatch):
+        """Sol round-13: warning on the exception, not on the outcome.
+
+        An expired or mismatched detect_id/prop_id/coordinate triple returns
+        no row at all — just as blind as a failed read — and the count then
+        fell back to the caller's figure in silence, clearing cl 53(1).
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        conn._cursor._fetchone = None          # nothing matched
+        resp = gf.confirm_and_calculate(_make_confirm_req(confirmed_structure_count=1))
+        assert any("could not be re-read" in w for w in resp.warnings), resp.warnings
+
+    def test_discarded_answers_do_not_inflate_the_classified_count(self, monkeypatch):
+        """Sol round-13: the reason counted answers that were thrown away.
+
+        A referent-less answer is dropped from storage, so saying the count
+        reflects "the 1 structure(s) you classified" names a classification
+        that no longer exists anywhere.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=3,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 99, "answer": "garage"}],
+        ))
+        assert "you classified" not in resp.confidence_reason.lower()
+        assert _stored_inputs(conn)["structure_types"] == []
+
+    def test_a_failed_detect_row_read_is_surfaced_not_swallowed(self, monkeypatch):
+        """Sol round-12: a transient SQL error must not restore the old behaviour.
+
+        Sharing the SEPP fallback's `except` turned a failed read into a
+        silent None, and the count then fell back to the caller's figure with
+        nothing said about it.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+
+        original = gf._fetch_detect_row
+
+        def boom(c, r):
+            raise RuntimeError("transient SQL error")
+
+        monkeypatch.setattr(gf, "_fetch_detect_row", boom)
+        try:
+            resp = gf.confirm_and_calculate(_make_confirm_req())
+        finally:
+            monkeypatch.setattr(gf, "_fetch_detect_row", original)
+        assert any("could not be re-read" in w for w in resp.warnings), resp.warnings
+
+    def test_an_existing_granny_flat_answer_outranks_the_request_flag(self, monkeypatch):
+        """Sol round-11: the answer is the specific evidence for cl 53(1).
+
+        A report could record 'existing_gf' for a structure and still compute
+        eligibility as though the lot had none.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            existing_secondary_dwelling=False,      # contradicted by the answer
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "existing_gf"}],
+        ))
+        assert resp.granny_flat_buildable is False
+        inputs = _stored_inputs(conn)
+        assert inputs["existing_secondary_dwelling"] is True
+        assert inputs["existing_secondary_dwelling_submitted"] is False
+
+    def test_structures_without_an_index_fall_back_to_array_position(self, monkeypatch):
+        """Sol round-10: a detect row whose structures predate the index field.
+
+        Keying on s.get('index') alone made every answer look unknown against
+        a row of None identities — all answers dropped, note fired, and the
+        submitted count sailed on. The brief card already falls back to array
+        position; the server now agrees with it.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"is_main_dwelling": True},    # no 'index' key
+            {"is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            existing_secondary_dwelling=False,
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "secondary_detections_classified"
+        assert inputs["structure_types"] == [{"index": 1, "answer": "garage"}]
+        assert resp.confidence == "high"
+
+    def test_answers_with_no_detect_row_are_kept_out_of_the_calibration_column(self, monkeypatch):
+        """A label that cannot be joined to a building must not look usable.
+
+        With no detect row every answer is unjoinable, so writing them into
+        `structure_types` would hand a calibration consumer plausible human
+        classifications pointing at nothing.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = None          # no detect row resolves
+        gf.confirm_and_calculate(_make_confirm_req(
+            structure_types=[{"index": 1, "answer": "garage"}]))
+        inputs = _stored_inputs(conn)
+        assert inputs["structure_types"] == []
+        assert inputs["structure_types_unjoinable"] == [{"index": 1, "answer": "garage"}]
+
+    def test_unknown_index_is_flagged_under_any_provenance(self, monkeypatch):
+        """Sol round-6: an answer with no referent must never be stored quietly.
+
+        Under machine_default the unknown-index check used to be skipped
+        entirely, so {index: 99} could be persisted as a human label pointing
+        at a structure the detect run never produced.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1,
+            confirmed_count_source="machine_default",
+            structure_types=[{"index": 99, "answer": "rejected"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert "never produced" in inputs["confirmed_count_source_note"]
+        # Sol round-9: the note is not enough — a referent-less answer must not
+        # sit in the column a calibration consumer reads as human labels.
+        assert inputs["structure_types"] == []
+
+    def test_a_boolean_index_is_rejected_not_coerced(self):
+        """Sol round-16: pydantic turns True into 1 unless told otherwise.
+
+        {"index": true, "answer": "existing_gf"} would have attached that
+        answer to structure 1 and could move the cl 53(1) verdict.
+        """
+        import pydantic
+        with pytest.raises(pydantic.ValidationError):
+            _make_confirm_req(structure_types=[{"index": True, "answer": "existing_gf"}])
+
+    def test_duplicate_indexes_rejected_under_every_provenance(self):
+        """Sol round-4: two answers for one structure are ambiguous regardless."""
+        import pydantic
+        for source in ("machine_default", "unrecorded", None):
+            with pytest.raises(pydantic.ValidationError):
+                _make_confirm_req(
+                    confirmed_count_source=source,
+                    structure_types=[{"index": 1, "answer": "garage"},
+                                     {"index": 1, "answer": "rejected"}],
+                )
+
+    def test_report_id_lookup_is_bound_to_the_same_detect_run(self, monkeypatch):
+        """Sol round-4: a stale report_id must not win over the current detect run.
+
+        A report_id from an earlier detection on the same parcel would
+        otherwise return that run's tile, manifest and structures, and the
+        review would be evaluated against the wrong run.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        gf.confirm_and_calculate(_make_confirm_req(report_id="11111111-1111-1111-1111-111111111111"))
+        by_id = [(sql, p) for sql, p in conn._cursor.executed
+                 if "WHERE id = %s" in sql and "granny_flat_reports" in sql]
+        assert by_id, "the report_id carry-forward lookup must run when report_id is given"
+        sql, params = by_id[-1]
+        assert "outputs->>'detect_id' = %s" in sql
+        assert "test-detect-id" in [str(x) for x in params]
+
+    def test_machine_count_comes_from_the_detect_row_not_the_client_echo(self, monkeypatch):
+        """The detector's own count, not the number the client handed back.
+
+        `samgeo_structure_count` travels page -> route -> here, so comparing
+        the submitted count against it compared two caller-supplied numbers.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=2,
+            samgeo_structure_count=99,   # a lie the client could tell
+            existing_secondary_dwelling=False,
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        # 2 from the detect row, matching the submitted 2 — the echoed 99 is
+        # ignored, so this is 'high' rather than a spurious disagreement.
+        assert resp.confidence == "high"
+        assert "99" not in resp.confidence_reason
+
+    def test_secondary_detections_classified_without_answers_is_rejected(self, monkeypatch):
+        """Sol finding 3: a review claim with nothing recorded behind it.
+
+        Without this the provenance field is a self-assertion — a caller could
+        buy 'high' confidence by naming it, which is the unfalsifiable claim
+        the field exists to remove.
+        """
+        import pydantic
+        with pytest.raises(pydantic.ValidationError):
+            _make_confirm_req(confirmed_count_source="secondary_detections_classified")
+        with pytest.raises(pydantic.ValidationError):
+            _make_confirm_req(confirmed_count_source="secondary_detections_classified", structure_types=[])
+
+    def test_duplicate_structure_indexes_are_rejected(self):
+        """Two answers for the same structure make the answer set ambiguous."""
+        import pydantic
+        with pytest.raises(pydantic.ValidationError):
+            _make_confirm_req(
+                confirmed_count_source="secondary_detections_classified",
+                structure_types=[{"index": 1, "answer": "garage"},
+                                 {"index": 1, "answer": "rejected"}],
+            )
+
+    def test_secondary_detections_classified_is_downgraded_when_answers_name_unknown_structures(self, monkeypatch):
+        """Sol finding 1: the caller's provenance flag is not trusted.
+
+        An answer for a structure the detect run never produced cannot be a
+        review of that run, so it must not buy 'high'.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=1, samgeo_structure_count=1,
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 99, "answer": "garage"}],
+        ))
+        assert resp.confidence == "medium"
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert inputs["confirmed_count_source_claimed"] == "secondary_detections_classified"
+        assert "never produced" in inputs["confirmed_count_source_note"]
+
+    def test_secondary_detections_classified_is_downgraded_when_a_structure_has_no_answer(self, monkeypatch):
+        """Partial coverage is not a review of the count."""
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        # Count is consistent with the answers (3 detected, none excluded) so
+        # the mismatch check passes and the COVERAGE gap is what fires.
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=3,
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "no answer" in inputs["confirmed_count_source_note"]
+
+    def test_secondary_detections_classified_is_downgraded_when_the_detect_row_is_missing(self, monkeypatch):
+        """A review we cannot check is a review we do not credit.
+
+        Three states: absent evidence is its own outcome, never a pass.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = None
+        gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[{"index": 1, "answer": "garage"}],
+        ))
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "machine_default"
+        assert "could not be re-read" in inputs["confirmed_count_source_note"]
+
+    def test_carry_forward_is_scoped_to_the_submitted_parcel(self, monkeypatch):
+        """Sol finding 2: detect_id is caller-supplied, so it cannot match globally.
+
+        Unscoped, a request could quote another report's detect UUID and pull
+        that property's tile, manifest and structures into a report describing
+        a different address.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        gf.confirm_and_calculate(_make_confirm_req())
+        carry = [(sql, p) for sql, p in conn._cursor.executed
+                 if "detect_id" in sql and "SELECT" in sql.upper()]
+        assert carry, "the detect_id carry-forward lookup must run"
+        sql, params = carry[-1]
+        assert "prop_id = %s" in sql
+        assert "12345" in [str(x) for x in params]
+        # Sol round-7: prop_id and detect_id are BOTH caller-supplied, so the
+        # coordinates bound it too — otherwise a valid pair for one property
+        # could be sent with another property's address.
+        assert "abs(lat - %s)" in sql and "abs(lng - %s)" in sql
+        assert SYD_LAT in params and SYD_LNG in params
+
+    def test_carry_forward_finds_the_detect_row_by_detect_id(self, monkeypatch):
+        """Sol finding 2: the carry-forward could almost never resolve.
+
+        `id` never equals `detect_id` (0 of 87 production rows) and neither
+        frontend sends report_id on confirm — the Next route mints a fresh
+        UUID — so `WHERE id = req.report_id` missed nearly every time. Measured
+        consequence: of 16 confirm rows, 0 carried an execution_manifest and 1
+        carried a tile. Without this fallback the new structure answers would
+        be stored with their referent already deleted.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = ("tile-b64", {"algorithm_version": "x"},
+                                  [{"index": 1, "area_m2": 30}])
+        gf.confirm_and_calculate(_make_confirm_req(report_id=None))
+
+        lookups = [sql for sql, _ in conn._cursor.executed if "detect_id" in sql]
+        assert lookups, "confirm must fall back to the detect_id lookup when report_id is absent"
+
+        rows = [p for sql, p in conn._cursor.executed
+                if p and "granny_flat_reports" in sql and "INSERT" in sql.upper()]
+        outputs = [d for d in rows[-1]
+                   if isinstance(d, dict) and "granny_flat_buildable" in d][0]
+        assert outputs["detected_structures"] == [{"index": 1, "area_m2": 30}]
+        assert outputs["tile_b64"] == "tile-b64"
+
+    def test_confirm_persists_count_provenance_join_key_and_answers(self, monkeypatch):
+        """Lane 1 items 3+4: the label data must reach the row, not the wire only.
+
+        Before this, `detect_id` was accepted and dropped, the four-option
+        per-structure answers never left the browser, and nothing recorded
+        whether a person had touched the count — which is why the 16 stored
+        confirm rows cannot be told apart from machine echoes.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        req = _make_confirm_req(
+            confirmed_structure_count=2,
+            samgeo_structure_count=3,
+            confirmed_count_source="secondary_detections_classified",
+            structure_types=[
+                {"index": 1, "answer": "part_of_main"},
+                {"index": 2, "answer": "garage"},
+            ],
+        )
+        gf.confirm_and_calculate(req)
+
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "secondary_detections_classified"
+        assert inputs["detect_id"] == "test-detect-id"
+        assert inputs["structure_types"] == [
+            {"index": 1, "answer": "part_of_main"},
+            {"index": 2, "answer": "garage"},
+        ]
+
+    def test_confirm_records_unrecorded_when_caller_is_silent(self, monkeypatch):
+        """Absent provenance is stored as its own state, never as a human check."""
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        gf.confirm_and_calculate(_make_confirm_req())
+
+        inputs = _stored_inputs(conn)
+        assert inputs["confirmed_count_source"] == "unrecorded"
+        assert inputs["structure_types"] is None
+
+    def test_confidence_not_high_when_count_provenance_absent(self, monkeypatch):
+        """End-to-end pin: an old-shape caller (no provenance) cannot reach high."""
         _stub_confirm_all(monkeypatch, rental_data=500.0)
         req = _make_confirm_req(confirmed_structure_count=1, samgeo_structure_count=1)
         resp = gf.confirm_and_calculate(req)
-        assert resp.confidence == "high"
+        assert resp.confidence == "medium"
+        assert "not reviewed structure by structure" in resp.confidence_reason.lower()
 
     def test_confidence_capped_when_lot_area_none(self, monkeypatch):
         """High confidence → capped to medium when lot_area unknown."""
@@ -1422,11 +2123,16 @@ class TestConstants:
     def test_max_aspect_ratio(self):
         assert MAX_ASPECT_RATIO == 8.0
 
-    def test_sepp_fallback_min_lot(self):
-        assert _SEPP_FALLBACK_MIN_LOT_M2 == 450.0
-
-    def test_sepp_fallback_max_gf(self):
-        assert _SEPP_FALLBACK_MAX_GF_AREA_M2 == 60.0
+    def test_sepp_fallback_constants_never_return(self):
+        """Source guard (#817): the SEPP fallback constants and any hardcoded
+        450 / 60 regulatory default must not be reintroduced — standards render
+        only from housing_sepp_standards; absence fails closed (503)."""
+        src = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "services" / "granny_flat.py"
+        ).read_text(encoding="utf-8")
+        for phrase in ("_SEPP_FALLBACK", "= 450", "fallback 450", "fallback 60"):
+            assert phrase not in src, f"SEPP fallback reintroduced in granny_flat.py: {phrase!r}"
 
     def test_detection_prompts_count(self):
         assert len(DETECTION_PROMPTS) == 3
@@ -1524,6 +2230,32 @@ class TestModels:
             estimated_weekly_rent_aud=None, rental_yield_annual_pct=None,
             assumed_build_cost_aud=None,
             confidence="high", confidence_reason="test",
+            review_state="reviewed", review_state_label="L",
+            review_state_detail="D",
             data_sources=[], warnings=[],
         )
         assert resp.granny_flat_buildable is True
+
+    def test_confirm_response_requires_review_state(self):
+        """The state a report is in is not optional on the wire.
+
+        Defaulting it would let a code path return no state and have the
+        surface render an empty badge — the silence the whole change removes.
+        A missing state must be a 500 at the boundary, not a blank line in a
+        paid PDF.
+        """
+        import pytest as _pytest
+        for missing in ("review_state", "review_state_label", "review_state_detail"):
+            kwargs = dict(
+                report_id="r", address="a",
+                granny_flat_buildable=True, max_floor_area_m2=60.0,
+                estimated_weekly_rent_aud=None, rental_yield_annual_pct=None,
+                assumed_build_cost_aud=None,
+                confidence="high", confidence_reason="test",
+                review_state="reviewed", review_state_label="L",
+                review_state_detail="D",
+                data_sources=[], warnings=[],
+            )
+            del kwargs[missing]
+            with _pytest.raises(Exception):
+                GrannyFlatConfirmResponse(**kwargs)

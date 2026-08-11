@@ -152,6 +152,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
                 { label: 'Pricing', href: '/pricing' },
                 { label: 'Embed program', href: '/for/builders' },
                 { label: 'Contact', href: '/contact' },
+                { label: 'Site directory', href: '/site-directory' },
                 { label: 'Privacy', href: '/privacy' },
                 { label: 'Terms', href: '/terms' },
               ].map(({ label, href }) => (

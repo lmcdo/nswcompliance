@@ -137,10 +137,126 @@ _LGA_SLUG_TO_DCP_NAME: dict[str, str] = {
 }
 
 
+# prior-art-checked: no existing as-at formatter or plan-date lookup exists
+# (dcp_plan_as_at is new in migration 063; repo grep for as_at rendering found
+# only the brief's DataField.as_at, which stamps the QUERY date, not the plan
+# date). This is the single shared wording source so every surface renders the
+# same basis-appropriate sentence.
+_MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
+                "August", "September", "October", "November", "December"]
+
+
+def _format_as_at_date(iso_date: str, precision: str) -> Optional[str]:
+    """Render an ISO date at ONLY the precision the source stated.
+
+    A month-precision date stored as the 1st must render "March 2026", never
+    "1 March 2026" (precision-honesty rule).
+    """
+    if not iso_date:
+        return None
+    try:
+        year_s, month_s, day_s = iso_date.split("-")
+        y, m, d = int(year_s), int(month_s), int(day_s)  # qa-ignore: split parts are str, never None; bad numerics land in the except arm
+        month = _MONTH_NAMES[m - 1]
+    except (ValueError, IndexError, AttributeError):
+        return None
+    if precision == "day":
+        return f"{d} {month} {y}"
+    if precision == "month":
+        return f"{month} {y}"
+    if precision == "year":
+        return str(y)
+    return None
+
+
+def format_as_at_line(as_at: Optional[dict]) -> Optional[str]:
+    """The one wording source for DCP as-at lines (language-ladder compliant:
+    'stated'/'observed', never 'verified'/'confirmed'/'current law')."""
+    if not as_at or not as_at.get("date"):
+        return None
+    shown = _format_as_at_date(as_at["date"], as_at.get("precision") or "day")
+    if not shown:
+        return None
+    basis = as_at.get("basis")
+    kind = as_at.get("kind")
+    if basis == "portal_plan_record":
+        where = "date stated in the NSW Planning Portal plan record"
+    elif basis == "stated_in_document":
+        where = "date stated in the plan document"
+    elif basis == "observed_current":
+        # Claims ONLY the stored fact: every registered source document's URL
+        # was checked on/after this date. NOT "current version" — a council
+        # can publish a superseding amendment at another URL and a URL check
+        # cannot see it (Sol finding, 2026-08-03).
+        return (f"All registered source documents for this plan were last "
+                f"checked on or after {shown}; an in-force date is not "
+                f"available")
+    else:
+        return None
+    if kind == "amended":
+        return f"As amended {shown} ({where})"
+    if kind == "adopted":
+        return f"Adopted {shown} ({where})"
+    return f"In force from {shown} ({where})"
+
+
+def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
+    """Plan-level as-at with basis, by the settled authority order:
+    portal plan record > the document's own statement > registry observation.
+
+    Two deliberate refusals (Sol findings, 2026-08-03):
+      - A portal date that CONTRADICTS the document's own stated date is a
+        conflict, not a pick-one — no date renders until adjudicated (the
+        disagreement is surfaced by scripts/check_dcp_as_at_coverage.py).
+      - The observed fallback exists only when EVERY active registry chapter
+        for the council has been checked, and it carries the OLDEST check
+        date — MAX would let one freshly-checked chapter speak for a plan
+        whose other chapters were last observed years earlier.
+
+    Returns None when nothing defensible exists (a claim rendered with no
+    date is counted by the check script, never papered over). Raises on DB
+    errors — the caller's except turns that into 'source unavailable', which
+    is distinct from 'checked, none exists'.
+    """
+    cur.execute(
+        """
+        SELECT p.portal_date::text, p.portal_date_precision, p.portal_date_kind,
+               p.stated_date::text, p.stated_date_precision, p.stated_date_kind,
+               obs.observed::date::text
+          FROM (SELECT CASE WHEN COUNT(*) > 0
+                             AND COUNT(*) = COUNT(url_last_checked)
+                            THEN MIN(url_last_checked) END AS observed
+                  FROM dcp_chapter_registry
+                 WHERE council = %s AND is_active = TRUE) obs
+          LEFT JOIN dcp_plan_as_at p ON p.lga = %s
+        """,
+        (lga_slug, lga_slug),
+    )
+    row = cur.fetchone()
+    if not row or len(row) != 7:
+        return None
+    (portal_d, portal_p, portal_k, stated_d, stated_p, stated_k, observed) = row
+    if portal_d and stated_d and portal_d != stated_d:
+        return None  # conflicting evidence — adjudicate, never auto-pick
+    if portal_d:
+        return {"date": portal_d, "precision": portal_p, "kind": portal_k,
+                "basis": "portal_plan_record"}
+    if stated_d:
+        return {"date": stated_d, "precision": stated_p, "kind": stated_k,
+                "basis": "stated_in_document"}
+    if observed:
+        return {"date": observed, "precision": "day", "kind": None,
+                "basis": "observed_current"}
+    return None
+
+
+# prior-art-checked: same function, additive kwarg only — the proxy endpoint
+# needs failure distinguishable from checked-none; no new capability.
 def fetch_dcp_setbacks(
     conn,
     lga_slug: Optional[str],
     zone_code: Optional[str] = None,
+    raise_on_error: bool = False,
 ) -> Optional[dict]:
     """Return DCP setback data from dcp_setback_controls.
 
@@ -165,11 +281,15 @@ def fetch_dcp_setbacks(
 
     try:
         cur = conn.cursor()
+        # prior-art-checked: same guarded query gains three additive columns
+        # (source_chapter_key, pdf_page, dcp_version) so the /pipeline/
+        # dcp-controls proxy can serve citation shaping data from THE single
+        # guarded implementation — item 5 consolidation, no second query path.
         cur.execute(
             """
             SELECT dev_type, control_type, value_min, value_max, unit,
                    condition, source_text, section_ref, applicability,
-                   needs_review
+                   needs_review, source_chapter_key, pdf_page, dcp_version
             FROM dcp_setback_controls
             WHERE lga = %s AND is_current = TRUE
               AND (needs_review IS NULL OR needs_review = FALSE)
@@ -182,7 +302,8 @@ def fetch_dcp_setbacks(
                     WHEN 'max_height'    THEN 3
                     ELSE 4
                 END,
-                value_min NULLS LAST
+                value_min NULLS LAST,
+                section_ref NULLS LAST, id
             """,
             (lga_slug,),
         )
@@ -200,6 +321,52 @@ def fetch_dcp_setbacks(
             (lga_slug,),
         )
         reg = cur.fetchone()
+
+        # Per-chapter PDF URLs so proxy consumers can build page-anchored
+        # citation links without their own registry SQL. Savepoint-isolated
+        # like the as-at probe: a failure degrades to an empty map without
+        # poisoning the transaction for the probe below.
+        registry_pdf_urls: dict = {}
+        try:
+            cur.execute("SAVEPOINT pdf_map_probe")
+            try:
+                cur.execute(
+                    """
+                    SELECT chapter_key, r2_public_pdf_url
+                    FROM dcp_chapter_registry
+                    WHERE council = %s AND is_active = TRUE
+                      AND r2_public_pdf_url IS NOT NULL
+                    """,
+                    (lga_slug,),
+                )
+                registry_pdf_urls = {k: u for k, u in (cur.fetchall() or []) if k}
+                cur.execute("RELEASE SAVEPOINT pdf_map_probe")
+            except Exception as e:
+                logger.warning("fetch_dcp_setbacks registry pdf map: %s", e)
+                cur.execute("ROLLBACK TO SAVEPOINT pdf_map_probe")
+        except Exception as e:
+            logger.warning("fetch_dcp_setbacks pdf-map savepoint: %s", e)
+
+        # Plan-level "as at" (campaign item 3). A failure here must not take
+        # the controls down with it — but it must also stay DISTINGUISHABLE
+        # from "checked, no date exists" (typed-absence doctrine): 'resolved'
+        # renders the dated line, 'absent' renders nothing and is counted by
+        # the coverage check, 'unavailable' renders a could-not-be-retrieved
+        # disclosure. The probe runs inside a SAVEPOINT so a failure never
+        # rolls back work the CALLER may have pending on this connection.
+        as_at = None
+        as_at_status = "unavailable"
+        try:
+            cur.execute("SAVEPOINT as_at_probe")
+            try:
+                as_at = _plan_as_at(cur, lga_slug)
+                as_at_status = "resolved" if as_at else "absent"
+                cur.execute("RELEASE SAVEPOINT as_at_probe")
+            except Exception as e:
+                logger.warning("fetch_dcp_setbacks as-at lookup: %s", e)
+                cur.execute("ROLLBACK TO SAVEPOINT as_at_probe")
+        except Exception as e:
+            logger.warning("fetch_dcp_setbacks as-at savepoint: %s", e)
         cur.close()
     except Exception as e:
         logger.warning("fetch_dcp_setbacks: %s", e)
@@ -207,6 +374,13 @@ def fetch_dcp_setbacks(
             conn.rollback()
         except Exception:
             pass
+        if raise_on_error:
+            # The /pipeline/dcp-controls proxy needs failure DISTINGUISHABLE
+            # from "checked, zero rows" — a swallowed failure served as
+            # available:false let every proxy consumer render an outage as a
+            # clean no-controls result (Sol finding, 2026-08-04). Legacy
+            # in-process callers keep the never-raises contract.
+            raise
         return None
 
     if not rows:
@@ -223,7 +397,9 @@ def fetch_dcp_setbacks(
     # Zone advisory: strip prefix digit from zone code (e.g. "R2" from "R2 Low Density")
     zone_prefix = (zone_code.strip().split()[0].upper() if zone_code and zone_code.strip() else "")
 
-    for dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability, needs_review in rows:
+    for (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
+         section_ref, applicability, needs_review, source_chapter_key,
+         pdf_page, dcp_version) in rows:
         # Fail-closed on currency (mirrors the web route /api/dcp/structured-controls):
         # a control flagged for human review after a DCP amendment must never render
         # as an authoritative number in the PDF. The SQL WHERE already excludes
@@ -272,6 +448,13 @@ def fetch_dcp_setbacks(
             "unit":         unit or "m",
             "clause":       section_ref or "",
             "notes":        condition or "",
+            # Raw citation fields for the /pipeline/dcp-controls proxy (item
+            # 5): TS consumers shape these; the guards stay HERE.
+            "source_text":  source_text,
+            "source_chapter_key": source_chapter_key,
+            "pdf_page":     pdf_page,
+            "dcp_version":  dcp_version,
+            "applicability": applicability,
         }
 
         is_sd = (
@@ -283,7 +466,28 @@ def fetch_dcp_setbacks(
         else:
             dh_setbacks.append(entry)
 
-    first_ref = rows[0][7] or ""
+    # Cite a clause that SURVIVED the filters above, never rows[0].
+    #
+    # Two `continue` guards drop rows before they reach the report: a control
+    # flagged needs_review after a DCP amendment, and a zone_specific control whose
+    # condition names zones that exclude this property's zone. rows[0] is the raw
+    # query's first row, so it can be one of those — meaning `clause_ref`, the
+    # citation a conveyancer reads, could point at a control this very function
+    # decided NOT to show, including one for a different zone entirely.
+    #
+    # Citing the source is the product's core claim, so a citation that does not
+    # match the rendered controls is worse than no citation. If everything was
+    # filtered out, return "" and let the caller render nothing rather than
+    # inventing a reference.
+    # Both lists are searched, not `dh_setbacks or sd_setbacks`: a dwelling-house
+    # control can be rendered with a blank section_ref while a secondary-dwelling
+    # control alongside it carries a real one. The `or` form would stop at the
+    # non-empty dh list and silently emit no citation even though a shown control
+    # had one.
+    first_ref = next(
+        (e["clause"] for e in [*dh_setbacks, *sd_setbacks] if e.get("clause")),
+        "",
+    )
 
     # Canterbury-Bankstown: two former regimes stored together — flag for render
     caveat: Optional[str] = None
@@ -307,6 +511,20 @@ def fetch_dcp_setbacks(
         "sd_setbacks":      sd_setbacks,
         "is_da_path":       True,
         "dcp_url":          dcp_url,
+        # Typed three-state provenance: resolved (dated line) / absent (no
+        # line — counted by the coverage check) / unavailable (visible
+        # could-not-be-retrieved disclosure, never mistakable for a completed
+        # lookup). Lines are preformatted HERE so every surface words them
+        # identically.
+        "registry_pdf_urls": registry_pdf_urls,
+        "as_at":            as_at,
+        "as_at_status":     as_at_status,
+        "as_at_line":       (format_as_at_line(as_at)
+                             if as_at_status == "resolved" else
+                             ("Date provenance for this plan could not be "
+                              "retrieved for this report; the controls in "
+                              "this section were fetched normally"
+                              if as_at_status == "unavailable" else None)),
     }
 
 
@@ -507,7 +725,7 @@ def fetch_sepp_housing_standards(
             f"""
             SELECT development_type, standard_type, numeric_value, unit,
                    applicable_zones, source_clause, source_document,
-                   legislation_url, effective_date
+                   legislation_url, effective_date, stale_since, stale_reason
             FROM housing_sepp_standards
             {where}
             ORDER BY development_type, standard_type
@@ -535,6 +753,10 @@ def fetch_sepp_housing_standards(
             "source_document": r[6],
             "legislation_url": r[7],
             "effective_date": str(r[8]) if r[8] else None,
+            # Auto-stale (W3): set by the legislation monitor on a source
+            # instrument version change; values still serve, with a notice.
+            "stale_since": r[9],
+            "stale_reason": r[10],
         }
         for r in rows
     ]
@@ -549,7 +771,7 @@ def get_sepp_standard_value(
     """Convenience: return a single numeric value for a specific standard.
 
     E.g. get_sepp_standard_value(conn, "secondary_dwelling", "min_lot_size", "R2")
-    returns 450.0
+    returns the stored numeric value for that standard
 
     Returns None if not found. Never raises.
     """
@@ -616,6 +838,41 @@ def fetch_tax_thresholds(
     }
 
 
+def _validate_sepp_sd_config(min_lot_row: Optional[dict]) -> Optional[dict]:
+    """Validate the min_lot_size row into calc_feasibility's sepp_standards shape.
+
+    Returns {"sd_min_lot": float, "sd_zones": set[str]} only when the minimum
+    is a finite positive number and every zone entry is a non-empty string.
+    A zero/NaN minimum would silently pass every lot, and a null zone entry
+    would crash sorted() mid-render — corrupt rows fail closed to None, which
+    renders "Not assessed" downstream.
+    """
+    if not min_lot_row:
+        return None
+    try:
+        min_lot = float(min_lot_row.get("numeric_value"))
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(min_lot) or min_lot <= 0:
+        return None
+    raw_zones = min_lot_row.get("applicable_zones")
+    if not isinstance(raw_zones, (list, tuple, set)):
+        return None
+    zones = set()
+    for z in raw_zones:
+        if not isinstance(z, str) or not z.strip():
+            return None
+        zones.add(z.strip())
+    if not zones:
+        return None
+    out = {"sd_min_lot": min_lot, "sd_zones": zones}
+    # Auto-stale passthrough (W3): the caller renders a notice when present.
+    if min_lot_row.get("stale_since"):
+        out["stale_since"] = min_lot_row.get("stale_since")
+        out["stale_reason"] = min_lot_row.get("stale_reason")
+    return out
+
+
 # prior-art-checked: MOVED from services/conveyancing.py._load_regulatory_configs
 # (not a fork — that module now imports this) so the CLI report path can inject
 # the same DB-loaded configs instead of silently rendering without them.
@@ -623,27 +880,30 @@ def load_regulatory_configs(db_url: Optional[str]) -> tuple[Optional[dict], Opti
     """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
 
     Returns (sepp_standards, tax_config) — both None if DB unavailable.
-    A None tax_config renders fail-visible as "Not assessed" downstream.
+    A None element renders fail-visible as "Not assessed" downstream.
     """
     if not db_url:
-        logger.warning("Regulatory configs: DATABASE_URL not set — SEPP fallback, land tax 'Not assessed'")
+        logger.warning("Regulatory configs: DATABASE_URL not set — secondary dwelling and land tax render 'Not assessed'")
         return None, None
     conn = None
     try:
         conn = psycopg2.connect(db_url)
         conn.autocommit = True
-        # SEPP secondary dwelling standards
+        # SEPP secondary dwelling standards — NO fallback (#684): a missing or
+        # incomplete min_lot_size row returns None, and the secondary-dwelling
+        # feasibility row renders "Not assessed" downstream. A hardcoded
+        # regulatory figure must never render silently.
         sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
-        sepp_standards = None
+        min_lot_row = None
         if sd_rows:
             sd_by_type = {r["standard_type"]: r for r in sd_rows}
             min_lot_row = sd_by_type.get("min_lot_size")
-            sepp_standards = {
-                "sd_min_lot": min_lot_row["numeric_value"] if min_lot_row else 450,
-                "sd_zones": set(min_lot_row["applicable_zones"]) if min_lot_row else {"R1", "R2", "R3", "R4"},
-            }
-        else:
-            logger.warning("Regulatory configs: no secondary_dwelling rows in housing_sepp_standards — using fallback")
+        sepp_standards = _validate_sepp_sd_config(min_lot_row)
+        if sepp_standards is None:
+            logger.warning(
+                "Regulatory configs: no valid min_lot_size row for secondary_dwelling — "
+                "secondary-dwelling feasibility renders 'Not assessed'"
+            )
         # Tax thresholds — no fallback; None renders "Not assessed"
         tax_config = fetch_tax_thresholds(conn)
         if tax_config is None:
@@ -781,9 +1041,9 @@ def check_regulatory_freshness(conn) -> list[str]:
         rows = {r[0]: float(r[1]) for r in cur.fetchall()}
         cur.close()
         if "min_lot_size" not in rows:
-            warnings.append("SEPP: missing min_lot_size for secondary_dwelling — fallback 450m² in use")
+            warnings.append("SEPP: missing min_lot_size for secondary_dwelling — feasibility row renders 'Not assessed'")
         if "max_floor_area" not in rows:
-            warnings.append("SEPP: missing max_floor_area for secondary_dwelling — fallback 60m² in use")
+            warnings.append("SEPP: missing max_floor_area for secondary_dwelling")
     except Exception as e:
         warnings.append(f"SEPP: query failed — {e}")
         try:

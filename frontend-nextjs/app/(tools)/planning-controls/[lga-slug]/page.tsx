@@ -7,6 +7,8 @@ import { BreadcrumbJsonLd, DatasetJsonLd } from '@/lib/json-ld'
 import { query } from '@/lib/database/pool-manager'
 
 export const revalidate = 86400
+// Only slugs from generateStaticParams render; unknown slugs 404 (not 500).
+export const dynamicParams = false
 
 export function generateStaticParams() {
   return VERIFY_LGAS.map(lga => ({ 'lga-slug': lga.slug }))

@@ -65,10 +65,24 @@ class TestTodUpliftRenderGate:
         out = build_tod_uplift_lines({"in_tod": False}, _kogarah_capacity(), False)
         assert out["render"] is False
 
-    def test_tod_lookup_failed_does_not_render(self):
-        """fetch_tod_catchment None (both layers failed) → silent, no false
-        'not in TOD' claim (opportunity disclosure — absence is safe)."""
+    def test_tod_lookup_failed_renders_not_assessed_never_vanishes(self):
+        """THE fix-4 pin: fetch_tod_catchment None (both layers failed) must
+        RENDER as not-assessed. The old doctrine returned render False —
+        the section vanished, indistinguishable from 'checked, not in a
+        catchment' (DQ-36's silent-omission twin). FAILS on pre-change code."""
         out = build_tod_uplift_lines(None, _kogarah_capacity(), False)
+        assert out["render"] is True
+        assert out["not_assessed"] is True
+        assert "could not be completed" in out["disclosure"]
+        assert "no claim" in out["disclosure"].lower()
+        # No uplift/held-back content for an unknown catchment:
+        assert out["held_line"] is None
+        assert out["ledger"] == []
+
+    def test_tod_lookup_failed_on_strata_stays_suppressed(self):
+        """Strata suppression outranks the failed-check disclosure — a single
+        strata lot is not independently redevelopable either way."""
+        out = build_tod_uplift_lines(None, _kogarah_capacity(), True)
         assert out["render"] is False
 
     def test_strata_lot_suppresses_block(self):

@@ -13,34 +13,92 @@
  *
  * Standard Instrument (Local Environmental Plans) Order 2006
  * @see https://legislation.nsw.gov.au/view/html/inforce/current/sl-2006-0155
+ *
+ * prior-art-checked: this edits the existing NSW_STANDARD_ZONES in this same
+ * file in place (not a new parallel implementation) — the guard's suggested
+ * matches are unrelated blog pages and the already-known
+ * environmental-relevance-filter.ts duplicate (itself flagged for
+ * consolidation in DQ-30, .claude/DATA_QUALITY_TRACKER.md, not reused here
+ * because it is a separate hardcode being replaced, not a shared utility).
+ *
+ * DQ-30: the zone lists below were previously a flat, independently-
+ * maintained mix of legacy (B1-B8, IN1-IN4) and current (E1-E5, MU1) codes,
+ * hand-curated with no shared source — the kind of duplication that let the
+ * same B/E mismatch happen twice in this codebase (once here, once in
+ * `dcp_general_requirements`/zone-translation.ts, fixed independently in
+ * Nov 2025). Now built by expanding each current-era zone through
+ * getZoneAliases() from the single shared source (shared/zone-taxonomy.json),
+ * so the legacy/current mapping can never drift between this file and
+ * zone-translation.ts again.
  */
+import { getZoneAliases } from './zone-translation';
+
+function aliasesOf(...currentZones: string[]): string[] {
+  return Array.from(new Set(currentZones.flatMap(z => getZoneAliases(z))));
+}
+
 export const NSW_STANDARD_ZONES = {
-  /** Residential zones that permit dwelling houses and associated development */
+  /** Residential zones that permit dwelling houses and associated development.
+   * R-zone codes were not renamed by the 2023 Employment Zones Reform. */
   RESIDENTIAL: ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'] as const,
 
-  /** Zones that permit apartment developments (including post-LMR reforms) */
+  /** Zones that permit apartment developments (including post-LMR reforms):
+   * residential R1-R4, plus centre/mixed-use zones (current + their legacy
+   * B-zone aliases) that permit shop-top housing / residential flat buildings. */
   APARTMENT_PERMITTING: [
-    'R1',   // General Residential - now permits low-rise apartments (LMR reforms July 2024)
-    'R2',   // Low Density Residential - now permits low-rise apartments (LMR reforms July 2024)
-    'R3',   // Medium Density Residential
-    'R4',   // High Density Residential
-    'B1',   // Neighbourhood Centre
-    'B2',   // Local Centre
-    'B3',   // Commercial Core
-    'B4',   // Mixed Use
-    'B5',   // Business Development
-    'B6',   // Enterprise Corridor
-    'MU1',  // Mixed Use (new naming convention)
-    'E1',   // Local Centre (new naming convention)
-    'E2',   // Commercial Centre (new naming convention)
+    'R1', 'R2', 'R3', 'R4',
+    ...aliasesOf('E1', 'E2', 'MU1'),
   ] as const,
 
-  /** Industrial and employment zones */
-  INDUSTRIAL: ['IN1', 'IN2', 'IN3', 'E4', 'E5', 'B5', 'B6', 'B7', 'E3'] as const,
+  /** Industrial and employment zones: E3 (Productivity Support), E4 (General
+   * Industrial), E5 (Heavy Industrial) plus their legacy B/IN aliases. */
+  INDUSTRIAL: aliasesOf('E3', 'E4', 'E5'),
 
-  /** Business/commercial zones */
-  BUSINESS: ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'E1', 'E2', 'E3', 'E4', 'E5'] as const,
+  /** Business/commercial zones: all Employment zones (E1-E5) and Mixed Use
+   * (MU1), plus their legacy B-zone aliases. */
+  BUSINESS: aliasesOf('E1', 'E2', 'E3', 'E4', 'E5', 'MU1'),
 } as const;
+
+/**
+ * Zones eligible for Housing SEPP 2021 provisions: residential R1-R4 plus
+ * centre/mixed-use zones that permit shop-top housing (E1, MU1 — current
+ * codes; were B1/B2/B4).
+ *
+ * DQ-30 (.claude/DATA_QUALITY_TRACKER.md): this exact literal
+ * (`['R1','R2','R3','R4','B1','B2','B4']`) was independently hardcoded,
+ * byte-for-byte identical, in 4 separate files (lib/see/seeBuilders.ts,
+ * lib/see/section-aggregation.ts, lib/pdf/see-helpers.ts,
+ * components/pdf/ContextSection.tsx) — all now import this single export
+ * instead. B1/B2/B4 are retired NSW zone codes (April 2023 Employment Zones
+ * Reform); each is mechanically translated to its real current equivalent
+ * (B1,B2->E1; B4->MU1) — not a scope change, the same zones under their
+ * current names. This list is matched against a live property's CURRENT
+ * zone code (from the Planning Portal), which is never a legacy code, so
+ * unlike APARTMENT_PERMITTING/INDUSTRIAL/BUSINESS above it deliberately
+ * does NOT include legacy aliases via aliasesOf() — those exist for
+ * matching zone codes stored in old DB rows, not live property zones.
+ */
+// Not `as const`: every consumer calls `.includes(zoneCode)` with a plain
+// `string`, which `as const`'s literal-union element type would reject.
+export const HOUSING_SEPP_ZONES: readonly string[] = ['R1', 'R2', 'R3', 'R4', 'E1', 'MU1'];
+
+/**
+ * Residential zones eligible for the Exempt & Complying Development Codes
+ * (CDC) pathway: R1-R4 and RU5, deliberately NOT including R5 (Large Lot
+ * Residential) — the same 5-zone set was independently declared, identically,
+ * in 3 separate files, which is itself evidence the R5 exclusion is
+ * intentional rather than an oversight (unlike the SEPP Housing 2021 cl 49
+ * general "residential zone" definition below, R1-R5+RU5, which does include
+ * R5). DQ-30 (.claude/DATA_QUALITY_TRACKER.md): consolidated from
+ * `components/compliance/CDCScreener.tsx`,
+ * `components/compliance/ExemptComplyingProvisions.tsx`, and
+ * `app/api/sepp/exempt-complying/route.ts` — do NOT merge this with
+ * NSW_STANDARD_ZONES.RESIDENTIAL, they are deliberately different scopes.
+ * Confirm against the actual Housing Code (SEPP Exempt and Complying
+ * Development Codes 2008, Schedule 1) before changing either list, not by
+ * inference.
+ */
+export const CDC_HOUSING_CODE_ZONES: readonly string[] = ['R1', 'R2', 'R3', 'R4', 'RU5'];
 
 /**
  * Transport Oriented Development (TOD) Thresholds
@@ -191,6 +249,15 @@ export const BASIX_STANDARDS = {
  * @see https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572
  */
 export const PATTERN_BOOK_CDC = {
+  /**
+   * Zones eligible for the Pattern Book CDC pathway: R1, R2, R3 only — a
+   * narrower set than CDC_HOUSING_CODE_ZONES (R1-R4+RU5) and deliberately not
+   * merged with it (Pattern Book excludes R4). DQ-30
+   * (.claude/DATA_QUALITY_TRACKER.md): previously an independent hardcoded
+   * literal in `lib/pattern-book-eligibility/check-exclusions.ts`.
+   */
+  ELIGIBLE_ZONES: ['R1', 'R2', 'R3'] as const,
+
   /** Number of exclusion triggers extracted from Schedule 1 (validated database count) */
   EXCLUSION_TRIGGERS_COUNT: 32,
 

@@ -178,8 +178,23 @@ def _make_row(
     vmin=6.0, vmax=None, unit="m",
     condition=None, source_text=None,
     section_ref="C2.1", applicability="universal_residential",
+    # Added 2026-08-09. fetch_dcp_setbacks gained four columns —
+    # needs_review, source_chapter_key, pdf_page, dcp_version — and this
+    # fixture still returned the old 9-tuple, so every test using it died on
+    # "not enough values to unpack (expected 13, got 9)". The fixture drifted
+    # behind the query it stands in for; the production code was never wrong.
+    needs_review=False,
+    source_chapter_key="woollahra-dcp-2015-part-c2",
+    pdf_page=None,
+    dcp_version="DCP 2015",
 ):
-    return (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability)
+    # needs_review defaults to False deliberately. fetch_dcp_setbacks applies a
+    # fail-closed per-row guard that drops flagged controls, so defaulting to
+    # True would silently empty every result and the tests would "pass" by
+    # asserting on nothing.
+    return (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
+            section_ref, applicability, needs_review, source_chapter_key,
+            pdf_page, dcp_version)
 
 
 class TestZoneFilter:

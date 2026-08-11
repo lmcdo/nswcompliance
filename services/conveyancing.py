@@ -90,6 +90,11 @@ from conveyancing_db import (  # noqa: E402
 )
 from lga_lookup import lookup_lga  # noqa: E402
 
+try:
+    from services.cdc_screen import run_cdc_screen_for_report  # Docker (PYTHONPATH=/app)
+except ImportError:
+    from cdc_screen import run_cdc_screen_for_report  # noqa: E402 — local
+
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
 
@@ -161,6 +166,46 @@ _DATA_SOURCES = [
 ]
 
 
+def _nearby_da_count(
+    council_name: Optional[str], lat: float, lng: float,
+) -> tuple[Optional[int], bool]:
+    """Return (da_count, fetch_failed) for the 200 m nearby-DA lookup.
+
+    prior-art-checked: not a new data source. Extracts the EXISTING inline
+    nearby-DA lookup already in this function into a helper so its false-zero
+    (da_count=0 on failure) becomes three-state. Reuses fetch_nearby_das and
+    mirrors intelligence_brief.py's DataField[Optional[int]] convention.
+
+    Three-state (CONVEYANCING_QA_ADVERSARIAL.md S1 / R6): da_count is None — never
+    0 — whenever the check could not be completed: council unresolved, DATABASE_URL
+    absent, or the query raised. A genuine "0 DAs within 200 m" returns (0, False)
+    and is therefore never confused with "not assessed". fetch_failed is True in
+    every not-completed case; callers use it to withhold the DA data source and to
+    render "could not be checked" instead of a false "none nearby".
+
+    council_name only gates whether we attempt the lookup; the query itself passes
+    council_name=None because the DB stores a different council-name vocabulary than
+    the LEP-derived name (see tests/test_conveyancing_nearby_da_council).
+    """
+    if not council_name:
+        return None, True
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return None, True
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        try:
+            das = fetch_nearby_das(conn, lat, lng, council_name=None)
+            return len(das), False
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f"DA fetch failed: {e}")
+        return None, True
+
+
 def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
     """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
 
@@ -170,6 +215,87 @@ def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
     assessed", never hardcoded figures).
     """
     return load_regulatory_configs(os.getenv("DATABASE_URL"))
+
+
+def _fetch_pdf_db_data(db_url, lat, lng, lot_wkt, controls, dcp_former_council):
+    """DB queries for the paid PDF: DAs (local), LEP clauses, DCP setbacks,
+    heritage.
+
+    prior-art-checked: this IS the existing inline `_fetch_db_data` closure
+    from generate_conveyancing_pdf, extracted to module level and split — no
+    new data source; the four queries are unchanged. The extraction follows
+    the _nearby_da_count precedent (extracted so its false-zero became a
+    testable three-state). One try-block previously covered all four fetches,
+    so an exception mid-way left the later results empty and the PDF rendered
+    empty-as-absent (absence census row 1; output-grounding fix 3). Each fetch
+    now fails independently and reports itself in `failed`: a failed check
+    renders "could not be determined", never a clean absence.
+
+    Returns (das, lep, dcp, heritage, failed) where failed maps each fetch key
+    (das / lep / dcp / heritage) to True when it could not be completed:
+      das      — None=not fetched (failed), list otherwise.
+      lep      — [] means no key_sites_clause (N/A) or none found; a failed
+                 query keeps [] but sets the lep flag.
+      dcp      — None means council not covered (N/A, not queried) OR failed;
+                 the dcp flag distinguishes the two.
+      heritage — empty shape on failure with the heritage flag set, so an
+                 unchecked supplement is never read as no-heritage.
+    A connection failure fails every applicable fetch.
+    """
+    import psycopg2
+
+    _das = None
+    _lep = []
+    _dcp = None
+    _heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
+    _failed = {"das": True, "lep": False, "dcp": False, "heritage": True}
+    key_sites_clause = controls.get("key_sites_clause")
+    if key_sites_clause:
+        _failed["lep"] = True
+    if dcp_former_council:
+        _failed["dcp"] = True
+    if not db_url:
+        return _das, _lep, _dcp, _heritage, _failed
+    try:
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+    except Exception as e:
+        logger.warning("DB pre-fetch: connection failed — all four checks "
+                       "not assessed: %s", e)
+        return _das, _lep, _dcp, _heritage, _failed
+    try:
+        try:
+            # Nearby DAs from local DB (replaces live ePlanning API).
+            # council_name=None: the 200m Haversine radius filter scopes the
+            # search; the council filter is buggy because the DB uses a
+            # different council-name vocabulary than the LEP-derived name,
+            # so filtering silently returned zero → a false "no DAs".
+            _das = fetch_nearby_das(conn, lat, lng, council_name=None)
+            _failed["das"] = False
+        except Exception as e:
+            logger.warning("DB pre-fetch: nearby-DA query failed: %s", e)
+        epi_name = controls.get("zone_epi", "")
+        prop_zone = controls.get("zone", "")
+        if key_sites_clause:
+            try:
+                _lep = fetch_lep_clauses(conn, key_sites_clause, epi_name)
+                _failed["lep"] = False
+            except Exception as e:
+                logger.warning("DB pre-fetch: LEP-clause query failed: %s", e)
+        if dcp_former_council:
+            try:
+                _dcp = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
+                _failed["dcp"] = False
+            except Exception as e:
+                logger.warning("DB pre-fetch: DCP-setback query failed: %s", e)
+        try:
+            _heritage = fetch_heritage_postgis(conn, lat, lng, lot_wkt=lot_wkt)
+            _failed["heritage"] = False
+        except Exception as e:
+            logger.warning("DB pre-fetch: heritage query failed: %s", e)
+    finally:
+        conn.close()
+    return _das, _lep, _dcp, _heritage, _failed
 
 
 class ConveyancingRequest(BaseModel):
@@ -188,6 +314,53 @@ class ConveyancingPdfRequest(BaseModel):
     report_id: str
 
 
+def _resolve_property(req: ConveyancingRequest) -> tuple[int, float, float, Optional[str]]:
+    """Resolve (prop_id, lat, lng, lot_wkt) authoritatively from req.address.
+
+    prior-art-checked: not a new data source. Replaces the inline caller-triple
+    fast path already in run_conveyancing; reuses the existing resolve_address.
+
+    All four values come from the SAME address resolution, so prop_id-keyed data
+    (LEP controls, valuation) and coordinate-keyed data (spatial overlays, strata,
+    nearby DAs) can never describe two different properties. The removed fast path
+    trusted a caller-supplied (prop_id, lat, lng) triple without binding them: a
+    mismatched triple produced a report mixing one property's controls with another's
+    overlays under a single address label. resolve_address also enforces GATE-0
+    parcel identity (fail-closed) and returns lot_wkt, which the fast path left None
+    (so overlay point-queries missed layers intersecting only the parcel edge).
+
+    A caller-supplied prop_id is accepted only as advisory: the address is
+    authoritative, so a disagreement is logged and the resolved prop_id wins.
+
+    Failure contract: 422 when the address resolves to no parcel (not found or
+    GATE-0 identity mismatch — resolve_address returns None, a client-fixable
+    input problem); 503 when resolve_address itself raises (Portal unreachable /
+    upstream 5xx — a retryable operational failure, not a claim that a valid
+    address is invalid).
+    """
+    try:
+        prop_id, lat, lng, lot_wkt = resolve_address(req.address)
+    except Exception:
+        logger.exception("Address resolution failed (operational) for %r", req.address)
+        raise HTTPException(
+            status_code=503,
+            detail="Address service temporarily unavailable; please retry.",
+        )
+
+    if not prop_id or not lat or not lng:
+        raise HTTPException(
+            status_code=422, detail=f"Could not resolve address to a parcel: {req.address}",
+        )
+
+    if req.prop_id and str(req.prop_id) != str(prop_id):
+        logger.warning(
+            "conveyancing: caller prop_id %s disagrees with resolved %s for %r; "
+            "using resolved (address is authoritative)",
+            req.prop_id, prop_id, req.address,
+        )
+    return int(prop_id), lat, lng, lot_wkt
+
+
 @router.post("/conveyancing")
 def run_conveyancing(req: ConveyancingRequest):
     """
@@ -195,22 +368,10 @@ def run_conveyancing(req: ConveyancingRequest):
     Returns structured data for the free tier frontend display.
     PDF generation is a separate paid endpoint.
     """
-    # Resolve address if lat/lng not provided
-    resolved_prop_id = None
-    lot_wkt = None
-
-    if req.lat and req.lng and req.prop_id:
-        lat, lng = req.lat, req.lng
-        resolved_prop_id = int(req.prop_id)
-    else:
-        try:
-            resolved_prop_id, lat, lng, lot_wkt = resolve_address(req.address)
-        except Exception as e:
-            logger.error(f"Address resolution failed: {e}")
-            raise HTTPException(status_code=422, detail=f"Could not resolve address: {req.address}")
-
-        if not lat or not lng:
-            raise HTTPException(status_code=422, detail=f"Could not determine coordinates for: {req.address}")
+    # Resolve prop_id, coordinates AND lot geometry from the one address so
+    # prop_id-keyed data and coordinate-keyed data always describe the same
+    # property (see _resolve_property). A caller-supplied triple is never trusted.
+    resolved_prop_id, lat, lng, lot_wkt = _resolve_property(req)
 
     # Fetch controls and valuation in parallel
     controls = {}
@@ -243,39 +404,27 @@ def run_conveyancing(req: ConveyancingRequest):
     # Calculate derived data
     headroom = calc_development_headroom(controls, valuation)
     sepp_standards, tax_config = _load_regulatory_configs()
+    # CDC screen (#820): engine verdict from verified Codes SEPP standards;
+    # None renders "Not assessed" — never a zone-list guess.
+    cdc_result = run_cdc_screen_for_report(
+        os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
+        controls.get("heritage_items"), controls.get("heritage_hca"),
+        unique_overlays, covered_layers,
+    )
     feasibility = calc_feasibility(
         controls, valuation, unique_overlays,
         is_strata=strata_info["is_strata"],
         sepp_standards=sepp_standards,
         tax_config=tax_config,
+        cdc_result=cdc_result,
     )
 
-    # DA count (quick — no full details in free tier)
+    # DA count (quick — no full details in free tier). Three-state: da_count is
+    # None + da_fetch_failed True when the check could not run, so a failure is
+    # never served as a false "0 DAs nearby" (see _nearby_da_count).
     zone_epi = controls.get("zone_epi", "")
     council_name = _council_from_zone_epi(zone_epi)
-    da_count = 0
-    if council_name:
-        try:
-            import psycopg2
-            _db_url = os.getenv("DATABASE_URL")
-            if _db_url:
-                _conn = psycopg2.connect(_db_url)
-                _conn.autocommit = True
-                try:
-                    # council_name=None: the 200m Haversine radius filter in
-                    # fetch_nearby_das already scopes the search precisely. The
-                    # council filter is redundant AND buggy — the DB stores a
-                    # different council-name vocabulary than the LEP-derived name
-                    # (e.g. "The Council of the Shire of Hornsby" vs "Hornsby
-                    # Shire Council"), so filtering silently returned zero and
-                    # printed a false "no DAs nearby". Matches intelligence_brief
-                    # _fetch_nearby_das, which passes None for the same reason.
-                    das = fetch_nearby_das(_conn, lat, lng, council_name=None)
-                    da_count = len(das)
-                finally:
-                    _conn.close()
-        except Exception as e:
-            logger.warning(f"DA fetch failed: {e}")
+    da_count, da_fetch_failed = _nearby_da_count(council_name, lat, lng)
 
     # Check DCP availability — text match then PostGIS cross-validation
     dcp_former_council = detect_former_council(req.address, zone_epi)
@@ -284,6 +433,10 @@ def run_conveyancing(req: ConveyancingRequest):
     )
 
     data_sources = list(_DATA_SOURCES)
+    if da_fetch_failed:
+        # Don't claim the DA API as a source when the nearby-DA check never ran —
+        # otherwise da_count None/absent reads as an authoritative "none nearby".
+        data_sources = [s for s in data_sources if s != "NSW ePlanning DA API"]
     if dcp_former_council:
         data_sources.append("PlotDetect DCP controls database")
 
@@ -346,13 +499,22 @@ def run_conveyancing(req: ConveyancingRequest):
             # Derived
             "headroom": headroom,
             "feasibility": feasibility,
-            # Summary counts
+            # Summary counts. da_count is None (not 0) when da_fetch_failed —
+            # "not assessed", distinct from a genuine 0 DAs within 200 m.
             "da_count": da_count,
+            "da_fetch_failed": da_fetch_failed,
             "dcp_available": bool(dcp_former_council),
         },
         "confidence": _compute_confidence(
             controls, unique_overlays, valuation, covered_layers=covered_layers,
             tax_config_missing=tax_config is None,
+            sepp_config_missing=sepp_standards is None,
+            # The badge must see this response's own absence state (output-
+            # grounding fix 3): a failed nearby-DA check renders "could not be
+            # checked", and a report carrying a not-assessed section must not
+            # claim high confidence. No caller passed live_query_failures
+            # before this.
+            live_query_failures=1 if da_fetch_failed else 0,
         ),
         "data_sources": data_sources,
     }
@@ -373,8 +535,13 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
 
     cached = _load_pipeline_cache(req.report_id)
 
-    if cached:
-        # ---------- cache hit: unpack free-tier results ----------
+    # A usable cache entry must carry its own authoritative coordinates AND address
+    # (all written together by the free-tier run). An entry missing any of them is
+    # treated as a miss so the whole property is re-resolved below — cached data is
+    # never paired with coordinates or an address resolved/supplied separately.
+    if (cached and cached.get("lat") is not None and cached.get("lng") is not None
+            and cached.get("address")):
+        # ---------- cache hit: unpack authoritative free-tier results ----------
         resolved_prop_id = cached.get("prop_id")
         if resolved_prop_id is not None:
             resolved_prop_id = int(resolved_prop_id)
@@ -389,23 +556,33 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         feasibility = cached.get("feasibility") or []
         dcp_former_council = cached.get("dcp_former_council")
         council_name = cached.get("council_name")
+        # Non-None by the branch condition; part of the same authoritative cache
+        # entry as prop_id/controls/valuation, so everything is one property.
+        lat = cached.get("lat")
+        lng = cached.get("lng")
+        # The report's identity is the cached (report_id) entry, so the address
+        # label and address-derived lookups come from the cache, not the caller
+        # (guaranteed present by the branch condition). A caller can't render this
+        # property's data under a different address.
+        address = cached.get("address")
     else:
         # ---------- cache miss: full pipeline re-run ----------
+        # Resolve prop_id, coordinates AND lot_wkt from the one address (same
+        # binding as the free-tier /conveyancing path) instead of trusting the
+        # caller's (prop_id, lat, lng). Without this a direct /pdf caller could mix
+        # one property's controls/valuation with another's overlays. The cache-hit
+        # branch above is already authoritative (coords written by the free-tier
+        # run). ConveyancingPdfRequest carries .address and .prop_id, which is all
+        # _resolve_property reads.
         logger.info(f"Cache miss for {req.report_id} — running full pipeline")
-        resolved_prop_id = int(req.prop_id) if req.prop_id else None
-        lot_wkt = None
+        resolved_prop_id, lat, lng, lot_wkt = _resolve_property(req)
+        address = req.address  # resolution key on a miss; kept as one local for both paths
 
-        if not resolved_prop_id:
-            resolved_prop_id, _, _, lot_wkt = resolve_address(req.address)
+        controls = parse_controls(get_raw_controls(resolved_prop_id))
+        valuation = get_valuation(resolved_prop_id)
 
-        controls = {}
-        valuation = {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
-        if resolved_prop_id:
-            controls = parse_controls(get_raw_controls(resolved_prop_id))
-            valuation = get_valuation(resolved_prop_id)
-
-        unique_overlays, covered_layers, proximity_m = get_unique_overlays(req.lat, req.lng, lot_wkt)
-        strata_info = detect_strata(req.address, req.lat, req.lng)
+        unique_overlays, covered_layers, proximity_m = get_unique_overlays(lat, lng, lot_wkt)
+        strata_info = detect_strata(address, lat, lng)
 
         # PostGIS fallbacks
         ov_by_type = {o["layer_type"]: o for o in unique_overlays}
@@ -417,18 +594,24 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
 
         headroom = calc_development_headroom(controls, valuation)
         sepp_standards, tax_config = _load_regulatory_configs()
+        cdc_result = run_cdc_screen_for_report(
+            os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
+            controls.get("heritage_items"), controls.get("heritage_hca"),
+            unique_overlays, covered_layers,
+        )
         feasibility = calc_feasibility(
             controls, valuation, unique_overlays,
             is_strata=strata_info["is_strata"],
             sepp_standards=sepp_standards,
             tax_config=tax_config,
+            cdc_result=cdc_result,
         )
 
         zone_epi = controls.get("zone_epi") or ""
         council_name = _council_from_zone_epi(zone_epi)
-        dcp_former_council = detect_former_council(req.address, zone_epi)
+        dcp_former_council = detect_former_council(address, zone_epi)
         dcp_former_council = _validate_former_council_postgis(
-            dcp_former_council, req.lat, req.lng, req.address, zone_epi,
+            dcp_former_council, lat, lng, address, zone_epi,
         )
 
     # ---------- PDF-exclusive data (parallelised) ----------
@@ -441,45 +624,9 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     db_url = os.getenv("DATABASE_URL")
 
     def _fetch_db_data():
-        """DB queries: DAs (local), LEP clauses, DCP setbacks, heritage.
-
-        _das is None until fetched: a DB failure renders as "Not assessed" in
-        the PDF DA section, never as "No development applications lodged".
-        """
-        _das = None
-        _lep = []
-        _dcp = None
-        _heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
-        if not db_url:
-            return _das, _lep, _dcp, _heritage
-        conn = None
-        try:
-            conn = psycopg2.connect(db_url)
-            conn.autocommit = True
-            # Nearby DAs from local DB (replaces live ePlanning API).
-            # prior-art-checked: aligns this call with services/intelligence_brief.py
-            # _fetch_nearby_das, which already passes council_name=None — no new
-            # capability, this REMOVES a redundant/buggy filter to match it.
-            # council_name=None: the 200m Haversine radius filter scopes the
-            # search; the council filter is buggy because the DB uses a different
-            # council-name vocabulary than the LEP-derived name, so filtering
-            # silently returned zero → a false "no DAs" in the Nearby Development
-            # Activity section.
-            _das = fetch_nearby_das(conn, req.lat, req.lng, council_name=None)
-            key_sites_clause = controls.get("key_sites_clause")
-            epi_name = controls.get("zone_epi", "")
-            prop_zone = controls.get("zone", "")
-            if key_sites_clause:
-                _lep = fetch_lep_clauses(conn, key_sites_clause, epi_name)
-            if dcp_former_council:
-                _dcp = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
-            _heritage = fetch_heritage_postgis(conn, req.lat, req.lng, lot_wkt=lot_wkt)
-        except Exception as e:
-            logger.warning("DB pre-fetch failed: %s", e)
-        finally:
-            if conn:
-                conn.close()
-        return _das, _lep, _dcp, _heritage
+        return _fetch_pdf_db_data(
+            db_url, lat, lng, lot_wkt, controls, dcp_former_council,
+        )
 
     def _fetch_shadow():
         """Shadow risk — calls Railway geometric model (~17s)."""
@@ -491,7 +638,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             m = re.search(r"(\d+(?:\.\d+)?)", str(raw_h))
             if m:
                 lep_height = float(m.group(1))
-        return get_shadow_risk(req.address, str(resolved_prop_id), req.lat, req.lng, height_m=lep_height)
+        return get_shadow_risk(address, str(resolved_prop_id), lat, lng, height_m=lep_height)
 
     def _fetch_bushfire():
         """Live NSW RFS BFPL point query (~1-2s) — governs the PDF bushfire row.
@@ -506,7 +653,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 from bushfire_prescreen import _query_rfs_bfpl
             except ImportError:
                 from services.bushfire_prescreen import _query_rfs_bfpl
-            return _query_rfs_bfpl(req.lat, req.lng)
+            return _query_rfs_bfpl(lat, lng)
         except Exception as e:
             logger.warning("Live RFS BFPL query failed: %s", e)
             return None
@@ -522,7 +669,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 from portal_constraints import resolve_anef_value
             except ImportError:
                 from services.portal_constraints import resolve_anef_value
-            return resolve_anef_value(req.lat, req.lng)
+            return resolve_anef_value(lat, lng)
         except Exception as e:
             logger.warning("ANEF value lookup failed: %s", e)
             return {"status": "failed"}
@@ -557,7 +704,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             except ImportError:
                 from services.portal_constraints import fetch_corridors_reservations
             return fetch_corridors_reservations(
-                req.lat, req.lng, lot_wkt=lot_wkt, prop_id=resolved_prop_id,
+                lat, lng, lot_wkt=lot_wkt, prop_id=resolved_prop_id,
             )
         except Exception as e:
             logger.warning("corridors/reservations check failed: %s", e)
@@ -573,7 +720,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         """
         try:
             from generate_conveyancing_report import get_tod_uplift_live
-            return get_tod_uplift_live(req.lat, req.lng, controls, valuation)
+            return get_tod_uplift_live(lat, lng, controls, valuation)
         except Exception as e:
             logger.warning("TOD uplift check failed: %s", e)
             return None, None
@@ -588,7 +735,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         """
         try:
             from generate_conveyancing_report import get_structures_records_live
-            return get_structures_records_live(council_name, req.address)
+            return get_structures_records_live(council_name, address)
         except Exception as e:
             logger.warning("structures/records lookup failed: %s", e)
             return None, "failed"
@@ -609,12 +756,76 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 from climate_risk_raster import query_narclim_state
             except ImportError:
                 from services.climate_risk_raster import query_narclim_state
-            return query_narclim_state(req.lat, req.lng)
+            return query_narclim_state(lat, lng)
         except Exception as e:
             logger.warning("NARCliM projection lookup failed: %s", e)
             return {"state": "unavailable"}
 
-    with ThreadPoolExecutor(max_workers=9) as executor:
+    def _fetch_mine_subsidence():
+        """Mine subsidence district — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report.get_mine_subsidence_live
+        (which wraps portal_constraints.fetch_mine_subsidence, the Site Report's
+        fetcher) — no new client. {"status": "empty"} is a checked clear;
+        {"status": "failed"} renders "Not assessed", never "Clear".
+        """
+        try:
+            from generate_conveyancing_report import get_mine_subsidence_live
+            return get_mine_subsidence_live(lat, lng)
+        except Exception as e:
+            logger.warning("mine subsidence lookup failed: %s", e)
+            return {"status": "failed"}
+
+    def _fetch_contaminated():
+        """EPA contaminated-land notified sites within 500 m — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report.get_contaminated_live
+        (which wraps portal_constraints.fetch_contaminated_land, the Site
+        Report's fetcher). A failed lookup must never render as a clear
+        register on the one row conveyancers read for legal exposure.
+        """
+        try:
+            from generate_conveyancing_report import get_contaminated_live
+            return get_contaminated_live(lat, lng)
+        except Exception as e:
+            logger.warning("contaminated land lookup failed: %s", e)
+            return {"status": "failed"}
+
+    def _fetch_servicing():
+        """Sydney Water Growth Servicing Plan servicing status — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report.get_servicing_live
+        (which wraps services.gsp_servicing.fetch_gsp_servicing, the reusable DB
+        lookup). A failed lookup renders "Not assessed", never a clear/serviceable
+        result. Data is © Sydney Water — the row attributes + links to the GSP page.
+        """
+        try:
+            from generate_conveyancing_report import get_servicing_live
+            # Resolved, property-bound coordinates (#818 binding contract).
+            return get_servicing_live(lat, lng)
+        except Exception as e:
+            logger.warning("Sydney Water servicing lookup failed: %s", e)
+            return {"status": "failed"}
+
+    def _fetch_coastal():
+        """Estuarine tidal inundation mapped-extent check — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report
+        .get_coastal_inundation_live (spatial_overlays coastal_inundation
+        layer, lot-polygon intersection with point fallback) — no new client.
+        {"status": "outside"} is a checked non-intersection; {"status":
+        "failed"} renders "not assessed", never an outside-extent claim.
+        """
+        try:
+            from generate_conveyancing_report import get_coastal_inundation_live
+            # Resolved, property-bound coordinates (#818 binding contract) —
+            # never req.lat/req.lng, which may belong to a different address.
+            return get_coastal_inundation_live(lat, lng, lot_wkt=lot_wkt)
+        except Exception as e:
+            logger.warning("estuarine inundation lookup failed: %s", e)
+            return {"status": "failed"}
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
         db_future = executor.submit(_fetch_db_data)
         shadow_future = executor.submit(_fetch_shadow)
         bushfire_future = executor.submit(_fetch_bushfire)
@@ -624,7 +835,11 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         tod_future = executor.submit(_fetch_tod)
         structures_future = executor.submit(_fetch_structures_records)
         climate_future = executor.submit(_fetch_climate)
-        das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
+        mine_future = executor.submit(_fetch_mine_subsidence)
+        contam_future = executor.submit(_fetch_contaminated)
+        servicing_future = executor.submit(_fetch_servicing)
+        coastal_future = executor.submit(_fetch_coastal)
+        das, lep_clauses, dcp_setbacks_db, postgis_heritage, db_fetch_failed = db_future.result()
         shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
         anef_live = anef_future.result()
@@ -633,6 +848,10 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         tod_result, capacity_result = tod_future.result()
         structures_records_result, structures_records_status = structures_future.result()
         climate_result = climate_future.result()
+        mine_subsidence_result = mine_future.result()
+        contaminated_result = contam_future.result()
+        servicing_result = servicing_future.result()
+        coastal_result = coastal_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
     # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
@@ -651,7 +870,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     # Generate PDF
     pdf_path = os.path.join(tempfile.gettempdir(), f"conveyancing_{req.report_id}.pdf")
     generate_pdf(
-        pdf_path, req.address, req.lat, req.lng, controls, valuation,
+        pdf_path, address, lat, lng, controls, valuation,
         headroom, feasibility, unique_overlays, das,
         dcp_former_council=dcp_former_council,
         strata_info=strata_info,
@@ -659,6 +878,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         shadow_result=shadow_result,
         lep_clauses=lep_clauses,
         dcp_setbacks_db=dcp_setbacks_db,
+        db_fetch_failed=db_fetch_failed,
         proximity_m=proximity_m,
         bushfire_live=bushfire_live,
         anef_live=anef_live,
@@ -669,6 +889,10 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         structures_records=structures_records_result,
         structures_records_status=structures_records_status,
         climate=climate_result,
+        mine_subsidence=mine_subsidence_result,
+        contaminated=contaminated_result,
+        servicing=servicing_result,
+        coastal=coastal_result,
     )
 
     # Upload to R2
@@ -679,7 +903,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     return {
         "report_id": req.report_id,
         "pdf_url": pdf_url,
-        "address": req.address,
+        "address": address,
     }
 
 
@@ -741,8 +965,22 @@ def _save_pipeline_cache(report_id: str, data: dict) -> None:
             conn.close()
 
 
+# prior-art-checked: reuse not viable — this IS the existing cache reader in
+# this file gaining an age policy; no new data source or capability.
+# Max cache age for PDF assembly (output-grounding fix 2). The cache exists so
+# the PAID PDF can reuse the free-tier run from the same purchase session; the
+# sources beneath it (Portal controls, valuation, overlays) change on external
+# schedules, so its legitimate lifetime is the purchase-decision window, not
+# archival. 24h covers an overnight decision while bounding staleness to one
+# day; an older entry is a MISS and the PDF endpoint re-runs the full pipeline
+# (its existing fallback), so expiry costs latency, never correctness.
+_PIPELINE_CACHE_MAX_AGE_HOURS = 24
+
+
 def _load_pipeline_cache(report_id: str) -> Optional[dict]:
-    """Load cached free-tier pipeline results. Returns None on miss or error."""
+    """Load cached free-tier pipeline results. Returns None on miss, expiry,
+    or error — expiry is logged distinctly from absence so a stale entry is
+    visible as such, not as a mystery miss."""
     db_url = os.getenv("DATABASE_URL")
     if not db_url or not report_id:
         return None
@@ -753,10 +991,21 @@ def _load_pipeline_cache(report_id: str) -> Optional[dict]:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT pipeline_data FROM conveyancing_cache WHERE report_id = %s",
-                (report_id,),
+                # COALESCE(..., TRUE): a NULL created_at (legacy/imported row)
+                # must EXPIRE, not slip past the age bound as NULL-is-falsy
+                # freshness (Sol round 1 on this fix).
+                "SELECT pipeline_data, "
+                "       COALESCE(created_at < NOW() - make_interval(hours => %s), TRUE) AS expired "
+                "FROM conveyancing_cache WHERE report_id = %s",
+                (_PIPELINE_CACHE_MAX_AGE_HOURS, report_id),
             )
             row = cur.fetchone()
+        if row and row[1]:
+            logger.info(
+                "Pipeline cache for %s EXPIRED (older than %sh) — full re-run",
+                report_id, _PIPELINE_CACHE_MAX_AGE_HOURS,
+            )
+            return None
         if row and row[0]:
             return row[0] if isinstance(row[0], dict) else json.loads(row[0])
         return None
@@ -791,6 +1040,7 @@ def _compute_confidence(
     shadow_height_source: Optional[str] = None,
     live_query_failures: int = 0,
     tax_config_missing: bool = False,
+    sepp_config_missing: bool = False,
 ) -> str:
     """Rate confidence on data completeness AND data integrity (QA-S7).
 
@@ -799,6 +1049,8 @@ def _compute_confidence(
       - shadow height from the assumed default envelope   → at most "medium"
       - 1 live-query failure → at most "medium"; ≥2 → "low"
       - land-tax config absent (section rendered "Not assessed") → at most "medium"
+      - SEPP Housing config absent (secondary-dwelling row "Not assessed", #684)
+        → at most "medium"
     A report that had to assume, or whose coverage has holes, must not claim
     "high" confidence regardless of how many fields are populated.
     """
@@ -827,6 +1079,8 @@ def _compute_confidence(
     if shadow_height_source == "default":
         rating = _cap_confidence(rating, "medium")
     if tax_config_missing:
+        rating = _cap_confidence(rating, "medium")
+    if sepp_config_missing:
         rating = _cap_confidence(rating, "medium")
     if live_query_failures >= 2:
         rating = _cap_confidence(rating, "low")

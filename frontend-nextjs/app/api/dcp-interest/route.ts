@@ -4,6 +4,12 @@ import { query } from '@/lib/db';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Internal alert recipient. Must NOT be @plotdetect.com.au: sending from
+// info@plotdetect.com.au to the same domain via Resend is quarantined by
+// Google Workspace as self-domain spoofing (Resend reports "delivered" but
+// it never reaches the inbox). Route to an off-domain inbox instead.
+const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || 'lawrence.mcdonell@gmail.com';
+
 export async function POST(request: NextRequest) {
   try {
     const { email, council_name, address } = await request.json();
@@ -25,14 +31,16 @@ export async function POST(request: NextRequest) {
       [normalised, council_name.trim(), address?.trim() || null]
     );
 
-    // Notify info@plotdetect.com.au — fire and forget, don't fail the request
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    resend.emails.send({
-      from: 'PlotDetect <onboarding@resend.dev>',
-      to: 'info@plotdetect.com.au',
-      subject: `DCP interest: ${council_name}`,
-      text: `New DCP interest registration\n\nEmail: ${normalised}\nCouncil: ${council_name}\nAddress: ${address || '(not provided)'}`,
-    }).catch(err => console.error('[dcp-interest] resend error:', err));
+    // Notify — fire and forget, don't fail the request
+    if (process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      resend.emails.send({
+        from: 'PlotDetect <info@plotdetect.com.au>',
+        to: NOTIFY_EMAIL,
+        subject: `DCP interest: ${council_name}`,
+        text: `New DCP interest registration\n\nEmail: ${normalised}\nCouncil: ${council_name}\nAddress: ${address || '(not provided)'}`,
+      }).catch(err => console.error('[dcp-interest] resend error:', err));
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

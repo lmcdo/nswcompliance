@@ -37,6 +37,18 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    heading: 'Duplex / upzoning funnel (consumer + builder)',
+    items: [
+      { path: '/duplex-check', title: 'Duplex checker — ads landing', note: 'verdict-first, no nav; Google Ads target', status: 'live' },
+      { path: '/tools/upzoning-check', title: 'Upzoning / duplex checker — SEO tool', status: 'live' },
+      { path: '/for/builders', title: 'For builders — pitch page', status: 'live' },
+      { path: '/widget-demo/[slug]', title: 'Per-builder white-label demo', note: '20 slugs in lib/widget-partners.ts; noindexed, outreach-only', status: 'live' },
+      { path: '/embed/upzoning', title: 'Embeddable duplex checker (iframe)', note: '?ref=<slug>; goes on builder sites', status: 'live' },
+      { path: '/api/upzoning', title: 'API — upzoning eligibility', note: 'POST {address}', status: 'live' },
+      { path: '/api/canibuildit/lead', title: 'API — lead capture + consent', note: 'qualified duplex referrals → canibuildit_leads', status: 'live' },
+    ],
+  },
+  {
     heading: 'Reports (reachable from /reports)',
     items: [
       { path: '/reports/intelligence-brief', title: 'Property Intelligence Brief', note: 'now linked in hub; 3 B2C services (da_outcome/vg_comparables/strata_lookup) not yet wired', status: 'live' },
@@ -72,6 +84,14 @@ const GROUPS: Group[] = [
       { path: '/pricing', title: 'Pricing', status: 'content' },
       { path: '/privacy', title: 'Privacy', status: 'content' },
       { path: '/terms', title: 'Terms', status: 'content' },
+    ],
+  },
+  {
+    heading: 'Internal ops (owner only)',
+    items: [
+      { path: '/internal/leads', title: 'Leads — system of record', note: 'qualified duplex referrals + consent audit', status: 'live' },
+      { path: '/internal/setback-review', title: 'Setback value review', status: 'live' },
+      { path: '/internal/dcp-review', title: 'DCP review queue', status: 'live' },
     ],
   },
   {

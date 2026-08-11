@@ -1,0 +1,79 @@
+[
+ {
+  "id": "1",
+  "pipeline_name": "bushfire",
+  "version": "bushfire-v1",
+  "headline_disclaimer": "This report is an indicative pre-screen only and does not constitute a formal\r\n  Bushfire Attack Level (BAL) assessment, planning advice, or bushfire safety\r\n  recommendation. A formal BAL assessment by an accredited practitioner is required\r\n   before any development application or construction.",
+  "limitations_text": "Limitations: (1) BAL band is estimated from vegetation category mapping —\r\n  actual BAL depends on slope, vegetation structure, and distance to classified\r\n  vegetation measured on site. (2) The RFS Bush Fire Prone Land Map is updated\r\n  periodically and may not reflect recent changes. (3) Cross-overlay data (flood,\r\n  heritage, zone) is sourced from spatial databases that may not be current. (4)\r\n  This screening does not assess compliance with AS 3959 construction standards.\r\n  (5) Clearing entitlement distances are indicative only — actual entitlements\r\n  depend on vegetation type and local council requirements.",
+  "source_attributions": "NSW Rural Fire Service Bush Fire Prone Land Map (ArcGIS REST,\r\n  mapprod3.environment.nsw.gov.au). The RFS states: \"This map is provided as a\r\n  guide only. Users should verify information with their local council.\" PostGIS\r\n  spatial_overlays derived from NSW Planning Portal and SEED datasets.",
+  "effective_from": "2026-05-18 10:51:27.310406+00:00",
+  "superseded_at": "None",
+  "created_at": "2026-05-18 10:51:27.310406+00:00"
+ },
+ {
+  "id": "2",
+  "pipeline_name": "solar-yield",
+  "version": "solar-yield-v1",
+  "headline_disclaimer": "This report provides an estimate of rooftop solar potential based on automated\r\n  analysis of aerial imagery and irradiance data. It is not a professional solar\r\n  assessment or installation quote. Actual solar yield depends on installation\r\n  quality, panel selection, shading conditions, weather variability, and other\r\n  factors not captured in this analysis.",
+  "limitations_text": "Limitations: (1) Roof geometry is derived from Google Solar API aerial imagery\r\n  — imagery date and resolution may not reflect current roof condition. (2) Panel\r\n  count and layout are modelled, not measured. (3) Annual kWh yield is an estimate\r\n  based on historical irradiance data and assumed panel efficiency — actual\r\n  generation varies year to year. (4) ROI calculations use assumed electricity\r\n  prices and self-consumption ratios that may not match your actual usage. (5)\r\n  Heritage constraints are checked against available data but heritage conservation\r\n   areas may not be fully mapped.",
+  "source_attributions": "Google Solar API (solar.googleapis.com). Google states: \"Solar API data is\r\n  provided as-is. Actual solar performance depends on many factors.\" Heritage data\r\n  from NSW Planning Portal regulatory provisions.",
+  "effective_from": "2026-05-18 10:51:27.310406+00:00",
+  "superseded_at": "None",
+  "created_at": "2026-05-18 10:51:27.310406+00:00"
+ },
+ {
+  "id": "3",
+  "pipeline_name": "flood",
+  "version": "flood-v1",
+  "headline_disclaimer": "This report aggregates publicly available flood data from multiple independent\r\n  sources. It is not a formal flood study, flood risk assessment, or substitute for\r\n   a Section 10.7 planning certificate. The composite flood signal is derived by\r\n  PlotDetect from government data sources and does not represent an official\r\n  government designation.",
+  "limitations_text": "Limitations: (1) Not all areas of NSW have comprehensive flood study coverage —\r\n   absence of data does not mean absence of flood risk. (2) EPI flood overlays\r\n  cover approximately 11 LGAs with polygon data. (3) Satellite-based flood\r\n  detection (JRC, DEA WOfS, Sentinel-1) operates at 10-30m resolution and may not\r\n  detect localised flooding. (4) BoM gauge data depends on proximity to the nearest\r\n   gauge — distant gauges may not reflect conditions at the subject property. (5)\r\n  Copernicus EMS activations only cover declared emergencies, not all flood events.\r\n   (6) The flood signal confidence level is our own composite metric, not an\r\n  official standard.",
+  "source_attributions": "NSW SEED EPI Flood Planning WFS (mapprod3.environment.nsw.gov.au). Copernicus\r\n  Emergency Management Service (emergency.copernicus.eu). JRC Global Surface Water\r\n  (global-surface-water.appspot.com). Geoscience Australia DEA Water Observations\r\n  from Space (ows.dea.ga.gov.au). Bureau of Meteorology Water Data Online. Each\r\n  source has its own accuracy limitations — see the full report for per-source\r\n  details.",
+  "effective_from": "2026-05-18 10:51:27.310406+00:00",
+  "superseded_at": "None",
+  "created_at": "2026-05-18 10:51:27.310406+00:00"
+ },
+ {
+  "id": "4",
+  "pipeline_name": "shadow",
+  "version": "shadow-v1",
+  "headline_disclaimer": "This report provides an indicative shadow analysis based on modelled building\r\n  heights and solar position calculations. It is not a formal shadow study, ADG\r\n  compliance assessment, or planning advice. The ADG solar access test result is\r\n  based on modelled scenarios and may differ from a professional shadow analysis\r\n  using measured building dimensions.",
+  "limitations_text": "Limitations: (1) Building heights are estimated from LEP height controls or\r\n  spatial data — actual building heights may differ. (2) Shadow calculations assume\r\n   flat terrain — sloping sites will produce different shadow patterns. (3) The\r\n  pybdshadow model uses simplified building geometry (extruded footprints) — actual\r\n   shadow patterns depend on roof form, setbacks, and architectural detail. (4)\r\n  Construction change detection via Sentinel-2 spectral analysis operates at 10m\r\n  resolution and is heuristic. (5) ADG solar access scenarios are modelled for Jun\r\n  21 and Sep 21 only — other times of year are not assessed.",
+  "source_attributions": "pvlib solar position library (NREL-backed, peer-reviewed). pybdshadow shadow\r\n  casting (open source). Element84 Earth Search Sentinel-2 L2A imagery (ESA\r\n  Copernicus). NSW Planning Portal LEP height controls.",
+  "effective_from": "2026-05-18 10:51:27.310406+00:00",
+  "superseded_at": "None",
+  "created_at": "2026-05-18 10:51:27.310406+00:00"
+ },
+ {
+  "id": "5",
+  "pipeline_name": "granny-flat",
+  "version": "granny-flat-v1",
+  "headline_disclaimer": "This report provides a preliminary eligibility screening for secondary dwelling\r\n   (granny flat) construction under SEPP (Housing) 2021. It is not a planning\r\n  assessment, feasibility study, or development approval. Eligibility for the\r\n  complying development (CDC) pathway depends on site-specific factors that require\r\n   professional assessment.",
+  "limitations_text": "Limitations: (1) Structure detection uses automated aerial imagery analysis\r\n  (SAM segmentation) at approximately 70-80% accuracy — structures may be missed or\r\n   incorrectly identified. (2) Aerial imagery date varies and may not reflect\r\n  current site conditions. (3) This screening checks lot area, zoning, and basic\r\n  setbacks only — it does not check easements, covenants, stormwater, services,\r\n  soil conditions, or tree preservation orders. (4) Flood control lot status is\r\n  checked against available spatial data covering approximately 12 LGAs — status is\r\n   shown as unknown outside coverage. (5) Rental yield estimates use historical\r\n  bond data and assumed parameters that may not reflect current market\r\n  conditions.",
+  "source_attributions": "NSW SIX Maps 10cm aerial imagery (maps.six.nsw.gov.au, CC-BY). SAM segmentation\r\n   model (Meta AI, MIT licence). SEPP (Housing) 2021 rule parameters (NSW\r\n  Legislation). NSW Fair Trading rental bond data. NSW Planning Portal zone and\r\n  heritage data.",
+  "effective_from": "2026-05-18 10:51:27.310406+00:00",
+  "superseded_at": "None",
+  "created_at": "2026-05-18 10:51:27.310406+00:00"
+ },
+ {
+  "id": "6",
+  "pipeline_name": "threat-radar",
+  "version": "threat-radar-v1",
+  "headline_disclaimer": "This report shows development applications (DAs) and complying development\r\n  certificates (CDCs) lodged near the subject property, sourced from the NSW\r\n  ePlanning Portal. It does not represent a complete record of all development\r\n  activity. Not all councils lodge applications on the same timeline, and\r\n  historical records may be incomplete.",
+  "limitations_text": "Limitations: (1) The ePlanning Portal dataset is comprehensive from\r\n  approximately July 2021 — earlier applications may not appear. (2) Not all\r\n  councils lodge applications at the same speed — there may be a delay between\r\n  lodgement and appearance in the portal. (3) Distance is calculated from the\r\n  application coordinates to the subject property coordinates using the Haversine\r\n  formula — actual proximity depends on lot boundaries, not point distances. (4)\r\n  Application status reflects the portal data at time of query and may not be\r\n  current. (5) Some development types (exempt development, internal works) do not\r\n  require lodgement and will not appear.",
+  "source_attributions": "NSW ePlanning Portal (api.apps1.nsw.gov.au/eplanning/data/v0). The NSW\r\n  Department of Planning states: \"Information on this site is provided in good\r\n  faith and is believed to be accurate at the time of publication.\"",
+  "effective_from": "2026-05-18 10:51:27.310406+00:00",
+  "superseded_at": "None",
+  "created_at": "2026-05-18 10:51:27.310406+00:00"
+ },
+ {
+  "id": "7",
+  "pipeline_name": "pre-da-history",
+  "version": "pre-da-history-v1",
+  "headline_disclaimer": "This report combines satellite imagery analysis with planning records to\r\n  identify physical changes and development applications associated with the\r\n  subject property. It is not a building inspection, compliance audit, or\r\n  substitute for professional due diligence. Satellite detection is indicative and\r\n  may not identify all changes.",
+  "limitations_text": "Limitations: (1) Sentinel-2 satellite imagery operates at 10m resolution —\r\n  changes smaller than this (internal renovations, minor works) will not be\r\n  detected. (2) Spectral change detection (NDVI/NDBI) is heuristic and may produce\r\n  false positives from seasonal vegetation changes or imagery artefacts. (3) DA\r\n  records are sourced from the ePlanning Portal — comprehensive from July 2021\r\n  only. (4) Heritage status is checked against available spatial data and may not\r\n  include all heritage items or conservation areas. (5) This analysis covers\r\n  2017-2024 only — works before 2017 are not assessed.",
+  "source_attributions": "Element84 Earth Search Sentinel-2 L2A imagery (ESA Copernicus). NSW ePlanning\r\n  Portal (api.apps1.nsw.gov.au). NSW Planning Portal heritage spatial data. Esri\r\n  World Imagery Wayback (conditional, for small lots).",
+  "effective_from": "2026-05-18 10:51:27.310406+00:00",
+  "superseded_at": "None",
+  "created_at": "2026-05-18 10:51:27.310406+00:00"
+ }
+]

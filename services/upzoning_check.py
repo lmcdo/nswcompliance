@@ -51,6 +51,7 @@ sys.path.insert(0, str(_project_root / "scripts"))
 sys.path.insert(0, str(_project_root))
 
 from generate_conveyancing_report import (  # noqa: E402
+    detect_former_council,
     resolve_address,
     get_raw_controls,
     parse_controls,
@@ -83,6 +84,16 @@ _DATA_SOURCES = [
 
 class UpzoningRequest(BaseModel):
     address: str
+
+
+def _former_council_safe(address: str, zone_epi: Optional[str]) -> Optional[str]:
+    """dcp_setback_controls lga slug, or None — a resolver failure must never
+    fail the whole check (the tool result stands without the DCP snapshot)."""
+    try:
+        return detect_former_council(address, zone_epi or "")
+    except Exception as e:
+        logger.warning("upzoning: former-council resolution failed: %s", e)
+        return None
 
 
 def _controls_for(prop_id: Optional[int]) -> dict:
@@ -198,6 +209,10 @@ def run_upzoning_check(req: UpzoningRequest):
         "zone_full": zone_name or zone_code_src,
         "zone_epi": zone_epi,
         "lga_name": lga_name,
+        # dcp_setback_controls slug (Inner West disambiguates to its former
+        # council by suburb; None when the LGA's DCP data isn't onboarded).
+        # Distinct from lga_name — this is what structured-controls lookups key on.
+        "former_council": _former_council_safe(req.address, zone_epi),
         "legislation_url": controls.get("legislation_url"),
         "lot_area_m2": lot_area_m2,
         # Battleaxe-aware: on a flag lot this is the developable HEAD width (what

@@ -7,6 +7,15 @@ Data sources:
   PostGIS spatial_overlays          (flood, bushfire, coastal, fire_history)
   NARCliM 2.0 NetCDF rasters       (TXge35, prAdjust, tas — AdaptNSW)
 
+NOT in the response: the composite score, its band, the interaction bonus, and the
+per-hazard weight arithmetic. The composite cannot be validated against any
+available reference (docs/CLIMATE_RISK_METHODOLOGY.md → Validation status) and
+#699 bars it from every customer-facing surface. It reached this response only
+because the handler spreads ``**result.to_dict()``; ``to_dict`` now excludes it,
+which is the boundary that keeps it out. If it is not fit to render, it is not
+fit to serve. Per-hazard ``weight``/``weighted_score`` go with it — they make the
+composite reconstructible, so dropping only score/band would be a half-measure.
+
 Response contract (must match frontend ClimateRiskResult):
 {
   "address": str,
@@ -14,21 +23,17 @@ Response contract (must match frontend ClimateRiskResult):
   "lng": float,
   "run_date": str,
   "outputs": {
-    "score": int,           # 1-100 composite
-    "band": str,            # Low / Moderate / High / Very High / Extreme
     "hazards": [
       {
         "hazard": str,
-        "raw_score": float,
-        "weight": float,
-        "weighted_score": float,
         "present": bool,
         "detail": str,
         "confidence": str,
-        "data_source": str
+        "confidence_reason": str,
+        "data_source": str,
+        "available": bool    # False = source unavailable, NOT "no risk"
       }
     ],
-    "interaction_bonus": float,
     "methodology_version": str,
     "data_date": str,
     "disclaimer": str,

@@ -211,8 +211,13 @@ class TestFixBZoneAdvisory:
         match = [c for c in constraints if c.id == "zone_higher_density_advisory"]
         assert len(match) == 1
 
-    def test_b1_zone_fires(self):
-        constraints = evaluate_compound_constraints(**_base_kwargs(zone_code="B1"))
+    def test_e1_zone_fires(self):
+        """DQ-30 (.claude/DATA_QUALITY_TRACKER.md): was tested against 'B1', a
+        retired NSW zone code (April 2023 Employment Zones Reform) that never
+        appears as a live property's current zone — the check silently never
+        fired for real commercial-zoned properties. Real current equivalent
+        is E1."""
+        constraints = evaluate_compound_constraints(**_base_kwargs(zone_code="E1"))
         match = [c for c in constraints if c.id == "zone_higher_density_advisory"]
         assert len(match) == 1
 

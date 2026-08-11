@@ -332,7 +332,8 @@ class TestEmpiricalStaleness:
         age = (date.today() - date(2016, 1, 1)).days
         if age > EMPIRICAL_STALENESS_THRESHOLDS["urban_heat_island"]:
             warnings = detect_staleness(sat)
-            assert any("urban_heat_island" in w for w in warnings)
+            # #745 D7-7: the warning is now user-facing prose, not a slug/log line
+            assert any("urban heat island" in w and "years old" in w for w in warnings)
             assert finding.confidence == ConfidenceLevel.STALE
         else:
             # UHI data not yet stale (before 2026) — verify no warning

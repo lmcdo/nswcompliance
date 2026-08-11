@@ -1,6 +1,3 @@
-import pytest
-pytestmark = pytest.mark.stale
-
 """
 End-to-end validation tests for the complete NSW Development Compliance MVP
 """

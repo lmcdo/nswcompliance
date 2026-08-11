@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import type { NextFetchEvent, NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import {
   globalRateLimiter,
@@ -7,6 +7,7 @@ import {
   checkRateLimit,
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
+import { identifyAiCrawler } from '@/lib/ai-crawlers';
 
 /**
  * API Authentication, Rate Limiting & CORS Middleware
@@ -88,8 +89,36 @@ function isOriginAllowed(origin: string | null): boolean {
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
+
+  // ============================================================================
+  // AI CRAWLER TRACKING — server-side, because AI crawlers never execute the
+  // PostHog browser SDK. Fire-and-forget via waitUntil; never blocks the
+  // response and failures are swallowed.
+  // ============================================================================
+  if (request.method === 'GET' && !pathname.startsWith('/api')) {
+    const crawler = identifyAiCrawler(request.headers.get('user-agent'));
+    const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    if (crawler && posthogKey) {
+      event.waitUntil(
+        fetch('https://us.i.posthog.com/capture/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: posthogKey,
+            event: 'ai_crawler_hit',
+            distinct_id: `crawler:${crawler}`,
+            properties: {
+              bot: crawler,
+              path: pathname,
+              host: request.headers.get('x-forwarded-host') ?? request.headers.get('host'),
+            },
+          }),
+        }).catch(() => {}),
+      );
+    }
+  }
 
   // ============================================================================
   // SUPABASE SESSION REFRESH — /reports/* and /auth/*

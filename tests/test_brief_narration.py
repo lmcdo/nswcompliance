@@ -643,3 +643,136 @@ class TestCompositeRecordSentences:
         text = overlay.lines[0].text
         assert "lottotal=" not in text
         assert "section card below" in text
+
+
+# ---------------------------------------------------------------------------
+# Overlay render defects observed live 2026-07-18 (fused units, raw enum
+# tokens, unitless capacity numbers, boolean cautions)
+# ---------------------------------------------------------------------------
+
+
+from services.brief_manifest import EntryKind, ManifestEntry
+from services.brief_narration import normalize_plan
+from services.brief_templates import (
+    _constraint_sentence,
+    _dcp_control_sentence,
+    humanise_value,
+)
+
+
+def entry(path, value_text, **kw):
+    return ManifestEntry(id=kw.pop("id", "F001"), kind=EntryKind.FIELD,
+                         path=path, value_text=value_text,
+                         confidence=kw.pop("confidence", "authoritative"),
+                         source=kw.pop("source", "plotdetect_dcp"), **kw)
+
+
+class TestDcpControlSentenceUnits:
+    def test_unit_gets_a_space(self):
+        e = entry("dcp_controls.controls[0]",
+                  "control_type=car_parking; value=1; unit=spaces/dwelling; "
+                  "dev_type=dwelling_house")
+        text = _dcp_control_sentence(e)
+        assert "at 1 spaces/dwelling" in text
+        assert "1spaces" not in text
+
+    def test_percent_stays_tight(self):
+        e = entry("dcp_controls.controls[0]",
+                  "control_type=site_coverage; value=50; unit=%")
+        assert "at 50%" in _dcp_control_sentence(e)
+
+    def test_no_unit_no_trailing_space(self):
+        e = entry("dcp_controls.controls[0]",
+                  "control_type=storeys; value=2")
+        assert "at 2." in _dcp_control_sentence(e)
+
+    def test_non_numeric_source_ref_says_see_not_clause(self):
+        e = entry("dcp_controls.controls[0]",
+                  "control_type=car_parking; value=1; unit=spaces/dwelling; "
+                  "source_ref=Table 1")
+        text = _dcp_control_sentence(e)
+        assert "— see Table 1" in text
+        assert "clause Table" not in text
+
+    def test_numeric_source_ref_keeps_clause(self):
+        e = entry("dcp_controls.controls[0]",
+                  "control_type=car_parking; value=1; unit=spaces/dwelling; "
+                  "source_ref=4.1.2")
+        assert "— clause 4.1.2" in _dcp_control_sentence(e)
+
+
+class TestMachineTokenHumanisation:
+    def test_binding_constraint_enum_never_renders_raw(self):
+        e = entry("constraint_arithmetic.binding_constraint", "lep_fsr",
+                  source="constraint_arithmetic_engine")
+        text = _constraint_sentence(e)
+        assert "lep_fsr" not in text
+        assert "the LEP floor space ratio" in text
+
+    def test_unknown_snake_token_degrades_to_spaced_words(self):
+        assert humanise_value("dcp_rear_lane_width") == "dcp rear lane width"
+
+    def test_ordinary_prose_and_numbers_pass_through(self):
+        assert humanise_value("0.6:1") == "0.6:1"
+        assert humanise_value("Deferred commencement") == "Deferred commencement"
+
+
+class TestManifestUnitInference:
+    def _manifest(self, key, value):
+        return build_manifest({
+            "address": "x", "brief_type": "development",
+            "constraint_arithmetic": {key: df(
+                value, source="constraint_arithmetic_engine",
+                confidence="derived")},
+        })
+
+    def _value_text(self, m, key):
+        return next(e.value_text for e in m.entries
+                    if e.path == f"constraint_arithmetic.{key}")
+
+    def test_m2_suffix_field_carries_unit(self):
+        assert self._value_text(
+            self._manifest("max_gfa_m2", 345.2), "max_gfa_m2") == "345.2 m²"
+
+    def test_m_suffix_field_carries_unit(self):
+        assert self._value_text(
+            self._manifest("front_setback_m", 6.0),
+            "front_setback_m") == "6.0 m"
+
+    def test_unsuffixed_field_stays_bare(self):
+        assert self._value_text(
+            self._manifest("realistic_dwelling_count", 1),
+            "realistic_dwelling_count") == "1"
+
+    def test_string_value_never_gets_a_unit(self):
+        assert self._value_text(
+            self._manifest("max_gfa_m2", "not computed"),
+            "max_gfa_m2") == "not computed"
+
+
+class TestFactRowUnderFindingTemplate:
+    def test_f_id_under_t_finding_remaps_to_fact_renderer(self, manifest):
+        fid = next(e.id for e in manifest.entries
+                   if e.id.startswith("F"))
+        plan = make_plan({"template": "T_FINDING", "fields": [fid]})
+        normalize_plan(plan, manifest)
+        assert plan.items[0].template == "T_CONSTRAINT_FLAG"
+
+    def test_x_id_under_t_finding_is_untouched(self, manifest):
+        xid = next(e.id for e in manifest.entries if e.id.startswith("X"))
+        plan = make_plan({"template": "T_FINDING", "fields": [xid]})
+        normalize_plan(plan, manifest)
+        assert plan.items[0].template == "T_FINDING"
+
+    def test_boolean_fact_renders_as_designation_not_true(self, brief):
+        brief["environmental_constraints"]["contaminated_land"] = df(
+            True, source="postgis_overlays")
+        m = build_manifest(brief)
+        cid = next(e.id for e in m.entries
+                   if e.path.endswith("contaminated_land"))
+        plan = make_plan({"template": "T_FINDING", "fields": [cid]})
+        plan = normalize_plan(plan, m)
+        overlay = render_plan(plan, m)
+        texts = [ln.text for ln in overlay.lines]
+        assert not any(t.strip() == "True" for t in texts)
+        assert any("designation is recorded" in t for t in texts)

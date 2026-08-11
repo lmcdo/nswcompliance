@@ -603,7 +603,7 @@ The existing hooks enforce quality at three gates:
 | Commit | `.githooks/commit-msg` | QA tier line in commit message | Every fix in this plan requires `QA: Standard` or `QA: Critical` |
 | Commit | `.githooks/pre-commit` | TSC error count (baseline 664) | Frontend changes in the brief must not add TS errors |
 | Push | `.githooks/pre-push` check 1 | Python unit tests (369+ tests) | New adversarial tests from section 8 of QA doc must pass |
-| Push | `.githooks/pre-push` check 2 | `qa_gate.py` on `.qa_report.json` | QA report must cover all changed files, AST-verified |
+| Push | `.githooks/pre-push` check 2 | `qa_gate.py` on `.qa/reports/<branch>.json` | QA report must cover all changed files, AST-verified |
 | Push | `.githooks/pre-push` check 3 | Liability language scan | Brief narrative (Stage 5) must pass language scan |
 
 **Additional enforcement for intelligence brief:**
@@ -653,7 +653,7 @@ python -m pytest tests/test_conveyancing_adversarial.py -v
 python -m pytest tests/ -x -q
 
 # 3. QA gate passes
-python scripts/qa_gate.py .qa_report.json --diff-files services/intelligence_brief.py services/db_pool.py services/config.py
+python scripts/qa_gate.py --diff-files services/intelligence_brief.py services/db_pool.py services/config.py
 
 # 4. Pre-push hook passes (all three checks)
 # (triggered automatically on git push)

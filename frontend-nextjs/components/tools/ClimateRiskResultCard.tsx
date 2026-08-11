@@ -8,15 +8,20 @@
 // metrics, each with source and date; the composite index is retired from the
 // headline, matching the brief's Climate Disclosure Profile.
 
+// raw_score / weight / weighted_score are NOT in the API response — they are the
+// composite model's arithmetic and nothing renders them. See
+// services/climate_risk_score.py → to_dict.
 interface HazardScore {
   hazard: string
-  raw_score: number
-  weight: number
-  weighted_score: number
   present: boolean
   detail: string
   confidence: string
+  confidence_reason?: string
   data_source: string
+  // Required, not optional: the API emits it on every hazard. false means the
+  // source could not be reached for this point — which is NOT the same as the
+  // hazard being absent, and must never render as "Not present".
+  available: boolean
 }
 
 interface NARCliMSummary {
@@ -37,11 +42,11 @@ interface NARCliMSummary {
   [key: string]: number | undefined
 }
 
+// The composite score, its band and the interaction bonus are deliberately not
+// part of this contract. The card never rendered them (see the legal posture note
+// at the top of this file) and they are no longer served at all.
 interface ClimateRiskOutputs {
-  score: number
-  band: string
   hazards: HazardScore[]
-  interaction_bonus: number
   methodology_version: string
   data_date: string
   disclaimer: string
@@ -117,6 +122,14 @@ export function ClimateRiskResultCard({ result }: { result: ClimateRiskResult })
     }
   }
 
+  // Three states, not two. A hazard whose data source could not be reached is
+  // NOT a hazard that is absent: _normalize_heat returns present=false with
+  // available=false when NARCliM has no value for the point. Rendering that as
+  // "Not present" turns a failed lookup into a confident negative (the DQ-36
+  // class). Unavailable hazards are also excluded from the denominator — saying
+  // "1 of 6" implies six were checked when only five were.
+  const unavailable = o.hazards.filter(h => h.available === false)
+  const checkedCount = o.hazards.length - unavailable.length
   const exposedCount = presentHazards.size
 
   return (
@@ -129,8 +142,17 @@ export function ClimateRiskResultCard({ result }: { result: ClimateRiskResult })
               Climate &amp; hazard exposure
             </p>
             <p className="text-lg font-semibold text-gray-900">
-              {exposedCount} of {o.hazards.length} mapped hazard categories present at this address
+              {exposedCount} of {checkedCount} mapped hazard categories present at this address
             </p>
+            {unavailable.length > 0 && (
+              <p className="text-sm text-amber-800 mt-1">
+                {unavailable.length} further{' '}
+                {unavailable.length === 1 ? 'category' : 'categories'} could not be
+                checked — {unavailable.map(h => HAZARD_META[h.hazard]?.label ?? h.hazard).join(', ')}.
+                This is not a finding of no hazard; the data source returned nothing
+                for this location. See the category list below for what was attempted.
+              </p>
+            )}
             <p className="text-sm text-gray-500 mt-1">
               A summary of the government hazard overlays and climate projections for this location.
               It reports exposure to published data — it is not a risk rating, a prediction, or a
@@ -162,12 +184,18 @@ export function ClimateRiskResultCard({ result }: { result: ClimateRiskResult })
                   <span className="text-sm font-medium text-gray-900">{meta.label}</span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded border ${
-                      h.present
+                      h.available === false
+                        ? 'border-amber-300 bg-amber-50 text-amber-800'
+                        : h.present
                         ? 'border-gray-300 bg-gray-100 text-gray-700'
                         : 'border-gray-200 bg-white text-gray-400'
                     }`}
                   >
-                    {h.present ? 'Present' : 'Not present'}
+                    {h.available === false
+                      ? 'Not checked'
+                      : h.present
+                      ? 'Present'
+                      : 'Not present'}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-1">{h.detail}</p>

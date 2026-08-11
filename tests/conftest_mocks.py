@@ -11,6 +11,7 @@ services. Let pure-Python packages (pydantic, fastapi) be real imports
 so their behavior is tested accurately.
 """
 
+import os
 import sys
 from unittest.mock import MagicMock
 
@@ -31,7 +32,30 @@ _MOCK_MODULES = [
     "audit_trail",
 ]
 
+# ── Opt-out for tests that need a REAL database ──────────────────────────────
+# The stub below replaces psycopg2 whenever it has not already been imported —
+# which, at conftest time, is always. So a database test could never obtain a
+# real connection even with DATABASE_URL set: psycopg2.connect() returned a
+# MagicMock and assertions failed with things like
+# "'>' not supported between instances of 'MagicMock' and 'int'".
+#
+# That is what kept tests/test_lga_coverage.py — the LGA-onboarding gate —
+# unrunnable even after its syntax was repaired.
+#
+# Deliberately OPT-IN via an environment variable rather than "use the real
+# library whenever it happens to be installed". The automatic version would
+# silently change the import environment for all 4,100+ tests on any machine
+# with psycopg2 present, and tests that currently rely on the stub (expecting
+# a MagicMock cursor) would start attempting real connections. Opt-in has a
+# blast radius of exactly the runs that ask for it:
+#
+#     PYTEST_REAL_DB=1 DATABASE_URL=postgresql://... pytest -m database
+_REAL_DB = os.environ.get("PYTEST_REAL_DB") == "1"
+_DB_MODULES = {"psycopg2", "psycopg2.extras"}
+
 for mod_name in _MOCK_MODULES:
+    if _REAL_DB and mod_name in _DB_MODULES:
+        continue  # let the genuine library be imported normally
     if mod_name not in sys.modules:
         sys.modules[mod_name] = MagicMock()
 
@@ -67,8 +91,16 @@ transformer_instance.transform = MagicMock(return_value=(0.0, 0.0))
 pyproj_mock.Transformer.from_crs = MagicMock(return_value=transformer_instance)
 
 # ── Special handling: psycopg2.extras.RealDictCursor ─────────────────────────
-psycopg2_extras = sys.modules["psycopg2.extras"]
-psycopg2_extras.RealDictCursor = MagicMock()
+# Guarded: under PYTEST_REAL_DB=1 the stub is skipped, so this key is absent and
+# an unguarded lookup raised KeyError while LOADING conftest — which kills the
+# entire run before a single test is collected. Only patch the stub, never the
+# real library: RealDictCursor is genuine there and replacing it with a
+# MagicMock would defeat the point of asking for a real database.
+if _REAL_DB:
+    pass
+else:
+    psycopg2_extras = sys.modules["psycopg2.extras"]
+    psycopg2_extras.RealDictCursor = MagicMock()
 
 # ── Special handling: audit_trail ────────────────────────────────────────────
 # Services import DataSourceQuery, log_audit_trail, get_current_disclaimer_version.
@@ -104,6 +136,18 @@ except ImportError:
     sys.modules["rasterio"] = rio_mock
     sys.modules["rasterio.transform"] = MagicMock()
     sys.modules["rasterio.crs"] = MagicMock()
+    # A MagicMock does not satisfy `import rasterio.windows` — Python resolves a
+    # dotted import through sys.modules, not through attribute access, and raises
+    # "'rasterio' is not a package". Every submodule that any module under test
+    # imports by name has to be registered, exactly as numpy.typing/numpy.random
+    # are above. Missing this made 6 flood_truth tests fail in a clean
+    # requirements-test.txt environment while passing in a dev checkout that has
+    # real rasterio installed — the suite silently depended on the fat env.
+    sys.modules["rasterio.windows"] = MagicMock()
+    sys.modules["rasterio.warp"] = MagicMock()
+    sys.modules["rasterio.mask"] = MagicMock()
+    sys.modules["rasterio.features"] = MagicMock()
+    sys.modules["rasterio.enums"] = MagicMock()
 
 # ── whitebox: try real import, mock only if unavailable ─────────────────────
 try:
