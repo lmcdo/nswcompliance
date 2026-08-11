@@ -1,0 +1,124 @@
+{
+  "tier": "standard",
+  "justification": "Rewrites lot_area_m2 on 2.5M production rows and changes the source expression in the index builder, plus a keyset-cursor fix in the builder's compute loop. Live data, no schema change, deterministic rollback.",
+  "commit_hash": "ee587bb7",
+  "files": [
+    "scripts/fix_lot_area_mercator.py",
+    "scripts/build_lot_search_index.py",
+    ".gitignore"
+  ],
+  "pre_impl": {
+    "existing_data": "Read from production before writing anything. nsw_cadastre_lots.geom and lot_search_index.geom are both SRID 4326, so ::geography needs no transform. The lotidstring join has 0 unmatched index rows; 0 rows have NULL geom or NULL area. Over a 5,000-lot sample: planlotarea/true = 1.0003, shape_area/true = 1.4390, and shape_area x cos^2(lat)/true = 1.0028, which identifies Web Mercator exactly. 686,145 of 3,220,617 cadastre lots carry a planlotarea, so 79% took the inflated fallback.",
+    "assumption_mismatch": "Three assumptions were wrong and each cost a failed run. (1) The area was assumed to be computed by our code; it is COALESCE(planlotarea, shape_area) taken from the cadastre, so only the fallback branch is wrong and the surveyed rows must not be touched. (2) Index maintenance was assumed to be the bottleneck and indexes were dropped on that basis; small LGAs computed at ~490 lots/s with all indexes present, so it largely was not. (3) Batch cost was assumed proportional to rows; it was a fixed per-query cost, so adaptive shrinking cut throughput 16x for no saving. EXPLAIN ANALYZE showed the real cause: the cursor was bound on only one side of a merge join, so the cadastre index scan restarted at the beginning every batch and took 60,271ms to the first row.",
+    "new_vs_existing": "fix_lot_area_mercator.py is new; no existing script writes lot_search_index.lot_area_m2 (build_cdc_lot_link.py and services/lot_search.py only read it, and no migration alters it). build_lot_search_index.py is edited in place at two points: the area source expression and the compute-loop batch SELECT."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/fix_lot_area_mercator.py:155",
+      "input": "cursor lotidstring + batch size; rows where planlotarea IS NULL and geom IS NOT NULL",
+      "output": "seen/written counts and next cursor; lot_area_m2 = ST_Area(geom::geography), computed_at = NULL",
+      "if_none": "An empty candidate batch (seen < batch) ends the loop — the only termination condition. A NULL geom can never reach the UPDATE, so ST_Area(NULL) cannot blank an area."
+    },
+    {
+      "name": "compute_constraints_for_lga",
+      "file_line": "scripts/build_lot_search_index.py:673",
+      "input": "LGA overlay name + batch size",
+      "output": "ca_* capacity columns and computed_at, written by execute_values",
+      "if_none": "No rows returned ends the LGA. Every selected row is stamped in the same UPDATE, so a row that somehow failed to stamp is skipped by the cursor instead of looping forever, which is what the unbounded version did."
+    }
+  ],
+  "values": [
+    {
+      "value": "shape_area/true = 1.4390; 1.0028 after cos^2(lat)",
+      "read_at": "5,000-row TABLESAMPLE of nsw_cadastre_lots, 2026-08-10",
+      "nullable": "no — shape_area is NOT NULL on all 3,220,617 rows",
+      "guard_at": "N/A — read-only diagnostic that selected the fix",
+      "if_missing": "The defect would be a guess. This pair proves the cause is the projection, not bad source data."
+    },
+    {
+      "value": "2,522,209 lots whose stored capacity came from an inflated area",
+      "read_at": "count over lot_search_index joined to nsw_cadastre_lots, planlotarea IS NULL and computed_at IS NOT NULL",
+      "nullable": "no",
+      "guard_at": "scripts/fix_lot_area_mercator.py — the UPDATE sets computed_at = NULL so these enter the recompute set",
+      "if_missing": "The blast radius reads as one field instead of stored GFA and dwelling counts that lot-search sorts and filters on."
+    },
+    {
+      "value": "post-run ratio 1.0000 on repaired rows, 0.9999 on untouched surveyed rows",
+      "read_at": "verification against production after the run, both populations sampled separately",
+      "nullable": "no",
+      "guard_at": "N/A — verification, not a code path",
+      "if_missing": "The run would be unverified. Sampling the untouched population separately is what shows the repair left the correct rows alone."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Select the next bounded range of rows whose area came from the Mercator fallback.",
+      "file_line": "scripts/fix_lot_area_mercator.py:200",
+      "where_clause": "c.planlotarea IS NULL AND l.geom IS NOT NULL AND l.lotidstring > %s AND c.lotidstring > %s",
+      "if_zero": "The keyspace is exhausted and the repair is complete; the loop ends and the cursor file is cleared.",
+      "if_wrong": "Dropping planlotarea IS NULL would overwrite 686k authoritative surveyed areas. Dropping the cursor from the cadastre side costs 60s per batch instead of 0.33s — measured, and it is what killed three runs."
+    },
+    {
+      "purpose": "Write the geodesic area and mark derived capacity stale.",
+      "file_line": "scripts/fix_lot_area_mercator.py:212",
+      "where_clause": "todo.lotidstring = l.lotidstring AND l.lot_area_m2 IS DISTINCT FROM todo.true_area",
+      "if_zero": "Every row in the range was already correct — a no-op, which is what makes the run idempotent and safe to resume.",
+      "if_wrong": "Moving IS DISTINCT FROM into the candidate SELECT would make a fully repaired range return 0 rows and read as 'finished', ending the run early with millions still wrong."
+    },
+    {
+      "purpose": "Fetch the next batch of lots needing capacity arithmetic.",
+      "file_line": "scripts/build_lot_search_index.py:783",
+      "where_clause": "lga_name = %s AND zone_code IS NOT NULL AND lot_area_m2 > 0 AND computed_at IS NULL AND lotidstring > %s",
+      "if_zero": "The LGA is fully computed and the loop moves to the next one.",
+      "if_wrong": "Without the cursor each batch re-scans rows already stamped: measured ~490 lots/s on small LGAs but ~23/s and still slowing on a 102,934-lot LGA."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The repair runs against rows that already hold a correct surveyed area and overwrites them with a recomputed one.",
+      "what_happens": "686,145 lots with authoritative planlotarea values get silently replaced by a derived figure, losing the better source.",
+      "mitigated": true,
+      "how": "Every statement is scoped by c.planlotarea IS NULL, so surveyed rows are outside the candidate set entirely rather than being filtered later. Verified after the run by sampling that population separately: 0.9999 of true, unchanged.",
+      "repro": "SELECT avg(l.lot_area_m2 / ST_Area(l.geom::geography)) FROM lot_search_index l JOIN nsw_cadastre_lots c USING (lotidstring) WHERE c.planlotarea IS NOT NULL — must stay ~1.00."
+    },
+    {
+      "scenario": "A row with NULL geom is selected, ST_Area returns NULL, and the area is blanked.",
+      "what_happens": "lot_area_m2 becomes NULL and the lot silently drops out of every size filter in lot-search.",
+      "mitigated": true,
+      "how": "geom IS NOT NULL is in both the candidate SELECT and the survey. There are 0 such rows today; the guard exists so the invariant does not depend on that staying true.",
+      "repro": "SELECT count(*) FROM lot_search_index WHERE lot_area_m2 IS NULL — was 0 before and must remain 0."
+    },
+    {
+      "scenario": "The batch loop mistakes a fully repaired range for the end of the table and exits early.",
+      "what_happens": "The run reports DONE with millions of rows still wrong, and the verification sample could easily miss them.",
+      "mitigated": true,
+      "how": "The already-correct test sits in the UPDATE's WHERE, never in the candidate SELECT, so the cursor advances over every row in scope regardless of how many are already done. Only a short candidate batch ends the loop.",
+      "repro": "Re-run --apply on a completed table: it must walk to the end and report 0 rewritten, not stop at the first repaired range."
+    },
+    {
+      "scenario": "The run is killed part way and restarts from the beginning.",
+      "what_happens": "On a 2.5M-row job each restart re-scans everything already done; late in the run that is tens of minutes of wasted work per restart.",
+      "mitigated": true,
+      "how": "The cursor is written to a file after the commit it describes, never before, so a resumed run never skips uncommitted work. Deliberately not derived from a whole-table query — that query itself exceeded a 300s timeout and was what killed the third run.",
+      "repro": "Kill the script mid-run, restart, and confirm it prints 'resuming from saved cursor' rather than starting at the beginning."
+    },
+    {
+      "scenario": "Capacity is recomputed from a half-repaired table.",
+      "what_happens": "The inflated area gets baked into ca_realistic_gfa_m2 and ca_realistic_dwellings for whatever was not reached, which is the exact corruption this job exists to undo.",
+      "mitigated": true,
+      "how": "The orchestrator chains the recompute behind a zero exit from the repair and skips it otherwise. The repair also nulls computed_at, so any row it touched is in the pending set for the recompute.",
+      "repro": "Force the repair to exit non-zero and confirm the recompute does not start and the log says so."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None required. The repair has already run against production: 2.02M rows this run plus ~295k in earlier partial runs. Rollback needs no dump because the previous value is still nsw_cadastre_lots.shape_area — UPDATE lot_search_index l SET lot_area_m2 = c.shape_area FROM nsw_cadastre_lots c WHERE c.lotidstring = l.lotidstring AND c.planlotarea IS NULL.",
+    "secrets": "None. DATABASE_URL is read from the environment and never written.",
+    "other_repo": "None.",
+    "manual_verify": "Confirm all 12 indexes exist on lot_search_index (7 were dropped for the run and the scripted restore silently skipped idx_lsi_area, which was rebuilt by hand). Then confirm the capacity recompute has drained: SELECT count(*) FROM lot_search_index WHERE computed_at IS NULL AND zone_code IS NOT NULL AND lot_area_m2 > 0."
+  },
+  "falsifiable_check": {
+    "command": "python -c \"import os,psycopg2;from dotenv import load_dotenv;load_dotenv();c=psycopg2.connect(os.environ['DATABASE_URL']);cur=c.cursor();cur.execute('SELECT avg(l.lot_area_m2/ST_Area(l.geom::geography)) FROM lot_search_index l TABLESAMPLE SYSTEM (0.3) JOIN nsw_cadastre_lots n ON n.lotidstring=l.lotidstring WHERE n.planlotarea IS NULL AND l.geom IS NOT NULL');print(cur.fetchone()[0])\"",
+    "fails_when": "The ratio is not ~1.0000. A value near 1.45 means the repair did not run or was rolled back; a value near 0.69 would mean the correction was applied twice."
+  }
+}
