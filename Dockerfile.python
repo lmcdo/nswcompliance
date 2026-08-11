@@ -53,7 +53,27 @@ ENV NARCLIM_DIR=/tmp/narclim
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+# start-period must exceed a COLD start, and the CMD below downloads ~2.5 GB of
+# rasters before uvicorn binds a port. Measured cold start 2026-08-07: 37s
+# (05:57:13 container start -> 05:57:50 "Application startup complete"), of
+# which ~35s is the three downloaders. A warm restart is ~2s, because each
+# downloader skips files already present at the right size.
+#
+# 10s was therefore 27s SHORT of a healthy boot. It survived only on the retry
+# margin (10s + 3x30s = ~100s before unhealthy) — luck, not design.
+#
+# 300s covers roughly a 7x degradation of the observed ~70 MB/s throughput, and
+# is close to free: a start-period ENDS the moment one probe succeeds, so a fast
+# boot is marked healthy at the first check and the longer window costs nothing.
+# The asymmetry justifies the generosity — too short kills a container
+# mid-download, which restarts and re-downloads 2.5 GB (a crash loop); too long
+# only delays noticing a genuinely dead container.
+#
+# NOTE: Railway gates deployments on its own `healthcheckPath` setting, which is
+# NOT configured for this service, so this instruction may currently be inert
+# there. It is still wrong as written and is honoured by plain `docker run`,
+# Compose and other runtimes — see the PR for the healthcheckPath question.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 CMD ["sh", "-c", "python3 scripts/download_hawkesbury_rasters.py && python3 scripts/download_redbank_rasters.py && python3 scripts/download_tweed_wollongong_rasters.py && python3 scripts/download_narclim_rasters.py && uvicorn services.compliance_api_server:app --host 0.0.0.0 --port 8000"]
