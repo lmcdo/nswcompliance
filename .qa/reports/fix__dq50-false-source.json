@@ -1,0 +1,99 @@
+{
+  "tier": "standard",
+  "commit_hash": "PENDING",
+  "justification": "First production data repair of this effort. 143 flood reports credited a satellite data source for an analysis that never ran, and 121 were inside the 90-day cache window being served verbatim on every cache hit. A wrong move writes to the live database, so the whole design is 'prove it before committing, verify it after' rather than 'run it and check later'.",
+  "files": [
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-50",
+    "fails_when": "Any stored report names 'Microsoft Planetary Computer S1 RTC' in data_sources. The probe was written BEFORE the repair and reported 143 then; it reports 0 now. That ordering is what makes it evidence rather than a victory lap — it is the same query, unchanged, run either side of the write. Not self-referential: the probe reads the production database, which knows nothing about the ledger or this report. Falsifiable in the other direction too, and it fired: with the data fixed and the ledger still saying 'open', dq_check.py went RED with 'declared OPEN but the check PASSES'.",
+    "external_authority": "The production Supabase instance. The pre-write arithmetic was independently derived three ways that agreed (ILIKE 143, exact array membership 143, window 121 by both run_date and created_at), and the post-write state was read back by a query that had no knowledge of what the UPDATE did."
+  },
+  "pre_impl": {
+    "existing_data": "DQ-50 logged 2026-08-06 as '143 rows, 131 inside the cache window, data repair not authorised in Lane 1 (measure/write separation)'. CLAUDE.md requires a backup before any database operation and verification of target and row count before an UPDATE. The user's standing ruling for DB work, given 2026-08-12, is measure first, rule, then write.",
+    "assumption_mismatch": "My own safety check was wrong before the data was. The first transaction ROLLED BACK because a guard counted 22 reports with no data sources at all. I had assumed that meant my UPDATE had emptied them. It had not: they are pre-existing solar-yield rows and ZERO of them are among the 143 flood rows touched. The guard was measuring a GLOBAL property that was already false rather than a property of the change. Re-scoped to 'no row I touched ends up empty' — deliberately not loosened to 'ignore empties', which would have removed the protection instead of aiming it.",
+    "new_vs_existing": "No new script. The repair is a single array_remove executed inline; the verification is the probe that already existed from PR #932. Only two status files change in the repo."
+  },
+  "functions": "N/A - a data repair plus two status updates; no function added or changed",
+  "values": [
+    {
+      "value": "143 flood reports carried the false source, run dates 2026-04-07 to 2026-08-03; 121 inside the 90-day cache window",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-50 and --id DQ-50-window, before the write, 2026-08-12",
+      "if_missing": "without the before-number the after-number proves only that the query returns 0, not that anything was repaired"
+    },
+    {
+      "value": "dry run: 0 of the 143 had it as their ONLY source; total source entries 1056 -> 913 across those rows, exactly 143 removed, one per row",
+      "read_at": "read-only SELECT with array_remove applied in the projection, before any write, 2026-08-12",
+      "if_missing": "this is the evidence no legitimate source could be lost — the arithmetic constrains the blast radius to exactly one entry per row"
+    },
+    {
+      "value": "committed write: 143 rows updated, entries 6365 -> 6222 (delta 143), report count unchanged 1337, source-less reports unchanged at 22",
+      "read_at": "in-transaction verification before COMMIT, 2026-08-12",
+      "if_missing": "these are the assertions that gate the commit; without them the transaction would be trusted rather than checked"
+    },
+    {
+      "value": "after commit: DQ-50 probe returns 0, CLEAN",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-50 from a fresh connection after commit, 2026-08-12",
+      "if_missing": "in-transaction checks can only see the transaction's own view; a fresh read is what confirms the committed state"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-50 - reports crediting a source that was never queried (the verification)",
+      "file_line": "scripts/dq_probe_live.py:38",
+      "where_clause": "WHERE 'Microsoft Planetary Computer S1 RTC' = ANY(data_sources) - exact array membership, not ILIKE, so a substring elsewhere cannot inflate it"
+    },
+    {
+      "purpose": "the repair itself",
+      "file_line": ".claude/DATA_QUALITY_TRACKER.md:DQ-50",
+      "where_clause": "UPDATE property_reports SET data_sources = array_remove(data_sources, <literal>) WHERE <literal> = ANY(data_sources) - scoped by the same predicate that counted them, so the write cannot reach a row the count did not include"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "array_remove strips a legitimate source as well, or empties a row entirely.",
+      "what_happens": "A report loses real provenance and starts serving fewer sources than it consulted — replacing a false claim with a false absence, which is no better.",
+      "mitigated": true,
+      "how": "Proven impossible by arithmetic BEFORE the write: the dry run showed 0 of the 143 had it as their only source, and total entries fell by exactly 143 across 143 rows, one apiece. array_remove takes an exact literal, so no partial or fuzzy match exists. The same totals were re-asserted inside the transaction and would have rolled it back.",
+      "repro": "SELECT count(*) FROM property_reports WHERE 'Microsoft Planetary Computer S1 RTC' = ANY(data_sources) AND array_length(data_sources,1)=1"
+    },
+    {
+      "scenario": "The UPDATE touches more rows than were counted.",
+      "what_happens": "Silent collateral damage to reports nobody measured, discovered later or never.",
+      "mitigated": true,
+      "how": "The UPDATE's WHERE is the SAME predicate as the count, so the write cannot reach a row the count excluded, and rowcount was asserted equal to 143 inside the transaction before commit. Report count and total entry count were both re-checked and unchanged apart from the intended 143.",
+      "repro": "the in-transaction assertions in the repair block; any mismatch rolls back"
+    },
+    {
+      "scenario": "The repair is verified only by the code that performed it.",
+      "what_happens": "A self-comparison — the classic DQ-30 '0% drift' shape, where the thing that made the change also declares it correct.",
+      "mitigated": true,
+      "how": "Verified by dq_probe_live.py, written in PR #932 BEFORE this repair existed, unchanged by it, run on a fresh connection after commit. It reported 143 before and 0 after. The ratchet then independently flagged the ledger as stale, which no self-check would do.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-50"
+    },
+    {
+      "scenario": "A safety guard fires, and the response is to weaken it rather than understand it.",
+      "what_happens": "The next repair runs with a guard that has been quietly hollowed out, and the protection is gone precisely where it was needed.",
+      "mitigated": true,
+      "how": "This happened. The first attempt rolled back on 22 source-less reports. They were investigated rather than dismissed — pre-existing solar-yield rows, 0 among the 143 — and the guard was RE-SCOPED to the rows actually touched, not removed. The 22 are recorded in the ledger as a separate unfixed finding rather than swept up.",
+      "repro": "SELECT product, count(*) FROM property_reports WHERE data_sources IS NULL OR array_length(data_sources,1) IS NULL GROUP BY 1"
+    },
+    {
+      "scenario": "The repair needs reverting.",
+      "what_happens": "Without a restore path, an incorrect judgement about which source was false becomes permanent.",
+      "mitigated": true,
+      "how": "property_reports_dq50_backup_20260812 holds id, product, run_date and the ORIGINAL data_sources for all 143 rows, created and row-count-verified before the write. Restoring is an UPDATE joined on id. The table is deliberately not dropped.",
+      "repro": "SELECT count(*) FROM property_reports_dq50_backup_20260812   -- expect 143"
+    }
+  ],
+  "mutation_analysis": "The mutation ran itself, twice, and neither was planted. First: the transaction ROLLED BACK on a guard I had mis-scoped, which is the strongest evidence the gate can actually stop a write — it stopped mine. Second: once the data was fixed and the ledger still said 'open', dq_check.py went RED with 'declared OPEN but the check PASSES'. That is the ratchet direction I argued for when building it, firing for the first time on a real repair rather than a synthetic one, and it is the direction that catches a defect nobody would ever re-test. The weak version of this work would have been running the UPDATE and re-running the same script to confirm its own success; instead the confirming probe predates the repair and was untouched by it.",
+  "residual_risk": "The 22 solar-yield reports with NO data sources at all are untouched and unexplained — found while guarding this repair, recorded in the ledger, not investigated. The backup table is retained indefinitely and nothing prunes it. This repair fixes STORED rows; if the code path that wrote the false source still exists for some product, new rows could reappear, and the probe is what would catch that rather than anything preventing it. DQ-50's fix does not touch the 22-row finding, DQ-32, or any other open row.",
+  "post_merge": {
+    "db_reset": "No reset. A data repair was COMMITTED to production: 143 rows of property_reports.data_sources. Backup property_reports_dq50_backup_20260812 restores them by id.",
+    "secrets": "None read or written.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes: run python scripts/dq_probe_live.py --id DQ-50 and confirm 0/CLEAN, and confirm the backup table still holds 143 rows before anyone considers dropping it."
+  }
+}
