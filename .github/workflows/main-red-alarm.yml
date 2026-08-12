@@ -191,14 +191,22 @@ jobs:
                 owner, repo, issue_number: existing.number, body,
               });
             } else {
+              // Resolve the label FIRST so there is exactly one create call.
+              // The obvious shape here is create-with-label and retry-without
+              // on failure, and it is wrong: `issues.create` is not
+              // idempotent, so a transient transport error AFTER GitHub has
+              // accepted the issue would file a second identical one. Two open
+              // alarms for one outage is the alarm fatigue this file exists to
+              // avoid. A missing `ci` label is the only thing that retry was
+              // ever for, and that is knowable up front.
+              let labels = [];
               try {
-                await github.rest.issues.create({ owner, repo, title, body, labels: ['ci'] });
-              } catch (e) {
-                // The `ci` label may not exist in this repo; the alarm matters
-                // more than its label.
-                core.info(`Labelled create failed (${e.message}); filing without a label.`);
-                await github.rest.issues.create({ owner, repo, title, body });
+                await github.rest.issues.getLabel({ owner, repo, name: 'ci' });
+                labels = ['ci'];
+              } catch {
+                core.info('No `ci` label in this repo — filing unlabelled. The alarm matters more than its label.');
               }
+              await github.rest.issues.create({ owner, repo, title, body, labels });
             }
 
             // Fail the job too, so the alarm is visible in the Actions list
