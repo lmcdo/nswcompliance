@@ -6,6 +6,22 @@
 # defect fixed alongside this file was a missing dependency; the defect fixed
 # HERE is that nothing raised its hand.
 #
+# SECOND ORIGIN, 2026-08-12: this file then spent its whole life on the
+# self-hosted runners failing at `exit 127` — `gh: command not found`,
+# `jq: command not found` — 12 runs out of 12, never once working. `gh` and
+# `jq` are preinstalled on `ubuntu-latest` and are NOT in the WSL runner
+# images, so moving CI self-hosted to route around the billing block silently
+# killed the watchdog. `gates` was passing the whole time; the only thing
+# broken was the thing that would have told us if it weren't. That is this
+# file's own origin story happening to this file.
+#
+# Hence the rule now in force: THIS WORKFLOW SHELLS OUT TO NOTHING. Every step
+# is `actions/github-script`, which runs on the Node bundled with the runner
+# and talks to the API through an already-authenticated Octokit. No `gh`, no
+# `jq`, no `date -d`, nothing that can be absent from a runner image. Do not
+# reintroduce a `run:` step here — an alarm with an environment dependency is
+# an alarm that dies quietly the next time the environment moves.
+#
 # Two triggers, because there are two ways to be broken and only one of them
 # announces itself:
 #
@@ -55,134 +71,198 @@ jobs:
     steps:
       - name: Assess main
         id: assess
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
 
-          # The newest COMPLETED gates run on main. `workflow_run` gives us the
-          # triggering run directly, but the scheduled sweep has to go looking,
-          # and asking the API for both keeps one code path.
-          RUN_JSON=$(gh run list --workflow gates.yml --branch main \
-                       --status completed --limit 1 \
-                       --json databaseId,conclusion,url,headSha,updatedAt \
-                     | jq '.[0] // empty')
+            // The newest COMPLETED gates run on main. `workflow_run` gives us
+            // the triggering run directly, but the scheduled sweep has to go
+            // looking, and asking the API for both keeps one code path.
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner, repo,
+              workflow_id: 'gates.yml',
+              branch: 'main',
+              status: 'completed',
+              per_page: 1,
+            });
+            const run = runs.data.workflow_runs[0];
 
-          if [ -z "$RUN_JSON" ]; then
-            # No completed run at all. Not "fine" — unknown, and unknown about
-            # a gate is the state this alarm exists to refuse.
-            echo "state=broken"                                  >> "$GITHUB_OUTPUT"
-            echo "detail=No completed \`gates\` run found on main. The workflow may be disabled, or has never run." >> "$GITHUB_OUTPUT"
-            echo "url=https://github.com/${GH_REPO}/actions/workflows/gates.yml" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+            if (!run) {
+              // No completed run at all. Not "fine" — unknown, and unknown
+              // about a gate is the state this alarm exists to refuse.
+              core.setOutput('state', 'broken');
+              core.setOutput('detail', 'No completed `gates` run found on main. The workflow may be disabled, or has never run.');
+              core.setOutput('url', `https://github.com/${owner}/${repo}/actions/workflows/gates.yml`);
+              return;
+            }
 
-          CONCLUSION=$(echo "$RUN_JSON" | jq -r .conclusion)
-          URL=$(echo "$RUN_JSON" | jq -r .url)
-          SHA=$(echo "$RUN_JSON" | jq -r .headSha)
-          UPDATED=$(echo "$RUN_JSON" | jq -r .updatedAt)
-          AGE_H=$(( ( $(date -u +%s) - $(date -u -d "$UPDATED" +%s) ) / 3600 ))
-          HEAD_SHA=$(gh api "repos/${GH_REPO}/commits/main" --jq .sha)
+            const conclusion = run.conclusion;
+            const url = run.html_url;
+            const sha = run.head_sha;
+            const short = (s) => String(s).slice(0, 8);
+            // Returns null rather than NaN for an absent or unparseable
+            // timestamp. This matters more than it looks: NaN < 0 and NaN > 3
+            // are BOTH false, so an unparseable date would slide past both
+            // guards below and land on state=ok — a watchdog failing OPEN and
+            // reporting "NaNh" while main sat unverified. Every caller must
+            // therefore handle null explicitly.
+            const hoursSince = (iso) => {
+              const t = iso ? new Date(iso).getTime() : NaN;
+              return Number.isFinite(t) ? Math.floor((Date.now() - t) / 3600000) : null;
+            };
+            const fmtAge = (h) => (h === null ? 'unknown age' : `${h}h`);
+            const ageH = hoursSince(run.updated_at);
 
-          echo "main HEAD: ${HEAD_SHA:0:8}"
-          echo "Latest gates run on main: $CONCLUSION on ${SHA:0:8}, ${AGE_H}h old, $URL"
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
+            const head = await github.rest.repos.getCommit({ owner, repo, ref: 'main' });
+            const headSha = head.data.sha;
 
-          if [ "$CONCLUSION" != "success" ]; then
-            echo "state=broken" >> "$GITHUB_OUTPUT"
-            echo "detail=The latest \`gates\` run on main concluded **${CONCLUSION}** (commit \`${SHA:0:8}\`, ${AGE_H}h ago)." >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+            core.info(`main HEAD: ${short(headSha)}`);
+            core.info(`Latest gates run on main: ${conclusion} on ${short(sha)}, ${fmtAge(ageH)} old, ${url}`);
+            core.setOutput('url', url);
 
-          # Staleness is about COVERAGE, not the clock. A green run on main's
-          # current HEAD means main is verified, however long ago it ran — a
-          # quiet weekend is not a fault, and an alarm that cries wolf every
-          # Monday is how the next real one gets ignored. What is a fault is
-          # HEAD having no run at all: something was pushed and nothing
-          # checked it.
-          if [ "$SHA" = "$HEAD_SHA" ]; then
-            echo "state=ok" >> "$GITHUB_OUTPUT"
-            echo "detail=Latest gates run on main: success, on current HEAD \`${HEAD_SHA:0:8}\` (${AGE_H}h ago)." >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+            if (conclusion !== 'success') {
+              core.setOutput('state', 'broken');
+              core.setOutput('detail', `The latest \`gates\` run on main concluded **${conclusion}** (commit \`${short(sha)}\`, ${fmtAge(ageH)} ago).`);
+              return;
+            }
 
-          # HEAD is newer than the last completed run. Allow a window for a run
-          # that is genuinely still in flight before calling it unverified.
-          HEAD_TIME=$(gh api "repos/${GH_REPO}/commits/main" --jq .commit.committer.date)
-          HEAD_AGE_H=$(( ( $(date -u +%s) - $(date -u -d "$HEAD_TIME" +%s) ) / 3600 ))
-          # A committer date is author-supplied and can be in the future, which
-          # would make HEAD_AGE_H negative and grant an unbounded grace period
-          # to a head nothing has verified. Anything not plainly within the
-          # in-flight window is treated as unverified — fail closed.
-          if [ "$HEAD_AGE_H" -lt 0 ]; then
-            echo "state=broken" >> "$GITHUB_OUTPUT"
-            echo "detail=main is at \`${HEAD_SHA:0:8}\`, whose committer date is in the FUTURE, and the newest completed \`gates\` run is for \`${SHA:0:8}\`. The current head of main is unverified; a future-dated commit cannot be used to argue its run is still in flight." >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$HEAD_AGE_H" -gt 3 ]; then
-            echo "state=broken" >> "$GITHUB_OUTPUT"
-            echo "detail=main is at \`${HEAD_SHA:0:8}\` (${HEAD_AGE_H}h old) but the newest completed \`gates\` run is for \`${SHA:0:8}\`. Nothing has verified the current head of main — the workflow may no longer be firing." >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+            // Staleness is about COVERAGE, not the clock. A green run on
+            // main's current HEAD means main is verified, however long ago it
+            // ran — a quiet weekend is not a fault, and an alarm that cries
+            // wolf every Monday is how the next real one gets ignored. What
+            // IS a fault is HEAD having no run at all: something was pushed
+            // and nothing checked it.
+            if (sha === headSha) {
+              core.setOutput('state', 'ok');
+              core.setOutput('detail', `Latest gates run on main: success, on current HEAD \`${short(headSha)}\` (${fmtAge(ageH)} ago).`);
+              return;
+            }
 
-          echo "state=ok" >> "$GITHUB_OUTPUT"
-          echo "detail=Last completed run succeeded; HEAD \`${HEAD_SHA:0:8}\` is only ${HEAD_AGE_H}h old and its run may still be in flight." >> "$GITHUB_OUTPUT"
+            // HEAD is newer than the last completed run. Allow a window for a
+            // run that is genuinely still in flight before calling it
+            // unverified. A committer date is author-supplied and can be in
+            // the future, which would grant an unbounded grace period to a
+            // head nothing has verified — anything not plainly inside the
+            // window is treated as unverified. Fail closed.
+            const headTime = head.data.commit.committer.date;
+            const headAgeH = hoursSince(headTime);
+
+            if (headAgeH === null) {
+              // No usable timestamp means the in-flight argument cannot be
+              // made at all. Unknown is not ok — refuse it.
+              core.setOutput('state', 'broken');
+              core.setOutput('detail', `main is at \`${short(headSha)}\` and the newest completed \`gates\` run is for \`${short(sha)}\`, but main's committer timestamp is missing or unparseable, so there is no basis for treating its run as still in flight. The current head of main is unverified.`);
+              return;
+            }
+            if (headAgeH < 0) {
+              core.setOutput('state', 'broken');
+              core.setOutput('detail', `main is at \`${short(headSha)}\`, whose committer date is in the FUTURE, and the newest completed \`gates\` run is for \`${short(sha)}\`. The current head of main is unverified; a future-dated commit cannot be used to argue its run is still in flight.`);
+              return;
+            }
+            if (headAgeH > 3) {
+              core.setOutput('state', 'broken');
+              core.setOutput('detail', `main is at \`${short(headSha)}\` (${fmtAge(headAgeH)} old) but the newest completed \`gates\` run is for \`${short(sha)}\`. Nothing has verified the current head of main — the workflow may no longer be firing.`);
+              return;
+            }
+
+            core.setOutput('state', 'ok');
+            core.setOutput('detail', `Last completed run succeeded; HEAD \`${short(headSha)}\` is only ${fmtAge(headAgeH)} old and its run may still be in flight.`);
 
       - name: Raise or update the alarm
         if: steps.assess.outputs.state == 'broken'
+        uses: actions/github-script@v7
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
           DETAIL: ${{ steps.assess.outputs.detail }}
           RUN_URL: ${{ steps.assess.outputs.url }}
-        run: |
-          set -euo pipefail
-          # printf, not a heredoc: an indented terminator does not close a
-          # <<EOF, and indented heredoc content renders as a markdown code
-          # block. Both are silent — the issue would still be filed, just
-          # unreadable or malformed.
-          BODY=$(printf '%s\n' \
-            "${DETAIL}" \
-            "" \
-            "Run: ${RUN_URL}" \
-            "" \
-            "**main is not verified while this is open.** Anything merged on top is landing on an unknown base, and a second failure underneath a first one is invisible until the first is cleared." \
-            "" \
-            "Raised automatically by \`.github/workflows/main-red-alarm.yml\`. It closes itself when a \`gates\` run on main succeeds — no need to close it by hand, and closing it early only hides the state again.")
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const title = process.env.ISSUE_TITLE;
+            const detail = process.env.DETAIL;
 
-          EXISTING=$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" \
-                       --json number,title \
-                     | jq -r --arg t "$ISSUE_TITLE" '.[] | select(.title == $t) | .number' \
-                     | head -1)
+            const body = [
+              detail,
+              '',
+              `Run: ${process.env.RUN_URL}`,
+              '',
+              '**main is not verified while this is open.** Anything merged on top is landing on an unknown base, and a second failure underneath a first one is invisible until the first is cleared.',
+              '',
+              'Raised automatically by `.github/workflows/main-red-alarm.yml`. It closes itself when a `gates` run on main succeeds — no need to close it by hand, and closing it early only hides the state again.',
+            ].join('\n');
 
-          if [ -n "$EXISTING" ]; then
-            echo "Alarm already open as #${EXISTING} — commenting rather than duplicating."
-            gh issue comment "$EXISTING" --body "$BODY"
-          else
-            gh issue create --title "$ISSUE_TITLE" --body "$BODY" --label "ci" \
-              || gh issue create --title "$ISSUE_TITLE" --body "$BODY"
-          fi
+            // Listed and matched exactly, NOT searched. The search index lags
+            // behind issue creation by seconds to minutes, so a search-based
+            // lookup can miss an issue that already exists and file a
+            // duplicate — which is precisely the alarm-fatigue failure this
+            // file is built to avoid.
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100,
+            });
+            const existing = open.find((i) => i.title === title && !i.pull_request);
 
-          # Fail the job too, so the alarm is visible in the Actions list and
-          # not only to whoever reads issues.
-          echo "::error::${DETAIL}"
-          exit 1
+            if (existing) {
+              core.info(`Alarm already open as #${existing.number} — commenting rather than duplicating.`);
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number, body,
+              });
+            } else {
+              // Resolve the label FIRST so there is exactly one create call.
+              // The obvious shape here is create-with-label and retry-without
+              // on failure, and it is wrong: `issues.create` is not
+              // idempotent, so a transient transport error AFTER GitHub has
+              // accepted the issue would file a second identical one. Two open
+              // alarms for one outage is the alarm fatigue this file exists to
+              // avoid. A missing `ci` label is the only thing that retry was
+              // ever for, and that is knowable up front.
+              let labels = [];
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: 'ci' });
+                labels = ['ci'];
+              } catch (e) {
+                // ONLY a 404 means the label is absent. A 500, a timeout, a
+                // rate-limit or an auth failure would otherwise be read as
+                // "no such label" and quietly file an unlabelled alarm that
+                // label-based triage never sees — a silent degradation in the
+                // one workflow that exists to stop things being silent. Any
+                // other status is rethrown; the step still ends in
+                // core.setFailed, so the job goes red either way and the
+                // alarm remains visible in the Actions list.
+                if (e.status !== 404) throw e;
+                core.info('No `ci` label in this repo (404) — filing unlabelled. The alarm matters more than its label.');
+              }
+              await github.rest.issues.create({ owner, repo, title, body, labels });
+            }
+
+            // Fail the job too, so the alarm is visible in the Actions list
+            // and not only to whoever reads issues.
+            core.setFailed(detail);
 
       - name: Stand the alarm down
         if: steps.assess.outputs.state == 'ok'
+        uses: actions/github-script@v7
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          EXISTING=$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" \
-                       --json number,title \
-                     | jq -r --arg t "$ISSUE_TITLE" '.[] | select(.title == $t) | .number' \
-                     | head -1)
-          if [ -n "$EXISTING" ]; then
-            gh issue comment "$EXISTING" --body "main is green again — ${{ steps.assess.outputs.detail }} Closing."
-            gh issue close "$EXISTING"
-          else
-            echo "main green, no alarm open. Nothing to do."
-          fi
+          DETAIL: ${{ steps.assess.outputs.detail }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const title = process.env.ISSUE_TITLE;
+
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100,
+            });
+            const existing = open.find((i) => i.title === title && !i.pull_request);
+
+            if (!existing) {
+              core.info('main green, no alarm open. Nothing to do.');
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: existing.number,
+              body: `main is green again — ${process.env.DETAIL} Closing.`,
+            });
+            await github.rest.issues.update({
+              owner, repo, issue_number: existing.number, state: 'closed',
+            });
+            core.info(`Closed #${existing.number}.`);

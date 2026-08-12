@@ -102,6 +102,11 @@ data/flood_calibration/copernicus/*
 # cross-review result. Both are regenerated and neither describes the codebase.
 .claude/.prior-art-surfaces.json
 .claude/sol-shadow-review.json
+# Same class, missed when the others were listed: the marker written by
+# /pre-impl that gates Edit/Write to scripts/, migrations/ and services/.
+# Per-session and regenerated; committing it would hand the next branch a
+# stale pass for an investigation it never ran.
+.claude/.pre-impl-done.json
 
 # One rollback backup exceeds the 2 MB pre-commit gate (8.3 MB): the predicted
 # December-DST shadow values behind the #883/#885 regeneration. Kept ON DISK as
@@ -571,6 +576,7 @@ scripts/*
 !scripts/insert_gap_fill_mid_volume.py
 !scripts/qa_gate.py
 !scripts/qa_report_template.json
+!scripts/main_red_alarm_logic_check.js
 !scripts/check_test_baselines.py
 !scripts/check_dependency_skips.py
 !scripts/satellite_freshness_monitor.py

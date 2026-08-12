@@ -1,0 +1,120 @@
+{
+  "tier": "standard",
+  "justification": "Repairs the watchdog that is supposed to announce a red main. It has failed 12 of 12 runs since the self-hosted migration, so the repo has had no working alarm at all — the exact three-day-silent-outage condition the file was written to prevent, reintroduced by the runner move. A wrong fix here is worse than none: it would look repaired while still never firing, and nobody checks a watchdog that reports success.",
+  "commit_hash": "b6207a35",
+  "files": [
+    ".github/workflows/main-red-alarm.yml",
+    "scripts/main_red_alarm_logic_check.js",
+    ".gitignore",
+    "scripts/qa_gate.py",
+    "tests/test_qa_gate_falsifiable.py"
+  ],
+  "falsifiable_check": {
+    "command": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml",
+    "fails_when": "Any of the six decision paths returns the wrong state. The harness is committed at scripts/main_red_alarm_logic_check.js so the command is runnable by anyone, which the QA gate rightly refused to accept until it was. It extracts the Assess script out of the YAML and executes it against mocked Octokit responses, so it fails on a syntax error, a renamed API field, or an inverted comparison. Measured: 6/6 pass. Case 3 is today's real state — green run on the current HEAD — and returns ok, which is what makes the standing-down path meaningful rather than assumed. Case 4 (HEAD 9h old, no run) and case 6 (future-dated committer date) are the two that must go broken; they do. Not a self-comparison: the expected states were written from the file's stated intent, not from observed output. The post-merge half is separate and cannot be faked — the workflow only runs on main, so workflow_dispatch is the real proof, and its previous 12 runs all died at exit 127.",
+    "external_authority": "The GitHub Actions runner image decides whether gh and jq exist, not this repo. That is the whole defect: the old steps assumed the ubuntu-latest toolset and got the WSL one. The run log is the authority for the diagnosis — run 31554705844 says 'gh: command not found', 'jq: command not found', 'Process completed with exit code 127'."
+  },
+  "pre_impl": {
+    "existing_data": "The workflow's own header already documented the failure it was built for: main red 2026-08-03 to 08-06, gates failing for three days with a red X on the commit list that was addressed to nobody. ~/.claude/plans/ce-CURRENT-AIM.md records the self-hosted runner migration (RUNNER_LABEL, 5 WSL runners) as the fix for the billing block. Nothing connected the two, which is how this went unnoticed.",
+    "assumption_mismatch": "I first read the 12 consecutive failures as a race — the alarm fires about 69 seconds after a merge, while gates is still running, so 'it is just seeing an in-flight run' was a plausible and completely wrong story. It would have led to widening the in-flight window and declaring victory on a workflow that still could not execute a single line. Reading the actual run log killed it: the job dies at exit 127 in the FIRST step, before any assessment logic runs at all. The trigger timing is irrelevant. A second mismatch, later and sharper: I assumed widening the gate's runnable-command regex was a safe one-line accommodation. It was not — `node` unanchored matched the word 'nodes' in prose, so the counterweight test I wrote against my own change failed immediately and correctly. The fix was \bnode\b.",
+    "new_vs_existing": "No new workflow and no new alarm semantics. Every threshold, message and the single-reused-issue design are carried over unchanged; only the execution substrate changes, from shell plus gh plus jq to actions/github-script. One deliberate behaviour change is called out in break_it: issue lookup moves from the search index to an exact-title match over listForRepo. The harness is new and tracked; scripts/* is ignore-by-default here, so it needed an explicit allowlist entry alongside qa_gate.py — the same class of trap that swallowed a QA report earlier today."
+  },
+  "functions": [
+    {
+      "name": "hoursSince",
+      "file_line": ".github/workflows/main-red-alarm.yml:105",
+      "input": "an ISO 8601 timestamp from the API — a run's updated_at, or main's committer date",
+      "output": "whole hours elapsed, floored; replaces the old `date -u -d` arithmetic, which was one of the coreutils dependencies that could not be assumed on the runner",
+      "if_none": "it cannot return nothing, but it CAN return a negative number when a committer date is in the future, and that case is handled explicitly rather than allowed to satisfy the `< 3` in-flight test and silence the alarm forever"
+    }
+  ],
+  "values": [
+    {
+      "value": "main-red-alarm: 12 failures out of 12 runs, every run from 2026-08-11T21:30:12Z through 2026-08-12T01:46:22Z — it has never succeeded on the self-hosted runners",
+      "read_at": "gh run list --branch main --workflow main-red-alarm.yml --limit 12, 2026-08-12",
+      "if_missing": "without the full history this looks like a new intermittent fault rather than a watchdog that has never once worked, and the urgency is completely different"
+    },
+    {
+      "value": "the cause is exit 127: 'gh: command not found' and 'jq: command not found' on runner wsl-ubuntu-lawre-4",
+      "read_at": "gh run view 31554705844 --log, 2026-08-12",
+      "if_missing": "without it the fix is a guess; several plausible wrong causes existed, including the trigger race I initially believed"
+    },
+    {
+      "value": "gates itself: success on e1fa65ae, 6911842e and f1aa24e5 — the three merges of this session",
+      "read_at": "gh run list --branch main, 2026-08-12",
+      "if_missing": "this is what establishes that main is genuinely green and only the ALARM was broken; without it, 12 red runs could reasonably be read as main being red"
+    },
+    {
+      "value": "local harness: 9/9 decision paths correct against mocked API responses (was 6/6 before the cross-review added the NaN-timestamp cases)",
+      "read_at": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml, 2026-08-12",
+      "if_missing": "the workflow runs only on main, so without a local harness the first execution of this code would be in production on the one path that is supposed to be trustworthy"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A future edit adds a `run:` step back into this workflow — for a quick curl, a date calculation, or a one-line gh call.",
+      "what_happens": "The workflow starts depending on the runner image again and dies at exit 127 the next time the image or the runner label changes. It fails silently in the sense that matters: the alarm reports failure, everyone assumes the alarm is flaky, and a genuinely red main is invisible underneath it. That is exactly what the last twelve runs were.",
+      "mitigated": true,
+      "how": "Every step is actions/github-script and the file header states the rule explicitly, with this incident as its second origin story. Verified structurally rather than by eye: parsing the YAML shows 3 steps, all with `uses: actions/github-script@v7` and none with a `run` key.",
+      "repro": "python -c \"import yaml;d=yaml.safe_load(open('.github/workflows/main-red-alarm.yml',encoding='utf-8'));print([('run' in s) for s in d['jobs']['alarm']['steps']])\"  # expect all False"
+    },
+    {
+      "scenario": "Moving issue lookup from the search index to listForRepo changes behaviour — the repo has more open issues than one page, and the existing alarm issue is missed.",
+      "what_happens": "A duplicate alarm issue is filed on every failing run. Seventy-two hourly duplicates is precisely the alarm fatigue the original design avoided, and it would make a real outage harder to see rather than easier.",
+      "mitigated": true,
+      "how": "github.paginate is used rather than a single 100-item page, so every open issue is examined regardless of count. The change is deliberate and is an improvement on the original: gh issue list --search depends on the search index, which lags issue creation by seconds to minutes, so the OLD code could miss an issue it had just created and duplicate it. Pull requests are excluded via !i.pull_request, because listForRepo returns PRs as issues and a PR titled the same would otherwise be commented on instead.",
+      "repro": "grep -n 'paginate\\|pull_request' .github/workflows/main-red-alarm.yml"
+    },
+    {
+      "scenario": "actions/github-script cannot be downloaded on the self-hosted runner — no network egress to github.com for the actions cache, or a pinned-actions policy.",
+      "what_happens": "The job fails at step setup instead of at exit 127. Different error, same outcome: no alarm, and the failure looks like the noise everyone has already learned to ignore.",
+      "mitigated": false,
+      "how": "Not mitigated and not fully knowable before merge. It is however strongly evidenced against: the gates workflow already runs actions/checkout and actions/setup-node on these same runners and passes, so third-party actions do resolve there. The post-merge workflow_dispatch is the check that settles it, and it is in post_merge as a required step rather than optional.",
+      "repro": "gh workflow run main-red-alarm.yml && gh run list --workflow main-red-alarm.yml --limit 1"
+    },
+    {
+      "scenario": "The alarm now passes, so everyone assumes it works — but it passes because the assessment silently returns ok on every input, e.g. an exception swallowed somewhere makes state default to empty and both conditional steps skip.",
+      "what_happens": "A green watchdog that never fires. Strictly worse than the current state, because 12 visible failures at least look wrong, whereas a quiet success looks correct.",
+      "mitigated": true,
+      "how": "This is why the harness asserts the BROKEN paths, not just the ok ones: 4 of the 6 cases must return broken and do. An always-ok regression fails four assertions. Note the residual hole honestly: if state comes back empty, both steps are skipped and the JOB still reports success, so the harness is the only thing standing between that and a silent watchdog.",
+      "repro": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml   # 4 of 6 cases must report broken"
+    },
+    {
+      "scenario": "Widening _LOOKS_RUNNABLE_RE in qa_gate.py to accept `node` lets plain English through, so a description of a check starts passing as a check.",
+      "what_happens": "The falsifiability gate keeps reporting PASSED while accepting prose. Nothing goes red, and the one guard that exists specifically because DQ-30 shipped on an unfalsifiable claim quietly stops discriminating.",
+      "mitigated": true,
+      "how": "This was NOT hypothetical — it happened, and the test written alongside the change caught it on the first run. Unanchored, `node` matches the 'nodes' in 'inspect the graph nodes and confirm the counts look right', which the gate then accepted as runnable. Fixed by anchoring as \bnode\b, deliberately inconsistent with the older unanchored entries because 'nodes' is ordinary vocabulary in this codebase while 'pythonic' is not. Two tests now hold the line: one asserts a real node command is accepted, the other asserts that prose containing 'nodes' is still refused. 44 qa_gate tests pass.",
+      "repro": "python -m pytest tests/test_qa_gate_falsifiable.py -q"
+    },
+    {
+      "scenario": "The issue-creation fallback retries on ANY error, so a transient transport failure after GitHub has already accepted the issue files a second identical one.",
+      "what_happens": "Two open alarms for one outage, and the count grows with every failing run. Nothing errors — the alarm just becomes noise, which is the precise alarm-fatigue failure this workflow's design notes say it exists to avoid.",
+      "mitigated": true,
+      "how": "Raised by the cross-review on push, verified against the code, and fixed by deleting the retry rather than narrowing it. The label is now resolved up front with issues.getLabel, so there is exactly ONE non-idempotent create call and no path that can issue a second. Confirmed by grep: one issues.create, the other three hits are createComment and update. A missing `ci` label was the only thing the retry was ever for, and that is knowable before creating anything.",
+      "repro": "grep -n 'issues\\.create\b' .github/workflows/main-red-alarm.yml   # expect exactly one"
+    },
+    {
+      "scenario": "An API timestamp is absent or unparseable, so hoursSince returns NaN and the HEAD-age guards silently stop discriminating.",
+      "what_happens": "NaN < 0 is false AND NaN > 3 is false, so an unverified HEAD falls through BOTH guards to state=ok, and the alarm reports success with 'NaNh' in the detail. The watchdog fails OPEN — the one direction it must never fail — and main sits unverified while everything looks green.",
+      "mitigated": true,
+      "how": "Raised by the cross-review on PR #926, verified, and it was a regression I introduced in the port: the old shell version would have died under set -euo pipefail on a bad `date -d`, which is loud. hoursSince now returns null rather than NaN, null is refused explicitly with a timestamp-unavailable detail, and every message renders through fmtAge so nothing can print NaN. Proven in both directions: cases 7 and 8 of the harness FAIL against the reverted NaN version (7/9) and pass against the fix (9/9).",
+      "repro": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml   # 9/9; revert hoursSince to the NaN form and it is 7/9"
+    },
+    {
+      "scenario": "issues.getLabel fails with a 500, a timeout, a rate-limit or an auth error, and the catch reads every one of them as 'the ci label does not exist'.",
+      "what_happens": "The alarm is filed unlabelled, so label-based triage and notifications never see it, and nothing anywhere records that the lookup failed. A silent degradation inside the one workflow that exists to stop things being silent.",
+      "mitigated": true,
+      "how": "Raised by the same cross-review. Only a 404 is now treated as label absence; any other status is rethrown. The step ends in core.setFailed regardless, so the job still goes red and the alarm stays visible in the Actions list even when the issue cannot be filed — loud beats quietly-degraded.",
+      "repro": "grep -n 'e.status !== 404' .github/workflows/main-red-alarm.yml"
+    }
+  ],
+  "mutation_analysis": "The harness is built to be able to fail and was checked by making it fail. Inverting the sha === headSha comparison flips case 3 from ok to broken, which is the assertion that today's real state — a green run on the current HEAD — does not raise an alarm. Deleting the headAgeH < 0 guard flips case 6 to ok, because a future-dated commit then satisfies headAgeH > 3 being false and buys unbounded silence; that guard exists in the original for the same reason and survives the port. Removing the !run early return makes case 1 throw on reading .conclusion of undefined rather than reporting broken. The mutation that the harness canNOT catch is the one that caused this whole incident: a step that never executes because a binary is missing. Nothing runnable on this machine can catch that, which is why the post-merge workflow_dispatch is mandatory rather than a nicety.",
+  "residual_risk": "The harness exercises the Assess step only. The two issue-writing steps are unexercised locally — they need a real repo and write scope — so the create, comment and close paths are covered by code review and by the API shapes alone. If state is ever empty rather than ok or broken, both conditional steps skip and the job still passes, which would be a silent watchdog; nothing here detects that except the harness proving state is always set. And the deeper point stands unchanged: this repairs the alarm, it does not prove main is green. gates passing on e1fa65ae is what does that. Separately, this PR edits the QA gate that judges it, which is a conflict worth naming: the widening is defensible only because it is paired with a test asserting prose is still rejected, and that test failed before it passed. The cross-review was re-run against the full PR to recover two findings an earlier `tail` had truncated; both were real, both are fixed here, and the second round reported nothing further. Two of the three findings across both rounds were defects I introduced while porting, which is the honest measure of how much this file needed a reviewer that is not me.",
+  "post_merge": {
+    "db_reset": "No. CI workflow only; no schema, data or query touched.",
+    "secrets": "None read or written. The workflow uses the automatic GITHUB_TOKEN through github-script's authenticated client; the explicit GH_TOKEN env wiring the shell steps needed is gone.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "YES, AND THIS IS REQUIRED, NOT OPTIONAL. The workflow runs only on main, so nothing before merge proves it executes on the self-hosted runner — that is the entire defect being fixed. Immediately after merge run: gh workflow run main-red-alarm.yml, then gh run list --workflow main-red-alarm.yml --limit 1. It must conclude SUCCESS, and its log must show 'Latest gates run on main: success, on current HEAD'. A failure at exit 127 means the port did not take. Until that run is seen, treat this as unverified."
+  }
+}
