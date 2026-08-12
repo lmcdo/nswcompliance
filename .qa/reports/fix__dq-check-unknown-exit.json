@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "commit_hash": "ca6c64ef",
+  "justification": "main is RED because of my own bug. dq_probe_live.py documents exit 2 as 'database unreachable = UNKNOWN', but dq_check.py only distinguished 0 from non-zero, so CI - which has no DATABASE_URL - reported 'declared FIXED but the check FAILS' for probes that never looked. A false regression alarm on the gate I added, blocking every merge.",
+  "files": ["scripts/dq_check.py"],
+  "falsifiable_check": {
+    "command": "set DATABASE_URL to an unreachable host (loopback, closed port), then: python scripts/dq_check.py",
+    "fails_when": "A DB-backed row is reported RED when the probe could not reach the database. Measured both ways against a genuinely unreachable host, not a mocked one: BEFORE, DQ-50 and DQ-30 reported 'declared FIXED but the check FAILS'; AFTER, all six DB-backed rows report UNKNOWN and the run passes. With the real database reachable the run still PASSES and the counts are unchanged, so the fix does not weaken the reachable case.",
+    "external_authority": "The exit code contract is dq_probe_live.py's, written before this bug and unchanged by it: 0 clean, 1 defect present, 2 could not look. This teaches the runner to honour a contract that already existed."
+  },
+  "pre_impl": {
+    "existing_data": "dq_probe_live.py's docstring states exit 2 = UNKNOWN and 'UNKNOWN is never reported as healthy'. The gates.yml step was added in #934 and passed there only because no row with a DB-backed probe was declared 'fixed' yet.",
+    "assumption_mismatch": "I assumed the UNKNOWN convention worked end to end because I had written it into the probe. I had not written it into the RUNNER. It only surfaced once DQ-50 and DQ-30 were declared fixed - the first moment a DB-backed row expected a pass - which is why the gate went green in #934 and red two PRs later. My first attempt to reproduce it also failed: unsetting DATABASE_URL does nothing because dotenv reloads .env, so the real test needed an unreachable host.",
+    "new_vs_existing": "One branch in run_one plus a separate UNKNOWN counter in the summary. No new script, no change to any probe."
+  },
+  "functions": [
+    {
+      "name": "run_one",
+      "file_line": "scripts/dq_check.py:140",
+      "input": "a DQ id and its spec",
+      "output": "OK / RED / UNKNOWN / NO-CHECK / ERROR - UNKNOWN is new and means the probe could not reach its source",
+      "if_none": "exit 2 now returns UNKNOWN instead of being folded into a failed check, so 'could not look' can never again be reported as 'the fix regressed'"
+    }
+  ],
+  "values": [
+    {
+      "value": "before the fix, an unreachable database produced RED on DQ-50 and DQ-30 - 'declared FIXED but the check FAILS'; after, six rows report UNKNOWN and the run passes",
+      "read_at": "DATABASE_URL pointed at 127.0.0.1:1, both before and after the change, 2026-08-12",
+      "if_missing": "without the before-state this looks like a defensive tweak rather than the repair of a live red main"
+    },
+    {
+      "value": "with the real database reachable the run still PASSES, 11 checks, 0 red",
+      "read_at": "python scripts/dq_check.py on this branch, 2026-08-12",
+      "if_missing": "a fix that silences the unreachable case must not also silence the reachable one; this is the counterweight"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "UNKNOWN is treated as a pass, so a genuinely regressed row hides behind an unreachable database.",
+      "what_happens": "Someone breaks the credentials and every DB-backed defect silently stops being checked while the gate stays green - the exact silent-pass shape this whole effort exists to remove.",
+      "mitigated": true,
+      "how": "UNKNOWN is counted and printed separately from both passes and 'no check written', with the line 'could not be verified in THIS environment' and an instruction to run locally. It is visible on every run rather than folded into a total. What it does NOT do is fail the build, because a gate that is permanently red wherever the database is absent gets switched off, and then nothing is checked at all.",
+      "repro": "set DATABASE_URL to an unreachable host (loopback, closed port), then: python scripts/dq_check.py"
+    },
+    {
+      "scenario": "The fix also swallows a real failure, because exit 1 and exit 2 get conflated in the other direction.",
+      "what_happens": "A genuine regression reports UNKNOWN and nobody acts on it.",
+      "mitigated": true,
+      "how": "Only exit code 2 is treated as UNKNOWN. Exit 1 still means 'the defect is present' and still drives the RED/OK logic unchanged. Verified with the real database reachable: the run passes with 11 checks and 0 red, and the DQ-32 and DQ-32b rows - declared open, probes exiting 1 - still behave as before.",
+      "repro": "python scripts/dq_check.py   # with a reachable DB: 11 checks, 0 red, still PASSED"
+    },
+    {
+      "scenario": "The bug is 'fixed' by removing the DB probes from CI instead.",
+      "what_happens": "The ratchet stops covering exactly the defects that matter most - the ones about served data - and becomes a linter for docs.",
+      "mitigated": true,
+      "how": "The probes stay wired in. CI reports them as unverifiable in that environment rather than dropping them, so the coverage gap is visible in the CI log rather than erased from the config. Anyone reading the run sees which rows CI could not answer for.",
+      "repro": "grep -n 'Data-quality ledger' .github/workflows/gates.yml"
+    }
+  ],
+  "mutation_analysis": "The mutation was live rather than planted: main went RED on d5993e22 and bc22fb02 for this reason, and the failing step names DQ-50 and DQ-30 - both of which I had verified as 0 locally minutes earlier. That contradiction is what exposed the runner rather than the data. Reproduced deliberately by pointing DATABASE_URL at an unreachable host, which reproduced the RED before the change and produced UNKNOWN after. An earlier reproduction attempt FAILED to reproduce anything because unsetting the variable lets dotenv reload .env - worth recording, since a fix validated against that non-reproduction would have proven nothing.",
+  "residual_risk": "UNKNOWN does not fail the build, so a CI run that can never reach the database reports 'no red' every time and the DB-backed rows are effectively unchecked there. That is a deliberate trade against a permanently-red gate, and the mitigation is only that the count is printed. Nothing yet asserts that SOMEONE runs these locally. Giving CI read-only database access would remove the trade entirely and is the better long-term answer; it is not in this PR.",
+  "post_merge": {
+    "db_reset": "No. Runner logic only; no query, no write.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Yes, and it is the point of the PR: confirm the gates run on main goes GREEN after this merges, and that the 'Data-quality ledger' step logs UNKNOWN rows rather than RED ones."
+  }
+}
