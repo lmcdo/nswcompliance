@@ -575,6 +575,10 @@ scripts/*
 !scripts/insert_gap_fill_top_volume.py
 !scripts/insert_gap_fill_mid_volume.py
 !scripts/qa_gate.py
+!scripts/dq_check.py
+!scripts/dq_probe_stale_workflow_docs.py
+!scripts/dq_probe_dead_sar_constants.py
+!scripts/dq_probe_pvlib_claim.py
 !scripts/qa_report_template.json
 !scripts/main_red_alarm_logic_check.js
 !scripts/check_test_baselines.py
