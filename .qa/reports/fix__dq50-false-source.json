@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "PENDING",
+  "commit_hash": "d8c79da3",
   "justification": "First production data repair of this effort. 143 flood reports credited a satellite data source for an analysis that never ran, and 121 were inside the 90-day cache window being served verbatim on every cache hit. A wrong move writes to the live database, so the whole design is 'prove it before committing, verify it after' rather than 'run it and check later'.",
   "files": [
     ".claude/dq_checks.json",
@@ -81,7 +81,7 @@
       "repro": "SELECT product, count(*) FROM property_reports WHERE data_sources IS NULL OR array_length(data_sources,1) IS NULL GROUP BY 1"
     },
     {
-      "scenario": "The repair needs reverting.",
+      "scenario": "The repair turns out to be wrong and needs reverting to the original values.",
       "what_happens": "Without a restore path, an incorrect judgement about which source was false becomes permanent.",
       "mitigated": true,
       "how": "property_reports_dq50_backup_20260812 holds id, product, run_date and the ORIGINAL data_sources for all 143 rows, created and row-count-verified before the write. Restoring is an UPDATE joined on id. The table is deliberately not dropped.",
