@@ -14,7 +14,7 @@ A Next.js 14 application providing precision planning compliance analysis with i
 
 - **Frontend**: Next.js 14 with TypeScript and Tailwind CSS
 - **Backend**: Next.js API Routes with TypeScript
-- **Database**: SQLite with better-sqlite3 (9,364+ planning provisions)
+- **Database**: PostgreSQL (Supabase) via `pg`, plus `@supabase/supabase-js` for Supabase-hosted tables
 - **External APIs**: NSW Planning API, Google Places API
 - **Deployment**: Vercel-ready configuration
 
@@ -36,10 +36,10 @@ A Next.js 14 application providing precision planning compliance analysis with i
  # Edit .env.local with your API keys
  ```
 
-4. **Verify database location:**
+4. **Verify database connection:**
  ```bash
- # Ensure nsw_planning.db exists at ../nsw_planning.db
- # Or update DATABASE_PATH in .env.local
+ # Set DB_HOST / DB_PORT / DB_NAME / DB_USER / DB_PASSWORD in .env.local
+ # to point at the Supabase PostgreSQL instance
  ```
 
 ## Development
@@ -71,7 +71,11 @@ npm start
 |----------|-------------|----------|
 | `GOOGLE_PLACES_API_KEY` | Google Places API key for address autocomplete | Yes |
 | `NSW_PLANNING_API_BASE_URL` | NSW Planning API base URL | No (has default) |
-| `DATABASE_PATH` | Path to nsw_planning.db file | No (has default) |
+| `DB_HOST` / `DATABASE_HOST` | PostgreSQL host | No (defaults to `localhost`) |
+| `DB_PORT` / `DATABASE_PORT` | PostgreSQL port | No (defaults to `5432`) |
+| `DB_NAME` / `DATABASE_NAME` | PostgreSQL database name | No (defaults to `nsw_planning`) |
+| `DB_USER` / `DATABASE_USER` | PostgreSQL user | No (defaults to `postgres`) |
+| `DB_PASSWORD` / `DATABASE_PASSWORD` | PostgreSQL password | Yes, in any non-local environment |
 
 ## Testing
 
@@ -220,11 +224,10 @@ npm start
 - **TypeScript by default**: Type safety for complex calculations
 - **Built-in optimizations**: Code splitting, prefetching, image optimization
 
-### Why better-sqlite3?
-- **Performance**: 3x faster than alternatives
-- **Reliability**: Production-tested with large datasets
-- **Simplicity**: No external database server required
-- **Deployment**: Embeds with application
+### Why PostgreSQL?
+- **Single source of truth**: the same Supabase instance the Python pipeline writes to
+- **PostGIS**: spatial overlays and lot geometry queries run in the database
+- **Concurrent access**: multiple serverless function instances read the same data
 
 ### Why Tailwind CSS?
 - **Rapid development**: Utility-first approach
@@ -236,9 +239,9 @@ npm start
 
 ### Common Issues:
 
-1. **Database not found:**
- - Verify `DATABASE_PATH` in `.env.local`
- - Ensure nsw_planning.db exists and is readable
+1. **Database connection refused:**
+ - Verify `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` in `.env.local`
+ - Confirm the Supabase instance accepts connections from this host
 
 2. **Google Places not working:**
  - Check `GOOGLE_PLACES_API_KEY` is valid
