@@ -1,0 +1,89 @@
+{
+  "tier": "standard",
+  "justification": "Closes the gap left open by #924, which was recorded there as residual risk rather than fixed: four public feedback routes had no test that submits invalid input. Also closes a .gitignore hole found while writing it — test_*.json silently swallowed this branch's own QA report. Test-only plus one ignore rule; no source file is touched. The thing being locked down is a response contract a type checker provably cannot see, since tsc passed clean while raw zod issue objects were being handed to the browser.",
+  "commit_hash": "PENDING",
+  "files": [
+    "frontend-nextjs/__tests__/api/feedback/validation-contract.test.ts",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/api/feedback/validation-contract.test.ts --ci",
+    "fails_when": "Either zod regression returns. Both were injected and measured on this branch, not reasoned about. MUTATION 1, raw issues handed back to the client — restore details: error.issues in the vote and suggestion routes: 4 failed / 8 passed. Only the two shape assertions on those two routes go red; the 400 assertions stay green, which is the correct signature of a silent defect. MUTATION 2, the pre-zod-4 property name — restore .errors in formatValidationErrors: 10 failed / 2 passed, because the helper throws and every route falls through to 500. Clean, both restored: 12 passed. For the .gitignore half the check is different and equally concrete: git check-ignore said this report was ignored by test_*.json before the negation, and git add now stages it.",
+    "external_authority": "The route handlers and the zod schemas decide the responses; the test asserts against them from outside by POSTing a body they reject. That details entries are strings is checked with typeof at runtime, not against a TypeScript type, precisely because the type was already satisfied while the contract was broken. For the ignore rule the authority is git itself, via check-ignore and an actual git add."
+  },
+  "pre_impl": {
+    "existing_data": ".claude/rules/testing-and-qa.md already states the rule this change enforces — an ignored or untracked QA report is a gate that silently stops enforcing, and #398 proved it by hiding for ten weeks behind .gitignore line 4. #924 shipped the zod fix and named the four uncovered routes in its own residual_risk; that text was the specification for the test file. The mocking and request-building pattern came from __tests__/api/canibuildit/lead-abuse.test.ts, the only feedback-adjacent route that already had invalid-input tests.",
+    "assumption_mismatch": "Two. First, I assumed all four routes reject invalid input the same way; they do not, and testing them as if they did would have left the changed code uncovered — requirement and submit reject early via validateRequest, while suggestion and vote throw from schema.parse() into the catch branch that #924 actually edited. Second, and worse, I assumed committing the QA report had worked. It had not: the gate passed, the commit reported success, and the file was silently never staged because the branch name test/... produces a slug matching test_*.json. The documented ten-week failure reproduced itself in one session.",
+    "new_vs_existing": "One new test file and one negation line in .gitignore. No new helper, no new mocking utility, no source change. @/lib/db is stubbed because the route modules import it at load time even though the insert only runs on the success path, which these cases never reach."
+  },
+  "functions": [
+    {
+      "name": "formatValidationErrors",
+      "file_line": "frontend-nextjs/lib/schemas/index.ts:370",
+      "input": "the ZodError produced by each of the four routes when the schema rejects the posted body",
+      "output": "the string[] that lands in the response as details; this file asserts every entry is typeof string and that at least one is non-empty",
+      "if_none": "if the helper returned an empty array the length assertion fails; the failure that actually matters is not emptiness but the wrong element TYPE, which is what a regression to raw zod issues produces and what mutation 1 reproduced"
+    }
+  ],
+  "values": [
+    {
+      "value": "mutation 1 (raw issues restored in vote + suggestion): 4 failed / 8 passed",
+      "read_at": "sed the two routes back to details: error.issues, npx jest on this file, 2026-08-12",
+      "if_missing": "without it there is no evidence the shape assertions do anything; they would be indistinguishable from assertions that only ever see a correct value"
+    },
+    {
+      "value": "mutation 2 (.errors restored in formatValidationErrors): 10 failed / 2 passed",
+      "read_at": "sed lib/schemas/index.ts back to (zodError as any).errors.map, npx jest on this file, 2026-08-12",
+      "if_missing": "without it the 400 assertions are unproven — a route that always returned 400 would satisfy them"
+    },
+    {
+      "value": "clean: 12 passed; full suite 84 suites / 1112 tests, up from 83 / 1100; tsc 0 errors",
+      "read_at": "npx jest --ci --silent and npx tsc --noEmit in frontend-nextjs, 2026-08-12",
+      "if_missing": "the suite delta of +1 file and +12 tests is what shows the new cases are collected and not silently skipped by a describe.each misconfiguration"
+    },
+    {
+      "value": "before the negation, git check-ignore reported .gitignore:177 test_*.json matching .qa/reports/test__feedback-route-validation.json; the file was never staged and the commit reported success anyway",
+      "read_at": "git check-ignore -v on this branch, 2026-08-12, then git ls-files showing the report absent after a commit that appeared to include it",
+      "if_missing": "without this the .gitignore edit looks speculative; it is a reproduction of the #398 failure mode, caught this time within minutes instead of ten weeks"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A body intended to be invalid is actually accepted by the schema, so the case never reaches the 400 branch and asserts nothing about the error contract.",
+      "what_happens": "The route would return 200 and the status assertion fails immediately, so this cannot pass silently — but a subtler version is a body invalid for a DIFFERENT reason than intended, which still yields 400 and still exercises the contract.",
+      "mitigated": true,
+      "how": "Each body was written against the schema read from source: RequirementFeedbackSchema requires a uuid provisionId and feedback of at least 10 characters, FeedbackSubmitSchema requires text of at least 10 characters, suggestionSchema requires the literal 'user_suggestion', voteSchema requires voteType of 'up' or 'down'. All four returned 400 on the clean run, and the vote case's console output shows the ZodError naming voteType specifically.",
+      "repro": "npx jest __tests__/api/feedback/validation-contract.test.ts --ci"
+    },
+    {
+      "scenario": "Someone later replaces the string[] with a structured DTO such as {path, message} because it is genuinely more useful to clients.",
+      "what_happens": "The typeof string assertions fail, and the change looks like a regression when it is an improvement. The test blocks a legitimate refactor.",
+      "mitigated": false,
+      "how": "Not mitigated, deliberately. The third assertion is the durable one — it rejects zod's own internal field names rather than demanding a specific shape — but the typeof string assertions do pin the current format. A future DTO change should update this file consciously. That is the intended cost: the contract now has to be changed on purpose rather than by upgrading a dependency.",
+      "repro": "grep -n \"typeof entry\" frontend-nextjs/__tests__/api/feedback/validation-contract.test.ts"
+    },
+    {
+      "scenario": "The negation !.qa/reports/*.json is itself overridden, because a later ignore rule matches the same path or because a parent DIRECTORY is excluded — git cannot re-include a file inside an excluded directory.",
+      "what_happens": "The report silently stops being tracked again and the gate quietly stops enforcing, with nothing failing. This is the whole defect class, reintroduced by the fix meant to close it.",
+      "mitigated": true,
+      "how": "Verified by doing rather than reading: git add stages the file after the change and git ls-files shows it tracked, which is only possible if no later rule wins and no parent directory is excluded. The negation is placed immediately after the three patterns that caused the problem, so a reader adding a fourth test_* pattern sees it. Checked that the existing tracked reports were unaffected before the edit — none of them matched.",
+      "repro": "git check-ignore -v .qa/reports/test__x.json; git add .qa/reports/ && git ls-files .qa/reports/"
+    },
+    {
+      "scenario": "describe.each is misconfigured and silently runs zero cases, or the @/lib/db mock fails and every case errors identically.",
+      "what_happens": "A file that reports success while testing nothing — the exact failure mode these tests exist to prevent elsewhere.",
+      "mitigated": true,
+      "how": "The suite count moved from 83 to 84 and the test count from 1100 to 1112, which is 4 routes times 3 assertions. Both mutation runs produced PARTIAL failures — 4 of 12 and 10 of 12 — which is only possible if the cases run individually and discriminate between routes; a broken harness would fail all 12 or none.",
+      "repro": "npx jest --ci --silent   # expect 84 suites, 1112 tests"
+    }
+  ],
+  "mutation_analysis": "Two mutations on the tests, both run rather than described. Mutation 2 is the coarse one: restoring .errors makes formatValidationErrors throw, all four routes fall through to 500, and 10 of 12 assertions go red. Mutation 1 is the one that justifies the file existing: restoring details: error.issues on vote and suggestion leaves the status at 400 and the details array present, so the four status assertions and everything on the other two routes stay green — exactly 4 of 12 fail, and they are precisely the two shape assertions on the two mutated routes. That asymmetry proves the shape assertions carry weight independently of the status assertions; had this file existed before #924, the cross-review would not have been the thing that caught the leak. The .gitignore change has its own mutation and it was observed involuntarily: without the negation, the report is not staged, the commit still succeeds, and qa_gate.py still passes locally against the on-disk file — a green gate over a file that will not exist for anyone else.",
+  "residual_risk": "Coverage is invalid-input only; the success paths of these four routes remain untested and this PR does not change that. The tests exercise the handlers directly with mocked @/lib/db rather than over HTTP, so middleware, routing and serialisation between NextResponse and the browser are out of scope. The typeof string assertions pin the current response format and will need a deliberate update if the details contract is redesigned. The deeper problem behind the .gitignore fix is unaddressed: qa_gate.py validates a file on disk and never asks git whether that file is tracked, so a green gate still does not prove the report will reach anyone else. The negation closes today's instance, not the class.",
+  "post_merge": {
+    "db_reset": "No. Test-only change; @/lib/db is mocked and no query runs.",
+    "secrets": "None written. A copy of frontend-nextjs/.env.local was placed in the worktree so npm ci and the local suite matched the real environment, and deleted before committing; it is gitignored and was never staged.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes, one thing, and it is cheap: after merge run git ls-files .qa/reports/ on main and confirm this report is listed. That is the only evidence the .gitignore negation survived the merge — a locally passing gate cannot tell you."
+  }
+}

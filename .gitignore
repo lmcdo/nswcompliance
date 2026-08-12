@@ -176,6 +176,15 @@ verify_*.json
 *_results.json
 test_*.json
 
+# ...but NEVER the per-branch QA reports. The slug is the branch name with
+# slashes as "__", so a branch called test/x or verify/x produces
+# .qa/reports/test__x.json, which the three patterns above silently swallow.
+# An ignored QA report is not a missing file, it is a GATE THAT STOPS
+# ENFORCING: CI treats an absent report as a warning and exits 0. That is
+# exactly how #398 went unnoticed for ten weeks. Found again 2026-08-12 on
+# branch test/feedback-route-validation.
+!.qa/reports/*.json
+
 # Analysis and diagnostic scripts (keep locally, don't commit)
 analyze_*.py
 check_*.py
