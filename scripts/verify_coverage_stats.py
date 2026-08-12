@@ -92,16 +92,34 @@ def main() -> int:
     load_dotenv(os.path.join(REPO_ROOT, ".env"), override=True)
     published = parse_coverage_ts()
 
+    # prior-art-checked: reuse IS viable and is what this now does. This script
+    # demanded PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD, which nothing in the
+    # repo sets -- every other consumer reads DATABASE_URL -- so it exited 1 on
+    # "cannot reach the database: 'PGHOST'" wherever it ran. That is why it was
+    # never wired into CI or a hook, and why the marketing site's published
+    # coverage figures could drift from the database without one failing check.
+    # scripts/dq_db.py already resolves DATABASE_URL from the main checkout's
+    # .env and returns a read-only connection with a 30s statement timeout,
+    # which is exactly this script's requirement, so it replaces the hand-built
+    # connect rather than sitting beside it. The PG* path stays as a fallback
+    # for anyone who does set those.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     try:
-        conn = psycopg2.connect(
-            host=os.environ["PGHOST"], port=os.environ["PGPORT"],
-            dbname=os.environ["PGDATABASE"], user=os.environ["PGUSER"],
-            password=os.environ["PGPASSWORD"], connect_timeout=15,
-        )
+        from dq_db import connect as _dq_connect
+        conn = _dq_connect()
     except Exception as exc:  # noqa: BLE001
-        print(f"ERROR: cannot reach the database: {exc}", file=sys.stderr)
-        return 1
-    conn.set_session(readonly=True)
+        try:
+            conn = psycopg2.connect(
+                host=os.environ["PGHOST"], port=os.environ["PGPORT"],
+                dbname=os.environ["PGDATABASE"], user=os.environ["PGUSER"],
+                password=os.environ["PGPASSWORD"], connect_timeout=15,
+            )
+            conn.set_session(readonly=True)
+        except Exception:  # noqa: BLE001
+            # Exit 2, not 1: unreachable is UNKNOWN, not "the figures disagree".
+            # Collapsing those two turned main red on 2026-08-12 (#939).
+            print(f"ERROR: cannot reach the database: {exc}", file=sys.stderr)
+            return 2
     cur = conn.cursor()
 
     drift: list[str] = []

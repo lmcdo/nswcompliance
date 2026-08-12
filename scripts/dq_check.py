@@ -262,6 +262,88 @@ def _report() -> int:
     return 0
 
 
+# Scripts that are deliberately not invoked by CI or a hook. Each needs a
+# reason, and the reason has to be a mechanism, not an intention.
+_UNWIRED_OK = {
+    "check_pr_gates.py": "run by hand immediately before `gh pr merge`; wiring it "
+                         "into CI is circular - it asks whether CI passed.",
+    "check_served_output.py": "needs a running dev server AND currently fails on the "
+                              "live #928 defect. Wire it in the PR that closes #928.",
+    "dq_db.py": "library, not a check: connection helper imported by the probes.",
+    "dq_probe_live.py": "invoked through .claude/dq_checks.json by this file.",
+    "check_registry.py": "loads .env from beside itself, so it cannot find credentials "
+                         "from a worktree, and CI has no DATABASE_URL either. Port it to "
+                         "dq_db.connect() the way verify_coverage_stats.py was, then wire.",
+    "verify_controls_monitoring.py": "same defect: builds its own connection and falls "
+                                     "back to localhost:5432. Port to dq_db.connect() "
+                                     "before wiring, or it fails on 'role does not exist'.",
+    "verify_extraction_fidelity.py": "needs the council source PDFs on disk; it proves a "
+                                     "provision is grounded in its own PDF. Belongs to the "
+                                     "extraction run, not to every pull request.",
+    "verify_inserted_provisions.py": "one-shot tool for a specific SEPP Housing insert "
+                                     "that has already happened. Kept for the record.",
+    "verify_precinct_boundaries.py": "operational: its own docstring says run it before "
+                                     "and after an import. There is no import in CI.",
+}
+
+
+def unwired_checks() -> list[str]:
+    """Scripts that look like checks but nothing runs.
+
+    The recurring failure this exists to stop: a check gets written, reviewed
+    and merged, and is then invoked by nothing. It happened to campaign items
+    2-5 (#874/#876, orphaned for nine days), and the same shape produced #927
+    (a QA gate reading a file git would never carry) and #931 (a defect ledger
+    that was prose). Three instances, one cause: an artifact that describes
+    reality but is not executed decays silently.
+
+    This lives INSIDE dq_check.py on purpose. A separate check_the_checks.py
+    would need its own wiring and start the regress the fix is meant to end.
+    dq_check.py already runs in gates.yml, and this scan INCLUDES ITSELF: drop
+    it from CI and either it still runs and fails, or gates.yml changed, which
+    is visible in the diff. Above that, main-red-alarm.yml fires from outside
+    the repo when main's HEAD has no successful run. Three levels, then it
+    stops.
+    """
+    root = Path(__file__).resolve().parent.parent
+    scripts = root / "scripts"
+    if not scripts.is_dir():
+        return []
+
+    # Every place a check can legitimately be invoked from. The earlier
+    # hand-sweep read gates.yml and pre-push only, missed .githooks/pre-commit,
+    # and so reported lint_bracket_access.py and lint_brief_failsoft.py as
+    # orphaned when both run on every commit. Read the whole surface.
+    haystack = []
+    for d, pat in ((root / ".github" / "workflows", "*.yml"),
+                   (root / ".githooks", "*"),
+                   (root / ".claude", "dq_checks.json")):
+        if d.is_dir():
+            for f in sorted(d.glob(pat)):
+                if f.is_file():
+                    haystack.append(f.read_text(encoding="utf-8", errors="replace"))
+    # A check invoked by another check is wired, transitively.
+    for f in sorted(scripts.glob("*.py")):
+        haystack.append(f.read_text(encoding="utf-8", errors="replace"))
+    blob = "\n".join(haystack)
+
+    out = []
+    for f in sorted(scripts.glob("*.py")):
+        n = f.name
+        if not n.startswith(("check_", "lint_", "verify_", "dq_")):
+            continue
+        if n in _UNWIRED_OK:
+            continue
+        # Its own file is in the blob, so require a mention from somewhere else.
+        others = blob.replace(f.read_text(encoding="utf-8", errors="replace"), "")
+        # Match the stem as well as the filename: gates.yml invokes several of
+        # these from a shell loop that appends the extension ("scripts/$s.py"),
+        # so the literal "foo.py" never appears even though foo IS wired.
+        if n not in others and f.stem not in others:
+            out.append(n)
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--id", help="run a single DQ id")
@@ -300,6 +382,19 @@ def main() -> int:
                   "cannot write one yet.")
         for i in orphan:
             print(f"  {i}: in dq_checks.json but not in the ledger")
+        return 1
+
+    # --- a check nothing invokes is not a check ---
+    stranded = unwired_checks()
+    if stranded:
+        print("DQ-CHECK: FAILED - checks exist that nothing runs.")
+        for n in stranded:
+            print(f"  scripts/{n}: not referenced by any workflow, hook, "
+                  f"dq_checks.json entry, or other script")
+        print("  Wire it into .github/workflows/gates.yml or .githooks/, or add it")
+        print("  to _UNWIRED_OK in this file with a reason that is a MECHANISM.")
+        print("  Origin: campaign items 2-5 shipped in #874/#876 and were invoked by")
+        print("  nothing for nine days, so they could never earn blocking status.")
         return 1
 
     disagree = status_disagreements(checks, ids)
