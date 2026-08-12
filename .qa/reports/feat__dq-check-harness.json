@@ -1,0 +1,110 @@
+{
+  "tier": "standard",
+  "justification": "Makes the data-quality ledger's statuses executable. The ledger's stated purpose is to track defects across sessions, and it cannot do that on its own: a hand-written status is a claim about the past. On 2026-08-12 it said DQ-54 was 'Open — report-only' hours after that defect was fixed and merged, its own row said 'three call sites' when there were nine, and its header was four days stale. This is the ledger every future fix will be sequenced from, so a harness that quietly mis-reports would misdirect all of that work rather than failing loudly.",
+  "commit_hash": "943b87c1",
+  "files": [
+    "scripts/dq_check.py",
+    "scripts/dq_probe_stale_workflow_docs.py",
+    "scripts/dq_probe_dead_sar_constants.py",
+    "scripts/dq_probe_pvlib_claim.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".github/workflows/gates.yml",
+    ".gitignore",
+    "tests/test_dq_check.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py && python -m pytest tests/test_dq_check.py -q",
+    "fails_when": "NOT SELF-REFERENTIAL, and the gate is right to ask. The harness has two halves and only one of them could be. The consistency half compares two files I control (dq_checks.json against the ledger markdown) and on its own that WOULD be a self-comparison — two documents agreeing proves only that I typed the same thing twice. It is not the load-bearing half. The execution half is: each probe interrogates the REPOSITORY and can contradict both files at once. dq_probe_stale_workflow_docs compares doc text against the actual contents of .github/workflows/; dq_probe_dead_sar_constants parses services/flood_truth.py's AST; dq_probe_pvlib_claim parses the import graph of services/src/scripts/enrichment. None of them reads the ledger, so a probe cannot inherit the ledger's error. DEMONSTRATED, not argued: mutation (c) below sets DQ-55 to fixed in BOTH files, which makes them agree perfectly and silences the consistency half entirely — and the run still goes RED, because the repository says otherwise. That is the case that proves the check survives without the self-referential half. The full evidence: on its FIRST run against untouched live state the harness went red on DQ-54 (declared fixed while the ledger row read Open) before any mutation was injected. Then (a) declare DQ-55 fixed in dq_checks.json only -> caught; (b) declare DQ-48 open in dq_checks.json only -> caught; (c) declare DQ-55 fixed in both files -> RED from execution alone, quoting the 13 stale workflow references. It also fails when a ledger row has no entry at all, so coverage cannot decay silently.",
+    "external_authority": "Each probe reads the repository, not this harness's own opinion. DQ-55 compares doc text against the actual contents of .github/workflows/; DQ-48 parses services/flood_truth.py's AST; DQ-47 parses the import graph of services, src, scripts and enrichment. The ledger row that says a thing is fixed and the probe that tests it are written from different evidence, so agreement is meaningful."
+  },
+  "pre_impl": {
+    "existing_data": "Four prior-art sweeps recorded in scripts/dq_check.py's docstring, against origin/main 2c809a93. Nothing reads the ledger programmatically: the frontend hits are '// DQ-30:' code comments, and the four Python files mentioning the ledger each measure ONE defect without enumerating rows or enforcing a status. The bidirectional shape is copied from scripts/check_test_quarantine.py, which already fails both when an entry is added without a reason and when a listed item starts passing. .claude/rules/testing-and-qa.md describes that behaviour, so this is the house pattern rather than a new idea.",
+    "assumption_mismatch": "Two, and both changed what shipped. First, the user asked for 'some meta file that can track progress reliably between sessions' — and the honest finding was that FOUR already exist (the ledger, ce-CURRENT-AIM.md, MEMORY.md plus its indexes, GitHub issues) and a fifth would deepen the actual problem, which is that none of them is verified. So this adds no new tracker; it makes the existing one executable. Second, and more concretely: I intended to write a check per open row and stopped after measuring. A naive grep for DQ-48's FLOOD_RATIO FALSE-FAILS, because the constant survives in a comment explaining its own removal; a repo-wide grep for DQ-47's pvlib FALSE-FAILS on tests/test_shadow_calibration.py, which imports pvlib legitimately as the reference the calibration is measured against. Both would have shipped a check that reports a defect where none exists, which is how a gate earns dismissal.",
+    "new_vs_existing": "One runner, three probes, one JSON, one test file, one CI step. No new tracker and no new status vocabulary — 'declared' mirrors the ledger's own states. 51 of 55 rows carry check: null with a recorded reason, because inventing checks for defects I have not measured is precisely the DQ-30 failure this is built to prevent."
+  },
+  "functions": [
+    {
+      "name": "run_one",
+      "file_line": "scripts/dq_check.py:140",
+      "input": "a DQ id and its spec — declared status, optional check argv, red_when text",
+      "output": "one of OK / RED / NO-CHECK / ERROR, plus a sentence a reader can act on; RED explains which direction failed and what to do about it",
+      "if_none": "a null check returns NO-CHECK carrying why_no_check, never OK — 'nobody wrote a check' must never be reported as 'this is fine', which is the distinction the whole file turns on"
+    },
+    {
+      "name": "status_disagreements",
+      "file_line": "scripts/dq_check.py:124",
+      "input": "the parsed check specs and the ledger's own markdown rows",
+      "output": "one line per row where the JSON and the markdown contradict each other; empty when they agree",
+      "if_none": "empty means agreement, not correctness — both files can be wrong together, which is why the execution ratchet exists alongside it rather than instead of it"
+    }
+  ],
+  "values": [
+    {
+      "value": "55 ledger rows parsed; 4 carry an executable check; 51 carry check: null with a recorded reason",
+      "read_at": "python scripts/dq_check.py --list on this branch, 2026-08-12",
+      "if_missing": "without the split, four checks could be mistaken for coverage of a 55-row ledger; the count of nulls is printed on every run for exactly that reason"
+    },
+    {
+      "value": "first full run went RED on real state: DQ-54 declared fixed in dq_checks.json while the ledger row still read Open",
+      "read_at": "python scripts/dq_check.py before correcting the DQ-54 row, 2026-08-12",
+      "if_missing": "this is the evidence the harness catches drift that actually existed, rather than only drift I injected to test it"
+    },
+    {
+      "value": "probe verdicts on current main: DQ-55 exit 1 (13 stale workflow refs, correctly still open), DQ-48 exit 0, DQ-47 exit 0",
+      "read_at": "direct execution of each dq_probe_* script, 2026-08-12",
+      "if_missing": "a ratchet whose probes all agree in one direction cannot demonstrate it discriminates; one probe reporting OPEN and two reporting FIXED is what shows it does"
+    },
+    {
+      "value": "full Python suite 4,497 passed / 2 skipped, up from 4,482",
+      "read_at": "python -m pytest -q in the dq-harness worktree, 2026-08-12",
+      "if_missing": "four new scripts and a JSON file are imported at collection time; a green full suite is what shows none of them broke anything"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A check is written that cannot fail — the DQ-30 '0% drift' shape — so a row reports fixed forever.",
+      "what_happens": "The ledger gains a green tick that means nothing, and because it is now machine-enforced it is TRUSTED more than the prose it replaced. Strictly worse than no harness.",
+      "mitigated": true,
+      "how": "Every probe was tested against real state before being recorded, and two were rewritten because their naive forms false-fired: DQ-48 matches AST assignments rather than text, because the constant survives in a comment about its removal; DQ-47 is scoped to non-test source, because the calibration test imports pvlib on purpose. DQ-55 currently reports OPEN, which proves at least one probe discriminates. Rows without a measured check carry null rather than a guess.",
+      "repro": "python scripts/dq_probe_stale_workflow_docs.py; echo $?   # expect 1 while DQ-55 is open"
+    },
+    {
+      "scenario": "A row is silently fixed and the ledger keeps saying open, so the defect is never re-tested and the sequencing of future work is wrong.",
+      "what_happens": "Nobody re-tests a defect they believe is still broken, so a stale 'open' is invisible indefinitely — and someone spends a session fixing something already fixed.",
+      "mitigated": true,
+      "how": "This is the direction the harness exists for. A check that PASSES under declared 'open' is RED, and test_declared_open_requires_a_failing_check pins it. Without this rule the harness would be a one-way regression detector and would have missed the very defect that prompted it.",
+      "repro": "python -m pytest tests/test_dq_check.py -k declared_open -q"
+    },
+    {
+      "scenario": "The ratchet fires on everything, so people start ignoring it or deleting rows to silence it.",
+      "what_happens": "Alarm fatigue, which .claude/rules and DQ-34's lesson both name as the failure that makes a gate worthless. A guard dismissed by muscle memory protects nothing.",
+      "mitigated": true,
+      "how": "Only 'fixed' and 'open' carry an expectation. 'partial', 'backlog', 'accepted' and 'latent' are genuinely ambiguous — a partial fix can legitimately pass or fail — and are explicitly unenforced, pinned by test_unenforced_states_are_not_invented across both exit codes. test_agreement_is_not_flagged is the counterweight proving the ratchet does not red agreeing rows.",
+      "repro": "python -m pytest tests/test_dq_check.py -k 'unenforced or agreement' -q"
+    },
+    {
+      "scenario": "Someone adds a DQ row to the markdown and never touches dq_checks.json, so the ledger grows rows the harness knows nothing about.",
+      "what_happens": "Coverage silently decays back toward prose, one row at a time, and the harness keeps reporting PASSED over a shrinking fraction of the ledger.",
+      "mitigated": true,
+      "how": "The coverage check fails on any ledger id absent from dq_checks.json, and on any orphan entry whose row has gone. Adding a row therefore forces a deliberate decision — a check, or a null with a stated reason. Same enforcement shape as check_test_quarantine.py's 'added without a recorded reason FAILS'.",
+      "repro": "python scripts/dq_check.py --coverage"
+    },
+    {
+      "scenario": "The markdown emoji vocabulary drifts, so status_disagreements stops recognising a status and silently checks nothing.",
+      "what_happens": "The consistency half degrades to a no-op without any signal, leaving only the execution half — and for the 51 rows with no check, nothing at all.",
+      "mitigated": false,
+      "how": "Not mitigated. markdown_status returns None for anything it does not recognise and those rows are skipped, so a new emoji means silent non-coverage rather than a failure. Recorded rather than papered over: the durable fix is to make dq_checks.json the sole source of status and render the ledger's marks from it, which is a bigger change than this PR should carry.",
+      "repro": "python -c \"import importlib.util,pathlib;s=importlib.util.spec_from_file_location('m','scripts/dq_check.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.markdown_status('DQ-32', pathlib.Path('.claude/DATA_QUALITY_TRACKER.md').read_text(encoding='utf-8')))\""
+    }
+  ],
+  "mutation_analysis": "Four mutations, all run. (1) Declare DQ-55 fixed in dq_checks.json alone -> caught as a status disagreement. (2) Declare DQ-48 open in dq_checks.json alone -> caught the same way. (3) Declare DQ-55 fixed in BOTH files, which satisfies the consistency check and leaves only execution -> RED with 'declared FIXED but the check FAILS' quoting the 13 stale references; this is the mutation that isolates the execution ratchet and is the one that matters. (4) The synthetic pairs in tests/test_dq_check.py cover all four cells of declared x outcome, so a harness that reds everything fails test_agreement_is_not_flagged just as loudly as one that reds nothing. Beyond the injected mutations, the harness went RED on its first real run against live state — DQ-54 — which no self-written test could have simulated as convincingly.",
+  "residual_risk": "Coverage is 4 of 55. The eleven rows that need the live database — including DQ-32, DQ-39, DQ-50, DQ-30 and DQ-29, which are the P1s a user actually feels — have no check yet, so the harness cannot currently tell you whether the defects that matter most are still present. That is the next piece of work, not a defect in this one, and the null count is printed on every run so it cannot be mistaken for coverage. The emoji-parsing consistency check degrades silently if the ledger's vocabulary changes. And the harness verifies statuses, not the ledger's PROSE: a row can carry an accurate status beside an out-of-date description, exactly as DQ-54's 'three call sites' did.",
+  "post_merge": {
+    "db_reset": "No. No schema, data or query change; the runner reads two files and shells out to probes that read source.",
+    "secrets": "None read or written.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes, one thing worth watching once: confirm the new 'Data-quality ledger (status ratchet)' step appears and passes in the gates run for this PR. It is the first CI step that can fail on the CONTENT of a tracker rather than on code, so its first green run is the evidence it is wired correctly rather than silently skipped."
+  }
+}
