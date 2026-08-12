@@ -1,19 +1,23 @@
 {
   "tier": "standard",
   "justification": "Repairs the watchdog that is supposed to announce a red main. It has failed 12 of 12 runs since the self-hosted migration, so the repo has had no working alarm at all — the exact three-day-silent-outage condition the file was written to prevent, reintroduced by the runner move. A wrong fix here is worse than none: it would look repaired while still never firing, and nobody checks a watchdog that reports success.",
-  "commit_hash": "1848a00e",
+  "commit_hash": "9c59c909",
   "files": [
-    ".github/workflows/main-red-alarm.yml"
+    ".github/workflows/main-red-alarm.yml",
+    "scripts/main_red_alarm_logic_check.js",
+    ".gitignore",
+    "scripts/qa_gate.py",
+    "tests/test_qa_gate_falsifiable.py"
   ],
   "falsifiable_check": {
-    "command": "node alarm-logic-test.js .github/workflows/main-red-alarm.yml   # then after merge: gh workflow run main-red-alarm.yml",
-    "fails_when": "Any of the six decision paths returns the wrong state. The harness extracts the Assess script out of the YAML and executes it against mocked Octokit responses, so it fails on a syntax error, a renamed API field, or an inverted comparison. Measured: 6/6 pass. Case 3 is today's real state — green run on the current HEAD — and returns ok, which is what makes the standing-down path meaningful rather than assumed. Case 4 (HEAD 9h old, no run) and case 6 (future-dated committer date) are the two that must go broken; they do. Not a self-comparison: the expected states were written from the file's stated intent, not from observed output. The post-merge half is separate and cannot be faked — the workflow only runs on main, so workflow_dispatch is the real proof, and its previous 12 runs all died at exit 127.",
+    "command": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml",
+    "fails_when": "Any of the six decision paths returns the wrong state. The harness is committed at scripts/main_red_alarm_logic_check.js so the command is runnable by anyone, which the QA gate rightly refused to accept until it was. It extracts the Assess script out of the YAML and executes it against mocked Octokit responses, so it fails on a syntax error, a renamed API field, or an inverted comparison. Measured: 6/6 pass. Case 3 is today's real state — green run on the current HEAD — and returns ok, which is what makes the standing-down path meaningful rather than assumed. Case 4 (HEAD 9h old, no run) and case 6 (future-dated committer date) are the two that must go broken; they do. Not a self-comparison: the expected states were written from the file's stated intent, not from observed output. The post-merge half is separate and cannot be faked — the workflow only runs on main, so workflow_dispatch is the real proof, and its previous 12 runs all died at exit 127.",
     "external_authority": "The GitHub Actions runner image decides whether gh and jq exist, not this repo. That is the whole defect: the old steps assumed the ubuntu-latest toolset and got the WSL one. The run log is the authority for the diagnosis — run 31554705844 says 'gh: command not found', 'jq: command not found', 'Process completed with exit code 127'."
   },
   "pre_impl": {
     "existing_data": "The workflow's own header already documented the failure it was built for: main red 2026-08-03 to 08-06, gates failing for three days with a red X on the commit list that was addressed to nobody. ~/.claude/plans/ce-CURRENT-AIM.md records the self-hosted runner migration (RUNNER_LABEL, 5 WSL runners) as the fix for the billing block. Nothing connected the two, which is how this went unnoticed.",
-    "assumption_mismatch": "I first read the 12 consecutive failures as a race — the alarm fires about 69 seconds after a merge, while gates is still running, so 'it is just seeing an in-flight run' was a plausible and completely wrong story. It would have led to widening the in-flight window and declaring victory on a workflow that still could not execute a single line. Reading the actual run log killed it: the job dies at exit 127 in the FIRST step, before any assessment logic runs at all. The trigger timing is irrelevant.",
-    "new_vs_existing": "No new workflow and no new alarm semantics. Every threshold, message and the single-reused-issue design are carried over unchanged; only the execution substrate changes, from shell plus gh plus jq to actions/github-script. One deliberate behaviour change is called out in break_it: issue lookup moves from the search index to an exact-title match over listForRepo."
+    "assumption_mismatch": "I first read the 12 consecutive failures as a race — the alarm fires about 69 seconds after a merge, while gates is still running, so 'it is just seeing an in-flight run' was a plausible and completely wrong story. It would have led to widening the in-flight window and declaring victory on a workflow that still could not execute a single line. Reading the actual run log killed it: the job dies at exit 127 in the FIRST step, before any assessment logic runs at all. The trigger timing is irrelevant. A second mismatch, later and sharper: I assumed widening the gate's runnable-command regex was a safe one-line accommodation. It was not — `node` unanchored matched the word 'nodes' in prose, so the counterweight test I wrote against my own change failed immediately and correctly. The fix was \bnode\b.",
+    "new_vs_existing": "No new workflow and no new alarm semantics. Every threshold, message and the single-reused-issue design are carried over unchanged; only the execution substrate changes, from shell plus gh plus jq to actions/github-script. One deliberate behaviour change is called out in break_it: issue lookup moves from the search index to an exact-title match over listForRepo. The harness is new and tracked; scripts/* is ignore-by-default here, so it needed an explicit allowlist entry alongside qa_gate.py — the same class of trap that swallowed a QA report earlier today."
   },
   "functions": [
     {
@@ -42,7 +46,7 @@
     },
     {
       "value": "local harness: 6/6 decision paths correct against mocked API responses",
-      "read_at": "node alarm-logic-test.js on this branch, 2026-08-12",
+      "read_at": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml, 2026-08-12",
       "if_missing": "the workflow runs only on main, so without a local harness the first execution of this code would be in production on the one path that is supposed to be trustworthy"
     }
   ],
@@ -74,11 +78,18 @@
       "what_happens": "A green watchdog that never fires. Strictly worse than the current state, because 12 visible failures at least look wrong, whereas a quiet success looks correct.",
       "mitigated": true,
       "how": "This is why the harness asserts the BROKEN paths, not just the ok ones: 4 of the 6 cases must return broken and do. An always-ok regression fails four assertions. Note the residual hole honestly: if state comes back empty, both steps are skipped and the JOB still reports success, so the harness is the only thing standing between that and a silent watchdog.",
-      "repro": "node alarm-logic-test.js .github/workflows/main-red-alarm.yml   # 4 of 6 cases must report broken"
+      "repro": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml   # 4 of 6 cases must report broken"
+    },
+    {
+      "scenario": "Widening _LOOKS_RUNNABLE_RE in qa_gate.py to accept `node` lets plain English through, so a description of a check starts passing as a check.",
+      "what_happens": "The falsifiability gate keeps reporting PASSED while accepting prose. Nothing goes red, and the one guard that exists specifically because DQ-30 shipped on an unfalsifiable claim quietly stops discriminating.",
+      "mitigated": true,
+      "how": "This was NOT hypothetical — it happened, and the test written alongside the change caught it on the first run. Unanchored, `node` matches the 'nodes' in 'inspect the graph nodes and confirm the counts look right', which the gate then accepted as runnable. Fixed by anchoring as \bnode\b, deliberately inconsistent with the older unanchored entries because 'nodes' is ordinary vocabulary in this codebase while 'pythonic' is not. Two tests now hold the line: one asserts a real node command is accepted, the other asserts that prose containing 'nodes' is still refused. 44 qa_gate tests pass.",
+      "repro": "python -m pytest tests/test_qa_gate_falsifiable.py -q"
     }
   ],
   "mutation_analysis": "The harness is built to be able to fail and was checked by making it fail. Inverting the sha === headSha comparison flips case 3 from ok to broken, which is the assertion that today's real state — a green run on the current HEAD — does not raise an alarm. Deleting the headAgeH < 0 guard flips case 6 to ok, because a future-dated commit then satisfies headAgeH > 3 being false and buys unbounded silence; that guard exists in the original for the same reason and survives the port. Removing the !run early return makes case 1 throw on reading .conclusion of undefined rather than reporting broken. The mutation that the harness canNOT catch is the one that caused this whole incident: a step that never executes because a binary is missing. Nothing runnable on this machine can catch that, which is why the post-merge workflow_dispatch is mandatory rather than a nicety.",
-  "residual_risk": "The harness exercises the Assess step only. The two issue-writing steps are unexercised locally — they need a real repo and write scope — so the create, comment and close paths are covered by code review and by the API shapes alone. If state is ever empty rather than ok or broken, both conditional steps skip and the job still passes, which would be a silent watchdog; nothing here detects that except the harness proving state is always set. And the deeper point stands unchanged: this repairs the alarm, it does not prove main is green. gates passing on e1fa65ae is what does that.",
+  "residual_risk": "The harness exercises the Assess step only. The two issue-writing steps are unexercised locally — they need a real repo and write scope — so the create, comment and close paths are covered by code review and by the API shapes alone. If state is ever empty rather than ok or broken, both conditional steps skip and the job still passes, which would be a silent watchdog; nothing here detects that except the harness proving state is always set. And the deeper point stands unchanged: this repairs the alarm, it does not prove main is green. gates passing on e1fa65ae is what does that. Separately, this PR edits the QA gate that judges it, which is a conflict worth naming: the widening is defensible only because it is paired with a test asserting prose is still rejected, and that test failed before it passed.",
   "post_merge": {
     "db_reset": "No. CI workflow only; no schema, data or query touched.",
     "secrets": "None read or written. The workflow uses the automatic GITHUB_TOKEN through github-script's authenticated client; the explicit GH_TOKEN env wiring the shell steps needed is gone.",
