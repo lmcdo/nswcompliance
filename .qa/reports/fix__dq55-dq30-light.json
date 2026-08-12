@@ -1,0 +1,90 @@
+{
+  "tier": "standard",
+  "commit_hash": "c55cfff7",
+  "justification": "Two items batched because both are removals rather than new claims, which is the property that makes them low risk: DQ-55 deletes false statements from three docs, DQ-30 deletes dead zone codes from three served rows. Neither can create a new false claim, only fail to remove one. DQ-30 still writes to production, so it carries a backup and in-transaction gating despite being three rows.",
+  "files": [
+    "docs/DCP_MONITORING.md",
+    "docs/DCP_UPDATE_GOVERNANCE.md",
+    "docs/QA-DATA-PROVENANCE.md",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_stale_workflow_docs.py && python scripts/dq_probe_live.py --id DQ-30",
+    "fails_when": "Any doc names a .github/workflows file that does not exist, or any served provision is keyed to a zone code NSW retired in 2022. Both probes predate these fixes — dq_probe_stale_workflow_docs.py shipped in #931 and dq_probe_live.py's DQ-30 entry in #934 — and neither was modified here. They reported 13 and 3 before, and 0 and 0 after. Same queries, either side of the change. Not self-referential: the doc probe compares text against the actual contents of .github/workflows/, and the DQ-30 probe reads the production database; neither consults the ledger.",
+    "external_authority": "For DQ-55, the filesystem: only gates.yml and main-red-alarm.yml exist, and docs/RAILWAY_MONITORS.md is the migration record naming what replaced each deleted workflow. For DQ-30, the production database, plus the fact that no parcel in NSW carries a B1-B8 zoning after the 2022 Employment Zones reform, which is what makes the removed entries unmatchable rather than merely outdated."
+  },
+  "pre_impl": {
+    "existing_data": "DQ-55 logged 2026-08-08, and PR #890 had already miscounted it as 'seven workflows' — the ledger records that 13 filenames appear across 27 citations but that 9 of those are in docs/RAILWAY_MONITORS.md, a deliberate migration table where naming a deleted workflow is CORRECT. Only three docs carry false current-state claims, and the probe was written to name those three files rather than grep the tree. DQ-30's code half was fixed 2026-08-01; the data half was left open.",
+    "assumption_mismatch": "Two. First, I assumed DQ-55 was a naming correction. Reading the docs against RAILWAY_MONITORS.md showed the substantive error is that DCP EXTRACTION IS MANUAL and nothing schedules it — the auto-trigger was deleted in #506 and never replaced, so both DCP docs draw a pipeline that has not run for months. Fixing only the filenames would have left the false pipeline diagram intact. Second, my own corrected text still tripped the probe, because naming a deleted workflow while saying it was deleted is indistinguishable from claiming it runs. I reworded rather than relaxing the probe — loosening a check to accommodate my prose is how a guard stops guarding.",
+    "new_vs_existing": "No new script and no new probe. Both checks already existed and were used unchanged, which is what makes the before/after numbers evidence rather than assertion."
+  },
+  "functions": "N/A - documentation corrections and a three-row data removal; no function added or changed",
+  "values": [
+    {
+      "value": "DQ-55: 13 stale workflow references across 3 docs, before; 0 after",
+      "read_at": "python scripts/dq_probe_stale_workflow_docs.py, before and after the edits, 2026-08-12",
+      "if_missing": "without the before-count the after-count only shows the probe passes, not that anything was corrected"
+    },
+    {
+      "value": "DQ-30: 3 served rows carried a retired B-zone code, before; 0 after. 86 rows carry them in total, including superseded",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-30, before and after the write, 2026-08-12",
+      "if_missing": "the 3-vs-86 split is the whole scoping decision: only the served rows were repaired and the superseded 83 were deliberately left"
+    },
+    {
+      "value": "all 3 rows already carried a modern equivalent beside the retired code — 87502 held E1/E2/MU1 alongside B1/B2/B4, and 87507 and 87508 each held E2 alongside B3",
+      "read_at": "SELECT of id, v2_applicable_zones and provision_text for the 3 rows, read-only, before the write",
+      "if_missing": "this is the evidence removal is lossless; without inspecting the actual arrays it would be a guess that no zone coverage was lost"
+    },
+    {
+      "value": "committed write: 3 rows updated against a target of 3, 0 retired codes left in served rows, 0 touched rows left zone-less",
+      "read_at": "in-transaction verification before COMMIT, 2026-08-12",
+      "if_missing": "these are the assertions that gate the commit rather than describe it afterwards"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-30 - served provisions keyed to a zone code retired in 2022 (both the count and the repair scope)",
+      "file_line": "scripts/dq_probe_live.py:60",
+      "where_clause": "is_current AND v2_is_actionable AND v2_applicable_zones && ARRAY['B1'..'B8'] - the SERVED set; the UPDATE reuses the identical predicate so it cannot reach a row the count excluded"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Removing a retired zone code strips the row's only zone, so a served provision matches nothing at all.",
+      "what_happens": "The provision silently stops being returned for any property — a false absence replacing a dead entry, which is worse because the row still looks healthy.",
+      "mitigated": true,
+      "how": "All three rows were read before the write and each already carried a modern equivalent: 87502 held E1/E2/MU1 beside B1/B2/B4, and both 87507 and 87508 held E2 beside B3. The transaction additionally asserted that no touched row ended up zone-less, and would have rolled back. The safety argument does not depend on my knowing the 2022 mapping — nothing is zoned B1-B8 any more, so the removed entries could never match a current-zone lookup either way.",
+      "repro": "SELECT id, v2_applicable_zones FROM regulatory_provisions_dq30_backup_20260812"
+    },
+    {
+      "scenario": "The repair also rewrites superseded rows, destroying the historical record of what a provision used to say.",
+      "what_happens": "History is silently edited, and any audit that relies on superseded rows to show what was served in the past becomes wrong.",
+      "mitigated": true,
+      "how": "The UPDATE is scoped by is_current AND v2_is_actionable, so only served rows were touched: 3 of the 86 that carry retired codes. The other 83 are deliberately left and the ledger says so explicitly. The backup captured all 86 regardless, so even the untouched ones are recoverable if a later decision changes.",
+      "repro": "SELECT count(*) FROM regulatory_provisions WHERE v2_applicable_zones && ARRAY['B1','B2','B3','B4','B5','B6','B7','B8']  -- expect 83 remaining, all superseded"
+    },
+    {
+      "scenario": "The doc fix corrects filenames but leaves the false process description intact.",
+      "what_happens": "A reader still believes a scheduled extraction pipeline exists. That is the claim that actually misleads — the filenames are trivia by comparison.",
+      "mitigated": true,
+      "how": "The substantive correction is that DCP extraction is MANUAL and nothing schedules it, stated in both DCP docs including inside the pipeline diagram, where the chain now visibly stops with a warning. The satellite monitor's cadence was also corrected from daily to weekly. Renaming alone would have passed the probe while leaving the misleading part untouched — the probe cannot see process claims, only filenames.",
+      "repro": "grep -n 'NOT AUTOMATIC\\|MANUAL' docs/DCP_UPDATE_GOVERNANCE.md docs/DCP_MONITORING.md"
+    },
+    {
+      "scenario": "A doc legitimately needs to name a deleted workflow — to record that it was deleted — and the probe refuses it.",
+      "what_happens": "Either the historical record cannot be written, or the probe gets relaxed and stops catching real false claims.",
+      "mitigated": true,
+      "how": "This came up immediately: my own corrections named the deleted workflows while explaining their deletion, and the probe flagged them. I reworded to 'the old Actions monitor workflow' rather than relaxing the check. The probe already handles the general case by scoping to three named docs and excluding docs/RAILWAY_MONITORS.md, which exists precisely to record what happened to each workflow.",
+      "repro": "python scripts/dq_probe_stale_workflow_docs.py"
+    }
+  ],
+  "mutation_analysis": "Both probes predate both fixes and neither was touched, so the before/after pairs are the mutation run in reverse: 13 -> 0 and 3 -> 0 on unchanged queries. The doc probe demonstrated it can still fail after the edits by rejecting my first pass, which named the deleted workflows in the course of correcting them — a check that could not fail would have accepted that text silently. For DQ-30 the transaction itself is the guard: rowcount was asserted equal to the pre-measured target of 3, and a zone-less outcome on any touched row would have rolled it back, as an equivalent guard did on the DQ-50 repair earlier today.",
+  "residual_risk": "83 superseded rows still carry retired zone codes. That is deliberate and recorded, but it means the unfiltered count stays at 83 and anyone measuring without is_current will still see them. The doc corrections are prose and only the FILENAMES are machine-checked — nothing prevents the process descriptions drifting again, and the probe cannot tell that a pipeline diagram is fiction. The DQ-30 backup holds all 86 rows and nothing prunes it.",
+  "post_merge": {
+    "db_reset": "No reset. A three-row data repair was COMMITTED to production: regulatory_provisions.v2_applicable_zones. Backup regulatory_provisions_dq30_backup_20260812 restores by id.",
+    "secrets": "None read or written.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes, cheap: run python scripts/dq_check.py --report and confirm DQ-30 and DQ-55 both show CLEAN, and that the unresolved count reads 10 rather than 12."
+  }
+}

@@ -40,14 +40,15 @@
       "fixed_by": "#930"
     },
     "DQ-55": {
-      "declared": "open",
+      "declared": "fixed",
       "check": [
         "python",
         "scripts/dq_probe_stale_workflow_docs.py"
       ],
       "passes_when": "exit 0 — no doc names a .github/workflows file that does not exist",
-      "red_when": "DQ-55 is still open: 13 references across DCP_MONITORING.md, DCP_UPDATE_GOVERNANCE.md and QA-DATA-PROVENANCE.md name workflows deleted in #506, so a reader believes scheduled extraction and a freshness monitor are running. Neither is.",
-      "note": "Declared open, so the ratchet requires this to FAIL. When the docs are corrected it starts passing and the ratchet goes red until 'declared' is flipped to fixed — which is the point."
+      "red_when": "a doc again names a .github/workflows file that does not exist",
+      "note": "Declared open, so the ratchet requires this to FAIL. When the docs are corrected it starts passing and the ratchet goes red until 'declared' is flipped to fixed — which is the point.",
+      "fixed_by": "2026-08-12 - DCP_MONITORING.md, DCP_UPDATE_GOVERNANCE.md and QA-DATA-PROVENANCE.md corrected to name the Railway crons that actually run, and to say plainly that DCP extraction is MANUAL with nothing scheduling it"
     },
     "DQ-48": {
       "declared": "fixed",
@@ -134,7 +135,7 @@
       "why_no_check": "Over-eligibility closed 2026-08-01; the consolidation onto the Python service is open. A check needs a definition of 'consolidated' that does not exist yet."
     },
     "DQ-30": {
-      "declared": "partial",
+      "declared": "fixed",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
@@ -142,8 +143,9 @@
         "DQ-30"
       ],
       "passes_when": "exit 0 - no served provision is keyed to a zone code NSW retired in 2022",
-      "red_when": "3 live+actionable rows still carry a B-zone (measured 2026-08-12, down from 14 on 2026-08-01). 86 rows total including superseded. Each is unreachable by a current-zone lookup rather than visibly wrong.",
-      "note": "'partial' so the ratchet reports without enforcing - the retag reduced this and the remainder needs adjudication, not an automatic verdict."
+      "red_when": "a served provision is again keyed to a zone code NSW retired in 2022",
+      "note": "Lossless by construction: all 3 rows already carried the modern equivalent (E1/E2/MU1) alongside the retired B-code, and nothing is zoned B1-B8 any more, so the removed entries could never match a current-zone lookup. 86 superseded rows still carry them and were deliberately NOT touched - they are history.",
+      "fixed_by": "2026-08-12 - 3 served rows; backup regulatory_provisions_dq30_backup_20260812 (86 rows incl. superseded)"
     },
     "DQ-29": {
       "declared": "partial",

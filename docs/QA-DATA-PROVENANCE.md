@@ -252,7 +252,7 @@ All 7 products have v1 disclaimers seeded. Each follows the pattern:
 
 ### 8.1 Data Source Currency
 
-**Automated monitoring:** `scripts/satellite_freshness_monitor.py` probes all 15 external endpoints daily via GitHub Actions (`satellite-freshness-monitor.yml`, 06:00 UTC). Results are logged to `data_source_health_checks` (append-only, migration 043). Failures trigger Telegram alerts.
+**Automated monitoring:** `scripts/satellite_freshness_monitor.py` probes all 15 external endpoints via **Railway cron `monitor-satellite`, WEEKLY (Mon 06:00 UTC)** — not daily, and not GitHub Actions. The Actions workflow was deleted in #506; corrected 2026-08-12 (DQ-55). Results are logged to `data_source_health_checks` (append-only, migration 043). Failures trigger Telegram alerts.
 
 | Check | Frequency | Method |
 |---|---|---|
@@ -309,4 +309,4 @@ Before any new satellite pipeline can be deployed to production:
 | Legal defensibility research | `~/.claude/plans/ce-qa-legal-defensibility-research.md` |
 | Data source freshness monitor | `scripts/satellite_freshness_monitor.py` |
 | Health checks migration | `migrations/043_data_source_health_checks.sql` |
-| Health checks workflow | `.github/workflows/satellite-freshness-monitor.yml` |
+| Health checks schedule | Railway cron `monitor-satellite` (see `docs/RAILWAY_MONITORS.md`) |
