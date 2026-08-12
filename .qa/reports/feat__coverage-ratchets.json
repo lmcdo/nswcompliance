@@ -1,0 +1,107 @@
+{
+ "tier": "standard",
+ "justification": "Adds two BLOCKING CI ratchets over live database reads. Directionality: a ratchet can only add a failure when a count rises; it cannot cause a wrong number to be served, and it writes nothing.",
+ "commit_hash": "36a7e79c",
+ "files": [
+  "scripts/check_dcp_as_at_coverage.py",
+  "scripts/check_satellite_manifests.py",
+  ".github/workflows/gates.yml",
+  ".claude/as_at_coverage_baseline.json",
+  ".claude/manifest_coverage_baseline.json"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/check_dcp_as_at_coverage.py --baseline; python scripts/check_satellite_manifests.py --baseline",
+  "fails_when": "Either exits 1 when any per-key count exceeds its recorded baseline, or when a key appears that the baseline does not contain. Mutation-tested in the failing direction on both: lowering one baseline value produced exit 1 naming the key and both numbers (bayside 31 -> 36, bushfire 56 -> 61). It cannot be satisfied by doing nothing, because doing nothing keeps the counts equal and doing harm raises them.",
+  "external_authority": "Both counts are recomputed from the live database on every run, not read from a stored figure. The baseline file holds only the previous measurement."
+ },
+ "pre_impl": {
+  "existing_data": "292 dateless claims across exactly 10 councils (waverley 55, bayside 36, canada_bay 32, nsw_statewide 31, wingecarribee 30, sutherland_shire 27, liverpool 25, ryde 21, cumberland 19, camden 16); the other 19 served councils are complete. 892 reports without a manifest across 5 products (shadow 538, granny-flat 87, solar-yield 63, bushfire 61, flood 143).",
+  "assumption_mismatch": "Two. First, the as-at report had no per-LGA breakdown, so the initial ratchet recorded 1-per-council - a council of 16 claims scored the same as one of 55, and partial progress inside a council was invisible. Added dateless_by_lga. Second, the natural reading of the manifest ratchet is 'make the count fall', but the 892 historical rows can NEVER gain a manifest because it is derivable only at computation time. The correct target is that the count never RISES, which is what 'every new report carries one' actually means.",
+  "new_vs_existing": "No new script and no new CI concept. --baseline mirrors lint_hardcoded_zone_codes.py, already blocking in CI on 270. The two checks already emitted these JSON reports from live reads; the ratchet only consumes them.",
+  "external_source_error": "Both scripts already return 2, not 1, when DATABASE_URL is absent or the served set reads empty - nothing measured is not a pass."
+ },
+ "functions": [
+  {
+   "name": "_ratchet",
+   "file_line": "scripts/check_satellite_manifests.py",
+   "what": "Compares per-key counts against a recorded baseline and fails when any rises or a new key appears.",
+   "input": "path to the baseline file, a label, the current {key: count} mapping, and an update flag",
+   "output": "exit code 0 when nothing increased, 1 when something did or the baseline is unreadable",
+   "if_none": "An unreadable or missing baseline returns 1 rather than 0 - it refuses to pass rather than passing vacuously.",
+   "edge_cases": "A fall is announced with the command to lower the baseline, so it cannot silently drift out of date. A key absent from the baseline is treated as a failure, not as zero.",
+   "failure_mode": "At worst it blocks a build on a legitimate rise that someone then has to justify by lowering or explaining. It cannot pass on a regression."
+  },
+  {
+   "name": "main",
+   "file_line": "scripts/check_dcp_as_at_coverage.py",
+   "what": "Measures how many served DCP claims carry an in-force or observed-current date, now broken down per council.",
+   "input": "--baseline and --baseline --update flags; reads DATABASE_URL for the live measurement",
+   "output": "the JSON report on stdout, plus a ratchet verdict when --baseline is passed",
+   "if_none": "Zero served claims exits 2 - the production claim set was not measured, which is never a satisfied target.",
+   "edge_cases": "A council is dateless all-or-nothing today, but the ratchet stores claim counts so partial progress inside one still registers.",
+   "failure_mode": "Read-only; it cannot alter a served claim or its date."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A new council is onboarded with no as-at dates for any of its claims.",
+   "what_happens": "Coverage silently drops and the plan file would not notice until someone re-derived it.",
+   "mitigated": true,
+   "how": "A key absent from the baseline fails the build as NEW, naming the council.",
+   "repro": "python scripts/check_dcp_as_at_coverage.py --baseline"
+  },
+  {
+   "scenario": "Shadow keeps generating reports without a manifest.",
+   "what_happens": "The 538 grows and the all-time percentage looks static rather than worsening.",
+   "mitigated": true,
+   "how": "without_manifest per product may never rise, so the next shadow report without one fails the build.",
+   "repro": "python scripts/check_satellite_manifests.py --baseline"
+  },
+  {
+   "scenario": "Someone raises a baseline to make a red build go green.",
+   "what_happens": "The ratchet becomes decorative, exactly like an allowlist nobody reads.",
+   "mitigated": false,
+   "how": "Not closed by code. The baseline files are small, per-key and in the diff, so a raise is visible in review - but nothing prevents it. Recorded rather than claimed shut.",
+   "repro": "git diff origin/main -- .claude/as_at_coverage_baseline.json"
+  },
+  {
+   "scenario": "The database is unreachable during a CI run.",
+   "what_happens": "A zero measurement would look like perfect coverage and lower nothing.",
+   "mitigated": true,
+   "how": "Both scripts exit 2 on a missing DATABASE_URL, and the as-at check exits 2 on an empty served set. dq_db's canary separately refuses to answer when connected but blind.",
+   "repro": "unset DATABASE_URL; python scripts/check_dcp_as_at_coverage.py --baseline; echo $?"
+  },
+  {
+   "scenario": "A council is fully fixed and leaves the dateless set entirely.",
+   "what_happens": "Its key disappears from the current mapping and the improvement goes unrecorded.",
+   "mitigated": false,
+   "how": "Partially. The total falls and the build stays green, but the disappearance is not announced the way a fall within a key is, so the baseline keeps a stale key until someone runs --update. Not harmful, but recorded.",
+   "repro": "compare .claude/as_at_coverage_baseline.json keys against the report's dateless_by_lga"
+  },
+  {
+   "scenario": "The manifest ratchet is read as 'drive 892 to zero'.",
+   "what_happens": "Weeks spent trying to backfill history that cannot be backfilled.",
+   "mitigated": true,
+   "how": "The intent is documented at the call site and in the gates.yml comment: historical rows can never gain a manifest, so the target is direction, not zero.",
+   "repro": "grep -n 'never RISES' scripts/check_satellite_manifests.py"
+  }
+ ],
+ "verified": [
+  "Both ratchets pass at today's numbers: as-at 292 across 10 keys, manifests 892 across 5.",
+  "Both exit 1 when a baseline value is lowered, naming the key and both counts.",
+  "as-at now reports dateless_by_lga; the baseline holds real claim counts rather than 1-per-council.",
+  "gates.yml parses as YAML and dq_check.py still PASSES."
+ ],
+ "gaps": [
+  "Nothing stops someone raising a baseline to clear a red build. Visible in review, not prevented.",
+  "A council leaving the dateless set entirely is not announced as an improvement the way a partial fall is.",
+  "These run only on pull requests. Drift between PRs is still unobserved - a scheduled run is still outstanding.",
+  "The absolute targets (dateless == 0, every report manifested) remain unenforced by design."
+ ],
+ "post_merge": {
+  "db_reset": "No migration, no schema change, no write. Both scripts are read-only.",
+  "secrets": "None added. Both steps consume the existing read-only DATABASE_URL secret.",
+  "other_repo": "None.",
+  "manual_verify": "On the next gates run open 'Coverage ratchets (counts may fall, never rise)' and confirm both print OK. When as-at work lands for a council, run the check with --baseline --update, commit the lowered file, and confirm the total falls below 292."
+ }
+}
