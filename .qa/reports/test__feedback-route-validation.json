@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Closes the gap left open by #924, which was recorded there as residual risk rather than fixed: four public feedback routes had no test that submits invalid input. Also closes a .gitignore hole found while writing it — test_*.json silently swallowed this branch's own QA report. Test-only plus one ignore rule; no source file is touched. The thing being locked down is a response contract a type checker provably cannot see, since tsc passed clean while raw zod issue objects were being handed to the browser.",
-  "commit_hash": "PENDING",
+  "commit_hash": "e3ab8aaa",
   "files": [
     "frontend-nextjs/__tests__/api/feedback/validation-contract.test.ts",
     ".gitignore"
