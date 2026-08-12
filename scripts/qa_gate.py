@@ -99,8 +99,22 @@ _SELF_COMPARISON_RE = re.compile(
     re.I | re.S,
 )
 
+# `node` and `.js` added 2026-08-12: the CI workflows are now checked by a plain
+# node harness (scripts/main_red_alarm_logic_check.js), and the gate rejected a
+# genuinely runnable command purely because JS was missing from this list. This
+# widens what is RECOGNISED as a command; it does not weaken the check, which is
+# still that a description of a check is not a check.
+#
+# `node` is anchored with \b at BOTH ends and the others are not, which looks
+# inconsistent and is deliberate: unanchored, it matches the "nodes" in "inspect
+# the graph nodes and confirm the counts look right", so plain prose would have
+# been accepted as a runnable command. The test that now guards this line caught
+# exactly that on the first run. "nodes" is ordinary vocabulary in this codebase;
+# "pythonic" and "npmish" are not, which is why the older entries survive
+# unanchored.
 _LOOKS_RUNNABLE_RE = re.compile(
-    r"(python|pytest|npx|npm|psql|bash|\./|SELECT\b|\.py\b|\.sh\b|\.ts\b)", re.I
+    r"(python|pytest|npx|npm|\bnode\b|psql|bash|\./|SELECT\b|\.py\b|\.sh\b|\.ts\b|\.js\b)",
+    re.I,
 )
 
 

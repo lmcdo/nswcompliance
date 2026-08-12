@@ -70,6 +70,46 @@ def test_rejects_unrunnable_command(qg, critical):
     assert any("does not look" in e and "runnable" in e for e in errors)
 
 
+def test_accepts_a_node_command(qg, critical):
+    """A node harness is a real check and must not be rejected for being JS.
+
+    Added 2026-08-12. The CI workflows are checked by
+    scripts/main_red_alarm_logic_check.js, and the gate rejected that command
+    outright because `node` and `.js` were absent from _LOOKS_RUNNABLE_RE while
+    `python`, `.py`, `.sh` and `.ts` were present. A gate that rejects genuine
+    checks on the basis of language teaches people to reword commands until it
+    shuts up, which is how the whole falsifiability idea dies.
+    """
+    errors = qg.check_falsifiable(
+        {"falsifiable_check": {
+            "command": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml",
+            "fails_when": "any of the six decision paths returns the wrong state; 4 of the 6 must report broken",
+        }},
+        critical,
+    )
+    assert not errors, f"the gate rejected a runnable node command: {errors}"
+
+
+def test_widening_for_node_did_not_admit_prose(qg, critical):
+    """The counterweight to the test above.
+
+    Adding alternations to _LOOKS_RUNNABLE_RE trades false rejections for the
+    risk of false acceptances, so the widening is only safe while plain English
+    is still refused. Note the bait: this sentence contains the word "nodes",
+    which a careless \\b-less pattern would match.
+    """
+    errors = qg.check_falsifiable(
+        {"falsifiable_check": {
+            "command": "inspect the graph nodes and confirm the counts look right",
+            "fails_when": "any stored zone code is absent from that LGA land use table",
+        }},
+        critical,
+    )
+    assert any("does not look" in e and "runnable" in e for e in errors), (
+        "widening the runnable-command pattern let prose through"
+    )
+
+
 def test_rejects_fails_when_restating_command(qg, critical):
     cmd = "python scripts/validate_zone_code_validity.py"
     errors = qg.check_falsifiable(
