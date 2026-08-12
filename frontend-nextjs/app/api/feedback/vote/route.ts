@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid vote data', details: error.errors },
+        { error: 'Invalid vote data', details: error.issues },
         { status: 400 }
       );
     }

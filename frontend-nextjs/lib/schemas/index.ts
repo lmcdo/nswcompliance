@@ -117,7 +117,7 @@ export const AIChatSchema = z.object({
       lotWidth: z.number().positive().optional(),
       precinctId: z.string().optional(),
       coordinates: CoordinatesSchema.optional(),
-      constraints: z.record(z.any()).optional(), // Accept any constraints structure
+      constraints: z.record(z.string(), z.any()).optional(), // Accept any constraints structure
     })
     .passthrough() // Allow additional fields
     .optional(),
@@ -368,7 +368,7 @@ export function validateQueryParams<T>(
  * Formats Zod validation errors into user-friendly messages
  */
 export function formatValidationErrors(zodError: z.ZodError): string[] {
-  return zodError.errors.map((err) => {
+  return zodError.issues.map((err) => {
     const path = err.path.join('.');
     return path ? `${path}: ${err.message}` : err.message;
   });
