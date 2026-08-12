@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds live read-only probes against the production database and a --report mode that GENERATES the defect status instead of it being typed. The prose summaries around this ledger kept being wrong -- 'seamless', '4 of 55', 'needs the live DB' -- each a claim testable in under a minute that nobody tested. CLAUDE.md already requires every figure to carry its query; this applies that to the defect ledger so the status stops depending on whoever last retyped it.",
-  "commit_hash": "0f9cf155",
+  "commit_hash": "c242f185",
   "files": [
     "scripts/dq_db.py",
     "scripts/dq_probe_live.py",
@@ -22,7 +22,7 @@
   "functions": [
     {
       "name": "connect",
-      "file_line": "scripts/dq_db.py:51",
+      "file_line": "scripts/dq_db.py:67",
       "input": "nothing; resolves the main checkout's .env via git because a worktree carries none",
       "output": "a psycopg2 connection with set_session(readonly=True) and a 30s statement timeout",
       "if_none": "raises with an actionable message rather than returning None -- a probe that cannot reach the database must report UNKNOWN and exit 2, never clean"
