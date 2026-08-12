@@ -82,7 +82,7 @@
       "why_no_check": "One instance fixed; the suite-wide census of contract-vs-fixture tests was never done, so there is no measurable target to check against yet."
     },
     "DQ-50": {
-      "declared": "open",
+      "declared": "fixed",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
@@ -90,8 +90,9 @@
         "DQ-50"
       ],
       "passes_when": "exit 0 - no stored report credits a source that was never queried",
-      "red_when": "143 flood reports (2026-04-07..2026-08-03) still name 'Microsoft Planetary Computer S1 RTC' in data_sources; 121 are inside the 90-day cache window and are served verbatim on a cache hit. Measured live 2026-08-12.",
-      "note": "Declared open, so the ratchet requires this to FAIL until the data is repaired. Repair is a DB write and needs an explicit ruling."
+      "red_when": "a report again names 'Microsoft Planetary Computer S1 RTC' in data_sources without a SAR query behind it",
+      "fixed_by": "2026-08-12 - array_remove over 143 flood reports; backup property_reports_dq50_backup_20260812",
+      "note": "Repaired, not merely re-tagged. 143 -> 0, verified by this probe after commit. The ratchet caught the stale 'open' status the moment the data was fixed, which is the direction it exists for. The 90-day cache-window sub-measure (121 -> 0) is still runnable as `dq_probe_live.py --id DQ-50-window` but is NOT a ledger row: it measures a slice of DQ-50, not a separate defect, and giving it a row would have inflated the open count."
     },
     "DQ-43": {
       "declared": "latent",
