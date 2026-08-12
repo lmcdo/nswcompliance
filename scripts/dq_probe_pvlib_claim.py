@@ -18,6 +18,18 @@ _ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIRS = ["services", "src", "scripts", "enrichment"]
 
 
+def _root_module(dotted: str | None) -> str:
+    """First segment of a dotted module name, or "" for None/empty.
+
+    str.partition always returns a 3-tuple, so this unpacks rather than
+    subscripts. `"a.b".split(".")[0]` is safe for every input the AST can
+    produce here, but the indexing pattern is the risky one in general and
+    the gate is right to refuse it on sight rather than case by case.
+    """
+    head, _, _ = (dotted or "").partition(".")
+    return head
+
+
 def _imports_pvlib(path: Path) -> int | None:
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -26,10 +38,10 @@ def _imports_pvlib(path: Path) -> int | None:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for a in node.names:
-                if a.name.split(".")[0] == "pvlib":
+                if _root_module(a.name) == "pvlib":
                     return node.lineno
         elif isinstance(node, ast.ImportFrom):
-            if (node.module or "").split(".")[0] == "pvlib":
+            if _root_module(node.module) == "pvlib":
                 return node.lineno
     return None
 
