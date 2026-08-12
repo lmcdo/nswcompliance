@@ -128,11 +128,6 @@ jobs:
       # Writes are refused by the SERVER, not by client code. Without it every
       # DB-backed row reported UNKNOWN here, so the ledger only ever enforced
       # the non-DB half of itself in CI.
-      - name: Data-quality ledger (status ratchet)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python scripts/dq_check.py
       # Hardcoded NSW planning data, tree-wide and shrink-only.
       # lint_hardcoded_zone_codes.py already had an --all mode and already
       # covered .ts/.tsx, but it was only ever run diff-scoped from pre-commit,
@@ -231,6 +226,21 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+      # The ledger runs HERE, not in the python job, because one of its checks
+      # is a jest test: DQ-32's defect was a component dropping a field, and no
+      # database probe can see a rendering bug. The python job has no
+      # node_modules, so jest exited non-zero there and dq_check read that as
+      # "the defect is back" — a false RED that would have blocked the merge
+      # that shipped the fix. This job already installs both runtimes, so the
+      # answer here is a real verdict rather than UNKNOWN, at no extra cost.
+      # `requires` in dq_checks.json is the belt to this braces: anywhere the
+      # dependencies are absent, the row reports UNVERIFIED, never failing.
+      - name: Data-quality ledger (status ratchet)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/dq_check.py
+
       - name: Dev server boots
         if: always()
         # NON-BLOCKING until #929 is fixed. The check works — it fails on the

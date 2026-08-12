@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what a served UI shows. Directionality: it ADDS the condition text the API already sent and reveals rows a React key collision was hiding, so it can only make a number more attributable, never less. No value is altered and nothing is written.",
- "commit_hash": "2a746440",
+ "commit_hash": "b2edf512",
  "files": [
   "frontend-nextjs/components/tools/DcpSnapshotCard.tsx",
   "frontend-nextjs/app/api/capacity/calculate/route.ts",

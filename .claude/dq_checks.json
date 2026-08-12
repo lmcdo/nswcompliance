@@ -133,8 +133,9 @@
    ],
    "passes_when": "exit 0 - the snapshot card renders each control's condition, draws every row even when control_type and section_ref collide, and states how many controls it is not showing",
    "red_when": "A served surface shows several values for one control slot without saying which case each covers, so the reader cannot tell which number is theirs.",
-   "note": "Fixed 2026-08-13 under the present-all ruling. ⚠ The old probe counted 562 rows in ambiguous groups and treated every one as a defect; 556 of them already state their case and are correct. Counting those is what made this look like weeks of adjudication when the real defect was a component dropping a field the API already sent. The remaining 6 conditionless rows are DQ-32c. This check is a jest test because the defect was in RENDERING - a DB probe cannot see it, which is exactly why it survived so long.",
-   "cwd": "frontend-nextjs"
+   "note": "Fixed 2026-08-13 under the present-all ruling. ⚠ The old probe counted 562 rows in ambiguous groups and treated every one as a defect; 556 of them already state their case and are correct. Counting those is what made this look like weeks of adjudication when the real defect was a component dropping a field the API already sent. The remaining 6 conditionless rows are DQ-32c. This check is a jest test because the defect was in RENDERING - a DB probe cannot see it, which is exactly why it survived so long. The check needs frontend-nextjs/node_modules, so it runs in CI's Jest job (both runtimes) and reports UNVERIFIED anywhere they are absent rather than failing.",
+   "cwd": "frontend-nextjs",
+   "requires": "frontend-nextjs/node_modules"
   },
   "DQ-31": {
    "declared": "partial",
