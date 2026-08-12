@@ -174,6 +174,40 @@ def test_committed_report_passes(qg, repo):
     assert not errors, f"a committed report was refused: {errors}"
 
 
+# ── The gate's OWN git calls must ignore an inherited GIT_DIR ───────────────
+
+def test_gate_ignores_inherited_git_dir(qg, repo, monkeypatch):
+    """The gate must consult the repo it is pointed at, not GIT_DIR.
+
+    This is not hypothetical and it is not only a test concern. The gate's
+    main caller IS a git hook, and hooks export ``GIT_DIR`` and
+    ``GIT_INDEX_FILE``, which OVERRIDE ``cwd``. Without scrubbing them,
+    ``git ls-files`` inside the gate answers about whatever repository git was
+    invoked from — so at push time the gate would report on the wrong index.
+
+    Caught the hard way: the reachability tests passed standalone and three of
+    them failed inside pre-push, because pytest there inherited the hook's
+    GIT_DIR. Running the suite with GIT_DIR set reproduces it; this test pins
+    it so a standalone run catches it too.
+    """
+    path = _report(repo)
+    _git(repo, "add", ".qa/reports/fix__thing.json")
+
+    # Point GIT_DIR somewhere real but WRONG — a different repository.
+    other = repo.parent / "other"
+    other.mkdir()
+    _git(other, "init", "-q")
+    monkeypatch.setenv("GIT_DIR", str((other / ".git").resolve()))
+    monkeypatch.setenv("GIT_INDEX_FILE", str((other / ".git" / "index").resolve()))
+
+    errors = qg.check_report_reachable(path, str(repo), require_tracked=True)
+
+    assert not errors, (
+        "the gate consulted GIT_DIR instead of the repo it was given: "
+        f"{errors}"
+    )
+
+
 # ── Fail closed when git cannot answer ───────────────────────────────────────
 
 def test_unknowable_fails_closed_only_where_it_matters(qg, tmp_path):

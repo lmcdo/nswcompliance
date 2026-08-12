@@ -1635,11 +1635,26 @@ def validate_report(
 
 
 def _git(args: list[str], project_dir: str) -> tuple[int, str]:
-    """Run a git command, returning (returncode, stdout). Never raises."""
+    """Run a git command against project_dir, returning (returncode, stdout).
+
+    GIT_* is scrubbed from the environment, and that is load-bearing rather
+    than tidiness. Git hooks export GIT_DIR and GIT_INDEX_FILE, and those
+    OVERRIDE cwd — so this function's main caller, the pre-push hook, would
+    otherwise ask about whatever repository git was invoked from instead of
+    the one being checked. It is the same trap that once let a test `git init`
+    a tmpdir, silently operate on the real repository, and still pass. Caught
+    here by test_staged_counts_as_tracked, which passed standalone and failed
+    under pre-push until this scrub was added.
+
+    Never raises: a gate that crashes on a missing git binary is a gate that
+    gets bypassed.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     try:
         proc = subprocess.run(
             ["git", *args],
             cwd=project_dir,
+            env=env,
             capture_output=True,
             text=True,
             timeout=15,
