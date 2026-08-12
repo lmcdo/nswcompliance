@@ -82,8 +82,75 @@ def main() -> int:  # pragma: no cover - CLI entry point
                   "observation mode until false-positive behaviour is known",
     }
     print(json.dumps(report, indent=2))
+
+    if "--baseline" in sys.argv:
+        # Ratchet WITHOUT_manifest per product. Historical rows can never gain
+        # one - a manifest is derivable only at computation time - so a falling
+        # count is not the goal here. The goal is that it never RISES, which is
+        # exactly "every NEW report carries a manifest". A product that starts
+        # emitting them stays flat; one that regresses fails the build.
+        per_product = {k: v["without_manifest"]
+                       for k, v in report.get("per_product", {}).items()}
+        return _ratchet(".claude/manifest_coverage_baseline.json",
+                        "Satellite manifests", per_product, "--update" in sys.argv)
     return 0
 
 
+
+# --- shrink-only ratchet -----------------------------------------------------
+# Same mechanism as scripts/lint_hardcoded_zone_codes.py --baseline, already in
+# CI. Progress on this campaign lived in a plan file that nothing executed, so
+# each session re-derived where it had got to. A recorded baseline makes the
+# remaining work MEASURED rather than remembered: the count may fall, never
+# rise, and a fall prints the command to lower it.
+def _ratchet(path: str, label: str, current: dict, update: bool) -> int:
+    import json
+    import os
+
+    if update:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"_note": ("Shrink-only. Each value may fall, never rise. "
+                                 "Lower it with --baseline --update when work lands."),
+                       "per_key": dict(sorted(current.items()))}, f, indent=2)
+            f.write("\n")
+        print(f"{label} baseline updated: {sum(current.values())} across "
+              f"{len(current)} key(s).")
+        return 0
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            baseline = json.load(f)["per_key"]
+    except (OSError, ValueError, KeyError):
+        print(f"{label} baseline: cannot read {path} - refusing to pass.")
+        return 1
+
+    worse, better, new = [], [], []
+    for k, n in sorted(current.items()):
+        was = baseline.get(k)
+        if was is None:
+            new.append((k, n))
+        elif n > was:
+            worse.append((k, was, n))
+        elif n < was:
+            better.append((k, was, n))
+
+    if better:
+        print(f"{label}: IMPROVED - lower the baseline and commit")
+        for k, was, now in better:
+            print(f"  {k}: {was} -> {now}")
+
+    if worse or new:
+        print(f"{label}: FAILED - a count rose, which means new work regressed it.")
+        for k, was, now in worse:
+            print(f"  {k}: {was} -> {now}")
+        for k, n in new:
+            print(f"  {k}: NEW, {n} (not in the baseline)")
+        return 1
+
+    print(f"{label} baseline: OK - {sum(current.values())}, none increased.")
+    return 0
+
 if __name__ == "__main__":
     sys.exit(main())
+
