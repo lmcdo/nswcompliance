@@ -28,21 +28,33 @@
   "checks": {
     "DQ-54": {
       "declared": "fixed",
-      "check": ["python", "-m", "pytest", "tests/test_git_env_ratchet.py", "-q"],
+      "check": [
+        "python",
+        "-m",
+        "pytest",
+        "tests/test_git_env_ratchet.py",
+        "-q"
+      ],
       "passes_when": "exit 0 — every git call in scripts/ that pins cwd also pins env=git_env()",
       "red_when": "any script runs git with cwd= and no env=git_env(), so a hook's GIT_DIR silently redirects it to another repository",
       "fixed_by": "#930"
     },
     "DQ-55": {
       "declared": "open",
-      "check": ["python", "scripts/dq_probe_stale_workflow_docs.py"],
+      "check": [
+        "python",
+        "scripts/dq_probe_stale_workflow_docs.py"
+      ],
       "passes_when": "exit 0 — no doc names a .github/workflows file that does not exist",
       "red_when": "DQ-55 is still open: 13 references across DCP_MONITORING.md, DCP_UPDATE_GOVERNANCE.md and QA-DATA-PROVENANCE.md name workflows deleted in #506, so a reader believes scheduled extraction and a freshness monitor are running. Neither is.",
       "note": "Declared open, so the ratchet requires this to FAIL. When the docs are corrected it starts passing and the ratchet goes red until 'declared' is flipped to fixed — which is the point."
     },
     "DQ-48": {
       "declared": "fixed",
-      "check": ["python", "scripts/dq_probe_dead_sar_constants.py"],
+      "check": [
+        "python",
+        "scripts/dq_probe_dead_sar_constants.py"
+      ],
       "passes_when": "exit 0 — no assignment of FLOOD_RATIO / PC_CATALOG / S1_COLLECTION in services/flood_truth.py",
       "red_when": "a named SAR threshold or endpoint is reintroduced with no call site behind it, reading as a shipped detector that does not exist",
       "fixed_by": "#878 (Lane 1 / D2)",
@@ -50,63 +62,290 @@
     },
     "DQ-47": {
       "declared": "fixed",
-      "check": ["python", "scripts/dq_probe_pvlib_claim.py"],
+      "check": [
+        "python",
+        "scripts/dq_probe_pvlib_claim.py"
+      ],
       "passes_when": "exit 0 — pvlib is not imported by any non-test module",
       "red_when": "production code imports pvlib, or a served string credits it as the shadow method again, while pybdshadow is what actually runs",
       "fixed_by": "#878 (Lane 1 / D1)",
       "note": "Scoped to non-test source deliberately. tests/test_shadow_calibration.py DOES import pvlib, legitimately — it is the external reference the calibration measures against. A repo-wide grep would false-fail on exactly the test that proves the fix."
     },
-
-    "DQ-57": { "declared": "open", "check": null, "why_no_check": "Needs the live DB: the claim is a RATE (109 of 151 stored flood rows carry no ses_study_lga). A check must query flood rows and recompute it, so it needs DATABASE_URL and a decision about what rate counts as fixed." },
-    "DQ-53": { "declared": "partial", "check": null, "why_no_check": "One instance fixed; the suite-wide census of contract-vs-fixture tests was never done, so there is no measurable target to check against yet." },
-    "DQ-50": { "declared": "open", "check": null, "why_no_check": "Needs the live DB: count cached flood rows whose stored data_sources still name 'Microsoft Planetary Computer S1 RTC'. Was 143 (131 inside the cache window) on 2026-08-06." },
-    "DQ-43": { "declared": "latent", "check": null, "why_no_check": "Explicitly not live today — depends on the plan-identity model that does not exist yet. A check now would assert against a design that has not been built." },
-    "DQ-42": { "declared": "guarded", "check": null, "why_no_check": "Upstream NSW Planning Portal staleness, not fixable here. The guard is the identity match in fetch_dcp_as_at_dates.py; a check should assert the guard exists rather than that the portal is correct." },
-    "DQ-39": { "declared": "open", "check": null, "why_no_check": "Needs the live DB: 25 of 986 stored control values are not derivable from their own quoted source_text. The gate exists; the DATA is unfixed. Check = re-run the derivability gate over dcp_setback_controls and count failures." },
-    "DQ-32": { "declared": "open", "check": null, "why_no_check": "Not started, and the highest-consequence open row: the capacity engine ignores zone when picking setback/landscaping numbers, so 560 rows across 168 lga/dev-type groups can return the WRONG value. Needs investigation before a check can be written honestly." },
-    "DQ-31": { "declared": "partial", "check": null, "why_no_check": "Over-eligibility closed 2026-08-01; the consolidation onto the Python service is open. A check needs a definition of 'consolidated' that does not exist yet." },
-    "DQ-30": { "declared": "partial", "check": null, "why_no_check": "Needs the live DB: 286 rows still carry retired zone codes, 14 of them live+actionable. Code is fixed; the check must count the surviving rows." },
-    "DQ-29": { "declared": "partial", "check": null, "why_no_check": "Needs the live DB: 22 scrambled-body rows remain for re-extraction." },
-    "DQ-25": { "declared": "backlog", "check": null, "why_no_check": "Backlog, never scoped." },
-    "DQ-24": { "declared": "backlog", "check": null, "why_no_check": "Backlog, never scoped." },
-    "DQ-56": { "declared": "closed_wontfix", "check": null, "why_no_check": "Closed as not worth continuing by user ruling 2026-08-08. Deliberately NOT reopened as a backlog item." },
-    "DQ-53b": { "declared": "fixed", "check": null, "why_no_check": "Proof hygiene on a throwaway script that was never committed; nothing durable to re-run." },
-    "DQ-52": { "declared": "fixed", "check": null, "why_no_check": "All five representations were deleted and services/sentinel2.py removed. A check would assert absence of marketing strings — worth writing, not yet written." },
-    "DQ-51": { "declared": "fixed", "check": null, "why_no_check": "Needs a request-level fixture through the SEPP eligibility gate; not yet written." },
-    "DQ-49": { "declared": "fixed", "check": null, "why_no_check": "Needs the live DB to re-count confirmed_count_source provenance on granny rows." },
-    "DQ-46": { "declared": "fixed", "check": null, "why_no_check": "Needs a DEM provider fixture; not yet written." },
-    "DQ-45": { "declared": "fixed", "check": null, "why_no_check": "Pinned by two loop-survival tests in test_execution_manifests.py — wiring those in as this row's check is straightforward and not yet done." },
-    "DQ-44": { "declared": "fixed", "check": null, "why_no_check": "Pinned by flipped tests in the flood suite; not yet wired in as this row's check." },
-    "DQ-41": { "declared": "fixed", "check": null, "why_no_check": "Needs the live DB: verify 0 Jan-1 dates remain in dcp_setback_controls." },
-    "DQ-40": { "declared": "partial", "check": null, "why_no_check": "3 rows remain open pending non-local sources and authorisation; needs the live DB." },
-    "DQ-36": { "declared": "fixed", "check": null, "why_no_check": "Needs a PDF render fixture; not yet written." },
-    "DQ-35": { "declared": "fixed", "check": null, "why_no_check": "Needs the live DB via conveyancing_db.fetch_dcp_setbacks." },
-    "DQ-34": { "declared": "fixed", "check": null, "why_no_check": "Needs a component render fixture; not yet written." },
-    "DQ-33": { "declared": "fixed", "check": null, "why_no_check": "Needs the live DB: no_config on served rows was 9,854 -> 1,278." },
-    "DQ-28": { "declared": "fixed", "check": null, "why_no_check": "Historic, 2026-03-30." },
-    "DQ-27": { "declared": "fixed", "check": null, "why_no_check": "Historic, 2026-03-04." },
-    "DQ-26": { "declared": "fixed", "check": null, "why_no_check": "Historic, 2026-03-04." },
-    "DQ-23": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-22": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-21": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-20": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-19": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-18": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-17": { "declared": "fixed", "check": null, "why_no_check": "Historic — not orphaned." },
-    "DQ-16": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-15": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-14": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-13": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-11": { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-10": { "declared": "fixed", "check": null, "why_no_check": "Historic — documented." },
-    "DQ-9":  { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-8":  { "declared": "fixed", "check": null, "why_no_check": "Historic — documented." },
-    "DQ-7":  { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-6":  { "declared": "accepted", "check": null, "why_no_check": "Accepted, not a defect." },
-    "DQ-5":  { "declared": "accepted", "check": null, "why_no_check": "Expected behaviour." },
-    "DQ-4":  { "declared": "accepted", "check": null, "why_no_check": "Accepted." },
-    "DQ-3":  { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-2":  { "declared": "fixed", "check": null, "why_no_check": "Historic." },
-    "DQ-1":  { "declared": "not_a_bug", "check": null, "why_no_check": "Not a bug." }
+    "DQ-57": {
+      "declared": "open",
+      "check": null,
+      "why_no_check": "Needs the live DB: the claim is a RATE (109 of 151 stored flood rows carry no ses_study_lga). A check must query flood rows and recompute it, so it needs DATABASE_URL and a decision about what rate counts as fixed."
+    },
+    "DQ-53": {
+      "declared": "partial",
+      "check": null,
+      "why_no_check": "One instance fixed; the suite-wide census of contract-vs-fixture tests was never done, so there is no measurable target to check against yet."
+    },
+    "DQ-50": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-50"
+      ],
+      "passes_when": "exit 0 - no stored report credits a source that was never queried",
+      "red_when": "143 flood reports (2026-04-07..2026-08-03) still name 'Microsoft Planetary Computer S1 RTC' in data_sources; 121 are inside the 90-day cache window and are served verbatim on a cache hit. Measured live 2026-08-12.",
+      "note": "Declared open, so the ratchet requires this to FAIL until the data is repaired. Repair is a DB write and needs an explicit ruling."
+    },
+    "DQ-43": {
+      "declared": "latent",
+      "check": null,
+      "why_no_check": "Explicitly not live today — depends on the plan-identity model that does not exist yet. A check now would assert against a design that has not been built."
+    },
+    "DQ-42": {
+      "declared": "guarded",
+      "check": null,
+      "why_no_check": "Upstream NSW Planning Portal staleness, not fixable here. The guard is the identity match in fetch_dcp_as_at_dates.py; a check should assert the guard exists rather than that the portal is correct."
+    },
+    "DQ-39": {
+      "declared": "open",
+      "check": null,
+      "why_no_check": "Needs the live DB: 25 of 986 stored control values are not derivable from their own quoted source_text. The gate exists; the DATA is unfixed. Check = re-run the derivability gate over dcp_setback_controls and count failures."
+    },
+    "DQ-32": {
+      "declared": "open",
+      "check": null,
+      "why_no_check": "Not started, and the highest-consequence open row: the capacity engine ignores zone when picking setback/landscaping numbers, so 560 rows across 168 lga/dev-type groups can return the WRONG value. Needs investigation before a check can be written honestly."
+    },
+    "DQ-31": {
+      "declared": "partial",
+      "check": null,
+      "why_no_check": "Over-eligibility closed 2026-08-01; the consolidation onto the Python service is open. A check needs a definition of 'consolidated' that does not exist yet."
+    },
+    "DQ-30": {
+      "declared": "partial",
+      "check": null,
+      "why_no_check": "Needs the live DB: 286 rows still carry retired zone codes, 14 of them live+actionable. Code is fixed; the check must count the surviving rows."
+    },
+    "DQ-29": {
+      "declared": "partial",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-29"
+      ],
+      "passes_when": "exit 0 - no provision matches the doubled-character corruption pattern",
+      "red_when": "39 candidate rows measured live 2026-08-12, against 22 recorded on 2026-07-15. The pattern also matches legitimate text, so 39 is an UPPER BOUND, not a defect count.",
+      "note": "Deliberately 'partial'. My first attempt at this pattern returned 0 because it searched for 4+ repeats of one character rather than repeated PAIRS - a wrong probe reporting clean. Recorded so nobody trusts the number as adjudicated."
+    },
+    "DQ-25": {
+      "declared": "backlog",
+      "check": null,
+      "why_no_check": "Backlog, never scoped."
+    },
+    "DQ-24": {
+      "declared": "backlog",
+      "check": null,
+      "why_no_check": "Backlog, never scoped."
+    },
+    "DQ-56": {
+      "declared": "closed_wontfix",
+      "check": null,
+      "why_no_check": "Closed as not worth continuing by user ruling 2026-08-08. Deliberately NOT reopened as a backlog item."
+    },
+    "DQ-53b": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Proof hygiene on a throwaway script that was never committed; nothing durable to re-run."
+    },
+    "DQ-52": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "All five representations were deleted and services/sentinel2.py removed. A check would assert absence of marketing strings — worth writing, not yet written."
+    },
+    "DQ-51": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Needs a request-level fixture through the SEPP eligibility gate; not yet written."
+    },
+    "DQ-49": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Needs the live DB to re-count confirmed_count_source provenance on granny rows."
+    },
+    "DQ-46": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Needs a DEM provider fixture; not yet written."
+    },
+    "DQ-45": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Pinned by two loop-survival tests in test_execution_manifests.py — wiring those in as this row's check is straightforward and not yet done."
+    },
+    "DQ-44": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Pinned by flipped tests in the flood suite; not yet wired in as this row's check."
+    },
+    "DQ-41": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Needs the live DB: verify 0 Jan-1 dates remain in dcp_setback_controls."
+    },
+    "DQ-40": {
+      "declared": "partial",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-40"
+      ],
+      "passes_when": "exit 0 - no setback control is flagged needs_review",
+      "red_when": "82 rows flagged, measured live 2026-08-12. Not all are defects: some are deliberate fail-closed flags. Declared 'partial' so the ratchet does NOT enforce a direction - the number is reported, not adjudicated.",
+      "note": "Unenforced by design. Turning this into a pass/fail needs a decision about which flags are acceptable."
+    },
+    "DQ-36": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Needs a PDF render fixture; not yet written."
+    },
+    "DQ-35": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Needs the live DB via conveyancing_db.fetch_dcp_setbacks."
+    },
+    "DQ-34": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Needs a component render fixture; not yet written."
+    },
+    "DQ-33": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Needs the live DB: no_config on served rows was 9,854 -> 1,278."
+    },
+    "DQ-28": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic, 2026-03-30."
+    },
+    "DQ-27": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic, 2026-03-04."
+    },
+    "DQ-26": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic, 2026-03-04."
+    },
+    "DQ-23": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-22": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-21": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-20": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-19": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-18": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-17": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic — not orphaned."
+    },
+    "DQ-16": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-15": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-14": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-13": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-11": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-10": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic — documented."
+    },
+    "DQ-9": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-8": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic — documented."
+    },
+    "DQ-7": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-6": {
+      "declared": "accepted",
+      "check": null,
+      "why_no_check": "Accepted, not a defect."
+    },
+    "DQ-5": {
+      "declared": "accepted",
+      "check": null,
+      "why_no_check": "Expected behaviour."
+    },
+    "DQ-4": {
+      "declared": "accepted",
+      "check": null,
+      "why_no_check": "Accepted."
+    },
+    "DQ-3": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-2": {
+      "declared": "fixed",
+      "check": null,
+      "why_no_check": "Historic."
+    },
+    "DQ-1": {
+      "declared": "not_a_bug",
+      "check": null,
+      "why_no_check": "Not a bug."
+    }
   }
 }

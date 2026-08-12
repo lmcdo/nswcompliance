@@ -1,0 +1,136 @@
+{
+  "tier": "standard",
+  "justification": "Adds live read-only probes against the production database and a --report mode that GENERATES the defect status instead of it being typed. The prose summaries around this ledger kept being wrong -- 'seamless', '4 of 55', 'needs the live DB' -- each a claim testable in under a minute that nobody tested. CLAUDE.md already requires every figure to carry its query; this applies that to the defect ledger so the status stops depending on whoever last retyped it.",
+  "commit_hash": "c242f185",
+  "files": [
+    "scripts/dq_db.py",
+    "scripts/dq_probe_live.py",
+    "scripts/dq_check.py",
+    ".claude/dq_checks.json",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-50 && python scripts/dq_check.py",
+    "fails_when": "A probe's count is non-zero for a row declared fixed, or zero for one declared open. NOT self-referential: every probe queries the PRODUCTION database, which knows nothing about this ledger and cannot inherit its error. DQ-50 was verified three independent ways that agree -- ILIKE 143, exact array membership = ANY(data_sources) 143, and the 90-day window 121 by BOTH run_date and created_at -- and all 143 are product='flood' spanning 2026-04-07..2026-08-03. An unreachable database exits 2 and is reported UNKNOWN, never clean. Proven able to fail on real state: dq_check.py went RED on DQ-54 during this very branch, because dq_db.py had a local _git_env() copy instead of the shared helper.",
+    "external_authority": "The production Supabase instance and information_schema. Two of my first four probes were WRONG against it and were corrected rather than shipped: property_reports has no report_data column, and data_sources is text[] not jsonb so the jsonb operator errors and membership requires = ANY(). A third returned 0 by searching for 4+ repeats of one character rather than repeated PAIRS."
+  },
+  "pre_impl": {
+    "existing_data": "PR #931 built the ratchet and left 11 unresolved rows unchecked, which I justified as 'needs the live DB'. That was wrong: connecting took one command and returned 55,696 regulatory_provisions rows, matching CLAUDE.md's documented figure. The blocker was not real.",
+    "assumption_mismatch": "Three, all caught by measuring. (1) '4 of 55 checked' was a misleading framing -- 36 of the 55 are already fixed, so the real gap was 11 checks, not 51. (2) 'Needs the live DB' was an excuse, not a constraint. (3) My first probes were wrong about the schema in two different ways and about the corruption regex in a third, and the regex one returned CLEAN -- a wrong probe reporting no defect, which is the precise failure this work exists to prevent.",
+    "new_vs_existing": "One read-only connection helper, one probe module, one --report mode. No new tracker. dq_db.py reuses qa_report_path.git_env() rather than carrying its own scrub -- enforced, not remembered: the DQ-54 ratchet failed this branch until it did."
+  },
+  "functions": [
+    {
+      "name": "connect",
+      "file_line": "scripts/dq_db.py:67",
+      "input": "nothing; resolves the main checkout's .env via git because a worktree carries none",
+      "output": "a psycopg2 connection with set_session(readonly=True) and a 30s statement timeout",
+      "if_none": "raises with an actionable message rather than returning None -- a probe that cannot reach the database must report UNKNOWN and exit 2, never clean"
+    },
+    {
+      "name": "_report",
+      "file_line": "scripts/dq_check.py:184",
+      "input": "the ledger rows and their check specs",
+      "output": "the defect status, generated: each unresolved row, its check run live, and every number printed with the query behind it",
+      "if_none": "a row with no check prints NOT VERIFIED and its recorded reason, and the trailing summary states that an unverified row is not a clean row"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-50 still live: 143 flood reports credit a never-queried source; 121 inside the 90-day cache window; span 2026-04-07..2026-08-03",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-50 against production, 2026-08-12",
+      "if_missing": "this is the one defect this PR proves is still being served today"
+    },
+    {
+      "value": "DQ-40: 82 rows needs_review. DQ-29: 14 SERVED candidate rows (39 before the currency filter) against 22 recorded -- an upper bound, not a defect count",
+      "read_at": "dq_probe_live.py --id DQ-40 / --id DQ-29 with is_current AND v2_is_actionable, 2026-08-12",
+      "if_missing": "both are declared 'partial' precisely because the number is measured but not adjudicated"
+    },
+    {
+      "value": "12 of 55 ledger rows are unresolved; 4 now carry a live check, up from 1",
+      "read_at": "python scripts/dq_check.py --report, 2026-08-12",
+      "if_missing": "'4 of 55' misled; 43 of the rows are resolved and the real gap is 8 unchecked unresolved rows"
+    },
+    {
+      "value": "read-only enforced: CREATE TABLE refused with 'cannot execute CREATE TABLE in a read-only transaction'",
+      "read_at": "direct probe of dq_db.connect(), 2026-08-12",
+      "if_missing": "these probes run against production; without proof of read-only the whole approach is unsafe"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-50 -- cached reports crediting a source that was never queried",
+      "file_line": "scripts/dq_probe_live.py:38",
+      "where_clause": "WHERE %s = ANY(data_sources) with param 'Microsoft Planetary Computer S1 RTC'; the window variant adds AND run_date > NOW() - INTERVAL '90 days'"
+    },
+    {
+      "purpose": "DQ-40 -- setback controls still flagged for review",
+      "file_line": "scripts/dq_probe_live.py:50",
+      "where_clause": "WHERE needs_review IS TRUE"
+    },
+    {
+      "purpose": "DQ-29 -- doubled-character OCR corruption candidates",
+      "file_line": "scripts/dq_probe_live.py:57",
+      "where_clause": "WHERE provision_text matches repeated PAIRS, not repeated single characters"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A probe queries the wrong column or wrong type and reports 0, so a live defect reads as clean.",
+      "what_happens": "The ledger gains a machine-backed green tick over a defect that is still serving wrong data -- worse than the prose it replaced, because it is now trusted.",
+      "mitigated": true,
+      "how": "This happened three times while writing these and each was caught by running them: report_data does not exist; data_sources is text[] so the jsonb operator errors; and the corruption regex searched for 4+ repeats of ONE character rather than repeated pairs, returning 0 -- a wrong probe reporting clean. Every query was checked against information_schema, and DQ-50 was cross-verified three independent ways that agree.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-50   # 143, with the query printed beside it"
+    },
+    {
+      "scenario": "The database is unreachable and the probe reports clean.",
+      "what_happens": "Every DB-backed row silently goes green the moment credentials break -- a whole class of defects vanishing from view at once.",
+      "mitigated": true,
+      "how": "An unreachable database exits 2 with 'UNKNOWN is not CLEAN', distinct from both 0 and 1. dq_check.py maps a non-zero, non-1 exit to ERROR rather than to a pass.",
+      "repro": "DATABASE_URL= python scripts/dq_probe_live.py --id DQ-50; echo $?   # expect 2"
+    },
+    {
+      "scenario": "A probe writes to production.",
+      "what_happens": "A measurement tool mutating the live database, run casually because it is 'just a status check'.",
+      "mitigated": true,
+      "how": "dq_db.connect() sets the session read-only before returning, so writes are refused by the SERVER rather than by convention. Verified by watching CREATE TABLE fail.",
+      "repro": "python -c \"import sys;sys.path.insert(0,'scripts');import dq_db;dq_db.connect().cursor().execute('CREATE TEMP TABLE x(i int)')\""
+    },
+    {
+      "scenario": "DQ-40's needs_review query returns 82 and someone treats all 82 as defects to repair.",
+      "what_happens": "Rows deliberately flagged fail-closed get 'fixed' back into a confident wrong answer. The query counts a FLAG, not a fault, and the two are indistinguishable from the number alone.",
+      "mitigated": true,
+      "how": "DQ-40 is declared 'partial', which the ratchet deliberately does not enforce in either direction, and the probe prints 'Not all are defects -- some are deliberate fail-closed flags' beside the count. The number is reported; the judgement is withheld.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-40"
+    },
+    {
+      "scenario": "DQ-29's corruption regex returns 39 against 22 recorded, and someone repairs all 39.",
+      "what_happens": "17 rows of legitimate text get rewritten as if corrupted -- data loss caused by trusting a pattern past what it measures. The regex matches repeated letter pairs, which occur naturally.",
+      "mitigated": true,
+      "how": "Declared 'partial' and unenforced; the probe labels the count 'CANDIDATES, not confirmed defects... an upper bound'. My FIRST version of this regex returned 0 by searching for repeats of a single character, so the pattern is doubly untrusted and is recorded as measurement only.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-29"
+    },
+    {
+      "scenario": "A probe counts rows the product never serves, so the defect looks bigger than it is and repair effort is misdirected.",
+      "what_happens": "DQ-29 read 39 before a currency filter and 14 after. The 25-row difference is superseded provisions nobody can be shown. Sizing a data repair off 39 would touch rows that are already retired.",
+      "mitigated": true,
+      "how": "The pre-push DB guard caught this and refused the push: it requires any query against regulatory_provisions to carry is_current / v2_is_actionable within ten lines. That is the SERVED set per CLAUDE.md. The number in the report is now the served one, and the unfiltered figure is recorded beside it so the gap is visible rather than quietly corrected.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-29   # 14 served; drop the is_current clause to see 39"
+    },
+    {
+      "scenario": "dq_db hands out a connection and a caller forgets to close it, leaking against a pooled production database.",
+      "what_happens": "Connections accumulate under the pooler until new ones are refused -- and the first symptom is unrelated app traffic failing, not the probe.",
+      "mitigated": true,
+      "how": "Flagged by the pre-push adversarial scanner. connect() is retained for direct use and every probe closes in a finally, but dq_db.session() is now a contextlib context manager that closes on every path including an exception mid-query. New callers should use it.",
+      "repro": "grep -n 'def session' scripts/dq_db.py"
+    }
+  ],
+  "mutation_analysis": "The strongest evidence was involuntary: the DQ-54 ratchet from #930 went RED on this branch because dq_db.py carried a local _git_env() copy instead of importing the shared helper -- the machine caught the author re-committing the exact defect it was built for, within the hour. Beyond that: three probes were wrong before they were right, and the regex one FAILED SAFE-LOOKING by returning 0, which is the only failure direction that matters here. DQ-50 was cross-verified three ways rather than trusted once.",
+  "residual_risk": "8 of the 12 unresolved rows still have no check, including DQ-32 -- the highest-consequence one, where 560 rows can return a wrong number -- and DQ-39 and DQ-30. The report prints them as NOT VERIFIED with a reason rather than omitting them. DQ-29's 39 and DQ-40's 82 are upper bounds, not defect counts, and must not drive a repair without adjudication. Nothing here repairs any data: DQ-50 is confirmed still serving on 121 cached reports and remains unfixed pending an explicit ruling.",
+  "post_merge": {
+    "db_reset": "No. Read-only by construction, proven by a refused CREATE TABLE.",
+    "secrets": "None written. The helper LOADS the main checkout's .env to obtain DATABASE_URL and prints no credential.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes: run `python scripts/dq_check.py --report` and confirm DQ-50 still shows 143 / 121. That is the number the repair decision depends on."
+  }
+}
