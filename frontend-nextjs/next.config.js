@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
  experimental: {
- serverComponentsExternalPackages: ['better-sqlite3', 'isomorphic-dompurify']
+ serverComponentsExternalPackages: ['isomorphic-dompurify']
  },
  // Rewrite /pdf-pages/* to Cloudflare R2 in production
  async redirects() {
@@ -62,10 +62,6 @@ const nextConfig = {
  ignored: /node_modules/
  };
  }
- if (isServer) {
- // Fix for better-sqlite3 in serverless environments
- config.externals.push('better-sqlite3');
- }
  return config;
  },
  images: {
@@ -73,8 +69,7 @@ const nextConfig = {
  },
  env: {
  NSW_PLANNING_API_BASE_URL: process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning',
- GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY || '',
- DATABASE_PATH: process.env.DATABASE_PATH || '../nsw_planning.db'
+ GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY || ''
  }
 };
 

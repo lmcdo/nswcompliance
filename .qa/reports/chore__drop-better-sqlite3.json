@@ -1,0 +1,66 @@
+{
+  "tier": "minor",
+  "justification": "Deletes a declared-but-unimported dependency and the build config and documentation that referenced it. Zero substantive source files change: the diff is one dependency manifest, its lockfile, one Next config, and one README. The tier floor in qa_gate.py counts 0 substantive files here. It is recorded rather than skipped because the README it corrects had been asserting the wrong database engine for the whole life of the Postgres migration, and a wrong README is how the next person picks the wrong client.",
+  "commit_hash": "c6107bc1",
+  "files": [
+    "frontend-nextjs/package.json",
+    "frontend-nextjs/package-lock.json",
+    "frontend-nextjs/next.config.js",
+    "frontend-nextjs/README.md"
+  ],
+  "falsifiable_check": {
+    "command": "npm ci && npx tsc --noEmit && npx jest --ci --silent && npx next build 2>&1 | grep -E 'Compiled successfully|Module not found'",
+    "fails_when": "Any module resolves better-sqlite3. The install is the load-bearing half: node_modules is built fresh from the rewritten lockfile, so the package is genuinely absent from disk rather than merely undeclared. A surviving import anywhere in the graph makes webpack emit Module not found instead of Compiled successfully, and makes tsc fail on the dropped @types. Not a self-comparison — the suites and the page graph were authored before this change and know nothing about it. LIMIT, stated because it would otherwise be overclaimed: next build does NOT run to completion on this machine and did not do so before this change either. It stops later, during Collecting page data, on module-level SDK constructors that demand production secrets this worktree does not have — first new Resend(...) and then, once a dummy key was supplied, Stripe. Those phases are unrelated to module resolution. The phase that resolves modules is compilation, and it printed Compiled successfully.",
+    "external_authority": "npm resolution and the webpack module graph decide whether anything needs the package, not this change. The absence claim was made first by git grep over *.ts *.tsx *.js *.mjs *.cjs and then tested by removing the package from disk and recompiling against it."
+  },
+  "pre_impl": {
+    "existing_data": "PRP-K2_BULLETPROOF_FRONTEND_POSTGRES_INTEGRATION.md:43 already said to remove better-sqlite3, and ~/.claude/plans/ce-CURRENT-AIM.md carried it as the next unchecked item with the reasoning from the stage (a) QA report on chore/npm-majors-stage-a, which had already tested a bump and rejected it.",
+    "assumption_mismatch": "I expected removing the package to reduce the npm audit count. It does not: 33 advisories and 17 high before and after, identical. better-sqlite3 contributed no advisory. Reporting this as a security improvement would have been false; it is dead-weight removal only.",
+    "new_vs_existing": "No new code. Four deletions plus a README correction to the database that the code already uses."
+  },
+  "functions": "N/A - no functions added or changed; the only code deletion is a webpack externals block in next.config.js",
+  "values": [
+    {
+      "value": "npm audit: 33 total, 17 high, both before and after the removal",
+      "read_at": "npm audit --json in frontend-nextjs, on this branch after npm ci, 2026-08-12; the before-number is the one recorded at origin/main in ce-CURRENT-AIM.md",
+      "if_missing": "without it the removal reads as a security fix, which it is not"
+    },
+    {
+      "value": "clean npm ci from the rewritten lockfile: 1164 packages, exit 0, node_modules/better-sqlite3 absent; against that tree tsc --noEmit exit 0, jest 83 suites / 1100 tests passed, next build printed Compiled successfully",
+      "read_at": "npm ci --no-audit --no-fund, npx tsc --noEmit, npx jest --ci --silent, npx next build in frontend-nextjs on this branch, 2026-08-12",
+      "if_missing": "without a fresh install the gates would run against a node_modules that still contains the package, and would pass whether or not anything imports it"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Something imports better-sqlite3 through a path the grep did not cover — a dynamic require built from a string, or a file extension outside *.ts *.tsx *.js *.mjs *.cjs.",
+      "what_happens": "The grep would report clean and the package would still be needed at runtime, so a serverless function would throw Cannot find module in production rather than at build time. Silent until the route is hit.",
+      "mitigated": true,
+      "how": "Not left to the grep. node_modules was rebuilt from the rewritten lockfile with the package genuinely absent, then next build compiled the whole page and route graph against that tree and printed Compiled successfully. A dynamic require of a literal string is still resolved by webpack and would have produced Module not found instead. A require built from a runtime-computed string would still escape this, and is not mitigated — but none exists, and webpack would have warned on the critical-dependency pattern.",
+      "repro": "cd frontend-nextjs && npm ci && npx next build 2>&1 | grep -E 'Compiled successfully|Module not found'"
+    },
+    {
+      "scenario": "The README is corrected to name PostgreSQL but names the wrong environment variables, so a developer follows it and cannot connect.",
+      "what_happens": "The doc stays wrong in a new way and costs the next person the same hour, having looked authoritative because it was just updated.",
+      "mitigated": true,
+      "how": "The variable names were read out of the route handlers rather than assumed: DB_HOST / DB_PORT / DB_NAME / DB_USER / DB_PASSWORD with DATABASE_* fallbacks, as they appear in app/api/dcp/full-text/route.ts:6-10 and the other Pool constructors. The provision count was deleted rather than updated, because CLAUDE.md requires a figure to carry its query and a README cannot re-run one.",
+      "repro": "git grep -nE \"process.env.DB_(HOST|PORT|NAME|USER|PASSWORD)\" -- frontend-nextjs/app/api"
+    },
+    {
+      "scenario": "DATABASE_PATH is removed from next.config.js but something still reads process.env.DATABASE_PATH at runtime.",
+      "what_happens": "That reader would silently get undefined instead of the ../nsw_planning.db default, and whatever it did with the path would fail or degrade without an error naming the cause.",
+      "mitigated": true,
+      "how": "No reader exists. git grep for DATABASE_PATH across the repo returns only next.config.js, .env.local.template, the README, and one archived history document — no source file consumes it. The only surviving reference is the template line, which the pre-edit guard blocks on its .env substring match and which is recorded as follow-up rather than worked around.",
+      "repro": "git grep -n DATABASE_PATH -- . ':!*node_modules*'"
+    }
+  ],
+  "mutation_analysis": "The deletion is itself the mutation, and the check is built to notice it in the opposite direction: put any import of better-sqlite3 back into a single source file and next build goes red with Module not found, because the package is no longer on disk to satisfy it. The weak version of this verification would have been running jest and tsc against main's node_modules through a junction, where the package is still installed; that would pass identically whether or not anything imports it, and would have proven nothing. The fresh npm ci is what makes the check able to fail.",
+  "residual_risk": "next build was not carried through to a finished build locally, so nothing here proves the deployable output is sound — only that module resolution is. It halts in Collecting page data on SDK constructors needing production secrets, which this worktree deliberately does not hold; that is pre-existing and unrelated, but it means the Vercel preview build is the first end-to-end run and must be watched. The build was also run on Windows against a local tree; Vercel builds on Linux from the same lockfile, so the module graph is the same but the install is not byte-identical. DATABASE_PATH survives in frontend-nextjs/.env.local.template:11 because .claude/hooks/pre-edit-guard.py blocks any path containing .env, including a secret-free checked-in template — the line is inert, nothing reads it, but the template still advertises a variable that no longer exists. The archived .claude/docs/history/2026-01-implementation/ documents still describe SQLite; they are dated history and were deliberately left alone.",
+  "post_merge": {
+    "db_reset": "No. No schema, data or query change.",
+    "secrets": "None read or written. The one file that would have needed it, .env.local.template, was not edited.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes. Confirm the Vercel build succeeds on the PR preview, since the local next build is Windows and the deployment target is Linux, and the removed webpack externals push only ever ran in the server bundle."
+  }
+}
