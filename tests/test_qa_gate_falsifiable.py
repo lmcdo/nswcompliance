@@ -148,3 +148,56 @@ def test_shallow_fails_when_is_rejected(qg, critical):
         critical,
     )
     assert any("too shallow" in e for e in errors)
+
+
+# ── file_line is derived, never typed ───────────────────────────────────────
+
+def test_resolve_file_lines_fixes_a_stale_number(qg, tmp_path):
+    """A stale line number must be corrected from the AST, not reported at.
+
+    Added 2026-08-12 after hand-typed line numbers were rejected five times in
+    one session, each costing a full gate round trip to fix a number a parser
+    computes in milliseconds. Deriving it removes the class.
+    """
+    import json
+
+    (tmp_path / "scripts").mkdir()
+    src = tmp_path / "scripts" / "thing.py"
+    src.write_text("# a\n# b\n# c\ndef target():\n    return 1\n", encoding="utf-8")
+
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps({
+        "functions": [{"name": "target", "file_line": "scripts/thing.py:99999"}]
+    }), encoding="utf-8")
+
+    notes = qg.resolve_file_lines(str(report), str(tmp_path))
+
+    assert notes, "a stale line was left uncorrected"
+    written = json.loads(report.read_text(encoding="utf-8"))
+    assert written["functions"][0]["file_line"] == "scripts/thing.py:4"
+
+
+def test_resolve_file_lines_does_not_repoint_a_missing_function(qg, tmp_path):
+    """The FILE and NAME stay the author's claim; only the line is derived.
+
+    Silently repointing a reference at a same-named function elsewhere would
+    convert a caught error into a wrong reference that passes — the opposite of
+    what this gate is for.
+    """
+    import json
+
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "thing.py").write_text("def other():\n    pass\n",
+                                                   encoding="utf-8")
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps({
+        "functions": [{"name": "absent", "file_line": "scripts/thing.py:1"}]
+    }), encoding="utf-8")
+
+    notes = qg.resolve_file_lines(str(report), str(tmp_path))
+
+    assert any("not defined" in n for n in notes)
+    written = json.loads(report.read_text(encoding="utf-8"))
+    assert written["functions"][0]["file_line"] == "scripts/thing.py:1", (
+        "an absent function was silently repointed instead of reported"
+    )
