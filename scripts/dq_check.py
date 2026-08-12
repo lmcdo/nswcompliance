@@ -443,7 +443,12 @@ def _no_check_cap() -> int | None:
     except (OSError, ValueError):
         return None
     v = doc.get("_max_no_check")
-    return int(v) if isinstance(v, int) else None
+    # bool is a subclass of int, so `isinstance(v, int)` alone would accept
+    # `true` from the JSON and ratchet the cap at 1. No int() call: there is
+    # nothing to coerce, and a non-integer means the cap is simply absent.
+    if isinstance(v, bool) or not isinstance(v, int):
+        return None
+    return v
 
 
 
