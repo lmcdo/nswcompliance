@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds four enforcement rules to gates that already run. Directionality: every one can only ADD a failure when a rule is broken; none writes data, changes a served value, or relaxes an existing gate.",
- "commit_hash": "bc2816e1",
+ "commit_hash": "ca088eb8",
  "files": [
   "scripts/dq_check.py",
   "scripts/qa_gate.py",
