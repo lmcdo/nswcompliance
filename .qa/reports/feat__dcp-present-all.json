@@ -1,0 +1,110 @@
+{
+ "tier": "standard",
+ "justification": "Changes what a served UI shows. Directionality: it ADDS the condition text the API already sent and reveals rows a React key collision was hiding, so it can only make a number more attributable, never less. No value is altered and nothing is written.",
+ "commit_hash": "b2edf512",
+ "files": [
+  "frontend-nextjs/components/tools/DcpSnapshotCard.tsx",
+  "frontend-nextjs/app/api/capacity/calculate/route.ts",
+  "frontend-nextjs/__tests__/components/dcp-snapshot-card-conditions.test.tsx",
+  "scripts/dq_check.py",
+  "scripts/dq_probe_live.py",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py",
+  "fails_when": "DQ-32 is declared fixed, so the ledger goes RED if the jest guard fails: if the card stops rendering conditions, collapses rows sharing control_type + section_ref, or truncates without saying so. Mutation-tested END TO END, not just at the test: reverting DcpSnapshotCard.tsx and running dq_check.py produced RED naming DQ-32, and restoring it produced PASSED. Four of the five jest assertions fail against the old component; the fifth guards the inverse case (no spurious notice) and passes either way, recorded as weak.",
+  "external_authority": "The fixture is verbatim condition text from four real rows (sutherland_shire / residential_flat_building / car_parking, ids 246-249), not invented strings. DQ-32c's count comes from the live database."
+ },
+ "pre_impl": {
+  "existing_data": "Traced every served path before changing anything. fetch_dcp_setbacks already returns every row with notes; /api/capacity/calculate `setbacks` already attaches `condition`; DcpStructuredControls.tsx (the main UI) already renders a condition column; /api/dcp/structured-controls:243 already sends `condition: row.notes || null`. On the live DB, 556 of 562 rows in ambiguous groups carry a condition and 6 do not.",
+  "assumption_mismatch": "The ledger's framing - 'the capacity engine returns a different zone's number' - was wrong, and re-deriving it has cost two sessions. Nothing picks one row. The defect was one card DROPPING a field, plus a React key collision hiding rows outright. A second assumption also failed: fixing /api/capacity/calculate looked like the user-facing half, but LepCapacityData is rendered nowhere, so that change is invisible to users and is recorded as shape-consistency rather than claimed as a fix.",
+  "new_vs_existing": "No new component, route or script. One interface field, one render block, one key, one cap made explicit; `cwd` is ~3 lines inside dq_check.py, which already runs in CI. DQ-32c reuses the existing probe registry.",
+  "external_source_error": "The card already fails soft when the controls fetch errors; this change does not touch that path. DQ-32c exits 2 if the database is unreachable."
+ },
+ "functions": [
+  {
+   "name": "DcpSnapshotCard",
+   "file_line": "frontend-nextjs/components/tools/DcpSnapshotCard.tsx",
+   "what": "Renders a council's numeric DCP controls under a duplex verdict, each with the condition stating which case it covers.",
+   "input": "lgaName, and an optional councilSlug used to fetch /api/dcp/structured-controls",
+   "output": "a card listing up to six controls, each with label, condition and value, plus a count of any not shown",
+   "if_none": "An uncovered council renders the request-capture form instead; a control with no condition renders the value alone, unchanged.",
+   "edge_cases": "control_type + section_ref is NOT unique - per-bedroom parking rates share both - so the key includes the index. Conditions are optional and absent ones render nothing.",
+   "failure_mode": "Read-only display. Its failure mode is showing less than it should, never a wrong number."
+  },
+  {
+   "name": "run_one",
+   "file_line": "scripts/dq_check.py",
+   "what": "Runs one ledger check as a subprocess and maps its exit code to OK / RED / UNKNOWN.",
+   "input": "a DQ id and its spec, which may now carry an optional cwd relative to the repo root",
+   "output": "a verdict string and a detail string for the report",
+   "if_none": "No cwd means the repo root, exactly as before - existing checks are unaffected.",
+   "edge_cases": "jest resolves babel from the working directory, so --rootDir parses and then fails on every file; npm --prefix cannot be resolved by subprocess without a shell on Windows and reported UNRUNNABLE.",
+   "failure_mode": "A wrong cwd makes a check unrunnable, which is reported distinctly from passing."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A council holds four parking rates for one development type, separated only by bedroom count.",
+   "what_happens": "Before: four identical 'Car parking' rows showing 1, 1.5, 2 and 0.25 with no way to tell which applied - and the React key collision meant only one was actually drawn.",
+   "mitigated": true,
+   "how": "The condition renders under each label, and the key includes the index.",
+   "repro": "node node_modules/jest/bin/jest.js __tests__/components/dcp-snapshot-card-conditions.test.tsx (run from frontend-nextjs)"
+  },
+  {
+   "scenario": "A council has nineteen controls and the card caps at six.",
+   "what_happens": "Six of nineteen looks exactly like all nineteen, so a reader has no reason to look for the row that applies to them.",
+   "mitigated": true,
+   "how": "It now states 'Showing 6 of 19 controls for this council.' The cap remains; the silence does not.",
+   "repro": "the third assertion in the guard test"
+  },
+  {
+   "scenario": "A row carries no condition at all.",
+   "what_happens": "It sits beside a different value for the same control and cannot be attributed by any UI, however correct.",
+   "mitigated": false,
+   "how": "Not fixed - it needs a source lookup per row. Measured and tracked as DQ-32c: 6 rows (ids 10, 257, 259, 799, 2, 6) against 556 in the same groups that do state their case.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-32c  # 6"
+  },
+  {
+   "scenario": "Someone reads the old DQ-32 count and plans weeks of PDF adjudication.",
+   "what_happens": "562 rows treated as 562 defects, when 556 are correct rows that simply state their case.",
+   "mitigated": true,
+   "how": "The ledger row now leads with the correction and DQ-32's check is the jest guard, not the row count.",
+   "repro": "grep -n 'DQ-32:' .claude/DATA_QUALITY_TRACKER.md"
+  },
+  {
+   "scenario": "The card regresses and stops passing the condition through again.",
+   "what_happens": "Silent - nothing errors, the numbers still render, they just become unattributable again.",
+   "mitigated": true,
+   "how": "DQ-32 is declared fixed with the jest guard as its check, so dq_check.py goes RED in CI. Verified by reverting the component.",
+   "repro": "git stash push -- frontend-nextjs/components/tools/DcpSnapshotCard.tsx && python scripts/dq_check.py"
+  },
+  {
+   "scenario": "The capacity route's new condition fields are assumed to reach a user.",
+   "what_happens": "Overclaiming a fix on a surface nobody sees.",
+   "mitigated": true,
+   "how": "LepCapacityData is rendered in no .tsx; recorded in the commit, the ledger and here as shape-consistency rather than a user-visible fix.",
+   "repro": "grep -rl LepCapacityData frontend-nextjs --include=*.tsx  # returns nothing"
+  }
+ ],
+ "verified": [
+  "5 new jest assertions pass; 4 of 5 fail against the old component.",
+  "Whole ledger mutation-tested end to end: revert the card -> dq_check.py RED naming DQ-32; restore -> PASSED.",
+  "Full jest suite: 85 suites, 1117 tests, all passing.",
+  "Type check 8 errors against a baseline of 677; the 6 pre-existing capacity/route.ts errors are unchanged (confirmed by stashing).",
+  "DQ-32c returns 6 on the live database, against 556 rows in the same groups that carry a condition."
+ ],
+ "gaps": [
+  "6 rows still state no condition; they need a source lookup per row and are tracked as DQ-32c, not fixed here.",
+  "The fifth jest assertion passes against the old component too - it guards the inverse case only. Recorded as weak rather than counted as coverage.",
+  "The capacity route's parking/landscaping conditions reach no UI, so that half is untested by any rendering guard.",
+  "The conveyancing PDF was not audited for this defect class; only the web surfaces were traced."
+ ],
+ "post_merge": {
+  "db_reset": "No migration, no schema change, no write. Every database read in this change is a count.",
+  "secrets": "None added or read.",
+  "other_repo": "None.",
+  "manual_verify": "Open a duplex verdict for a Sutherland Shire address and confirm the parking rows each show their case beneath the label ('1 bedroom', 'visitor parking') rather than repeating 'Car parking' with bare numbers, and that a council with more than six controls says how many are not shown."
+ }
+}
