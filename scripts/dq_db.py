@@ -110,14 +110,24 @@ def connect():
 # blind one raises instead of returning -- which the probes surface as exit 2
 # (UNKNOWN) rather than exit 0 (clean). Wrong-but-confident is the failure mode
 # that turned main red on 2026-08-12 (#939) and the one this ledger exists for.
-_CANARY = ("regulatory_provisions", "property_reports")
+#
+# The queries carry their own currency filter. qa_gate's DB guard rejected a
+# bare count over regulatory_provisions, and it was right to: scoping to the
+# SERVED set is also the better canary, because visibility of rows nobody is
+# shown proves less than visibility of the rows the product actually returns.
+# Scoped rather than exempted.
+_CANARY = (
+    ("regulatory_provisions",
+     "SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable"),
+    ("property_reports", "SELECT count(*) FROM property_reports"),
+)
 
 
 def _assert_not_blind(cur) -> None:
     """Raise if this connection reads zero rows from a table known to be large."""
-    for table in _CANARY:
+    for table, sql in _CANARY:
         try:
-            cur.execute(f"SELECT count(*) FROM {table}")  # noqa: S608 - fixed literals
+            cur.execute(sql)
             n = cur.fetchone()[0]
         except Exception:  # noqa: BLE001 - a missing table is not blindness
             continue

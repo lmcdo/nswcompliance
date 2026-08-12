@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Grants CI a database credential and changes when a probe is allowed to answer. Directionality: the role can only READ (enforced server-side), and the canary can only ADD an UNKNOWN where a clean answer was previously given. No served number changes and no data is written.",
- "commit_hash": "8a16ed8c",
+ "commit_hash": "8b3be477",
  "files": [
   "scripts/dq_db.py",
   ".github/workflows/gates.yml"
