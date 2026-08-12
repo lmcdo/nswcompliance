@@ -1,0 +1,44 @@
+{
+  "tier": "minor",
+  "justification": "Hook-only change. It removes work from the local push path and removes none from CI, so the enforcement surface is unchanged; the tier floor counts 0 substantive files. Recorded rather than skipped because a hook that stops running a test is exactly the shape of change that should never be silent.",
+  "commit_hash": "40c7beb8",
+  "files": [
+    ".githooks/pre-push"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --ci --silent",
+    "fails_when": "Jest fails without --no-cache but passes with it, which would mean the cache genuinely masks a failure and the flag was load-bearing. Measured in both configurations on this repo: 98s with --no-cache and 36s without, SAME result. The 62-second difference is the entire justification and it was timed, not estimated. For the pytest half the falsifier is different: push a branch touching only .py and confirm the suite still runs -- the skip must be conditional, not permanent.",
+    "external_authority": "Jest decides whether its own cache is valid; it keys on file content and babel config, which is why CI has run cached for the life of the repo without a stale hit. The CI job timings (63s for the full Python suite on the self-hosted Linux runner, against 3-5 min locally on Windows) come from the GitHub Actions run records, not from this change."
+  },
+  "break_it": [
+    {
+      "scenario": "A change breaks Python tests without any .py file in the diff -- a requirements bump, a conftest edit, a pytest.ini change.",
+      "what_happens": "pytest is skipped locally on the exact push that broke it, and the author only learns in CI. Worse, they may read the skip line as 'nothing to test'.",
+      "mitigated": true,
+      "how": "The trigger is deliberately wider than *.py: requirements*.txt at any depth, pytest.ini, setup.cfg, pyproject.toml and conftest*.py all force the full run. It also fails CLOSED -- if the merge-base cannot be resolved, PY_CHANGED is set to 'unknown' and everything runs.",
+      "repro": "git diff --name-only $(git merge-base origin/main HEAD)...HEAD -- '*.py' 'requirements*.txt' 'conftest*.py'"
+    },
+    {
+      "scenario": "The jest cache serves a stale result and a genuinely failing test passes locally.",
+      "what_happens": "A broken frontend change gets pushed and is caught only in CI -- the outcome the --no-cache flag was presumably meant to prevent.",
+      "mitigated": true,
+      "how": "Measured rather than argued: the suite was run both ways on this repo and produced the same result, 98s vs 36s. CI has run cached (`jest --ci --silent`) throughout and no stale-cache failure is on record. Jest keys the cache on file content and babel config, so a stale hit needs a content-identical file to have changed meaning. The escape is documented inline: npx jest --clearCache.",
+      "repro": "cd frontend-nextjs && npx jest --bail --no-cache --silent   # compare against --ci --silent"
+    },
+    {
+      "scenario": "Someone reads this as licence to trim the Sol cross-review too, since it is the slowest step and explicitly advisory.",
+      "what_happens": "The single highest-yield check in the hook is removed for being slow. It found four defects I had introduced in #926 and #930, including a watchdog that failed OPEN and a ratchet satisfiable by a no-op.",
+      "mitigated": true,
+      "how": "Left untouched, and the commit message says why in as many words: slow and valuable is not waste. Only duplicated-and-slower work was removed -- work CI does faster and mandatorily.",
+      "repro": "grep -n 'cross_review' .githooks/pre-push"
+    }
+  ],
+  "mutation_analysis": "The measurement IS the mutation: the jest suite was run in both configurations and produced identical results at 98s and 36s, so the flag bought time and nothing else. For the pytest scoping, the conditional was exercised on this branch -- which touches only .githooks and therefore correctly reports an empty change set and skips. The failure this design must avoid is a PERMANENT skip rather than a conditional one, which is why the trigger list is wide and the unresolvable-merge-base path runs everything.",
+  "residual_risk": "This branch changes only .githooks, so its own push exercises the SKIP path and not the run path -- the conditional's positive case is verified by reading the pathspec rather than by this push. A frontend-only push now leaves Python untested until CI, which is a deliberate trade and is stated in the hook's own output rather than being silent. Nothing here reduces what CI enforces.",
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Yes, once: push a branch that touches a .py file and confirm the hook still runs the full suite. This branch only proves the skip path."
+  }
+}
