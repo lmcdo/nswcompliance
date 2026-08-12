@@ -21,6 +21,7 @@ Two things it guarantees, both learned the hard way:
 """
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import sys
@@ -46,6 +47,21 @@ def main_checkout() -> Path:
     except (OSError, subprocess.SubprocessError):
         pass
     return here
+
+
+@contextlib.contextmanager
+def session():
+    """Read-only connection as a context manager -- closes on every path.
+
+    connect() hands the caller a live connection and trusts them to close it.
+    Every probe does, but "the caller remembers" is the assumption that leaks
+    connections against a pooled production database. Prefer this.
+    """
+    conn = connect()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def connect():

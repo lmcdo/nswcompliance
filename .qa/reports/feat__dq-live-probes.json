@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds live read-only probes against the production database and a --report mode that GENERATES the defect status instead of it being typed. The prose summaries around this ledger kept being wrong -- 'seamless', '4 of 55', 'needs the live DB' -- each a claim testable in under a minute that nobody tested. CLAUDE.md already requires every figure to carry its query; this applies that to the defect ledger so the status stops depending on whoever last retyped it.",
-  "commit_hash": "PENDING",
+  "commit_hash": "0f9cf155",
   "files": [
     "scripts/dq_db.py",
     "scripts/dq_probe_live.py",
@@ -42,8 +42,8 @@
       "if_missing": "this is the one defect this PR proves is still being served today"
     },
     {
-      "value": "DQ-40: 82 rows needs_review. DQ-29: 39 candidate rows against 22 recorded -- an upper bound, not a defect count",
-      "read_at": "dq_probe_live.py --id DQ-40 / --id DQ-29, 2026-08-12",
+      "value": "DQ-40: 82 rows needs_review. DQ-29: 14 SERVED candidate rows (39 before the currency filter) against 22 recorded -- an upper bound, not a defect count",
+      "read_at": "dq_probe_live.py --id DQ-40 / --id DQ-29 with is_current AND v2_is_actionable, 2026-08-12",
       "if_missing": "both are declared 'partial' precisely because the number is measured but not adjudicated"
     },
     {
@@ -109,6 +109,20 @@
       "mitigated": true,
       "how": "Declared 'partial' and unenforced; the probe labels the count 'CANDIDATES, not confirmed defects... an upper bound'. My FIRST version of this regex returned 0 by searching for repeats of a single character, so the pattern is doubly untrusted and is recorded as measurement only.",
       "repro": "python scripts/dq_probe_live.py --id DQ-29"
+    },
+    {
+      "scenario": "A probe counts rows the product never serves, so the defect looks bigger than it is and repair effort is misdirected.",
+      "what_happens": "DQ-29 read 39 before a currency filter and 14 after. The 25-row difference is superseded provisions nobody can be shown. Sizing a data repair off 39 would touch rows that are already retired.",
+      "mitigated": true,
+      "how": "The pre-push DB guard caught this and refused the push: it requires any query against regulatory_provisions to carry is_current / v2_is_actionable within ten lines. That is the SERVED set per CLAUDE.md. The number in the report is now the served one, and the unfiltered figure is recorded beside it so the gap is visible rather than quietly corrected.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-29   # 14 served; drop the is_current clause to see 39"
+    },
+    {
+      "scenario": "dq_db hands out a connection and a caller forgets to close it, leaking against a pooled production database.",
+      "what_happens": "Connections accumulate under the pooler until new ones are refused -- and the first symptom is unrelated app traffic failing, not the probe.",
+      "mitigated": true,
+      "how": "Flagged by the pre-push adversarial scanner. connect() is retained for direct use and every probe closes in a finally, but dq_db.session() is now a contextlib context manager that closes on every path including an exception mid-query. New callers should use it.",
+      "repro": "grep -n 'def session' scripts/dq_db.py"
     }
   ],
   "mutation_analysis": "The strongest evidence was involuntary: the DQ-54 ratchet from #930 went RED on this branch because dq_db.py carried a local _git_env() copy instead of importing the shared helper -- the machine caught the author re-committing the exact defect it was built for, within the hour. Beyond that: three probes were wrong before they were right, and the regex one FAILED SAFE-LOOKING by returning 0, which is the only failure direction that matters here. DQ-50 was cross-verified three ways rather than trusted once.",

@@ -53,9 +53,14 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "source. Not all are defects -- some are deliberate fail-closed flags.",
     ),
     "DQ-29": (
-        "Provisions matching the doubled-character OCR corruption pattern",
+        "SERVED provisions matching the doubled-character OCR corruption pattern",
+        # is_current AND v2_is_actionable IS the served set. Without that filter
+        # this counts superseded rows nobody can be shown, which overstates the
+        # defect -- the DB guard caught exactly that. A corruption count that
+        # includes retired rows is not a measure of what a user sees.
         r"SELECT count(*) FROM regulatory_provisions "
-        r"WHERE provision_text ~ '(([A-Za-z])\2){4,}'",
+        r"WHERE is_current AND v2_is_actionable "
+        r"AND provision_text ~ '(([A-Za-z])\2){4,}'",
         (),
         "CANDIDATES, not confirmed defects. The pattern also matches legitimate "
         "text, so this number is an upper bound and needs adjudication before "
@@ -78,7 +83,7 @@ def run(dq_id: str) -> int:
         cur.execute(sql, params)
         count = cur.fetchone()[0]
     finally:
-        conn.close()
+        conn.close()  # every path, including an exception mid-query
 
     print(f"{dq_id}: {headline}")
     print(f"  count : {count}")
