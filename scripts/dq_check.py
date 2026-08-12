@@ -366,6 +366,115 @@ def unwired_checks() -> list[str]:
     return out
 
 
+# Practice 6, and the one that judges this tool's own users: a session counts
+# only if a tracked number went DOWN. Eighteen PRs merged on 2026-08-12 and
+# neither coverage number fell by one, which nothing in the repo could see. The
+# baselines are committed, so git knows exactly when each was last lowered.
+_TRACKED = (
+    (".claude/as_at_coverage_baseline.json", "DCP claims with no in-force date"),
+    (".claude/manifest_coverage_baseline.json", "reports with no execution manifest"),
+    (".claude/zone_code_baseline.json", "hardcoded NSW zone-code lists"),
+)
+
+
+def _last_lowered(path: str) -> tuple[str, int] | None:
+    """(iso date, days ago) a baseline file last CHANGED, or None."""
+    # env=git_env() is NOT optional here. A git hook exports GIT_DIR, which
+    # OVERRIDES cwd, so this would answer about the hook's repository instead of
+    # this one -- silently, with a confident wrong date. That is DQ-54, and the
+    # ledger caught this exact line reintroducing it, which is the second time
+    # in one session. Reuse the existing scrub rather than writing a third copy.
+    try:
+        from qa_report_path import git_env
+    except ImportError:  # pragma: no cover - same directory, always importable
+        return None
+    try:
+        out = subprocess.run(
+            ["git", "log", "-1", "--format=%cI", "--", path],
+            cwd=_ROOT, env=git_env(), capture_output=True, text=True, timeout=30,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if not out:
+        return None
+    from datetime import datetime, timezone
+    when = datetime.fromisoformat(out)
+    return out[:10], (datetime.now(timezone.utc) - when).days
+
+
+def _progress() -> int:
+    """Print how long each tracked number has been standing still."""
+    print("=" * 72)
+    print("PROGRESS - has a tracked number actually moved?")
+    print("=" * 72)
+    stale = []
+    for path, what in _TRACKED:
+        full = _ROOT / path
+        if not full.exists():
+            print(f"  {what}: NO BASELINE at {path}")
+            continue
+        try:
+            per = json.loads(full.read_text(encoding="utf-8")).get("per_key") or                   json.loads(full.read_text(encoding="utf-8")).get("per_file") or {}
+            total = sum(per.values())
+        except (ValueError, AttributeError):
+            total = "?"
+        got = _last_lowered(path)
+        if got is None:
+            print(f"  {what}: {total} - never committed")
+            continue
+        when, days = got
+        flag = "  <-- standing still" if days >= 7 else ""
+        print(f"  {what}: {total}  (last changed {when}, {days} day(s) ago){flag}")
+        if days >= 7:
+            stale.append(what)
+    print("-" * 72)
+    if stale:
+        print("A number that has not moved in a week is the honest measure of a")
+        print("session that shipped PRs and closed nothing. Not a failure - a fact.")
+    print("Lower a baseline with the owning check's --baseline --update.")
+    return 0
+
+
+
+def _no_check_cap() -> int | None:
+    """The ratchet ceiling for rows carrying `check: null`."""
+    try:
+        doc = json.loads((_ROOT / ".claude" / "dq_checks.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    v = doc.get("_max_no_check")
+    # bool is a subclass of int, so `isinstance(v, int)` alone would accept
+    # `true` from the JSON and ratchet the cap at 1. No int() call: there is
+    # nothing to coerce, and a non-integer means the cap is simply absent.
+    if isinstance(v, bool) or not isinstance(v, int):
+        return None
+    return v
+
+
+
+def unread_baselines() -> list[str]:
+    """Ratchet baselines that no script reads -- practice 4, generalised.
+
+    unwired_checks() catches a CHECK nothing invokes. The same shape applies to
+    the file a check ratchets against: a baseline nobody reads is a number
+    frozen in the repo that can never fail, which looks exactly like a number
+    being held. Both halves have to be wired for a ratchet to mean anything.
+    """
+    root = Path(__file__).resolve().parent.parent
+    d = root / ".claude"
+    if not d.is_dir():
+        return []
+    readers = chr(10).join(
+        f.read_text(encoding="utf-8", errors="replace")
+        for f in sorted((root / "scripts").glob("*.py"))
+    )
+    out = []
+    for f in sorted(d.glob("*baseline*.json")):
+        if f.name not in readers and f.stem not in readers:
+            out.append(f".claude/{f.name}")
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--id", help="run a single DQ id")
@@ -375,7 +484,12 @@ def main() -> int:
                     help="show which rows have a check")
     ap.add_argument("--report", action="store_true",
                     help="print the defect status report, generated not typed")
+    ap.add_argument("--progress", action="store_true",
+                    help="show how long each tracked number has been standing still")
     args = ap.parse_args()
+
+    if args.progress:
+        return _progress()
 
     if args.report:
         return _report()
@@ -404,6 +518,38 @@ def main() -> int:
                   "cannot write one yet.")
         for i in orphan:
             print(f"  {i}: in dq_checks.json but not in the ledger")
+        return 1
+
+    # --- practice 1: a new row must arrive with a check that can go red ---
+    # A hard zero would fail on 44 pre-existing rows and be deleted within a
+    # week, so this ratchets at today's count instead: the number of rows
+    # excused with `check: null` may FALL and never RISE. Adding a defect
+    # without a way to tell whether it is still real is how "done" came to mean
+    # "merged". Lower `_max_no_check` when you write one.
+    no_check = sorted(i for i in ids
+                      if i in checks and not checks[i].get("check"))
+    cap = _no_check_cap()
+    if cap is not None and len(no_check) > cap:
+        added = [i for i in no_check][cap:]
+        print("DQ-CHECK: FAILED - a row was added without a check that can fail.")
+        print(f"  rows excused with check:null: {len(no_check)}, cap is {cap}")
+        print(f"  the cap is a RATCHET: it may fall, never rise. Write a check")
+        print(f"  for the new row, or lower nothing and explain why it cannot")
+        print(f"  have one in why_no_check AND raise the cap deliberately.")
+        print(f"  ({', '.join(added[:5])}{' ...' if len(added) > 5 else ''})")
+        return 1
+    if cap is not None and len(no_check) < cap:
+        print(f"DQ-CHECK: IMPROVED - only {len(no_check)} rows lack a check "
+              f"(cap {cap}). Lower _max_no_check in .claude/dq_checks.json.")
+
+    # --- practice 4: an artifact whose value needs an invoker must have one ---
+    dead = unread_baselines()
+    if dead:
+        print("DQ-CHECK: FAILED - a ratchet baseline that no script reads.")
+        for n in dead:
+            print(f"  {n}: frozen in the repo, read by nothing, so it can never fail")
+        print("  Wire it into the check that owns it, or delete it. A baseline")
+        print("  nobody reads looks exactly like a number being held.")
         return 1
 
     # --- a check nothing invokes is not a check ---

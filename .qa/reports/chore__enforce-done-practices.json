@@ -1,0 +1,107 @@
+{
+ "tier": "standard",
+ "justification": "Adds four enforcement rules to gates that already run. Directionality: every one can only ADD a failure when a rule is broken; none writes data, changes a served value, or relaxes an existing gate.",
+ "commit_hash": "ca088eb8",
+ "files": [
+  "scripts/dq_check.py",
+  "scripts/qa_gate.py",
+  ".claude/dq_checks.json"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py; python scripts/dq_check.py --progress",
+  "fails_when": "Exits 1 when a ledger row is added without a check (count of check:null rises above _max_no_check), when a ratchet baseline exists that no script reads, or when a check exists that nothing invokes. --progress reports how long each tracked number has stood still, which is the measure that convicts a session for shipping PRs and closing nothing.",
+  "observed_red": "Each rule was watched failing before it was accepted. Practice 4: planting .claude/orphan_baseline.json produced 'DQ-CHECK: FAILED - a ratchet baseline that no script reads' naming the file, and removing it returned PASSED. Practice 6 printed '292 (last changed 2026-08-13)' and '892' and '270', all three unmoved. The DQ-54 guard caught THIS branch's own new code: 'RED DQ-54: declared FIXED but the check FAILS - any script runs git with cwd= and no env=git_env()', because _last_lowered called git log with cwd and no env scrub; fixed by reusing qa_report_path.git_env, after which dq_check returned PASSED.",
+  "external_authority": "The rules read the repository's real state - .github/workflows/, .githooks/, scripts/, .claude/ - and git's own commit dates for the baselines, not a list anyone maintains by hand."
+ },
+ "pre_impl": {
+  "existing_data": "57 ledger rows, 44 carrying check:null, so a hard zero would fail on day one and be deleted; the cap is set at today's 44 and ratchets down only. Three ratchet baselines exist and all three are read by a script today. git log --follow gives each baseline's last change date.",
+  "assumption_mismatch": "I assumed my own new code would be clean and it was not. The _last_lowered helper called git with cwd= and no env=git_env(), which is DQ-54 exactly - a hook exports GIT_DIR and it OVERRIDES cwd, so the progress report would have answered about the hook's repository with a confident wrong date. That is the second time in one session I have reintroduced this defect, and both times the ratchet caught it rather than review.",
+  "new_vs_existing": "No new file and no new CI step. Practices 1, 4 and 6 are additions inside dq_check.py, which already runs in gates.yml; practice 2 is a field requirement inside qa_gate.py, which already validates every other section. Practice 3 (ratchets) and 5 (the regress terminating outside the repo) were already built and are unchanged.",
+  "external_source_error": "None of the four touches the database. A check whose environment is missing already reports UNVERIFIED via `requires` rather than failing."
+ },
+ "functions": [
+  {
+   "name": "unread_baselines",
+   "file_line": "scripts/dq_check.py",
+   "what": "Returns ratchet baseline files in .claude/ that no script in scripts/ reads.",
+   "input": "(none - globs .claude/*baseline*.json and reads every scripts/*.py)",
+   "output": "list of repo-relative paths, empty when every baseline has a reader",
+   "if_none": "Empty list and the run continues; having no orphaned baselines is the passing state.",
+   "edge_cases": "Matches the stem as well as the filename, because a script may build the path from a constant rather than writing it literally.",
+   "failure_mode": "Can only add a false failure, which is visible immediately. It cannot let a dead ratchet through silently, which is the direction that matters."
+  },
+  {
+   "name": "_progress",
+   "file_line": "scripts/dq_check.py",
+   "what": "Prints each tracked number and how many days since its baseline last changed, flagging anything standing still for a week.",
+   "input": "(none - reads the three committed baselines and git's commit dates)",
+   "output": "exit code 0 always; this reports, it does not gate",
+   "if_none": "A baseline that was never committed is named as such rather than silently skipped.",
+   "edge_cases": "git log is invoked with env=git_env(), because a hook's GIT_DIR overrides cwd and would date the wrong repository.",
+   "failure_mode": "Reporting only. Its failure mode is being ignored, which is why the standing-still flag is explicit."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Someone adds a defect row to the ledger without any check.",
+   "what_happens": "The defect is recorded but nothing can ever tell you whether it is still real - which is how 'done' came to mean 'merged'.",
+   "mitigated": true,
+   "how": "The count of check:null rows is ratcheted at 44 and may only fall; a new excused row fails the build.",
+   "repro": "add a row with check:null to .claude/dq_checks.json and run python scripts/dq_check.py"
+  },
+  {
+   "scenario": "A ratchet baseline is committed but nothing reads it.",
+   "what_happens": "A number frozen in the repo that can never fail, which looks exactly like a number being held down.",
+   "mitigated": true,
+   "how": "unread_baselines fails the build naming the file. Observed: planting one produced FAILED, removing it PASSED.",
+   "repro": "echo '{}' > .claude/orphan_baseline.json && python scripts/dq_check.py"
+  },
+  {
+   "scenario": "A QA report predicts its check would go red without anyone having run it.",
+   "what_happens": "DQ-30 exactly: marked Fixed on a verification that could not fail in any circumstance, and nobody had seen it red.",
+   "mitigated": true,
+   "how": "observed_red is required, must meet the word minimum, and rejects bare claims like 'yes' or 'it failed'.",
+   "repro": "remove observed_red from any report and run python scripts/qa_gate.py"
+  },
+  {
+   "scenario": "observed_red is filled with plausible-looking text nobody actually observed.",
+   "what_happens": "The evidence requirement becomes a formality.",
+   "mitigated": false,
+   "how": "Not closed, and cannot be by this gate - it can require the field and reject obvious placeholders, but it cannot verify authorship of output. Recorded rather than claimed shut.",
+   "repro": "n/a - this is a limitation, not a behaviour"
+  },
+  {
+   "scenario": "Sessions keep merging PRs while every tracked number stands still.",
+   "what_happens": "Eighteen PRs merged on 2026-08-12 and no coverage number fell by one. Nothing in the repo could see that.",
+   "mitigated": true,
+   "how": "--progress prints days-since-last-change per number and flags anything static for a week.",
+   "repro": "python scripts/dq_check.py --progress"
+  },
+  {
+   "scenario": "The progress report is run from a git hook.",
+   "what_happens": "GIT_DIR overrides cwd, so it dates a different repository and reports confident wrong staleness.",
+   "mitigated": true,
+   "how": "env=git_env() strips GIT_* apart from the auth variables. The DQ-54 guard caught this branch's first draft doing it wrong.",
+   "repro": "python scripts/dq_check.py  # DQ-54's check covers this class"
+  }
+ ],
+ "verified": [
+  "dq_check.py PASSES; practice 4 mutation-tested (plant an unread baseline -> FAILED naming it; remove -> PASSED).",
+  "--progress reports all three tracked numbers with their last-changed dates: 292, 892, 270.",
+  "The DQ-54 ratchet caught this branch's own git call and went RED until env=git_env() was added.",
+  "_max_no_check set to today's measured 44, not an aspiration.",
+  "qa_gate now rejects a report with no observed_red, and this report satisfies it with real output."
+ ],
+ "gaps": [
+  "observed_red cannot be authenticated - the gate can require and sanity-check it, not verify anyone ran anything.",
+  "Practice 1 ratchets the COUNT of uncovered rows; it cannot force the check to be a good one.",
+  "unread_baselines only covers .claude/*baseline*.json; other artifact classes that need an invoker are not generalised.",
+  "--progress reports; it does not fail. Making staleness blocking would punish a session legitimately spent on a long fix."
+ ],
+ "post_merge": {
+  "db_reset": "No migration, no schema change, no database access of any kind.",
+  "secrets": "None added or read.",
+  "other_repo": "None.",
+  "manual_verify": "Run python scripts/dq_check.py --progress and confirm the three numbers and their ages. Then add a ledger row with check:null and confirm the build fails, and remove it."
+ }
+}

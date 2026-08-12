@@ -84,6 +84,7 @@ def test_accepts_a_node_command(qg, critical):
         {"falsifiable_check": {
             "command": "node scripts/main_red_alarm_logic_check.js .github/workflows/main-red-alarm.yml",
             "fails_when": "any of the six decision paths returns the wrong state; 4 of the 6 must report broken",
+            "observed_red": "ran it against the broken workflow and 4 of the 6 paths reported broken, exit 1",
         }},
         critical,
     )
@@ -127,6 +128,7 @@ def test_accepts_a_real_ground_truth_check(qg, critical):
             "command": "python scripts/validate_zone_code_validity.py",
             "fails_when": "it exits non-zero when any stored zone code is absent from "
                           "lep_zone_coverage for that row's LGA",
+            "observed_red": "before the repair it printed 14 offending rows and exited 1",
         }},
         critical,
     )
@@ -201,3 +203,40 @@ def test_resolve_file_lines_does_not_repoint_a_missing_function(qg, tmp_path):
     assert written["functions"][0]["file_line"] == "scripts/thing.py:1", (
         "an absent function was silently repointed instead of reported"
     )
+
+
+# ── Practice 2: watch it fail first ──────────────────────────────────────────
+
+def test_rejects_a_check_nobody_watched_fail(qg, critical):
+    """A prediction is not evidence.
+
+    DQ-30 shipped broken behind a "0% drift" verification that could not fail in
+    any circumstance, and nobody had ever seen it red. Requiring the OUTPUT the
+    check printed while the defect was present is the cheapest available proof
+    that somebody ran it against the broken state.
+    """
+    errors = qg.check_falsifiable(
+        {"falsifiable_check": {
+            "command": "python scripts/validate_zone_code_validity.py",
+            "fails_when": "it exits non-zero when any stored zone code is absent from "
+                          "lep_zone_coverage for that row's LGA",
+        }},
+        critical,
+    )
+    assert any("observed_red" in e for e in errors), (
+        "the gate accepted a check nobody had watched fail"
+    )
+
+
+def test_rejects_observed_red_that_is_a_claim_not_an_output(qg, critical):
+    """"It failed" is the assertion under test, not evidence for it."""
+    errors = qg.check_falsifiable(
+        {"falsifiable_check": {
+            "command": "python scripts/validate_zone_code_validity.py",
+            "fails_when": "it exits non-zero when any stored zone code is absent from "
+                          "lep_zone_coverage for that row's LGA",
+            "observed_red": "yes",
+        }},
+        critical,
+    )
+    assert any("observed_red" in e for e in errors)
