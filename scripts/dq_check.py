@@ -158,6 +158,26 @@ def run_one(dq_id: str, spec: dict, verbose: bool = False) -> tuple[str, str]:
     if verbose and proc.stdout:
         print(proc.stdout.rstrip())
 
+    # Exit 2 means the probe could not look -- dq_probe_live.py returns it when
+    # the database is unreachable. That is UNKNOWN, and UNKNOWN is neither a
+    # pass nor a fail. Folding it into `passed = returncode == 0` reported
+    # "declared FIXED but the check FAILS" for probes that never ran, which put
+    # a false regression alarm on main: CI has no DATABASE_URL, so every
+    # DB-backed row went red the moment one was declared fixed.
+    #
+    # It does NOT fail the run. A gate that is permanently red wherever the
+    # database is absent gets switched off, and then nothing is checked at all.
+    # It is reported loudly instead, and counted separately from "no check
+    # written" so an unreachable database can never be mistaken for coverage.
+    if proc.returncode == 2:
+        return "UNKNOWN", (
+            "the probe could not reach its source, so this row is UNVERIFIED "
+            "rather than clean. " + (proc.stdout or "").strip().splitlines()[-1]
+            if (proc.stdout or "").strip() else
+            "the probe could not reach its source, so this row is UNVERIFIED "
+            "rather than clean."
+        )
+
     passed = proc.returncode == 0
     if declared not in _ENFORCED:
         return "OK", f"declared {declared!r} (not enforced); check {'passed' if passed else 'failed'}"
@@ -301,10 +321,13 @@ def main() -> int:
         print(f"DQ-CHECK: {args.id} is not in dq_checks.json")
         return 1
 
-    reds, no_check, errors = [], [], []
+    reds, no_check, errors, unknown = [], [], [], []
     for dq in targets:
         verdict, detail = run_one(dq, checks[dq], verbose=bool(args.id))
-        if verdict == "RED":
+        if verdict == "UNKNOWN":
+            unknown.append(dq)
+            print(f"  UNKNOWN   {dq}: {detail}")
+        elif verdict == "RED":
             reds.append((dq, detail))
             print(f"  RED       {dq}: {detail}")
         elif verdict == "NO-CHECK":
@@ -319,8 +342,12 @@ def main() -> int:
     ran = total - len(no_check)
     print()
     print(f"DQ-CHECK: {ran} check(s) run across {total} row(s); "
-          f"{len(reds)} red, {len(errors)} unrunnable, "
-          f"{len(no_check)} with no check written.")
+          f"{len(reds)} red, {len(unknown)} unverifiable here, "
+          f"{len(errors)} unrunnable, {len(no_check)} with no check written.")
+    if unknown:
+        print(f"  could not be verified in THIS environment: {', '.join(unknown)}")
+        print("  Not clean, not failing — the probe could not reach its source "
+              "(no DATABASE_URL in CI). Run locally to verify these.")
 
     if no_check and not args.id:
         print(f"  no check yet: {', '.join(no_check)}")
