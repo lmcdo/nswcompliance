@@ -1,0 +1,104 @@
+{
+ "tier": "standard",
+ "justification": "Grants CI a database credential and changes when a probe is allowed to answer. Directionality: the role can only READ (enforced server-side), and the canary can only ADD an UNKNOWN where a clean answer was previously given. No served number changes and no data is written.",
+ "commit_hash": "8a16ed8c",
+ "files": [
+  "scripts/dq_db.py",
+  ".github/workflows/gates.yml"
+ ],
+ "falsifiable_check": {
+  "command": "python -c \"import sys;sys.path.insert(0,'scripts');import dq_db;dq_db._assert_not_blind(type('C',(),{'execute':lambda s,q,*a:None,'fetchone':lambda s:(0,)})())\"",
+  "fails_when": "Raises whenever a canary table reads 0 rows. Exercised in BOTH directions: it passes on the real connection (regulatory_provisions 55,696 / property_reports 1,337) and raises on a cursor that returns 0, naming the table. It cannot be satisfied by connecting - connecting successfully is precisely the state it rejects.",
+  "external_authority": "The read-only property is asserted by the SERVER, not by this code: UPDATE, INSERT and CREATE TABLE were each attempted against the live database as the new role and each was refused with 'cannot execute ... in a read-only transaction'."
+ },
+ "pre_impl": {
+  "existing_data": "110 base tables carry relrowsecurity = true, including property_reports, regulatory_provisions, granny_flat_reports and report_audit_trail; dcp_setback_controls does not. Role ci_readonly created with pg_read_all_data, default_transaction_read_only = on and statement_timeout = 30s. Admin user is not a superuser but holds rolcreaterole.",
+  "assumption_mismatch": "'A role with SELECT can read the data' is false here. Before BYPASSRLS the role read regulatory_provisions 55,696 and dcp_setback_controls 1,071 but property_reports 0, where admin reads 1,337 - RLS policies differ per table, so reading one table successfully does NOT prove the next is visible. A single canary would have passed and left every property_reports probe silently blind. That is why there are two.",
+  "new_vs_existing": "No new file and no new script. The guard is ~20 lines inside dq_db.connect(), which every probe already routes through. The prior-art guard proposed six alternatives; all are consumers of a connection rather than gatekeepers of one, recorded inline.",
+  "external_source_error": "A blind or unreachable database now produces exit 2 (UNKNOWN) from the probes rather than exit 0 (clean) or exit 1 (defect present)."
+ },
+ "functions": [
+  {
+   "name": "_assert_not_blind",
+   "file_line": "scripts/dq_db.py",
+   "what": "Raises if a connection reads zero rows from tables known to be large, so a probe cannot report clean while seeing nothing.",
+   "input": "cur: an open psycopg2 cursor on the connection being validated",
+   "output": "None on success; RuntimeError naming the table when blind",
+   "if_none": "A missing table is skipped rather than treated as blindness - absence of a table is not absence of visibility.",
+   "edge_cases": "Two canaries, because RLS policies differ per table and one table reading fine proved nothing about the next.",
+   "failure_mode": "At worst it refuses to answer when it could have. It cannot cause a clean verdict on unseen data, which is the direction that matters."
+  },
+  {
+   "name": "connect",
+   "file_line": "scripts/dq_db.py",
+   "what": "Returns a read-only connection with a statement timeout, now visibility-checked before it is handed to a caller.",
+   "input": "(none - reads DATABASE_URL or SUPABASE_DB_URL from the main checkout's .env)",
+   "output": "psycopg2 connection, read-only, timeout set, visibility already proven",
+   "if_none": "Raises with an actionable message rather than returning a connection nobody can trust.",
+   "edge_cases": "Resolves the main checkout's .env via git rev-parse --git-common-dir, so it works from a worktree.",
+   "failure_mode": "Adds two indexed count(*) queries per connection."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The CI credential leaks from a workflow log or a compromised action.",
+   "what_happens": "An attacker holds a live production database URL.",
+   "mitigated": true,
+   "how": "It is a distinct role, not the admin URL: pg_read_all_data with default_transaction_read_only = on. Three write attempts were made against the live database as this role and all three were refused by the server. It also cannot create roles or read server files.",
+   "repro": "connect as ci_readonly and attempt any INSERT - the server refuses it"
+  },
+  {
+   "scenario": "RLS hides rows from the CI role and a probe counts 0.",
+   "what_happens": "Zero rows is indistinguishable from no defects, so DQ-57 and every other property_reports probe reports CLEAN while seeing nothing. This is not hypothetical - it was the actual state before BYPASSRLS was granted.",
+   "mitigated": true,
+   "how": "connect() raises on a zero canary; probes surface that as exit 2 (UNKNOWN).",
+   "repro": "revoke BYPASSRLS from ci_readonly and run any probe - it now refuses instead of passing"
+  },
+  {
+   "scenario": "Someone adds a third RLS table later and the canaries do not cover it.",
+   "what_happens": "A probe over that table could still read 0 and look clean.",
+   "mitigated": false,
+   "how": "Not fully closed. The canaries prove the ROLE bypasses RLS at all, which is the role-level property, so a new table inherits it. A per-table guard would be needed only if BYPASSRLS were replaced by per-table grants. Recorded rather than claimed shut.",
+   "repro": "SELECT count(*) FROM pg_class WHERE relrowsecurity AND relkind='r'  -- 110"
+  },
+  {
+   "scenario": "The secret is absent or misspelled in gates.yml.",
+   "what_happens": "Checks silently revert to reporting UNKNOWN and nobody notices the coverage dropped.",
+   "mitigated": true,
+   "how": "dq_check.py prints the UNKNOWN count and names each row rather than folding it into the pass line.",
+   "repro": "python scripts/dq_check.py  # the 'could not be verified in THIS environment' line"
+  },
+  {
+   "scenario": "The canary itself is wrong and the table legitimately empties.",
+   "what_happens": "Every probe would refuse to run forever.",
+   "mitigated": true,
+   "how": "Both canaries are core corpus tables - regulatory_provisions 55,696 and property_reports 1,337. An empty one is a catastrophe worth halting for, not a false alarm.",
+   "repro": "SELECT count(*) FROM regulatory_provisions"
+  },
+  {
+   "scenario": "The password ends up in the repository or a log.",
+   "what_happens": "The credential is exposed permanently in git history.",
+   "mitigated": true,
+   "how": "Generated from secrets.choice, never printed, written to a temp file outside the repo, piped to `gh secret set` on stdin, then overwritten and deleted. Nothing in this diff contains it.",
+   "repro": "git log -p --all -S 'ci_readonly:' | head  -- returns nothing"
+  }
+ ],
+ "verified": [
+  "ci_readonly reads regulatory_provisions 55,696 / dcp_setback_controls 1,071 / property_reports 1,337.",
+  "UPDATE, INSERT and CREATE TABLE all refused server-side as that role.",
+  "RLS blindness reproduced and closed: property_reports read 0 before BYPASSRLS, 1,337 after.",
+  "Canary tested in both directions - passes on the real connection, raises on a zero-returning cursor.",
+  "gates.yml parses as YAML; DATABASE_URL wired into both DB-backed steps."
+ ],
+ "gaps": [
+  "BYPASSRLS is a broad grant. It is paired with default_transaction_read_only so the role still cannot write, but it does see every row in every table.",
+  "The canary proves role-level visibility, not per-table. Adequate while BYPASSRLS is the mechanism; would need revisiting under per-table grants.",
+  "Only gates.yml is wired. Nothing schedules these checks outside a pull request, so drift between PRs is still unobserved."
+ ],
+ "post_merge": {
+  "db_reset": "No schema change and no data written. To undo: REVOKE pg_read_all_data FROM ci_readonly; DROP ROLE ci_readonly; and delete the DATABASE_URL secret.",
+  "secrets": "One added: DATABASE_URL, holding the ci_readonly connection string. Generated with secrets.choice, never printed, never committed; the temp file was overwritten and deleted. It is not the admin credential and cannot write.",
+  "other_repo": "None.",
+  "manual_verify": "On the next gates run, open 'Data-quality ledger (status ratchet)' and confirm the 'could not be verified in THIS environment' line is gone and DQ-57 reports a number. Then read the 'Output grounding' step - as-at coverage and manifest coverage should now print real figures instead of failing to connect."
+ }
+}
