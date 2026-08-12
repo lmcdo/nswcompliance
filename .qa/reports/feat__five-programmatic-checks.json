@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "f63c99f7",
+  "commit_hash": "455463da",
   "justification": "Adds the five checks that cover the gap all three of today's findings fell through: every existing check reads code or data AT REST, and nothing looked at what the running system tells a user. Two of the five are gates that can block merges, so a wrong threshold here stops all work rather than failing quietly -- both are therefore shrink-only baselines rather than hard zeros.",
   "files": [
     "scripts/lint_hardcoded_zone_codes.py",
