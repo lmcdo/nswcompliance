@@ -125,16 +125,16 @@
    "note": "Counts rows a REVIEWER already flagged, not a heuristic guess. 'partial' because some flags are deliberate fail-closed markers."
   },
   "DQ-32": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
-    "python",
-    "scripts/dq_probe_live.py",
-    "--id",
-    "DQ-32"
+    "node",
+    "node_modules/jest/bin/jest.js",
+    "__tests__/components/dcp-snapshot-card-conditions.test.tsx"
    ],
-   "passes_when": "exit 0 - every (lga, dev_type, control_type) group holds a single value, so the engine's pick is determined",
-   "red_when": "562 served rows across 171 groups hold more than one value for the same key, so the capacity engine can return a different zone's number as a feasibility figure. Measured 2026-08-12; was 560/168 on 2026-07-31, so it GREW.",
-   "note": "A partial fix exists at scripts/conveyancing_db.py:413 but is gated on applicability='zone_specific' and can act on ~24 of the 562. See DQ-32b."
+   "passes_when": "exit 0 - the snapshot card renders each control's condition, draws every row even when control_type and section_ref collide, and states how many controls it is not showing",
+   "red_when": "A served surface shows several values for one control slot without saying which case each covers, so the reader cannot tell which number is theirs.",
+   "note": "Fixed 2026-08-13 under the present-all ruling. ⚠ The old probe counted 562 rows in ambiguous groups and treated every one as a defect; 556 of them already state their case and are correct. Counting those is what made this look like weeks of adjudication when the real defect was a component dropping a field the API already sent. The remaining 6 conditionless rows are DQ-32c. This check is a jest test because the defect was in RENDERING - a DB probe cannot see it, which is exactly why it survived so long.",
+   "cwd": "frontend-nextjs"
   },
   "DQ-31": {
    "declared": "partial",
@@ -389,6 +389,18 @@
    "passes_when": "exit 0 - no row names a zone in its condition while carrying a non-zone_specific applicability, excluding 17 adjudicated non-defects held as an id allowlist in the probe",
    "red_when": "A row names a zone in its condition text but is not tagged zone_specific, so the filter at conveyancing_db.py:413 never examines it and the control is served to every zone.",
    "note": "Fixed 2026-08-12: 59 of 76 tagged zone_specific (backup dcp_setback_controls_dq32b_backup_20260812). The other 17 must NOT be tagged - 8 canada_bay rows are PROXIMITY conditions ('within 400m of B3/B4'), 7 are clause/table references the regex mistook for zones, 1 is a road classification, 1 has an explicit fallback, 1 qualifies a sub-case only. Tagging any would DELETE a correct control, because the filter is skip-only. Excluded by id rather than by loosening the regex, so a NEW untagged zone-naming row still fails."
+  },
+  "DQ-32c": {
+   "declared": "open",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-32c"
+   ],
+   "passes_when": "exit 0 - no row shares a control slot while stating no condition",
+   "red_when": "A row sits beside a different value for the same control and says nothing about when it applies, so it cannot be attributed even by a correct UI.",
+   "note": "Split from DQ-32 on 2026-08-13. Presentation was the fixable half and is done; these 6 need a source lookup per row. Measured 6 against 556 rows in the same groups that DO carry their condition."
   }
  }
 }

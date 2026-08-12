@@ -166,14 +166,33 @@ export async function POST(request: NextRequest) {
         lotArea: lotArea
       },
       setbacks: setbacks,
+      // DQ-32, user ruling 2026-08-13: SHOW THEM ALL, each with the condition
+      // that distinguishes it.
+      //
+      // Both of these already returned every row. What they dropped was
+      // `notes` — the condition text — so four correct Sutherland parking rates
+      // arrived as 1, 1.5, 2 and 0.25 with nothing saying which is one-bedroom,
+      // two-bedroom, three-plus or visitor. Several bare numbers for one slot
+      // is not more information than one number; it is less, because the reader
+      // cannot tell which line applies to them and has no way to find out.
+      //
+      // 556 of the 562 rows measured in ambiguous groups already carry this
+      // text (bedrooms 220, visitor/resident 121, lot size 108, locality 95,
+      // zone 56, storeys 55). The data was never the problem. `setbacks` above
+      // has always passed it through as `condition`; these two are brought into
+      // line with it, same field names, so consumers handle one shape.
       parking: parkingRows.map(row => ({
         text: row.source_text ?? row.requirement,
-        spaces: row.value_min
+        spaces: row.value_min,
+        conditional: Boolean((row.notes ?? '').trim()),
+        condition: row.notes || null
       })),
       landscaping: landscapingRows.map(row => ({
         text: row.source_text ?? row.requirement,
         value: row.value_min,
         unit: row.unit,
+        conditional: Boolean((row.notes ?? '').trim()),
+        condition: row.notes || null,
         partName: row.source_chapter_key,
         pdfPage: row.pdf_page,
         pdfPageImageUrl: null

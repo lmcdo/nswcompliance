@@ -146,8 +146,16 @@ def run_one(dq_id: str, spec: dict, verbose: bool = False) -> tuple[str, str]:
         return "NO-CHECK", spec.get("why_no_check", "no reason recorded")
 
     try:
+        # Optional "cwd" on a check spec, relative to the repo root. Some
+        # defects live in a subproject and their check will not run from here:
+        # jest resolves its babel config from the working directory, so
+        # --rootDir frontend-nextjs parses but then fails on every file. The
+        # obvious workaround, `npm --prefix`, is worse -- subprocess without a
+        # shell cannot resolve `npm` on Windows, where this repo's runners are,
+        # so the check reports UNRUNNABLE rather than passing or failing.
         proc = subprocess.run(
-            cmd, cwd=_ROOT, capture_output=True, text=True,
+            cmd, cwd=_ROOT / spec["cwd"] if spec.get("cwd") else _ROOT,
+            capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=_TIMEOUT,
         )
     except FileNotFoundError:

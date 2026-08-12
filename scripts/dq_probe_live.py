@@ -79,6 +79,34 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "exactly 2 rows in August (ryde 1175, burwood 1176) and NEITHER sits "
         "in an ambiguity group.",
     ),
+    "DQ-32c": (
+        "Rows sharing a control slot while stating no condition at all",
+        # Under the present-all ruling (user, 2026-08-13) several values for one
+        # (lga, dev_type, control_type) is CORRECT -- councils really do set a
+        # different parking rate per bedroom count. What is not acceptable is a
+        # row a reader cannot attribute: it sits beside two other numbers and
+        # says nothing about which case it covers.
+        #
+        # This replaces the raw 562 as DQ-32's measure. 562 counted rows in
+        # ambiguous groups and treated every one as a defect; 556 of them
+        # already state their case and are fine. Counting those was what made
+        # DQ-32 look like weeks of adjudication when it was six rows.
+        "SELECT count(*) FROM dcp_setback_controls d "
+        "WHERE d.is_current AND NOT COALESCE(d.needs_review, false) "
+        "AND COALESCE(TRIM(d.condition), '') = '' "
+        "AND EXISTS (SELECT 1 FROM dcp_setback_controls e "
+        "            WHERE e.lga = d.lga AND e.dev_type = d.dev_type "
+        "              AND e.control_type = d.control_type "
+        "              AND e.is_current AND NOT COALESCE(e.needs_review, false) "
+        "              AND COALESCE(e.value_min, -1) <> COALESCE(d.value_min, -1))",
+        (),
+        "Each row shares a control slot with a different value while stating "
+        "nothing about when it applies, so no reader can tell which of them is "
+        "theirs and the condition text cannot be shown because there is none. "
+        "Measured 6 on 2026-08-13, against 556 rows in the same groups that DO "
+        "state their case. Fixing these needs a source lookup per row, not a "
+        "presentation change.",
+    ),
     "DQ-32b": (
         "Rows naming a zone that the zone filter can never act on",
         # The filter at conveyancing_db.py:413 is gated on

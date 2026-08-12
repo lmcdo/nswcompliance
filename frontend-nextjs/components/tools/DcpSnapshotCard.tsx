@@ -18,6 +18,13 @@ interface Control {
   value_max: number | null;
   unit: string | null;
   section_ref: string | null;
+  // The text that says WHICH case this number is for: "2 bedrooms",
+  // "visitor parking", "lots up to 12.5m in width", "R3 zone". The API has
+  // always sent it (structured-controls/route.ts:243) and this interface did
+  // not declare it, so it was dropped here. Without it a council with four
+  // correct parking rates renders as four identical labels holding 1, 1.5, 2
+  // and 0.25, and the reader cannot tell which line is theirs.
+  condition: string | null;
   data_status: 'numeric' | 'not_applicable' | 'under_review';
 }
 
@@ -25,6 +32,10 @@ interface Category {
   category: string;
   controls: Control[];
 }
+
+// This is a snapshot card under a verdict, not the full controls table, so a
+// cap is legitimate. What was not legitimate was applying it silently.
+const SNAPSHOT_LIMIT = 6;
 
 function controlValue(c: Control): string | null {
   if (c.value_min != null && c.value_max != null && c.value_min !== c.value_max) {
@@ -181,35 +192,57 @@ export function DcpSnapshotCard({
     );
   }
 
+  const allControls = categories!.flatMap((cat) => cat.controls);
+
   return (
     <div className="rounded-xl border border-gray-200 p-4">
       <p className="text-sm font-semibold text-gray-900">
         {lgaName} council&apos;s rules for building here
       </p>
+      {/* "these apply to any residential building on this block" was not true
+          of a row carrying a condition — many apply only to a bedroom count, a
+          lot width or a named locality. The conditions are now shown per row,
+          so this says where the numbers come from and leaves what they apply
+          to on the row itself. */}
       <p className="text-xs text-gray-500 mt-0.5 mb-2">
         {general
-          ? `From the council's own planning rulebook — these apply to any residential building on this block.`
+          ? `From the council's own planning rulebook. Where a number applies only in certain cases, the case is shown beneath it.`
           : `From the council's own planning rulebook — the numbers for dual occupancies.`}
       </p>
       <div className="space-y-1">
-        {categories!
-          .flatMap((cat) => cat.controls)
-          .slice(0, 6)
-          .map((c) => {
-            const v = controlValue(c);
-            return (
-              <div
-                key={`${c.control_type}-${c.section_ref}`}
-                className="flex items-baseline justify-between gap-3 text-sm"
-              >
-                <span className="text-gray-700">{c.control_label}</span>
-                <span className="text-gray-900 font-medium tabular-nums whitespace-nowrap">
-                  {v}
-                </span>
-              </div>
-            );
-          })}
+        {allControls.slice(0, SNAPSHOT_LIMIT).map((c, i) => {
+          const v = controlValue(c);
+          return (
+            // Index in the key: control_type + section_ref is NOT unique. A
+            // council with per-bedroom parking rates has several rows sharing
+            // both, so the old key collided and React rendered one of them.
+            <div
+              key={`${c.control_type}-${c.section_ref}-${i}`}
+              className="flex items-baseline justify-between gap-3 text-sm"
+            >
+              <span className="text-gray-700 min-w-0">
+                {c.control_label}
+                {/* The condition is what makes several values for one control
+                    readable instead of contradictory. */}
+                {c.condition ? (
+                  <span className="block text-xs text-gray-500">{c.condition}</span>
+                ) : null}
+              </span>
+              <span className="text-gray-900 font-medium tabular-nums whitespace-nowrap">
+                {v}
+              </span>
+            </div>
+          );
+        })}
       </div>
+      {/* Never truncate silently. Six of nineteen rows looks exactly like all
+          nineteen, and a reader who cannot see that more exist has no reason to
+          go looking for the one that applies to them. */}
+      {allControls.length > SNAPSHOT_LIMIT ? (
+        <p className="text-xs text-gray-500 mt-2">
+          Showing {SNAPSHOT_LIMIT} of {allControls.length} controls for this council.
+        </p>
+      ) : null}
     </div>
   );
 }
