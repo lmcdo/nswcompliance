@@ -98,6 +98,26 @@ const RED = (sha) => ([{
     runs: GREEN('bbbbbbbb2222', 2), headSha: 'cccccccc3333', headDate: iso(-5 * HOUR),
   }, 'broken'));
 
+  // 7 & 8. THE HOLE A CROSS-REVIEW FOUND, 2026-08-12.
+  // hoursSince originally returned NaN for a missing or malformed timestamp.
+  // NaN < 0 is false AND NaN > 3 is false, so an unverified HEAD fell straight
+  // through both guards to state=ok, reporting "NaNh". A watchdog failing
+  // OPEN — the one direction it must never fail. These two pin it shut.
+  results.push(await run('HEAD committer date MISSING — must not fall through to ok', {
+    runs: GREEN('bbbbbbbb2222', 2), headSha: 'cccccccc3333', headDate: undefined,
+  }, 'broken'));
+
+  results.push(await run('HEAD committer date MALFORMED — must not fall through to ok', {
+    runs: GREEN('bbbbbbbb2222', 2), headSha: 'cccccccc3333', headDate: 'not-a-date',
+  }, 'broken'));
+
+  // 9. The same malformed-timestamp class on the RUN side must not crash or
+  // silence the genuine failure it is reporting.
+  results.push(await run('run updated_at malformed, gates failed — still broken', {
+    runs: [{ conclusion: 'failure', html_url: 'https://x/run/3', head_sha: 'dddddddd4444', updated_at: 'garbage' }],
+    headSha: 'dddddddd4444', headDate: iso(1 * HOUR),
+  }, 'broken'));
+
   const passed = results.filter(Boolean).length;
   console.log(`\n${passed}/${results.length} passed`);
   process.exit(passed === results.length ? 0 : 1);

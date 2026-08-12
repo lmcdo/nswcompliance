@@ -101,20 +101,29 @@ jobs:
             const url = run.html_url;
             const sha = run.head_sha;
             const short = (s) => String(s).slice(0, 8);
-            const hoursSince = (iso) =>
-              Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
+            // Returns null rather than NaN for an absent or unparseable
+            // timestamp. This matters more than it looks: NaN < 0 and NaN > 3
+            // are BOTH false, so an unparseable date would slide past both
+            // guards below and land on state=ok — a watchdog failing OPEN and
+            // reporting "NaNh" while main sat unverified. Every caller must
+            // therefore handle null explicitly.
+            const hoursSince = (iso) => {
+              const t = iso ? new Date(iso).getTime() : NaN;
+              return Number.isFinite(t) ? Math.floor((Date.now() - t) / 3600000) : null;
+            };
+            const fmtAge = (h) => (h === null ? 'unknown age' : `${h}h`);
             const ageH = hoursSince(run.updated_at);
 
             const head = await github.rest.repos.getCommit({ owner, repo, ref: 'main' });
             const headSha = head.data.sha;
 
             core.info(`main HEAD: ${short(headSha)}`);
-            core.info(`Latest gates run on main: ${conclusion} on ${short(sha)}, ${ageH}h old, ${url}`);
+            core.info(`Latest gates run on main: ${conclusion} on ${short(sha)}, ${fmtAge(ageH)} old, ${url}`);
             core.setOutput('url', url);
 
             if (conclusion !== 'success') {
               core.setOutput('state', 'broken');
-              core.setOutput('detail', `The latest \`gates\` run on main concluded **${conclusion}** (commit \`${short(sha)}\`, ${ageH}h ago).`);
+              core.setOutput('detail', `The latest \`gates\` run on main concluded **${conclusion}** (commit \`${short(sha)}\`, ${fmtAge(ageH)} ago).`);
               return;
             }
 
@@ -126,7 +135,7 @@ jobs:
             // and nothing checked it.
             if (sha === headSha) {
               core.setOutput('state', 'ok');
-              core.setOutput('detail', `Latest gates run on main: success, on current HEAD \`${short(headSha)}\` (${ageH}h ago).`);
+              core.setOutput('detail', `Latest gates run on main: success, on current HEAD \`${short(headSha)}\` (${fmtAge(ageH)} ago).`);
               return;
             }
 
@@ -139,6 +148,13 @@ jobs:
             const headTime = head.data.commit.committer.date;
             const headAgeH = hoursSince(headTime);
 
+            if (headAgeH === null) {
+              // No usable timestamp means the in-flight argument cannot be
+              // made at all. Unknown is not ok — refuse it.
+              core.setOutput('state', 'broken');
+              core.setOutput('detail', `main is at \`${short(headSha)}\` and the newest completed \`gates\` run is for \`${short(sha)}\`, but main's committer timestamp is missing or unparseable, so there is no basis for treating its run as still in flight. The current head of main is unverified.`);
+              return;
+            }
             if (headAgeH < 0) {
               core.setOutput('state', 'broken');
               core.setOutput('detail', `main is at \`${short(headSha)}\`, whose committer date is in the FUTURE, and the newest completed \`gates\` run is for \`${short(sha)}\`. The current head of main is unverified; a future-dated commit cannot be used to argue its run is still in flight.`);
@@ -146,12 +162,12 @@ jobs:
             }
             if (headAgeH > 3) {
               core.setOutput('state', 'broken');
-              core.setOutput('detail', `main is at \`${short(headSha)}\` (${headAgeH}h old) but the newest completed \`gates\` run is for \`${short(sha)}\`. Nothing has verified the current head of main — the workflow may no longer be firing.`);
+              core.setOutput('detail', `main is at \`${short(headSha)}\` (${fmtAge(headAgeH)} old) but the newest completed \`gates\` run is for \`${short(sha)}\`. Nothing has verified the current head of main — the workflow may no longer be firing.`);
               return;
             }
 
             core.setOutput('state', 'ok');
-            core.setOutput('detail', `Last completed run succeeded; HEAD \`${short(headSha)}\` is only ${headAgeH}h old and its run may still be in flight.`);
+            core.setOutput('detail', `Last completed run succeeded; HEAD \`${short(headSha)}\` is only ${fmtAge(headAgeH)} old and its run may still be in flight.`);
 
       - name: Raise or update the alarm
         if: steps.assess.outputs.state == 'broken'
@@ -203,8 +219,17 @@ jobs:
               try {
                 await github.rest.issues.getLabel({ owner, repo, name: 'ci' });
                 labels = ['ci'];
-              } catch {
-                core.info('No `ci` label in this repo — filing unlabelled. The alarm matters more than its label.');
+              } catch (e) {
+                // ONLY a 404 means the label is absent. A 500, a timeout, a
+                // rate-limit or an auth failure would otherwise be read as
+                // "no such label" and quietly file an unlabelled alarm that
+                // label-based triage never sees — a silent degradation in the
+                // one workflow that exists to stop things being silent. Any
+                // other status is rethrown; the step still ends in
+                // core.setFailed, so the job goes red either way and the
+                // alarm remains visible in the Actions list.
+                if (e.status !== 404) throw e;
+                core.info('No `ci` label in this repo (404) — filing unlabelled. The alarm matters more than its label.');
               }
               await github.rest.issues.create({ owner, repo, title, body, labels });
             }
