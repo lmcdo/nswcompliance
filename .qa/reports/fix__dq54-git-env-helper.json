@@ -1,0 +1,97 @@
+{
+  "tier": "standard",
+  "justification": "DQ-54: git exports GIT_DIR and GIT_INDEX_FILE to its hooks and they OVERRIDE cwd, so a script that carefully passes cwd=<repo> and is then invoked from a hook reads a DIFFERENT repository — exit 0, no warning. Two of the sites decide which .env supplies credentials (DATABASE_URL, an API key) and one DELETES files. The tracker logged this on 2026-08-08 as prose naming three call sites; four days later the same class caused a second incident and the highest-consequence site was still unscrubbed. This replaces the prose with a ratchet, which then found four more sites nobody had named.",
+  "commit_hash": "00f58195",
+  "files": [
+    "scripts/cross_review.py",
+    "scripts/validate_schema_contract.py",
+    "scripts/qa_gate.py",
+    "scripts/prove_qa_report_binding.py",
+    "scripts/prune_qa_reports.py",
+    "scripts/sol_common.py",
+    "scripts/sweep_absence_negative_tests.py",
+    "tests/test_git_env_ratchet.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_git_env_ratchet.py -q",
+    "fails_when": "Any script in scripts/ runs git with an explicit cwd= and no env=. It is an AST scan, not a grep: it walks every subprocess call, keeps those whose argv literal starts with \"git\" AND that pin a cwd, and asserts each also pins an env. Proven able to fail before it passed — its first run went 4 failed / 242 passed, naming prove_qa_report_binding.py, prune_qa_reports.py, sol_common.py and sweep_absence_negative_tests.py, none of which DQ-54 had listed. After the fixes: 246/246. It also checks the four inherits-by-design exemptions still pass no cwd, so an exemption cannot quietly become a licence for the defect.",
+    "external_authority": "git decides, and its own documented behaviour is the authority: GIT_DIR and GIT_INDEX_FILE override cwd. DQ-54 recorded this measured live — with GIT_DIR pointed elsewhere, git log, git rev-parse --git-common-dir and git ls-files run from a worktree all answered about the other repository, exit 0, no warning. The canonical scrub already existed at scripts/qa_report_path.py:103 and is the thing being adopted, not invented."
+  },
+  "pre_impl": {
+    "existing_data": "DQ-54 in .claude/DATA_QUALITY_TRACKER.md, logged 2026-08-08, report-only by instruction, naming cross_review.py (2 calls), validate_schema_contract.py:408 and qa_gate.py:1385, and prescribing 'one shared git_env() helper at three call sites'. The helper already existed at qa_report_path.py:103, already used correctly by qa_gate.py:1306 and doc_claims.py. The prior incident it cites is real: on 2026-08-07 a fixture git commit landed on the real worktree's branch and replaced its index.",
+    "assumption_mismatch": "Two, and both changed the work. First, I assumed the tracker's site list was the scope. It was not — the AST ratchet found FOUR more scripts with the same shape, so 'three call sites' was an undercount of more than half. A hand-enumerated list of a defect class is a snapshot, and this one had already drifted in four days. Second, I assumed the scrub I wrote in #927 was correct and merely needed copying. It was over-strict: it dropped every GIT_* including GIT_ASKPASS, GIT_SSH and GIT_SSH_COMMAND, which configure how git AUTHENTICATES rather than which repository it reads, and which the canonical helper deliberately keeps. Adopting the shared helper fixed my own bug as a side effect.",
+    "new_vs_existing": "No new helper. qa_report_path.git_env() already existed and is now imported by six scripts instead of one. The only new file is the ratchet test. doc_claims.py keeps its deliberate second copy, which qa_report_path's own docstring explains as avoiding a heavy import — left alone rather than 'tidied' into a dependency."
+  },
+  "functions": [
+    {
+      "name": "test_git_calls_that_pin_cwd_also_pin_env",
+      "file_line": "tests/test_git_env_ratchet.py:88",
+      "input": "every *.py in scripts/, parsed to an AST, excluding the two modules that define the scrub itself",
+      "output": "a failure naming the file and line numbers of any git call that pins cwd without env, plus the exact fix line; parametrised per file so the report names the offender rather than a single opaque failure",
+      "if_none": "no offenders means the shape is absent from scripts/ — NOT that the class is empty, since a dynamically assembled call or one reaching git through a wrapper is invisible to a source scan; that limit is stated in the module docstring rather than left implied"
+    },
+    {
+      "name": "test_the_exemption_list_is_still_true",
+      "file_line": "tests/test_git_env_ratchet.py:104",
+      "input": "the four scripts exempted because they pass no cwd and genuinely want the hook's repository",
+      "output": "a failure if any of them later grows a cwd=, because at that moment the exemption stops describing them and starts excusing them",
+      "if_none": "skips if a listed file no longer exists, so deleting a script does not fail the suite for the wrong reason"
+    }
+  ],
+  "values": [
+    {
+      "value": "the ratchet's first run: 4 failed / 242 passed — prove_qa_report_binding.py, prune_qa_reports.py, sol_common.py, sweep_absence_negative_tests.py. After fixes: 246/246",
+      "read_at": "python -m pytest tests/test_git_env_ratchet.py -q, before and after the patches, 2026-08-12",
+      "if_missing": "without the failing run this looks like a test written to match code that was already correct; the four names are the evidence the tracker's list was incomplete"
+    },
+    {
+      "value": "full Python suite after the change: 4,482 passed, 2 skipped",
+      "read_at": "python -m pytest -q in the dq54 worktree, 2026-08-12",
+      "if_missing": "seven scripts changed, two of them by adding a sys.path import at module scope — a broken import would surface as collection errors, so a green full suite is what shows none of them regressed"
+    },
+    {
+      "value": "prune_qa_reports.py still resolves the remote correctly with the scrubbed env: 276 live branches, 1 orphan, dry run",
+      "read_at": "python scripts/prune_qa_reports.py on this branch, 2026-08-12",
+      "if_missing": "this is the script that DELETES files; a scrub that broke its git ls-remote would make it either destructive or inert, and neither shows up in a unit test"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The scrub also removes the variables that configure git AUTHENTICATION, so credential helpers and signed operations break in environments that rely on them.",
+      "what_happens": "git ls-remote in prune_qa_reports.py, and any future networked call, starts failing to authenticate. prune treats an unanswerable ls-remote as 'unknown' and refuses to delete, so it degrades to inert rather than destructive — but a fetch elsewhere would simply fail.",
+      "mitigated": true,
+      "how": "The canonical helper keeps GIT_ASKPASS, GIT_SSH and GIT_SSH_COMMAND precisely because they configure how git authenticates, not which repo it reads. This is exactly the bug in the local scrub I wrote in #927, which dropped all three; adopting the shared helper removes it. Pinned by test_the_shared_helper_keeps_auth_variables, which sets all seven variables and asserts three survive and four are dropped. Confirmed live: prune's ls-remote still resolves 276 branches.",
+      "repro": "python -m pytest tests/test_git_env_ratchet.py -k auth -q"
+    },
+    {
+      "scenario": "A script reaches git without matching the AST pattern — argv built dynamically, a shell string, or a call through a helper the scan cannot follow.",
+      "what_happens": "It stays exposed while the suite is green, and the ratchet's green becomes false assurance, which is worse than no ratchet because it stops people looking.",
+      "mitigated": false,
+      "how": "Not mitigated and stated as a limit in the module docstring rather than left implied: this pins the shape that actually recurred twice, it does not prove the class is empty. A semantic check would need to resolve argv values across the call graph. The mitigation available today is that the two known-dangerous idioms — a literal ['git', ...] argv with cwd, and the --git-common-dir env-discovery pattern — are both covered.",
+      "repro": "grep -rn 'subprocess' scripts/ | grep -v 'env=' | head"
+    },
+    {
+      "scenario": "sol_common.py and sweep_absence_negative_tests.py gained a sys.path.insert plus an import at module scope, and one of them is imported in a context where scripts/ is not importable — so the import raises and the module dies.",
+      "what_happens": "cross_review.py imports sol_common, so a failure there takes out the cross-review tool entirely; the failure is loud rather than silent, but it would break the reviewer that found two real defects for me today.",
+      "mitigated": true,
+      "how": "Both insert their own directory on sys.path immediately before the import, so they do not depend on a caller having done it. Verified by executing them, not just importing: sweep prints its --help and exits 0, prune completes a dry run, and the full 4,482-test suite collects and passes, which exercises the import path under pytest's own loader too.",
+      "repro": "python scripts/sweep_absence_negative_tests.py --help && python scripts/prune_qa_reports.py"
+    },
+    {
+      "scenario": "The exemption list rots: one of the four inherits-by-design scripts later grows a cwd=, and the exemption silently licenses the defect it was meant to describe.",
+      "what_happens": "That script starts reading the wrong repository under a hook, and the ratchet says nothing because the file is on the allowlist.",
+      "mitigated": true,
+      "how": "The exemption is treated as a claim and verified rather than trusted: test_the_exemption_list_is_still_true parses each of the four and fails if any git call pins a cwd, telling the reader to either drop the cwd or leave the list and pass env=git_env().",
+      "repro": "python -m pytest tests/test_git_env_ratchet.py -k exemption -q"
+    }
+  ],
+  "mutation_analysis": "The mutation ran itself: the ratchet's FIRST execution was against unpatched code and went 4 failed / 242 passed, naming four scripts the tracker never listed. That is the strongest form of this evidence — the test failed on real pre-existing defects before any of them were fixed, so it cannot be a test written to match code that already passed. Re-running after the patches gives 246/246. The auth-preservation test was checked the same way: it fails against #927's local scrub, which dropped GIT_ASKPASS/GIT_SSH/GIT_SSH_COMMAND, and passes against the shared helper. The weak version of this work would have been patching the three sites the tracker named and declaring DQ-54 closed; that would have left four scripts exposed, including the one that deletes files.",
+  "residual_risk": "The ratchet is a source scan and cannot see a git call assembled dynamically or reached through a wrapper — stated in the docstring, not hidden. doc_claims.py keeps a second copy of git_env by design, so the codebase has two definitions and a future edit could drift them apart; consolidating would introduce the heavy import the docstring exists to avoid, so it is a recorded trade-off rather than an oversight. Nothing here addresses hook-invoked scripts OUTSIDE scripts/, and .githooks/ shell scripts are not scanned at all. DQ-54's own status line in the tracker still says 'Open — report-only by instruction'; this PR does the fix but does not edit the tracker, so that row needs updating separately.",
+  "post_merge": {
+    "db_reset": "No. No schema, data or query change. One of the fixed sites influences which .env is loaded, so if anything the DB targeting becomes more correct, not less.",
+    "secrets": "None read or written by this change. sol_common.py's fix makes the API-key .env lookup resolve against the intended repository rather than a hook's.",
+    "other_repo": "No. Single repository — which is the entire point of the fix.",
+    "manual_verify": "Yes, one cheap check: run any push from a worktree and confirm the pre-push cross-review still produces findings rather than erroring, since cross_review.py and its sol_common dependency both changed and both are exercised only at push time."
+  }
+}
