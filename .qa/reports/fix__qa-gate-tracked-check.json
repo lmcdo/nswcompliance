@@ -20,14 +20,14 @@
   "functions": [
     {
       "name": "check_report_reachable",
-      "file_line": "scripts/qa_gate.py:1655",
+      "file_line": "scripts/qa_gate.py:1669",
       "input": "the resolved report path, the project dir, and whether the caller requires the report to be tracked already",
       "output": "a list of error strings, empty when git will carry the report; composes with the existing errors so a report that is both wrong and unreachable reports both faults rather than hiding one behind the other",
       "if_none": "an empty list means reachable, which is the intended quiet path — the dangerous variant is returning empty because git could not be consulted at all, so exit code 128 is treated as a failure under --require-tracked instead of as silence"
     },
     {
       "name": "_git",
-      "file_line": "scripts/qa_gate.py:1633",
+      "file_line": "scripts/qa_gate.py:1637",
       "input": "git arguments and a working directory",
       "output": "(returncode, stdout); never raises, because a gate that crashes on a missing git binary is a gate that gets bypassed",
       "if_none": "returns 128 for a missing or non-executable git — reported as cannot-determine rather than as not-ignored, which would be the silent-pass failure this change exists to remove"
