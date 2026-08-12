@@ -27,14 +27,14 @@
   "functions": [
     {
       "name": "test_git_calls_that_pin_cwd_also_pin_env",
-      "file_line": "tests/test_git_env_ratchet.py:88",
+      "file_line": "tests/test_git_env_ratchet.py:106",
       "input": "every *.py in scripts/, parsed to an AST, excluding the two modules that define the scrub itself",
       "output": "a failure naming the file and line numbers of any git call that pins cwd without env, plus the exact fix line; parametrised per file so the report names the offender rather than a single opaque failure",
       "if_none": "no offenders means the shape is absent from scripts/ — NOT that the class is empty, since a dynamically assembled call or one reaching git through a wrapper is invisible to a source scan; that limit is stated in the module docstring rather than left implied"
     },
     {
       "name": "test_the_exemption_list_is_still_true",
-      "file_line": "tests/test_git_env_ratchet.py:104",
+      "file_line": "tests/test_git_env_ratchet.py:125",
       "input": "the four scripts exempted because they pass no cwd and genuinely want the hook's repository",
       "output": "a failure if any of them later grows a cwd=, because at that moment the exemption stops describing them and starts excusing them",
       "if_none": "skips if a listed file no longer exists, so deleting a script does not fail the suite for the wrong reason"
