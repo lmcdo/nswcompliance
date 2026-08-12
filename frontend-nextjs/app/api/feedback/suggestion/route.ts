@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { z } from 'zod';
+import { formatValidationErrors } from '@/lib/schemas';
 
 // Validation schema for suggestion feedback
 const suggestionSchema = z.object({
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid suggestion data', details: error.errors },
+        { error: 'Invalid suggestion data', details: formatValidationErrors(error) },
         { status: 400 }
       );
     }

@@ -16,6 +16,7 @@ import {
   getClientIdentifier,
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
+import { formatValidationErrors } from '@/lib/schemas';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
@@ -347,7 +348,7 @@ export async function POST(request: NextRequest) {
   const parsed = LotSearchSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Validation failed', details: parsed.error.issues },
+      { error: 'Validation failed', details: formatValidationErrors(parsed.error) },
       { status: 400 },
     );
   }
