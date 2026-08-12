@@ -123,8 +123,15 @@ jobs:
       # exactly how DQ-54 sat "Open — report-only" hours after it was merged.
       # Also fails when a new ledger row has no entry in dq_checks.json, so the
       # ledger cannot grow rows nobody has to think about.
+      # DATABASE_URL is the read-only `ci_readonly` role: pg_read_all_data,
+      # default_transaction_read_only=on, statement_timeout=30s, BYPASSRLS.
+      # Writes are refused by the SERVER, not by client code. Without it every
+      # DB-backed row reported UNKNOWN here, so the ledger only ever enforced
+      # the non-DB half of itself in CI.
       - name: Data-quality ledger (status ratchet)
         if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/dq_check.py
       # Hardcoded NSW planning data, tree-wide and shrink-only.
       # lint_hardcoded_zone_codes.py already had an --all mode and already
@@ -161,6 +168,8 @@ jobs:
       - name: Output grounding (OBSERVATION ONLY — never fails the build)
         if: always()
         continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           for s in lint_hardcoded_confidence check_ts_dcp_readers \
                    check_dcp_as_at_coverage check_satellite_manifests \

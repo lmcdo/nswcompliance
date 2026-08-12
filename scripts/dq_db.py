@@ -85,4 +85,57 @@ def connect():
     conn.set_session(readonly=True)
     cur = conn.cursor()
     cur.execute(f"SET statement_timeout = {_TIMEOUT_MS}")
+    _assert_not_blind(cur)
     return conn
+
+
+# prior-art-checked: reuse not viable because the suggested files are CONSUMERS
+# of a connection, not gatekeepers of one -- generate_conveyancing_report.py and
+# link_controls_to_provisions.py each open their own connection and query it,
+# and the three frontend TS clients are a different runtime entirely. None
+# asserts that a connection can SEE before letting a caller draw a conclusion
+# from it, which is the whole point here. This is the correct place: every probe
+# already routes through connect().
+#
+# 110 of this database's tables have row-level security ON. A role that can
+# CONNECT and holds SELECT still reads 0 rows from those tables unless it also
+# bypasses RLS -- and 0 rows is indistinguishable from "no defects found".
+# Measured 2026-08-12 while creating the CI role: property_reports read 1337 as
+# the admin user and 0 as the new read-only one, before BYPASSRLS was granted,
+# while regulatory_provisions read 55696 for BOTH. So "it can read one table"
+# does not prove it can read the next, and one canary is not enough.
+#
+# Connecting is therefore not enough to justify answering. A canary table whose
+# count is known to be large decides whether this connection can SEE, and a
+# blind one raises instead of returning -- which the probes surface as exit 2
+# (UNKNOWN) rather than exit 0 (clean). Wrong-but-confident is the failure mode
+# that turned main red on 2026-08-12 (#939) and the one this ledger exists for.
+#
+# The queries carry their own currency filter. qa_gate's DB guard rejected a
+# bare count over regulatory_provisions, and it was right to: scoping to the
+# SERVED set is also the better canary, because visibility of rows nobody is
+# shown proves less than visibility of the rows the product actually returns.
+# Scoped rather than exempted.
+_CANARY = (
+    ("regulatory_provisions",
+     "SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable"),
+    ("property_reports", "SELECT count(*) FROM property_reports"),
+)
+
+
+def _assert_not_blind(cur) -> None:
+    """Raise if this connection reads zero rows from a table known to be large."""
+    for table, sql in _CANARY:
+        try:
+            cur.execute(sql)
+            n = cur.fetchone()[0]
+        except Exception:  # noqa: BLE001 - a missing table is not blindness
+            continue
+        if n == 0:
+            raise RuntimeError(
+                f"Connected, but {table} reads 0 rows. That table is never empty, "
+                f"so this role cannot SEE the data rather than there being none to "
+                f"see -- almost certainly row-level security without BYPASSRLS "
+                f"(110 tables here have RLS on). Every probe over it would report "
+                f"CLEAN. Refusing to answer: UNKNOWN is not the same as clean."
+            )
