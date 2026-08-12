@@ -74,8 +74,28 @@ def _git_calls_with_cwd(tree: ast.AST) -> list[ast.Call]:
     return found
 
 
-def _has_env(call: ast.Call) -> bool:
-    return any(kw.arg == "env" for kw in call.keywords)
+def _scrubbed_env_kwarg(call: ast.Call) -> bool:
+    """True only when ``env=`` is a call to ``git_env()``.
+
+    Accepting any ``env=`` would make this ratchet satisfiable without fixing
+    anything: ``env=os.environ.copy()`` passes such a check while the hook's
+    GIT_DIR still overrides cwd and the command still reads the wrong
+    repository. A guard that can be silenced by a no-op is worse than no guard,
+    because it converts an open defect into a green tick.
+
+    Both spellings in use are accepted -- bare ``git_env()`` where the name is
+    imported, and ``qa_report_path.git_env()`` where the module is.
+    """
+    for kw in call.keywords:
+        if kw.arg != "env":
+            continue
+        val = kw.value
+        if not isinstance(val, ast.Call):
+            return False
+        func = val.func
+        name = getattr(func, "attr", None) or getattr(func, "id", None)
+        return name == "git_env"
+    return False
 
 
 def _py_files() -> list[Path]:
@@ -86,14 +106,16 @@ def _py_files() -> list[Path]:
 def test_git_calls_that_pin_cwd_also_pin_env(path: Path):
     """cwd= without env= is the DQ-54 shape: it looks scoped and is not."""
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    offenders = [c for c in _git_calls_with_cwd(tree) if not _has_env(c)]
+    offenders = [c for c in _git_calls_with_cwd(tree) if not _scrubbed_env_kwarg(c)]
 
     assert not offenders, (
-        f"{path.name} runs git with cwd= but no env= at line(s) "
+        f"{path.name} runs git with cwd= but no env=git_env() at line(s) "
         f"{[c.lineno for c in offenders]}.\n"
         "A git hook exports GIT_DIR/GIT_INDEX_FILE and they OVERRIDE cwd, so "
         "this call can silently read a different repository.\n"
-        "Fix: pass env=git_env() — `from qa_report_path import git_env`."
+        "Fix: pass env=git_env() — `from qa_report_path import git_env`.\n"
+        "Note: env=os.environ.copy() does NOT satisfy this, and deliberately "
+        "so — it scrubs nothing."
     )
 
 
@@ -121,13 +143,21 @@ def test_the_exemption_list_is_still_true(name: str):
     )
 
 
-def test_the_shared_helper_keeps_auth_variables():
+def test_the_shared_helper_keeps_auth_variables(monkeypatch):
     """git_env must scrub repo selection, NOT authentication.
 
     GIT_ASKPASS, GIT_SSH and GIT_SSH_COMMAND configure how git authenticates,
     not which repository it reads. Dropping them would break credential helpers
     and signed operations for no safety gain — and #927's local scrub did
     exactly that before this consolidation.
+
+    ``monkeypatch`` rather than assigning to ``os.environ`` and popping in a
+    ``finally``. The pop version was the first draft and it was actively
+    dangerous here: this suite is run BY pre-push, which exports GIT_DIR and
+    GIT_INDEX_FILE, so unconditionally popping them would strip the hook
+    environment for every test that ran afterwards — silently masking the very
+    defect this file exists to detect, and discarding any real GIT_SSH_COMMAND
+    on the way. monkeypatch restores prior values and prior ABSENCE exactly.
     """
     import importlib.util
 
@@ -137,31 +167,18 @@ def test_the_shared_helper_keeps_auth_variables():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
-    import os
+    keep_vars = ("GIT_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND")
+    drop_vars = ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE", "GIT_OBJECT_DIRECTORY")
 
-    for keep in ("GIT_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND"):
-        os.environ[keep] = "sentinel"
-    for drop in ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE", "GIT_OBJECT_DIRECTORY"):
-        os.environ[drop] = "sentinel"
-    try:
-        env = mod.git_env()
-        for keep in ("GIT_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND"):
-            assert env.get(keep) == "sentinel", f"{keep} must be preserved"
-        for drop in (
-            "GIT_DIR",
-            "GIT_INDEX_FILE",
-            "GIT_WORK_TREE",
-            "GIT_OBJECT_DIRECTORY",
-        ):
-            assert drop not in env, f"{drop} must be scrubbed"
-    finally:
-        for var in (
-            "GIT_ASKPASS",
-            "GIT_SSH",
-            "GIT_SSH_COMMAND",
-            "GIT_DIR",
-            "GIT_INDEX_FILE",
-            "GIT_WORK_TREE",
-            "GIT_OBJECT_DIRECTORY",
-        ):
-            os.environ.pop(var, None)
+    for var in keep_vars + drop_vars:
+        monkeypatch.setenv(var, "sentinel")
+
+    env = mod.git_env()
+
+    for keep in keep_vars:
+        assert env.get(keep) == "sentinel", (
+            f"{keep} must be PRESERVED — it configures how git authenticates, "
+            "not which repository it reads"
+        )
+    for drop in drop_vars:
+        assert drop not in env, f"{drop} must be scrubbed — it selects the repository"

@@ -51,6 +51,8 @@ sys.path.insert(0, str(_ROOT))
 # services/ imports its siblings by bare name (`from audit_trail import ...`),
 # which is how the container runs it. Mirror that rather than editing the module.
 sys.path.insert(0, str(_ROOT / "services"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from qa_report_path import git_env  # noqa: E402  (DQ-54)
 
 
 def main() -> int:
@@ -64,10 +66,10 @@ def main() -> int:
         # the wrong database.
         if not (os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")):
             import subprocess
-            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
             common = subprocess.run(
                 ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-                cwd=str(_ROOT), capture_output=True, text=True, timeout=10, env=env,
+                cwd=str(_ROOT), capture_output=True, text=True, timeout=10,
+                env=git_env(),
             ).stdout.strip()
             if common:
                 load_dotenv(Path(common).parent / ".env")
