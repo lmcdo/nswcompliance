@@ -1609,6 +1609,99 @@ def validate_report(
     return passed, errors, summary
 
 
+# ─── Reachability: will git actually carry this report? ─────────────────────
+# ORIGIN: 2026-08-12, branch test/feedback-route-validation. Its report slug was
+# .qa/reports/test__feedback-route-validation.json, which matched `test_*.json`
+# in .gitignore. `git add` silently did nothing, the commit reported success,
+# and THIS GATE PRINTED PASSED — because it validates a file on disk and never
+# asked git whether the file would ever leave this machine.
+#
+# That combination is strictly worse than a missing report. Both enforcing
+# callers share one shape:
+#     if [ -f "$REPORT" ]; then run the gate; else warn; exit 0; fi
+# (.githooks/pre-push:214 and .github/workflows/gates.yml:195). An ignored
+# report EXISTS locally, so the gate runs and passes; it is absent from the CI
+# checkout, so CI warns and exits 0. Green in both places, enforcing nothing.
+# #398 is the same defect and it hid for ten weeks.
+#
+# Two conditions, deliberately not equally strict:
+#   IGNORED     — never legitimate. A report git refuses to stage can never
+#                 reach CI, so this fails unconditionally.
+#   NOT TRACKED — legitimate right up until the first `git add`, which is
+#                 exactly when a human or Claude runs this gate by hand. So it
+#                 is gated behind --require-tracked, passed by pre-push, where
+#                 the report must already be committed to be pushed at all.
+# CI needs no flag: a report present in the checkout is tracked by construction.
+
+
+def _git(args: list[str], project_dir: str) -> tuple[int, str]:
+    """Run a git command, returning (returncode, stdout). Never raises."""
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        return proc.returncode, proc.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        # git absent, or not executable. Reported as "cannot determine" (128)
+        # rather than silently as "fine" — the whole point of this section.
+        return 128, ""
+
+
+def check_report_reachable(
+    report_path: str, project_dir: str | None, require_tracked: bool
+) -> list[str]:
+    """Fail when git will not carry this report to CI.
+
+    Returns a list of errors, so it composes with the existing validation.
+    """
+    errors: list[str] = []
+    root = project_dir or "."
+    rel = os.path.relpath(os.path.abspath(report_path), os.path.abspath(root))
+    rel = rel.replace(os.sep, "/")
+
+    # `git check-ignore -q`: 0 = ignored, 1 = not ignored, 128 = cannot say.
+    code, _ = _git(["check-ignore", "-q", "--", rel], root)
+    if code == 0:
+        _, which = _git(["check-ignore", "-v", "--", rel], root)
+        errors.append(
+            f"Report is GITIGNORED and can never reach CI: {rel}\n"
+            f"    matched by: {which or '(pattern unknown)'}\n"
+            "    `git add` will silently do nothing, the commit will report success, "
+            "and CI treats an absent report as a warning and exits 0 — so this gate "
+            "would pass while enforcing nothing. Add a negation such as "
+            "`!.qa/reports/*.json`, or rename the branch."
+        )
+        return errors  # an ignored file cannot also be tracked; one clear error
+
+    if code == 128 and require_tracked:
+        errors.append(
+            f"Cannot determine whether {rel} is tracked — `git check-ignore` failed "
+            "and --require-tracked was set. Failing closed: an unverifiable report is "
+            "not a verified one."
+        )
+        return errors
+
+    if not require_tracked:
+        return errors
+
+    # Tracked OR staged. `ls-files --error-unmatch` covers both, because a
+    # staged new file is already in the index.
+    code, _ = _git(["ls-files", "--error-unmatch", "--", rel], root)
+    if code != 0:
+        errors.append(
+            f"Report is not tracked and not staged: {rel}\n"
+            "    It exists on this machine only. Pushing now sends a branch whose "
+            "report CI will never see, and CI treats an absent report as a warning "
+            "and exits 0. Run: git add "
+            f"{rel}"
+        )
+    return errors
+
+
 def main():
     # The report path is optional. Omitted, it is resolved for the current
     # branch by qa_report_path — the single definition every caller shares, so
@@ -1621,11 +1714,15 @@ def main():
     # Parse optional args
     diff_files = None
     project_dir = None
+    require_tracked = False
 
     args = sys.argv[2:] if explicit_path else sys.argv[1:]
     i = 0
     while i < len(args):
-        if args[i] == "--diff-files":
+        if args[i] == "--require-tracked":
+            require_tracked = True
+            i += 1
+        elif args[i] == "--diff-files":
             # Collect all remaining args until next flag or end
             diff_files = []
             i += 1
@@ -1684,6 +1781,14 @@ def main():
         sys.exit(1)
 
     passed, errors, summary = validate_report(report, diff_files, project_dir)
+
+    # Reachability is checked AFTER the content validation but folded into the
+    # same verdict, so a report that is both wrong and unreachable reports both
+    # rather than hiding one behind the other.
+    reach_errors = check_report_reachable(report_path, project_dir, require_tracked)
+    if reach_errors:
+        errors = list(errors) + reach_errors
+        passed = False
 
     # Observation mode. Printed before the verdict so it is visible on a pass
     # too, and deliberately NOT folded into `passed` or `errors`.

@@ -216,7 +216,13 @@ if [ -n "$QA_REPORT" ] && [ -f "$QA_REPORT" ]; then
   # Auto-detect changed files vs merge-base (works correctly in worktrees where origin/main may have diverged)
   MERGE_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
   DIFF_FILES=$(git diff --name-only "$MERGE_BASE"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' 2>/dev/null)
-  QA_ARGS="$QA_REPORT"
+  # --require-tracked: at push time the report must already be in git. A report
+  # that exists only on this disk means the branch arrives at CI without one,
+  # and CI treats an absent report as ::warning:: + exit 0 — so the gate would
+  # pass here and enforce nothing there. Added 2026-08-12 after exactly that
+  # happened: a branch named test/... produced a slug matching test_*.json in
+  # .gitignore, `git add` silently did nothing, and this gate printed PASSED.
+  QA_ARGS="$QA_REPORT --require-tracked"
   if [ -n "$DIFF_FILES" ]; then
     QA_ARGS="$QA_ARGS --diff-files $DIFF_FILES"
   fi
