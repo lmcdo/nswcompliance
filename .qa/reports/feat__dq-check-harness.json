@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Makes the data-quality ledger's statuses executable. The ledger's stated purpose is to track defects across sessions, and it cannot do that on its own: a hand-written status is a claim about the past. On 2026-08-12 it said DQ-54 was 'Open — report-only' hours after that defect was fixed and merged, its own row said 'three call sites' when there were nine, and its header was four days stale. This is the ledger every future fix will be sequenced from, so a harness that quietly mis-reports would misdirect all of that work rather than failing loudly.",
-  "commit_hash": "210e98b1",
+  "commit_hash": "943b87c1",
   "files": [
     "scripts/dq_check.py",
     "scripts/dq_probe_stale_workflow_docs.py",
