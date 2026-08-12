@@ -163,7 +163,8 @@ jobs:
         continue-on-error: true
         run: |
           for s in lint_hardcoded_confidence check_ts_dcp_readers \
-                   check_dcp_as_at_coverage check_satellite_manifests; do
+                   check_dcp_as_at_coverage check_satellite_manifests \
+                   check_zone_coverage verify_coverage_stats; do
             echo "--- $s ---"
             python "scripts/$s.py" || echo "::warning::$s exited non-zero (observation mode)"
           done

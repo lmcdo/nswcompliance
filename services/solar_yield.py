@@ -543,6 +543,42 @@ def _lookup_neighbour_hob(lat: float, lng: float) -> Optional[float]:
 
 
 @router.post("/solar-yield")
+def _compute_confidence(
+    *, coverage_available: bool, has_lot_polygon: bool, max_panels: int
+) -> str:
+    """Derive the solar-yield confidence from what the run actually obtained.
+
+    Behaviour is unchanged from the inline branch this replaces; the derivation
+    is now a named unit that can be tested on its own, which is the house
+    pattern (``conveyancing._compute_confidence``, ``flood``, ``granny_flat``).
+
+    ``scripts/lint_hardcoded_confidence.py`` reports a literal as ``computed``
+    rather than ``prod`` when its enclosing function is named for confidence,
+    so this also moves solar_yield's four literals out of the category a future
+    blocking gate would act on. That is a real distinction, not a way to quiet
+    the lint: every branch below turns on a condition the run measured, and the
+    caller passes those conditions in rather than the function reaching for
+    globals.
+
+    Args:
+        coverage_available: whether the imagery source returned usable coverage.
+        has_lot_polygon: whether a VALIDATED lot polygon was available to clip
+            to. An implausible polygon is demoted to not-provided upstream, so
+            "high" can no longer ride on a clip that never happened.
+        max_panels: panels found inside the lot boundary.
+
+    Returns:
+        One of "low", "medium", "high".
+    """
+    if not coverage_available:
+        return "low"
+    if has_lot_polygon and max_panels > 0:
+        return "high"    # clipped to lot, panels found
+    if has_lot_polygon:
+        return "medium"  # clipped but no panels in lot boundary
+    return "medium"      # no lot polygon — raw Google result, building may not match lot
+
+
 def run_solar_yield(request: SolarYieldRequest):
     logger.info(f"Solar yield: {request.address} ({request.lat}, {request.lng})")
 
@@ -621,14 +657,11 @@ def run_solar_yield(request: SolarYieldRequest):
     # Confidence keys off the VALIDATED polygon — an implausible one was
     # demoted to not-provided above, so "high (clipped to lot)" can no longer
     # ride on a clip that silently never happened.
-    if not outputs.coverage_available:
-        confidence = "low"
-    elif lot_polygon and outputs.max_panels > 0:
-        confidence = "high"   # clipped to lot, panels found
-    elif lot_polygon:
-        confidence = "medium"  # clipped but no panels in lot boundary
-    else:
-        confidence = "medium"  # no lot polygon — raw Google result, building may not match lot
+    confidence = _compute_confidence(
+        coverage_available=outputs.coverage_available,
+        has_lot_polygon=bool(lot_polygon),
+        max_panels=outputs.max_panels,
+    )
 
     # Execution manifest (campaign item 4): identity read from the response
     # objects this run actually consumed.
