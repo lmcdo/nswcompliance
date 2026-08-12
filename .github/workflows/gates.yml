@@ -165,6 +165,26 @@ jobs:
       # Running them here is what makes the observation real. Promote to
       # blocking (paid channel first) once the output has been read across a
       # few weeks of runs; until then a finding must never fail the build.
+      # BLOCKING, unlike the observation step below. The absolute targets
+      # (dateless_claims == 0, every report manifested) are not enforced - those
+      # stay observation. What IS enforced is direction: a count may fall and
+      # never rise. A rise is unambiguous, it means work just landed that made
+      # coverage worse, and it needs no false-positive record to justify.
+      # Same precedent as the zone-code ratchet above, which blocks on 270.
+      #
+      # This also replaces a plan file as the progress record. The campaign's
+      # remaining work lived in prose that nothing executed, so every session
+      # re-derived where it had got to. The baselines ARE the work list:
+      # .claude/as_at_coverage_baseline.json is 292 dateless claims across 10
+      # named councils, .claude/manifest_coverage_baseline.json is 892 reports
+      # across 5 products. Lower them with --baseline --update when work lands.
+      - name: Coverage ratchets (counts may fall, never rise)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python scripts/check_dcp_as_at_coverage.py --baseline
+          python scripts/check_satellite_manifests.py --baseline
       - name: Output grounding (OBSERVATION ONLY — never fails the build)
         if: always()
         continue-on-error: true

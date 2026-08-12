@@ -65,11 +65,18 @@ def main() -> int:  # pragma: no cover - CLI entry point
 
     by_basis: dict[str, list[str]] = {}
     claims_by_basis: dict[str, int] = {}
+    # Per-LGA dateless CLAIM counts, not just which LGAs are dateless. The
+    # ratchet needs the claim count: 292 dateless claims sit in 10 councils of
+    # very different sizes, and a per-council flag would score a 4-claim council
+    # the same as a 90-claim one.
+    dateless_by_lga: dict[str, int] = {}
     for slug, n in served.items():
         as_at = _plan_as_at(cur, slug)
         basis = (as_at or {}).get("basis") or "NONE"
         by_basis.setdefault(basis, []).append(slug)
         claims_by_basis[basis] = claims_by_basis.get(basis, 0) + n
+        if basis == "NONE":
+            dateless_by_lga[slug] = n
 
     # Portal-vs-stated disagreements: both evidence classes present, different
     # dates. A finding to record, never silently resolved.
@@ -97,14 +104,80 @@ def main() -> int:  # pragma: no cover - CLI entry point
         "claims_by_basis": claims_by_basis,
         "lgas_by_basis": {k: sorted(v) for k, v in by_basis.items()},
         "dateless_claims": dateless_claims,
+        "dateless_by_lga": dict(sorted(dateless_by_lga.items())),
         "dateless_lgas": sorted(by_basis.get("NONE") or []),
         "portal_vs_stated_disagreements": disagreements,
         "target": "dateless_claims == 0 (campaign item 3); NOT enforced — "
                   "observation mode until false-positive behaviour is known",
     }
     print(json.dumps(report, indent=2))
+
+    if "--baseline" in sys.argv:
+        # Per LGA, not one total: a total can hide one council improving while
+        # another regresses, and 19 councils are already fully covered.
+        per_lga = dict((report.get("dateless_by_lga") or {}).items())
+        if not per_lga:
+            per_lga = {lga: 1 for lga in (report.get("lgas_by_basis") or {}).get("NONE") or []}
+        return _ratchet(".claude/as_at_coverage_baseline.json",
+                        "DCP as-at coverage", per_lga, "--update" in sys.argv)
     return 0
 
 
+
+# --- shrink-only ratchet -----------------------------------------------------
+# Same mechanism as scripts/lint_hardcoded_zone_codes.py --baseline, already in
+# CI. Progress on this campaign lived in a plan file that nothing executed, so
+# each session re-derived where it had got to. A recorded baseline makes the
+# remaining work MEASURED rather than remembered: the count may fall, never
+# rise, and a fall prints the command to lower it.
+def _ratchet(path: str, label: str, current: dict, update: bool) -> int:
+    import json
+    import os
+
+    if update:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"_note": ("Shrink-only. Each value may fall, never rise. "
+                                 "Lower it with --baseline --update when work lands."),
+                       "per_key": dict(sorted(current.items()))}, f, indent=2)
+            f.write("\n")
+        print(f"{label} baseline updated: {sum(current.values())} across "
+              f"{len(current)} key(s).")
+        return 0
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            baseline = json.load(f)["per_key"]
+    except (OSError, ValueError, KeyError):
+        print(f"{label} baseline: cannot read {path} - refusing to pass.")
+        return 1
+
+    worse, better, new = [], [], []
+    for k, n in sorted(current.items()):
+        was = baseline.get(k)
+        if was is None:
+            new.append((k, n))
+        elif n > was:
+            worse.append((k, was, n))
+        elif n < was:
+            better.append((k, was, n))
+
+    if better:
+        print(f"{label}: IMPROVED - lower the baseline and commit")
+        for k, was, now in better:
+            print(f"  {k}: {was} -> {now}")
+
+    if worse or new:
+        print(f"{label}: FAILED - a count rose, which means new work regressed it.")
+        for k, was, now in worse:
+            print(f"  {k}: {was} -> {now}")
+        for k, n in new:
+            print(f"  {k}: NEW, {n} (not in the baseline)")
+        return 1
+
+    print(f"{label} baseline: OK - {sum(current.values())}, none increased.")
+    return 0
+
 if __name__ == "__main__":
     sys.exit(main())
+

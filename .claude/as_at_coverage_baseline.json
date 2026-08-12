@@ -1,0 +1,15 @@
+{
+  "_note": "Shrink-only. Each value may fall, never rise. Lower it with --baseline --update when work lands.",
+  "per_key": {
+    "bayside": 36,
+    "camden": 16,
+    "canada_bay": 32,
+    "cumberland": 19,
+    "liverpool": 25,
+    "nsw_statewide": 31,
+    "ryde": 21,
+    "sutherland_shire": 27,
+    "waverley": 55,
+    "wingecarribee": 30
+  }
+}
