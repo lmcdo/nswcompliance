@@ -1,0 +1,111 @@
+{
+  "tier": "standard",
+  "justification": "Closes the class of defect that #925 only patched an instance of. The QA gate validated a JSON file on disk and never asked git whether that file would ever leave the machine, so a gitignored report produced a PASSED gate locally and an absent report in CI, where the workflow warns and exits 0. Green in both places, enforcing nothing. This edits the gate every other PR is judged by, so a wrong move here silently weakens every future check rather than failing loudly.",
+  "commit_hash": "9c7c1425",
+  "files": [
+    "scripts/qa_gate.py",
+    ".githooks/pre-push",
+    "tests/test_qa_gate_reachability.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_qa_gate_reachability.py -q",
+    "fails_when": "The gate stops refusing a report git will not carry. Measured in both directions rather than argued: with check_report_reachable stubbed to return [], 4 of the 8 tests fail — the two gitignored cases, the untracked-at-push-time case, and the cannot-determine case — and the other 4 pass, because those four assert that legitimate states are NOT refused. Restored: 8/8. The asymmetry is the point; a check that only ever asserts refusal would also pass if it refused everything.",
+    "external_authority": "git decides, not this code. The ignored verdict comes from `git check-ignore` (0 ignored, 1 not, 128 cannot say) and the tracked verdict from `git ls-files --error-unmatch`, both run against a real throwaway repository built per test. Confirmed against the live defect too: temporarily appending `fix__qa-gate*.json` to this repo's .gitignore made the gate fail and name `.gitignore:712` as the culprit."
+  },
+  "pre_impl": {
+    "existing_data": "The rule already existed in prose. .claude/rules/testing-and-qa.md says an ignored or untracked report is a gate that silently stops enforcing, and scripts/qa_report_path.py carries a long docstring about #398 hiding for ten weeks behind .gitignore line 4. Neither prevented the same defect recurring on 2026-08-12, which is the whole argument for making it executable — the incident-to-rule-to-machine progression this repo has recorded before.",
+    "assumption_mismatch": "I assumed the fix was one check: require the report to be tracked. Reading the callers killed that. The gate is run by hand while authoring, BEFORE `git add`, so an unconditional tracked requirement would fail on every legitimate first run and get worked around within a day — which is how guards die. The two conditions are not equally strict for a reason: IGNORED is never legitimate and fails unconditionally, while NOT-TRACKED is legitimate until the first add and is therefore gated behind --require-tracked, passed only by pre-push where the report must already be committed. Third and worst: I assumed the GIT_* hazard was a TEST concern and scrubbed it only in the test helper. It is a production concern — the gate's main caller is a git hook, so the gate's own git calls inherit GIT_DIR too. The suite passed standalone and failed inside pre-push, which is the only reason I found it.",
+    "new_vs_existing": "One new function plus one helper in the gate, one new flag, one new test file, and one changed line in pre-push. No new dependency and no new path resolution — the report path still comes from qa_report_path, the single definition all five consumers share."
+  },
+  "functions": [
+    {
+      "name": "check_report_reachable",
+      "file_line": "scripts/qa_gate.py:1669",
+      "input": "the resolved report path, the project dir, and whether the caller requires the report to be tracked already",
+      "output": "a list of error strings, empty when git will carry the report; composes with the existing errors so a report that is both wrong and unreachable reports both faults rather than hiding one behind the other",
+      "if_none": "an empty list means reachable, which is the intended quiet path — the dangerous variant is returning empty because git could not be consulted at all, so exit code 128 is treated as a failure under --require-tracked instead of as silence"
+    },
+    {
+      "name": "_git",
+      "file_line": "scripts/qa_gate.py:1637",
+      "input": "git arguments and a working directory",
+      "output": "(returncode, stdout); never raises, because a gate that crashes on a missing git binary is a gate that gets bypassed",
+      "if_none": "returns 128 for a missing or non-executable git — reported as cannot-determine rather than as not-ignored, which would be the silent-pass failure this change exists to remove"
+    }
+  ],
+  "values": [
+    {
+      "value": "mutation: check_report_reachable stubbed to return [] gives 4 failed / 4 passed; restored gives 8/8",
+      "read_at": "python -m pytest tests/test_qa_gate_reachability.py -q, run in both directions on this branch, 2026-08-12",
+      "if_missing": "without the failing direction the tests are consistent with a check that does nothing"
+    },
+    {
+      "value": "against the live repo, appending `fix__qa-gate*.json` to .gitignore made the gate fail and print `matched by: .gitignore:712`",
+      "read_at": "python scripts/qa_gate.py on this worktree with a temporary .gitignore line, then git checkout -- .gitignore, 2026-08-12",
+      "if_missing": "the unit tests use synthetic repos; this is the only evidence the check fires against this repository's real ignore file, which is where the defect actually occurred"
+    },
+    {
+      "value": "this branch's own report was untracked and the new pre-push argument refused it by name",
+      "read_at": "python scripts/qa_gate.py .qa/reports/fix__qa-gate-tracked-check.json --require-tracked, before staging, 2026-08-12",
+      "if_missing": "a guard that has never refused anything real is untested in the only way that counts"
+    },
+    {
+      "value": "without the GIT_* scrub in _git, 3 of 9 tests fail under a hook environment; with it, 9/9 both standalone and with GIT_DIR set",
+      "read_at": "GIT_DIR=$(git rev-parse --absolute-git-dir) python -m pytest tests/test_qa_gate_reachability.py -q, run in both directions, 2026-08-12",
+      "if_missing": "without this the scrub looks like defensive noise rather than the fix for an observed failure"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The tracked requirement is applied unconditionally, so the gate fails every time it is run while authoring a report, before the first git add.",
+      "what_happens": "The gate becomes unusable during normal work. People stop running it, or pass whatever flag silences it, and the check that was meant to strengthen enforcement ends up removing it.",
+      "mitigated": true,
+      "how": "The tracked check is behind --require-tracked, passed only by pre-push. test_untracked_is_allowed_before_the_first_git_add pins that open on purpose, and it is one of the four tests that keep passing under the mutation — so it is asserting a real behaviour, not decoration. The ignored check has no such exemption because an ignored report is never a legitimate intermediate state.",
+      "repro": "python scripts/qa_gate.py   # on a branch whose report exists but is not yet added: must not complain"
+    },
+    {
+      "scenario": "A staged-but-uncommitted report is treated as untracked, breaking the ordinary write, stage, commit sequence.",
+      "what_happens": "pre-push refuses a report that is in fact about to be committed, or the author force-pushes around it.",
+      "mitigated": true,
+      "how": "git ls-files --error-unmatch consults the INDEX, so a newly staged file already satisfies it. test_staged_counts_as_tracked covers exactly this, and test_committed_report_passes covers the settled case.",
+      "repro": "python -m pytest tests/test_qa_gate_reachability.py -k staged -q"
+    },
+    {
+      "scenario": "The gate's own git calls inherit GIT_DIR and GIT_INDEX_FILE from the hook that invoked it, so they answer about the wrong repository.",
+      "what_happens": "Git hooks export both, and they OVERRIDE cwd. The gate's main caller IS a hook, so at push time `git ls-files` would consult whatever index git was invoked from rather than the repo being checked — a reachability verdict about the wrong tree, reported with full confidence.",
+      "mitigated": true,
+      "how": "Found by being bitten, not by foresight: the suite passed standalone and THREE tests failed inside pre-push, because pytest there inherited the hook's GIT_DIR. _git now scrubs every GIT_* variable so cwd is authoritative, which is also the correct production behaviour. Pinned by test_gate_ignores_inherited_git_dir, which sets GIT_DIR to a different real repo and asserts a staged report is still seen as staged; it fails standalone if the scrub is removed, so a future regression does not need a hook to surface. Verified: 9/9 clean, 9/9 with GIT_DIR set, and removing the scrub gives 3 failures under a hook env.",
+      "repro": "GIT_DIR=$(git rev-parse --absolute-git-dir) python -m pytest tests/test_qa_gate_reachability.py -q"
+    },
+    {
+      "scenario": "The tests shell out to git and silently operate on the REAL repository instead of their temporary one.",
+      "what_happens": "The tests would pass while testing nothing, and could mutate this repo's index. This is not hypothetical here: a previous test in this repo ran git init in a tmpdir, hit the real repository because hooks export GIT_DIR, and still passed.",
+      "mitigated": true,
+      "how": "Every git invocation in the test file runs with a scrubbed environment that drops every GIT_* variable, and the repo fixture asserts git rev-parse --show-toplevel resolves to the tmpdir before a single file is written. If GIT_DIR ever leaks in, the fixture fails immediately with the offending path rather than corrupting anything.",
+      "repro": "grep -n '_clean_env\\|show-toplevel' tests/test_qa_gate_reachability.py"
+    },
+    {
+      "scenario": "git is missing, or the gate is run outside a repository, so check-ignore cannot answer.",
+      "what_happens": "If cannot-determine were treated as not-ignored, the gate would report PASSED on exactly the systems where it can verify least — the silent-pass shape this change exists to remove.",
+      "mitigated": true,
+      "how": "Exit code 128 is distinguished from 1. Under --require-tracked it is an error stating that an unverifiable report is not a verified one; without the flag it stays quiet, because failing a local authoring run on a machine without git would be gratuitous. test_unknowable_fails_closed_only_where_it_matters asserts both halves.",
+      "repro": "python -m pytest tests/test_qa_gate_reachability.py -k unknowable -q"
+    },
+    {
+      "scenario": "CI still treats a genuinely absent report as ::warning:: and exit 0, so a branch with no report at all merges with the gate unenforced.",
+      "what_happens": "The hole this PR closes is the ignored/untracked case; a branch that never wrote a report still passes CI with a warning nobody reads.",
+      "mitigated": false,
+      "how": "Not mitigated and deliberately out of scope. Turning that warning into a hard failure would block branches cut before the per-branch convention and is a judgement call about enforcement policy, not a defect fix. What this PR does change is that the untracked route into that state is now blocked at pre-push, so reaching it requires never having written a report rather than having written one git silently discarded. Recorded so the next person can decide it deliberately.",
+      "repro": "sed -n '195,206p' .github/workflows/gates.yml"
+    }
+  ],
+  "mutation_analysis": "Run, not described. Stubbing check_report_reachable to return [] takes the suite to 4 failed / 4 passed. The four that fail are the four that assert refusal: both gitignored cases, untracked-at-push-time, and cannot-determine. The four that keep passing assert that legitimate states are NOT refused — untracked before the first add, staged, committed, and the negation rescue — so they are the counterweight that stops a maximally strict implementation from scoring well. A check that refused everything would fail those four just as loudly. Beyond the unit tests there are two live proofs: appending a matching pattern to this repo's real .gitignore made the gate fail and name .gitignore:712, and this branch's own untracked report was refused by name before it was staged.",
+  "residual_risk": "CI's absent-report warning is untouched, so a branch that never writes a report still passes with a warning; that is a policy decision left for a human. The check only asks whether git will carry the file, not whether the content is the branch's own work — commit_hash binding already covers that separately. `git check-ignore` is consulted per invocation rather than batched, which is irrelevant for one path but would matter if this were ever applied to many files. And this PR modifies the gate that judges it: the mitigation is that the tests assert both refusal and non-refusal, and were shown to fail before they passed.",
+  "post_merge": {
+    "db_reset": "No. No schema, data or query touched; the change shells out to git only.",
+    "secrets": "None read or written.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "No separate step needed — this PR verifies itself. Its own push runs the new pre-push argument against its own report, so a green push IS the end-to-end proof. Worth noting for the next person: the first run of the guard refused this very branch until the report was staged, which is exactly what it is for."
+  }
+}
