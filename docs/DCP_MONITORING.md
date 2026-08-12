@@ -23,8 +23,8 @@ Weekly automated check: did any council DCP chapter PDF change since we last ext
 | `scripts/run_migration_008.py` | Applies migration 008 via psycopg2 |
 | `scripts/requirements-monitor.txt` | pip deps for CI monitor: boto3, psycopg2-binary, requests, python-dotenv |
 | `scripts/requirements-extract.txt` | pip deps for CI extraction: pdfplumber, psycopg2-binary, boto3, python-dotenv |
-| `.github/workflows/dcp-monitor.yml` | GitHub Actions schedule + manual trigger for monitor |
-| `.github/workflows/dcp-extract.yml` | GitHub Actions auto-trigger (after monitor) + manual trigger for extraction |
+| Railway cron `monitor-dcp` | Weekly Mon 02:00 UTC, all councils sequential. **Not a GitHub Actions workflow** — the old Actions monitor workflow was deleted in #506; see `docs/RAILWAY_MONITORS.md`. |
+| `scripts/dcp_extract_changed.py` | Run **locally, on demand**. There is no scheduled extraction: the old Actions extraction workflow was deleted in #506 and nothing replaced its trigger. |
 
 ## R2 Bucket Structure
 
@@ -95,11 +95,15 @@ If >40% of chapters show changed in a single run, the monitor flags for human re
 
 ```
 Monday 02:00 UTC
-  → dcp-monitor.yml (weekly schedule)
+  → Railway cron `monitor-dcp` (weekly)
     → r2_monitor.py
       → detects change → uploads v1.N to R2 → sets needs_extraction=TRUE → exits 2
-  → dcp-extract.yml (workflow_run trigger fires on monitor completion)
-    → dcp_extract_changed.py
+
+  ⚠ THE CHAIN STOPS HERE. Extraction is NOT triggered automatically.
+    The old Actions extraction workflow fired on workflow_run when the monitor finished;
+    it was deleted in #506 and nothing replaced it. A detected change sets
+    needs_extraction=TRUE and then waits for someone to run:
+  → dcp_extract_changed.py   (manual, local)
       → queries needs_extraction=TRUE chapters
       → for each chapter:
           downloads PDF from R2
@@ -161,6 +165,10 @@ Optional inputs:
 - `council` — filter to single council (blank = all flagged chapters)
 - `dry_run` — extract and report but no DB writes
 
-## Note: workflow_run Requires Default Branch
+## Historical note: workflow_run required the default branch
 
-`workflow_run` only fires when the calling workflow YAML (`dcp-extract.yml`) exists on the default branch (`main`). A new extraction workflow YAML on a feature branch will not auto-trigger.
+⚠ **This no longer applies.** The Actions extraction workflow was deleted in #506; there is no
+`workflow_run` trigger and no automatic extraction. Kept because the constraint
+matters if anyone reinstates a workflow: `workflow_run` only fires when the
+calling YAML exists on the default branch, so a new extraction workflow on a
+feature branch would not auto-trigger.

@@ -28,14 +28,15 @@ The product's precision is its value proposition. That makes data accuracy a lia
 
 ```
 Monday 02:00 UTC
-  └─ dcp-monitor.yml
+  └─ Railway cron `monitor-dcp`   (was a GitHub Actions workflow; deleted #506)
        └─ r2_monitor.py
             ├─ HEAD request + SHA-256 hash check per chapter
             ├─ Content-Length + ETag must BOTH match to skip download
             └─ On change: upload new PDF to R2, set needs_extraction=TRUE
 
-  └─ dcp-extract.yml (auto-triggers after monitor, SUCCESS only)
-       └─ dcp_extract_changed.py --review
+  ⚠ NOT AUTOMATIC. The auto-trigger was deleted in #506 and nothing replaced
+     it; a detected change waits for someone to run this by hand:
+  └─ dcp_extract_changed.py --review   (manual, local)
             ├─ Extraction runs IN MEMORY — no DB writes
             ├─ Provision count gate: aborts if new count < 75% of previous
             ├─ Minimum sections gate: aborts if < 5 sections extracted
@@ -147,14 +148,20 @@ This is the correct tradeoff for a tool that professionals use for DA submission
 
 ---
 
-## GitHub Actions Workflows
+## How this actually runs now
 
-| Workflow | Trigger | Purpose |
+⚠ **The GitHub Actions workflows named here were DELETED in #506.** Only
+`gates` and `main-red-alarm` exist. This table described them as live
+infrastructure for months; corrected 2026-08-12 (DQ-55).
+
+| Step | Where it runs now | Cadence |
 |---|---|---|
-| `dcp-monitor.yml` | Monday 02:00 UTC + manual | Detect PDF changes, upload to R2 |
-| `dcp-extract.yml` | After monitor (success only) | Extract to review, generate artifact |
-| `dcp-commit.yml` | **Manual only** | Commit reviewed provisions to production |
-| `dcp-watchdog.yml` | Daily 10:00 UTC | Alert on stuck/failing chapters |
+| Detect PDF changes, upload to R2 | Railway cron `monitor-dcp` | Weekly Mon 02:00 UTC |
+| Alert on stuck/failing chapters | Railway cron `monitor-watchdog` | Weekly Wed 10:00 UTC |
+| Extract to review | `scripts/dcp_extract_changed.py` | **Manual, local — nothing schedules it** |
+| Commit reviewed provisions | `scripts/dcp_commit_approved.py` | **Manual, local** |
+
+See `docs/RAILWAY_MONITORS.md` for the full migration record.
 
 ---
 
