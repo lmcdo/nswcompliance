@@ -25,6 +25,7 @@
   "the gap stays visible. An invented check that cannot fail is what produced",
   "DQ-30's '0% drift' verification — worse than no check."
  ],
+ "_max_no_check": 44,
  "checks": {
   "DQ-54": {
    "declared": "fixed",

@@ -160,6 +160,27 @@ def check_falsifiable(report: dict, reqs: dict) -> list[str]:
         fails_when, "Section 1 falsifiable_check.fails_when", reqs["min_words_per_field"]
     ))
 
+    # Practice 2: write the check first and WATCH IT FAIL. Saying a check would
+    # go red is a prediction; pasting what it printed when it did is evidence.
+    # DQ-30 was marked Fixed on a "0% drift" verification that could not fail in
+    # any circumstance, and nobody had ever seen it red, so nobody noticed.
+    # This cannot prove the order the work was done in - only that somebody ran
+    # the check against the broken state and read the output.
+    observed = str(fc.get("observed_red", "")).strip()
+    errors.extend(validate_non_empty(observed, "Section 1 falsifiable_check.observed_red"))
+    if observed:
+        errors.extend(validate_min_words(
+            observed, "Section 1 falsifiable_check.observed_red",
+            reqs["min_words_per_field"]))
+        if observed.lower() in {"yes", "n/a", "na", "confirmed", "it failed",
+                                "it fails", "verified", "done", "passed"}:
+            errors.append(
+                "Section 1 falsifiable_check.observed_red: paste WHAT THE CHECK "
+                "PRINTED when the defect was present (a count, an exit code, the "
+                "failing line), not a claim that it failed. The point is that "
+                "somebody actually watched it go red."
+            )
+
     if _SELF_COMPARISON_RE.search(command) or _SELF_COMPARISON_RE.search(fails_when):
         errors.append(
             "Section 1 falsifiable_check: reads as a SELF-COMPARISON (re-running the "
