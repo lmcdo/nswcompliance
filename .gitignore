@@ -576,6 +576,8 @@ scripts/*
 !scripts/insert_gap_fill_mid_volume.py
 !scripts/qa_gate.py
 !scripts/dq_check.py
+!scripts/dq_db.py
+!scripts/dq_probe_live.py
 !scripts/dq_probe_stale_workflow_docs.py
 !scripts/dq_probe_dead_sar_constants.py
 !scripts/dq_probe_pvlib_claim.py
