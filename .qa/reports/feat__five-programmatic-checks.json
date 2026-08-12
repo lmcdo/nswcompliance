@@ -1,0 +1,134 @@
+{
+  "tier": "standard",
+  "commit_hash": "ef20ebb8",
+  "justification": "Adds the five checks that cover the gap all three of today's findings fell through: every existing check reads code or data AT REST, and nothing looked at what the running system tells a user. Two of the five are gates that can block merges, so a wrong threshold here stops all work rather than failing quietly -- both are therefore shrink-only baselines rather than hard zeros.",
+  "files": [
+    "scripts/lint_hardcoded_zone_codes.py",
+    "scripts/check_dev_server_boots.py",
+    "scripts/check_served_output.py",
+    "scripts/dq_probe_live.py",
+    ".claude/zone_code_baseline.json",
+    ".claude/dq_checks.json",
+    ".github/workflows/gates.yml",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_zone_codes.py --baseline && python scripts/check_dev_server_boots.py --timeout 150",
+    "fails_when": "Hardcoded NSW zone data increases in any file, or the dev server fails to serve. Both were proven against reality rather than against fixtures. ZONE RATCHET: appending a three-zone literal to lib/setbacks/validator.ts produced a named failure, and reverting restored OK at 270 -- and the ratchet then blocked this very commit because the DQ-30 probe names the retired B-zones, which is how I learned the suppression must sit on the offending line rather than above it. BOOT CHECK: it exits 1 on the live #929 breakage, printing the actual route-collision error. SERVED OUTPUT: it fails on current main with two real contract breaks, which is the point -- see residual_risk.",
+    "external_authority": "Next.js decides whether the dev server starts, and its own route sorter is what rejects the #929 collision. The production database decides the DQ-30 and DQ-39 counts. The running app decides what /api/development-types returns. None of these reads this repo's own claims about itself, which is the whole reason they can contradict the ledger."
+  },
+  "pre_impl": {
+    "existing_data": "Sweeps 2026-08-12 on origin/main 7fd01095. lint_hardcoded_zone_codes.py ALREADY had an --all mode and ALREADY covered .ts/.tsx -- I nearly rebuilt it before checking, and reused it instead. gates.yml runs jest, tsc, linters and the schema contract; grep for 'next dev' and 'localhost:300' across .github/.githooks/scripts returns nothing, so neither a boot check nor an HTTP contract check existed. check_test_baselines.py supplied the shrink-only shape.",
+    "assumption_mismatch": "Three. (1) I assumed the tree-wide zone linter needed building; it existed and was simply never run, which is a different and worse problem -- a rule that applies only to future code cleans nothing up. Running it found 270 violations across 99 files including one I had missed by hand. (2) I assumed my boot check worked because it printed OK; it was passing on the BROKEN app, because Next prints the Local URL before it sorts routes. (3) I assumed a noqa comment above a line would suppress it; the linter matches per-line, and the baseline going 270 -> 271 is what told me.",
+    "new_vs_existing": "Two new scripts (boot check, served-output contracts), one extended existing linter (--baseline mode reusing its own check_line), two new probes in the existing dq_probe_live.py, and one CI policy change. No new tracker and no duplicated helper."
+  },
+  "functions": [
+    {
+      "name": "run_baseline",
+      "file_line": "scripts/lint_hardcoded_zone_codes.py:163",
+      "input": "the tree-wide sweep and .claude/zone_code_baseline.json",
+      "output": "exit 1 naming any file whose count rose or that is newly violating; exit 0 otherwise, and it ANNOUNCES improvements so the baseline gets lowered rather than drifting out of date",
+      "if_none": "a missing or unreadable baseline file returns 1 rather than 0 -- an unreadable baseline means the check cannot answer, and 'cannot answer' must never present as 'clean'"
+    },
+    {
+      "name": "_probe",
+      "file_line": "scripts/check_dev_server_boots.py:60",
+      "input": "the port the dev server was told to use",
+      "output": "the HTTP status the server actually returns, retrying for up to ~20s",
+      "if_none": "None means the port never answered, and the caller treats that as FAILURE even when the log said Ready -- because the first version of this check trusted a log line and passed on an app that was about to die"
+    }
+  ],
+  "values": [
+    {
+      "value": "270 hardcoded zone-code violations across 99 files, tree-wide",
+      "read_at": "python scripts/lint_hardcoded_zone_codes.py --all on this branch, 2026-08-12",
+      "if_missing": "without the number there is no way to justify a baseline over a hard zero; 270 is why a hard zero would have blocked every merge"
+    },
+    {
+      "value": "the boot check exits 1 on the live #929 breakage, printing 'You cannot define a route with the same specificity as a optional catch-all route'",
+      "read_at": "python scripts/check_dev_server_boots.py --timeout 100 on this branch, 2026-08-12",
+      "if_missing": "a boot check that has never failed is indistinguishable from one that cannot -- and this one PASSED on the same broken app before it was fixed"
+    },
+    {
+      "value": "served-output check fails on current main with 2 contract breaks: 5 permitted-use rows returned for a bare zone with no council, and success:true with an empty array and no reason",
+      "read_at": "python scripts/check_served_output.py --base-url http://127.0.0.1:3100 against a production build, 2026-08-12",
+      "if_missing": "these are issue #928 reproduced from the OUTSIDE, through HTTP, rather than by reading the source -- which is the capability this check adds"
+    },
+    {
+      "value": "DQ-30: 3 served rows keyed to a retired B-zone (86 including superseded). DQ-39: 41 flagged setback controls",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-30 / --id DQ-39, read-only, 2026-08-12",
+      "if_missing": "DQ-30 was recorded as 14 live on 2026-08-01; measuring shows the retag reduced it to 3, which changes how it should be prioritised"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-30 -- served provisions still keyed to a zone code NSW retired in 2022",
+      "file_line": "scripts/dq_probe_live.py:60",
+      "where_clause": "WHERE is_current AND v2_is_actionable AND v2_applicable_zones && ARRAY['B1'..'B8'] -- the served set, since unfiltered reads 86"
+    },
+    {
+      "purpose": "DQ-39 -- current setback controls a reviewer flagged as not derivable from their own quote",
+      "file_line": "scripts/dq_probe_live.py:73",
+      "where_clause": "WHERE is_current AND review_reason IS NOT NULL AND review_reason LIKE a DQ sweep tag"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The zone baseline is set to a hard zero, or set so loosely that real regressions slip under it.",
+      "what_happens": "A hard zero fails on 270 pre-existing violations on day one, blocks every merge, and the guard is deleted within a week -- the classic alarm-fatigue death. Too loose and a new hardcoded LEP table lands unnoticed, which is the defect being guarded.",
+      "mitigated": true,
+      "how": "Per-FILE counts, not a global total, so a fix in one file cannot mask a regression in another. Proven in both directions: appending a three-zone literal produced a named failure, reverting restored OK, and improvements are announced so the baseline is lowered rather than left stale.",
+      "repro": "python scripts/lint_hardcoded_zone_codes.py --baseline"
+    },
+    {
+      "scenario": "The boot check reports success on a server that never served anything.",
+      "what_happens": "The one gap that let #929 hide for 20 days gets a green tick over it, which is worse than having no check because it stops anyone looking.",
+      "mitigated": true,
+      "how": "This is not hypothetical -- it is what the first version DID. Next prints '- Local: http://...' before it sorts routes, so matching that line passed on the broken app. Now only 'Ready in' is accepted AND the port must answer a real HTTP request; a process that says Ready and cannot serve still fails.",
+      "repro": "python scripts/check_dev_server_boots.py --timeout 150"
+    },
+    {
+      "scenario": "Making an absent QA report a hard CI failure blocks legitimate work with no escape.",
+      "what_happens": "Branches cut before the per-branch convention, or genuinely trivial changes, cannot merge and the rule gets reverted.",
+      "mitigated": true,
+      "how": "The escape is the 'minor' tier, which exists for exactly this and requires only that someone state the change is trivial rather than leave the question unanswered. The failure message names the expected path and the command that prints it. A warning nobody is assigned to read is not a control -- that is what this replaces.",
+      "repro": "sed -n '/QA report validation/,/fi/p' .github/workflows/gates.yml"
+    },
+    {
+      "scenario": "The served-output check is wired in as a blocking gate while it still fails on main.",
+      "what_happens": "Every merge blocks on a pre-existing defect (#928) that this PR does not fix, so the check gets disabled and the capability is lost.",
+      "mitigated": true,
+      "how": "It is deliberately NOT wired into gates.yml. It ships as a runnable tool with its failures documented, and becomes a gate when #928 lands. Its assertions are written by SHAPE -- 'a bare zone with no council must not yield permitted uses' -- rather than against the current strings, so it keeps holding after the endpoint is rewritten.",
+      "repro": "python scripts/check_served_output.py --base-url http://127.0.0.1:3000"
+    },
+    {
+      "scenario": "The DQ-30 probe's retired-zone list is 'tidied' into an import from the live taxonomy.",
+      "what_happens": "The probe silently stops finding anything, because the live taxonomy no longer contains B1..B8 -- the check would pass by measuring nothing.",
+      "mitigated": true,
+      "how": "The list is suppressed with an inline noqa carrying that exact reason, so the next person who sees the lint hit reads why it must stay frozen. The zone ratchet itself blocked this commit over that line, which is how the reason came to be written down.",
+      "repro": "grep -n 'noqa: zone-codes' scripts/dq_probe_live.py"
+    },
+    {
+      "scenario": "DQ-39's probe counts review_reason tags, so a reviewer clearing a flag makes the number fall without the underlying value becoming derivable.",
+      "what_happens": "The count drops and the row looks improved while the stored number still has no evidence behind it -- progress measured by bookkeeping rather than by the product.",
+      "mitigated": true,
+      "how": "Declared 'partial', so the ratchet reports the number without enforcing a direction, and the probe's own text says these are rows 'a reviewer already flagged' rather than a computed derivability verdict. A real check would re-derive each value from its source_text; that is the DQ-39 fix itself, not a status probe, and is recorded as still open.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-39"
+    },
+    {
+      "scenario": "A new CI step assumes a runtime the job does not install, so it dies at exit 127 instead of running.",
+      "what_happens": "The step reports failure for a reason unrelated to what it checks. Read casually that looks like the CHECK is broken, and the usual response is to delete it -- losing the capability to an environment problem.",
+      "mitigated": true,
+      "how": "Happened on the first run of this PR: 'Dev server boots' was added to the Jest job, which sets up Node only, and died at exit 127 with python not found -- the same shape as DQ-54, a command assumed present on a runner that does not carry it. Fixed by adding actions/setup-python to that job. The lesson is in the comment beside it so the next person adding a step there sees it.",
+      "repro": "grep -n -A3 'setup-python' .github/workflows/gates.yml"
+    }
+  ],
+  "mutation_analysis": "Three mutations run, plus two involuntary ones that are better evidence. RUN: a three-zone literal appended to validator.ts made the ratchet fail by name and reverting restored 270; the boot check was executed against the live #929 breakage and exited 1; the served-output check was run against a real production build and broke two contracts. INVOLUNTARY: the zone ratchet blocked this very commit because the DQ-30 probe names retired zones, and the baseline moving 270 -> 271 is what proved my first noqa placement did nothing. The weak version of this work would have been writing five checks that all pass on current main -- three of these five FAIL on it, on purpose, because the defects are real and unfixed.",
+  "residual_risk": "The served-output check is not a gate yet: it fails on main because #928 is real and unfixed, and wiring it in now would block every merge on a defect this PR does not repair. It should become blocking when #928 lands, and until then it only helps someone who runs it. The zone baseline locks in 270 violations rather than fixing any of them -- it stops the number rising, nothing more. The boot check is wired in as continue-on-error, NOT blocking, because it correctly fails on the live #929 defect and making it required today would block every merge on something this PR does not repair. It therefore reports rather than enforces until #929 lands; the PR that fixes #929 should flip it to blocking, and its green run is the proof. It also reports UNKNOWN (exit 2) wherever node_modules is absent, which in CI depends on npm ci having run in the same job. DQ-32 still has no check at all, and it remains the highest-consequence open row.",
+  "post_merge": {
+    "db_reset": "No. The two new DB probes are read-only via dq_db, which sets the session read-only server-side.",
+    "secrets": "None written. The local served-output test used a copy of frontend-nextjs/.env.local, deleted afterwards; it is gitignored and was never staged.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes, two things. Confirm the two new gates.yml steps -- 'Hardcoded regulatory data (shrink-only ratchet)' and 'Dev server boots' -- actually appear and pass in this PR's run, since a step that silently never runs is the failure mode this whole session kept hitting. And note that 'Dev server boots' is EXPECTED TO FAIL until #929 is fixed: that is the check working, not the check being broken."
+  }
+}

@@ -248,6 +248,78 @@ def verify_python_function(filepath: str, line_num: int, func_name: str) -> tupl
     return False, f"Function '{func_name}' not found in {filepath}"
 
 
+def resolve_file_lines(report_path: str, project_dir: str) -> list[str]:
+    """Rewrite every functions[].file_line to where the function ACTUALLY is.
+
+    prior-art-checked: reuse not viable as a separate module because this IS the
+    reuse -- it lives inside qa_gate.py, the file the guard itself named, and
+    shares that module's FILE_LINE_PATTERN and AST approach rather than
+    duplicating either. ast_ground_functions() directly below REPORTS a stale
+    line; this RESOLVES one, the inverse operation, and belongs beside it.
+    Sweeps 2026-08-12: no script rewrites a QA report -- doc_claims.py reads
+    docs and never edits, dcp_extract_changed.py and repair_shadow_reports.py
+    operate on DCP and report data.
+
+    Line numbers are derived, not authored. Typing them by hand guarantees they
+    go stale the moment anything above the function moves -- which happened five
+    times in one session on 2026-08-12, each costing a full gate round trip to
+    correct a number a parser computes in milliseconds.
+
+    Only the LINE moves. The file and the function name are claims about intent
+    and stay the author's: if the named function is not in the named file this
+    reports it and changes nothing, rather than hunting for a same-named
+    function elsewhere and silently repointing the reference at it.
+    """
+    import ast as _ast
+
+    with open(report_path, encoding="utf-8") as f:
+        report = json.load(f)
+
+    functions = report.get("functions")
+    if not isinstance(functions, list):
+        return []
+
+    notes, changed = [], False
+    for fn in functions:
+        name, ref = fn.get("name", ""), fn.get("file_line", "")
+        m = FILE_LINE_PATTERN.search(ref or "")
+        if not name or not m:
+            continue
+        rel, claimed = m.group(1), int(m.group(2))
+        path = os.path.join(project_dir, rel)
+        if not rel.endswith(".py") or not os.path.exists(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as src:
+                tree = _ast.parse(src.read(), filename=path)
+        except (SyntaxError, UnicodeDecodeError, OSError) as exc:
+            notes.append(f"  {rel}: cannot parse ({exc})")
+            continue
+
+        actual = next(
+            (
+                node.lineno
+                for node in _ast.walk(tree)
+                if isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef))
+                and node.name == name
+            ),
+            None,
+        )
+        if actual is None:
+            notes.append(f"  {name!r} not defined in {rel} — left as authored")
+            continue
+        if actual != claimed:
+            fn["file_line"] = f"{rel}:{actual}"
+            notes.append(f"  {name}: {claimed} -> {actual}  ({rel})")
+            changed = True
+
+    if changed:
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+    return notes
+
+
 def ast_ground_functions(functions: list[dict], project_dir: str) -> list[str]:
     """Verify all claimed function references against actual code."""
     errors = []
@@ -1799,6 +1871,22 @@ def main():
     except json.JSONDecodeError as e:
         print(f"QA-GATE: FAILED — invalid JSON: {e}")
         sys.exit(1)
+
+    # Derive the line numbers before validating them. Opt-in, because silently
+    # rewriting a report during a CI run would mean the gate edits the thing it
+    # is judging; --fix-lines is for the author, at the point of writing.
+    if "--fix-lines" in sys.argv:
+        notes = resolve_file_lines(report_path, project_dir or ".")
+        if notes:
+            print("QA-GATE: resolved file_line references from the AST:")
+            for note in notes:
+                print(note)
+            print()
+            with open(report_path, "r", encoding="utf-8") as f:
+                report = json.load(f)
+        else:
+            print("QA-GATE: file_line references already correct.")
+            print()
 
     passed, errors, summary = validate_report(report, diff_files, project_dir)
 

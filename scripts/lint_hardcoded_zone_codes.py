@@ -128,7 +128,109 @@ def check_line(filepath: str, lineno: int, line: str) -> list[str]:
     ]
 
 
+def sweep_all() -> dict[str, int]:
+    """Violations per file across the whole tree. Powers the shrink-only ratchet.
+
+    --all already existed and already covered .ts/.tsx. It was never run
+    anywhere: .githooks/pre-commit calls this script diff-scoped only, so every
+    violation that ALREADY existed was invisible permanently. A rule that
+    applies only to future code cleans nothing up -- which is how a live
+    zone->permitted-use table (issue #928) and a hardcoded minimum-lot-size map
+    in lib/setbacks/validator.ts both survived in served code.
+    """
+    import glob
+    from collections import Counter
+
+    files = (
+        glob.glob("**/*.py", recursive=True)
+        + glob.glob("**/*.ts", recursive=True)
+        + glob.glob("**/*.tsx", recursive=True)
+    )
+    files = [f for f in files if "node_modules" not in f and ".next" not in f]
+    per: Counter = Counter()
+    for filepath in files:
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        n = sum(len(check_line(filepath, i, ln)) for i, ln in enumerate(lines, 1))
+        if n:
+            per[filepath.replace(os.sep, "/")] = n
+    return dict(per)
+
+
+def run_baseline(update: bool) -> int:
+    """Shrink-only: a file's count may fall, never rise.
+
+    A hard zero would fail on 270 pre-existing violations and be deleted within
+    a week, so the ratchet locks in today's number instead. Both directions are
+    reported: a rise fails, and a fall is announced so the baseline gets
+    lowered rather than silently drifting out of date.
+    """
+    import json
+
+    path = os.path.join(".claude", "zone_code_baseline.json")
+    current = sweep_all()
+
+    if update:
+        with open(path, encoding="utf-8") as f:
+            doc = json.load(f)
+        doc["total"] = sum(current.values())
+        doc["per_file"] = dict(sorted(current.items()))
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        print(f"Zone-code baseline updated: {doc['total']} across {len(current)} files.")
+        return 0
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            baseline = json.load(f)["per_file"]
+    except (OSError, ValueError, KeyError):
+        print(f"Zone-code baseline: cannot read {path} — refusing to pass.")
+        return 1
+
+    worse, better, new = [], [], []
+    for filepath, count in sorted(current.items()):
+        was = baseline.get(filepath)
+        if was is None:
+            new.append((filepath, count))
+        elif count > was:
+            worse.append((filepath, was, count))
+        elif count < was:
+            better.append((filepath, was, count))
+    gone = [f for f in baseline if f not in current]
+
+    if better or gone:
+        print("Zone-code baseline: IMPROVED — lower it and commit "
+              "(python scripts/lint_hardcoded_zone_codes.py --baseline --update)")
+        for f, was, now in better:
+            print(f"  {f}: {was} -> {now}")
+        for f in gone:
+            print(f"  {f}: {baseline[f]} -> 0")
+
+    if not worse and not new:
+        print(f"Zone-code baseline: OK — {sum(current.values())} violation(s), "
+              "none increased.")
+        return 0
+
+    print()
+    print("Zone-code baseline: FAILED — hardcoded NSW zone data increased.")
+    print("  .claude/rules/regulatory-data.md: LEPs are amended regularly, so a")
+    print("  hardcoded table is wrong within months. Read from the shared")
+    print("  taxonomy or the database instead.")
+    for f, was, now in worse:
+        print(f"  {f}: {was} -> {now}")
+    for f, now in new:
+        print(f"  {f}: NEW file with {now} violation(s)")
+    return 1
+
+
 def main() -> int:
+    if "--baseline" in sys.argv:
+        return run_baseline(update="--update" in sys.argv)
+
     if "--all" in sys.argv:
         import glob
         files = (
