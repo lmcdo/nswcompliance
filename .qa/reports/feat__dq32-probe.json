@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "PENDING",
+  "commit_hash": "163c57ea",
   "justification": "DQ-32 is the last open P1 that puts a WRONG NUMBER in front of a user — the capacity engine can return a different zone's setback or landscaping figure as a feasibility result. It was the only unresolved row with no check at all. This measures it and corrects the ledger, which said 'not started' when a partial fix has existed for weeks. It repairs no data: changing what the engine returns is a served-number change and awaits a ruling.",
   "files": [
     "scripts/dq_probe_live.py",
