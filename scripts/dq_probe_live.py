@@ -52,6 +52,46 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "Rows whose control_type or value could not be confirmed against the "
         "source. Not all are defects -- some are deliberate fail-closed flags.",
     ),
+    "DQ-32": (
+        "Served controls the capacity engine cannot disambiguate by zone",
+        # The engine picks a setback/landscaping number per (lga, dev_type,
+        # control_type). Where that key holds MORE THAN ONE distinct value the
+        # choice is not determined by the data, so a different zone's number can
+        # be returned -- a wrong feasibility figure shown to a real user, not a
+        # display bug.
+        #
+        # A partial fix exists (scripts/conveyancing_db.py:413) but only fires
+        # on applicability='zone_specific', which is why the count below stays
+        # high: it can act on ~24 of these rows.
+        "SELECT count(*) FROM dcp_setback_controls d "
+        "WHERE d.is_current AND NOT COALESCE(d.needs_review, false) "
+        "AND EXISTS (SELECT 1 FROM dcp_setback_controls e "
+        "            WHERE e.lga = d.lga AND e.dev_type = d.dev_type "
+        "              AND e.control_type = d.control_type "
+        "              AND e.is_current AND NOT COALESCE(e.needs_review, false) "
+        "              AND COALESCE(e.value_min, -1) <> COALESCE(d.value_min, -1))",
+        (),
+        "Each row sits in a group where the same council + development type + "
+        "control holds more than one value, so the engine's choice is arbitrary "
+        "rather than determined. Measured 562 across 171 groups on 2026-08-12, "
+        "against 560/168 recorded 2026-07-31 -- the exposure grew, it did not decay.",
+    ),
+    "DQ-32b": (
+        "Rows naming a zone that the zone filter can never act on",
+        # The filter at conveyancing_db.py:413 is gated on
+        # applicability='zone_specific'. A row whose CONDITION names a zone but
+        # whose applicability is anything else is invisible to it. This is the
+        # dominant gap and it is a DATA problem -- applicability not set -- as
+        # much as a code one, which is why it is measured separately.
+        "SELECT count(*) FROM dcp_setback_controls "
+        "WHERE is_current AND NOT COALESCE(needs_review, false) "
+        "AND condition ~* '\m(R[1-6]|E[1-4]|C[1-4]|MU1|RU[1-6]|B[1-8]|IN[1-4]|SP[1-3]|W[1-4])\M' "
+        "AND COALESCE(applicability, '') <> 'zone_specific'",
+        (),
+        "The condition text names a zone, so the row IS zone-dependent, but the "
+        "filter is gated on applicability and never examines it. Measured 76 on "
+        "2026-08-12 against 24 rows the filter can actually act on.",
+    ),
     "DQ-30": (
         "SERVED provisions still tagged with a zone code NSW retired in 2022",
         # The Employment Zones reform replaced B1..B8 with E1/E2/MU1. A served

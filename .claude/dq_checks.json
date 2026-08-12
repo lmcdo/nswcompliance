@@ -117,8 +117,15 @@
     },
     "DQ-32": {
       "declared": "open",
-      "check": null,
-      "why_no_check": "Not started, and the highest-consequence open row: the capacity engine ignores zone when picking setback/landscaping numbers, so 560 rows across 168 lga/dev-type groups can return the WRONG value. Needs investigation before a check can be written honestly."
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-32"
+      ],
+      "passes_when": "exit 0 - every (lga, dev_type, control_type) group holds a single value, so the engine's pick is determined",
+      "red_when": "562 served rows across 171 groups hold more than one value for the same key, so the capacity engine can return a different zone's number as a feasibility figure. Measured 2026-08-12; was 560/168 on 2026-07-31, so it GREW.",
+      "note": "A partial fix exists at scripts/conveyancing_db.py:413 but is gated on applicability='zone_specific' and can act on ~24 of the 562. See DQ-32b."
     },
     "DQ-31": {
       "declared": "partial",
@@ -360,6 +367,18 @@
       "declared": "not_a_bug",
       "check": null,
       "why_no_check": "Not a bug."
+    },
+    "DQ-32b": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-32b"
+      ],
+      "passes_when": "exit 0 - no row names a zone in its condition while carrying a non-zone_specific applicability",
+      "red_when": "76 rows name a zone in their condition text but the filter is gated on applicability and never examines them. This is the DOMINANT gap and is a data problem (applicability unset) as much as a code one.",
+      "note": "Split from DQ-32 because the two need different fixes: one is a query/selection change, this one is a data-tagging change."
     }
   }
 }

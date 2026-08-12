@@ -1,0 +1,88 @@
+{
+  "tier": "standard",
+  "commit_hash": "PENDING",
+  "justification": "DQ-32 is the last open P1 that puts a WRONG NUMBER in front of a user — the capacity engine can return a different zone's setback or landscaping figure as a feasibility result. It was the only unresolved row with no check at all. This measures it and corrects the ledger, which said 'not started' when a partial fix has existed for weeks. It repairs no data: changing what the engine returns is a served-number change and awaits a ruling.",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-32 && python scripts/dq_probe_live.py --id DQ-32b",
+    "fails_when": "Any (lga, dev_type, control_type) group still holds more than one distinct value_min among served rows, or any row names a zone in its condition while carrying a non-zone_specific applicability. Both currently FAIL, which is the honest state: 562 and 76. Not self-referential — the counts come from the production database, which knows nothing about this ledger. Falsifiable in the other direction too: had the tracker's 560/168 been fixed since 2026-07-31 these queries would return 0. They return 562/171, so the exposure GREW rather than decayed.",
+    "external_authority": "The production Supabase instance for the counts, and the code path for the mechanism: app/api/capacity/calculate/route.ts:121 -> fetchDcpControls -> /pipeline/dcp-controls (services/dcp_controls_api.py) -> fetch_dcp_setbacks (scripts/conveyancing_db.py:255), whose zone filter sits at line 413."
+  },
+  "pre_impl": {
+    "existing_data": "DQ-32 logged 2026-07-31 as 'Tracked, not started', 560 rows across 168 groups. .claude/rules/regulatory-data.md forbids hardcoded zone data, which is directly relevant because the filter that does exist carries a hardcoded recognised-zone list.",
+    "assumption_mismatch": "The tracker said 'not started'. That was wrong — a zone filter has existed at conveyancing_db.py:413 and the capacity engine reaches it. Had I trusted the ledger I would have built a fix for a problem that was partly solved, and in the wrong place. The filter is gated on applicability='zone_specific', which is 24 rows, so it addresses about 4% of the exposure. This is the second time today the ledger's own status was the thing that misled.",
+    "new_vs_existing": "Two probes added to the existing dq_probe_live.py, both wired into dq_check.py. No new script, no new tracker, and no change to the capacity engine."
+  },
+  "functions": "N/A - two declarative probe entries in an existing table; no new function is defined",
+  "values": [
+    {
+      "value": "562 served rows across 171 (lga, dev_type, control_type) groups hold more than one distinct value_min",
+      "read_at": "python scripts/dq_probe_live.py --id DQ-32 against production, read-only, 2026-08-12",
+      "if_missing": "without it the tracker's 560/168 from 2026-07-31 would still be quoted; the exposure grew by 2 rows and 3 groups, so it is not decaying on its own"
+    },
+    {
+      "value": "the existing zone filter can act on 24 rows; 76 rows name a zone but carry a non-zone_specific applicability and are invisible to it",
+      "read_at": "grouped counts of applicability over served rows, plus a condition-text regex, 2026-08-12",
+      "if_missing": "this is the difference between 'DQ-32 is unfixed' and 'DQ-32 is ~4% fixed and the remainder is a data-tagging problem' — which changes what the fix actually is"
+    },
+    {
+      "value": "0 rows name only a zone the filter's hardcoded list omits; 0 rows negate a zone they name",
+      "read_at": "regex probes for R6/E2-E4/RU*/IN*/SP*/W*/B3-B8 and for negation phrasing, 2026-08-12",
+      "if_missing": "both are real weaknesses in the code and both are LATENT. Reporting them as live would have inflated the defect and misdirected the fix"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-32 - served controls the capacity engine cannot disambiguate by zone",
+      "file_line": "scripts/dq_probe_live.py:60",
+      "where_clause": "d.is_current AND NOT COALESCE(d.needs_review,false), with an EXISTS correlated on the same (lga, dev_type, control_type) and a differing COALESCE(value_min,-1) — the served set, with needs_review excluded to match what the engine actually reads"
+    },
+    {
+      "purpose": "DQ-32b - rows the zone filter can never examine",
+      "file_line": "scripts/dq_probe_live.py:80",
+      "where_clause": "is_current AND NOT COALESCE(needs_review,false) AND condition names a zone AND COALESCE(applicability,'') <> 'zone_specific'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The DQ-32 count is read as 562 wrong numbers being served.",
+      "what_happens": "The defect is overstated by a large factor and a data repair gets sized against it, touching rows that are correct.",
+      "mitigated": true,
+      "how": "562 is rows in AMBIGUOUS GROUPS, not rows known to be wrong. In each group at least one value is right; the defect is that nothing determines which. The probe's own 'means' text says so and the ledger row repeats it. What is genuinely wrong is unknown until each group is adjudicated against its source — which is the fix, not this measurement.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-32"
+    },
+    {
+      "scenario": "The two latent weaknesses in the filter are reported as live defects.",
+      "what_happens": "Effort goes to widening a hardcoded zone list and handling negation, neither of which affects a single current row, while the 76-row applicability gap stays open.",
+      "mitigated": true,
+      "how": "Both were measured and both return 0. The ledger records them explicitly as latent and 'must not be overstated'. Only the 76-row gap is tracked as an open defect, as DQ-32b.",
+      "repro": "grep -n 'latent, not' .claude/DATA_QUALITY_TRACKER.md"
+    },
+    {
+      "scenario": "DQ-32 and DQ-32b are treated as one item and fixed with one change.",
+      "what_happens": "A query change lands, the count barely moves, and the work looks ineffective because the dominant gap was never a query problem.",
+      "mitigated": true,
+      "how": "Split deliberately, with the reason on the DQ-32b row: DQ-32 is a selection/query change, DQ-32b is a data-tagging change to applicability. Separate probes mean each moves independently and neither can mask the other.",
+      "repro": "python scripts/dq_check.py --report"
+    },
+    {
+      "scenario": "A future edit narrows the probe to zone_specific rows, so the count collapses and DQ-32 appears fixed.",
+      "what_happens": "562 would drop to about 24 with no data repaired at all — a green number produced by measuring less.",
+      "mitigated": false,
+      "how": "Not mitigated by the probe itself. The guard is that DQ-32 is declared 'open', so the ratchet requires it to KEEP failing; a sudden pass turns red and forces a human to confirm the drop is real before the status can change. That is weaker than a test and is stated rather than implied.",
+      "repro": "python scripts/dq_check.py   # DQ-32 is declared open and must FAIL"
+    }
+  ],
+  "mutation_analysis": "The probe was checked against the tracker's own prior measurement rather than only against itself: 2026-07-31 recorded 560 rows / 168 groups and this returns 562 / 171 on the same definition, so it reproduces an independently-taken figure and surfaces the drift. The applicability finding was reached by measuring rather than reading — the code says the filter is gated on zone_specific, and only counting revealed that gate covers 24 rows while 76 need it. The two weaknesses I found by READING were then measured and both returned 0; had I trusted the reading, this report would carry two invented live defects.",
+  "residual_risk": "Nothing is repaired. 562 rows remain ambiguous and 76 remain invisible to the filter; both probes fail by design until a ruling. The DQ-32 probe measures AMBIGUITY, not wrongness — it cannot say which value in a group is correct, and only source adjudication can. The applicability regex matches zone codes in free text and will over-match a condition that mentions a zone incidentally rather than restrictively. The engine path was traced by reading rather than by executing a request end to end, so a caller that bypasses fetch_dcp_setbacks would not be covered by this measurement.",
+  "post_merge": {
+    "db_reset": "No. Read-only throughout; dq_db sets the session read-only server-side.",
+    "secrets": "None read or written.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes: run python scripts/dq_check.py --report and confirm DQ-32 shows 562 and DQ-32b shows 76. Those are the numbers any repair decision should be sized against, and the numbers to re-check after one."
+  }
+}
