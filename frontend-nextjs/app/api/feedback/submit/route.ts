@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid feedback data', details: error.issues },
+        { error: 'Invalid feedback data', details: formatValidationErrors(error) },
         { status: 400 }
       );
     }
