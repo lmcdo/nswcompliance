@@ -115,9 +115,9 @@ def main() -> int:  # pragma: no cover - CLI entry point
     if "--baseline" in sys.argv:
         # Per LGA, not one total: a total can hide one council improving while
         # another regresses, and 19 councils are already fully covered.
-        per_lga = {lga: n for lga, n in report.get("dateless_by_lga", {}).items()}
+        per_lga = dict((report.get("dateless_by_lga") or {}).items())
         if not per_lga:
-            per_lga = {lga: 1 for lga in report.get("lgas_by_basis", {}).get("NONE", [])}
+            per_lga = {lga: 1 for lga in (report.get("lgas_by_basis") or {}).get("NONE") or []}
         return _ratchet(".claude/as_at_coverage_baseline.json",
                         "DCP as-at coverage", per_lga, "--update" in sys.argv)
     return 0

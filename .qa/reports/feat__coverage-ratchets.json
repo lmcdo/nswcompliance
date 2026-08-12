@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds two BLOCKING CI ratchets over live database reads. Directionality: a ratchet can only add a failure when a count rises; it cannot cause a wrong number to be served, and it writes nothing.",
- "commit_hash": "36a7e79c",
+ "commit_hash": "7541b280",
  "files": [
   "scripts/check_dcp_as_at_coverage.py",
   "scripts/check_satellite_manifests.py",

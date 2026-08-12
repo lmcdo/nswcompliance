@@ -90,7 +90,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
         # exactly "every NEW report carries a manifest". A product that starts
         # emitting them stays flat; one that regresses fails the build.
         per_product = {k: v["without_manifest"]
-                       for k, v in report.get("per_product", {}).items()}
+                       for k, v in (report.get("per_product") or {}).items()}
         return _ratchet(".claude/manifest_coverage_baseline.json",
                         "Satellite manifests", per_product, "--update" in sys.argv)
     return 0
