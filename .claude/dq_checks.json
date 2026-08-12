@@ -1,387 +1,394 @@
 {
-  "_README": [
-    "Executable half of .claude/DATA_QUALITY_TRACKER.md. The markdown holds the",
-    "narrative; this holds the one thing prose cannot do — answer 'is it still",
-    "broken?' by being RUN.",
-    "",
-    "WHY: on 2026-08-12 the tracker said DQ-54 was 'Open — report-only' when it",
-    "had been fixed and merged that morning, and its own row said 'three call",
-    "sites' when there were nine. Its header said Last Updated 2026-08-08. A",
-    "hand-written status decays silently, and this repo has the receipts: #398",
-    "hid for ten weeks, DQ-54's prose recurred in four days.",
-    "",
-    "THE RATCHET RUNS BOTH WAYS — that is the whole point:",
-    "  declared 'fixed' + check FAILS  -> red. A regression, or a fix that never was.",
-    "  declared 'open'  + check PASSES -> red. Silently fixed; the ledger is lying",
-    "                                     the other way and nobody would ever look.",
-    "Only the second direction catches the failure mode that actually hurt here.",
-    "",
-    "COVERAGE: every DQ id in the markdown must appear here. A new row without an",
-    "entry fails the coverage test, so the ledger cannot grow un-checkable rows.",
-    "Same shape as scripts/check_test_quarantine.py, which already works this way.",
-    "",
-    "check: null is HONEST, not a TODO to hide behind. It means nobody has written",
-    "a falsifiable check yet, and the count of nulls is reported on every run so",
-    "the gap stays visible. An invented check that cannot fail is what produced",
-    "DQ-30's '0% drift' verification — worse than no check."
-  ],
-  "checks": {
-    "DQ-54": {
-      "declared": "fixed",
-      "check": [
-        "python",
-        "-m",
-        "pytest",
-        "tests/test_git_env_ratchet.py",
-        "-q"
-      ],
-      "passes_when": "exit 0 — every git call in scripts/ that pins cwd also pins env=git_env()",
-      "red_when": "any script runs git with cwd= and no env=git_env(), so a hook's GIT_DIR silently redirects it to another repository",
-      "fixed_by": "#930"
-    },
-    "DQ-55": {
-      "declared": "fixed",
-      "check": [
-        "python",
-        "scripts/dq_probe_stale_workflow_docs.py"
-      ],
-      "passes_when": "exit 0 — no doc names a .github/workflows file that does not exist",
-      "red_when": "a doc again names a .github/workflows file that does not exist",
-      "note": "Declared open, so the ratchet requires this to FAIL. When the docs are corrected it starts passing and the ratchet goes red until 'declared' is flipped to fixed — which is the point.",
-      "fixed_by": "2026-08-12 - DCP_MONITORING.md, DCP_UPDATE_GOVERNANCE.md and QA-DATA-PROVENANCE.md corrected to name the Railway crons that actually run, and to say plainly that DCP extraction is MANUAL with nothing scheduling it"
-    },
-    "DQ-48": {
-      "declared": "fixed",
-      "check": [
-        "python",
-        "scripts/dq_probe_dead_sar_constants.py"
-      ],
-      "passes_when": "exit 0 — no assignment of FLOOD_RATIO / PC_CATALOG / S1_COLLECTION in services/flood_truth.py",
-      "red_when": "a named SAR threshold or endpoint is reintroduced with no call site behind it, reading as a shipped detector that does not exist",
-      "fixed_by": "#878 (Lane 1 / D2)",
-      "note": "Matches ASSIGNMENTS, not mentions. A plain grep false-fails: the file still discusses FLOOD_RATIO in a comment explaining why it was removed."
-    },
-    "DQ-47": {
-      "declared": "fixed",
-      "check": [
-        "python",
-        "scripts/dq_probe_pvlib_claim.py"
-      ],
-      "passes_when": "exit 0 — pvlib is not imported by any non-test module",
-      "red_when": "production code imports pvlib, or a served string credits it as the shadow method again, while pybdshadow is what actually runs",
-      "fixed_by": "#878 (Lane 1 / D1)",
-      "note": "Scoped to non-test source deliberately. tests/test_shadow_calibration.py DOES import pvlib, legitimately — it is the external reference the calibration measures against. A repo-wide grep would false-fail on exactly the test that proves the fix."
-    },
-    "DQ-57": {
-      "declared": "open",
-      "check": null,
-      "why_no_check": "Needs the live DB: the claim is a RATE (109 of 151 stored flood rows carry no ses_study_lga). A check must query flood rows and recompute it, so it needs DATABASE_URL and a decision about what rate counts as fixed."
-    },
-    "DQ-53": {
-      "declared": "partial",
-      "check": null,
-      "why_no_check": "One instance fixed; the suite-wide census of contract-vs-fixture tests was never done, so there is no measurable target to check against yet."
-    },
-    "DQ-50": {
-      "declared": "fixed",
-      "check": [
-        "python",
-        "scripts/dq_probe_live.py",
-        "--id",
-        "DQ-50"
-      ],
-      "passes_when": "exit 0 - no stored report credits a source that was never queried",
-      "red_when": "a report again names 'Microsoft Planetary Computer S1 RTC' in data_sources without a SAR query behind it",
-      "fixed_by": "2026-08-12 - array_remove over 143 flood reports; backup property_reports_dq50_backup_20260812",
-      "note": "Repaired, not merely re-tagged. 143 -> 0, verified by this probe after commit. The ratchet caught the stale 'open' status the moment the data was fixed, which is the direction it exists for. The 90-day cache-window sub-measure (121 -> 0) is still runnable as `dq_probe_live.py --id DQ-50-window` but is NOT a ledger row: it measures a slice of DQ-50, not a separate defect, and giving it a row would have inflated the open count."
-    },
-    "DQ-43": {
-      "declared": "latent",
-      "check": null,
-      "why_no_check": "Explicitly not live today — depends on the plan-identity model that does not exist yet. A check now would assert against a design that has not been built."
-    },
-    "DQ-42": {
-      "declared": "guarded",
-      "check": null,
-      "why_no_check": "Upstream NSW Planning Portal staleness, not fixable here. The guard is the identity match in fetch_dcp_as_at_dates.py; a check should assert the guard exists rather than that the portal is correct."
-    },
-    "DQ-39": {
-      "declared": "partial",
-      "check": [
-        "python",
-        "scripts/dq_probe_live.py",
-        "--id",
-        "DQ-39"
-      ],
-      "passes_when": "exit 0 - no current setback control carries a DQ derivability flag",
-      "red_when": "41 current rows flagged by a DQ sweep as not derivable from their own quoted source_text (measured 2026-08-12). The number IS the product, so each is a served value with no evidence behind it.",
-      "note": "Counts rows a REVIEWER already flagged, not a heuristic guess. 'partial' because some flags are deliberate fail-closed markers."
-    },
-    "DQ-32": {
-      "declared": "open",
-      "check": [
-        "python",
-        "scripts/dq_probe_live.py",
-        "--id",
-        "DQ-32"
-      ],
-      "passes_when": "exit 0 - every (lga, dev_type, control_type) group holds a single value, so the engine's pick is determined",
-      "red_when": "562 served rows across 171 groups hold more than one value for the same key, so the capacity engine can return a different zone's number as a feasibility figure. Measured 2026-08-12; was 560/168 on 2026-07-31, so it GREW.",
-      "note": "A partial fix exists at scripts/conveyancing_db.py:413 but is gated on applicability='zone_specific' and can act on ~24 of the 562. See DQ-32b."
-    },
-    "DQ-31": {
-      "declared": "partial",
-      "check": null,
-      "why_no_check": "Over-eligibility closed 2026-08-01; the consolidation onto the Python service is open. A check needs a definition of 'consolidated' that does not exist yet."
-    },
-    "DQ-30": {
-      "declared": "fixed",
-      "check": [
-        "python",
-        "scripts/dq_probe_live.py",
-        "--id",
-        "DQ-30"
-      ],
-      "passes_when": "exit 0 - no served provision is keyed to a zone code NSW retired in 2022",
-      "red_when": "a served provision is again keyed to a zone code NSW retired in 2022",
-      "note": "Lossless by construction: all 3 rows already carried the modern equivalent (E1/E2/MU1) alongside the retired B-code, and nothing is zoned B1-B8 any more, so the removed entries could never match a current-zone lookup. 86 superseded rows still carry them and were deliberately NOT touched - they are history.",
-      "fixed_by": "2026-08-12 - 3 served rows; backup regulatory_provisions_dq30_backup_20260812 (86 rows incl. superseded)"
-    },
-    "DQ-29": {
-      "declared": "partial",
-      "check": [
-        "python",
-        "scripts/dq_probe_live.py",
-        "--id",
-        "DQ-29"
-      ],
-      "passes_when": "exit 0 - no provision matches the doubled-character corruption pattern",
-      "red_when": "39 candidate rows measured live 2026-08-12, against 22 recorded on 2026-07-15. The pattern also matches legitimate text, so 39 is an UPPER BOUND, not a defect count.",
-      "note": "Deliberately 'partial'. My first attempt at this pattern returned 0 because it searched for 4+ repeats of one character rather than repeated PAIRS - a wrong probe reporting clean. Recorded so nobody trusts the number as adjudicated."
-    },
-    "DQ-25": {
-      "declared": "backlog",
-      "check": null,
-      "why_no_check": "Backlog, never scoped."
-    },
-    "DQ-24": {
-      "declared": "backlog",
-      "check": null,
-      "why_no_check": "Backlog, never scoped."
-    },
-    "DQ-56": {
-      "declared": "closed_wontfix",
-      "check": null,
-      "why_no_check": "Closed as not worth continuing by user ruling 2026-08-08. Deliberately NOT reopened as a backlog item."
-    },
-    "DQ-53b": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Proof hygiene on a throwaway script that was never committed; nothing durable to re-run."
-    },
-    "DQ-52": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "All five representations were deleted and services/sentinel2.py removed. A check would assert absence of marketing strings — worth writing, not yet written."
-    },
-    "DQ-51": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs a request-level fixture through the SEPP eligibility gate; not yet written."
-    },
-    "DQ-49": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs the live DB to re-count confirmed_count_source provenance on granny rows."
-    },
-    "DQ-46": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs a DEM provider fixture; not yet written."
-    },
-    "DQ-45": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Pinned by two loop-survival tests in test_execution_manifests.py — wiring those in as this row's check is straightforward and not yet done."
-    },
-    "DQ-44": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Pinned by flipped tests in the flood suite; not yet wired in as this row's check."
-    },
-    "DQ-41": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs the live DB: verify 0 Jan-1 dates remain in dcp_setback_controls."
-    },
-    "DQ-40": {
-      "declared": "partial",
-      "check": [
-        "python",
-        "scripts/dq_probe_live.py",
-        "--id",
-        "DQ-40"
-      ],
-      "passes_when": "exit 0 - no setback control is flagged needs_review",
-      "red_when": "82 rows flagged, measured live 2026-08-12. Not all are defects: some are deliberate fail-closed flags. Declared 'partial' so the ratchet does NOT enforce a direction - the number is reported, not adjudicated.",
-      "note": "Unenforced by design. Turning this into a pass/fail needs a decision about which flags are acceptable."
-    },
-    "DQ-36": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs a PDF render fixture; not yet written."
-    },
-    "DQ-35": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs the live DB via conveyancing_db.fetch_dcp_setbacks."
-    },
-    "DQ-34": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs a component render fixture; not yet written."
-    },
-    "DQ-33": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs the live DB: no_config on served rows was 9,854 -> 1,278."
-    },
-    "DQ-28": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic, 2026-03-30."
-    },
-    "DQ-27": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic, 2026-03-04."
-    },
-    "DQ-26": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic, 2026-03-04."
-    },
-    "DQ-23": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-22": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-21": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-20": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-19": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-18": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-17": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic — not orphaned."
-    },
-    "DQ-16": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-15": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-14": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-13": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-11": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-10": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic — documented."
-    },
-    "DQ-9": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-8": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic — documented."
-    },
-    "DQ-7": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-6": {
-      "declared": "accepted",
-      "check": null,
-      "why_no_check": "Accepted, not a defect."
-    },
-    "DQ-5": {
-      "declared": "accepted",
-      "check": null,
-      "why_no_check": "Expected behaviour."
-    },
-    "DQ-4": {
-      "declared": "accepted",
-      "check": null,
-      "why_no_check": "Accepted."
-    },
-    "DQ-3": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-2": {
-      "declared": "fixed",
-      "check": null,
-      "why_no_check": "Historic."
-    },
-    "DQ-1": {
-      "declared": "not_a_bug",
-      "check": null,
-      "why_no_check": "Not a bug."
-    },
-    "DQ-32b": {
-      "declared": "open",
-      "check": [
-        "python",
-        "scripts/dq_probe_live.py",
-        "--id",
-        "DQ-32b"
-      ],
-      "passes_when": "exit 0 - no row names a zone in its condition while carrying a non-zone_specific applicability",
-      "red_when": "76 rows name a zone in their condition text but the filter is gated on applicability and never examines them. This is the DOMINANT gap and is a data problem (applicability unset) as much as a code one.",
-      "note": "Split from DQ-32 because the two need different fixes: one is a query/selection change, this one is a data-tagging change."
-    }
+ "_README": [
+  "Executable half of .claude/DATA_QUALITY_TRACKER.md. The markdown holds the",
+  "narrative; this holds the one thing prose cannot do — answer 'is it still",
+  "broken?' by being RUN.",
+  "",
+  "WHY: on 2026-08-12 the tracker said DQ-54 was 'Open — report-only' when it",
+  "had been fixed and merged that morning, and its own row said 'three call",
+  "sites' when there were nine. Its header said Last Updated 2026-08-08. A",
+  "hand-written status decays silently, and this repo has the receipts: #398",
+  "hid for ten weeks, DQ-54's prose recurred in four days.",
+  "",
+  "THE RATCHET RUNS BOTH WAYS — that is the whole point:",
+  "  declared 'fixed' + check FAILS  -> red. A regression, or a fix that never was.",
+  "  declared 'open'  + check PASSES -> red. Silently fixed; the ledger is lying",
+  "                                     the other way and nobody would ever look.",
+  "Only the second direction catches the failure mode that actually hurt here.",
+  "",
+  "COVERAGE: every DQ id in the markdown must appear here. A new row without an",
+  "entry fails the coverage test, so the ledger cannot grow un-checkable rows.",
+  "Same shape as scripts/check_test_quarantine.py, which already works this way.",
+  "",
+  "check: null is HONEST, not a TODO to hide behind. It means nobody has written",
+  "a falsifiable check yet, and the count of nulls is reported on every run so",
+  "the gap stays visible. An invented check that cannot fail is what produced",
+  "DQ-30's '0% drift' verification — worse than no check."
+ ],
+ "checks": {
+  "DQ-54": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "-m",
+    "pytest",
+    "tests/test_git_env_ratchet.py",
+    "-q"
+   ],
+   "passes_when": "exit 0 — every git call in scripts/ that pins cwd also pins env=git_env()",
+   "red_when": "any script runs git with cwd= and no env=git_env(), so a hook's GIT_DIR silently redirects it to another repository",
+   "fixed_by": "#930"
+  },
+  "DQ-55": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/dq_probe_stale_workflow_docs.py"
+   ],
+   "passes_when": "exit 0 — no doc names a .github/workflows file that does not exist",
+   "red_when": "a doc again names a .github/workflows file that does not exist",
+   "note": "Declared open, so the ratchet requires this to FAIL. When the docs are corrected it starts passing and the ratchet goes red until 'declared' is flipped to fixed — which is the point.",
+   "fixed_by": "2026-08-12 - DCP_MONITORING.md, DCP_UPDATE_GOVERNANCE.md and QA-DATA-PROVENANCE.md corrected to name the Railway crons that actually run, and to say plainly that DCP extraction is MANUAL with nothing scheduling it"
+  },
+  "DQ-48": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/dq_probe_dead_sar_constants.py"
+   ],
+   "passes_when": "exit 0 — no assignment of FLOOD_RATIO / PC_CATALOG / S1_COLLECTION in services/flood_truth.py",
+   "red_when": "a named SAR threshold or endpoint is reintroduced with no call site behind it, reading as a shipped detector that does not exist",
+   "fixed_by": "#878 (Lane 1 / D2)",
+   "note": "Matches ASSIGNMENTS, not mentions. A plain grep false-fails: the file still discusses FLOOD_RATIO in a comment explaining why it was removed."
+  },
+  "DQ-47": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/dq_probe_pvlib_claim.py"
+   ],
+   "passes_when": "exit 0 — pvlib is not imported by any non-test module",
+   "red_when": "production code imports pvlib, or a served string credits it as the shadow method again, while pybdshadow is what actually runs",
+   "fixed_by": "#878 (Lane 1 / D1)",
+   "note": "Scoped to non-test source deliberately. tests/test_shadow_calibration.py DOES import pvlib, legitimately — it is the external reference the calibration measures against. A repo-wide grep would false-fail on exactly the test that proves the fix."
+  },
+  "DQ-57": {
+   "declared": "open",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-57"
+   ],
+   "passes_when": "exit 0 - every flood report that ran an SES lookup got a council name back",
+   "red_when": "A flood report ran the SES study lookup and the council name came back null, so the flood three-state fix's council scoping has nothing to scope by.",
+   "note": "'needs a decision about what rate counts as fixed' was a dodge: for an OPEN row the check only has to fail while the defect exists, and >0 does that. ses_study_lga is NOT a column - it is nested inside property_reports.outputs, which is why earlier attempts found no table. Measured 2026-08-12: 668 flood reports carry the lookup, 346 (52%) came back null, against 151/109 (72%) recorded earlier - the volume grew and the rate improved."
+  },
+  "DQ-53": {
+   "declared": "partial",
+   "check": null,
+   "why_no_check": "One instance fixed; the suite-wide census of contract-vs-fixture tests was never done, so there is no measurable target to check against yet."
+  },
+  "DQ-50": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-50"
+   ],
+   "passes_when": "exit 0 - no stored report credits a source that was never queried",
+   "red_when": "a report again names 'Microsoft Planetary Computer S1 RTC' in data_sources without a SAR query behind it",
+   "fixed_by": "2026-08-12 - array_remove over 143 flood reports; backup property_reports_dq50_backup_20260812",
+   "note": "Repaired, not merely re-tagged. 143 -> 0, verified by this probe after commit. The ratchet caught the stale 'open' status the moment the data was fixed, which is the direction it exists for. The 90-day cache-window sub-measure (121 -> 0) is still runnable as `dq_probe_live.py --id DQ-50-window` but is NOT a ledger row: it measures a slice of DQ-50, not a separate defect, and giving it a row would have inflated the open count."
+  },
+  "DQ-43": {
+   "declared": "latent",
+   "check": null,
+   "why_no_check": "Explicitly not live today — depends on the plan-identity model that does not exist yet. A check now would assert against a design that has not been built."
+  },
+  "DQ-42": {
+   "declared": "guarded",
+   "check": null,
+   "why_no_check": "Upstream NSW Planning Portal staleness, not fixable here. The guard is the identity match in fetch_dcp_as_at_dates.py; a check should assert the guard exists rather than that the portal is correct."
+  },
+  "DQ-39": {
+   "declared": "partial",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-39"
+   ],
+   "passes_when": "exit 0 - no current setback control carries a DQ derivability flag",
+   "red_when": "41 current rows flagged by a DQ sweep as not derivable from their own quoted source_text (measured 2026-08-12). The number IS the product, so each is a served value with no evidence behind it.",
+   "note": "Counts rows a REVIEWER already flagged, not a heuristic guess. 'partial' because some flags are deliberate fail-closed markers."
+  },
+  "DQ-32": {
+   "declared": "open",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-32"
+   ],
+   "passes_when": "exit 0 - every (lga, dev_type, control_type) group holds a single value, so the engine's pick is determined",
+   "red_when": "562 served rows across 171 groups hold more than one value for the same key, so the capacity engine can return a different zone's number as a feasibility figure. Measured 2026-08-12; was 560/168 on 2026-07-31, so it GREW.",
+   "note": "A partial fix exists at scripts/conveyancing_db.py:413 but is gated on applicability='zone_specific' and can act on ~24 of the 562. See DQ-32b."
+  },
+  "DQ-31": {
+   "declared": "partial",
+   "check": null,
+   "why_no_check": "Over-eligibility closed 2026-08-01; the consolidation onto the Python service is open. A check needs a definition of 'consolidated' that does not exist yet."
+  },
+  "DQ-30": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-30"
+   ],
+   "passes_when": "exit 0 - no served provision is keyed to a zone code NSW retired in 2022",
+   "red_when": "a served provision is again keyed to a zone code NSW retired in 2022",
+   "note": "Lossless by construction: all 3 rows already carried the modern equivalent (E1/E2/MU1) alongside the retired B-code, and nothing is zoned B1-B8 any more, so the removed entries could never match a current-zone lookup. 86 superseded rows still carry them and were deliberately NOT touched - they are history.",
+   "fixed_by": "2026-08-12 - 3 served rows; backup regulatory_provisions_dq30_backup_20260812 (86 rows incl. superseded)"
+  },
+  "DQ-29": {
+   "declared": "partial",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-29"
+   ],
+   "passes_when": "exit 0 - no provision matches the doubled-character corruption pattern",
+   "red_when": "39 candidate rows measured live 2026-08-12, against 22 recorded on 2026-07-15. The pattern also matches legitimate text, so 39 is an UPPER BOUND, not a defect count.",
+   "note": "Deliberately 'partial'. My first attempt at this pattern returned 0 because it searched for 4+ repeats of one character rather than repeated PAIRS - a wrong probe reporting clean. Recorded so nobody trusts the number as adjudicated."
+  },
+  "DQ-25": {
+   "declared": "backlog",
+   "check": null,
+   "why_no_check": "Backlog, never scoped."
+  },
+  "DQ-24": {
+   "declared": "backlog",
+   "check": null,
+   "why_no_check": "Backlog, never scoped."
+  },
+  "DQ-56": {
+   "declared": "closed_wontfix",
+   "check": null,
+   "why_no_check": "Closed as not worth continuing by user ruling 2026-08-08. Deliberately NOT reopened as a backlog item."
+  },
+  "DQ-53b": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Proof hygiene on a throwaway script that was never committed; nothing durable to re-run."
+  },
+  "DQ-52": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "All five representations were deleted and services/sentinel2.py removed. A check would assert absence of marketing strings — worth writing, not yet written."
+  },
+  "DQ-51": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Needs a request-level fixture through the SEPP eligibility gate; not yet written."
+  },
+  "DQ-49": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Needs the live DB to re-count confirmed_count_source provenance on granny rows."
+  },
+  "DQ-46": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Needs a DEM provider fixture; not yet written."
+  },
+  "DQ-45": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Pinned by two loop-survival tests in test_execution_manifests.py — wiring those in as this row's check is straightforward and not yet done."
+  },
+  "DQ-44": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Pinned by flipped tests in the flood suite; not yet wired in as this row's check."
+  },
+  "DQ-41": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Needs the live DB: verify 0 Jan-1 dates remain in dcp_setback_controls."
+  },
+  "DQ-40": {
+   "declared": "partial",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-40"
+   ],
+   "passes_when": "exit 0 - no setback control is flagged needs_review",
+   "red_when": "82 rows flagged, measured live 2026-08-12. Not all are defects: some are deliberate fail-closed flags. Declared 'partial' so the ratchet does NOT enforce a direction - the number is reported, not adjudicated.",
+   "note": "Unenforced by design. Turning this into a pass/fail needs a decision about which flags are acceptable."
+  },
+  "DQ-36": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Needs a PDF render fixture; not yet written."
+  },
+  "DQ-35": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Needs the live DB via conveyancing_db.fetch_dcp_setbacks."
+  },
+  "DQ-34": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Needs a component render fixture; not yet written."
+  },
+  "DQ-33": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Needs the live DB: no_config on served rows was 9,854 -> 1,278."
+  },
+  "DQ-28": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic, 2026-03-30."
+  },
+  "DQ-27": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic, 2026-03-04."
+  },
+  "DQ-26": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic, 2026-03-04."
+  },
+  "DQ-23": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-22": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-21": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-20": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-19": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-18": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-17": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic — not orphaned."
+  },
+  "DQ-16": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-15": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-14": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-13": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-11": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-10": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic — documented."
+  },
+  "DQ-9": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-8": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic — documented."
+  },
+  "DQ-7": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-6": {
+   "declared": "accepted",
+   "check": null,
+   "why_no_check": "Accepted, not a defect."
+  },
+  "DQ-5": {
+   "declared": "accepted",
+   "check": null,
+   "why_no_check": "Expected behaviour."
+  },
+  "DQ-4": {
+   "declared": "accepted",
+   "check": null,
+   "why_no_check": "Accepted."
+  },
+  "DQ-3": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-2": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "Historic."
+  },
+  "DQ-1": {
+   "declared": "not_a_bug",
+   "check": null,
+   "why_no_check": "Not a bug."
+  },
+  "DQ-32b": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/dq_probe_live.py",
+    "--id",
+    "DQ-32b"
+   ],
+   "passes_when": "exit 0 - no row names a zone in its condition while carrying a non-zone_specific applicability, excluding 17 adjudicated non-defects held as an id allowlist in the probe",
+   "red_when": "A row names a zone in its condition text but is not tagged zone_specific, so the filter at conveyancing_db.py:413 never examines it and the control is served to every zone.",
+   "note": "Fixed 2026-08-12: 59 of 76 tagged zone_specific (backup dcp_setback_controls_dq32b_backup_20260812). The other 17 must NOT be tagged - 8 canada_bay rows are PROXIMITY conditions ('within 400m of B3/B4'), 7 are clause/table references the regex mistook for zones, 1 is a road classification, 1 has an explicit fallback, 1 qualifies a sub-case only. Tagging any would DELETE a correct control, because the filter is skip-only. Excluded by id rather than by loosening the regex, so a NEW untagged zone-naming row still fails."
   }
+ }
 }

@@ -73,24 +73,68 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         (),
         "Each row sits in a group where the same council + development type + "
         "control holds more than one value, so the engine's choice is arbitrary "
-        "rather than determined. Measured 562 across 171 groups on 2026-08-12, "
-        "against 560/168 recorded 2026-07-31 -- the exposure grew, it did not decay.",
+        "rather than determined. Measured 562 across 171 groups on 2026-08-12. "
+        "The 560/168 recorded on 2026-07-31 carries NO query, so the two are "
+        "not comparable and no trend can be read from them: the table gained "
+        "exactly 2 rows in August (ryde 1175, burwood 1176) and NEITHER sits "
+        "in an ambiguity group.",
     ),
     "DQ-32b": (
         "Rows naming a zone that the zone filter can never act on",
         # The filter at conveyancing_db.py:413 is gated on
         # applicability='zone_specific'. A row whose CONDITION names a zone but
-        # whose applicability is anything else is invisible to it. This is the
-        # dominant gap and it is a DATA problem -- applicability not set -- as
-        # much as a code one, which is why it is measured separately.
+        # whose applicability is anything else is invisible to it.
+        #
+        # 59 of the original 76 were tagged on 2026-08-12. The remaining 17 are
+        # excluded BY ID because tagging them would delete a correct control --
+        # the regex finds a zone code, but the row is not zone-specific:
+        #   815-818, 823-826  canada_bay: "within 800m station or 400m B3/B4" is
+        #                     PROXIMITY to a zone, not membership in one.
+        #   1104-1107, 1153, 13  clause/table references -- (C1.1.9(e)),
+        #                     Table C2.2, (B3.8 s3.8.2 C1) -- not zones at all.
+        #   71                "major road frontage (C1)": a road classification.
+        #   944               has an explicit fallback ("otherwise prevailing");
+        #                     tagging would drop the fallback outside R3.
+        #   1059              the zone qualifies a SUB-case only; the general
+        #                     60% would be lost outside E4.
+        # An ID allowlist, not a looser regex: a NEW untagged zone-naming row
+        # still fails this check, which a widened pattern would have hidden.
         "SELECT count(*) FROM dcp_setback_controls "
         "WHERE is_current AND NOT COALESCE(needs_review, false) "
         "AND condition ~* '\m(R[1-6]|E[1-4]|C[1-4]|MU1|RU[1-6]|B[1-8]|IN[1-4]|SP[1-3]|W[1-4])\M' "
-        "AND COALESCE(applicability, '') <> 'zone_specific'",
+        "AND COALESCE(applicability, '') <> 'zone_specific' "
+        "AND id <> ALL(%s)",
+        ([815, 816, 817, 818, 823, 824, 825, 826,
+          1104, 1105, 1106, 1107, 1153, 13, 71, 944, 1059],),
+        "Rows that ARE zone-dependent but invisible to the zone filter. 59 of "
+        "76 tagged on 2026-08-12 (backup dcp_setback_controls_dq32b_backup_"
+        "20260812); the other 17 are adjudicated non-defects, excluded by id "
+        "and listed in the comment above. Any NEW row naming a zone without "
+        "the tag fails this check.",
+    ),
+    "DQ-57": (
+        "Flood reports whose SES study lookup returned no council name",
+        # ses_study_lga is NOT a column anywhere -- it is nested inside
+        # property_reports.outputs, which is why an earlier attempt to check
+        # this looked for a flood_assessments table and found nothing. Use
+        # jsonb_path_* rather than a LIKE: no '%' to mis-escape when psycopg2
+        # is also given params, and it reads the nested key directly.
+        #
+        # "needs a decision about what rate counts as fixed" was the stated
+        # reason this row had no check for weeks. That was a dodge: for a row
+        # declared OPEN the check only has to FAIL while the defect exists,
+        # and > 0 does that. A target rate is needed to declare it fixed, not
+        # to measure it.
+        "SELECT count(*) FROM property_reports "
+        "WHERE jsonb_path_exists(outputs::jsonb, '$.**.ses_study_lga') "
+        "AND jsonb_path_query_first(outputs::jsonb, '$.**.ses_study_lga') = 'null'::jsonb",
         (),
-        "The condition text names a zone, so the row IS zone-dependent, but the "
-        "filter is gated on applicability and never examines it. Measured 76 on "
-        "2026-08-12 against 24 rows the filter can actually act on.",
+        "The flood three-state fix scopes its answer by council, and this "
+        "counts the reports where it had no council to scope by. Measured "
+        "2026-08-12: 346 of 668 flood reports carrying an SES lookup (52%), "
+        "against 109 of 151 (72%) recorded earlier -- the volume grew and the "
+        "rate improved. Both figures now carry their query; the earlier one "
+        "did not.",
     ),
     "DQ-30": (
         "SERVED provisions still tagged with a zone code NSW retired in 2022",

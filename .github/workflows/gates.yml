@@ -147,6 +147,26 @@ jobs:
           fi
       - name: Fabricated-verdict lint (report surfaces)
         run: python scripts/lint_fabricated_verdicts.py
+      # Output-grounding campaign items 2-5 (PRs #874/#876, merged 2026-08-03).
+      # They were BUILT, MERGED, and then invoked by nothing for nine days.
+      #
+      # All four are observation mode and exit 0 regardless of findings, by
+      # design: campaign §7 finding 6 says a gate must earn blocking status
+      # from an observed false-positive rate. But that promotion path starts
+      # with observing, and a check no job runs observes nothing — so the
+      # design stalled at step one and drift stayed invisible between sessions.
+      # Running them here is what makes the observation real. Promote to
+      # blocking (paid channel first) once the output has been read across a
+      # few weeks of runs; until then a finding must never fail the build.
+      - name: Output grounding (OBSERVATION ONLY — never fails the build)
+        if: always()
+        continue-on-error: true
+        run: |
+          for s in lint_hardcoded_confidence check_ts_dcp_readers \
+                   check_dcp_as_at_coverage check_satellite_manifests; do
+            echo "--- $s ---"
+            python "scripts/$s.py" || echo "::warning::$s exited non-zero (observation mode)"
+          done
       - name: Brief field-coverage ratchet
         run: |
           if [ -f scripts/brief_field_coverage_ratchet.py ]; then

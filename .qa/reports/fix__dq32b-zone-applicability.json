@@ -1,0 +1,117 @@
+{
+  "tier": "standard",
+  "justification": "A production DB write that changes what the capacity engine serves per zone, plus a CI wiring change. Directionality (calibration rule 2026-08-12): the write REMOVES a control from zones it does not apply to, so the failure mode is a missing control, not an invented number - but the filter is skip-only, so a wrong tag deletes a correct control, which is why all 76 candidates were read individually rather than batched by regex.",
+  "commit_hash": "d97c99a9",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".github/workflows/gates.yml"
+  ],
+  "break_it": [
+    {
+      "scenario": "A row reads 'within 800m station or 400m B3/B4' and is tagged zone_specific because a regex saw a zone code.",
+      "what_happens": "The control is PROXIMITY-based. Tagging makes the skip-filter drop it for every property not zoned B3/B4 - deleting a correct parking rate from the zones that actually use it. Silent: the report renders with one fewer control, no error.",
+      "mitigated": true,
+      "how": "All 8 canada_bay rows excluded by id. Tagging is driven by an explicit adjudicated id list, never by the regex.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-32b  # 0; the 17 excluded ids are listed in the probe comment"
+    },
+    {
+      "scenario": "A clause reference like '(C1.1.9(e))' or 'Table C2.2' is read as zone C1 / C2.",
+      "what_happens": "Same deletion, on Waverley and Wingecarribee POS and site-coverage controls.",
+      "mitigated": true,
+      "how": "7 such rows excluded by id with the matched text recorded in the probe comment.",
+      "repro": "grep -n '1104, 1105, 1106, 1107, 1153' scripts/dq_probe_live.py"
+    },
+    {
+      "scenario": "Row 52 is secondary_dwelling_specific; overwriting applicability could drop it from the granny-flat product.",
+      "what_happens": "applicability is single-valued, so zone_specific destroys the secondary-dwelling meaning.",
+      "mitigated": true,
+      "how": "Both consumers fall back to dev_type: conveyancing_db.py:461 (is_sd) and granny_flat.py:211 (OR dev_type='secondary_dwelling'). Asserted pre-commit that row 52 still has dev_type='secondary_dwelling'.",
+      "repro": "sed -n '209,212p' services/granny_flat.py"
+    },
+    {
+      "scenario": "The UPDATE touches rows outside the adjudicated list.",
+      "what_happens": "Unreviewed controls silently vanish from zones.",
+      "mitigated": true,
+      "how": "Single transaction; asserted rowcount == 59, zone_specific 24 -> 83 exactly, DQ-32b 76 -> 17 exactly, and all 17 excluded ids still untagged - all BEFORE commit. Backup dcp_setback_controls_dq32b_backup_20260812.",
+      "repro": "SELECT count(*) FROM dcp_setback_controls_dq32b_backup_20260812  -- 59"
+    },
+    {
+      "scenario": "Widening the probe regex instead of excluding by id.",
+      "what_happens": "A NEW row naming a zone without the tag would stop being reported - the check would go quiet exactly when drift appears.",
+      "mitigated": true,
+      "how": "Exclusions are an id allowlist. The pattern is unchanged, so new rows still fail.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-32b"
+    },
+    {
+      "scenario": "The four grounding checks are wired in and one of them fails the build.",
+      "what_happens": "gates goes red on an observation-mode check that has not earned blocking status.",
+      "mitigated": true,
+      "how": "continue-on-error: true, and each invocation is `|| echo ::warning::`. All four exit 0 today regardless of findings.",
+      "repro": "python scripts/check_ts_dcp_readers.py; echo $?   # 0, observation mode"
+    }
+  ],
+  "verified": [
+    "Served output re-derived through the real filter: penrith/dwelling_house/landscaping_min returned [35,40,40,50] in EVERY zone; now R2 -> [50], R4 -> [35].",
+    "canada_bay RFB car_parking unchanged in both zones, confirming the 8 proximity exclusions took effect.",
+    "sutherland_shire RFB car_parking now returns nothing in R2 - correct, those 4 rows are R3/R4 only and RFBs are not permitted in R2. Empty is a supported state in this path.",
+    "python scripts/dq_check.py: PASSED, 0 red, 13 checks across 56 rows.",
+    "DQ-57 probe added and returns 346 of 668 (exit 1, declared open - the ratchet agrees)."
+  ],
+  "gaps": [
+    "44 of 56 ledger rows still have no check. Recorded in dq_checks.json why_no_check, not claimed as coverage.",
+    "DQ-32 (562) is untouched and its probe ignores applicability entirely, so it cannot see that 40 of the tagged rows are now zone-resolvable. The count will not move.",
+    "The zone filter's hardcoded list still omits R6/E2-E4/RU*/IN*/SP*/W*/B3-B8 and cannot parse negation. Both affect 0 rows today; measured, not assumed.",
+    "The four grounding checks now RUN but nothing reads their output on a schedule. Promotion to blocking still requires someone to look."
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-32b; echo $?",
+    "fails_when": "Exits 1 whenever ANY current, non-review row names a zone code in its condition text while carrying an applicability other than zone_specific, excluding the 17 adjudicated ids. Falsifiable in both directions and both were exercised: it returned 76 before the write and 0 after, and dq_check.py's bidirectional ratchet ALSO fails if the row is declared fixed while the probe is non-zero, which is exactly what caught the tracker row still reading OPEN during this change. It cannot be satisfied by loosening the pattern, because the exclusions are an id allowlist - a new zone-naming row still fails.",
+    "external_authority": "The count comes from the live database, not from anything this change asserts. The served-output verification re-derives values through the real filter body at scripts/conveyancing_db.py:412-418 rather than trusting that tagging had the intended effect."
+  },
+  "pre_impl": {
+    "existing_data": "76 candidate rows in dcp_setback_controls, read individually rather than counted. applicability held universal_residential x69, development_specific x5, sepp_cdc_only x1, secondary_dwelling_specific x1. Existing zone_specific rows: 24. ses_study_lga, needed for DQ-57, is NOT a column in any table - it is nested inside property_reports.outputs, found via information_schema after a guessed flood_assessments table did not exist.",
+    "assumption_mismatch": "The headline '76 rows to tag' was wrong and tagging all 76 would have caused a silent regression. The filter is SKIP-ONLY, so a wrong tag deletes a correct control rather than adding a wrong one. 17 rows are not zone-specific at all: 8 encode PROXIMITY ('within 800m station or 400m B3/B4'), 7 matched clause or table references, 1 a road classification, 1 has a fallback clause, 1 uses the zone for a sub-case. A second assumption also failed: 'DQ-32b overlaps DQ-32 so the 562 will drop' - it will not, because the DQ-32 probe ignores applicability entirely.",
+    "new_vs_existing": "No new surface. The zone filter, the probe registry and the ledger all already existed; this adds an id allowlist to one probe, one probe entry for DQ-57, and one CI step invoking four scripts that were already written and merged in #874/#876. The four were found by sweeping scripts/ against gates.yml and .githooks/pre-push, not assumed absent.",
+    "external_source_error": "If the live DB were unreachable the probe exits 2, which dq_check.py reports as UNKNOWN rather than clean - the distinction that turned main red on 2026-08-12 and was fixed in #939."
+  },
+  "functions": [
+    {
+      "name": "dq_probe_live.PROBES['DQ-32b']",
+      "what": "Counts current, non-review setback controls whose condition names an NSW zone code while applicability is not zone_specific, minus 17 adjudicated ids.",
+      "edge_cases": "Clause references (C1.1.9), table references (Table C2.2) and proximity phrasing all match the zone pattern but are not zone membership; each is excluded by id with its reason recorded on the line above it.",
+      "failure_mode": "Returns 0 while a genuinely untagged row exists only if that row's id were added to the allowlist, which is a visible diff.",
+      "input": "(none - reads the live DB)",
+      "output": "int count of untagged zone-naming rows, plus the SQL that produced it",
+      "if_none": "Exit 2 (UNKNOWN), never 0. A probe that cannot reach its source is not a clean probe.",
+      "file_line": "scripts/dq_probe_live.py"
+    },
+    {
+      "name": "dq_probe_live.PROBES['DQ-57']",
+      "what": "Counts flood property_reports whose nested ses_study_lga came back JSON null.",
+      "edge_cases": "Uses jsonb_path_exists/jsonb_path_query_first rather than a LIKE, so there is no '%' for psycopg2 to mis-escape and the nested key is read directly rather than by string match.",
+      "failure_mode": "Reports 0 if the key is renamed upstream; the paired jsonb_path_exists guard makes that visible as a drop in the denominator (668).",
+      "input": "(none - reads the live DB)",
+      "output": "int count of flood reports whose ses_study_lga came back null, out of 668 carrying the lookup",
+      "if_none": "Exit 2 (UNKNOWN). If the nested key is absent everywhere the denominator drops to 0, which is visible rather than silent.",
+      "file_line": "scripts/dq_probe_live.py"
+    },
+    {
+      "name": "fetch_dcp_setbacks",
+      "what": "Returns the DCP setback/landscaping/parking controls for one council, dev type and zone. Its zone filter (lines 412-418) skips a zone_specific control when the condition names zones and the property's zone is not among them - the consumer of the tag this PR sets.",
+      "edge_cases": "Substring match on a hardcoded 10-code list; cannot parse negation. Both measured as affecting 0 rows today, so neither was changed in this PR.",
+      "failure_mode": "Skip-only, so its failure mode is a MISSING control, never an invented one. This is why a wrong tag is the dangerous direction.",
+      "input": "lga_slug, zone_code (e.g. 'R2 Low Density Residential'), dev_type",
+      "output": "list of setback/landscaping/parking control dicts for that zone only",
+      "if_none": "Returns an empty list, which is a supported state this path already renders as 'not available'. Verified: sutherland_shire RFB car parking in R2 now returns nothing, correct because those rows are R3/R4 only.",
+      "file_line": "scripts/conveyancing_db.py:255"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No migration and no schema change. The write is an UPDATE of applicability on 59 rows, reversible from dcp_setback_controls_dq32b_backup_20260812 with UPDATE dcp_setback_controls c SET applicability = b.applicability FROM dcp_setback_controls_dq32b_backup_20260812 b WHERE c.id = b.id.",
+    "secrets": "None added or read. The probes reach the DB through scripts/dq_db.py, which resolves DATABASE_URL from the main checkout's .env and opens the session read-only with a 30s statement timeout.",
+    "other_repo": "None. All four newly wired scripts already live in this repo; no submodule, no external service, no companion repo is touched.",
+    "manual_verify": "Open a Penrith dwelling-house capacity result on an R2 property and confirm landscaping shows 50% alone rather than four competing values, then an R4 property showing 35%. Then confirm a Canada Bay RFB still shows its parking rates, which proves the 8 proximity rows were NOT tagged. After the next few gates runs on main, read the 'Output grounding (OBSERVATION ONLY)' step's log to start accumulating the false-positive record that blocking status depends on."
+  }
+}
