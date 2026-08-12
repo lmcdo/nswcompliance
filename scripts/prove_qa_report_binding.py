@@ -50,6 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from falsifiability import ProofCase, prove  # noqa: E402
 from qa_report_path import resolve  # noqa: E402
+from qa_report_path import git_env  # noqa: E402  (DQ-54)
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -58,6 +59,7 @@ def _git(*args: str) -> str:
     proc = subprocess.run(
         ["git", *args],
         cwd=str(REPO),
+        env=git_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -73,7 +75,7 @@ def _is_ancestor(rev: str, ref: str) -> bool | None:
     """True/False, or None when git could not answer (0=yes, 1=no, else error)."""
     proc = subprocess.run(
         ["git", "merge-base", "--is-ancestor", rev, ref],
-        cwd=str(REPO), capture_output=True, timeout=30,
+        cwd=str(REPO), env=git_env(), capture_output=True, timeout=30,
     )
     return {0: True, 1: False}.get(proc.returncode)
 
@@ -92,7 +94,7 @@ def _a_sibling_branch_commit() -> str:
             continue
         probe = subprocess.run(
             ["git", "merge-base", "--is-ancestor", ref, "HEAD"],
-            cwd=str(REPO), capture_output=True, timeout=30,
+            cwd=str(REPO), env=git_env(), capture_output=True, timeout=30,
         )
         if probe.returncode == 1:  # 1 = definitively not an ancestor
             return _git("rev-parse", "--short", ref)

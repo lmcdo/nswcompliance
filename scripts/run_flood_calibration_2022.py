@@ -14,14 +14,15 @@ WT = Path(__file__).resolve().parents[1]
 ROOT = WT
 sys.path.insert(0, str(WT))
 sys.path.insert(0, str(WT / "services"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from qa_report_path import git_env  # noqa: E402  (DQ-54)
 
 # A git worktree carries no .env or data/ of its own; both sit with the main
 # checkout. GIT_* is scrubbed because a hook exports GIT_DIR and it overrides
 # cwd (DQ-54) — the wrong repo here would mean the wrong database.
-_env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
 _common = _sp.run(
     ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-    cwd=str(WT), capture_output=True, text=True, env=_env,
+    cwd=str(WT), capture_output=True, text=True, env=git_env(),
 ).stdout.strip()
 if _common and (Path(_common).parent / "data").exists():
     ROOT = Path(_common).parent

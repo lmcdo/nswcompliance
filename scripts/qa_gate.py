@@ -416,12 +416,14 @@ def changed_line_numbers(diff_files: list[str], project_dir: str) -> dict[str, s
             # export GIT_DIR (absolute when pushing from a worktree), which
             # would silently redirect these queries to the hook's repo even
             # when cwd is not a repository at all — scrub it.
-            env = os.environ.copy()
-            for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
-                env.pop(var, None)
+            #
+            # DQ-54: was a local three-variable scrub. The shared helper drops
+            # every GIT_* except GIT_ASKPASS/GIT_SSH/GIT_SSH_COMMAND, so it also
+            # catches GIT_OBJECT_DIRECTORY, GIT_CEILING_DIRECTORIES and the rest
+            # of the family this list never named.
             r = subprocess.run(
                 ["git", *args], capture_output=True, text=True,
-                timeout=10, cwd=project_dir, env=env,
+                timeout=10, cwd=project_dir, env=qa_report_path.git_env(),
             )
             return r.stdout if r.returncode == 0 else None
         except (subprocess.SubprocessError, FileNotFoundError, OSError):
@@ -1649,12 +1651,15 @@ def _git(args: list[str], project_dir: str) -> tuple[int, str]:
     Never raises: a gate that crashes on a missing git binary is a gate that
     gets bypassed.
     """
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    # DQ-54: this was a local "drop every GIT_*" scrub when #927 added it, which
+    # was over-strict — it also dropped GIT_ASKPASS/GIT_SSH/GIT_SSH_COMMAND,
+    # which configure how git AUTHENTICATES rather than which repository it
+    # reads, and which the shared helper deliberately keeps.
     try:
         proc = subprocess.run(
             ["git", *args],
             cwd=project_dir,
-            env=env,
+            env=qa_report_path.git_env(),
             capture_output=True,
             text=True,
             timeout=15,

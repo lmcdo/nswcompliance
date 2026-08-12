@@ -41,6 +41,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from qa_report_path import REPORT_DIR, slugify_branch  # noqa: E402
+from qa_report_path import git_env  # noqa: E402  (DQ-54)
 
 
 class RemoteUnavailable(RuntimeError):
@@ -58,6 +59,10 @@ def live_branch_slugs(project_dir: Path, remote: str = "origin") -> set[str]:
         proc = subprocess.run(
             ["git", "ls-remote", "--heads", remote],
             cwd=str(project_dir),
+            # DQ-54: this decides which branches exist, and the caller DELETES
+            # reports for the ones that do not. A hook's GIT_DIR overriding cwd
+            # would answer for another repo and delete the wrong files.
+            env=git_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
