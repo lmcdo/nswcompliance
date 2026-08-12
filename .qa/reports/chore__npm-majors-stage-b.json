@@ -1,0 +1,90 @@
+{
+  "tier": "standard",
+  "justification": "Stage (b) of issue #770. zod 3 to 4 across six API validation sites plus one schema arity change. These are the error paths of five public POST routes: the lead capture route and four feedback routes. A wrong move here does not fail loudly at build time — it turns a 400 into a 500 for every user who submits invalid input, which is exactly what zod 4 does to the unmigrated code.",
+  "commit_hash": "284ad6ff",
+  "files": [
+    "frontend-nextjs/package.json",
+    "frontend-nextjs/package-lock.json",
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/app/api/feedback/requirement/route.ts",
+    "frontend-nextjs/app/api/feedback/submit/route.ts",
+    "frontend-nextjs/app/api/feedback/suggestion/route.ts",
+    "frontend-nextjs/app/api/feedback/vote/route.ts",
+    "frontend-nextjs/lib/schemas/index.ts"
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/api/canibuildit/lead-abuse.test.ts --ci",
+    "fails_when": "Any site still reads .errors off a ZodError under zod 4. Measured in BOTH directions on this branch rather than asserted: with .errors restored at lead/route.ts:119 the suite goes 6 failed / 20 passed with TypeError: Cannot read properties of undefined at route.ts:119:43; with .issues it is 26 passed. The six failures are the tests that submit invalid input and assert 400 — under the mutation they get a 500 instead. tsc is the second half: 8 errors before the migration, 0 after.",
+    "external_authority": "zod 4 decides the shape of ZodError, not this change. The break list was produced by running tsc against zod 4.4.3 as actually installed, not read from a changelog or from #770's prediction."
+  },
+  "pre_impl": {
+    "existing_data": "Issue #770 staged this as (b) and ~/.claude/plans/ce-CURRENT-AIM.md carried the site list. That list was re-verified against the code rather than trusted, and one entry had drifted: canibuildit/lead is line 119, not 103. The count was also off — the file says 7 sites but there are 6 .errors sites plus 1 z.record arity change.",
+    "assumption_mismatch": "I expected to have to write a test to prove the 400-vs-500 break, since a green suite on an unchanged test count usually means nothing was exercised. Wrong: __tests__/api/canibuildit/lead-abuse.test.ts already contains six invalid-input cases asserting 400, and they do catch it. The mutation run proved that rather than assuming it. No new test was needed and none was written.",
+    "new_vs_existing": "No new code and no new dependency. One dependency major, six call sites renamed to the zod 4 property, and one z.record call given the key schema that zod 4 now requires."
+  },
+  "functions": [
+    {
+      "name": "formatValidationErrors",
+      "file_line": "frontend-nextjs/lib/schemas/index.ts:370",
+      "input": "a ZodError from any failed safeParse in the app",
+      "output": "an array of user-facing strings, each 'path: message' or bare message when the issue has no path; now reads zodError.issues, which is where zod 4 puts them",
+      "if_none": "an empty array when the ZodError carries no issues; under the unmigrated code it did not return empty, it threw, because zodError.errors was undefined and .map was called on it"
+    }
+  ],
+  "values": [
+    {
+      "value": "tsc: 8 errors against zod 4.4.3 before the migration, 0 after",
+      "read_at": "npx tsc --noEmit in frontend-nextjs on this branch, before and after the six edits, 2026-08-12",
+      "if_missing": "without the before-count the after-count only shows the code compiles, not that this change is what made it compile"
+    },
+    {
+      "value": "mutation run on lead-abuse.test.ts: 6 failed / 20 passed with .errors, 26 passed with .issues",
+      "read_at": "npx jest __tests__/api/canibuildit/lead-abuse.test.ts --ci in frontend-nextjs, run in both directions, 2026-08-12",
+      "if_missing": "without the failing direction, a green suite is consistent with the tests never touching the error path at all"
+    },
+    {
+      "value": "zod resolved to 4.4.3; full suite 83 suites / 1100 tests passed; next build ran to completion, exit 0, 592/592 static pages generated",
+      "read_at": "node -p require('./node_modules/zod/package.json').version, npx jest --ci --silent, npx next build, 2026-08-12",
+      "if_missing": "the version matters because .errors was only removed in 4.x; naming the resolved version stops a later ^4 resolution being assumed identical. The build is a genuine end-to-end run this time — a copy of .env.local was placed in the worktree so the Resend and Stripe constructors had their keys, then deleted. Without it the build halts in Collecting page data for reasons unrelated to any change."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A .errors site exists somewhere the grep missed, on a route with no invalid-input test.",
+      "what_happens": "It would compile only if the value were untyped, and otherwise fail tsc. If it did slip through, that route would answer 500 instead of 400 for every malformed submission, and no test would say so.",
+      "mitigated": true,
+      "how": "tsc is the sweep, not the grep: it reports every .errors access on a typed ZodError, and it went from 8 errors to 0. The remaining .errors hits in the codebase were checked individually and are unrelated — a string array on a validation result in lib/assessment/reports.ts and a Map field named this.errors in lib/error-tracking/migration-error-tracker.ts, neither of which is a ZodError.",
+      "repro": "cd frontend-nextjs && npx tsc --noEmit"
+    },
+    {
+      "scenario": "z.record(z.string(), z.any()) is not equivalent to the old z.record(z.any()) and silently narrows what the constraints field accepts.",
+      "what_happens": "Valid payloads whose constraints keys are not plain strings would start being rejected, so a request that used to succeed would 400 — a silent behaviour change hidden inside a dependency bump.",
+      "mitigated": true,
+      "how": "Measured on the zod 3 actually being replaced rather than assumed from the docs: on 3.25.76, z.record(z.any()).keySchema._def.typeName is already ZodString. So z.record(z.string(), z.any()) restates the old default and adds no constraint. JSON object keys are strings in any case, and the field carries .passthrough() data from an HTTP body, so no non-string key can reach it.",
+      "repro": "node -e \"const {z}=require('zod'); console.log(z.record(z.any()).keySchema._def.typeName)\"  # ZodString on zod 3"
+    },
+    {
+      "scenario": "The four feedback routes were edited by sed and one of them had a different surrounding expression, so the edit landed in the wrong place or not at all.",
+      "what_happens": "A missed route keeps returning 500 on invalid feedback submissions. Unlike the lead route, the feedback routes have no invalid-input tests, so jest would stay green and nothing would surface it.",
+      "mitigated": true,
+      "how": "tsc covers what the tests do not: all four were in the 8-error list before the edit and none is in the 0-error list after, so each was reached. The diff is one line in each of the four files, confirmed by git diff --stat. This is the reason the check is tsc rather than jest — the feedback routes are genuinely untested for this path, and that gap is unchanged by this PR.",
+      "repro": "git diff --stat && cd frontend-nextjs && npx tsc --noEmit"
+    },
+    {
+      "scenario": "Another package in the tree depends on zod 3 and now resolves two copies, so an instanceof ZodError check crosses versions and fails.",
+      "what_happens": "Error handling that branches on instanceof would fall through to a generic 500 handler, again converting a 400 into a 500, and only for the routes whose validation comes via that other package.",
+      "mitigated": false,
+      "how": "Not mitigated, and not observed: the build compiles and the full suite passes, but neither would necessarily expose a dual-resolution problem that only manifests on a real invalid request through an AI SDK code path. The AI SDK majors are stage (e); if that stage surfaces a zod peer conflict, this is the first place to look.",
+      "repro": "cd frontend-nextjs && npm ls zod"
+    }
+  ],
+  "mutation_analysis": "Run for real, not described. Restoring .errors at lead/route.ts:119 turns lead-abuse.test.ts from 26 passed to 6 failed / 20 passed, and every one of the six failures is a TypeError at route.ts:119:43 raised inside a test that submits invalid input and expects 400. That is the precise defect #770 predicted, reproduced and then closed. The weak version of this verification would have been running the full suite once after the change and reporting 1100 passing: that number is identical before and after, because the migration adds no tests, so on its own it distinguishes nothing. The four feedback routes have no equivalent test and are covered by tsc alone — stated here rather than papered over.",
+  "residual_risk": "The four feedback routes and formatValidationErrors have no test that submits invalid input, so their error paths are protected by the type checker only. That gap predates this PR and is not closed by it. z.record was the single arity change tsc found; if zod 4 changed runtime coercion behaviour anywhere that is not expressed in the types, no check here would see it.",
+  "post_merge": {
+    "db_reset": "No. No schema, data or query change.",
+    "secrets": "None written. The local build used a copy of frontend-nextjs/.env.local placed in the worktree and deleted afterwards; it is gitignored and was never staged.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes. On the Vercel preview, POST an invalid body to /api/canibuildit/lead and confirm the response is 400 with a message, not 500. That is the one behaviour this PR exists to preserve, and Linux and Windows resolve dependencies separately."
+  }
+}
