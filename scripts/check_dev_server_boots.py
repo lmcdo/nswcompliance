@@ -88,11 +88,18 @@ def main() -> int:
         return 2
 
     env = dict(os.environ, PORT=str(args.port), NEXT_TELEMETRY_DISABLED="1")
+    # start_new_session puts the child in its OWN process group. Without it the
+    # child shares the runner's group, and the killpg in the finally block below
+    # takes out this script AND the CI step along with the server -- observed as
+    # "Process completed with exit code 143" (SIGTERM) four seconds in, with no
+    # output at all. Windows hid it, because there the cleanup is a taskkill on
+    # a specific PID rather than a group signal.
     proc = subprocess.Popen(
         ["npx", "next", "dev", "--port", str(args.port)],
         cwd=_APP, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace", env=env,
         shell=(os.name == "nt"),
+        start_new_session=(os.name != "nt"),
     )
 
     deadline = time.time() + args.timeout
@@ -102,6 +109,17 @@ def main() -> int:
             line = proc.stdout.readline() if proc.stdout else ""
             if line:
                 captured.append(line.rstrip())
+                # FATAL is tested BEFORE ready, deliberately. A line can carry
+                # both, and an error must win: with a stale process on the port
+                # this reported "said Ready but the port refused" while the real
+                # cause, EADDRINUSE, sat two lines below. Right verdict, wrong
+                # diagnosis — and a wrong diagnosis sends the next person hunting
+                # the wrong bug.
+                if _FATAL.search(line):
+                    print("BOOT CHECK: FAILED — dev server reported a fatal error.")
+                    for l in captured[-15:]:
+                        _say(l)
+                    return 1
                 if _READY.search(line):
                     # Announced ready. Now make it prove it: a process can print
                     # Ready and still be unable to serve. Belt and braces because
@@ -116,11 +134,6 @@ def main() -> int:
                     print(f"BOOT CHECK: OK — dev server ready on :{args.port}, "
                           f"HTTP {code}")
                     return 0
-                if _FATAL.search(line):
-                    print("BOOT CHECK: FAILED — dev server reported a fatal error.")
-                    for l in captured[-15:]:
-                        _say(l)
-                    return 1
             elif proc.poll() is not None:
                 print(f"BOOT CHECK: FAILED — dev server exited "
                       f"(code {proc.returncode}) before serving.")
@@ -139,8 +152,16 @@ def main() -> int:
                 subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
                                capture_output=True)
             else:
-                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        except (OSError, subprocess.SubprocessError):
+                # Only safe because Popen used start_new_session: the child has
+                # its own group, so this cannot reach back and kill this script
+                # or the CI step running it. Guarded anyway — if the child is
+                # somehow in OUR group, signal the process alone.
+                pgid = os.getpgid(proc.pid)
+                if pgid != os.getpgid(0):
+                    os.killpg(pgid, signal.SIGTERM)
+                else:
+                    proc.terminate()
+        except (OSError, subprocess.SubprocessError, ProcessLookupError):
             proc.kill()
 
 
