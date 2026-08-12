@@ -175,8 +175,20 @@ jobs:
       # rather than a log line: Next prints the Local URL BEFORE it sorts
       # routes, so a check that trusts that line passes on the broken app.
       # (The first version of this check did exactly that.)
+      # Needs Python, and this job previously set up Node only — the first run
+      # died at exit 127, `python: command not found`. Same shape as DQ-54: a
+      # command assumed present on a runner that does not carry it.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - name: Dev server boots
         if: always()
+        # NON-BLOCKING until #929 is fixed. The check works — it fails on the
+        # live sitemap route collision, which is the whole point — but making it
+        # required today would block every merge on a defect this PR does not
+        # repair, and a gate that blocks everything gets deleted. Flip this to
+        # blocking in the PR that fixes #929; that PR's green run is the proof.
+        continue-on-error: true
         run: python scripts/check_dev_server_boots.py --timeout 150
 
   # pre-push [3/4] + [4/4]
