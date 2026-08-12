@@ -1,0 +1,107 @@
+{
+ "tier": "standard",
+ "justification": "A CI-blocking assertion plus a revived DB-backed check. Directionality: the assertion can only ADD a failure for an orphaned check, and the solar refactor is behaviour-identical. No served number changes.",
+ "commit_hash": "071b1593",
+ "files": [
+  "scripts/dq_check.py",
+  "scripts/verify_coverage_stats.py",
+  "services/solar_yield.py",
+  ".github/workflows/gates.yml",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py; echo $?",
+  "fails_when": "Exits 1 when any scripts/{check,lint,verify,dq}_*.py is referenced by no workflow, no hook, no dq_checks.json entry and no other script, and is not in _UNWIRED_OK. Mutation-tested in the failing direction: removing check_registry.py from the allowlist made it exit 1 naming that file. It cannot be satisfied by silence - the allowlist sits in the diff and every entry must state a mechanism.",
+  "external_authority": "The wiring surface is read from the actual workflow and hook files on disk, not from a list anyone maintains. verify_coverage_stats compares against the live database, not a fixture."
+ },
+ "pre_impl": {
+  "existing_data": "7 orphaned checks found. Two revived, five allowlisted. verify_coverage_stats required PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD, which nothing in the repo sets; it now reports all 6 published coverage stats current against the live DB. 562 DQ-32 rows measured for what actually distinguishes them: 556 carry a condition, 6 do not.",
+  "assumption_mismatch": "Two of mine failed. First, my earlier sweep of this same question read gates.yml and pre-push only, missed .githooks/pre-commit, and reported lint_bracket_access and lint_brief_failsoft as orphaned when both run on every commit. Second, I expected the 9 part-tagged DQ-32 groups to need more zone tags; every untagged row was separated by bedrooms, visitor parking, lot width, locality or former LGA instead, so tagging them would have deleted correct controls.",
+  "new_vs_existing": "No new file. The assertion is ~40 lines inside dq_check.py, which already runs in gates.yml - a separate check_the_checks.py would need its own wiring and begin the regress it is meant to end. verify_coverage_stats reuses dq_db.connect() rather than gaining its own connection logic.",
+  "external_source_error": "verify_coverage_stats now returns 2, not 1, when the DB is unreachable: UNKNOWN is not 'the figures disagree'. Collapsing those turned main red (#939)."
+ },
+ "functions": [
+  {
+   "name": "unwired_checks",
+   "file_line": "scripts/dq_check.py",
+   "what": "Returns check-shaped scripts that no workflow, hook, dq_checks.json entry or other script invokes.",
+   "input": "(none - reads .github/workflows/, .githooks/, .claude/dq_checks.json and scripts/ from disk)",
+   "output": "list[str] of filenames, empty when everything is wired or allowlisted",
+   "if_none": "Empty list, and dq_check continues. Absence of orphans is the passing state.",
+   "edge_cases": "gates.yml invokes several from a shell loop that appends the extension, so the literal filename never appears; the scan matches the stem too. A script's own text is removed from the haystack so it cannot vouch for itself.",
+   "failure_mode": "Adds a false failure at worst, which is visible immediately. It cannot cause a wrong number to be served."
+  },
+  {
+   "name": "_compute_confidence",
+   "file_line": "services/solar_yield.py",
+   "what": "Derives the solar-yield confidence from coverage, a validated lot polygon and panel count.",
+   "input": "coverage_available: bool, has_lot_polygon: bool, max_panels: int (keyword-only)",
+   "output": "'low' | 'medium' | 'high'",
+   "if_none": "No coverage returns 'low' - absence is never reported as high confidence.",
+   "edge_cases": "An implausible polygon is demoted upstream, so 'high' cannot ride on a clip that never happened.",
+   "failure_mode": "Behaviour-identical to the inline branch it replaces; all 5 branches verified equal before and after."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Someone writes a new check and forgets to wire it, exactly as happened to campaign items 2-5.",
+   "what_happens": "Previously nothing noticed for nine days, and the check could never earn blocking status.",
+   "mitigated": true,
+   "how": "dq_check.py now exits 1 in CI naming the file.",
+   "repro": "python scripts/dq_check.py"
+  },
+  {
+   "scenario": "Someone silences the assertion by allowlisting everything.",
+   "what_happens": "The guard becomes decorative: it still runs and still passes, while orphaned checks accumulate behind an allowlist nobody reads. That is the same shape as the original defect, only now with a green tick over it.",
+   "mitigated": true,
+   "how": "_UNWIRED_OK sits in the diff and each entry must give a mechanism; two entries here name the exact defect - own-connection code - that must be fixed before wiring.",
+   "repro": "git diff origin/main -- scripts/dq_check.py"
+  },
+  {
+   "scenario": "The assertion itself is deleted from gates.yml - the regress objection, who checks the checker.",
+   "what_happens": "Nothing would verify wiring again.",
+   "mitigated": true,
+   "how": "The scan includes itself, so removal means it either still runs and fails or gates.yml changed and the diff shows it; above that main-red-alarm.yml fires from outside the repo when main's HEAD has no successful run at all. Three levels, then it terminates.",
+   "repro": "grep -n dq_check .github/workflows/gates.yml"
+  },
+  {
+   "scenario": "The solar refactor changes a served confidence value.",
+   "what_happens": "A confidence badge is itself a representation, so a changed one is a changed claim.",
+   "mitigated": true,
+   "how": "All 5 branch combinations evaluated against the original before and after, and matched.",
+   "repro": "python -m pytest tests -k solar -q"
+  },
+  {
+   "scenario": "verify_coverage_stats runs in CI where there is no DATABASE_URL.",
+   "what_happens": "It would report the published marketing figures as disagreeing when it simply could not look.",
+   "mitigated": true,
+   "how": "Returns 2 (UNKNOWN), and the whole step is continue-on-error observation mode.",
+   "repro": "python scripts/verify_coverage_stats.py; echo $?"
+  },
+  {
+   "scenario": "The 9 part-tagged DQ-32 groups get tagged zone_specific to drive the count down.",
+   "what_happens": "Rows separated by bedroom count or visitor parking would be suppressed by zone, deleting correct controls.",
+   "mitigated": true,
+   "how": "Read all of them; none is zone-separated. Left untagged, and the finding recorded in the ledger.",
+   "repro": "grep -n 'DQ-32:' .claude/DATA_QUALITY_TRACKER.md"
+  }
+ ],
+ "verified": [
+  "dq_check.py PASSED with the new assertion; mutation-tested to exit 1 when an allowlist entry is removed.",
+  "verify_coverage_stats.py: 6 of 6 published stats current against the live DB (it was exiting 1 on 'PGHOST').",
+  "solar _compute_confidence equal to the original on all 5 branch combinations; the lint prod category no longer contains solar_yield.",
+  "DQ-32 measured rather than asserted: 556 of 562 rows carry a discriminating condition, 6 do not."
+ ],
+ "gaps": [
+  "check_registry.py and verify_controls_monitoring.py build their own connections and still cannot run; allowlisted with that as the reason, not fixed.",
+  "DB-backed checks report UNKNOWN in CI because CI has no DATABASE_URL. That is the standing blocker for the whole verification story in CI.",
+  "DQ-32 now needs a design ruling (present-all vs model-all). Not decided here.",
+  "43 of 56 ledger rows still have no check."
+ ],
+ "post_merge": {
+  "db_reset": "No migration, no schema change, no write of any kind. All DB access in this PR is read-only.",
+  "secrets": "None added. verify_coverage_stats now reads DATABASE_URL through dq_db.py instead of five PG* variables.",
+  "other_repo": "None.",
+  "manual_verify": "Run python scripts/dq_check.py and confirm PASSED, then add an empty scripts/check_x.py and confirm it exits 1 naming that file. Read the 'Output grounding (OBSERVATION ONLY)' step in the next gates run on main - it now covers six checks."
+ }
+}
