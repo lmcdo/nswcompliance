@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Repairs the watchdog that is supposed to announce a red main. It has failed 12 of 12 runs since the self-hosted migration, so the repo has had no working alarm at all — the exact three-day-silent-outage condition the file was written to prevent, reintroduced by the runner move. A wrong fix here is worse than none: it would look repaired while still never firing, and nobody checks a watchdog that reports success.",
-  "commit_hash": "9c59c909",
+  "commit_hash": "6fc89891",
   "files": [
     ".github/workflows/main-red-alarm.yml",
     "scripts/main_red_alarm_logic_check.js",
@@ -86,10 +86,17 @@
       "mitigated": true,
       "how": "This was NOT hypothetical — it happened, and the test written alongside the change caught it on the first run. Unanchored, `node` matches the 'nodes' in 'inspect the graph nodes and confirm the counts look right', which the gate then accepted as runnable. Fixed by anchoring as \bnode\b, deliberately inconsistent with the older unanchored entries because 'nodes' is ordinary vocabulary in this codebase while 'pythonic' is not. Two tests now hold the line: one asserts a real node command is accepted, the other asserts that prose containing 'nodes' is still refused. 44 qa_gate tests pass.",
       "repro": "python -m pytest tests/test_qa_gate_falsifiable.py -q"
+    },
+    {
+      "scenario": "The issue-creation fallback retries on ANY error, so a transient transport failure after GitHub has already accepted the issue files a second identical one.",
+      "what_happens": "Two open alarms for one outage, and the count grows with every failing run. Nothing errors — the alarm just becomes noise, which is the precise alarm-fatigue failure this workflow's design notes say it exists to avoid.",
+      "mitigated": true,
+      "how": "Raised by the cross-review on push, verified against the code, and fixed by deleting the retry rather than narrowing it. The label is now resolved up front with issues.getLabel, so there is exactly ONE non-idempotent create call and no path that can issue a second. Confirmed by grep: one issues.create, the other three hits are createComment and update. A missing `ci` label was the only thing the retry was ever for, and that is knowable before creating anything.",
+      "repro": "grep -n 'issues\\.create\b' .github/workflows/main-red-alarm.yml   # expect exactly one"
     }
   ],
   "mutation_analysis": "The harness is built to be able to fail and was checked by making it fail. Inverting the sha === headSha comparison flips case 3 from ok to broken, which is the assertion that today's real state — a green run on the current HEAD — does not raise an alarm. Deleting the headAgeH < 0 guard flips case 6 to ok, because a future-dated commit then satisfies headAgeH > 3 being false and buys unbounded silence; that guard exists in the original for the same reason and survives the port. Removing the !run early return makes case 1 throw on reading .conclusion of undefined rather than reporting broken. The mutation that the harness canNOT catch is the one that caused this whole incident: a step that never executes because a binary is missing. Nothing runnable on this machine can catch that, which is why the post-merge workflow_dispatch is mandatory rather than a nicety.",
-  "residual_risk": "The harness exercises the Assess step only. The two issue-writing steps are unexercised locally — they need a real repo and write scope — so the create, comment and close paths are covered by code review and by the API shapes alone. If state is ever empty rather than ok or broken, both conditional steps skip and the job still passes, which would be a silent watchdog; nothing here detects that except the harness proving state is always set. And the deeper point stands unchanged: this repairs the alarm, it does not prove main is green. gates passing on e1fa65ae is what does that. Separately, this PR edits the QA gate that judges it, which is a conflict worth naming: the widening is defensible only because it is paired with a test asserting prose is still rejected, and that test failed before it passed.",
+  "residual_risk": "The harness exercises the Assess step only. The two issue-writing steps are unexercised locally — they need a real repo and write scope — so the create, comment and close paths are covered by code review and by the API shapes alone. If state is ever empty rather than ok or broken, both conditional steps skip and the job still passes, which would be a silent watchdog; nothing here detects that except the harness proving state is always set. And the deeper point stands unchanged: this repairs the alarm, it does not prove main is green. gates passing on e1fa65ae is what does that. Separately, this PR edits the QA gate that judges it, which is a conflict worth naming: the widening is defensible only because it is paired with a test asserting prose is still rejected, and that test failed before it passed. The cross-review reported three findings on push and my `tail` truncated the first two before I read them; the PR re-run is what recovers them, and anything it raises is unaddressed until then.",
   "post_merge": {
     "db_reset": "No. CI workflow only; no schema, data or query touched.",
     "secrets": "None read or written. The workflow uses the automatic GITHUB_TOKEN through github-script's authenticated client; the explicit GH_TOKEN env wiring the shell steps needed is gone.",
