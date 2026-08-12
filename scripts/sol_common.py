@@ -10,6 +10,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from qa_report_path import git_env  # noqa: E402  (DQ-54)
+
 DEFAULT_MODEL = "gpt-5.6-sol"  # alias "gpt-5.6" also routes here
 
 # .env-style files to search, relative to a repo root, in priority order. The live
@@ -28,7 +31,8 @@ def _main_worktree_root(repo_root: Path) -> Path | None:
     try:
         common = subprocess.run(
             ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-            cwd=repo_root, capture_output=True, text=True,
+            # DQ-54: the answer here locates the .env holding the API key.
+            cwd=repo_root, env=git_env(), capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):

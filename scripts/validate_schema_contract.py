@@ -405,9 +405,18 @@ def _load_env() -> None:
     if os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL"):
         return
     try:
+        # DQ-54, and this is the highest-consequence instance of it: the answer
+        # here decides which .env supplies DATABASE_URL. A hook exports GIT_DIR
+        # and it OVERRIDES cwd, so without the scrub this could resolve another
+        # repository's directory and load ANOTHER DATABASE'S CREDENTIALS —
+        # silently, exit 0. cwd is the intended authority; make it the actual one.
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from qa_report_path import git_env
+
         common = subprocess.run(
             ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
             cwd=_repo_root(), capture_output=True, text=True, timeout=10,
+            env=git_env(),
         ).stdout.strip()
         if common:
             load_dotenv(Path(common).parent / ".env")

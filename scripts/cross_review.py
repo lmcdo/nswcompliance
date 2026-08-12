@@ -37,6 +37,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # for the sibling module
 import sol_common
+# DQ-54: git exports GIT_DIR and GIT_INDEX_FILE to its hooks and they OVERRIDE
+# cwd, so a hook-invoked script that passes cwd= can silently read a DIFFERENT
+# repository — exit 0, no warning. Both git calls below pass cwd=_REPO_ROOT and
+# had no scrub. One shared helper rather than a fourth local copy.
+from qa_report_path import git_env
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _DEFAULT_MODEL = sol_common.DEFAULT_MODEL
@@ -67,6 +72,7 @@ def get_diff(args: argparse.Namespace) -> str:
         proc = subprocess.run(
             cmd, cwd=_REPO_ROOT, capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=60,
+            env=git_env(),
         )
     except FileNotFoundError:
         sys.exit(f"Command not found: {cmd[0]} (is it installed / on PATH?)")
@@ -116,6 +122,7 @@ def load_checklist(base: str) -> str:
             ["git", "show", f"{base}:{_CHECKLIST_REL}"],
             cwd=_REPO_ROOT, capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=15,
+            env=git_env(),
         )
         if proc.returncode == 0 and proc.stdout.strip():
             return proc.stdout

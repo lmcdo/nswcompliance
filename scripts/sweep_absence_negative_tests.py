@@ -55,6 +55,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from qa_report_path import git_env  # noqa: E402  (DQ-54)
+
 _ROOT = Path(__file__).resolve().parents[1]
 
 # What a wrong "False" costs the reader, worst first. Matched against the test
@@ -200,7 +203,8 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     env_keys = subprocess.run(
-        ["git", "ls-files"], cwd=str(_ROOT), capture_output=True, text=True, timeout=30
+        ["git", "ls-files"], cwd=str(_ROOT), env=git_env(),  # DQ-54
+        capture_output=True, text=True, timeout=30
     )
     if env_keys.returncode != 0:
         print("git ls-files failed — UNKNOWABLE, not zero.")
