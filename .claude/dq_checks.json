@@ -104,9 +104,16 @@
       "why_no_check": "Upstream NSW Planning Portal staleness, not fixable here. The guard is the identity match in fetch_dcp_as_at_dates.py; a check should assert the guard exists rather than that the portal is correct."
     },
     "DQ-39": {
-      "declared": "open",
-      "check": null,
-      "why_no_check": "Needs the live DB: 25 of 986 stored control values are not derivable from their own quoted source_text. The gate exists; the DATA is unfixed. Check = re-run the derivability gate over dcp_setback_controls and count failures."
+      "declared": "partial",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-39"
+      ],
+      "passes_when": "exit 0 - no current setback control carries a DQ derivability flag",
+      "red_when": "41 current rows flagged by a DQ sweep as not derivable from their own quoted source_text (measured 2026-08-12). The number IS the product, so each is a served value with no evidence behind it.",
+      "note": "Counts rows a REVIEWER already flagged, not a heuristic guess. 'partial' because some flags are deliberate fail-closed markers."
     },
     "DQ-32": {
       "declared": "open",
@@ -120,8 +127,15 @@
     },
     "DQ-30": {
       "declared": "partial",
-      "check": null,
-      "why_no_check": "Needs the live DB: 286 rows still carry retired zone codes, 14 of them live+actionable. Code is fixed; the check must count the surviving rows."
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-30"
+      ],
+      "passes_when": "exit 0 - no served provision is keyed to a zone code NSW retired in 2022",
+      "red_when": "3 live+actionable rows still carry a B-zone (measured 2026-08-12, down from 14 on 2026-08-01). 86 rows total including superseded. Each is unreachable by a current-zone lookup rather than visibly wrong.",
+      "note": "'partial' so the ratchet reports without enforcing - the retag reduced this and the remainder needs adjudication, not an automatic verdict."
     },
     "DQ-29": {
       "declared": "partial",

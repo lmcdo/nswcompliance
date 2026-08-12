@@ -126,6 +126,18 @@ jobs:
       - name: Data-quality ledger (status ratchet)
         if: always()
         run: python scripts/dq_check.py
+      # Hardcoded NSW planning data, tree-wide and shrink-only.
+      # lint_hardcoded_zone_codes.py already had an --all mode and already
+      # covered .ts/.tsx, but it was only ever run diff-scoped from pre-commit,
+      # so every violation that ALREADY existed was invisible permanently. A
+      # rule that applies only to future code cleans nothing up — which is how
+      # a live zone→permitted-use table (#928) and a hardcoded minimum-lot-size
+      # map in lib/setbacks/validator.ts both survived in served code.
+      # Baseline is 270 because failing on all of them would block every merge
+      # and the guard would be deleted within a week. It may fall, never rise.
+      - name: Hardcoded regulatory data (shrink-only ratchet)
+        if: always()
+        run: python scripts/lint_hardcoded_zone_codes.py --baseline
       - name: Mutation-count baselines (counts never drop)
         run: |
           if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
@@ -156,6 +168,16 @@ jobs:
         working-directory: frontend-nextjs
       - run: npx jest --ci --silent
         working-directory: frontend-nextjs
+      # `next build` and `next dev` are NOT interchangeable. #929 is a route
+      # collision that build tolerates and dev refuses, so a green build hid a
+      # dev server that had been dead for 20 days — nobody noticed because
+      # nothing ever started it. This does, and waits for a real HTTP response
+      # rather than a log line: Next prints the Local URL BEFORE it sorts
+      # routes, so a check that trusts that line passes on the broken app.
+      # (The first version of this check did exactly that.)
+      - name: Dev server boots
+        if: always()
+        run: python scripts/check_dev_server_boots.py --timeout 150
 
   # pre-push [3/4] + [4/4]
   #
@@ -211,8 +233,23 @@ jobs:
           REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null || true)
           if [ -z "$REPORT" ] || [ ! -f "$REPORT" ]; then
             TARGET=$(python scripts/qa_report_path.py --target --relative 2>/dev/null || true)
-            echo "::warning::QA report absent (expected ${TARGET:-.qa/reports/<slug>.json}) — QA gate NOT enforced on this ref"
-            exit 0
+            # HARD FAIL, changed 2026-08-12. This was ::warning:: + exit 0, which
+            # meant a PR with no QA report merged with the gate not merely
+            # unsatisfied but NOT RUN — indistinguishable on the PR page from a
+            # PR that passed it. #927 blocked the route where a report exists
+            # locally but git silently discards it; this closes the other one,
+            # where nobody wrote a report at all.
+            #
+            # A warning nobody is assigned to read is not a control. If a change
+            # genuinely needs no QA depth, that is what the `minor` tier is for:
+            # write the report and say so. Refusing to write one is not the same
+            # as the change being safe.
+            echo "::error::QA report absent (expected ${TARGET:-.qa/reports/<slug>.json})."
+            echo "QA report absent — expected at: ${TARGET:-.qa/reports/<slug>.json}"
+            echo "Create it from scripts/qa_report_template.json, or run:"
+            echo "  python scripts/qa_report_path.py --target --relative"
+            echo "A 'minor' tier report is a legitimate answer. An absent one is not."
+            exit 1
           fi
           echo "QA report: $REPORT"
           BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)

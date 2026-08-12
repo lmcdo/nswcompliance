@@ -52,6 +52,39 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "Rows whose control_type or value could not be confirmed against the "
         "source. Not all are defects -- some are deliberate fail-closed flags.",
     ),
+    "DQ-30": (
+        "SERVED provisions still tagged with a zone code NSW retired in 2022",
+        # The Employment Zones reform replaced B1..B8 with E1/E2/MU1. A served
+        # provision still keyed to a B-zone can never match a modern lookup, so
+        # it is silently unreachable rather than visibly wrong.
+        # is_current AND v2_is_actionable is the served set -- unfiltered this
+        # reads 86, which counts superseded rows nobody sees.
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable "
+        "AND v2_applicable_zones && %s::text[]",
+        # This is the RETIRED set, and naming it IS the probe. It is not a
+        # lookup table of current zones -- importing the live taxonomy here
+        # would defeat the check, because the taxonomy no longer contains these
+        # codes. Deliberately frozen at what the 2022 Employment Zones reform
+        # abolished. The suppression must sit on the offending line itself:
+        # the linter matches per-line, so a comment above it does nothing.
+        (["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"],),  # noqa: zone-codes
+        "Each row is keyed to a zone code that no longer exists in any LEP, so "
+        "it cannot be matched by a current-zone lookup. Measured 3 live on "
+        "2026-08-12, against 14 recorded on 2026-08-01 -- the retag reduced it.",
+    ),
+    "DQ-39": (
+        "Current setback controls flagged by a DQ derivability sweep",
+        # review_reason carries the sweep tag, so this counts rows a human
+        # already judged un-derivable from their own quote -- not a guess.
+        "SELECT count(*) FROM dcp_setback_controls "
+        "WHERE is_current AND review_reason IS NOT NULL "
+        "AND (review_reason LIKE 'DQ %%' OR review_reason LIKE '[DQ-%%')",
+        (),
+        "Rows whose stored number a reviewer could not derive from the quoted "
+        "source_text. The number IS the product, so each one is a served value "
+        "with no evidence behind it.",
+    ),
     "DQ-29": (
         "SERVED provisions matching the doubled-character OCR corruption pattern",
         # is_current AND v2_is_actionable IS the served set. Without that filter
