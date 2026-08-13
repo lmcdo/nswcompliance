@@ -117,7 +117,15 @@ def chat(messages: list[dict], model: str, api_key: str, json_mode: bool = False
     # A blocking gate that cannot say what it is doing gets bypassed with
     # --no-verify, and that is how a gate stops existing. The progress line goes
     # to stderr so it cannot be mistaken for the tool's JSON on stdout.
-    timeout_s = float(os.getenv("SOL_TIMEOUT_SECONDS", "180"))
+    raw = os.getenv("SOL_TIMEOUT_SECONDS", "180")
+    try:
+        timeout_s = float(raw)
+    except (TypeError, ValueError):
+        sys.exit(f"SOL_TIMEOUT_SECONDS is not a number: {raw!r}")
+    # Reject non-positive and non-finite before handing it to the client, which
+    # would otherwise accept nan or -1 with undefined semantics.
+    if not (timeout_s > 0) or timeout_s != timeout_s or timeout_s == float("inf"):
+        sys.exit(f"SOL_TIMEOUT_SECONDS must be a positive finite number: {raw!r}")
     print(f"  calling {model} (timeout {timeout_s:.0f}s, no retries)...",
           file=sys.stderr, flush=True)
 

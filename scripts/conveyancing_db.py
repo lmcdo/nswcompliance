@@ -204,8 +204,13 @@ def format_as_at_line(as_at: Optional[dict]) -> Optional[str]:
         # would put a commencement date on the page sourced from nothing, and
         # would give the wrong answer to anyone checking which plan applied to a
         # DA lodged earlier.
-        return (f"These controls were extracted from the council's published "
-                f"plan on {shown}; an in-force date is not available")
+        # "These controls were extracted on X" overstated it: the date is the
+        # council-wide MIN, so a control inserted in August would be described
+        # by a May date belonging to a different row (Sol, 2026-08-13). MIN is
+        # still the right choice - the oldest capture must not be hidden by a
+        # recent one - so the WORDING changes to say what the number actually is.
+        return (f"Earliest recorded capture of this council's current controls: "
+                f"{shown}; an in-force date is not available")
     else:
         return None
     if kind == "amended":
