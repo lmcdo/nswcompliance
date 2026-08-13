@@ -1,12 +1,12 @@
 {
   "_note": "Shrink-only. Each value may fall, never rise. Lower it with --baseline --update when work lands.",
   "per_key": {
-    "camden (extraction-date only)": 16,
-    "canada_bay (extraction-date only)": 32,
-    "cumberland (extraction-date only)": 19,
-    "liverpool (extraction-date only)": 25,
-    "ryde (extraction-date only)": 21,
-    "sutherland_shire (extraction-date only)": 27,
-    "wingecarribee (extraction-date only)": 30
+    "camden": 16,
+    "canada_bay": 32,
+    "cumberland": 19,
+    "liverpool": 25,
+    "ryde": 21,
+    "sutherland_shire": 27,
+    "wingecarribee": 30
   }
 }

@@ -191,26 +191,6 @@ def format_as_at_line(as_at: Optional[dict]) -> Optional[str]:
         return (f"All registered source documents for this plan were last "
                 f"checked on or after {shown}; an in-force date is not "
                 f"available")
-    elif basis == "extracted_from_published":
-        # The whole point of the fourth basis, and it had NO branch here, so it
-        # returned None and rendered nothing at all. The first version of the
-        # test could not see that: it asserted only that the wrong wording was
-        # absent, which an empty line satisfies trivially. Sol's cross-review
-        # caught it; the test now asserts the line is present and carries the
-        # date before checking what it must not say.
-        #
-        # Wording claims only what we can show: these controls were read out of
-        # the council's published plan on this date. NOT "in force since" - that
-        # would put a commencement date on the page sourced from nothing, and
-        # would give the wrong answer to anyone checking which plan applied to a
-        # DA lodged earlier.
-        # "These controls were extracted on X" overstated it: the date is the
-        # council-wide MIN, so a control inserted in August would be described
-        # by a May date belonging to a different row (Sol, 2026-08-13). MIN is
-        # still the right choice - the oldest capture must not be hidden by a
-        # recent one - so the WORDING changes to say what the number actually is.
-        return (f"Earliest recorded capture of this council's current controls: "
-                f"{shown}; an in-force date is not available")
     else:
         return None
     if kind == "amended":
@@ -268,48 +248,24 @@ def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
         return {"date": observed, "precision": "day", "kind": None,
                 "basis": "observed_current"}
 
-    # Fourth basis: the version we extracted from, and when. It answers a
-    # DIFFERENT question from the first two rather than a weaker version of the
-    # same one, so rank is not the same as worth.
+    # NO basis derived from row-insert time.
     #
-    # portal_plan_record and stated_in_document answer "when did this plan
-    # commence" - plan identity. This answers "how stale might our copy be",
-    # which is the question that fails dangerously: a setback presented
-    # confidently from a plan that changed last year is the actual harm, while
-    # not knowing a commencement date rarely is. Extraction took the council's
-    # CURRENT published version at that time, so this is an observation of
-    # currency on a date, the same kind of statement as observed_current, not a
-    # bare note of when a row was inserted.
+    # A reader needs two facts and only two: WHEN DID THIS PLAN COMMENCE, and
+    # IS OUR COPY CURRENT. dcp_setback_controls.created_at answers neither. It
+    # records when a row was written to our database, which is a fact about us,
+    # not about the plan - and it is actively misleading, because one bulk
+    # reinsert stamps every row with today and makes a 2024 plan look freshly
+    # downloaded (Sol HIGH, 2026-08-13).
     #
-    # It must still be worded as what it is - "extracted from the version
-    # published on <date>" - a checkable statement about us, never "in force
-    # since". DQ-41 is the warning: 528 dates were once manufactured from
-    # version labels. Nothing here is inferred; created_at is the row's own
-    # insertion time and extraction is what created it.
+    # So it is not rendered. Where the first three bases find nothing, no date
+    # is the honest answer, and the count of councils in that state is ratcheted
+    # in .claude/as_at_coverage_baseline.json so it stays visible.
     #
-    # It exists because the other three are genuinely exhausted for ten
-    # councils - the Portal holds records with no dated phrase, no PDF on disk
-    # carries a commencement statement, and their chapters were never
-    # URL-checked. The alternative was showing a number with no age at all,
-    # which is how a reader ends up trusting a figure captured a year ago.
-    # DQ-41 is the warning in the other direction: 528 dates were once
-    # manufactured from version labels, so nothing here is inferred - created_at
-    # is the row's own insertion time.
-    #
-    # MIN, not MAX, for the same reason observed_current takes the oldest
-    # check: one control captured last week must not speak for a council whose
-    # other controls were read months earlier.
-    cur.execute(
-        """SELECT MIN(created_at)::date::text
-             FROM dcp_setback_controls
-            WHERE lga = %s AND is_current = TRUE
-              AND (needs_review IS NULL OR needs_review = FALSE)""",
-        (lga_slug,),
-    )
-    got = cur.fetchone()
-    if got and got[0]:
-        return {"date": got[0], "precision": "day", "kind": "published_version",
-                "basis": "extracted_from_published"}
+    # Commencement comes from the council's own page - read for waverley and
+    # bayside on 2026-08-13 and stored in dcp_plan_as_at.stated_date with the
+    # verbatim quote. Currency needs a fetch-time provenance column compared
+    # against what the council publishes now; dcp_chapter_registry has the right
+    # shape and covers 190 of 564 active chapters.
     return None
 
 
