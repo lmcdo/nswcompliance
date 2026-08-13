@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what the QA gate accepts as proof that a cited file exists. It cannot corrupt data or serve a wrong number, so not Critical — but it decides whether a blocking check enforces anything, and the previous version let a report cite a file CI would never see. Above Minor because it changes gate behaviour for every future report.",
-  "commit_hash": "2be1da32",
+  "commit_hash": "efdd316c",
   "files": [
     "scripts/qa_gate.py",
     "tests/test_qa_gate_reachability.py"
