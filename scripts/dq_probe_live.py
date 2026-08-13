@@ -45,7 +45,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         (SAR_SOURCE,),
         "These are the ones a user can still be served today.",
     ),
-    "DQ-68": (
+    "DQ-69": (
         "Served provisions carrying no topic, across every document",
         # Opened 2026-08-14 because the ledger was narrower than the defect it
         # described. DQ-24 counts 523 of these — the ones from one SEPP — and
@@ -208,6 +208,29 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "rows and the_hills' Showground Precinct rows are place-scoped too but "
         "SELF-DISCLOSING -- each names its locality in its own condition text -- "
         "so they are not this defect and are not registered chapters anyway.",
+    ),
+    "DQ-69": (
+        "Active NSW instruments the legislation monitor has not checked in 14 days",
+        # LIVENESS, not data quality. The monitor is a 7-day sleep loop on Fly
+        # (deploy/flyio-legislation-monitor/run_loop.sh) whose failure branch is
+        # `|| echo "will retry next cycle"` -- a permanently broken monitor and a
+        # healthy one look identical from outside, and did for 67 days. Nothing
+        # read the healthchecks.io ping, and no alert fires on silence.
+        #
+        # last_checked is written by legislation_monitor.py on BOTH paths (change
+        # and no-change), so it moves on any successful run. It is therefore a
+        # true liveness signal and CANNOT be satisfied by editing code -- only by
+        # the monitor actually running. 14 days = 2x the 7-day loop period.
+        "SELECT count(*) FROM instrument_registry "
+        "WHERE is_active AND (last_checked IS NULL "
+        "                     OR last_checked < NOW() - INTERVAL '14 days')",
+        (),
+        "Each row is a SEPP or LEP whose amendments we would not have seen. "
+        "Measured 26 of 26 on 2026-08-14: max(last_checked) = 2026-06-08, i.e. "
+        "67 days blind, and 1 instrument has never been checked at all. A "
+        "residual of 1-2 means those specific instruments fail at the source "
+        "(PCO 403 / AustLII Cloudflare) and belongs in notes, not in a retry "
+        "loop; a residual of 26 means the monitor is not running.",
     ),
     "DQ-40": (
         "Setback controls still flagged for review",

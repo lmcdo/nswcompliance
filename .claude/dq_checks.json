@@ -529,6 +529,18 @@
       "passes_when": "exit 0 - every served provision carries a v2_topic",
       "red_when": "A provision the product serves has no topic, so it cannot be routed to the right section of a report or filtered by topic.",
       "note": "Opened 2026-08-14 because the ledger was narrower than the defect it described. DQ-24 tracks 523 of these - the Transport & Infrastructure SEPP slice - and scoping it that way was defensible, but it left 2,674 rows in exactly the same state with nothing watching them. Same served-set scope as DQ-24, so DQ-24 is a strict subset and the two numbers are comparable. Measured 3,197 of 19,957 served provisions (16.0%), concentrated in statewide instruments (2,530) and the Inner West former councils (marrickville 475, leichhardt 123)."
+    },
+    "DQ-69": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-69"
+      ],
+      "passes_when": "exit 0 - every active SEPP/LEP in instrument_registry was checked by the legislation monitor within the last 14 days (2x its 7-day loop). NOTE: 1 is the correct floor while wingecarribee_lep_2010 has no pco_instrument_id; 0 requires giving it one.",
+      "red_when": "The NSW legislation monitor is not running, so amendments to SEPPs and LEPs go unseen. LIVENESS, not data quality: last_checked is written on both the change and no-change paths, so only an actual run moves it - a code edit cannot satisfy this check.",
+      "note": "⚠ Opened as DQ-68 and RENUMBERED to DQ-69 on rebase: #954's ledger took 68 for the untagged-topic row. Measured 2026-08-14: 26 of 26 active instruments stale, max(last_checked) = 2026-06-08 = 67 days blind. TWO independent causes, both fixed: (a) the Fly container died at import - #504 added `refresh_runbook` to legislation_monitor.py and never added the COPY, confirmed live by ModuleNotFoundError; (b) even when it ran, check_instrument returned early whenever the source gave no version, which on the PCO path is the NORMAL case, so a run reporting 'Checked: 26' wrote ZERO rows. (b) also invalidated this probe's first premise - the gate caught its own flaw. PCO's export lists every amended instrument, so absence is an affirmative confirmation and is now recorded, but ONLY where pco_instrument_id is set. Post-fix measured 1. Silence stayed invisible because run_loop.sh swallows failures with `|| echo \"will retry next cycle\"`, the machine stays `started` either way, and the healthchecks.io ping is read by nothing. Telegram on the Fly machine was ALSO returning HTTP 404 (stale token) - reset from the working Railway secret."
     }
   }
 }
