@@ -1,0 +1,128 @@
+{
+  "tier": "critical",
+  "justification": "Replaces three dates served as each DCP's commencement — the date deciding WHICH plan governs a development application under its savings provisions. A wrong value here reads as authoritative and nothing downstream can detect it. Also renames a registry field that other queries group by.",
+  "commit_hash": "5f18c0af",
+  "files": [
+    "scripts/repair_dq62_commencement_dates.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-62 && python scripts/check_dcp_as_at_coverage.py --baseline && python scripts/dq_check.py",
+    "fails_when": "DQ-62 exits 1 while any stored commencement postdates its plan's own name by 3+ years, so it cannot pass while the defect exists. The as-at check exits non-zero if any council's dateless count RISES above the baseline of 0 — which is what would happen if a repair cleared a date instead of replacing it. dq_check goes RED in the other direction too: DQ-62 is now declared fixed, so if the probe ever fails again the ledger contradicts itself and the build breaks.",
+    "observed_red": "Observed at every step, not assumed. Before this change `python scripts/dq_probe_live.py --id DQ-62` exited 1 printing count=4 with its query and the four councils; after the three writes and the registry rename it exits 0 with count=0. The ratchet's other direction was observed too: with DQ-62 still declared 'open' and the probe passing, dq_check would have gone red, which is why the row was flipped to fixed in the same change. The dry run printed exactly the three intended transitions (strathfield 2020-09-08 -> 2006-05-03, burwood 2026-03-05 -> 2013-03-01, the_hills 2022-05-06 -> 2013-03-26) and 3 registry renames before anything was written."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_plan_as_at (28 rows; 16 carry a stated_date, 3 of them rewritten here) and dcp_chapter_registry (3 fairfield rows renamed). Backup of both taken to the job tmp before any write.",
+    "assumption_mismatch": "The assumption is that a clause titled 'Commencement of this Plan' / 'Date on Which the BDCP Takes Effect' / 'Important Dates' states the whole plan's commencement rather than that part's. Checked against each document's own amendment list: The Hills' earliest listed amendment is adopted 28/05/2013, in force 11/06/2013, which is AFTER the 26/03/2013 it states — so no amendment precedes the date being stored. Strathfield and Burwood state adoption and effect in one sentence, a shape that cannot be an amendment row.",
+    "new_vs_existing": "Existing rows only. Three UPDATEs, each guarded on the OLD value so a row already corrected by another session misses rather than being overwritten, plus rowcount asserted == 1 per row before commit.",
+    "external_source_error": "No runtime fetching. The three PDFs were downloaded once, read, and the values transcribed as literals into the script; the script itself touches only the database. Search-engine summaries were deliberately NOT used as the source — #947 established that a paraphrase must not sit in the same column as verbatim quotes, so each value was confirmed against the plan's own clause text.",
+    "frontend_type": "No. Same columns, same types; only three values change. No serving path was touched.",
+    "user_failure_mode": "If a value were wrong, a conveyancer would apply the wrong plan version to a DA and the report would read as authoritative. Mitigated by transcribing the 'came into effect' half of each sentence and never the adoption date beside it, and by the probe now covering the class."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/repair_dq62_commencement_dates.py:61",
+      "input": "--apply flag; DATES literals and REGISTRY_RENAME constant, each transcribed from a plan's own clause",
+      "output": "exit code; on --apply, three UPDATEs to dcp_plan_as_at.stated_date plus precision, kind and verbatim evidence, and one UPDATE renaming three dcp_chapter_registry rows",
+      "if_none": "Without --apply it prints the before/after transitions and the predicted row counts and writes nothing; DATABASE_URL absent exits 2 rather than proceeding."
+    }
+  ],
+  "values": [
+    {
+      "value": "before[lga] — the OLD stated_date used as the update guard",
+      "read_at": "scripts/repair_dq62_commencement_dates.py:110",
+      "nullable": "no",
+      "guard_at": "scripts/repair_dq62_commencement_dates.py:114 — `if cur.rowcount != 1: raise`",
+      "if_missing": "The UPDATE matches zero rows, the rowcount assertion raises, and the whole transaction rolls back — so a concurrently-corrected row is never silently overwritten."
+    },
+    {
+      "value": "REGISTRY_RENAME old name 'Fairfield DCP 2013'",
+      "read_at": "scripts/repair_dq62_commencement_dates.py:58",
+      "nullable": "no",
+      "guard_at": "predicted count read before the write and compared to the actual rowcount",
+      "if_missing": "A mismatch between predicted and actual renames raises and rolls back; on a second run it matches 0 rows and the dry run reports 0, which is the idempotent state."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Replace one council's stored commencement with the date its plan states",
+      "file_line": "scripts/repair_dq62_commencement_dates.py:110",
+      "where_clause": "WHERE lga = %s AND stated_date = %s (the OLD value)",
+      "if_zero": "rowcount != 1 raises and the transaction rolls back — zero rows means someone else already changed it, which is a reason to stop, not to force.",
+      "if_wrong": "Guarding on lga alone would overwrite a newer correction by another session. Guarding on the old value makes that case fail loudly instead."
+    },
+    {
+      "purpose": "Correct the stale registry plan name that made fairfield look like a wrong date",
+      "file_line": "scripts/repair_dq62_commencement_dates.py:58",
+      "where_clause": "WHERE council = 'fairfield' AND dcp_name = 'Fairfield DCP 2013'",
+      "if_zero": "Predicted count is read first; a mismatch raises and rolls back. Zero on a re-run is the correct idempotent result.",
+      "if_wrong": "Scoping by council alone would rename rows already carrying the right name. Matching the exact old string means only the stale rows move."
+    },
+    {
+      "purpose": "Post-write assertion that no amendment date sits in the commencement column",
+      "file_line": "scripts/repair_dq62_commencement_dates.py:128",
+      "where_clause": "WHERE stated_date_kind = 'amended'",
+      "if_zero": "Zero is the required state and the transaction commits.",
+      "if_wrong": "Non-zero raises before commit, so the exact defect DQ-62 describes cannot be re-introduced by this script."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The clause read is a PART's commencement, not the whole plan's, so a part-level date is stored as the plan's.",
+      "what_happens": "The wrong plan version is applied to a DA and the date reads as authoritative.",
+      "mitigated": true,
+      "how": "Each value was cross-checked against that same document's own List of Amendments: The Hills states in force 26/03/2013 and its earliest amendment is in force 11/06/2013, so nothing precedes it. Strathfield and Burwood state adoption and effect in a single sentence under a heading naming the whole plan ('Commencement of this Plan', 'Date on Which the BDCP Takes Effect'), a shape an amendment row cannot take.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-62"
+    },
+    {
+      "scenario": "The adoption date is transcribed instead of the effect date — they sit in the same sentence.",
+      "what_happens": "The stored date is weeks or months early; DQ-60 is violated in a way that looks plausible.",
+      "mitigated": true,
+      "how": "Every evidence string stores BOTH halves verbatim ('adopted by Council on 4 April 2006 and came into effect on 3 May 2006') so a reader can see which half was taken, and the stored value is always the later one. Canada Bay's Amendment 0 is the same shape and was handled the same way.",
+      "repro": "SELECT lga, stated_date, stated_evidence FROM dcp_plan_as_at WHERE lga IN ('strathfield','burwood','the_hills')"
+    },
+    {
+      "scenario": "Another session corrects one of these rows between the dry run and the apply.",
+      "what_happens": "Their correction is silently overwritten by this script's literal.",
+      "mitigated": true,
+      "how": "Each UPDATE is guarded on the OLD value and asserts rowcount == 1; a mismatch raises and rolls back the entire transaction, including the other two rows and the registry rename.",
+      "repro": "Change one row's stated_date by hand, then run with --apply — it rolls back and reports the council."
+    },
+    {
+      "scenario": "A repair clears a date it cannot resolve, rather than replacing it.",
+      "what_happens": "The dateless count rises from 0 and the as-at ratchet blocks the build — or worse, the baseline is bumped to hide it.",
+      "mitigated": true,
+      "how": "This script only ever writes a value; it has no clear path. The as-at baseline is shrink-only and was re-run at 0 after the writes.",
+      "repro": "python scripts/check_dcp_as_at_coverage.py --baseline"
+    },
+    {
+      "scenario": "The probe fires again later and someone 'fixes' the DATE when the stale field is actually the registry NAME.",
+      "what_happens": "A correct commencement is replaced with a wrong one to satisfy a check — the check causing the defect it exists to catch.",
+      "mitigated": true,
+      "how": "This is not hypothetical: fairfield was exactly this case and would have had a correct 2024-08-22 overwritten. The limitation is now recorded in the probe's own note and in the DQ-62 ledger row — when it fires, establish which of the two is out of date before touching either.",
+      "repro": "python -c \"import json;print(json.load(open('.claude/dq_checks.json'))['checks']['DQ-62']['note'])\""
+    },
+    {
+      "scenario": "Renaming dcp_name breaks something that groups or joins on it.",
+      "what_happens": "A query that groups or joins on the plan name silently returns a different set of rows, and nothing surfaces the change because the query still succeeds.",
+      "mitigated": true,
+      "how": "Swept before writing: dcp_name is read by the DQ-62 probe (which this change is fixing) and rendered as part of a citation label. It is not a join key anywhere — the joins use council + chapter_key. The new value is transcribed from the document's own title page rather than invented.",
+      "repro": "grep -rn \"dcp_name\" scripts/ services/ frontend-nextjs/app frontend-nextjs/lib"
+    },
+    {
+      "scenario": "A future edit to this repair (or a copy of it) writes an amendment date into stated_date — the DQ-62 defect re-entering through the repair path rather than the extractor.",
+      "what_happens": "An amendment date is served as the plan's commencement again, and because the ledger row now reads 'fixed', nobody re-opens it.",
+      "mitigated": true,
+      "how": "scripts/repair_dq62_commencement_dates.py:128 runs `SELECT count(*) FROM dcp_plan_as_at WHERE stated_date_kind = 'amended'` INSIDE the transaction and raises before commit if it is non-zero, so the write cannot land. The same assertion exists in extract_dcp_stated_dates.py's apply path, so both writers are covered rather than just the one that caused the original defect.",
+      "repro": "Set stated_date_kind='amended' on any row, then run this script with --apply — it rolls back."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - the three date writes and the registry rename were applied to production on 2026-08-13 BEFORE merge, with backups of dcp_plan_as_at (28 rows) and the fairfield registry rows (3) taken first. The script is idempotent on a second run. Confirm with: python scripts/dq_probe_live.py --id DQ-62 (expect 0) and python scripts/check_dcp_as_at_coverage.py --baseline (expect 0 dateless)."
+  }
+}
