@@ -25,7 +25,7 @@
   "the gap stays visible. An invented check that cannot fail is what produced",
   "DQ-30's '0% drift' verification — worse than no check."
  ],
- "_max_no_check": 49,
+ "_max_no_check": 59,
  "checks": {
   "DQ-54": {
    "declared": "fixed",
@@ -429,6 +429,56 @@
    "declared": "open",
    "check": null,
    "why_no_check": "The count of councils with no commencement date is already ratcheted per council in .claude/as_at_coverage_baseline.json and blocks the build. A second probe would be a second source of truth."
+  },
+  "DQ-59e": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "Candidates awaiting primary-source confirmation. The count of councils with no commencement date is already ratcheted per council in .claude/as_at_coverage_baseline.json."
+  },
+  "DQ-59f": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "A rule recorded, not a defect state: the evidence test is instrument identity, not source honesty. The remaining councils are counted per-council in .claude/as_at_coverage_baseline.json."
+  },
+  "DQ-59g": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "Blocked on DQ-43 (key the as-at to a plan rather than a council) and on Wingecarribee consolidating its 17 DCPs, on exhibition to 2026-09-15. Its 30 claims are already counted per-council in .claude/as_at_coverage_baseline.json."
+  },
+  "DQ-60": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "A rule decision, now applied: the stored date is the full DCP commencement per EP&A Regulation 2021. Whether each stored date obeys it is a per-council source check, and the count of undated councils is already ratcheted per council."
+  },
+  "DQ-61": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "No column records the in-force amendment, so there is nothing to probe yet. The check becomes possible once that field exists and can be compared to a council amendment log."
+  },
+  "DQ-62": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "A probe would have to read stated_evidence and judge whether it describes a commencement clause or an amendment table - a text judgement, not a count. The durable fix is in the writer: extract_dcp_stated_dates.py should not put an amendment date in this column."
+  },
+  "DQ-63": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "The remaining undated councils are counted per council in .claude/as_at_coverage_baseline.json, which blocks the build if the count rises."
+  },
+  "DQ-64": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "One cell of one table, not a measurable state. canada_bay is already counted in .claude/as_at_coverage_baseline.json and the count falls when the date lands."
+  },
+  "DQ-65": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "A design confirmation, not a defect state. The two fields it endorses are tracked as DQ-60 (settled) and DQ-61 (open)."
+  },
+  "DQ-66": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "Needs a probe that flags a council whose served controls all come from ONE source_chapter_key while the council is known to maintain several plans. The \"known to maintain several\" half has no data behind it yet - there is no table of how many plans a council has. Writing the probe without it would either fire on every single-plan council or on none."
   }
  }
 }
