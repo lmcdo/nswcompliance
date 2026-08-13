@@ -217,10 +217,21 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # healthy one look identical from outside, and did for 67 days. Nothing
         # read the healthchecks.io ping, and no alert fires on silence.
         #
-        # last_checked is written by legislation_monitor.py on BOTH paths (change
-        # and no-change), so it moves on any successful run. It is therefore a
-        # true liveness signal and CANNOT be satisfied by editing code -- only by
-        # the monitor actually running. 14 days = 2x the 7-day loop period.
+        # ⚠ This probe's original premise was WRONG and the gate caught it.
+        # It assumed last_checked was written on both the change and no-change
+        # paths. It was not: check_instrument returned early whenever the source
+        # gave no version, which on the PCO path is the NORMAL case, so a run
+        # that reported "Checked: 26" wrote zero rows (observed 2026-08-14).
+        # The gate therefore could not tell a dead monitor from a healthy quiet
+        # one -- the exact confusion it exists to remove. Fixed in the same
+        # change: PCO's export lists every amended instrument, so absence is an
+        # affirmative confirmation and is now recorded, but ONLY for instruments
+        # carrying a pco_instrument_id (one without can never appear, so silence
+        # about it means nothing and stamping it would fabricate a check).
+        #
+        # last_checked is now a true liveness signal and CANNOT be satisfied by
+        # editing code -- only by the monitor actually running. 14 days = 2x the
+        # 7-day loop period.
         "SELECT count(*) FROM instrument_registry "
         "WHERE is_active AND (last_checked IS NULL "
         "                     OR last_checked < NOW() - INTERVAL '14 days')",

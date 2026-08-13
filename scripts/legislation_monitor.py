@@ -575,8 +575,38 @@ def check_instrument(
     legislation_url = instrument["legislation_url"]
 
     if new_version is None:
-        # Source didn't return data for this instrument — not an error,
-        # just means no change detected (or instrument not in source's scope)
+        # Source didn't return data for this instrument. Two very different
+        # cases hide here, and conflating them is why last_checked sat frozen
+        # at 2026-06-08 while the monitor reported "Checked: 26" (2026-08-14):
+        #
+        #  a) CONFIRMED UNCHANGED — check_via_pco seeds its result with EVERY
+        #     instrument_key -> None and fills in only the ones its complete
+        #     35-day export lists as amended. Absence is therefore an
+        #     affirmative "not amended in the window", and the run HAS
+        #     confirmed this instrument. Record that.
+        #  b) NOT COVERED — an instrument with no pco_instrument_id can never
+        #     appear in that export (pco_to_key is built only from instruments
+        #     that have one), so PCO's silence about it says nothing at all.
+        #     Writing last_checked here would fabricate a confirmation.
+        #     Live case: wingecarribee_lep_2010, the one row that has never
+        #     been checked. It must STAY unchecked, not be quietly marked.
+        #
+        # Only PCO is authoritative-for-absence. The nsw_legislation and
+        # austlii paths fetch per instrument, so a None there is a miss, not a
+        # confirmation, and must not stamp either.
+        confirmed_unchanged = (
+            source == "pco" and bool(instrument.get("pco_instrument_id"))
+        )
+        if confirmed_unchanged and not dry_run:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE instrument_registry "
+                "SET last_checked = %s, check_failures = 0 "
+                "WHERE instrument_key = %s",
+                (datetime.now(timezone.utc), key),
+            )
+            conn.commit()
+            cur.close()
         return InstrumentResult(
             instrument_key=key, instrument_label=label,
             changed=False, new_version=None,
