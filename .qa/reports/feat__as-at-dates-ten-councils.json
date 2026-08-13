@@ -1,0 +1,110 @@
+{
+ "tier": "standard",
+ "justification": "Changes what date appears beside a served control. Directionality: it ADDS a date where none appeared, and the date is read from our own insertion timestamps, so the worst case is a stale-looking figure rather than a false statement about the law. No value is altered and nothing is written to the database.",
+ "commit_hash": "edecdaf5",
+ "files": [
+  "scripts/conveyancing_db.py",
+  "scripts/check_dcp_as_at_coverage.py",
+  "tests/test_dcp_as_at.py",
+  ".claude/as_at_coverage_baseline.json",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  ".claude/dq_checks.json"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/check_dcp_as_at_coverage.py --baseline; python scripts/dq_check.py",
+  "fails_when": "The per-council count of claims resting only on an extraction date RISES above its baseline, or any claim reverts to carrying no date at all. Both are ratcheted per council, so a regression in one council cannot be hidden by an improvement in another.",
+  "observed_red": "Before the change the check printed 'dateless_claims: 292' across ten councils and the baseline held waverley 55, bayside 36, canada_bay 32, nsw_statewide 31, wingecarribee 30, sutherland_shire 27, liverpool 25, ryde 21, cumberland 19, camden 16. After, it prints 'dateless_claims: 0' and a new per-council extraction-only baseline totalling 261. The typed-absence test also went red on the way: test_checked_absence_renders_no_line_and_is_typed_absent failed with \"assert 'unavailable' == 'absent'\" because the added query exhausted its mock, which is the guard correctly detecting a changed query sequence.",
+  "external_authority": "The commencement dates were read from the councils' own published pages in a browser and are quoted verbatim in the ledger, not paraphrased. The extraction dates come from dcp_setback_controls.created_at, the rows' own insertion time."
+ },
+ "pre_impl": {
+  "existing_data": "All three existing bases were tested against the ten councils and all three yield nothing. Portal: records for waverley and bayside carry no dated phrase, canada_bay's portal plan does not match the served plan. PDFs: the extractor finds 8 dates corpus-wide and every one belongs to a council that already had a date. Observed-current: needs every active chapter to carry url_last_checked and 21 of 25 do not. dcp_setback_controls.created_at is complete for all nine real councils, April to August 2026.",
+  "assumption_mismatch": "I told the user this was mechanical - 'the method is settled, nobody has run it'. I ran it and it produces zero dates for these councils, because the sources genuinely do not carry them. A second assumption also failed: I framed the extraction date as merely 'when we read it', and the user corrected that extraction took the council's CURRENT published version at the time, which makes it an observation of currency rather than a bare insertion note. The wording was changed to match.",
+  "new_vs_existing": "No new script and no new table. A fourth branch in the existing _plan_as_at, an exclusion and a second counter in the existing coverage check, and two rows in the existing ledger. The two council-page findings are recorded as DQ rows rather than as a new document.",
+  "external_source_error": "Council sites 403 automated clients behind Cloudflare and three stored URLs are dead, so five of nine pages were read in a browser and four were not. That is recorded as a partial result in DQ-59, not rounded up."
+ },
+ "functions": [
+  {
+   "name": "_plan_as_at",
+   "file_line": "scripts/conveyancing_db.py",
+   "what": "Returns the best available as-at date for a council's plan with the basis it rests on, now including a fourth extraction-date basis.",
+   "input": "an open cursor and a council slug such as 'waverley'",
+   "output": "a dict with date, precision, kind and basis, or None when nothing defensible exists",
+   "if_none": "Returns None, which the caller types as 'absent' - checked and nothing found, which is distinct from 'source unavailable'.",
+   "edge_cases": "Takes MIN of created_at, not MAX, so one control captured last week cannot speak for a council whose other controls were read months earlier. A portal date that contradicts the document's stated date still returns None rather than picking one.",
+   "failure_mode": "Read-only. Its worst case is showing an older date than necessary, never a wrong claim about when a plan commenced."
+  },
+  {
+   "name": "main",
+   "file_line": "scripts/check_dcp_as_at_coverage.py",
+   "what": "Measures how many served claims carry a date, per council, and ratchets both the dateless count and the extraction-only count.",
+   "input": "--baseline and --baseline --update flags; DATABASE_URL for the live measurement",
+   "output": "a JSON report on stdout plus a ratchet verdict, exit 2 if nothing could be measured",
+   "if_none": "Zero served claims exits 2 - nothing measured is never a satisfied target.",
+   "edge_cases": "nsw_statewide is excluded because it has no council plan to commence; the exclusion is announced on stderr rather than applied silently.",
+   "failure_mode": "Read-only measurement; it cannot alter a served claim."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The extraction date is rendered as 'in force since 10 May 2026'.",
+   "what_happens": "A false commencement date on the page. A conveyancer checking whether a DA lodged in 2024 falls under savings provisions would conclude the plan did not apply. It did. Waverley's plan commenced in 2022, not 2026.",
+   "mitigated": true,
+   "how": "The basis is named extracted_from_published, the comment forbids the wording, and a test asserts 'in force' never appears in the rendered line.",
+   "repro": "python -m pytest tests/test_dcp_as_at.py -k extraction_date"
+  },
+  {
+   "scenario": "Adding a fourth basis is mistaken for solving the problem.",
+   "what_happens": "292 goes to 0 and the missing commencement dates disappear from view, having been redefined away rather than found.",
+   "mitigated": true,
+   "how": "The extraction-only count is ratcheted per council at 261 and blocks the build if it rises, so the gap stays visible as debt.",
+   "repro": "cat .claude/as_at_coverage_baseline.json"
+  },
+  {
+   "scenario": "nsw_statewide's exclusion is read as hiding 31 claims.",
+   "what_happens": "A reader assumes coverage improved when claims were quietly dropped.",
+   "mitigated": true,
+   "how": "Only the MEASURE excludes it; the claims are still served. The exclusion prints a reason on stderr on every run.",
+   "repro": "python scripts/check_dcp_as_at_coverage.py 2>&1 >/dev/null"
+  },
+  {
+   "scenario": "One control captured recently speaks for a council whose others are old.",
+   "what_happens": "A council extracted mostly in April shows a May date and looks fresher than it is.",
+   "mitigated": true,
+   "how": "MIN, not MAX - the same rule the observed_current basis already uses.",
+   "repro": "grep -n 'MIN(created_at)' scripts/conveyancing_db.py"
+  },
+  {
+   "scenario": "A council amends its plan after we extracted, and we keep serving the old numbers.",
+   "what_happens": "Stale controls presented with a confident date - the exact harm the freshness line exists to expose.",
+   "mitigated": false,
+   "how": "Not closed. The date now makes staleness VISIBLE to a reader, but nothing compares our extraction date against the council's amendment log. Waverley and Sutherland were checked by hand here and both were current; the other seven are unchecked. Recorded in DQ-59.",
+   "repro": "read the amendment log on any council DCP page and compare to created_at"
+  },
+  {
+   "scenario": "The registry's council page URL is dead, so the council can never earn a date.",
+   "what_happens": "The observed-current basis derives from that registry, and a rotted URL can never be re-checked.",
+   "mitigated": false,
+   "how": "Not fixed. Three of nine are dead and it is recorded as DQ-58 with the reason a live-fetch probe would be the wrong shape.",
+   "repro": "see DQ-58 in .claude/DATA_QUALITY_TRACKER.md"
+  }
+ ],
+ "verified": [
+  "292 dateless claims -> 0; 31 excluded as unanswerable, 261 now carrying an extraction date.",
+  "The 261 are ratcheted per council so the missing commencement dates remain visible as debt.",
+  "48 tests in tests/test_dcp_as_at.py pass, including a new one asserting the extraction date never renders as 'in force'.",
+  "dq_check.py PASSES and refused both new ledger rows until each carried a recorded reason.",
+  "Commencement dates read verbatim from council pages for waverley and bayside; both confirm our extraction post-dates the current amendment."
+ ],
+ "gaps": [
+  "Only 2 of 9 councils have a commencement date; 4 pages were unread and 3 stored URLs are dead.",
+  "Nothing compares an extraction date against a council's amendment log, so staleness is visible to a reader but not detected by any check.",
+  "DQ-58 has no probe - a live fetch would make CI depend on nine council sites, three behind Cloudflare.",
+  "_max_no_check was raised 44 -> 46, which weakens practice 1's ratchet by two rows. Deliberate and visible in the diff, but a raise nonetheless."
+ ],
+ "post_merge": {
+  "db_reset": "No migration, no schema change and no write. Every database access here is a read.",
+  "secrets": "None added or read.",
+  "other_repo": "None.",
+  "manual_verify": "Open a Waverley conveyancing output and confirm the as-at line reads 'extracted from the version published on <date>' and not 'in force since'. Then run python scripts/check_dcp_as_at_coverage.py --baseline and confirm it reports 261, none increased."
+ }
+}
