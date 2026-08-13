@@ -45,6 +45,123 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         (SAR_SOURCE,),
         "These are the ones a user can still be served today.",
     ),
+    "DQ-61": (
+        "Served councils with no record of WHICH VERSION of the plan we hold",
+        # DQ-60 settled that stated_date is the plan's commencement. It says
+        # nothing about whether our extract reflects the current text, so a
+        # council can be perfectly dated and years stale at once and nothing
+        # would show it.
+        #
+        # The portal_* columns are NOT this fact: they record what the Planning
+        # Portal advertises, parsed from planName, and are set on 1 of 28 rows
+        # (measured 2026-08-13). currency_* records what OUR COPY is, read from
+        # the document. The two disagreeing is the staleness signal -- liverpool
+        # is the live case, portal says 'as amended Dec 2019' while one of our
+        # source PDFs is named ...2017.
+        "SELECT count(DISTINCT d.lga) FROM dcp_setback_controls d "
+        "LEFT JOIN dcp_plan_as_at a ON a.lga = d.lga "
+        "WHERE d.is_current AND NOT COALESCE(d.needs_review, false) "
+        "  AND a.currency_date IS NULL",
+        (),
+        "Each council serves controls extracted from a document whose version "
+        "we never recorded, so no check can tell whether the council has since "
+        "amended it. Measured 27 on 2026-08-13, against 2 councils that now "
+        "carry a currency date (wingecarribee from its version table, "
+        "parramatta from its List of Amendments).",
+    ),
+    "DQ-62": (
+        "Stored commencements that postdate their own plan's name by 3+ years",
+        # A plan named 'Strathfield DCP 2005' cannot have commenced in 2020.
+        # Where the gap is this wide the stored date is an amendment or a
+        # consolidation stamp, which is exactly what DQ-60 forbids in this
+        # column.
+        #
+        # The ledger said this could not be counted -- that a probe "would have
+        # to read stated_evidence and judge whether it describes a commencement
+        # clause or an amendment table, a text judgement, not a count". It does
+        # not: the plan's own NAME carries the year, so the gap is arithmetic.
+        #
+        # max() over the council's plan names, not min(), so a council holding
+        # two plans is measured against the later one -- waverley carries both
+        # 'Waverley DCP 2012' and 'Waverley DCP 2022' and its 2022-12-08 date
+        # is correct against the 2022 plan. min() would report it as a 10-year
+        # gap and the probe would be measuring its own bug.
+        "WITH plan_year AS ("
+        "  SELECT council AS lga,"
+        "         max(substring(dcp_name from '(?:19|20)[0-9]{2}')::int) AS py"
+        "    FROM dcp_chapter_registry"
+        "   WHERE is_active AND dcp_name IS NOT NULL"
+        "   GROUP BY council) "
+        "SELECT count(*) FROM dcp_plan_as_at a "
+        "JOIN plan_year p ON p.lga = a.lga "
+        "WHERE a.stated_date IS NOT NULL "
+        "  AND extract(year from a.stated_date) - p.py >= 3",
+        (),
+        "Each row serves an amendment or consolidation date as the plan's "
+        "commencement, which is the date that decides WHICH plan governs an "
+        "application. Measured 4 on 2026-08-13: strathfield (DCP 2005 -> "
+        "2020-09-08), burwood (2013 -> 2026-03-05), fairfield (2013 -> "
+        "2024-08-22), the_hills (2012 -> 2022-05-06). All four were written by "
+        "extract_dcp_stated_dates.py from a cover-page 'Effective:' line; every "
+        "manually-read council is correct. The WRITER is fixed -- it no longer "
+        "takes the latest of several dates, and amendment tables now write "
+        "currency_* -- but these four values predate the fix and each needs its "
+        "real commencement located before it can be replaced. Clearing them "
+        "instead would raise the dateless count the as-at ratchet guards.",
+    ),
+    "DQ-66": (
+        "Controls served shire-wide but cited to a plan covering one town",
+        # Wingecarribee publishes its DCP as separate town plans. Three are
+        # registered active -- Bowral, Mittagong, Moss Vale -- and only Bowral
+        # has been extracted, so every citation we serve for the shire names
+        # the Bowral plan.
+        #
+        # What this does NOT measure is wrong numbers. Part C Sections 2-4,
+        # which back all 32 stored controls, are numerically IDENTICAL across
+        # the three plans (verified 2026-08-13 against all three PDFs, each
+        # hash-matched to dcp_chapter_registry.content_hash: 100/40/16 numeric
+        # tokens per section, zero differences in all six pairwise
+        # comparisons). A Moss Vale property gets the right number with a
+        # citation into a plan that does not govern it, and the table numbering
+        # differs between the plans -- Bowral's Table C2.2 is Table C2.1 in
+        # Moss Vale -- so the reference does not even resolve.
+        #
+        # Counts rows, not councils, because the fix is per-plan extraction and
+        # the count falls as each sibling plan lands.
+        "SELECT count(*) FROM dcp_setback_controls d "
+        "JOIN dcp_chapter_registry r "
+        "  ON r.council = d.lga AND r.chapter_key = d.source_chapter_key "
+        " AND r.is_active "
+        "WHERE d.is_current AND NOT COALESCE(d.needs_review, false) "
+        "  AND r.chapter_label ~* '(town|village|locality|precinct)[[:space:]]+plan' "
+        "  AND EXISTS (SELECT 1 FROM dcp_chapter_registry s "
+        "               WHERE s.council = r.council AND s.dcp_name = r.dcp_name "
+        "                 AND s.chapter_key <> r.chapter_key AND s.is_active "
+        "                 AND s.chapter_label ~* "
+        "                     '(town|village|locality|precinct)[[:space:]]+plan' "
+        # `NOT COALESCE(needs_review, false)` here too, matching the outer
+        # query. Without it "the sibling has controls" would be satisfied by
+        # rows that are FLAGGED and therefore never served: the sibling plan
+        # would still contribute nothing to any property, the mis-citation
+        # would be exactly as unresolved, and the probe would stop counting.
+        # A check that goes quiet while the defect stands is the silent-pass
+        # shape this ledger exists to remove (caught by the pre-push
+        # reviewer, 2026-08-13).
+        "                 AND NOT EXISTS (SELECT 1 FROM dcp_setback_controls e "
+        "                                  WHERE e.lga = s.council "
+        "                                    AND e.source_chapter_key = s.chapter_key "
+        "                                    AND e.is_current "
+        "                                    AND NOT COALESCE(e.needs_review, false)))",
+        (),
+        "Each row is served to a whole council area while citing a plan that "
+        "covers one town, because sibling town plans exist in the registry with "
+        "nothing extracted from them. Measured 30 on 2026-08-13 (wingecarribee, "
+        "all from the Bowral Town Plan). The label regex matches 3 of 655 "
+        "registry rows and all 3 are these; leichhardt's Balmain and Birchgrove "
+        "rows and the_hills' Showground Precinct rows are place-scoped too but "
+        "SELF-DISCLOSING -- each names its locality in its own condition text -- "
+        "so they are not this defect and are not registered chapters anyway.",
+    ),
     "DQ-40": (
         "Setback controls still flagged for review",
         "SELECT count(*) FROM dcp_setback_controls WHERE needs_review IS TRUE",

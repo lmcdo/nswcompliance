@@ -388,15 +388,37 @@ def _make_pdf(path, pages):
 
 
 class TestExtractorSelectionRules:
-    def test_latest_effective_statement_wins(self, tmp_path):
-        """A document stating its original commencement AND a later
-        amendment's effective date must serve the later one."""
+    def test_wide_spread_is_skipped_not_guessed(self, tmp_path):
+        """DQ-62. This test previously asserted the OPPOSITE — that the LATEST
+        effective date wins — and that rule is the defect.
+
+        A document stating two effective dates years apart is stating two
+        different facts: the plan's commencement and an amendment's. DQ-60
+        reserves this column for the commencement, so taking the maximum
+        stores an amendment. It did exactly that on parramatta, and it is why
+        four councils carry a commencement a decade after the plan their own
+        name identifies (strathfield DCP 2005 -> 2020, burwood DCP 2013 ->
+        2026, fairfield DCP 2013 -> 2024, the_hills DCP 2012 -> 2022).
+
+        A cover page gives no 'Original' marker, so the scanner cannot tell
+        which line is which. Guessing either end would be choosing a value.
+        """
         from extract_dcp_stated_dates import scan_statement
 
         pdf = tmp_path / "burwood-dcp.pdf"
         _make_pdf(pdf, ["In Force 6 May 2022", "Effective: 5 March 2026"])
+        assert scan_statement(str(pdf), "burwood-dcp.pdf") is None
+
+    def test_close_dates_take_the_earliest(self, tmp_path):
+        """Adopted late one year, commencing early the next, is routine and
+        must still resolve — the skip above is for a wide spread, not for any
+        document carrying two dates. The earliest is the commencement."""
+        from extract_dcp_stated_dates import scan_statement
+
+        pdf = tmp_path / "burwood-dcp.pdf"
+        _make_pdf(pdf, ["In Force 8 December 2022", "Effective: 5 March 2023"])
         got = scan_statement(str(pdf), "burwood-dcp.pdf")
-        assert got.date_iso == "2026-03-05"
+        assert got.date_iso == "2022-12-08"
 
     def test_amendment_table_ignores_approved_only_dates(self, tmp_path):
         """An amendment approved but not yet in force (odd date count) breaks
@@ -418,7 +440,17 @@ class TestExtractorSelectionRules:
         got = scan_amendment_table(str(pdf), "parramatta-dcp-2023.pdf",
                                    "parramatta")
         assert got.date_iso == "2024-09-18"
-        assert got.kind == "amended"
+        # DQ-62: a Currency, never a Stated. The pairing logic above was always
+        # right; returning the wrong TYPE is what put an amendment date in the
+        # commencement column. A Currency has no `kind` — it is always the same
+        # kind of fact — and is written by different SQL to different columns,
+        # so no later edit to this path can reach stated_date.
+        from extract_dcp_stated_dates import Currency, Stated
+
+        assert isinstance(got, Currency)
+        assert not isinstance(got, Stated)
+        assert not hasattr(got, "kind")
+        assert got.label == "latest of 2 amendments"
 
     def test_amendment_table_without_both_headers_is_skipped(self, tmp_path):
         from extract_dcp_stated_dates import scan_amendment_table
@@ -427,6 +459,72 @@ class TestExtractorSelectionRules:
         _make_pdf(pdf, ["LIST OF AMENDMENTS\n26/10/2021\n01/12/2023"])
         assert scan_amendment_table(str(pdf), "parramatta-dcp-2023.pdf",
                                     "parramatta") is None
+
+
+class TestVersionTable:
+    """DQ-60/61/62. A version table is the one shape that states BOTH facts,
+    which is why it gets its own parser: the 'Original' row is the plan's
+    commencement, the table's latest date is the version we hold.
+
+    Modelled on Wingecarribee DCP 2010, whose three town plans state three
+    different adoption dates and the SAME effective date, 16 June 2010.
+    """
+
+    def test_original_row_gives_commencement_and_latest_gives_currency(self, tmp_path):
+        from extract_dcp_stated_dates import scan_version_table
+
+        pdf = tmp_path / "wingecarribee-bowral-town-plan.pdf"
+        _make_pdf(pdf, ["Version\nAdopted\nEffective\n"
+                        "Original\n10 March 2010\n16 June 2010\n"
+                        "As amended - 1\n14 September 2011\n5 October 2011\n"
+                        "As amended - 8\n9 September 2015\n23 September 2015"])
+        stated, currency = scan_version_table(
+            str(pdf), "wingecarribee-bowral-town-plan.pdf", "wingecarribee")
+        # Commencement is the LAST date on the Original row (Adopted precedes
+        # Effective), never the table's latest — that would be an amendment.
+        assert stated.date_iso == "2010-06-16"
+        assert stated.kind == "effective"
+        assert currency.date_iso == "2015-09-23"
+
+    def test_cell_per_line_and_single_line_layouts_agree(self, tmp_path):
+        """PyMuPDF emits one CELL per line; `pdftotext -layout` keeps the row
+        on one line. Both are real, so both must parse to the same date."""
+        from extract_dcp_stated_dates import scan_version_table
+
+        one_line = tmp_path / "a-town-plan.pdf"
+        _make_pdf(one_line, ["Version Adopted Effective\n"
+                             "Original 10 March 2010 16 June 2010"])
+        per_cell = tmp_path / "b-town-plan.pdf"
+        _make_pdf(per_cell, ["Version\nAdopted\nEffective\n"
+                             "Original\n10 March 2010\n16 June 2010"])
+        a, _ = scan_version_table(str(one_line), "a-town-plan.pdf", "x")
+        b, _ = scan_version_table(str(per_cell), "b-town-plan.pdf", "x")
+        assert a.date_iso == b.date_iso == "2010-06-16"
+
+    def test_single_dated_original_row_is_skipped(self, tmp_path):
+        """One date on the Original row could be Adopted or Effective and
+        there is no way to tell. Falling back to another row is the defect
+        this parser exists to end."""
+        from extract_dcp_stated_dates import scan_version_table
+
+        pdf = tmp_path / "c-town-plan.pdf"
+        _make_pdf(pdf, ["Version\nAdopted\nEffective\n"
+                        "Original\n10 March 2010\n"
+                        "As amended - 1\n14 September 2011\n5 October 2011"])
+        stated, _ = scan_version_table(str(pdf), "c-town-plan.pdf", "x")
+        assert stated is None
+
+    def test_amendment_date_never_reaches_the_commencement_field(self, tmp_path):
+        """The whole point of the split, asserted directly."""
+        from extract_dcp_stated_dates import scan_version_table
+
+        pdf = tmp_path / "d-town-plan.pdf"
+        _make_pdf(pdf, ["Version\nAdopted\nEffective\n"
+                        "Original\n10 March 2010\n16 June 2010\n"
+                        "As amended - 7\n10 June 2015\n17 June 2015"])
+        stated, currency = scan_version_table(str(pdf), "d-town-plan.pdf", "x")
+        assert stated.date_iso != currency.date_iso
+        assert stated.date_iso < currency.date_iso
 
 
 # ---------------------------------------------------------------------------

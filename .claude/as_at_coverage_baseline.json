@@ -1,7 +1,4 @@
 {
   "_note": "Shrink-only. Each value may fall, never rise. Lower it with --baseline --update when work lands.",
-  "per_key": {
-    "canada_bay": 32,
-    "wingecarribee": 30
-  }
+  "per_key": {}
 }
