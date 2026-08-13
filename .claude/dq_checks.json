@@ -25,7 +25,7 @@
   "the gap stays visible. An invented check that cannot fail is what produced",
   "DQ-30's '0% drift' verification — worse than no check."
  ],
- "_max_no_check": 55,
+ "_max_no_check": 56,
  "checks": {
   "DQ-54": {
    "declared": "fixed",
@@ -459,6 +459,11 @@
    "declared": "open",
    "check": null,
    "why_no_check": "A probe would have to read stated_evidence and judge whether it describes a commencement clause or an amendment table - a text judgement, not a count. The durable fix is in the writer: extract_dcp_stated_dates.py should not put an amendment date in this column."
+  },
+  "DQ-63": {
+   "declared": "fixed",
+   "check": null,
+   "why_no_check": "The remaining undated councils are counted per council in .claude/as_at_coverage_baseline.json, which blocks the build if the count rises."
   }
  }
 }

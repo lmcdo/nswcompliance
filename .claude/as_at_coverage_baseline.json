@@ -1,9 +1,7 @@
 {
   "_note": "Shrink-only. Each value may fall, never rise. Lower it with --baseline --update when work lands.",
   "per_key": {
-    "camden": 16,
     "canada_bay": 32,
-    "cumberland": 19,
     "wingecarribee": 30
   }
 }
