@@ -1,0 +1,139 @@
+{
+  "tier": "critical",
+  "justification": "Writes the dates served as each DCP's commencement, which is the date deciding WHICH plan governs a development application (savings provisions). A wrong value reads as authoritative and nothing downstream can detect it - that is exactly how parramatta shipped a 2024 amendment date as a 2023 commencement. Also adds columns to a production table.",
+  "commit_hash": "7f32d640",
+  "files": [
+    "scripts/extract_dcp_stated_dates.py",
+    "scripts/dq_probe_live.py",
+    "migrations/add_currency_to_dcp_plan_as_at.sql",
+    "tests/test_dcp_as_at.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/as_at_coverage_baseline.json"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_plan_as_at (28 rows; 15 carried a stated_date before this change, 16 after). dcp_chapter_registry.chapter_label / dcp_name / content_hash. dcp_setback_controls for the served-council join.",
+    "assumption_mismatch": "The version-table parser assumes Adopted precedes Effective on the Original row. If a council published Effective first, the LAST date on the row would be the adoption date - an earlier, wrong commencement. Guarded by requiring TWO dates on the row (a single-dated row is skipped, never guessed) and cross-checked against three independently published plans that state three DIFFERENT adoption dates and the SAME effective date, which is only consistent with the assumed column order.",
+    "new_vs_existing": "Applies to existing rows: --apply upserts every mapped file on each run. Verified it rewrote the 7 pre-existing councils to their identical current values (0 clears) and added only wingecarribee.",
+    "external_source_error": "PDFs are read from a local git-ignored directory, not fetched at runtime. A missing file is SKIPPED and reported, never treated as 'checked, no date' - a missing file says nothing about the document. All three Wingecarribee PDFs were sha256-verified against dcp_chapter_registry.content_hash before use.",
+    "frontend_type": "No. currency_* is not read by any serving path yet; fetch_dcp_setbacks and its /pipeline/dcp-controls proxy are untouched, so no rendered field changes.",
+    "user_failure_mode": "If the parser picked the wrong row a conveyancer would see a commencement off by years and apply the wrong plan version to a DA. Mitigated by skip-rather-than-guess and by the post-write assertion on stated_date_kind."
+  },
+  "functions": [
+    {
+      "name": "scan_version_table",
+      "file_line": "scripts/extract_dcp_stated_dates.py:194",
+      "input": "path to a plan PDF + slug; PyMuPDF text lines",
+      "output": "tuple of (Stated|None, Currency|None); the Stated is upserted into the stated_* columns of dcp_plan_as_at and the Currency into the currency_* columns, by two separate SQL statements",
+      "if_none": "Returns (None, None) when no dated Original row is found; the caller records a CLEAR candidate rather than writing anything."
+    },
+    {
+      "name": "scan_statement",
+      "file_line": "scripts/extract_dcp_stated_dates.py:139",
+      "input": "path to a plan PDF; dated statement lines on the first 12 pages",
+      "output": "Stated|None, upserted into dcp_plan_as_at.stated_date plus its precision, kind and verbatim evidence columns; never touches currency_*",
+      "if_none": "Returns None when no statement matches OR when the matched dates span 3+ years (commencement-vs-amendment ambiguity); the file is reported, not guessed at."
+    },
+    {
+      "name": "scan_amendment_table",
+      "file_line": "scripts/extract_dcp_stated_dates.py:301",
+      "input": "path to a plan PDF carrying a LIST OF AMENDMENTS page",
+      "output": "Currency|None, upserted into the currency_* columns of dcp_plan_as_at only; it is structurally incapable of reaching stated_date because the type carries no kind and the SQL names no stated_* column",
+      "if_none": "Returns None on odd date counts, missing column headers, in-force preceding approval, or non-increasing in-force dates. No longer contributes a CLEAR candidate, because it never had any business setting stated_date."
+    }
+  ],
+  "values": [
+    {
+      "value": "run[-1] — last date on the Original row",
+      "read_at": "scripts/extract_dcp_stated_dates.py:280",
+      "nullable": "yes",
+      "guard_at": "scripts/extract_dcp_stated_dates.py:278 — `if len(run) < 2: continue`",
+      "if_missing": "No commencement is written for that council and it stays counted by the as-at ratchet, which is the honest state."
+    },
+    {
+      "value": "currency_confirmed_at",
+      "read_at": "migrations/add_currency_to_dcp_plan_as_at.sql",
+      "nullable": "yes",
+      "guard_at": "scripts/extract_dcp_stated_dates.py:497 — written as NULL by the currency upsert",
+      "if_missing": "NULL means we have never checked our copy against what the council publishes now. A currency_date without it is a fact about our copy only, not about the council's."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-62 probe: stored commencements postdating their plan's own name by 3+ years",
+      "file_line": "scripts/dq_probe_live.py PROBES['DQ-62']",
+      "where_clause": "a.stated_date IS NOT NULL AND extract(year from a.stated_date) - plan_year >= 3, where plan_year is max of the year literals in that council's active dcp_name values",
+      "if_zero": "The row is declared open, so 0 makes the ledger ratchet go RED — correct: it would mean the four were fixed and the status is stale.",
+      "if_wrong": "min() over plan names instead of max() would flag waverley — which holds both 'Waverley DCP 2012' and 'Waverley DCP 2022' — as a 10-year gap, so the probe would be measuring its own bug. max() verified to return exactly the 4 real cases."
+    },
+    {
+      "purpose": "DQ-61 probe: served councils with no recorded currency",
+      "file_line": "scripts/dq_probe_live.py PROBES['DQ-61']",
+      "where_clause": "d.is_current AND NOT COALESCE(d.needs_review,false) AND a.currency_date IS NULL",
+      "if_zero": "Would mean every served council records which version it holds; the row would need flipping to fixed.",
+      "if_wrong": "The LEFT JOIN is required. An INNER JOIN would silently drop councils with no dcp_plan_as_at row at all — the worst case — turning them into an exclusion instead of a count."
+    },
+    {
+      "purpose": "DQ-66 probe: controls served council-wide while citing a one-town plan",
+      "file_line": "scripts/dq_probe_live.py PROBES['DQ-66']",
+      "where_clause": "place-scoped chapter_label AND EXISTS a sibling place-scoped chapter under the same dcp_name with no extracted controls",
+      "if_zero": "Would mean the sibling plans are extracted, or the rows re-cited to the common Part C.",
+      "if_wrong": "The label regex matches 3 of 655 registry rows, all correct. It misses place-scoped chapters that are not REGISTERED — leichhardt Balmain/Birchgrove, the_hills Showground — but each of those names its locality in its own condition text, so they are self-disclosing and not this defect."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council publishes a version table with Effective before Adopted, so the last date on the Original row is the adoption date.",
+      "what_happens": "An earlier, wrong commencement is stored and reads as authoritative.",
+      "mitigated": true,
+      "how": "scripts/extract_dcp_stated_dates.py:245 requires 2+ dates on the row, and the column order is documented as an explicit assumption. Cross-checked against three plans stating three different adoption dates and one identical effective date. A council using the reverse order needs a new mapping entry, at which point the assumption is re-examined rather than silently inherited.",
+      "repro": "python -m pytest tests/test_dcp_as_at.py::TestVersionTable -q"
+    },
+    {
+      "scenario": "A later edit routes an amendment date back into stated_date — the original DQ-62 defect recurring.",
+      "what_happens": "An amendment date is served as the plan's commencement, so DAs are assessed against the wrong plan version.",
+      "mitigated": true,
+      "how": "Currency is a separate dataclass with no `kind`, written by SQL naming only currency_* columns. The apply path then runs `SELECT count(*) FROM dcp_plan_as_at WHERE stated_date_kind = 'amended'` and exits 2 if it is non-zero, so the write fails loudly rather than landing.",
+      "repro": "python -m pytest tests/test_dcp_as_at.py -k amendment_table_takes_latest -q"
+    },
+    {
+      "scenario": "PyMuPDF and pdftotext disagree on table layout, so the parser works under one extractor and silently fails under the other.",
+      "what_happens": "A council is skipped and stays undated, or a date is read from the wrong cell.",
+      "mitigated": true,
+      "how": "Both layouts are handled explicitly — dates on the Original line itself, else the run of date-only lines following it, stopping at the next row label — and both are asserted to yield the same date.",
+      "repro": "python -m pytest tests/test_dcp_as_at.py::TestVersionTable::test_cell_per_line_and_single_line_layouts_agree -q"
+    },
+    {
+      "scenario": "The four suspect councils (strathfield, burwood, fairfield, the_hills) keep serving an amendment date as their commencement.",
+      "what_happens": "A conveyancer applies the wrong plan version. NOT MITIGATED — the values are still served.",
+      "mitigated": false,
+      "how": "Deliberately not cleared. Clearing raises the dateless count the as-at ratchet guards, and asserting they are wrong without locating each real commencement is itself choosing a value. They are now measured by `dq_probe_live.py --id DQ-62` (= 4) and the DQ-62 row stays open, so the gap is visible rather than silently carried.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-62"
+    },
+    {
+      "scenario": "A council registers town plans whose labels do not match the place-plan pattern (say 'Bowral Area Controls'), so the DQ-66 probe reads 0 and the mis-citation looks resolved.",
+      "what_happens": "Controls keep being served council-wide citing a one-town plan, and the probe reports clean — a check that cannot fail, which is the failure mode this whole ledger exists to prevent.",
+      "mitigated": true,
+      "how": "The regex was run against all 655 registry rows, not just the expected ones, and matches exactly 3 — so its precision is measured rather than assumed. The probe's `means` text records that number so a future reader can re-run it and notice if the denominator moved. The complementary risk (unregistered place-scoped chapters) is recorded explicitly: leichhardt Balmain/Birchgrove and the_hills Showground are named in the probe text as known misses that self-disclose their locality.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-66 then: SELECT count(*) FROM dcp_chapter_registry WHERE chapter_label ~* '(town|village|locality|precinct)[[:space:]]+plan'"
+    },
+    {
+      "scenario": "A re-run of --apply against a checkout missing data/dcps silently clears the stated dates it cannot re-derive.",
+      "what_happens": "Councils that were correctly dated lose their commencement, the dateless count rises, and the as-at ratchet blocks the build.",
+      "mitigated": true,
+      "how": "A missing FILE is added to `skipped` and explicitly NOT cleared — the distinction between 'the document changed' and 'this checkout lacks the file' is enforced in the collection loop, because data/dcps is git-ignored and absent in CI. Only a file that is PRESENT and yields no statement becomes a CLEAR candidate.",
+      "repro": "python scripts/extract_dcp_stated_dates.py --dcp-dir /nonexistent  (exits 2 without writing)"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - the migration and the --apply run were executed against production on 2026-08-13 BEFORE merge, with a backup of dcp_plan_as_at taken first. Re-running --apply is idempotent. Confirm with: python scripts/check_dcp_as_at_coverage.py --baseline (expect 32, canada_bay only)."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-62 && python scripts/check_dcp_as_at_coverage.py --baseline && python -m pytest tests/test_dcp_as_at.py -q",
+    "fails_when": "DQ-62 exits 1 while four councils still carry an amendment date as their commencement, and would exit 0 only when all four are corrected - so it cannot pass while the defect exists. The as-at check exits non-zero if any council's dateless count RISES above the baseline of 32, which is what would happen if the writer stopped resolving wingecarribee. The pytest run goes red if scan_statement resumes preferring the latest date (the burwood values are asserted directly), if scan_amendment_table returns a Stated again, or if the two PDF text layouts stop agreeing on the same commencement.",
+    "observed_red": "Observed red, not assumed. (1) Before the selection rule was changed, tests/test_dcp_as_at.py::test_latest_effective_statement_wins PASSED against the OLD max() behaviour using the literal burwood values ('In Force 6 May 2022' + 'Effective: 5 March 2026' -> 2026-03-05); after the change it went red with 'AttributeError: NoneType object has no attribute date_iso', which is the scanner now refusing to guess. (2) test_amendment_table_takes_latest_in_force_of_pairs went red with 'AttributeError: Currency object has no attribute kind' the moment the amendment table stopped returning a Stated - the type split is what made it fail. Both were rewritten to the corrected doctrine, not deleted. (3) python scripts/dq_probe_live.py --id DQ-62 exits 1 today, printing count=4 with its query; DQ-61 exits 1 with 27 and DQ-66 exits 1 with 30 (exit codes read directly, not through a pipe - `cmd | tail` reports tail's status). (4) check_dcp_as_at_coverage.py --baseline printed 62 across canada_bay and wingecarribee before the write and 32 across canada_bay alone after it, so the number was measured moving rather than asserted."
+  }
+}
