@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Replaces three dates served as each DCP's commencement — the date deciding WHICH plan governs a development application under its savings provisions. A wrong value here reads as authoritative and nothing downstream can detect it. Also renames a registry field that other queries group by.",
-  "commit_hash": "1a364aad",
+  "commit_hash": "9add190d",
   "files": [
     "scripts/repair_dq62_commencement_dates.py",
     ".claude/dq_checks.json",
