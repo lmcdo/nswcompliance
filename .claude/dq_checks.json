@@ -25,7 +25,7 @@
   "the gap stays visible. An invented check that cannot fail is what produced",
   "DQ-30's '0% drift' verification — worse than no check."
  ],
- "_max_no_check": 49,
+ "_max_no_check": 50,
  "checks": {
   "DQ-54": {
    "declared": "fixed",
@@ -429,6 +429,11 @@
    "declared": "open",
    "check": null,
    "why_no_check": "The count of councils with no commencement date is already ratcheted per council in .claude/as_at_coverage_baseline.json and blocks the build. A second probe would be a second source of truth."
+  },
+  "DQ-59e": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "Candidates awaiting primary-source confirmation. The count of councils with no commencement date is already ratcheted per council in .claude/as_at_coverage_baseline.json."
   }
  }
 }

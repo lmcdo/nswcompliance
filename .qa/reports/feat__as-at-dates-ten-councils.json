@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what date appears beside a served control. Directionality: it ADDS a date where none appeared, and the date is read from our own insertion timestamps, so the worst case is a stale-looking figure rather than a false statement about the law. No value is altered and nothing is written to the database.",
- "commit_hash": "3a3cf237",
+ "commit_hash": "6f7a5459",
  "files": [
   "scripts/conveyancing_db.py",
   "scripts/check_dcp_as_at_coverage.py",
