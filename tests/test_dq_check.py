@@ -164,3 +164,37 @@ def test_the_checks_file_is_valid_json():
     with _CHECKS.open(encoding="utf-8") as f:
         data = json.load(f)
     assert "checks" in data and data["checks"], "no checks recorded"
+
+
+# ── Probe SQL must define "served" the same way everywhere ───────────────────
+
+def test_probe_sql_uses_one_definition_of_a_served_row():
+    """A probe that measures served rows in its outer query must not accept
+    FLAGGED rows as evidence in a subquery.
+
+    DQ-66 asks whether a sibling town plan has any controls of its own. Written
+    with a bare `e.is_current`, a sibling holding only `needs_review` rows would
+    satisfy it — so the probe would stop counting while the sibling still served
+    nothing and the mis-citation stood. The count going quiet without the defect
+    being fixed is the exact silent-pass shape this ledger exists to remove.
+
+    Asserted structurally rather than against the database, because the bug is
+    invisible in today's data: both siblings currently hold zero rows, so the
+    count is 30 either way. It would only appear once someone part-extracted a
+    sibling — which is precisely when nobody would be re-reading this SQL.
+    """
+    import re
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live
+
+    _headline, sql, _params, _means = dq_probe_live.PROBES["DQ-66"]
+    current = len(re.findall(r"is_current", sql))
+    guards = len(re.findall(r"NOT COALESCE\(\s*\w+\.needs_review,\s*false\s*\)", sql))
+    assert current >= 2, "expected the outer query and the sibling subquery to both scope to current rows"
+    assert guards == current, (
+        f"{current} is_current filter(s) but only {guards} needs_review guard(s) — "
+        "one of them treats a flagged row as served"
+    )

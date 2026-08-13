@@ -139,10 +139,19 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "                 AND s.chapter_key <> r.chapter_key AND s.is_active "
         "                 AND s.chapter_label ~* "
         "                     '(town|village|locality|precinct)[[:space:]]+plan' "
+        # `NOT COALESCE(needs_review, false)` here too, matching the outer
+        # query. Without it "the sibling has controls" would be satisfied by
+        # rows that are FLAGGED and therefore never served: the sibling plan
+        # would still contribute nothing to any property, the mis-citation
+        # would be exactly as unresolved, and the probe would stop counting.
+        # A check that goes quiet while the defect stands is the silent-pass
+        # shape this ledger exists to remove (caught by the pre-push
+        # reviewer, 2026-08-13).
         "                 AND NOT EXISTS (SELECT 1 FROM dcp_setback_controls e "
         "                                  WHERE e.lga = s.council "
         "                                    AND e.source_chapter_key = s.chapter_key "
-        "                                    AND e.is_current))",
+        "                                    AND e.is_current "
+        "                                    AND NOT COALESCE(e.needs_review, false)))",
         (),
         "Each row is served to a whole council area while citing a plan that "
         "covers one town, because sibling town plans exist in the registry with "
