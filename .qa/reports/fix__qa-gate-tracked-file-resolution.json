@@ -1,0 +1,106 @@
+{
+  "tier": "standard",
+  "justification": "Changes what the QA gate accepts as proof that a cited file exists. It cannot corrupt data or serve a wrong number, so not Critical — but it decides whether a blocking check enforces anything, and the previous version let a report cite a file CI would never see. Above Minor because it changes gate behaviour for every future report.",
+  "commit_hash": "2be1da32",
+  "files": [
+    "scripts/qa_gate.py",
+    "tests/test_qa_gate_reachability.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_qa_gate_reachability.py -q && python scripts/qa_gate.py",
+    "fails_when": "test_gitignored_cited_file_does_not_resolve goes red the moment find_file consults the filesystem instead of git, and test_basename_collision_is_ambiguous_not_a_guess goes red if the basename walk returns. test_dotfile_paths_resolve and test_unique_suffix_still_resolves go red if the fix over-corrects and stops resolving legitimate citations. The gate run itself fails if this branch's own report cites anything untracked.",
+    "observed_red": "Observed both directions on real code, not asserted. (1) The defect: on 2026-08-13 `python scripts/qa_gate.py` printed PASSED locally for a report citing scripts/repair_dq62_commencement_dates.py while that file was gitignored, and CI failed on the same report with 'file not found in project' — run 31697180556. (2) The new tests against the OLD implementation: re-running the pre-fix find_file in a temp repo resolved the gitignored file (True, should be False) and resolved an ambiguous basename to one/thing.py (should be None), so both new tests fail on the old code. (3) An over-correction was caught in flight: the first version used lstrip('./'), which strips CHARACTERS not a prefix, and re-checking all 35 function citations across 36 committed reports showed .github/workflows/main-red-alarm.yml would newly fail. Fixed, re-checked, 0 of 35 now fail."
+  },
+  "pre_impl": {
+    "existing_data": "None — no database access. Reads the git index via `git ls-files` and the working tree.",
+    "assumption_mismatch": "Assumes qa_gate runs inside a git repository. If git is unusable, `_git_query` returns None and find_file now returns None rather than falling back to the filesystem, so an unverifiable citation blocks instead of passing. That matches the doctrine already applied to report tracking a few hundred lines down ('an unverifiable report is not a verified one').",
+    "new_vs_existing": "Applies to every report the gate validates from now on, including ones already committed. Checked before shipping: all 35 function citations across the 36 committed reports still resolve.",
+    "external_source_error": "N/A — no network. git failure is handled as an explicit third state rather than being collapsed into 'not found'.",
+    "frontend_type": "N/A",
+    "user_failure_mode": "Previously: a green local gate and a red CI run for the same commit, with the error only visible after a full CI cycle. Now the same failure surfaces before push, naming the .gitignore exception as the fix."
+  },
+  "functions": [
+    {
+      "name": "find_file",
+      "file_line": "scripts/qa_gate.py:228",
+      "input": "a path string taken from a report's file_line field, plus the project directory",
+      "output": "absolute path string when the repository tracks or stages that file and it is on disk, else None — which the single caller turns into a blocking validation error naming the tracking requirement",
+      "if_none": "The caller appends a Section 3 error explaining that the test is 'does the REPO carry it', not 'is it on this machine', and pointing at the .gitignore exception when the path sits under a default-ignored directory."
+    }
+  ],
+  "values": [
+    {
+      "value": "code from _git_query(['ls-files', '--error-unmatch', ...])",
+      "read_at": "scripts/qa_gate.py:228",
+      "nullable": "yes — None means git itself could not run",
+      "guard_at": "scripts/qa_gate.py:228 — `if code is None: return None`",
+      "if_missing": "Fails closed: an unverifiable citation is treated as unresolved rather than accepted, so the gate cannot silently stop enforcing."
+    },
+    {
+      "value": "rel — the normalised relative path",
+      "read_at": "scripts/qa_gate.py:228",
+      "nullable": "no",
+      "guard_at": "explicit `while rel.startswith('./')` loop rather than lstrip",
+      "if_missing": "lstrip('./') would strip leading dots as characters and break every dotfile path such as .github/workflows/*.yml."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Ask git whether the cited path is tracked or staged",
+      "file_line": "scripts/qa_gate.py:228",
+      "where_clause": "git ls-files --error-unmatch -- <rel>",
+      "if_zero": "Non-zero exit means git does not carry the path; resolution falls through to a unique-suffix search over tracked files, and returns None if that is not unique.",
+      "if_wrong": "Using `git ls-files <rel>` without --error-unmatch would exit 0 with empty output for an unknown path, so the check would pass on exactly the files it exists to reject. --error-unmatch is what makes absence an error. It also covers staged-but-uncommitted files, because a staged file is already in the index."
+    },
+    {
+      "purpose": "Resolve a partial path to a unique tracked file",
+      "file_line": "scripts/qa_gate.py:228",
+      "where_clause": "git ls-files, then paths equal to rel or ending with '/' + rel",
+      "if_zero": "No match returns None and the citation is reported as unresolvable.",
+      "if_wrong": "Matching on basename rather than a path suffix is what let the old code AST-verify a/thing.py against b/thing.py. Requiring exactly one match means two candidates is reported as ambiguous instead of silently picking the first the walk happened to reach."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A new file under a default-ignored directory (scripts/* is) is cited by a report and committed without its .gitignore exception.",
+      "what_happens": "Previously: local gate PASSED, CI failed a full cycle later on a report citing a file the repo does not contain. This actually happened on 2026-08-13.",
+      "mitigated": true,
+      "how": "find_file now asks `git ls-files --error-unmatch`, so the same failure occurs locally before push, and the error text names the .gitignore exception as the fix.",
+      "repro": "python -m pytest tests/test_qa_gate_reachability.py -k gitignored_cited_file -q"
+    },
+    {
+      "scenario": "Two tracked files share a basename and a report cites the bare filename.",
+      "what_happens": "The AST check verifies the claimed function against a file the report never named, so a citation can be 'verified' against unrelated code.",
+      "mitigated": true,
+      "how": "Suffix matching requires exactly one candidate; two returns None and the citation is reported unresolvable rather than guessed.",
+      "repro": "python -m pytest tests/test_qa_gate_reachability.py -k basename_collision -q"
+    },
+    {
+      "scenario": "The fix over-corrects and rejects legitimate citations, so every existing report starts failing.",
+      "what_happens": "The gate blocks work that was never defective, and the pressure is then to weaken the gate rather than fix the cause.",
+      "mitigated": true,
+      "how": "Before shipping, every function citation in every committed report was re-resolved through the new code: 35 claims across 36 reports, 0 failures. That sweep is what caught the lstrip('./') dotfile bug while it was still local.",
+      "repro": "Re-run the sweep: load qa_gate.find_file and FILE_LINE_PATTERN, iterate .qa/reports/*.json functions[].file_line, assert none resolve to None."
+    },
+    {
+      "scenario": "git is missing or the directory is not a repository, so the tracking question cannot be answered.",
+      "what_happens": "If that collapsed into 'file found', the gate would silently stop enforcing exactly where it cannot verify.",
+      "mitigated": true,
+      "how": "_git_query returns None for 'git could not run', distinct from a non-zero exit, and find_file fails closed on it. The distinction already existed in this file and is reused rather than re-implemented.",
+      "repro": "Call find_file with a project_dir that is not a git repository — it returns None rather than a filesystem hit."
+    },
+    {
+      "scenario": "A dotfile path such as .github/workflows/gates.yml is cited.",
+      "what_happens": "A path-normalisation slip drops the leading dot and every workflow citation becomes unresolvable.",
+      "mitigated": true,
+      "how": "Prefix stripping is an explicit `while rel.startswith('./')` loop, never lstrip, and a regression test covers a dotfile path directly.",
+      "repro": "python -m pytest tests/test_qa_gate_reachability.py -k dotfile -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
