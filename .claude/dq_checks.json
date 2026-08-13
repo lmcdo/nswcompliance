@@ -463,7 +463,7 @@
       "note": "'No column records the in-force amendment, so there is nothing to probe yet' is now false - currency_date/currency_label/currency_evidence/currency_confirmed_at were added to dcp_plan_as_at on 2026-08-13 and the writer fills them from a plan's own version or amendment table. Measured 27 of 29 served councils still have none. The portal_* columns are NOT the same fact: they record what the Planning Portal advertises and are set on 1 of 28 rows."
     },
     "DQ-62": {
-      "declared": "open",
+      "declared": "fixed",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
@@ -472,7 +472,8 @@
       ],
       "passes_when": "exit 0 - no stored commencement postdates its own plan's name by 3+ years",
       "red_when": "A stored commencement is an amendment or consolidation date, which decides WHICH plan governs an application and so cannot be approximated.",
-      "note": "Scope corrected 2026-08-13: this was recorded as parramatta-only and it is systemic. scan_statement returned max(effective dates), so wherever a document printed both its commencement and a later amendment the amendment won - the exact inversion of DQ-60. Four more councils carry the result: strathfield (DCP 2005 -> 2020-09-08), burwood (2013 -> 2026-03-05), fairfield (2013 -> 2024-08-22), the_hills (2012 -> 2022-05-06). WRITER FIXED: it now takes the earliest, returns None when the spread is 3+ years rather than guessing, and amendment tables write currency_* instead. The four stored values predate the fix and each needs its real commencement located; clearing them would raise the count the as-at ratchet guards."
+      "note": "Scope corrected 2026-08-13: this was recorded as parramatta-only and it is systemic. scan_statement returned max(effective dates), so wherever a document printed both its commencement and a later amendment the amendment won - the exact inversion of DQ-60. Four more councils carry the result: strathfield (DCP 2005 -> 2020-09-08), burwood (2013 -> 2026-03-05), fairfield (2013 -> 2024-08-22), the_hills (2012 -> 2022-05-06). WRITER FIXED: it now takes the earliest, returns None when the spread is 3+ years rather than guessing, and amendment tables write currency_* instead. The four stored values predate the fix and each needs its real commencement located; clearing them would raise the count the as-at ratchet guards. LIMIT OF THIS PROBE, learned by tripping it: it compares the stored date against dcp_chapter_registry.dcp_name, so a stale registry NAME reads as a wrong DATE. fairfield showed both failure directions in one row. When it fires, check which of the two is actually out of date before touching the date.",
+      "fixed_by": "2026-08-13. Writer fixed first (earliest wins; None when dated statements span 3+ years; amendment tables write currency_*). Then the three genuinely wrong values were replaced with the commencement each plan states in its OWN text: strathfield 2020-09-08 -> 2006-05-03 (clause 1.2 'Commencement of this Plan'), burwood 2026-03-05 -> 2013-03-01 (clause 1.4 'Date on Which the BDCP Takes Effect'), the_hills 2022-05-06 -> 2013-03-26 (Part A section 8 'Important Dates', with no amendment preceding it). Each previous value was traceable to a consolidation stamp on the SAME document's cover, which is what the writer had been reading. fairfield was a FALSE POSITIVE of this probe and its date was already right: data/dcps/fairfield-citywide-dcp-2013.pdf is actually the Fairfield CityWide DCP **2024** (title page, 567pp) whose clause 1.7 states it came into effect 22 August 2024 — the stale thing was dcp_chapter_registry.dcp_name, corrected on 3 rows to 'Fairfield City Wide DCP 2024'. Probe now returns 0."
     },
     "DQ-63": {
       "declared": "fixed",
