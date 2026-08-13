@@ -54,6 +54,19 @@ def main() -> int:  # pragma: no cover - CLI entry point
               AND (needs_review IS NULL OR needs_review = FALSE)
             GROUP BY lga ORDER BY lga""")
     served = dict(cur.fetchall())
+    # nsw_statewide is not a council DCP - it has ZERO rows in
+    # dcp_chapter_registry because there is no council plan to register. "When
+    # did this council's plan commence" is not a question it can answer, so
+    # counting its claims as dateless measured something that can never become
+    # true and put a permanent 31 into the gap. Excluded from the measure, not
+    # from the data: those claims are still served, they simply are not scored
+    # against a council-plan commencement date.
+    statewide = served.pop("nsw_statewide", 0)
+    if statewide:
+        print(f"note: nsw_statewide excluded from this measure "
+              f"({statewide} claims) - statewide instruments have no council "
+              f"DCP, so a council-plan as-at date is not a question they can "
+              f"answer.", file=sys.stderr)
     if not served or sum(served.values()) == 0:
         # A completion check must be able to fail: an empty serving table
         # means the production claim set was NOT measured (wrong database,
@@ -70,6 +83,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
     # very different sizes, and a per-council flag would score a 4-claim council
     # the same as a 90-claim one.
     dateless_by_lga: dict[str, int] = {}
+    captured_only_by_lga: dict[str, int] = {}
     for slug, n in served.items():
         as_at = _plan_as_at(cur, slug)
         basis = (as_at or {}).get("basis") or "NONE"
@@ -77,6 +91,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
         claims_by_basis[basis] = claims_by_basis.get(basis, 0) + n
         if basis == "NONE":
             dateless_by_lga[slug] = n
+        elif basis == "extracted_from_published":
+            captured_only_by_lga[slug] = n
 
     # Portal-vs-stated disagreements: both evidence classes present, different
     # dates. A finding to record, never silently resolved.
@@ -105,6 +121,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
         "lgas_by_basis": {k: sorted(v) for k, v in by_basis.items()},
         "dateless_claims": dateless_claims,
         "dateless_by_lga": dict(sorted(dateless_by_lga.items())),
+        "captured_only_by_lga": dict(sorted(captured_only_by_lga.items())),
+        "captured_only_claims": sum(captured_only_by_lga.values()),
         "dateless_lgas": sorted(by_basis.get("NONE") or []),
         "portal_vs_stated_disagreements": disagreements,
         "target": "dateless_claims == 0 (campaign item 3); NOT enforced — "
@@ -115,7 +133,15 @@ def main() -> int:  # pragma: no cover - CLI entry point
     if "--baseline" in sys.argv:
         # Per LGA, not one total: a total can hide one council improving while
         # another regresses, and 19 councils are already fully covered.
+        # Two numbers, not one. Driving "no date at all" to zero is real, but a
+        # council resting ONLY on the extraction date still has no commencement
+        # date, and that is a different fact a reader may need. Ratcheting it
+        # keeps the gap visible instead of letting a fourth basis be counted as
+        # having solved the problem. Without this, adding a basis would look
+        # identical to closing the gap.
         per_lga = dict((report.get("dateless_by_lga") or {}).items())
+        for lga, n in (report.get("captured_only_by_lga") or {}).items():
+            per_lga[f"{lga} (extraction-date only)"] = n
         if not per_lga:
             per_lga = {lga: 1 for lga in (report.get("lgas_by_basis") or {}).get("NONE") or []}
         return _ratchet(".claude/as_at_coverage_baseline.json",

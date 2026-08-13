@@ -247,6 +247,49 @@ def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
     if observed:
         return {"date": observed, "precision": "day", "kind": None,
                 "basis": "observed_current"}
+
+    # Fourth basis: the version we extracted from, and when. It answers a
+    # DIFFERENT question from the first two rather than a weaker version of the
+    # same one, so rank is not the same as worth.
+    #
+    # portal_plan_record and stated_in_document answer "when did this plan
+    # commence" - plan identity. This answers "how stale might our copy be",
+    # which is the question that fails dangerously: a setback presented
+    # confidently from a plan that changed last year is the actual harm, while
+    # not knowing a commencement date rarely is. Extraction took the council's
+    # CURRENT published version at that time, so this is an observation of
+    # currency on a date, the same kind of statement as observed_current, not a
+    # bare note of when a row was inserted.
+    #
+    # It must still be worded as what it is - "extracted from the version
+    # published on <date>" - a checkable statement about us, never "in force
+    # since". DQ-41 is the warning: 528 dates were once manufactured from
+    # version labels. Nothing here is inferred; created_at is the row's own
+    # insertion time and extraction is what created it.
+    #
+    # It exists because the other three are genuinely exhausted for ten
+    # councils - the Portal holds records with no dated phrase, no PDF on disk
+    # carries a commencement statement, and their chapters were never
+    # URL-checked. The alternative was showing a number with no age at all,
+    # which is how a reader ends up trusting a figure captured a year ago.
+    # DQ-41 is the warning in the other direction: 528 dates were once
+    # manufactured from version labels, so nothing here is inferred - created_at
+    # is the row's own insertion time.
+    #
+    # MIN, not MAX, for the same reason observed_current takes the oldest
+    # check: one control captured last week must not speak for a council whose
+    # other controls were read months earlier.
+    cur.execute(
+        """SELECT MIN(created_at)::date::text
+             FROM dcp_setback_controls
+            WHERE lga = %s AND is_current = TRUE
+              AND (needs_review IS NULL OR needs_review = FALSE)""",
+        (lga_slug,),
+    )
+    got = cur.fetchone()
+    if got and got[0]:
+        return {"date": got[0], "precision": "day", "kind": "published_version",
+                "basis": "extracted_from_published"}
     return None
 
 

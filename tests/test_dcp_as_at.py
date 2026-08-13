@@ -217,13 +217,41 @@ class TestFetchDcpSetbacksAsAt:
         cur = MagicMock()
         cur.fetchall.return_value = [_control_row()]
         cur.fetchone.side_effect = [("https://example.gov.au/dcp",),
-                                    (None,) * 7]
+                                    (None,) * 7,
+                                    # Fourth basis added 2026-08-13: the
+                                    # earliest capture date for this council's
+                                    # served controls. None here means even
+                                    # that found nothing, which must still type
+                                    # as "checked, absent" and NOT slide into
+                                    # "source unavailable" — the DQ-36 class.
+                                    (None,)]
         conn = MagicMock()
         conn.cursor.return_value = cur
         result = fetch_dcp_setbacks(conn, "waverley", "R2 Low Density")
         assert result["as_at"] is None
         assert result["as_at_status"] == "absent"
         assert result["as_at_line"] is None
+
+    def test_extraction_date_is_used_when_no_plan_date_exists(self):
+        """The fourth basis: no commencement date, but we know which published
+        version we read and when. That answers a different question — how stale
+        our copy might be — and it must never be worded as "in force since"."""
+        cur = MagicMock()
+        cur.fetchall.return_value = [_control_row()]
+        cur.fetchone.side_effect = [("https://example.gov.au/dcp",),
+                                    (None,) * 7,
+                                    ("2026-05-10",)]
+        conn = MagicMock()
+        conn.cursor.return_value = cur
+        result = fetch_dcp_setbacks(conn, "waverley", "R2 Low Density")
+        assert result["as_at"] is not None, "an extraction date was available"
+        assert result["as_at"]["basis"] == "extracted_from_published"
+        assert result["as_at"]["date"] == "2026-05-10"
+        assert result["as_at_status"] != "absent"
+        line = (result.get("as_at_line") or "").lower()
+        assert "in force" not in line, (
+            "the extraction date must not be rendered as a commencement claim"
+        )
 
 
 # ---------------------------------------------------------------------------
