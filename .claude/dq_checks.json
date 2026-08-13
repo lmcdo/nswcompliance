@@ -25,7 +25,7 @@
   "the gap stays visible. An invented check that cannot fail is what produced",
   "DQ-30's '0% drift' verification — worse than no check."
  ],
- "_max_no_check": 56,
+ "_max_no_check": 57,
  "checks": {
   "DQ-54": {
    "declared": "fixed",
@@ -464,6 +464,11 @@
    "declared": "fixed",
    "check": null,
    "why_no_check": "The remaining undated councils are counted per council in .claude/as_at_coverage_baseline.json, which blocks the build if the count rises."
+  },
+  "DQ-64": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "One cell of one table, not a measurable state. canada_bay is already counted in .claude/as_at_coverage_baseline.json and the count falls when the date lands."
   }
  }
 }
