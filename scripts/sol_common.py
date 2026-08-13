@@ -104,12 +104,46 @@ def chat(messages: list[dict], model: str, api_key: str, json_mode: bool = False
         import openai
     except ImportError:
         sys.exit("The `openai` package is not installed. pip install openai")
-    client = openai.OpenAI(api_key=api_key)
+
+    # BOUNDED, and it says so while it waits.
+    #
+    # This call is reached from .githooks/pre-push step 7, which BLOCKS the push.
+    # It previously ran with the client's defaults - a 600 second timeout and two
+    # retries - so a revoked key, a network stall and a slow reasoning response
+    # were indistinguishable from one another and from a hang, for up to half an
+    # hour, with no output at all. Observed 2026-08-13: a push sat on the single
+    # line "reviewing a652c6b8..HEAD" and printed nothing further.
+    #
+    # A blocking gate that cannot say what it is doing gets bypassed with
+    # --no-verify, and that is how a gate stops existing. The progress line goes
+    # to stderr so it cannot be mistaken for the tool's JSON on stdout.
+    raw = os.getenv("SOL_TIMEOUT_SECONDS", "180")
+    try:
+        timeout_s = float(raw)
+    except (TypeError, ValueError):
+        sys.exit(f"SOL_TIMEOUT_SECONDS is not a number: {raw!r}")
+    # Reject non-positive and non-finite before handing it to the client, which
+    # would otherwise accept nan or -1 with undefined semantics.
+    if not (timeout_s > 0) or timeout_s != timeout_s or timeout_s == float("inf"):
+        sys.exit(f"SOL_TIMEOUT_SECONDS must be a positive finite number: {raw!r}")
+    print(f"  calling {model} (timeout {timeout_s:.0f}s, no retries)...",
+          file=sys.stderr, flush=True)
+
+    client = openai.OpenAI(api_key=api_key, timeout=timeout_s, max_retries=0)
     kwargs: dict = {"model": model, "messages": messages}
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     try:
         response = client.chat.completions.create(**kwargs)
-    except Exception as exc:  # network / auth / model-name errors
-        sys.exit(f"OpenAI API call failed: {exc}")
+    except Exception as exc:  # network / auth / model-name / timeout
+        name = type(exc).__name__
+        hint = ""
+        if "Authentication" in name or "PermissionDenied" in name:
+            hint = ("\nThe key was rejected. Check OPENAI_API_KEY in the repo-root "
+                    ".env or frontend-nextjs/.env.local - a rotated or revoked key "
+                    "lands here.")
+        elif "Timeout" in name or "APIConnection" in name:
+            hint = (f"\nNo response within {timeout_s:.0f}s. Raise it with "
+                    f"SOL_TIMEOUT_SECONDS=600, or check network access to the API.")
+        sys.exit(f"OpenAI API call failed ({name}): {exc}{hint}")
     return (response.choices[0].message.content or "").strip()

@@ -217,7 +217,14 @@ class TestFetchDcpSetbacksAsAt:
         cur = MagicMock()
         cur.fetchall.return_value = [_control_row()]
         cur.fetchone.side_effect = [("https://example.gov.au/dcp",),
-                                    (None,) * 7]
+                                    (None,) * 7,
+                                    # Fourth basis added 2026-08-13: the
+                                    # earliest capture date for this council's
+                                    # served controls. None here means even
+                                    # that found nothing, which must still type
+                                    # as "checked, absent" and NOT slide into
+                                    # "source unavailable" — the DQ-36 class.
+                                    (None,)]
         conn = MagicMock()
         conn.cursor.return_value = cur
         result = fetch_dcp_setbacks(conn, "waverley", "R2 Low Density")
@@ -225,10 +232,25 @@ class TestFetchDcpSetbacksAsAt:
         assert result["as_at_status"] == "absent"
         assert result["as_at_line"] is None
 
+    def test_no_date_is_invented_when_the_plan_has_none(self):
+        """A reader needs two facts: when the plan commenced, and whether our
+        copy is current. Row-insert time answers neither, so where the three
+        real bases find nothing the honest output is NO DATE - not a date
+        derived from when we wrote the row, which one bulk reinsert would turn
+        into "this 2024 plan was downloaded today" (Sol HIGH, 2026-08-13)."""
+        cur = MagicMock()
+        cur.fetchall.return_value = [_control_row()]
+        cur.fetchone.side_effect = [("https://example.gov.au/dcp",),
+                                    (None,) * 7]
+        conn = MagicMock()
+        conn.cursor.return_value = cur
+        result = fetch_dcp_setbacks(conn, "waverley", "R2 Low Density")
+        assert result["as_at"] is None, "no plan date exists, so none may be shown"
+        assert result["as_at_status"] == "absent", (
+            "checked-and-none-found, which is NOT 'source unavailable'"
+        )
+        assert result["as_at_line"] is None
 
-# ---------------------------------------------------------------------------
-# Portal date parsing — explicit phrases only, never labels
-# ---------------------------------------------------------------------------
 
 class TestPortalDateParsing:
     def test_amended_day_phrase(self):

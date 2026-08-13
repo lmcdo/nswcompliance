@@ -25,7 +25,7 @@
   "the gap stays visible. An invented check that cannot fail is what produced",
   "DQ-30's '0% drift' verification — worse than no check."
  ],
- "_max_no_check": 44,
+ "_max_no_check": 49,
  "checks": {
   "DQ-54": {
    "declared": "fixed",
@@ -403,6 +403,32 @@
    "passes_when": "exit 0 - no row shares a control slot while stating no condition",
    "red_when": "A row sits beside a different value for the same control and says nothing about when it applies, so it cannot be attributed even by a correct UI.",
    "note": "Split from DQ-32 on 2026-08-13. Presentation was the fixable half and is done; these 6 need a source lookup per row. Measured 6 against 556 rows in the same groups that DO carry their condition."
+  },
+  "DQ-58": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "Needs a network probe over ~30 registry page URLs. Writing it as a live fetch would make CI depend on nine council websites, three of which are behind Cloudflare and 403 automated clients - a check that is red for reasons unrelated to the defect gets deleted. The right shape is a stored url_page_last_status column written by the existing monitor, then a probe that counts non-200s. That column does not exist yet."
+  },
+  "DQ-59": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "Deliberately NOT given its own probe: the count of councils resting on an extraction date with no commencement date is ALREADY ratcheted per council in .claude/as_at_coverage_baseline.json and blocks the build. A second probe over the same fact would be a second source of truth, which is the defect DQ-54 and the ledger's own status ratchet exist to prevent."
+  },
+  "DQ-59b": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "Candidates awaiting plan-identity adjudication, not a measurable defect state. The count of councils with no commencement date is already ratcheted per council in .claude/as_at_coverage_baseline.json and will fall as each candidate is confirmed or rejected."
+  },
+  "DQ-59c": {
+   "declared": "fixed",
+   "note": "QUESTION ANSWERED, not a defect: measured that the portal yields no usable date for these 6 councils. Recorded so nobody re-runs the portal route expecting a shortcut.",
+   "check": null,
+   "why_no_check": "A measurement result, not a defect state. Re-running it is scripts/fetch_dcp_as_at_dates.py --slug <council>, which is dry-run by default and already verifies plan identity before trusting a portal date."
+  },
+  "DQ-59d": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "The count of councils with no commencement date is already ratcheted per council in .claude/as_at_coverage_baseline.json and blocks the build. A second probe would be a second source of truth."
   }
  }
 }

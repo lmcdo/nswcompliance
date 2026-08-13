@@ -247,6 +247,25 @@ def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
     if observed:
         return {"date": observed, "precision": "day", "kind": None,
                 "basis": "observed_current"}
+
+    # NO basis derived from row-insert time.
+    #
+    # A reader needs two facts and only two: WHEN DID THIS PLAN COMMENCE, and
+    # IS OUR COPY CURRENT. dcp_setback_controls.created_at answers neither. It
+    # records when a row was written to our database, which is a fact about us,
+    # not about the plan - and it is actively misleading, because one bulk
+    # reinsert stamps every row with today and makes a 2024 plan look freshly
+    # downloaded (Sol HIGH, 2026-08-13).
+    #
+    # So it is not rendered. Where the first three bases find nothing, no date
+    # is the honest answer, and the count of councils in that state is ratcheted
+    # in .claude/as_at_coverage_baseline.json so it stays visible.
+    #
+    # Commencement comes from the council's own page - read for waverley and
+    # bayside on 2026-08-13 and stored in dcp_plan_as_at.stated_date with the
+    # verbatim quote. Currency needs a fetch-time provenance column compared
+    # against what the council publishes now; dcp_chapter_registry has the right
+    # shape and covers 190 of 564 active chapters.
     return None
 
 
