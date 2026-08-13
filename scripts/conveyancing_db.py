@@ -191,6 +191,21 @@ def format_as_at_line(as_at: Optional[dict]) -> Optional[str]:
         return (f"All registered source documents for this plan were last "
                 f"checked on or after {shown}; an in-force date is not "
                 f"available")
+    elif basis == "extracted_from_published":
+        # The whole point of the fourth basis, and it had NO branch here, so it
+        # returned None and rendered nothing at all. The first version of the
+        # test could not see that: it asserted only that the wrong wording was
+        # absent, which an empty line satisfies trivially. Sol's cross-review
+        # caught it; the test now asserts the line is present and carries the
+        # date before checking what it must not say.
+        #
+        # Wording claims only what we can show: these controls were read out of
+        # the council's published plan on this date. NOT "in force since" - that
+        # would put a commencement date on the page sourced from nothing, and
+        # would give the wrong answer to anyone checking which plan applied to a
+        # DA lodged earlier.
+        return (f"These controls were extracted from the council's published "
+                f"plan on {shown}; an in-force date is not available")
     else:
         return None
     if kind == "amended":

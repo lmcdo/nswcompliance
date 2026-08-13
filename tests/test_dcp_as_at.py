@@ -248,8 +248,18 @@ class TestFetchDcpSetbacksAsAt:
         assert result["as_at"]["basis"] == "extracted_from_published"
         assert result["as_at"]["date"] == "2026-05-10"
         assert result["as_at_status"] != "absent"
-        line = (result.get("as_at_line") or "").lower()
-        assert "in force" not in line, (
+        # `or ""` here would let the test pass with NO line rendered at all -
+        # it would check only that wrong wording is absent, not that anything is
+        # present. Sol's cross-review caught exactly that. Assert presence FIRST.
+        line = result.get("as_at_line")
+        assert line, "no as_at line rendered at all - the basis is not reaching the output"
+        # The date is rendered human-readable, not ISO, so compare against the
+        # same formatter the code uses rather than hardcoding a format that a
+        # later change would silently break.
+        from conveyancing_db import _format_as_at_date
+        shown = _format_as_at_date("2026-05-10", "day")
+        assert shown and shown in line, f"the date itself must appear: {line!r}"
+        assert "in force" not in line.lower(), (
             "the extraction date must not be rendered as a commencement claim"
         )
 
