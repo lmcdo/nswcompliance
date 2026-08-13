@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Writes the dates served as each DCP's commencement, which is the date deciding WHICH plan governs a development application (savings provisions). A wrong value reads as authoritative and nothing downstream can detect it - that is exactly how parramatta shipped a 2024 amendment date as a 2023 commencement. Also adds columns to a production table.",
-  "commit_hash": "7f32d640",
+  "commit_hash": "6ed2976e",
   "files": [
     "scripts/extract_dcp_stated_dates.py",
     "scripts/dq_probe_live.py",
