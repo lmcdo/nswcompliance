@@ -25,7 +25,7 @@
   "the gap stays visible. An invented check that cannot fail is what produced",
   "DQ-30's '0% drift' verification — worse than no check."
  ],
- "_max_no_check": 58,
+ "_max_no_check": 59,
  "checks": {
   "DQ-54": {
    "declared": "fixed",
@@ -474,6 +474,11 @@
    "declared": "fixed",
    "check": null,
    "why_no_check": "A design confirmation, not a defect state. The two fields it endorses are tracked as DQ-60 (settled) and DQ-61 (open)."
+  },
+  "DQ-66": {
+   "declared": "open",
+   "check": null,
+   "why_no_check": "Needs a probe that flags a council whose served controls all come from ONE source_chapter_key while the council is known to maintain several plans. The \"known to maintain several\" half has no data behind it yet - there is no table of how many plans a council has. Writing the probe without it would either fire on every single-plan council or on none."
   }
  }
 }
