@@ -229,3 +229,97 @@ def test_unknowable_fails_closed_only_where_it_matters(qg, tmp_path):
         str(path), str(not_a_repo), require_tracked=False
     )
     assert not lenient, f"non-strict mode should not fail outside a repo: {lenient}"
+
+
+# ---------------------------------------------------------------------------
+# The same defect, one level down: the FILES a report cites
+# ---------------------------------------------------------------------------
+#
+# ORIGIN, 2026-08-13. The tests above stop a report git will never carry. They
+# say nothing about the files that report NAMES. `find_file` asked the
+# filesystem, so a repair script under the default-ignored `scripts/*` resolved
+# locally, the gate printed PASSED, and CI — which checks out only tracked
+# files — failed on "no such file is tracked or on disk".
+#
+# The doc-claim checker in the same script already asked git the right question,
+# but only in observation mode. So the BLOCKING check was strictly weaker than
+# the observing one, which is the shape of every incident in this file.
+
+
+def test_gitignored_cited_file_does_not_resolve(qg, repo):
+    """A file on disk that git will never carry must not satisfy a citation."""
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "repair_thing.py").write_text("def main():\n    return 0\n")
+    (repo / ".gitignore").write_text("scripts/*\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "init")
+
+    assert (repo / "scripts" / "repair_thing.py").exists(), "precondition: on disk"
+    assert qg.find_file("scripts/repair_thing.py", str(repo)) is None
+
+
+def test_negation_makes_the_cited_file_resolve(qg, repo):
+    """...and adding the `!` exception is what fixes it — same as the report."""
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "repair_thing.py").write_text("def main():\n    return 0\n")
+    (repo / ".gitignore").write_text("scripts/*\n!scripts/repair_thing.py\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "init")
+
+    assert qg.find_file("scripts/repair_thing.py", str(repo)) is not None
+
+
+def test_staged_but_uncommitted_cited_file_resolves(qg, repo):
+    """Staged is enough: it is in the index and will reach CI on push."""
+    (repo / "a.py").write_text("x = 1\n")
+    _git(repo, "add", "a.py")
+    assert qg.find_file("a.py", str(repo)) is not None
+
+
+def test_basename_collision_is_ambiguous_not_a_guess(qg, repo):
+    """Two tracked files share a basename — resolving either would let the AST
+    check verify against a file the report never named."""
+    (repo / "one").mkdir()
+    (repo / "two").mkdir()
+    (repo / "one" / "thing.py").write_text("def a():\n    return 1\n")
+    (repo / "two" / "thing.py").write_text("def b():\n    return 2\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "init")
+
+    assert qg.find_file("thing.py", str(repo)) is None, "ambiguous must not resolve"
+    # The unambiguous full path still works.
+    assert qg.find_file("one/thing.py", str(repo)) is not None
+
+
+def test_unique_suffix_still_resolves(qg, repo):
+    """Reports legitimately write a partial path; that must keep working."""
+    (repo / "pkg").mkdir()
+    (repo / "pkg" / "only.py").write_text("def a():\n    return 1\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "init")
+
+    got = qg.find_file("only.py", str(repo))
+    assert got is not None and got.endswith("only.py")
+
+
+def test_dotfile_paths_resolve(qg, repo):
+    """Regression: an early version of this fix used `lstrip("./")`, which
+    strips CHARACTERS rather than a prefix — so `.github/workflows/x.yml` lost
+    its leading dot and matched nothing. Caught by re-checking every committed
+    report before shipping; one real citation would have started failing.
+    """
+    (repo / ".github" / "workflows").mkdir(parents=True)
+    (repo / ".github" / "workflows" / "gates.yml").write_text("name: gates\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "init")
+
+    assert qg.find_file(".github/workflows/gates.yml", str(repo)) is not None
+
+
+def test_explicit_relative_prefix_resolves(qg, repo):
+    """`./a.py` and `a.py` name the same tracked file."""
+    (repo / "a.py").write_text("x = 1\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "init")
+
+    assert qg.find_file("./a.py", str(repo)) is not None

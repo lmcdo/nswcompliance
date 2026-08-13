@@ -226,22 +226,59 @@ def validate_min_words(value: str, field_name: str, min_words: int) -> list[str]
 
 
 def find_file(filename: str, project_dir: str) -> Optional[str]:
-    """Find a file in the project directory, handling partial paths."""
-    # Try exact path first
-    exact = os.path.join(project_dir, filename)
-    if os.path.exists(exact):
-        return exact
+    """Resolve a path the report claims — but only if the REPOSITORY carries it.
 
-    # Try searching
-    for root, _dirs, files in os.walk(project_dir):
-        # Skip venv, node_modules, .git
-        if any(skip in root for skip in ("venv", "node_modules", ".git", "__pycache__")):
-            continue
-        for f in files:
-            full = os.path.join(root, f)
-            if full.endswith(filename) or f == os.path.basename(filename):
-                return full
-    return None
+    This used to ask the filesystem (``os.path.exists`` plus an ``os.walk``
+    fallback). Two things were wrong with that, and the first one bit on
+    2026-08-13:
+
+    1. **Untracked files passed.** ``scripts/*`` is gitignored and each script
+       is un-ignored by name, so a new repair script sat on disk untracked. The
+       local gate found it and PASSED; CI checks out only tracked files and
+       FAILED on a report citing a file the repository does not contain. The
+       blocking check was asking a weaker question than the doc-claim checker
+       below it, which already used ``ls-files`` — but only to observe.
+    2. **The walk matched on BASENAME.** A report naming ``a/thing.py`` could be
+       AST-verified against ``b/thing.py``. A verification that can silently
+       check the wrong file is not a verification.
+
+    Tracked OR staged, matching the report-tracking rule further down: a staged
+    new file is already in the index and will reach CI.
+
+    Partial paths still resolve, because reports legitimately write
+    ``qa_gate.py:228`` rather than the full path — but only when exactly ONE
+    tracked file ends with that suffix. Two candidates is ambiguous and returns
+    None rather than picking.
+    """
+    # NOT lstrip("./") — that strips CHARACTERS, not a prefix, so ".github/..."
+    # loses its leading dot and no longer matches anything git knows about.
+    rel = filename.replace("\\", "/")
+    while rel.startswith("./"):
+        rel = rel[2:]
+
+    code, _ = _git_query(["ls-files", "--error-unmatch", "--", rel], project_dir)
+    if code is None:
+        # git itself is unusable. "Cannot tell" is not "it is fine" — the same
+        # doctrine the report-tracking check applies. Fail closed; the caller
+        # renders this as the file not being resolvable.
+        return None
+    if code == 0:
+        exact = os.path.join(project_dir, rel)
+        return exact if os.path.exists(exact) else None
+
+    # Not an exact tracked path — try to resolve it as a suffix, uniquely.
+    code, out = _git_query(["ls-files"], project_dir)
+    if code is None or code != 0:
+        return None
+    suffix = "/" + rel
+    matches = [
+        p for p in out.splitlines()
+        if p == rel or p.endswith(suffix)
+    ]
+    if len(matches) != 1:
+        return None
+    resolved = os.path.join(project_dir, matches[0])
+    return resolved if os.path.exists(resolved) else None
 
 
 def verify_python_function(filepath: str, line_num: int, func_name: str) -> tuple[bool, str]:
@@ -358,7 +395,15 @@ def ast_ground_functions(functions: list[dict], project_dir: str) -> list[str]:
         filepath = find_file(filename, project_dir)
 
         if not filepath:
-            errors.append(f"Section 3 functions[{i}]: file '{filename}' not found in project")
+            errors.append(
+                f"Section 3 functions[{i}]: file '{filename}' is not tracked or "
+                f"staged in this repository (or the path is ambiguous).\n"
+                f"    The check is 'does the REPO carry it', not 'is it on this "
+                f"machine' — a report may only cite what CI will actually see. "
+                f"If the file is new, `git add` it; if it is under a directory "
+                f"ignored by default (scripts/* is), add its `!` exception to "
+                f".gitignore first."
+            )
             continue
 
         # Only AST-verify Python files
