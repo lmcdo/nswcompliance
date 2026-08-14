@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a build-blocking rule. It cannot serve a wrong number, so not Critical — but it decides whether an unfinished defect may exist without any way to tell if it is still real, and a cap set wrong would either block all work or enforce nothing.",
-  "commit_hash": "c7a51b5d",
+  "commit_hash": "e7921cc8",
   "files": [
     "scripts/dq_check.py",
     ".claude/dq_checks.json",
