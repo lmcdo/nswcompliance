@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds the only trigger that can see data drift, plus a build-blocking guard on that trigger. It serves no number to a user, so not Critical — but a freshness guard that fails for the wrong reasons would block every merge and get deleted, and one that never fails would restore the silence it exists to remove.",
-  "commit_hash": "5de5ec3d",
+  "commit_hash": "74637cba",
   "files": [
     ".github/workflows/data-watch.yml",
     ".github/workflows/gates.yml",
