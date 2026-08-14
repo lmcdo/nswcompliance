@@ -68,6 +68,30 @@ def send_telegram(msg: str) -> None:
 conn = psycopg2.connect(DATABASE_URL)
 cur = conn.cursor()
 
+def stuck_review_line(
+    council: str, chapter_key: str, flagged_at, pending_rows: int, now,
+) -> str:
+    """One CRITICAL alert line for a review-blocked chapter.
+
+    ⚠ Age comes from the CHAPTER'S OWN FLAG (dcp_chapter_registry.url_last_changed),
+    never from dcp_review_queue.created_at. dcp_extract_changed.py:2969 DELETEs and
+    re-INSERTs a chapter's pending rows on every nightly run, so a queue-derived age
+    resets to zero each night: on 2026-08-13 this printed "5 chapters stuck >48h"
+    beside "oldest 0d" for five chapters that had been flagged since 2026-06-22 —
+    53 days. The alert contradicted itself and nobody reads 0d as urgent.
+
+    GENERAL RULE: never measure staleness from a value your own pipeline rewrites.
+
+    Pure — no DB, no clock. `now` and `flagged_at` are passed in.
+    """
+    if flagged_at is None:
+        return (f"  [{council}/{chapter_key}] awaiting REVIEW — {pending_rows} rows pending, "
+                f"flagged UNKNOWN (no url_last_changed)")
+    age_d = (now - flagged_at).days
+    return (f"  [{council}/{chapter_key}] awaiting REVIEW — {pending_rows} rows pending, "
+            f"flagged {age_d}d ago")
+
+
 # ── Check 1: Chapters flagged for extraction but not processed in >25 hours ──
 cur.execute("""
     SELECT council, chapter_key, url_last_changed
@@ -172,12 +196,11 @@ if stuck:
     if critical:
         lines = []
         review_blocked = 0
-        for c, k, _ in critical:
+        for c, k, flagged_at in critical:
             pend = pending_by_chapter.get((c, k))
             if pend:
-                n, oldest = pend
-                age_d = (now - oldest).days if oldest else "?"
-                lines.append(f"  [{c}/{k}] awaiting REVIEW — {n} rows pending, oldest {age_d}d")
+                n, _queue_oldest = pend
+                lines.append(stuck_review_line(c, k, flagged_at, n, now))
                 review_blocked += 1
             else:
                 lines.append(f"  [{c}/{k}] awaiting extraction")
