@@ -1,0 +1,132 @@
+{
+  "tier": "standard",
+  "justification": "Adds the first check that scores the served ANSWER rather than our process around it, with a build-blocking ratchet in two workflows. It changes no served value, so not Critical — but a baseline seeded wrong would either block every merge or enforce nothing, and this check is the one that would notice a serve-path regression dropping provenance.",
+  "commit_hash": "8cccbf2a",
+  "files": [
+    "scripts/check_served_answer_quality.py",
+    ".claude/served_answer_quality_baseline.json",
+    ".github/workflows/data-watch.yml",
+    ".github/workflows/gates.yml",
+    "tests/test_data_watch_workflow.py",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/check_served_answer_quality.py --baseline && python -m pytest tests/test_data_watch_workflow.py -q",
+    "fails_when": "Any per-council deficiency count rises above the baseline — a control losing its page number, a council's date falling back to a URL check, or a part-of-council plan being served to more rows. It also exits 2, never 0, when the served set is empty or when a council with rows returns nothing from the serve path, so 'could not measure' can never read as 'nothing deficient'.",
+    "observed_red": "Observed live at every step. Seeded at 1,270 deficiencies across 40 keys and the ratchet holds (exit 0). Lowering one key by hand — applicability_ungated/wingecarribee from 30 to 20, i.e. pretending the baseline was better than reality — produced 'FAILED - a count rose' naming that key, and exit 1. The two workflow-mapping tests were also watched failing: removing the new step from the alarm's FAILED list, which is exactly what a future contributor would forget, failed both test_every_check_step_is_mapped and test_names_line_up_one_to_one_with_ids. Restoring returned 5 passed.",
+    "measured_before_writing": "968 served rows: 780 (80.6%) with no page number, 460 (47.5%) whose date comes only from us observing a URL still resolved, 30 (3.1%) served council-wide from a part-of-council plan. Cross-validated: measuring through fetch_dcp_setbacks returned identical counts to a direct table query, which confirms the serve path is not dropping rows."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls (968 served rows across 29 councils), dcp_plan_as_at (as-at basis per council), dcp_chapter_registry (place-scoped chapter labels). Read-only — no writes.",
+    "assumption_mismatch": "The central assumption is that a date whose basis is observed_current is weaker evidence than one the document states. That is not a judgement call: the existing as-at code already distinguishes the bases, and conveyancing_db's own comment records that a URL check cannot establish the plan is the current published version because a superseding amendment can live at another URL. This check just stops that distinction being invisible behind '0 councils without a date'.",
+    "new_vs_existing": "Applies to every served row now and in future. Baseline seeded at today's real counts so nothing currently green turns red. Percentages are printed but never ratcheted — a percentage moves when the denominator moves, which is not progress.",
+    "external_source_error": "No network. Absent DATABASE_URL exits 2. An empty served set exits 2. A council with rows whose serve path returns nothing exits 2 rather than being skipped, because skipping would shrink every count and read as improvement.",
+    "frontend_type": "No. Nothing rendered changes; this scores what is already served.",
+    "user_failure_mode": "None user-facing today. The point is the inverse: it makes visible that four in five served numbers cannot be located in their source document, and that half rest on a link still working — both of which a user would discover by trying to check a citation."
+  },
+  "functions": [
+    {
+      "name": "_place_scoped_chapters",
+      "file_line": "scripts/check_served_answer_quality.py:63",
+      "input": "an open cursor; queries dcp_chapter_registry for active chapters whose label names a town, village, locality or precinct plan",
+      "output": "a set of (council, chapter_key) pairs identifying plans that govern only PART of a council area, used to score the applicability dimension",
+      "if_none": "An empty set means no council currently splits its plan by place, so the applicability count is legitimately zero rather than unmeasured."
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/check_served_answer_quality.py:79",
+      "input": "--baseline / --update flags, DATABASE_URL, and the served councils read from dcp_setback_controls",
+      "output": "three per-council deficiency counts printed with percentages and, under --baseline, compared against the recorded file — exit 1 on any rise, 2 when nothing could be measured",
+      "if_none": "Zero served councils, or a council the serve path cannot render, exits 2. Neither is reported as a clean result."
+    }
+  ],
+  "values": [
+    {
+      "value": "as_at.basis from the serve path",
+      "read_at": "scripts/check_served_answer_quality.py:79",
+      "nullable": "yes — None means no date resolved at all",
+      "guard_at": "membership test against DOCUMENTED_BASES, so None and observed_current both count as deficient",
+      "if_missing": "Counted in currency_observation_only rather than skipped. Treating an absent basis as acceptable would hide the worst case inside the best-looking number."
+    },
+    {
+      "value": "entry pdf_page",
+      "read_at": "scripts/check_served_answer_quality.py:79",
+      "nullable": "yes — 780 of 968 are null today",
+      "guard_at": "explicit `is None` test; the count is of deficient rows so the ratchet direction is unambiguous",
+      "if_missing": "The row is counted as unlocatable. A quote with no page is a claim the reader cannot check in a 300-page plan."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Identify plans that cover only part of a council area",
+      "file_line": "scripts/check_served_answer_quality.py:63",
+      "where_clause": "is_active AND chapter_label ~* '(town|village|locality|precinct)[[:space:]]+plan'",
+      "if_zero": "No council splits its plan by place, so the applicability dimension is zero — a real answer, not a gap.",
+      "if_wrong": "Hardcoding the known Wingecarribee chapters instead would mean a council that splits its plan next year is never noticed. Kept as a query for that reason; the same label test matches 3 of 655 registry rows today, all correct."
+    },
+    {
+      "purpose": "The served set to score",
+      "file_line": "scripts/check_served_answer_quality.py:79",
+      "where_clause": "is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE), then fetch_dcp_setbacks per council",
+      "if_zero": "Exits 2. An empty serving table means the production data was not measured — wrong database, emptied table — and must never read as nothing-deficient.",
+      "if_wrong": "Scoring straight from a table query would let this pass while the serve path returns something different. Every count comes from fetch_dcp_setbacks for that reason, and the two were cross-checked to identical numbers."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A code change stops selecting pdf_page or source_chapter_key in the serve path, so provenance collapses with the database untouched.",
+      "what_happens": "Every citation silently loses its page and nothing in the database changed, so no data check would notice.",
+      "mitigated": true,
+      "how": "The check measures through fetch_dcp_setbacks, not the table, so a dropped field shows up as a rise in provenance_no_page. It runs in gates as well as nightly, so this is caught at PR time while the person who caused it is still holding it.",
+      "repro": "Remove pdf_page from the fetch_dcp_setbacks entry dict and run python scripts/check_served_answer_quality.py --baseline"
+    },
+    {
+      "scenario": "The baseline is edited to a better number than reality, or raised to make a failure go away.",
+      "what_happens": "The ratchet becomes decorative and the numbers stop meaning anything.",
+      "mitigated": true,
+      "how": "Verified live: lowering applicability_ungated/wingecarribee from 30 to 20 failed with 'a count rose' naming the key. A raise is equally visible because the check prints IMPROVED with the exact old and new values whenever reality is better than the file, so a silently inflated baseline is contradicted on every run.",
+      "repro": "python -c \"import json;p='.claude/served_answer_quality_baseline.json';d=json.load(open(p));d['per_key']['applicability_ungated/wingecarribee']=20;json.dump(d,open(p,'w'),indent=2)\" then run with --baseline"
+    },
+    {
+      "scenario": "A council's rows disappear from the serve path, so its deficiencies drop out and the total falls.",
+      "what_happens": "A serving outage reads as an improvement, and the ratchet cheerfully accepts the lower number.",
+      "mitigated": true,
+      "how": "A council with rows whose fetch returns nothing exits 2 with that council named, rather than being skipped. Counts are also per-council, so a council vanishing from the map is visible as a key that stopped being reported rather than hidden inside a smaller total.",
+      "repro": "Point DATABASE_URL at a database with dcp_setback_controls rows but no dcp_chapter_registry — the fetch degrades and the check exits 2"
+    },
+    {
+      "scenario": "The label test stops identifying plans that cover only part of a council area — a council renames its chapters, or labels them in a shape the regex misses — so the applicability count silently reads zero.",
+      "what_happens": "Controls from plans that cover one town keep being served council-wide while the dimension reports clean. A check that goes quiet without the defect being fixed is worse than no check, because it manufactures confidence.",
+      "mitigated": true,
+      "how": "The regex was run against all 655 registry rows rather than only the expected ones, and matches exactly 3 — so its precision is measured, not assumed. It is kept as a QUERY rather than a hardcoded chapter list precisely so a council that splits its plan next year is caught without anyone remembering to edit this file. The same test backs DQ-66's probe, which is independently open at 30, so two separate numbers would have to go quiet together for this to pass unnoticed.",
+      "repro": "SELECT count(*) FROM dcp_chapter_registry WHERE is_active AND chapter_label ~* '(town|village|locality|precinct)[[:space:]]+plan' — expect 3; then python scripts/dq_probe_live.py --id DQ-66 — expect 30"
+    },
+    {
+      "scenario": "A future check step is added to data-watch but not to the alarm's positional mapping.",
+      "what_happens": "The alarm names the wrong check in an issue, confidently, and sends somebody to look at something that is fine.",
+      "mitigated": true,
+      "how": "Adding this very step surfaced the fragility — the mapping had to be extended by hand and nothing would have complained. tests/test_data_watch_workflow.py now pins step ids against the FAILED list and the label array against both. Both tests were watched failing when the new step was removed from the mapping.",
+      "repro": "python -m pytest tests/test_data_watch_workflow.py -q after deleting one steps.X.outcome from the FAILED env"
+    },
+    {
+      "scenario": "The percentage is ratcheted instead of the count, and grows the served set to look better.",
+      "what_happens": "Adding well-provenanced councils would lower the percentage while the number of uncheckable citations stayed the same or rose.",
+      "mitigated": true,
+      "how": "Only per-council COUNTS of deficient rows go into the baseline; percentages are printed for reading and never compared. The script says so in its own docstring so the next person does not 'improve' it by ratcheting the rate.",
+      "repro": "Read the baseline file — it holds integers per council, no rates"
+    },
+    {
+      "scenario": "The script is committed but gitignored, so CI runs a file that does not exist.",
+      "what_happens": "The workflow step fails on a missing file, or worse the check silently never runs.",
+      "mitigated": true,
+      "how": "scripts/* is ignored by default here; the file was checked with `git check-ignore -q` and given its `!` exception, and `git add -A` confirmed both it and the baseline are staged. This is the same trap that reached CI yesterday with a repair script.",
+      "repro": "git check-ignore -q scripts/check_served_answer_quality.py — exit 1 means tracked"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No - it runs in gates on this PR, so the ratchet is exercised before merge, and nightly thereafter."
+  }
+}

@@ -459,3 +459,16 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/validate_control_source_values.py
+      # Also runs nightly in data-watch. It belongs in BOTH because it can
+      # regress two different ways: the data can drift with no commit (that is
+      # data-watch's job), and a code change to the serve path can drop a field
+      # this scores — stop selecting pdf_page and provenance collapses with the
+      # database untouched. Catching that at PR time is a day earlier than the
+      # nightly run, and the person who caused it is still holding it.
+      #
+      # It measures through fetch_dcp_setbacks, so a change that breaks serving
+      # fails here rather than being scored as clean.
+      - name: Served-answer quality (provenance, currency, applicability)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/check_served_answer_quality.py --baseline
