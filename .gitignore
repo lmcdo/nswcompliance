@@ -697,6 +697,8 @@ latent-scope-data/
 !scripts/repair_dq41_null_label_derived_dates.py
 # DQ-62 — the three commencement dates that were amendment/consolidation stamps
 !scripts/repair_dq62_commencement_dates.py
+# Has anybody checked the live data lately (guards the data-watch schedule)
+!scripts/check_data_watch_freshness.py
 
 # Output-grounding item 4 — execution manifests + units/CRS checks
 !scripts/check_satellite_manifests.py
