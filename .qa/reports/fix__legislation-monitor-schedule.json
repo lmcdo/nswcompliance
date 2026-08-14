@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Fifteen files across the extraction path, the alerting path and a production schema change (migration 066, already applied). Two of the changes alter what reaches regulatory_provisions: the Marrickville section-heading fix changes every clause ref that council produces, and the legislation monitor now WRITES last_checked on a path that previously wrote nothing. Critical rather than Standard because a wrong ref is a citation a planner cannot resolve, and because the schema change is live in production ahead of the merge.",
-  "commit_hash": "0e3e09e1",
+  "commit_hash": "24461445",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
