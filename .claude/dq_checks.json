@@ -25,8 +25,8 @@
     "the gap stays visible. An invented check that cannot fail is what produced",
     "DQ-30's '0% drift' verification — worse than no check."
   ],
-  "_max_no_check": 57,
-  "_max_unverified_unresolved": 6,
+  "_max_no_check": 56,
+  "_max_unverified_unresolved": 3,
   "checks": {
     "DQ-54": {
       "declared": "fixed",
@@ -170,14 +170,22 @@
       "note": "Deliberately 'partial'. My first attempt at this pattern returned 0 because it searched for 4+ repeats of one character rather than repeated PAIRS - a wrong probe reporting clean. Recorded so nobody trusts the number as adjudicated."
     },
     "DQ-25": {
-      "declared": "backlog",
+      "declared": "fixed",
       "check": null,
-      "why_no_check": "Backlog, never scoped."
+      "fixed_by": "STALE, closed 2026-08-14 on measurement. The row said sepp_structured_requirements was EMPTY for the Transport & Infrastructure SEPP. It is not: joining sepp_structured_requirements.provision_id -> regulatory_provisions.document_id gives 110 rows for that SEPP (69 + 41 across its two document rows), the largest holding after Exempt and Complying Development. 553 of the table's 560 rows carry a NULL sepp_name, which is why a naive `GROUP BY sepp_name` shows nothing for Transport and made the row look true - the SEPP is recoverable through provision_id, not from that column. Nothing was built to close this; it had already stopped being true and no check existed to notice.",
+      "why_no_check": "Closed on measurement, and a standing probe would guard the wrong thing. The row's claim was 'this table is empty for this SEPP'; it holds 110 rows, so there is nothing left to watch that is specific to Transport. The real residual - 553 of 560 rows carrying a NULL sepp_name, so the owning SEPP is only recoverable through provision_id - is a different defect about that column and belongs in its own row if anyone wants it guarded."
     },
     "DQ-24": {
-      "declared": "backlog",
-      "check": null,
-      "why_no_check": "Backlog, never scoped."
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-24"
+      ],
+      "passes_when": "exit 0 - every served Transport & Infrastructure SEPP provision carries a v2_topic",
+      "red_when": "A provision the product serves has no topic, so it cannot be routed to the right section of a report or filtered by topic.",
+      "note": "Was 'backlog, never scoped' with no check. Scoping it took one query: 523 of 1,076 SERVED provisions from this SEPP carry no v2_topic (measured 2026-08-14), across its two document rows. Deliberately scoped to the served set - 1,248 more non-actionable rows are untagged but nobody sees them, and counting those would make the number look four times worse than the exposure. The document pattern needs BOTH words: '%Transport%' alone also matches Penrith_DCP_2014__c10_transport_access_parking. Same query without the document filter returns 3,197, which is a bigger row to open separately."
     },
     "DQ-56": {
       "declared": "closed_wontfix",
@@ -504,9 +512,10 @@
       "note": "CLAIM CORRECTED 2026-08-13. The row said 'A Mittagong or Moss Vale property is being given Bowral's setbacks' - implying wrong numbers. It is not: all three town plans were downloaded and hash-matched to dcp_chapter_registry.content_hash, and Part C Sections 2-4, which back all 32 stored controls, are NUMERICALLY IDENTICAL across them (100/40/16 numeric tokens per section, zero differences in all six pairwise comparisons). The defect is MIS-CITATION - the reference names a plan that does not govern the property, and table numbering differs between plans, so it does not resolve. The 'known to maintain several plans' half that was said to have no data behind it does: the registry lists all three town plans, all is_active. Separate and larger gap recorded as DQ-67: Part C Sections 16+ are town-specific precincts, entirely different per plan, and none are extracted for any town. OPEN DECISION on how this reaches zero: extracting Mittagong and Moss Vale would create ~60 rows duplicating values already proven identical, which is not obviously an improvement. The alternative is to re-cite these 30 to the common Part C of Wingecarribee DCP 2010 rather than to one town's plan. The probe measures the state, not the preferred remedy."
     },
     "DQ-67": {
-      "declared": "open",
+      "declared": "fixed",
       "check": null,
-      "why_no_check": "Found while correcting DQ-66 on 2026-08-13. Wingecarribee's three town plans share Part C Sections 1-15 verbatim but diverge completely from Section 16 on, where the town-specific precincts live - Bowral has 9 (Bowral Conservation, Shepherd Street, OLSH, Retford Park and more), Mittagong 5 (Central Heritage, The Maltings, Renwick, Mount Gibraltar), Moss Vale 7 (Railway Street, Elizabeth Street North and South, Kirkham Street). None are extracted for ANY town, including Bowral. These are where the genuinely different numbers are, so this is the larger half of what DQ-66 was pointing at. A count needs a per-plan inventory of which sections carry numeric controls, which does not exist - counting registry chapters with no extracted controls would conflate a non-residential chapter with an unextracted one and return hundreds."
+      "fixed_by": "Closed 2026-08-14 on measurement, folded into the Wingecarribee suburb-scoping job. The row said the town-specific PRECINCT controls were unextracted for every town and were 'the larger half' of DQ-66. Measured across all 21 precinct sections in the three town plans: 13 carry ZERO numeric controls - they are character and design prose - and most of the rest repeat the same conservation block (20%, 2.5m, 1.5m, 90mm, 10m) identically in all three towns, so it is not a difference between them at all. The one genuinely numeric precinct is Renwick (Mittagong S18, 1,314 lines, 185 values), and even there most values are not controls we serve (door clearances, kitchen widths, traffic lane widths, roof pitch); the overlap is about two, max 2 storeys and max 7m external wall height. Renwick is its own suburb (postcode 2575), so address->suburb matching reaches it without any precinct geometry. There is no extraction project here - see memory/project-wingecarribee-suburb-scoping-planned-2026-08.md.",
+      "why_no_check": "Closed on measurement, and the coverage it would want already exists elsewhere. What remains of this row is whether Wingecarribee's controls are served with the right plan attached, and that is exactly what DQ-66's probe counts (30 today). A second probe over the same fact would be a second source of truth, which is the defect DQ-54 and this ledger's status ratchet exist to prevent."
     }
   }
 }

@@ -45,6 +45,32 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         (SAR_SOURCE,),
         "These are the ones a user can still be served today.",
     ),
+    "DQ-24": (
+        "Served Transport & Infrastructure SEPP provisions with no topic tag",
+        # The row read "Transport & Infrastructure SEPP v2_topic retag" and sat
+        # in backlog with no check, so nobody could say whether it was still
+        # true. It is: 523 provisions that ARE served carry no v2_topic.
+        #
+        # Scoped to the SERVED set (is_current AND v2_is_actionable) on purpose.
+        # 1,248 more non-actionable rows are also untagged, but those are not
+        # shown to anyone, and counting them would make the number look four
+        # times worse than the exposure while moving for reasons no reader
+        # cares about.
+        #
+        # The pattern needs BOTH 'Transport' and 'Infrastructure': '%Transport%'
+        # alone also matches Penrith_DCP_2014__c10_transport_access_parking,
+        # which is a council DCP chapter and nothing to do with this row.
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE document_id ILIKE %s "
+        "  AND is_current AND v2_is_actionable AND v2_topic IS NULL",
+        ("%Transport%Infrastructure%2021%",),
+        "Each row is a provision the product will serve with no topic on it, so "
+        "it cannot be routed to the right section of a report or filtered by "
+        "topic. Measured 523 on 2026-08-14, out of 1,076 served provisions from "
+        "this SEPP across its two document rows. Not a Transport-only problem: "
+        "the same query without the document filter returns 3,197, which is a "
+        "separate and larger row to open if anyone wants it.",
+    ),
     "DQ-61": (
         "Served councils with no record of WHICH VERSION of the plan we hold",
         # DQ-60 settled that stated_date is the plan's commencement. It says
