@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Fifteen files across the extraction path, the alerting path and a production schema change (migration 066, already applied). Two of the changes alter what reaches regulatory_provisions: the Marrickville section-heading fix changes every clause ref that council produces, and the legislation monitor now WRITES last_checked on a path that previously wrote nothing. Critical rather than Standard because a wrong ref is a citation a planner cannot resolve, and because the schema change is live in production ahead of the merge.",
-  "commit_hash": "24461445",
+  "commit_hash": "d61ff4bf",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -21,24 +21,29 @@
   ],
   "falsifiable_check": {
     "command": "python scripts/dq_probe_live.py --id DQ-69; python scripts/dq_probe_live.py --id DQ-70",
-    "fails_when": "DQ-69 returns more than 1. It counts active SEPPs/LEPs not checked within 14 days and was 26 of 26 before this branch (max(last_checked) = 2026-06-08, 67 days). It is 1 after, and that 1 is wingecarribee_lep_2010, which carries no pco_instrument_id and is deliberately NOT stamped. Only the monitor actually running moves this number; no code edit can. DQ-70 is the new outcome gate and is expected to stay RED at 595 - it is opened by this branch, not closed by it."
+    "fails_when": "DQ-69 returns more than 1. It counts active SEPPs/LEPs not checked within 14 days and was 26 of 26 before this branch (max(last_checked) = 2026-06-08, 67 days). It is 1 after, and that 1 is wingecarribee_lep_2010, which carries no pco_instrument_id and is deliberately NOT stamped. Only the monitor actually running moves this number; no code edit can. DQ-70 is the new outcome gate and is expected to stay RED at 595 - it is opened by this branch, not closed by it.",
+    "observed_red": "Yes - observed RED against production before the fix and GREEN after, in the same session. python scripts/dq_probe_live.py --id DQ-69 returned count 26, exit 1 on 2026-08-14 before the Fly redeploy; after the redeploy and a manual run it returned count 1, exit 1 (the 1 being the deliberately-unstamped wingecarribee_lep_2010). The INTERMEDIATE state is the proof the probe measures the monitor and not the code: after the import fix alone, with the monitor running and reporting 'Checked: 26', it still returned 26, because check_instrument was writing nothing on the no-change path."
   },
   "pre_impl": {
     "existing_data": "instrument_registry: 26 active instruments, 25 with pco_instrument_id, 1 without. dcp_chapter_registry: 564 active, 206 hash-matched, 10 drifted, 348 with no recorded extraction hash; 655 rows total, 35 columns before migration 066 and 37 after. dcp_review_queue: 19,649 rows ever, 19,199 with fidelity_status, 12 with fidelity_source_quote.",
     "assumption_mismatch": "The branch name says 'schedule'. It was never a scheduling problem. The monitor crashed at import on every cycle because #504 added refresh_runbook and never added the COPY, proven by running it on the live machine. Fly billing had also lapsed - a second, independent cause. A third followed: even once running, it recorded nothing.",
-    "prior_art": "Extended the EXISTING image-completeness test rather than adding one; its from-scripts.X regex could not see the Fly image's flat COPY layout, which is why this shipped. Extended the EXISTING legislation-monitor and smart-monitor test modules for the same reason. No alert-state table existed anywhere (grepped scripts/, services/, migrations/, DB_SCHEMA.md), so migration 066 adds two columns to the registry row that already holds this chapter's operational state rather than opening a parallel table."
+    "prior_art": "Extended the EXISTING image-completeness test rather than adding one; its from-scripts.X regex could not see the Fly image's flat COPY layout, which is why this shipped. Extended the EXISTING legislation-monitor and smart-monitor test modules for the same reason. No alert-state table existed anywhere (grepped scripts/, services/, migrations/, DB_SCHEMA.md), so migration 066 adds two columns to the registry row that already holds this chapter's operational state rather than opening a parallel table.",
+    "new_vs_existing": "All existing code paths, no new surface. The legislation monitor, the DCP extractor, the watchdog and the OCR fetch all predate this branch; every change modifies behaviour in place. The only additions are migration 066's two columns on dcp_chapter_registry and two DQ ledger rows, both extending structures that already exist rather than opening parallel ones.",
+    "external_source_error": "PCO returning 403 or an empty change list is handled: the monitor falls through its source cascade and, on the no-change path, stamps last_checked ONLY for instruments PCO actually covers. The Modal OCR endpoint failing is handled by returning None so the caller stays on the pdfplumber text layer, and by the (connect, read) timeout so a dead endpoint costs 120s rather than 1800s. An endpoint that dribbles forever is NOT handled - recorded in break_it and tracked as P6.0. An R2 download failure raises and is caught per chapter.",
+    "frontend_type": "No frontend change. The review UI at /internal/dcp-review reads dcp_review_queue and is untouched; the two new registry columns are nullable and no API route selects them.",
+    "user_failure_mode": "Loudly, which is the point of the branch. Before: a dead legislation monitor was silent, a 53-day stall reported as 0 days, and the same alert repeated daily until nobody read it. After: DQ-69 rises above 1 within 14 days if the monitor stops, the watchdog prints the true age from the chapter flag, and an unchanged condition suppresses while a new or changed one still fires. The one remaining silent failure is the OCR dribble case, recorded rather than hidden."
   },
   "functions": [
     {
       "name": "check_instrument",
-      "file_line": "scripts/legislation_monitor.py:577",
+      "file_line": "scripts/legislation_monitor.py:567",
       "input": "an instrument PCO did not list as amended, on the PCO path",
       "output": "records last_checked when the instrument carries a pco_instrument_id (PCO's export lists every amended instrument, so absence is an affirmative confirmation); records NOTHING when it does not, because silence about an uncovered instrument means nothing",
       "if_none": "the previous early return wrote nothing at all, so a run reporting 'Checked: 26' left last_checked frozen and no currency claim could be dated"
     },
     {
       "name": "split_page_at_headings",
-      "file_line": "scripts/dcp_extract_changed.py:2113",
+      "file_line": "scripts/dcp_extract_changed.py:2208",
       "input": "one page of text and the council's section regex",
       "output": "[text before the first heading, then one block per heading]; returns [text] unchanged for 0- and 1-heading pages so non-split pages are bit-identical to before",
       "if_none": "one heading per page survived, so a page holding 2.11.3/2.11.4/2.11.4.1 yielded only 2.11.3 and the other clauses collided onto it"
@@ -52,15 +57,15 @@
     },
     {
       "name": "unalerted_suspects",
-      "file_line": "scripts/dcp_extract_changed.py:2150",
-      "input": "suspect chapters plus the keys already alerted",
+      "file_line": "scripts/dcp_extract_changed.py:2245",
+      "input": "the list of suspect chapters produced by this run, plus a map holding the content_hash and reason key already alerted for each chapter",
       "output": "only those whose (content_hash, reason) is new or changed",
       "if_none": "the same two chapters alerted byte-identically for 13 consecutive days and the channel stopped being read"
     },
     {
       "name": "fetch_ocr_page_texts",
-      "file_line": "scripts/dcp_extract_changed.py:2035",
-      "input": "an OCR endpoint that stops responding",
+      "file_line": "scripts/dcp_extract_changed.py:2028",
+      "input": "a path to a chapter PDF and an OCR endpoint which accepts the POST and then stops sending any further bytes back to the caller",
       "output": "gives up after OCR_READ_TIMEOUT (120s) instead of 1800s",
       "if_none": "a scalar requests timeout is the gap BETWEEN BYTES, not a total deadline; a live socket was measured open 2472s against timeout=1800"
     }
@@ -90,13 +95,19 @@
   "queries": [
     {
       "query": "UPDATE instrument_registry SET last_checked = %s, check_failures = 0 WHERE instrument_key = %s",
-      "scoped_by": "instrument_key, single row, only when source='pco' AND the instrument carries a pco_instrument_id",
-      "risk_if_unscoped": "stamping an instrument PCO does not cover would fabricate a confirmation - we would record having checked something we cannot see"
+      "purpose": "Record that this instrument WAS checked and confirmed unamended, so last_checked becomes a true liveness signal rather than a change log. Before this, a run finding no amendments wrote nothing, and a dead monitor was indistinguishable from a quiet one.",
+      "file_line": "scripts/legislation_monitor.py:604",
+      "where_clause": "WHERE instrument_key = %s - one row, reached only when source == 'pco' AND the instrument carries a pco_instrument_id",
+      "scoped_by": "instrument_key, single row, PCO path only, covered instruments only",
+      "risk_if_unscoped": "Stamping an instrument PCO does not cover would fabricate a confirmation - recording that we checked something we cannot see. wingecarribee_lep_2010 is the live case and stays unstamped."
     },
     {
       "query": "UPDATE dcp_chapter_registry SET last_suspect_alert_key = %s, last_suspect_alert_at = NOW() WHERE council = %s AND chapter_key = %s",
-      "scoped_by": "(council, chapter_key), written only AFTER a successful Telegram send",
-      "risk_if_unscoped": "recording before the send would swallow a failed push - the condition would be marked as reported and never alert again"
+      "purpose": "Remember which SUSPECT condition has already been alerted so an unchanged one stops repeating. The same two chapters alerted byte-identically for 13 consecutive days because nothing recorded what had already been said.",
+      "file_line": "scripts/dcp_extract_changed.py:3602",
+      "where_clause": "WHERE council = %s AND chapter_key = %s - one chapter, inside the else branch of a successful send only",
+      "scoped_by": "(council, chapter_key), written only AFTER Telegram returns without raising",
+      "risk_if_unscoped": "Recording before the send would swallow a failed push: the condition would be marked reported and never alert again. Keying globally rather than per chapter would silence a second chapter nobody had been warned about."
     }
   ],
   "break_it": [
@@ -104,25 +115,50 @@
       "scenario": "PCO reports no changes, which is the normal case, and the monitor is dead.",
       "what_happens": "Before: identical to a healthy run - silence. After: DQ-69 rises above 1 within 14 days.",
       "mitigated": true,
-      "how": "last_checked is now written on the no-change path, so absence of movement is evidence of absence of running"
+      "how": "last_checked is now written on the no-change path, so absence of movement is evidence of absence of running",
+      "repro": "python scripts/dq_probe_live.py --id DQ-69 - returns 26 with the monitor dead and 1 with it running. Reproduced live: 26 before the Fly redeploy, 1 after."
     },
     {
       "scenario": "A chapter's PDF is unchanged but its failure mode gets worse.",
-      "what_happens": "Hash-only alert keying would silence it.",
+      "what_happens": "Keying the alert on the content_hash alone would silence a chapter whose document is byte-identical but whose extraction has started failing worse, so the deterioration is never reported to anyone.",
       "mitigated": true,
-      "how": "the key is (content_hash, reason); mutation-verified - hash-only keying fails test_a_changed_FAILURE_MODE_re_alerts_on_the_same_pdf"
+      "how": "the key is (content_hash, reason); mutation-verified - hash-only keying fails test_a_changed_FAILURE_MODE_re_alerts_on_the_same_pdf",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k test_a_changed_FAILURE_MODE_re_alerts_on_the_same_pdf - then edit suspect_alert_key to return the content_hash alone and re-run; it goes red."
     },
     {
       "scenario": "Two chapters share a content_hash and a reason, and only one has been alerted about.",
       "what_happens": "A global key lookup silences the second, which nobody has been told about.",
       "mitigated": true,
-      "how": "lookup is per (council, chapter_key). ⚠ The FIRST version of this test used two chapters with different keys and could NOT distinguish the two behaviours - it passed against the global mutation. The discriminating case was added and is recorded here rather than quietly swapped in"
+      "how": "lookup is per (council, chapter_key). ⚠ The FIRST version of this test used two chapters with different keys and could NOT distinguish the two behaviours - it passed against the global mutation. The discriminating case was added and is recorded here rather than quietly swapped in",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k test_an_IDENTICAL_condition_on_a_DIFFERENT_chapter_still_alerts - then replace the per-chapter lookup with a global membership test over last_keys.values() and re-run; it goes red."
     },
     {
       "scenario": "The OCR endpoint dribbles bytes forever instead of stopping.",
       "what_happens": "The nightly extraction hangs indefinitely at 0% CPU, looking exactly like work in progress.",
       "mitigated": false,
-      "how": "NOT FIXED and deliberately not asserted. Three in-thread mechanisms were built and measured and all three failed: a clock between 64KB chunks never runs; iter_content(None) reads to EOF; a Timer closing resp.raw does not unblock a recv on Windows. Bounding this needs an external subprocess cap - tracked as P6.0. A test for a behaviour the code cannot have would be a test that lies"
+      "how": "NOT FIXED and deliberately not asserted. Three in-thread mechanisms were built and measured and all three failed: a clock between 64KB chunks never runs; iter_content(None) reads to EOF; a Timer closing resp.raw does not unblock a recv on Windows. Bounding this needs an external subprocess cap - tracked as P6.0. A test for a behaviour the code cannot have would be a test that lies",
+      "repro": "Point MODAL_OCR_URL at a stub writing one byte every 0.05s inside a while-True and never completing, then call fetch_ocr_page_texts; it never returns. Measured live 2026-08-14: an ESTABLISHED socket to 54.156.152.125:443 open 2472s at 0.00s CPU over a 20s sample."
+    },
+    {
+      "scenario": "A Marrickville page holds three headings and only one of the two causes is fixed.",
+      "what_happens": "Fixing the section regex alone recovers 5 of about 10 real sections. Every ref still changes, so the whole corpus re-keys and the refs are still wrong - a second 8,000-row review queue for nothing.",
+      "mitigated": true,
+      "how": "Both causes ship in one commit, and the gate runs over all 83 real chapters rather than the one debugged against. Measured: coverage 632/730 = 86.6%, 0 of 83 chapters collapsed.",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k TestSplitPageAtHeadings - then set MULTI_HEADING_COUNCILS to an empty set and re-run; test_the_split_is_opt_in_and_marrickville_only goes red and the single-chapter probe drops from 14 sections to 5."
+    },
+    {
+      "scenario": "The watchdog is asked how long a chapter has been stuck, on a day the nightly re-extract has already run.",
+      "what_happens": "Ageing dcp_review_queue.created_at reports 0-1 days for a chapter flagged 53 days ago, because dcp_extract_changed.py:2969 deletes and re-inserts those rows nightly. The alert then prints 'stuck >48h' and 'oldest 1d' in the same message and nobody reads it as urgent.",
+      "mitigated": true,
+      "how": "stuck_review_line ages url_last_changed, a field the pipeline never rewrites. A NULL renders 'flagged UNKNOWN' rather than falling through to a plausible 0d.",
+      "repro": "python -m pytest tests/test_smart_monitor_alerts.py -k TestWatchdogStalenessSource - then replace the age with a queue-derived 0 and re-run; two tests go red, including the one asserting a genuinely 2-day-old stall still reads as 2 days."
+    },
+    {
+      "scenario": "An instrument PCO does not cover is present, and the no-change path stamps last_checked for every instrument rather than only the covered ones.",
+      "what_happens": "wingecarribee_lep_2010 carries no pco_instrument_id, so it can never appear in the PCO change export and PCO's silence about it means nothing. Stamping it would record a confirmation that never happened, and DQ-69 would read 0 while that instrument went permanently unmonitored - the check would certify its own blind spot as clean.",
+      "mitigated": true,
+      "how": "check_instrument stamps only when source == 'pco' AND instrument.get('pco_instrument_id') is truthy. DQ-69's floor is therefore 1, not 0, and the ledger records why.",
+      "repro": "python -m pytest tests/test_sepp_auto_stale.py -k test_pco_silence_on_an_UNCOVERED_instrument_stamps_nothing - then force the confirmed flag to True and re-run; it goes red, as does test_other_sources_do_not_stamp_on_a_miss."
     }
   ],
   "mutation_analysis": "Every behavioural change was mutation-verified in both directions and two mutations exposed weak tests, which is recorded rather than hidden. legislation_monitor: forcing the confirmed flag True fails the uncovered-instrument and other-sources tests (fabricated confirmation); forcing it False fails the covered-instrument test (the original bug). watchdog: ageing from a queue-derived 0 fails two tests, including one asserting a genuinely 2-day-old stall still reads as 2 days, so the fix cannot be 'print a big number'. alert dedup: hash-only keying goes red; the per-chapter-vs-global mutation initially PASSED and the test was strengthened until it failed. Marrickville: relaxing the <2 split guard, running each block to end-of-page, and emptying MULTI_HEADING_COUNCILS each go red. OCR: restoring the scalar timeout makes the silent-server test wait 120s against a 2s read timeout. ⚠ Two of the OCR tests originally passed against conftest_mocks' suite-wide `requests` stub - a MagicMock that answers instantly - so they exercised nothing; they now restore the genuine module and the trap is documented in the helper. The existing test_ocr_fallback fakes had the same defect after the streaming change and were repaired until swapping a 503 to a 200 turns test_non_200_returns_none red.",
