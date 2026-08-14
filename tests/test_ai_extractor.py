@@ -196,6 +196,97 @@ class TestSuspectReasonNewGuards:
         assert suspect_reason({"diff": {"status": "ok"}, "schema_fail": False}) is None
 
 
+class TestSuspectAlertDedup:
+    """The same two chapters alerted byte-identically every day 1–13 Aug 2026.
+
+    An alert with no memory cannot tell "this is new" from "this is still true",
+    so the channel stopped being read — and the numeric-value-change alerts
+    sharing it went unactioned for weeks.
+    """
+
+    @staticmethod
+    def _load():
+        _saved = {k: sys.modules.get(k) for k in _STUBS}
+        for k in _STUBS:
+            sys.modules[k] = MagicMock()
+        sys.modules["dotenv"].load_dotenv = MagicMock()
+        os.environ.setdefault("DATABASE_URL", "postgresql://localhost/test")
+        for _k in ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME"):
+            os.environ.setdefault(_k, "x")
+        try:
+            from dcp_extract_changed import suspect_alert_key, unalerted_suspects
+        finally:
+            for k, v in _saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
+        return suspect_alert_key, unalerted_suspects
+
+    @staticmethod
+    def _ch(council, key, content_hash, missing=8):
+        return {"council": council, "chapter_key": key, "content_hash": content_hash,
+                "diff": {"status": "ok"}, "schema_fail": False,
+                "coverage_fail": True, "coverage_missing": missing, "coverage_toc": 27}
+
+    def test_an_unchanged_condition_alerts_once_then_never_again(self):
+        key_of, unalerted = self._load()
+        ch = self._ch("hornsby", "part-1-general", "aaa")
+        assert unalerted([ch], {}) == [ch], "first sighting must alert"
+        seen = {("hornsby", "part-1-general"): key_of(ch)}
+        assert unalerted([ch], seen) == [], "an unchanged condition must not re-alert"
+
+    def test_a_changed_pdf_re_alerts(self):
+        key_of, unalerted = self._load()
+        old = self._ch("hornsby", "part-1-general", "aaa")
+        new = self._ch("hornsby", "part-1-general", "bbb")
+        seen = {("hornsby", "part-1-general"): key_of(old)}
+        assert unalerted([new], seen) == [new], "a new content_hash is new information"
+
+    def test_a_changed_FAILURE_MODE_re_alerts_on_the_same_pdf(self):
+        """Hash-only keying would silence this, and it is the case that matters:
+        same document, now failing worse."""
+        key_of, unalerted = self._load()
+        old = self._ch("hornsby", "part-1-general", "aaa", missing=8)
+        worse = self._ch("hornsby", "part-1-general", "aaa", missing=99)
+        assert key_of(old) != key_of(worse)
+        seen = {("hornsby", "part-1-general"): key_of(old)}
+        assert unalerted([worse], seen) == [worse]
+
+    def test_suppression_is_per_chapter_not_global(self):
+        key_of, unalerted = self._load()
+        a = self._ch("hornsby", "part-1-general", "aaa")
+        b = self._ch("city_of_sydney", "section-3", "ccc")
+        seen = {("hornsby", "part-1-general"): key_of(a)}
+        assert unalerted([a, b], seen) == [b], "one chapter's silence must not mute another"
+
+    def test_an_IDENTICAL_condition_on_a_DIFFERENT_chapter_still_alerts(self):
+        """The discriminator between per-chapter and global suppression.
+
+        Two chapters can carry the same content_hash (duplicate source PDFs are
+        real in dcp_chapter_registry) and the same reason, hence the same key.
+        Looking the key up globally instead of per (council, chapter_key) would
+        silence the second chapter, which has never been alerted about. The
+        weaker version of this test passed against exactly that mutation.
+        """
+        key_of, unalerted = self._load()
+        a = self._ch("hornsby", "part-1-general", "same-pdf-hash")
+        b = self._ch("blacktown", "part-a-car-parking", "same-pdf-hash")
+        assert key_of(a) == key_of(b), "same hash + same reason => same key, by construction"
+        seen = {("hornsby", "part-1-general"): key_of(a)}
+        assert unalerted([a, b], seen) == [b], (
+            "a chapter nobody has been told about must alert, even when an "
+            "identical condition elsewhere has already been reported"
+        )
+
+    def test_a_non_suspect_chapter_has_no_key_and_never_alerts(self):
+        key_of, unalerted = self._load()
+        clean = {"council": "x", "chapter_key": "y", "content_hash": "h",
+                 "diff": {"status": "ok"}, "schema_fail": False}
+        assert key_of(clean) is None
+        assert unalerted([clean], {}) == []
+
+
 class TestRetry:
     def test_unknown_model_raises(self):
         try:

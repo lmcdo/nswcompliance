@@ -2084,6 +2084,41 @@ def suspect_reason(review_data: dict) -> str | None:
     return None
 
 
+def suspect_alert_key(review_data: dict) -> str | None:
+    """Stable identity of a SUSPECT condition: (content_hash, reason).
+
+    None when the chapter is not suspect. Pure.
+
+    Both halves are load-bearing (see migrations/066_suspect_alert_dedup.sql):
+    hash alone would silence a chapter whose PDF is unchanged but whose failure
+    MODE changed; reason alone would re-alert on every re-export of an
+    identical document.
+    """
+    reason = suspect_reason(review_data)
+    if not reason:
+        return None
+    return f"{review_data.get('content_hash') or 'nohash'}::{reason}"
+
+
+def unalerted_suspects(suspect: list[dict], last_keys: dict) -> list[dict]:
+    """Those whose condition is NEW or CHANGED since the last alert. Pure.
+
+    `last_keys` maps (council, chapter_key) -> last_suspect_alert_key, absent or
+    None meaning never alerted. Between 1 and 13 Aug 2026 the same two chapters
+    alerted byte-identically every day because there was no such memory; the
+    channel stopped being read, and the numeric-value-change alerts sharing it
+    went unactioned for weeks.
+    """
+    fresh = []
+    for ch in suspect:
+        key = suspect_alert_key(ch)
+        if key is None:
+            continue
+        if last_keys.get((ch.get("council"), ch.get("chapter_key"))) != key:
+            fresh.append(ch)
+    return fresh
+
+
 def build_suspect_alert(council: str, suspect: list[dict]) -> str | None:
     """Format a Telegram alert body for SUSPECT chapters, or None if none.
 
@@ -3366,15 +3401,70 @@ def main() -> None:
             print(f"  Do NOT approve these without checking the source PDF.")
             print(f"  {'!'*58}")
 
+            # prior-art-checked: reuse not viable because no alert-state store
+            # exists anywhere — grepped scripts/, services/, migrations/ and
+            # DB_SCHEMA.md for alert_state/alert_log/last_alerted/notification/
+            # dedup and every hit is unrelated (provision de-duplication, or the
+            # word "suppressed" in report prose). dcp_watchdog.py has severity
+            # tiers but no memory of what it has already said. This extends this
+            # file's own alert path in place and stores state on the registry
+            # row that already holds this chapter's operational state.
+            #
             # Best-effort push so the quarterly run alerts, not just logs. Reuses
             # run_monitors.send_telegram (no-ops when TELEGRAM_* unset).
-            alert = build_suspect_alert(args.council or "all", suspect)
+            #
+            # Only NEW or CHANGED conditions are pushed. The console block above
+            # still lists every suspect chapter every run — suppression applies
+            # to the alert, not to the record. A still-true condition continues
+            # to surface in the WEEKLY dcp_watchdog (which reports the same
+            # review-blocked chapters, with their true age since 2026-08-14), so
+            # suppressed is not silent. If that watchdog check is ever removed,
+            # remove this suppression with it.
+            fresh = []
+            last_keys: dict = {}
+            try:
+                _c = conn.cursor()
+                _c.execute(
+                    "SELECT council, chapter_key, last_suspect_alert_key "
+                    "FROM dcp_chapter_registry WHERE last_suspect_alert_key IS NOT NULL"
+                )
+                last_keys = {(a, b): k for a, b, k in _c.fetchall()}
+                _c.close()
+                fresh = unalerted_suspects(suspect, last_keys)
+            except Exception as exc:
+                # Never let dedup bookkeeping suppress a real alert: on ANY
+                # failure fall back to alerting about everything.
+                print(f"  [warn] suspect-alert dedup unavailable ({exc}) — alerting on all")
+                fresh = suspect
+
+            repeats = len(suspect) - len(fresh)
+            if repeats:
+                print(f"  [alert] {repeats} unchanged condition(s) suppressed "
+                      f"(already alerted; still listed above and in the weekly watchdog)")
+
+            alert = build_suspect_alert(args.council or "all", fresh) if fresh else None
             if alert:
                 try:
                     from run_monitors import send_telegram
                     send_telegram(alert)
                 except Exception as exc:  # never let alerting break the run
                     print(f"  [warn] SUSPECT Telegram alert not sent: {exc}")
+                else:
+                    # Record ONLY after a successful send, so a failed push
+                    # re-alerts next run instead of being silently swallowed.
+                    try:
+                        _c = conn.cursor()
+                        for ch in fresh:
+                            _c.execute(
+                                "UPDATE dcp_chapter_registry "
+                                "SET last_suspect_alert_key = %s, last_suspect_alert_at = NOW() "
+                                "WHERE council = %s AND chapter_key = %s",
+                                (suspect_alert_key(ch), ch.get("council"), ch.get("chapter_key")),
+                            )
+                        conn.commit()
+                        _c.close()
+                    except Exception as exc:
+                        print(f"  [warn] could not record suspect-alert keys: {exc}")
 
         conn.close()
         sys.exit(2)  # exit 2 = review file written, triggers workflow quality gate
