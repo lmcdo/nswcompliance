@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds the first check that scores the served ANSWER rather than our process around it, with a build-blocking ratchet in two workflows. It changes no served value, so not Critical — but a baseline seeded wrong would either block every merge or enforce nothing, and this check is the one that would notice a serve-path regression dropping provenance.",
-  "commit_hash": "8cccbf2a",
+  "commit_hash": "97ddb9cc",
   "files": [
     "scripts/check_served_answer_quality.py",
     ".claude/served_answer_quality_baseline.json",
