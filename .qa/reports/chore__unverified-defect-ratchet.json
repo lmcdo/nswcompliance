@@ -1,0 +1,100 @@
+{
+  "tier": "standard",
+  "justification": "Adds a build-blocking rule. It cannot serve a wrong number, so not Critical — but it decides whether an unfinished defect may exist without any way to tell if it is still real, and a cap set wrong would either block all work or enforce nothing.",
+  "commit_hash": "c7a51b5d",
+  "files": [
+    "scripts/dq_check.py",
+    ".claude/dq_checks.json",
+    "tests/test_dq_check.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py && python -m pytest tests/test_dq_check.py -q",
+    "fails_when": "dq_check exits 1 the moment a row declared open/partial/backlog carries no runnable check and pushes the count past the cap — so a defect cannot be added or re-opened without a way to prove it. test_the_unverified_cap_matches_reality goes red if the cap is left above the real count, which is the slack that would let the next row in free. test_a_fixed_row_without_a_check_does_not_count goes red if the scope widens back to all rows, which is what made the older cap unreachable.",
+    "observed_red": "Observed live, not asserted. With the cap at 6 the check passes. Flipping DQ-63 back to declared='open' and removing its check — the exact 'someone re-opens a row without a probe' case — produced: 'DQ-CHECK: FAILED - an unfinished defect has no check that can fail. unresolved rows with no check: 7, cap is 6' and exit 1. Restoring the file returned exit 0. The count itself was measured before writing anything: 73 rows, 53 fixed, 7 closed by other means, 13 unresolved, of which 7 carry a check and 6 do not."
+  },
+  "pre_impl": {
+    "existing_data": "None — no database. Reads .claude/dq_checks.json, which dq_check.py already loads.",
+    "assumption_mismatch": "Assumes 'unfinished' means open/partial/backlog. Rather than restate that, the count reuses dq_check._UNRESOLVED, which already existed at line 221 and already drives the report. A second definition of unfinished would be the same drift this ledger exists to stop, one level up — and a test pins the set so it cannot quietly gain or lose a state.",
+    "new_vs_existing": "Applies to every row now and in future. Existing rows are not disturbed: the cap is seeded at today's real count (6), so nothing currently red becomes red.",
+    "external_source_error": "N/A — no network, no database.",
+    "frontend_type": "N/A",
+    "user_failure_mode": "None user-facing. For a developer: re-opening a defect without a probe now fails the build with the row ids named and both exits spelled out."
+  },
+  "functions": [
+    {
+      "name": "_no_check_cap",
+      "file_line": "scripts/dq_check.py:439",
+      "input": "a key naming which cap to read from .claude/dq_checks.json, defaulting to the existing _max_no_check",
+      "output": "the integer ceiling for that count, or None when the key is absent or not a plain int, in which case that ratchet simply does not apply",
+      "if_none": "The ratchet is skipped rather than treated as zero — a missing cap must not block every build, and a bool is rejected explicitly because bool is a subclass of int and 'true' would otherwise ratchet at 1."
+    }
+  ],
+  "values": [
+    {
+      "value": "_max_unverified_unresolved",
+      "read_at": "scripts/dq_check.py:552",
+      "nullable": "yes — absent means the ratchet does not run",
+      "guard_at": "tests/test_dq_check.py::test_the_unverified_cap_matches_reality asserts it exists AND equals the live count",
+      "if_missing": "Without the test, a missing or inflated cap would silently disable the rule. The test is stricter than the script on purpose: the script only warns when the count drops below the cap, the test fails, which is what forces the cap down instead of leaving slack."
+    },
+    {
+      "value": "unverified — the list of unresolved rows with no check",
+      "read_at": "scripts/dq_check.py:552",
+      "nullable": "no",
+      "guard_at": "derived from dq_check._UNRESOLVED, pinned by test_unresolved_states_are_not_restated_here",
+      "if_missing": "An empty list is the goal state and passes; the row ids are printed on failure so the message names the work rather than just a number."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Count unresolved rows carrying no runnable check",
+      "file_line": "scripts/dq_check.py:552",
+      "where_clause": "declared in _UNRESOLVED AND not checks[i].get('check')",
+      "if_zero": "Zero is the target and passes; the script prints IMPROVED whenever the count falls below the cap so the cap gets lowered rather than forgotten.",
+      "if_wrong": "Dropping any of open/partial/backlog would leave a state a defect could be parked in indefinitely. Including 'fixed' would restore the unreachable-total problem that made the older cap ignorable."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone re-opens a fixed defect without writing a probe for it.",
+      "what_happens": "The ledger says something is broken and nothing can tell whether it still is — the prose-status failure that was wrong in both directions on 2026-08-13.",
+      "mitigated": true,
+      "how": "scripts/dq_check.py:552 fails the build, naming the offending rows. Verified live by flipping DQ-63 to open and removing its check: exit 1, count 7 against cap 6.",
+      "repro": "Set any fixed row's declared to 'open' and delete its check, then run python scripts/dq_check.py"
+    },
+    {
+      "scenario": "Someone satisfies the rule by raising the cap instead of doing the work.",
+      "what_happens": "The ratchet becomes a rubber stamp and the number stops meaning anything.",
+      "mitigated": true,
+      "how": "test_the_unverified_cap_matches_reality asserts cap == live count, so a cap raised above the real number fails CI. The failure message also says plainly that raising the cap does not lower the number, and names the only two exits.",
+      "repro": "python -c \"import json;p='.claude/dq_checks.json';d=json.load(open(p));d['_max_unverified_unresolved']=99;json.dump(d,open(p,'w'),indent=2)\" then python -m pytest tests/test_dq_check.py -q"
+    },
+    {
+      "scenario": "A row gains a check or gets closed, but the cap is left where it was.",
+      "what_happens": "Slack accumulates silently and the next unproven row gets in for free.",
+      "mitigated": true,
+      "how": "The same equality test fails, forcing the cap down in the same change that lowers the count. This is why the test is stricter than the script, which only prints IMPROVED.",
+      "repro": "Add a check to any of the 6 rows without lowering the cap, then run the test file."
+    },
+    {
+      "scenario": "The definition of 'unfinished' drifts apart from the report's definition.",
+      "what_happens": "The report and the ratchet disagree about which rows are outstanding, so one of them is lying.",
+      "mitigated": true,
+      "how": "Both read the single _UNRESOLVED set; test_unresolved_states_are_not_restated_here pins its contents, and a parametrised test asserts each of open/partial/backlog is in scope.",
+      "repro": "python -m pytest tests/test_dq_check.py -k unresolved_states -q"
+    },
+    {
+      "scenario": "The cap key is missing or holds `true`, so the ratchet quietly does nothing.",
+      "what_happens": "A build-blocking rule that blocks nothing — the 'check nobody invokes' failure this repo has hit three times.",
+      "mitigated": true,
+      "how": "_no_check_cap rejects bool explicitly (bool is a subclass of int, so an unguarded isinstance would ratchet at 1) and returns None for anything non-integer; the cap-exists assertion in the test file then fails if the key is absent.",
+      "repro": "Remove _max_unverified_unresolved from .claude/dq_checks.json and run python -m pytest tests/test_dq_check.py -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

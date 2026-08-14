@@ -436,13 +436,20 @@ def _progress() -> int:
 
 
 
-def _no_check_cap() -> int | None:
-    """The ratchet ceiling for rows carrying `check: null`."""
+def _no_check_cap(key: str = "_max_no_check") -> int | None:
+    """The ratchet ceiling for a named `check: null` count.
+
+    Takes a key because there are two of these and they answer different
+    questions. ``_max_no_check`` counts EVERY row without a check, including
+    the 53 already fixed, so it can only stop the total growing.
+    ``_max_unverified_unresolved`` counts only rows that are still costing
+    something, which is the one that can honestly be driven to zero.
+    """
     try:
         doc = json.loads((_ROOT / ".claude" / "dq_checks.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    v = doc.get("_max_no_check")
+    v = doc.get(key)
     # bool is a subclass of int, so `isinstance(v, int)` alone would accept
     # `true` from the JSON and ratchet the cap at 1. No int() call: there is
     # nothing to coerce, and a non-integer means the cap is simply absent.
@@ -541,6 +548,39 @@ def main() -> int:
     if cap is not None and len(no_check) < cap:
         print(f"DQ-CHECK: IMPROVED - only {len(no_check)} rows lack a check "
               f"(cap {cap}). Lower _max_no_check in .claude/dq_checks.json.")
+
+    # --- practice 1b: an UNFINISHED row must be provable ---
+    #
+    # The cap above counts every row without a check, 53 of which are already
+    # fixed. That total can only be stopped from growing; it can never reach
+    # zero, so it is not a target anybody can work towards — and a number that
+    # cannot move reads as permanent failure, which is how it gets ignored.
+    #
+    # This one counts only rows still declared open/partial/backlog. Those are
+    # the ones costing something today, and every one of them CAN be given a
+    # check or closed, so zero is reachable. Until it is zero, some part of the
+    # ledger's status is prose — and prose was wrong in BOTH directions on
+    # 2026-08-13: DQ-66 overstated its defect (claimed wrong setbacks were
+    # served when the numbers were provably identical) and DQ-62 understated
+    # its own (recorded as one council when it was five).
+    #
+    # Reuses _UNRESOLVED rather than restating which states mean "not done":
+    # two definitions of unfinished is the same drift one level up.
+    unverified = sorted(i for i in ids
+                        if checks.get(i, {}).get("declared") in _UNRESOLVED
+                        and not checks[i].get("check"))
+    ucap = _no_check_cap("_max_unverified_unresolved")
+    if ucap is not None and len(unverified) > ucap:
+        print("DQ-CHECK: FAILED - an unfinished defect has no check that can fail.")
+        print(f"  unresolved rows with no check: {len(unverified)}, cap is {ucap}")
+        print(f"  ({', '.join(unverified)})")
+        print("  Every one of these is 'still costing something' with no way to")
+        print("  tell whether that is still true. Write a probe, or close the row")
+        print("  honestly - both lower the number. Raising the cap does not.")
+        return 1
+    if ucap is not None and len(unverified) < ucap:
+        print(f"DQ-CHECK: IMPROVED - {len(unverified)} unresolved row(s) lack a "
+              f"check (cap {ucap}). Lower _max_unverified_unresolved.")
 
     # --- practice 4: an artifact whose value needs an invoker must have one ---
     dead = unread_baselines()

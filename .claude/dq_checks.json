@@ -26,6 +26,7 @@
     "DQ-30's '0% drift' verification — worse than no check."
   ],
   "_max_no_check": 57,
+  "_max_unverified_unresolved": 6,
   "checks": {
     "DQ-54": {
       "declared": "fixed",

@@ -198,3 +198,68 @@ def test_probe_sql_uses_one_definition_of_a_served_row():
         f"{current} is_current filter(s) but only {guards} needs_review guard(s) — "
         "one of them treats a flagged row as served"
     )
+
+
+# ── An UNFINISHED row must be provable ───────────────────────────────────────
+#
+# `_max_no_check` counts every row without a check, 53 of which are already
+# fixed. That total can be stopped from growing but can never reach zero, so it
+# is not something anyone can work towards. `_max_unverified_unresolved` counts
+# only rows still declared open/partial/backlog — those CAN each be given a
+# check or closed, so zero is reachable and the number means something.
+
+def _unverified(checks: dict, unresolved: set) -> list:
+    return sorted(k for k, v in checks.items()
+                  if v.get("declared") in unresolved and not v.get("check"))
+
+
+def test_the_unverified_cap_matches_reality(dq):
+    """The stored cap must equal today's count — a cap set above the real
+    number is slack that lets the next row in for free."""
+    checks = dq.load_checks()
+    doc = json.loads(_CHECKS.read_text(encoding="utf-8"))
+    cap = doc.get("_max_unverified_unresolved")
+    assert cap is not None, "the unverified ratchet has no cap recorded"
+    assert len(_unverified(checks, dq._UNRESOLVED)) == cap, (
+        "cap and count disagree — lower the cap when a row gains a check or closes"
+    )
+
+
+def test_a_fixed_row_without_a_check_does_not_count(dq):
+    """Scope is 'still costing something'. Counting the 53 fixed rows is what
+    made the older cap unreachable and therefore ignorable."""
+    checks = dict(dq.load_checks())
+    checks["DQ-SYNTH-FIXED"] = {"declared": "fixed"}
+    assert "DQ-SYNTH-FIXED" not in _unverified(checks, dq._UNRESOLVED)
+
+
+@pytest.mark.parametrize("declared", ["open", "partial", "backlog"])
+def test_every_unfinished_state_is_in_scope(dq, declared):
+    """open, partial and backlog all mean unfinished. Leaving any of them out
+    would be a hole you could park a defect in."""
+    checks = dict(dq.load_checks())
+    checks["DQ-SYNTH"] = {"declared": declared}
+    assert "DQ-SYNTH" in _unverified(checks, dq._UNRESOLVED)
+
+
+def test_both_ways_out_lower_the_number(dq):
+    """Writing a check and closing the row are the only two exits, and the
+    ratchet must accept both — otherwise it pushes people towards raising the
+    cap, which is the one move that hides the problem."""
+    checks = dict(dq.load_checks())
+    checks["DQ-SYNTH"] = {"declared": "open"}
+    before = len(_unverified(checks, dq._UNRESOLVED))
+
+    with_check = dict(checks)
+    with_check["DQ-SYNTH"] = {"declared": "open", "check": ["python", "-c", "pass"]}
+    assert len(_unverified(with_check, dq._UNRESOLVED)) == before - 1
+
+    closed = dict(checks)
+    closed["DQ-SYNTH"] = {"declared": "fixed"}
+    assert len(_unverified(closed, dq._UNRESOLVED)) == before - 1
+
+
+def test_unresolved_states_are_not_restated_here(dq):
+    """The count reuses dq_check._UNRESOLVED. A second list of what 'unfinished'
+    means is the same drift this ledger exists to stop, one level up."""
+    assert dq._UNRESOLVED == {"open", "partial", "backlog"}
