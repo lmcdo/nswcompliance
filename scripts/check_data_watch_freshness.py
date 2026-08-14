@@ -40,7 +40,7 @@ WORKFLOW = "data-watch.yml"
 DEFAULT_MAX_AGE_HOURS = 48
 
 
-#: Returned instead of None when the API answers 404. "The workflow is not
+#: Returned instead of a body when the API answers 404. "The workflow is not
 #: there" and "I could not ask" are different facts and must not collapse into
 #: one message — a renamed or deleted data-watch would otherwise report itself
 #: forever as a network problem, which is the silent-pass shape this whole
@@ -48,7 +48,17 @@ DEFAULT_MAX_AGE_HOURS = 48
 NOT_FOUND = object()
 
 
-def _api(url: str, token: str):
+def _api(url: str, token: str) -> tuple[object | None, str | None]:
+    """Return ``(body, None)``, ``(NOT_FOUND, None)``, or ``(None, reason)``.
+
+    The reason string carries the HTTP status, because the first CI run of this
+    check printed "the Actions API could not be reached" when the real answer
+    was a 403: `gates` declares no `permissions:` block, so its token had no
+    `actions: read` scope and could not list workflow runs at all. A message
+    that says "network" when it means "not allowed" sends the reader to the
+    wrong place, and the check silently never fires — which is precisely the
+    defect this file exists to catch, reproduced inside the catcher.
+    """
     req = urllib.request.Request(
         url,
         headers={
@@ -60,11 +70,19 @@ def _api(url: str, token: str):
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return json.loads(resp.read().decode("utf-8")), None
     except urllib.error.HTTPError as e:
-        return NOT_FOUND if e.code == 404 else None
-    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
-        return None
+        if e.code == 404:
+            return NOT_FOUND, None
+        if e.code in (401, 403):
+            return None, (
+                f"HTTP {e.code} — the token cannot list workflow runs. The job "
+                f"needs `permissions: actions: read`; without it this check can "
+                f"never fire."
+            )
+        return None, f"HTTP {e.code}"
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError) as e:
+        return None, f"{type(e).__name__}: {e}"
 
 
 def main() -> int:
@@ -81,7 +99,7 @@ def main() -> int:
 
     url = (f"https://api.github.com/repos/{args.repo}/actions/workflows/"
            f"{WORKFLOW}/runs?status=success&per_page=1")
-    data = _api(url, token)
+    data, reason = _api(url, token)
     if data is NOT_FOUND:
         print(f"data-watch freshness: SKIPPED — GitHub has no workflow named "
               f"{WORKFLOW} on the default branch.")
@@ -90,8 +108,9 @@ def main() -> int:
               "deleted and nothing is watching the data.")
         return 0
     if data is None:
-        print("data-watch freshness: SKIPPED — the Actions API could not be "
-              "reached. Not a pass; re-run to get a real answer.")
+        print(f"data-watch freshness: SKIPPED — could not ask. {reason}")
+        print("  Not a pass. This check cannot fire until the call succeeds, "
+              "so treat a persistent message here as the guard being off.")
         return 0
 
     runs = data.get("workflow_runs") or []

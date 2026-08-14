@@ -5,13 +5,14 @@
   "files": [
     ".github/workflows/data-watch.yml",
     ".github/workflows/gates.yml",
-    "scripts/check_data_watch_freshness.py",
-    ".gitignore"
+    ".github/workflows/gates.yml (job permissions)",
+    ".gitignore",
+    "scripts/check_data_watch_freshness.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/check_data_watch_freshness.py && python -c \"import yaml;yaml.safe_load(open('.github/workflows/data-watch.yml'))\"",
     "fails_when": "The freshness check exits 1 once data-watch's last success is older than --max-age-hours, which is the state that means nothing has looked at the live database. It cannot pass by accident: the staleness branch is the only one that returns 1, and it fires on a measured elapsed time rather than on the absence of a signal.",
-    "observed_red": "Every branch exercised against the real API, not reasoned about. Staleness: pointed at gates.yml with --max-age-hours 0.001 it printed 'last succeeded 0.1h ago (limit 0h)' and exited 1. Success: the same call at 48h exited 0. Workflow-absent: against data-watch.yml, which is not on the default branch yet, it printed the 404 message and exited 0. No token: exits 0 with its own reason. The 404 case was a REAL bug found this way — every HTTP error was originally collapsed into 'API could not be reached', so a renamed or deleted data-watch would have reported itself forever as a network problem and never failed."
+    "observed_red": "Every branch exercised against the real API, not reasoned about. Staleness: pointed at gates.yml with --max-age-hours 0.001 it printed 'last succeeded 0.1h ago (limit 0h)' and exited 1. Success: the same call at 48h exited 0. Workflow-absent: against data-watch.yml, which is not on the default branch yet, it printed the 404 message and exited 0. No token: exits 0 with its own reason. The 404 case was a REAL bug found this way — every HTTP error was originally collapsed into 'API could not be reached', so a renamed or deleted data-watch would have reported itself forever as a network problem and never failed. THEN CI FOUND THE ONE THAT MATTERED. The first run of this check on a real runner printed 'the Actions API could not be reached' — reassuring, and wrong. The real answer was 403: gates declares no permissions block, so its default token cannot read the Actions API at all. The guard ran, said something calm, and could never have fired for any reason. Fixed twice over: the job now declares `actions: read`, and 401/403 is separated from network failure with a message naming the missing permission. Verified with a deliberately invalid token, which now prints 'HTTP 401 — the token cannot list workflow runs. The job needs permissions: actions: read; without it this check can never fire.'"
   },
   "pre_impl": {
     "existing_data": "None — no database. Reads the GitHub Actions API. data-watch itself runs the existing DB checks unchanged; no new query is introduced.",
@@ -26,12 +27,12 @@
       "name": "_api",
       "file_line": "scripts/check_data_watch_freshness.py:51",
       "input": "an Actions API URL and a token from GITHUB_TOKEN or GH_TOKEN",
-      "output": "the decoded JSON body, the NOT_FOUND sentinel on a 404, or None on any other failure — three outcomes because 'the workflow is not there' and 'I could not ask' are different facts",
+      "output": "a (body, reason) pair: the decoded JSON, the NOT_FOUND sentinel on a 404, or None with a reason string carrying the HTTP status — three outcomes because the workflow is not there, \"I am not allowed to ask\" and \"I could not reach it\" send a reader to three different places",
       "if_none": "The caller prints the matching reason and exits 0. Neither uncertain case is reported as a pass, and neither blocks a merge."
     },
     {
       "name": "main",
-      "file_line": "scripts/check_data_watch_freshness.py:70",
+      "file_line": "scripts/check_data_watch_freshness.py:88",
       "input": "--max-age-hours (default 48) and the repo from GITHUB_REPOSITORY, plus the token from the environment",
       "output": "exit 1 only when data-watch's most recent success is older than the limit; otherwise 0, having printed the measured age with a link to the run it measured",
       "if_none": "Missing token, missing repo, absent workflow, unreachable API or no successful runs each exit 0 with their own message rather than a shared 'skipped'."
@@ -42,12 +43,12 @@
       "value": "NOT_FOUND sentinel",
       "read_at": "scripts/check_data_watch_freshness.py:48",
       "nullable": "no",
-      "guard_at": "scripts/check_data_watch_freshness.py:51 — HTTPError with code 404 is separated from every other error",
+      "guard_at": "scripts/check_data_watch_freshness.py:51 — 404, then 401/403, then everything else",
       "if_missing": "Without it a renamed or deleted data-watch answers 404 forever and is reported as a network problem, so the guard silently never fires again. This was the actual first-draft behaviour, caught by running it."
     },
     {
       "value": "updated_at of the most recent successful run",
-      "read_at": "scripts/check_data_watch_freshness.py:70",
+      "read_at": "scripts/check_data_watch_freshness.py:88",
       "nullable": "yes — falls back to created_at, then to a parse guard",
       "guard_at": "an unparseable timestamp prints its own message and exits 0",
       "if_missing": "No run means no staleness can be measured, which is reported as such rather than treated as either fresh or stale."
@@ -56,7 +57,7 @@
   "queries": [
     {
       "purpose": "Find the most recent successful data-watch run",
-      "file_line": "scripts/check_data_watch_freshness.py:70",
+      "file_line": "scripts/check_data_watch_freshness.py:88",
       "where_clause": "actions/workflows/data-watch.yml/runs?status=success&per_page=1",
       "if_zero": "No successful run yet — expected immediately after the workflow is added, so it exits 0 with a message saying that a persistent occurrence means the schedule is not firing.",
       "if_wrong": "Dropping status=success would measure the last ATTEMPT rather than the last time the data was actually verified, so a workflow failing nightly would look perfectly fresh — the precise inversion this guard exists to prevent."
@@ -104,6 +105,13 @@
       "mitigated": true,
       "how": "A single issue is found by title and commented on rather than recreated, then closed on the first clean run, following main-red-alarm's existing pattern for the same reason.",
       "repro": "Read the 'Raise or clear the alarm' step — issues.create is reached only when no open issue with that title exists."
+    },
+    {
+      "scenario": "The token cannot read the Actions API, so the guard can never fire — and says something reassuring instead.",
+      "what_happens": "A check that runs, passes, and protects nothing. Worse than absent, because the log reads like verification.",
+      "mitigated": true,
+      "how": "This actually happened on the first CI run of this check: gates declares no permissions block, the default token got 403, and the message said 'could not be reached'. The python-tests job now declares `actions: read` (scoped to the job, so other jobs keep their defaults), and 401/403 is separated from network errors with a message naming the missing permission rather than blaming the network.",
+      "repro": "GITHUB_TOKEN=invalid GITHUB_REPOSITORY=lmcdo/nswcompliance python scripts/check_data_watch_freshness.py"
     }
   ],
   "post_merge": {

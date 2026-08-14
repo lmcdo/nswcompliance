@@ -69,6 +69,16 @@ jobs:
   python-tests:
     name: Python tests + ratchets
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    # `actions: read` so the data-watch freshness step can list workflow runs.
+    # Its FIRST CI run printed "the Actions API could not be reached" — the
+    # real answer was 403, because this workflow declares no permissions and
+    # the default token cannot read the Actions API. The check ran, said
+    # something reassuring, and could never have fired. Scoped to this job
+    # rather than the workflow so the other jobs keep whatever defaults they
+    # rely on.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v7
       # No `cache:` input on setup-python/setup-node.
