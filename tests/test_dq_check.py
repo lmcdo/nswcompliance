@@ -263,3 +263,63 @@ def test_unresolved_states_are_not_restated_here(dq):
     """The count reuses dq_check._UNRESOLVED. A second list of what 'unfinished'
     means is the same drift this ledger exists to stop, one level up."""
     assert dq._UNRESOLVED == {"open", "partial", "backlog"}
+
+
+# ── A row declared FIXED must be able to prove it stayed fixed ────────────────
+#
+# The unresolved ratchet above excludes fixed rows so its number can reach zero.
+# This is the cost of that choice: most fixed rows cannot demonstrate anything,
+# so a regression is invisible. DQ-54 sat declared FIXED while still broken.
+#
+# Frozen rather than driven to zero. Zero would need a check written against
+# every already-closed defect, and a target nobody can meet gets deleted rather
+# than met — so this stops the count GROWING, which is the case still worth
+# stopping: a new row marked fixed with nothing behind it.
+
+def _fixed_no_check(checks: dict) -> list:
+    return sorted(k for k, v in checks.items()
+                  if v.get("declared") == "fixed" and not v.get("check"))
+
+
+def test_the_fixed_cap_matches_reality(dq):
+    checks = dq.load_checks()
+    doc = json.loads(_CHECKS.read_text(encoding="utf-8"))
+    cap = doc.get("_max_fixed_without_check")
+    assert cap is not None, "the fixed-without-check ratchet has no cap recorded"
+    assert len(_fixed_no_check(checks)) == cap, (
+        "cap and count disagree — lower it in the same change that adds a check"
+    )
+
+
+def test_closing_a_row_without_a_check_raises_the_count(dq):
+    """The case this exists to stop: an open row marked fixed, nothing written."""
+    checks = dict(dq.load_checks())
+    before = len(_fixed_no_check(checks))
+    checks["DQ-SYNTH"] = {"declared": "open"}
+    assert len(_fixed_no_check(checks)) == before, "an open row must not count"
+    checks["DQ-SYNTH"] = {"declared": "fixed"}
+    assert len(_fixed_no_check(checks)) == before + 1
+
+
+def test_closing_a_row_WITH_a_check_does_not(dq):
+    """The wanted path stays free: close it, but bring the probe."""
+    checks = dict(dq.load_checks())
+    before = len(_fixed_no_check(checks))
+    checks["DQ-SYNTH"] = {"declared": "fixed", "check": ["python", "-c", "pass"]}
+    assert len(_fixed_no_check(checks)) == before
+
+
+def test_the_three_ratchets_measure_different_sets(dq):
+    """Three caps now exist and none may quietly become an alias for another:
+    all rows, unresolved-without-check, fixed-without-check."""
+    checks = dq.load_checks()
+    doc = json.loads(_CHECKS.read_text(encoding="utf-8"))
+    all_null = [k for k, v in checks.items() if not v.get("check")]
+    unresolved_null = _unverified(checks, dq._UNRESOLVED)
+    fixed_null = _fixed_no_check(checks)
+    assert doc["_max_no_check"] == len(all_null)
+    assert doc["_max_unverified_unresolved"] == len(unresolved_null)
+    assert doc["_max_fixed_without_check"] == len(fixed_null)
+    # The two sub-counts are disjoint, and together they cannot exceed the total.
+    assert not set(unresolved_null) & set(fixed_null)
+    assert len(unresolved_null) + len(fixed_null) <= len(all_null)
