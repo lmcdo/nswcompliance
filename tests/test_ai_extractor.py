@@ -196,6 +196,75 @@ class TestSuspectReasonNewGuards:
         assert suspect_reason({"diff": {"status": "ok"}, "schema_fail": False}) is None
 
 
+class TestFidelityGateIsDecoupled:
+    """The one check that compares our output against the SOURCE document ran on
+    12 of 19,649 review-queue rows ever — 0.06% — because it was gated on
+    AI_EXTRACTION, a flag that also swaps the entire deterministic extractor for
+    an LLM. Nobody was going to enable that in production just to get
+    verification, so verification never ran.
+    """
+
+    @staticmethod
+    def _load():
+        _saved = {k: sys.modules.get(k) for k in _STUBS}
+        for k in _STUBS:
+            sys.modules[k] = MagicMock()
+        sys.modules["dotenv"].load_dotenv = MagicMock()
+        os.environ.setdefault("DATABASE_URL", "postgresql://localhost/test")
+        for _k in ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME"):
+            os.environ.setdefault(_k, "x")
+        try:
+            import dcp_extract_changed as mod
+        finally:
+            for k, v in _saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
+        return mod
+
+    def test_it_runs_with_AI_EXTRACTION_UNSET(self, monkeypatch):
+        """The whole point. This is the production configuration — AI_EXTRACTION
+        is not set on the Railway dcp-extract service."""
+        mod = self._load()
+        monkeypatch.delenv("AI_EXTRACTION", raising=False)
+        monkeypatch.delenv("DCP_FIDELITY_GATE", raising=False)
+        assert mod.fidelity_gate_enabled() is True
+
+    def test_it_does_not_depend_on_AI_EXTRACTION_either_way(self, monkeypatch):
+        monkeypatch.delenv("DCP_FIDELITY_GATE", raising=False)
+        mod = self._load()
+        for val in ("1", "0", "true", "", "yes"):
+            monkeypatch.setenv("AI_EXTRACTION", val)
+            assert mod.fidelity_gate_enabled() is True, f"AI_EXTRACTION={val!r} must not decide this"
+
+    def test_explicit_opt_out_is_honoured(self, monkeypatch):
+        mod = self._load()
+        for val in ("0", "false", "no", "off", "OFF", " 0 "):
+            monkeypatch.setenv("DCP_FIDELITY_GATE", val)
+            assert mod.fidelity_gate_enabled() is False, val
+
+    def test_anything_else_leaves_it_ON(self, monkeypatch):
+        """Opt-OUT, not opt-in: a typo must not silently disable verification."""
+        mod = self._load()
+        for val in ("", "1", "true", "on", "yes", "maybe", "TRUE"):
+            monkeypatch.setenv("DCP_FIDELITY_GATE", val)
+            assert mod.fidelity_gate_enabled() is True, val
+
+    def test_the_call_site_no_longer_reads_AI_EXTRACTION(self):
+        """Structural: the grading block must be gated on the new predicate.
+        Three OTHER AI_EXTRACTION sites are legitimate and must survive — it
+        swaps the extractor, selects that path per council, and runs railguards
+        that only mean anything for LLM output."""
+        mod = self._load()
+        src = __import__("pathlib").Path(mod.__file__).read_text(encoding="utf-8")
+        code = "\n".join(l for l in src.splitlines() if not l.lstrip().startswith("#"))
+        assert "if fidelity_gate_enabled():" in code
+        assert code.count('os.getenv("AI_EXTRACTION", "").strip().lower()') == 3, (
+            "expected exactly the three legitimate AI_EXTRACTION sites to remain"
+        )
+
+
 class TestOcrCallIsBounded:
     """A scalar requests timeout cannot bound this call.
 

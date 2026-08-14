@@ -284,6 +284,39 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "for those the question cannot even be asked; that gap is not counted "
         "here and needs its own row.",
     ),
+    "DQ-71": (
+        "Provisions awaiting human approval with NO check against the source document",
+        # The reviewer's exposure, not the pipeline's. Each row is a provision a
+        # human is being asked to approve into the served corpus with nothing
+        # having confirmed its text appears in the council's own PDF.
+        #
+        # fidelity_status is NOT this check. 19,199 of 19,649 queue rows carry
+        # one, but it is a cheap inline heuristic -- garbled glyphs, junk ref,
+        # emptied, oversize -- and it never opens the PDF. fidelity_source_quote
+        # is the real thing: the passage from the source document that grounds
+        # the row. 12 rows in the table's history have one. 0.06%.
+        #
+        # Cause was a coupling, not an absence: dcp_fidelity_gate.gate_chapter
+        # was gated on AI_EXTRACTION, a flag that ALSO swaps the whole
+        # deterministic extractor for an LLM (~L1130 of dcp_extract_changed).
+        # Nobody was going to enable that in production to get verification, so
+        # verification never ran. Decoupled 2026-08-14 behind its own opt-OUT
+        # control, fidelity_gate_enabled().
+        #
+        # Scoped to what the grader can actually grade: 'removed' rows have no
+        # new_text to ground, so counting them would inflate this with rows no
+        # amount of grading could ever clear.
+        "SELECT count(*) FROM dcp_review_queue "
+        " WHERE status IN ('pending', 'in_progress') "
+        "   AND change_type <> 'removed' AND new_text IS NOT NULL "
+        "   AND fidelity_source_quote IS NULL",
+        (),
+        "Each row is a provision a reviewer is asked to approve on trust. "
+        "Measured 3,741 of 3,741 gradeable pending rows on 2026-08-14 -- 100%, "
+        "and 0 of all 8,693 pending rows carry a source quote. Clears as the "
+        "decoupled gate runs over each chapter; a residual means the grader read "
+        "the PDF and could not find the text, which is a FINDING, not a gap.",
+    ),
     "DQ-40": (
         "Setback controls still flagged for review",
         "SELECT count(*) FROM dcp_setback_controls WHERE needs_review IS TRUE",

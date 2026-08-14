@@ -2205,6 +2205,33 @@ def suspect_reason(review_data: dict) -> str | None:
 MULTI_HEADING_COUNCILS = {"marrickville"}
 
 
+def fidelity_gate_enabled() -> bool:
+    """Whether to grade queued rows against their source PDF. Default ON.
+
+    ⚠ This used to be gated on AI_EXTRACTION, and that was the wrong flag. Of the
+    four AI_EXTRACTION sites, three are legitimate — it swaps the whole extractor
+    for an LLM (~L1130), selects that path per council (~L2616), and runs
+    coverage/truncation railguards that only mean anything for LLM output
+    (~L2742). But the fidelity gate grades rows that are ALREADY QUEUED, and
+    "does this text appear in the council's own document" is the same question
+    whichever extractor produced the row.
+
+    The cost of that coupling, measured 2026-08-14: of 19,649 review-queue rows
+    ever written, **12 carry a fidelity_source_quote** — 0.06% — because
+    AI_EXTRACTION is not set on the Railway dcp-extract service and nobody was
+    going to enable an LLM extractor in production just to get verification.
+    The one check that compares our output against the source has effectively
+    never run.
+
+    OPT-OUT, not opt-in. A verification that is off by default is exactly the
+    shape this work exists to remove. Set DCP_FIDELITY_GATE=0 to disable, and
+    only with a reason.
+    """
+    return os.getenv("DCP_FIDELITY_GATE", "").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
 def split_page_at_headings(text: str, section_re) -> list[str]:
     """Split one page's text into [pre-heading remainder, heading-1 block, ...].
 
@@ -3502,7 +3529,12 @@ def main() -> None:
         # the reviewer sees only flagged rows with a source quote instead of the whole batch.
         # Lazy import dodges the circular import (dcp_fidelity_gate imports this module).
         # Advisory: a grading failure never fails the extract — the rows are still queued.
-        if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
+        # ⚠ Gated on fidelity_gate_enabled(), NOT on AI_EXTRACTION. See that
+        # function: the old coupling meant this ran on 12 of 19,649 rows ever.
+        # One R2 download + pdfplumber text extraction per chapter, via the RAW
+        # page path — deliberately not the OCR-aware one, so this cannot inherit
+        # the unbounded Modal call.
+        if fidelity_gate_enabled():
             try:
                 import dcp_fidelity_gate as _gate
                 pairs = sorted({(ch.get("council"), ch.get("chapter_key")) for ch in review_chapters})
