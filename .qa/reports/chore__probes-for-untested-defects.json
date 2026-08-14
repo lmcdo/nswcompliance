@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what the ledger asserts about three defects and lowers a build-blocking ratchet. It serves no number to a user, so not Critical — but closing a row on a wrong measurement would hide a live defect, and two of the three are closed on measurement alone.",
-  "commit_hash": "7b876b45",
+  "commit_hash": "4a651ca9",
   "files": [
     "scripts/dq_probe_live.py",
     ".claude/dq_checks.json",
