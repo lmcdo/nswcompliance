@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a third build-blocking ratchet and opens a defect row covering 16% of every served provision. It serves no number to a user, so not Critical — but a cap seeded wrong would either block all work or enforce nothing, and the new row changes what the ledger claims about the corpus.",
-  "commit_hash": "4f2c8e73",
+  "commit_hash": "e678faf8",
   "files": [
     "scripts/dq_check.py",
     "scripts/dq_probe_live.py",
