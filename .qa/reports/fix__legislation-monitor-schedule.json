@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Fifteen files across the extraction path, the alerting path and a production schema change (migration 066, already applied). Two of the changes alter what reaches regulatory_provisions: the Marrickville section-heading fix changes every clause ref that council produces, and the legislation monitor now WRITES last_checked on a path that previously wrote nothing. Critical rather than Standard because a wrong ref is a citation a planner cannot resolve, and because the schema change is live in production ahead of the merge.",
-  "commit_hash": "d61ff4bf",
+  "commit_hash": "72b8523e",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -43,7 +43,7 @@
     },
     {
       "name": "split_page_at_headings",
-      "file_line": "scripts/dcp_extract_changed.py:2208",
+      "file_line": "scripts/dcp_extract_changed.py:2235",
       "input": "one page of text and the council's section regex",
       "output": "[text before the first heading, then one block per heading]; returns [text] unchanged for 0- and 1-heading pages so non-split pages are bit-identical to before",
       "if_none": "one heading per page survived, so a page holding 2.11.3/2.11.4/2.11.4.1 yielded only 2.11.3 and the other clauses collided onto it"
@@ -57,7 +57,7 @@
     },
     {
       "name": "unalerted_suspects",
-      "file_line": "scripts/dcp_extract_changed.py:2245",
+      "file_line": "scripts/dcp_extract_changed.py:2272",
       "input": "the list of suspect chapters produced by this run, plus a map holding the content_hash and reason key already alerted for each chapter",
       "output": "only those whose (content_hash, reason) is new or changed",
       "if_none": "the same two chapters alerted byte-identically for 13 consecutive days and the channel stopped being read"
@@ -68,6 +68,13 @@
       "input": "a path to a chapter PDF and an OCR endpoint which accepts the POST and then stops sending any further bytes back to the caller",
       "output": "gives up after OCR_READ_TIMEOUT (120s) instead of 1800s",
       "if_none": "a scalar requests timeout is the gap BETWEEN BYTES, not a total deadline; a live socket was measured open 2472s against timeout=1800"
+    },
+    {
+      "name": "fidelity_gate_enabled",
+      "file_line": "scripts/dcp_extract_changed.py:2208",
+      "input": "the process environment on the Railway dcp-extract service, where AI_EXTRACTION is not set and never has been",
+      "output": "True — so queued rows are graded against their source PDF; False only on an explicit DCP_FIDELITY_GATE opt-out",
+      "if_none": "the check stayed gated on AI_EXTRACTION, which also swaps the whole deterministic extractor for an LLM, so it ran on 12 of 19,649 rows ever"
     }
   ],
   "values": [
@@ -159,6 +166,13 @@
       "mitigated": true,
       "how": "check_instrument stamps only when source == 'pco' AND instrument.get('pco_instrument_id') is truthy. DQ-69's floor is therefore 1, not 0, and the ledger records why.",
       "repro": "python -m pytest tests/test_sepp_auto_stale.py -k test_pco_silence_on_an_UNCOVERED_instrument_stamps_nothing - then force the confirmed flag to True and re-run; it goes red, as does test_other_sources_do_not_stamp_on_a_miss."
+    },
+    {
+      "scenario": "Someone sets DCP_FIDELITY_GATE to a typo such as 'ture' intending to enable it, or to 'yes' intending to disable it.",
+      "what_happens": "Under an opt-IN predicate a typo silently disables verification and nothing reports the loss, which is precisely how this check came to run on 0.06% of rows in the first place.",
+      "mitigated": true,
+      "how": "The predicate is opt-OUT: only an explicit 0/false/no/off disables it, and anything else — including a typo, an empty string, or a value meant to enable it — leaves grading ON.",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k test_anything_else_leaves_it_ON - then flip the predicate to an opt-in membership test and re-run; it goes red."
     }
   ],
   "mutation_analysis": "Every behavioural change was mutation-verified in both directions and two mutations exposed weak tests, which is recorded rather than hidden. legislation_monitor: forcing the confirmed flag True fails the uncovered-instrument and other-sources tests (fabricated confirmation); forcing it False fails the covered-instrument test (the original bug). watchdog: ageing from a queue-derived 0 fails two tests, including one asserting a genuinely 2-day-old stall still reads as 2 days, so the fix cannot be 'print a big number'. alert dedup: hash-only keying goes red; the per-chapter-vs-global mutation initially PASSED and the test was strengthened until it failed. Marrickville: relaxing the <2 split guard, running each block to end-of-page, and emptying MULTI_HEADING_COUNCILS each go red. OCR: restoring the scalar timeout makes the silent-server test wait 120s against a 2s read timeout. ⚠ Two of the OCR tests originally passed against conftest_mocks' suite-wide `requests` stub - a MagicMock that answers instantly - so they exercised nothing; they now restore the genuine module and the trap is documented in the helper. The existing test_ocr_fallback fakes had the same defect after the streaming change and were repaired until swapping a 503 to a 200 turns test_non_200_returns_none red.",
