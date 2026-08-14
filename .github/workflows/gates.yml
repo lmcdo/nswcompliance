@@ -69,6 +69,16 @@ jobs:
   python-tests:
     name: Python tests + ratchets
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    # `actions: read` so the data-watch freshness step can list workflow runs.
+    # Its FIRST CI run printed "the Actions API could not be reached" — the
+    # real answer was 403, because this workflow declares no permissions and
+    # the default token cannot read the Actions API. The check ran, said
+    # something reassuring, and could never have fired. Scoped to this job
+    # rather than the workflow so the other jobs keep whatever defaults they
+    # rely on.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v7
       # No `cache:` input on setup-python/setup-node.
@@ -140,6 +150,27 @@ jobs:
       - name: Hardcoded regulatory data (shrink-only ratchet)
         if: always()
         run: python scripts/lint_hardcoded_zone_codes.py --baseline
+      # Has anybody looked at the DATA lately?
+      #
+      # Every database check in this file runs on `pull_request` and
+      # `push: main`, so the live data is inspected only when somebody happens
+      # to touch the code. `data-watch` fixes that with a schedule — but a
+      # scheduled workflow is precisely the kind of thing that stops quietly.
+      # main-red-alarm spent 12 runs out of 12 dying at `gh: command not found`
+      # while `gates` was green, and these runners do not survive a reboot.
+      #
+      # So the question is asked HERE, on the one trigger guaranteed to fire.
+      # Nothing on a schedule can report that the scheduler is dead.
+      #
+      # Only a MEASURED staleness fails. No token, no runs yet, workflow absent
+      # from the default branch, API unreachable — each prints its own reason
+      # and passes, because failing a stranger's PR for a dead cron is how a
+      # check gets deleted, and a deleted check protects nothing.
+      - name: Live data was checked recently (data-watch freshness)
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/check_data_watch_freshness.py
       - name: Mutation-count baselines (counts never drop)
         run: |
           if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then

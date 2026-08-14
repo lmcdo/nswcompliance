@@ -1,0 +1,178 @@
+# Check the DATA when nobody is changing the code.
+#
+# ORIGIN, 2026-08-14. Every data check this repo owns — the defect ledger, the
+# as-at coverage ratchet, the manifest ratchet, the published-figures check —
+# runs only from `gates`, and `gates` fires on `pull_request` and `push: main`.
+# So the live database is inspected exactly when somebody happens to touch the
+# code, and never otherwise.
+#
+# That is the wrong trigger for this class of check. A council amending a DCP,
+# a row edited by hand, an extraction job writing a bad value: none of these
+# involve a commit, so none of them causes anything to look. On 2026-08-13 two
+# ledger rows turned out to be wrong in OPPOSITE directions — one overstating
+# its defect, one understating it — and both were found because a person went
+# looking, not because anything raised its hand.
+#
+# WHY THIS DOES NOT CONTRADICT main-red-alarm's "do not complain about the
+# clock" rule. That rule is correct for `gates`: a green run on main's current
+# HEAD means the CODE is verified however long ago it ran, so a quiet weekend
+# should be silent. Data has no equivalent — it changes underneath a HEAD that
+# never moves, so "when did we last look" is a real question there and a
+# meaningless one for code. Same reasoning, opposite answer, because the thing
+# being watched is different.
+#
+# Scope: the checks that read the live database. Deliberately NOT the whole of
+# `gates` — pytest and jest answer a question about code, and running them
+# nightly would be noise that trains people to ignore this workflow. The one
+# borderline case is dq_check, whose DQ-32 probe is a jest test: without
+# node_modules it reports UNKNOWN, which is "not clean, not failing" and does
+# not fail this run. That is the right split — DQ-32 is a rendering bug and
+# cannot drift without a commit, so `gates` already owns it.
+#
+# The issue is a single reused one, found by title, for the reason main-red-
+# alarm gives: a long outage should be one loud thing rather than thirty daily
+# ones. Alarm fatigue is how the next silent drift gets ignored.
+name: data-watch
+
+on:
+  schedule:
+    # 20:00 UTC daily — one hour before main-red-alarm, so if both fire the
+    # data verdict is already settled when the main sweep runs.
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+env:
+  ISSUE_TITLE: "🔴 data-watch — a live data check is failing"
+
+jobs:
+  data-checks:
+    name: Live data checks
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-test.txt
+
+      # Every check runs with `if: always()` and its own id. Stopping at the
+      # first failure would report one drifted number and say nothing about the
+      # rest — the same fail-fast mistake that hid ~1,800 tests for three days
+      # in gates (see its `No -x` comment).
+      - name: Defect ledger (both directions)
+        id: ledger
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/dq_check.py
+
+      - name: DCP as-at coverage (shrink-only)
+        id: as_at
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/check_dcp_as_at_coverage.py --baseline
+
+      - name: Satellite execution manifests (shrink-only)
+        id: manifests
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/check_satellite_manifests.py --baseline
+
+      - name: Published figures match the database
+        id: coverage_stats
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/verify_coverage_stats.py
+
+      - name: Schema contract (code vs live catalog)
+        id: schema
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_schema_contract.py
+
+      - name: Served controls carry their provenance
+        id: provenance
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_controls_provenance.py --quiet
+
+      - name: Served control values match their source
+        id: source_values
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_control_source_values.py
+
+      # github-script, not `gh`. main-red-alarm spent its entire life failing
+      # at `gh: command not found` on the self-hosted runners — 12 runs out of
+      # 12 — because those images carry neither `gh` nor `jq`. The alarm that
+      # would have told us CI was broken was itself broken by the environment.
+      # Do not reintroduce a shell step here.
+      - name: Raise or clear the alarm
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          FAILED: >-
+            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const title = process.env.ISSUE_TITLE;
+            const names = ['defect ledger', 'DCP as-at coverage',
+                           'satellite manifests', 'published figures',
+                           'schema contract', 'controls provenance',
+                           'control source values'];
+            const outcomes = (process.env.FAILED || '').split(',');
+            const failed = names.filter((_, i) => outcomes[i] === 'failure');
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100,
+            });
+            const existing = open.find(i => i.title === title && !i.pull_request);
+
+            if (failed.length === 0) {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number,
+                  body: `Cleared — every live data check passed on ${runUrl}`,
+                });
+                await github.rest.issues.update({
+                  owner, repo, issue_number: existing.number, state: 'closed',
+                });
+              }
+              return;
+            }
+
+            const body = [
+              `**${failed.length} live data check(s) failing:** ${failed.join(', ')}`,
+              '',
+              `Run: ${runUrl}`,
+              '',
+              'Nothing was committed to cause this. These checks read the live',
+              'database, so a failure here means the DATA moved — a council',
+              'amendment, a hand-edited row, or an extraction job that wrote a',
+              'value nothing else caught.',
+              '',
+              'Reproduce locally with the command named in the failing step.',
+            ].join('\n');
+
+            if (existing) {
+              // A comment, not a new issue: one long outage should be one loud
+              // thing. `issues.create` is not idempotent and would leave a
+              // trail of duplicates across a quiet week.
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number, body,
+              });
+            } else {
+              await github.rest.issues.create({ owner, repo, title, body });
+            }
