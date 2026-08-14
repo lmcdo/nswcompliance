@@ -243,6 +243,47 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "(PCO 403 / AustLII Cloudflare) and belongs in notes, not in a retry "
         "loop; a residual of 26 means the monitor is not running.",
     ),
+    "DQ-70": (
+        "Served provisions whose source PDF has CHANGED since they were extracted",
+        # THE OUTCOME SIGNAL, not a mechanism one. Every other gate in this file
+        # asks whether some machinery ran. This asks whether what we SERVE still
+        # corresponds to the document it came from -- and answers it exactly,
+        # with no PDF read, no LLM and no golden set.
+        #
+        # dcp_chapter_registry carries both halves already:
+        #   content_hash                   = the PDF we hold NOW
+        #   provisions_extracted_from_hash = the PDF the served rows came FROM
+        # When they differ we are knowingly serving an older extraction of a
+        # document that has since moved. docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md
+        # calls this "the precise unused signal" -- recorded since June, read by
+        # nothing.
+        #
+        # AFFIRMATIVE wrongness, unlike a missing check: we hold the file, we
+        # hold a different hash, we still serve the old rows. A code edit cannot
+        # move it; only a re-extraction can. Mutation-checked: flipping <> to =
+        # returns 12,069, so the comparison is doing the discriminating.
+        #
+        # Deliberately EXCLUDES the 348 chapters that never recorded a hash, so
+        # the number stays a defect count rather than a blend of defect and
+        # ignorance. That gap is real and larger -- see the note.
+        "SELECT count(*) FROM regulatory_provisions p "
+        "  JOIN dcp_chapter_registry r "
+        "    ON r.council = p.source_council AND r.chapter_key = p.source_chapter_key "
+        " WHERE p.is_current AND p.v2_is_actionable AND r.is_active "
+        "   AND r.provisions_extracted_from_hash IS NOT NULL "
+        "   AND r.content_hash IS NOT NULL "
+        "   AND r.content_hash <> r.provisions_extracted_from_hash",
+        (),
+        "Each row is a control we serve today that was read out of a version of "
+        "the document we no longer hold. We cannot say it reflects the current "
+        "text, and we would not know if it had changed. Measured 595 across 10 "
+        "chapters on 2026-08-14 (564 active: 206 hash-matched, 10 drifted). "
+        "Clears only by re-extracting those chapters -- not by editing code. "
+        "SEPARATE AND LARGER: 348 active chapters never recorded which version "
+        "their provisions came from at all (25 served provisions among them), so "
+        "for those the question cannot even be asked; that gap is not counted "
+        "here and needs its own row.",
+    ),
     "DQ-40": (
         "Setback controls still flagged for review",
         "SELECT count(*) FROM dcp_setback_controls WHERE needs_review IS TRUE",

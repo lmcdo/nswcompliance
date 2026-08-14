@@ -541,6 +541,18 @@
       "passes_when": "exit 0 - every active SEPP/LEP in instrument_registry was checked by the legislation monitor within the last 14 days (2x its 7-day loop). NOTE: 1 is the correct floor while wingecarribee_lep_2010 has no pco_instrument_id; 0 requires giving it one.",
       "red_when": "The NSW legislation monitor is not running, so amendments to SEPPs and LEPs go unseen. LIVENESS, not data quality: last_checked is written on both the change and no-change paths, so only an actual run moves it - a code edit cannot satisfy this check.",
       "note": "⚠ Opened as DQ-68 and RENUMBERED to DQ-69 on rebase: #954's ledger took 68 for the untagged-topic row. Measured 2026-08-14: 26 of 26 active instruments stale, max(last_checked) = 2026-06-08 = 67 days blind. TWO independent causes, both fixed: (a) the Fly container died at import - #504 added `refresh_runbook` to legislation_monitor.py and never added the COPY, confirmed live by ModuleNotFoundError; (b) even when it ran, check_instrument returned early whenever the source gave no version, which on the PCO path is the NORMAL case, so a run reporting 'Checked: 26' wrote ZERO rows. (b) also invalidated this probe's first premise - the gate caught its own flaw. PCO's export lists every amended instrument, so absence is an affirmative confirmation and is now recorded, but ONLY where pco_instrument_id is set. Post-fix measured 1. Silence stayed invisible because run_loop.sh swallows failures with `|| echo \"will retry next cycle\"`, the machine stays `started` either way, and the healthchecks.io ping is read by nothing. Telegram on the Fly machine was ALSO returning HTTP 404 (stale token) - reset from the working Railway secret."
+    },
+    "DQ-70": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-70"
+      ],
+      "passes_when": "exit 0 - no served provision comes from a chapter whose PDF has changed since that provision was extracted (content_hash = provisions_extracted_from_hash for every chapter backing served rows)",
+      "red_when": "We are serving a control read out of a version of the document we no longer hold. THE OUTCOME SIGNAL: every other check in this ledger asks whether machinery ran; this asks whether what we serve still corresponds to its source. A code edit cannot satisfy it - only re-extracting the drifted chapters.",
+      "note": "⚠ Opened as DQ-69 and RENUMBERED to DQ-70 on rebase (#951-#954 took 64-68). Measured 2026-08-14: 595 served provisions across 10 drifted chapters, of 564 active (206 hash-matched, 10 drifted, 348 never recorded a hash). docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md named content_hash != provisions_extracted_from_hash 'the precise unused signal' in June; both columns have been written since and read by nothing. Chosen as THE outcome gate because it needs no PDF read, no LLM and no golden set, and unlike the extraction coverage metric it compares served data against the SOURCE rather than against the previous pipeline's output - which is itself known to carry errors (wingecarribee serving Bowral's controls; ~1,543 collided refs), so 100% agreement there can mean reproducing a mistake. Mutation-checked at the SQL level: flipping <> to = returns 12,069, so the comparison is doing the discriminating. DELIBERATELY EXCLUDES the 348 chapters with no recorded hash (25 served provisions) so this stays an affirmative defect count, not a blend of defect and ignorance."
     }
   }
 }
