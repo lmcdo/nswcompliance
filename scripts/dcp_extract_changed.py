@@ -1996,29 +1996,106 @@ def text_layer_garbled(page_texts: list[str]) -> bool:
     return any(_garble_evidence(t) for t in page_texts)
 
 
+# ── OCR call bounds ──────────────────────────────────────────────────────────
+# prior-art-checked: reuse not viable because no shared HTTP client exists —
+# r2_monitor.py, intelligence_brief.py and generate_conveyancing_report.py each
+# build their own requests call with their own scalar timeout, so there is
+# nothing to extend; this bounds THIS file's own OCR call in place. (Those three
+# carry the same scalar-timeout assumption and are noted in the plan as needing
+# the same treatment — a shared client is a separate refactor, not this fix.)
+#
+# ⚠ A SCALAR requests timeout CANNOT BOUND THIS CALL. In requests, `timeout=N`
+# is the maximum gap BETWEEN BYTES and resets on every byte received — it is not
+# a total deadline. Measured 2026-08-14 on the live sweep: an ESTABLISHED socket
+# to the Modal endpoint (54.156.152.125:443, one of the six A records for
+# lawrence-mcdonell--ocr-pdf.modal.run) sat open for 2472s against timeout=1800
+# and never fired, at 0.00s CPU. A server that dribbles anything holds the
+# nightly extraction open forever, silently, looking exactly like work.
+#
+# Bounding it needs a STRUCTURAL change, not a smaller number:
+#   OCR_CONNECT_TIMEOUT/OCR_READ_TIMEOUT — a dead socket still fails fast
+#   OCR_TOTAL_DEADLINE                   — streamed read against a monotonic
+#                                          clock, the only thing that caps total
+#                                          duration in one thread
+OCR_CONNECT_TIMEOUT = 30       # seconds to establish
+OCR_READ_TIMEOUT = 120         # seconds of SILENCE before giving up
+# ⚠ NOT enforceable in-thread — see the note in fetch_ocr_page_texts.
+# Kept as the value an EXTERNAL (subprocess) cap should use.
+OCR_TOTAL_DEADLINE = 600
+OCR_MAX_BYTES = 256 * 1024 * 1024  # refuse an unbounded body
+
+
 def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
     """POST the PDF to the Modal OCR endpoint; return normalised per-page
     texts, or None on ANY failure (caller stays on the text layer). The
     response must carry EXACTLY expected_pages entries — a short response
-    would serve OCR text for the wrong source pages (Sol review of PR #836)."""
+    would serve OCR text for the wrong source pages (Sol review of PR #836).
+
+    Bounded by OCR_TOTAL_DEADLINE wall-clock, not by requests' timeout — see
+    the note above for why the latter cannot do it.
+    """
     url = os.getenv("MODAL_OCR_URL", "").strip()
     token = os.getenv("MODAL_OCR_TOKEN", "").strip()
     if not url or not token:
         print("    [OCR] MODAL_OCR_URL/TOKEN not set — staying on text layer")
         return None
     try:
+        import json as _json
+        import time as _time
+
         import requests
 
-        resp = requests.post(
+        _t0 = _time.monotonic()
+        with requests.post(
             url,
             data=open(pdf_path, "rb").read(),
             headers={"X-OCR-Token": token},
-            timeout=1800,
-        )
-        if resp.status_code != 200:
-            print(f"    [OCR] endpoint returned {resp.status_code} — staying on text layer")
-            return None
-        pages = resp.json().get("pages")
+            timeout=(OCR_CONNECT_TIMEOUT, OCR_READ_TIMEOUT),
+            stream=True,
+        ) as resp:
+            if resp.status_code != 200:
+                print(f"    [OCR] endpoint returned {resp.status_code} — staying on text layer")
+                return None
+            # ⚠ TOTAL-DURATION BOUNDING IS NOT POSSIBLE HERE. THREE MECHANISMS
+            # WERE BUILT AND MEASURED ON 2026-08-14; ALL THREE FAILED:
+            #   1. iter_content(65536) + a clock between chunks — blocks until
+            #      64KB accumulates, so the check never runs. A 2s deadline took
+            #      100s against a server writing 1 byte per 0.2s, and only then
+            #      because the server stopped.
+            #   2. iter_content(None) — urllib3 read(None) reads to EOF, so it
+            #      blocks forever. Strictly worse.
+            #   3. A threading.Timer closing resp.raw underneath the blocked
+            #      read — did not unblock it. On Windows, closing a socket from
+            #      another thread does not reliably interrupt a blocked recv.
+            # Any byte count blocks until that many bytes arrive, so the loop
+            # body — wherever a clock would live — simply does not execute.
+            #
+            # WHAT IS BOUNDED HERE: silence. OCR_READ_TIMEOUT caps the gap
+            # between bytes, which is the common real failure (the endpoint dies
+            # or stops responding). That is worth having and the old scalar
+            # timeout=1800 made it 30 minutes instead of 2.
+            #
+            # WHAT IS NOT: a server that dribbles forever. Bounding THAT needs an
+            # external cap — run the fetch in a subprocess and kill it. See
+            # P6.0 in ce-provisions-pipeline-repair-2026-08.md; the measurement
+            # harness for the Marrickville gate is the reference implementation
+            # (one subprocess per chapter, hard wall-clock cap, TIMEOUT recorded
+            # and counted rather than dropped). Do not re-attempt an in-thread
+            # deadline — it has been tried three ways and measured each time.
+            chunks, size = [], 0
+            for chunk in resp.iter_content(65536):
+                if not chunk:
+                    continue
+                size += len(chunk)
+                if size > OCR_MAX_BYTES:
+                    print(f"    [OCR] response exceeded {OCR_MAX_BYTES:,} bytes — staying on text layer")
+                    return None
+                chunks.append(chunk)
+            body = b"".join(chunks)
+        _elapsed = _time.monotonic() - _t0
+        # Always report duration: a hang you never timed is a hang you cannot see.
+        print(f"    [OCR] endpoint responded in {_elapsed:.0f}s ({size:,} bytes)")
+        pages = _json.loads(body.decode("utf-8", "replace")).get("pages")
         if not isinstance(pages, list) or not pages:
             print("    [OCR] endpoint returned no pages — staying on text layer")
             return None

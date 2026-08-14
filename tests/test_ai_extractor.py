@@ -196,6 +196,188 @@ class TestSuspectReasonNewGuards:
         assert suspect_reason({"diff": {"status": "ok"}, "schema_fail": False}) is None
 
 
+class TestOcrCallIsBounded:
+    """A scalar requests timeout cannot bound this call.
+
+    Measured 2026-08-14 on the live sweep: an ESTABLISHED socket to the Modal
+    endpoint sat open 2472s against timeout=1800 and never fired, at 0.00s CPU.
+    `timeout=N` is the maximum gap BETWEEN BYTES and resets on every byte, so a
+    server that dribbles anything holds the nightly extraction open forever.
+
+    These tests drive a REAL server that dribbles and never finishes. Asserting
+    on the constant instead would pass against the broken code, because the old
+    code also had a large number in it — the number was never the defect.
+    """
+
+    @staticmethod
+    def _load():
+        _saved = {k: sys.modules.get(k) for k in _STUBS}
+        for k in _STUBS:
+            sys.modules[k] = MagicMock()
+        sys.modules["dotenv"].load_dotenv = MagicMock()
+        os.environ.setdefault("DATABASE_URL", "postgresql://localhost/test")
+        for _k in ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME"):
+            os.environ.setdefault(_k, "x")
+        try:
+            import dcp_extract_changed as mod
+        finally:
+            for k, v in _saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
+        return mod
+
+    @staticmethod
+    def _serve(handler_cls):
+        import http.server, threading
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        return srv, f"http://127.0.0.1:{srv.server_port}/"
+
+    @staticmethod
+    def _real_requests():
+        """⚠ conftest_mocks.py stubs `requests` for the whole suite so pure-logic
+        tests run without native deps. These tests must drive a REAL socket — with
+        the stub in place `requests.post(...)` returns a MagicMock that answers
+        instantly, so a broken, unbounded implementation would sail through and
+        the test would prove nothing. (It did: two of these passed against the
+        mock before this was added.) Restore the genuine module for the call.
+        """
+        import contextlib, importlib
+
+        @contextlib.contextmanager
+        def _ctx():
+            saved = sys.modules.pop("requests", None)
+            try:
+                real = importlib.import_module("requests")
+                assert not isinstance(real, MagicMock), "requests is still stubbed"
+                yield real
+            finally:
+                if saved is not None:
+                    sys.modules["requests"] = saved
+                else:
+                    sys.modules.pop("requests", None)
+        return _ctx()
+
+    def test_a_SILENT_server_is_abandoned_within_the_read_timeout(self, tmp_path, monkeypatch):
+        """The failure that actually bites: the endpoint stops responding.
+
+        This is what the (connect, read) tuple buys. The old scalar timeout=1800
+        made this wait 30 MINUTES; it now gives up after OCR_READ_TIMEOUT.
+
+        ⚠ The OTHER failure — a server that dribbles forever — is deliberately
+        NOT tested here, because it cannot be fixed in-thread. Three mechanisms
+        were built and measured on 2026-08-14 and all three failed; the note in
+        fetch_ocr_page_texts records them so nobody retries. Bounding that case
+        needs an external subprocess cap (plan item P6.0). A test asserting a
+        behaviour the code cannot have would be a test that lies.
+        """
+        import http.server, time
+
+        class Silent(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                time.sleep(120)      # headers, then nothing
+
+            def log_message(self, *a):
+                pass
+
+        mod = self._load()
+        srv, url = self._serve(Silent)
+        pdf = tmp_path / "x.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        monkeypatch.setenv("MODAL_OCR_URL", url)
+        monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
+        monkeypatch.setattr(mod, "OCR_READ_TIMEOUT", 2)
+        try:
+            t0 = time.monotonic()
+            with self._real_requests():
+                out = mod.fetch_ocr_page_texts(pdf, expected_pages=1)
+            elapsed = time.monotonic() - t0
+        finally:
+            srv.shutdown()
+        assert out is None, "a silent endpoint must not yield OCR text"
+        assert elapsed < 20, (
+            f"waited {elapsed:.0f}s on a silent server against a 2s read timeout"
+        )
+
+    def test_a_healthy_server_still_returns_its_pages(self, tmp_path, monkeypatch):
+        """The bound must not break the working path."""
+        import http.server, json
+        payload = json.dumps({"pages": ["page one text"]}).encode()
+
+        class Ok(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, *a):
+                pass
+
+        mod = self._load()
+        srv, url = self._serve(Ok)
+        pdf = tmp_path / "x.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        monkeypatch.setenv("MODAL_OCR_URL", url)
+        monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
+        try:
+            with self._real_requests():
+                out = mod.fetch_ocr_page_texts(pdf, expected_pages=1)
+        finally:
+            srv.shutdown()
+        assert out is not None and len(out) == 1
+
+    def test_page_count_mismatch_still_refuses(self, tmp_path, monkeypatch):
+        """The #836 guard must survive the rewrite: a short response would serve
+        OCR text against the wrong source pages."""
+        import http.server, json
+        payload = json.dumps({"pages": ["a", "b"]}).encode()
+
+        class Short(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, *a):
+                pass
+
+        mod = self._load()
+        srv, url = self._serve(Short)
+        pdf = tmp_path / "x.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        monkeypatch.setenv("MODAL_OCR_URL", url)
+        monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
+        try:
+            with self._real_requests():
+                assert mod.fetch_ocr_page_texts(pdf, expected_pages=5) is None
+        finally:
+            srv.shutdown()
+
+    def test_the_timeout_is_a_tuple_not_a_scalar(self):
+        """Structural backstop. A scalar cannot express 'fail fast on silence'
+        and is what made the live hang invisible."""
+        mod = self._load()
+        src = __import__("pathlib").Path(mod.__file__).read_text(encoding="utf-8")
+        lines = [l for l in src.splitlines() if not l.lstrip().startswith("#")]
+        code = "\n".join(lines)
+        assert "timeout=(OCR_CONNECT_TIMEOUT, OCR_READ_TIMEOUT)" in code
+        # strip comments first: the WHY-note quotes the old value, and matching
+        # prose would make this pass or fail on documentation rather than code.
+        import re as _re
+        assert not _re.search(r"timeout=\d", code), "a scalar timeout cannot bound a dribbling response"
+
+
 class TestSplitPageAtHeadings:
     """_extract_sequential took ONE heading per page, so a page holding
     2.11.3 / 2.11.4 / 2.11.4.1 yielded only 2.11.3 and the other two clauses
