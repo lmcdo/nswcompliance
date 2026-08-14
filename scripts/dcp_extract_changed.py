@@ -832,8 +832,20 @@ COUNCIL_SECTION_RE_OVERRIDES: dict[str, re.Pattern] = {
     #   - Letter-prefixed: "C8 Some control", "O9 Some objective"
     # Override to require at least one dot OR a letter prefix, preventing page-number
     # artifacts from being extracted as sections.
+    # ⚠ CORRECTED 2026-08-14 — the [A-Z]\d+ alternative was the primary defect.
+    # It deliberately admitted "C8 Some control" / "O9 Some objective" as SECTION
+    # headings. Those are clause markers, and COUNCIL_SUBSECTION_PATTERNS
+    # ["marrickville"] level 2 already splits them, so admitting them here was
+    # redundant — and harmful: it pushed ordinary body pages to 7–16 hits, over
+    # the TOC page guard's >=5 threshold, which then blanked ALL section
+    # detection on those pages. Measured: part2-s11-fencing holds 88 heading
+    # matches in its text and only 4 sections survived; every clause collapsed
+    # onto __preamble_*, losing the citable clause number. Woollahra's override
+    # 20 lines below excludes O1/C1 for exactly this reason, from 2026-05.
+    # Dotted-decimal only takes body pages to 1–4 hits (unsuppressed) while the
+    # genuine contents page stays at 13 (still suppressed).
     "marrickville": re.compile(
-        r'^([A-Z]\d+(?:\.\d+)*|\d+(?:\.\d+)+)\s+([A-Z][^\n]+)$', re.MULTILINE
+        r'^(\d+(?:\.\d+)+)\s+([A-Z][^\n]+)$', re.MULTILINE
     ),
     # Woollahra DCP 2015: section codes are letter + digit + dot + digit(s), e.g.
     # "B3.1 Introduction", "B3.2.3 Side setbacks", "E1.4 Parking rates".
@@ -1189,113 +1201,130 @@ class DCPExtractor:
                 # whose content is just the TOC list. Skip all section detection on these
                 # pages; their text is absorbed into the current (parent) section.
                 _toc_hits = len(section_re.findall(text))
-                if _toc_hits >= 5:
-                    match = None
-                else:
-                    match = section_re.search(text)
-                if match:
-                    new_code = match.group(1)
-                    if current and (
-                        current["section_number"] == new_code
-                        or current["section_number"].startswith(new_code + ".")
-                    ):
-                        # Running page header: either the same section code, or a parent
-                        # prefix (e.g. Marrickville prints "2.1 Urban Design" at the top
-                        # of every page in 2.1 and its sub-sections 2.1.1.3, 2.1.2.2
-                        # etc.). Don't start a new section for the parent code while
-                        # already inside a child of that section.
-                        match = None
-                if match:
-                    if current:
-                        current["page_end"] = page_num - 1
-                        sections.append(current)
-                    title = match.group(2).strip()
-                    # ── Heading continuation fix ──────────────────────────────
-                    # Some PDFs (e.g. Marrickville) wrap long section titles
-                    # across lines: the regex captures only the first line
-                    # (e.g. "Urban" instead of "Urban Design").  Look at up to
-                    # 2 lines immediately after the match end and append any
-                    # that look like title continuations (not blank, not a new
-                    # section code, not a bare page number).
-                    _after = text[match.end():]
-                    # Split on newlines; the first element is often empty because
-                    # the match ends just before a '\n' — skip leading empty entries
-                    # so we look at the actual lines that follow the heading.
-                    _extra_lines = _after.split('\n')
-                    _continuations = 0
-                    _saw_first_nonempty = False
-                    for _extra in _extra_lines[:10]:
-                        _stripped = _extra.strip()
-                        if not _stripped:
-                            if _saw_first_nonempty:
-                                # True blank line after content — stop
-                                break
-                            # Leading empty from trailing newline of match — skip
-                            continue
-                        _saw_first_nonempty = True
-                        if _STANDALONE_SECTION_CODE_RE.match(_stripped):
-                            # Looks like a new section code — stop
-                            break
-                        if re.match(r'^\d+$', _stripped):
-                            # Bare page number — stop
-                            break
-                        if len(_stripped) > 50:
-                            # Long line — real content, not a title continuation
-                            break
-                        if re.match(r'^[a-z]', _stripped):
-                            # Starts with lowercase — could be a conjunction in a title
-                            # (e.g. "and", "or", "of") or sentence content.
-                            # Allow short conjunctions (≤5 chars) as title continuations;
-                            # stop on any longer lowercase word (sentence content).
-                            if len(_stripped) > 5:
-                                break
-                            # Short lowercase word — treat as title conjunction, continue
-                        if re.match(r'^(Appendix|Part|Chapter|Section|Note|See|Where)\b', _stripped):
-                            # Structural keyword — end of heading, start of appendix/note
-                            break
-                        if '\u2013' in _stripped or '\u2014' in _stripped or ' - ' in _stripped:
-                            # En-dash or em-dash signals a descriptive sub-clause, not a title word
-                            break
-                        if _continuations >= 4:
-                            # Cap at 4 extra lines (handles multi-word wrapped titles)
-                            break
-                        title = title + ' ' + _stripped
-                        _continuations += 1
-                    current = {
-                        "section_number": match.group(1),
-                        "section_title": title,
-                        "content": "",
-                        "tables": [],
-                        "page_start": page_num,
-                        "page_end": page_num,
-                        "pages": [page_num],
-                    }
+                _suppress = _toc_hits >= 5
 
-                if current:
-                    current["content"] += f"\n\n{text}"
-                    if page_num not in current["pages"]:
-                        current["pages"].append(page_num)
-                    for tbl in page_tables:
-                        html = self._table_to_html(tbl)
-                        if html:
-                            current["tables"].append({"html": html, "page": page_num})
-                else:
-                    # Pre-section preamble (TOC, cover, etc.)
-                    if not sections or sections[-1].get("section_number") != "preamble":
-                        sections.append({
-                            "section_number": "preamble",
-                            "section_title": "Document Information",
-                            "content": text,
+                # Councils in MULTI_HEADING_COUNCILS carry more than one heading
+                # per page; split so each heading-delimited block runs through the
+                # SAME single-match logic below. Element 0 is the text before the
+                # first heading and belongs to the section still open from the
+                # previous page. Every other council gets [text] — one segment,
+                # behaviour bit-identical to before.
+                _segments = (
+                    split_page_at_headings(text, section_re)
+                    if (self.council in MULTI_HEADING_COUNCILS and not _suppress)
+                    else [text]
+                )
+
+                # Tables are extracted per PAGE, not per segment. Attach them to
+                # the first segment that has an open section and then clear, or a
+                # 3-heading page would attach the same tables three times.
+                _page_tables_left = page_tables
+                for text in _segments:
+                    match = None if _suppress else section_re.search(text)
+                    if match:
+                        new_code = match.group(1)
+                        if current and (
+                            current["section_number"] == new_code
+                            or current["section_number"].startswith(new_code + ".")
+                        ):
+                            # Running page header: either the same section code, or a parent
+                            # prefix (e.g. Marrickville prints "2.1 Urban Design" at the top
+                            # of every page in 2.1 and its sub-sections 2.1.1.3, 2.1.2.2
+                            # etc.). Don't start a new section for the parent code while
+                            # already inside a child of that section.
+                            match = None
+                    if match:
+                        if current:
+                            current["page_end"] = page_num - 1
+                            sections.append(current)
+                        title = match.group(2).strip()
+                        # ── Heading continuation fix ──────────────────────────────
+                        # Some PDFs (e.g. Marrickville) wrap long section titles
+                        # across lines: the regex captures only the first line
+                        # (e.g. "Urban" instead of "Urban Design").  Look at up to
+                        # 2 lines immediately after the match end and append any
+                        # that look like title continuations (not blank, not a new
+                        # section code, not a bare page number).
+                        _after = text[match.end():]
+                        # Split on newlines; the first element is often empty because
+                        # the match ends just before a '\n' — skip leading empty entries
+                        # so we look at the actual lines that follow the heading.
+                        _extra_lines = _after.split('\n')
+                        _continuations = 0
+                        _saw_first_nonempty = False
+                        for _extra in _extra_lines[:10]:
+                            _stripped = _extra.strip()
+                            if not _stripped:
+                                if _saw_first_nonempty:
+                                    # True blank line after content — stop
+                                    break
+                                # Leading empty from trailing newline of match — skip
+                                continue
+                            _saw_first_nonempty = True
+                            if _STANDALONE_SECTION_CODE_RE.match(_stripped):
+                                # Looks like a new section code — stop
+                                break
+                            if re.match(r'^\d+$', _stripped):
+                                # Bare page number — stop
+                                break
+                            if len(_stripped) > 50:
+                                # Long line — real content, not a title continuation
+                                break
+                            if re.match(r'^[a-z]', _stripped):
+                                # Starts with lowercase — could be a conjunction in a title
+                                # (e.g. "and", "or", "of") or sentence content.
+                                # Allow short conjunctions (≤5 chars) as title continuations;
+                                # stop on any longer lowercase word (sentence content).
+                                if len(_stripped) > 5:
+                                    break
+                                # Short lowercase word — treat as title conjunction, continue
+                            if re.match(r'^(Appendix|Part|Chapter|Section|Note|See|Where)\b', _stripped):
+                                # Structural keyword — end of heading, start of appendix/note
+                                break
+                            if '\u2013' in _stripped or '\u2014' in _stripped or ' - ' in _stripped:
+                                # En-dash or em-dash signals a descriptive sub-clause, not a title word
+                                break
+                            if _continuations >= 4:
+                                # Cap at 4 extra lines (handles multi-word wrapped titles)
+                                break
+                            title = title + ' ' + _stripped
+                            _continuations += 1
+                        current = {
+                            "section_number": match.group(1),
+                            "section_title": title,
+                            "content": "",
                             "tables": [],
                             "page_start": page_num,
                             "page_end": page_num,
                             "pages": [page_num],
-                        })
+                        }
+
+                    if current:
+                        current["content"] += f"\n\n{text}"
+                        if page_num not in current["pages"]:
+                            current["pages"].append(page_num)
+                        for tbl in _page_tables_left:
+                            html = self._table_to_html(tbl)
+                            if html:
+                                current["tables"].append({"html": html, "page": page_num})
+                        _page_tables_left = []  # this page's tables are placed
                     else:
-                        sections[-1]["content"] += f"\n\n{text}"
-                        sections[-1]["page_end"] = page_num
-                        if page_num not in sections[-1]["pages"]:
-                            sections[-1]["pages"].append(page_num)
+                        # Pre-section preamble (TOC, cover, etc.)
+                        if not sections or sections[-1].get("section_number") != "preamble":
+                            sections.append({
+                                "section_number": "preamble",
+                                "section_title": "Document Information",
+                                "content": text,
+                                "tables": [],
+                                "page_start": page_num,
+                                "page_end": page_num,
+                                "pages": [page_num],
+                            })
+                        else:
+                            sections[-1]["content"] += f"\n\n{text}"
+                            sections[-1]["page_end"] = page_num
+                            if page_num not in sections[-1]["pages"]:
+                                sections[-1]["pages"].append(page_num)
 
             if current:
                 current["page_end"] = total
@@ -2082,6 +2111,42 @@ def suspect_reason(review_data: dict) -> str | None:
         return (f"preflight_empty_layer ({pf.get('empty_text_pages')}/"
                 f"{pf.get('total_pages')} pages without text layer — scanned source)")
     return None
+
+
+# Councils whose pages carry MORE THAN ONE section heading. _extract_sequential
+# takes one heading per page (section_re.search), so on these the 2nd and 3rd
+# headings are swallowed into the first heading's content and their clauses
+# collide onto the wrong ref. Marrickville measured 2026-08-14: fixing only the
+# SECTION_RE recovered 5 of ~10 real sections in part2-s11-fencing, because p5
+# holds 2.11/2.11.1, p6 holds 2.11.3/2.11.4/2.11.4.1 and p9 holds 2.11/2.11.6.
+#
+# OPT-IN, default off. Every other council keeps the exact single-match path,
+# so the blast radius of this change is one council. Leichhardt (same era and
+# format, 3,600 served provisions) and Parramatta were probed read-only and
+# extract correctly today — 8 and 644 real sections — so widening this is not
+# justified by evidence and must not be done without measuring the council first.
+MULTI_HEADING_COUNCILS = {"marrickville"}
+
+
+def split_page_at_headings(text: str, section_re) -> list[str]:
+    """Split one page's text into [pre-heading remainder, heading-1 block, ...].
+
+    Element 0 is whatever precedes the first heading — it belongs to the section
+    still open from the previous page, and is '' when the page opens on a
+    heading. Each later element starts exactly at a heading match, so the
+    caller's existing single-match logic works on it unchanged.
+
+    Pure. Returns [text] when there is nothing to split, so the caller's
+    behaviour is bit-identical to before on 0- and 1-heading pages.
+    """
+    matches = list(section_re.finditer(text))
+    if len(matches) < 2:
+        return [text]
+    out = [text[: matches[0].start()]]
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        out.append(text[m.start(): end])
+    return out
 
 
 def suspect_alert_key(review_data: dict) -> str | None:

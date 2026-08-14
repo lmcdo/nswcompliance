@@ -196,6 +196,87 @@ class TestSuspectReasonNewGuards:
         assert suspect_reason({"diff": {"status": "ok"}, "schema_fail": False}) is None
 
 
+class TestSplitPageAtHeadings:
+    """_extract_sequential took ONE heading per page, so a page holding
+    2.11.3 / 2.11.4 / 2.11.4.1 yielded only 2.11.3 and the other two clauses
+    collided onto it. Marrickville part2-s11-fencing: 88 headings in the text,
+    4 sections out, every clause under __preamble_*.
+    """
+
+    @staticmethod
+    def _load():
+        _saved = {k: sys.modules.get(k) for k in _STUBS}
+        for k in _STUBS:
+            sys.modules[k] = MagicMock()
+        sys.modules["dotenv"].load_dotenv = MagicMock()
+        os.environ.setdefault("DATABASE_URL", "postgresql://localhost/test")
+        for _k in ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME"):
+            os.environ.setdefault(_k, "x")
+        try:
+            from dcp_extract_changed import (
+                split_page_at_headings, MULTI_HEADING_COUNCILS,
+                COUNCIL_SECTION_RE_OVERRIDES,
+            )
+        finally:
+            for k, v in _saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
+        return split_page_at_headings, MULTI_HEADING_COUNCILS, COUNCIL_SECTION_RE_OVERRIDES
+
+    def test_zero_and_one_heading_pages_are_returned_untouched(self):
+        """Bit-identical to the old behaviour, so non-split pages cannot regress."""
+        split, _, res = self._load()
+        rx = res["marrickville"]
+        assert split("just body text\nno headings here", rx) == ["just body text\nno headings here"]
+        one = "2.11.1 Fencing Objectives\nsome body text"
+        assert split(one, rx) == [one]
+
+    def test_three_headings_split_into_pre_plus_one_block_each(self):
+        split, _, res = self._load()
+        rx = res["marrickville"]
+        page = ("carry-over from the previous page\n"
+                "2.11.3 Front Fences\nbody three\n"
+                "2.11.4 Side Fences\nbody four\n"
+                "2.11.4.1 Corner Lots\nbody four one\n")
+        segs = split(page, rx)
+        assert len(segs) == 4, segs
+        assert segs[0].strip() == "carry-over from the previous page"
+        assert segs[1].startswith("2.11.3") and "body three" in segs[1]
+        assert segs[2].startswith("2.11.4 ") and "body four" in segs[2]
+        assert segs[3].startswith("2.11.4.1")
+
+    def test_a_block_does_not_carry_the_next_blocks_body(self):
+        """The whole point: content must land under its own clause."""
+        split, _, res = self._load()
+        rx = res["marrickville"]
+        page = "2.11.3 Front Fences\nMAX HEIGHT 1.2m\n2.11.4 Side Fences\nMAX HEIGHT 1.8m\n"
+        segs = split(page, rx)
+        assert "1.8m" not in segs[1], "2.11.3 must not absorb 2.11.4's value"
+        assert "1.2m" not in segs[2], "2.11.4 must not absorb 2.11.3's value"
+
+    def test_a_page_opening_on_a_heading_has_an_empty_carry_over(self):
+        split, _, res = self._load()
+        rx = res["marrickville"]
+        segs = split("2.11.3 Front Fences\nbody\n2.11.4 Side Fences\nbody\n", rx)
+        assert segs[0] == ""
+
+    def test_the_split_is_opt_in_and_marrickville_only(self):
+        """Blast radius. Leichhardt and Parramatta were probed read-only and
+        extract correctly today, so widening this needs a measurement first."""
+        _, councils, _ = self._load()
+        assert councils == {"marrickville"}
+
+    def test_marrickville_section_re_no_longer_admits_clause_markers(self):
+        """C8/O9 as 'sections' is what pushed body pages over the TOC guard."""
+        _, _, res = self._load()
+        rx = res["marrickville"]
+        assert rx.search("C8 Some control text here") is None
+        assert rx.search("O9 Some objective text here") is None
+        assert rx.search("2.11.3 Front Fences") is not None
+
+
 class TestSuspectAlertDedup:
     """The same two chapters alerted byte-identically every day 1–13 Aug 2026.
 
