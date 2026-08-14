@@ -582,6 +582,42 @@ def main() -> int:
         print(f"DQ-CHECK: IMPROVED - {len(unverified)} unresolved row(s) lack a "
               f"check (cap {ucap}). Lower _max_unverified_unresolved.")
 
+    # --- practice 1c: a row declared FIXED must be able to prove it stayed fixed ---
+    #
+    # The ratchet above excludes fixed rows on purpose, so its number can reach
+    # zero. The cost of that choice is this hole: 55 rows say fixed and only 9
+    # can demonstrate it, so a regression in the other 46 is invisible. That is
+    # not hypothetical — DQ-54 sat declared FIXED while still broken, which is
+    # half the reason this ledger is executable at all.
+    #
+    # Zero is not honest here: it would need 46 checks written against defects
+    # already closed, and a target nobody can meet gets deleted rather than met.
+    # So this freezes instead. The count may fall, never rise, which stops the
+    # only case still worth stopping — a NEW row being marked fixed without any
+    # way to tell whether it stays that way.
+    fixed_no_check = sorted(i for i in ids
+                            if checks.get(i, {}).get("declared") == "fixed"
+                            and not checks[i].get("check"))
+    fcap = _no_check_cap("_max_fixed_without_check")
+    if fcap is not None and len(fixed_no_check) > fcap:
+        print("DQ-CHECK: FAILED - a row was declared FIXED with nothing to prove it.")
+        print(f"  fixed rows with no check: {len(fixed_no_check)}, cap is {fcap}")
+        # Deliberately NOT slicing the sorted list at the cap and calling the
+        # tail "the new one". The list is sorted by id, so that names whichever
+        # row happens to sort last — DQ-9 in a trial run, which had nothing to
+        # do with the change. A message that fingers an innocent row is worse
+        # than one that admits it cannot tell.
+        print("  This ratchet counts; it cannot tell WHICH row is new. Compare "
+              "against main:")
+        print("    git diff origin/main -- .claude/dq_checks.json")
+        print("  'Fixed' with no check is a claim about the past. Write the probe")
+        print("  that would go red if it came back - that is what makes it a fix")
+        print("  rather than a memory. DQ-54 was declared fixed while still broken.")
+        return 1
+    if fcap is not None and len(fixed_no_check) < fcap:
+        print(f"DQ-CHECK: IMPROVED - {len(fixed_no_check)} fixed row(s) lack a "
+              f"check (cap {fcap}). Lower _max_fixed_without_check.")
+
     # --- practice 4: an artifact whose value needs an invoker must have one ---
     dead = unread_baselines()
     if dead:

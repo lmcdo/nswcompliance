@@ -27,6 +27,7 @@
   ],
   "_max_no_check": 56,
   "_max_unverified_unresolved": 3,
+  "_max_fixed_without_check": 46,
   "checks": {
     "DQ-54": {
       "declared": "fixed",
@@ -516,6 +517,18 @@
       "check": null,
       "fixed_by": "Closed 2026-08-14 on measurement, folded into the Wingecarribee suburb-scoping job. The row said the town-specific PRECINCT controls were unextracted for every town and were 'the larger half' of DQ-66. Measured across all 21 precinct sections in the three town plans: 13 carry ZERO numeric controls - they are character and design prose - and most of the rest repeat the same conservation block (20%, 2.5m, 1.5m, 90mm, 10m) identically in all three towns, so it is not a difference between them at all. The one genuinely numeric precinct is Renwick (Mittagong S18, 1,314 lines, 185 values), and even there most values are not controls we serve (door clearances, kitchen widths, traffic lane widths, roof pitch); the overlap is about two, max 2 storeys and max 7m external wall height. Renwick is its own suburb (postcode 2575), so address->suburb matching reaches it without any precinct geometry. There is no extraction project here - see memory/project-wingecarribee-suburb-scoping-planned-2026-08.md.",
       "why_no_check": "Closed on measurement, and the coverage it would want already exists elsewhere. What remains of this row is whether Wingecarribee's controls are served with the right plan attached, and that is exactly what DQ-66's probe counts (30 today). A second probe over the same fact would be a second source of truth, which is the defect DQ-54 and this ledger's status ratchet exist to prevent."
+    },
+    "DQ-68": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-68"
+      ],
+      "passes_when": "exit 0 - every served provision carries a v2_topic",
+      "red_when": "A provision the product serves has no topic, so it cannot be routed to the right section of a report or filtered by topic.",
+      "note": "Opened 2026-08-14 because the ledger was narrower than the defect it described. DQ-24 tracks 523 of these - the Transport & Infrastructure SEPP slice - and scoping it that way was defensible, but it left 2,674 rows in exactly the same state with nothing watching them. Same served-set scope as DQ-24, so DQ-24 is a strict subset and the two numbers are comparable. Measured 3,197 of 19,957 served provisions (16.0%), concentrated in statewide instruments (2,530) and the Inner West former councils (marrickville 475, leichhardt 123)."
     }
   }
 }

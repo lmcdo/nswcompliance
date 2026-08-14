@@ -45,6 +45,27 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         (SAR_SOURCE,),
         "These are the ones a user can still be served today.",
     ),
+    "DQ-68": (
+        "Served provisions carrying no topic, across every document",
+        # Opened 2026-08-14 because the ledger was narrower than the defect it
+        # described. DQ-24 counts 523 of these — the ones from one SEPP — and
+        # scoping it that way was defensible, but it left 2,674 rows in exactly
+        # the same state with nothing tracking them.
+        #
+        # Same served-set scope as DQ-24 (is_current AND v2_is_actionable) so
+        # the two numbers are comparable and DQ-24 is a strict subset of this
+        # one. 16.0% of the served corpus, concentrated in statewide instruments
+        # (2,530) and the Inner West former councils (marrickville 475,
+        # leichhardt 123).
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable AND v2_topic IS NULL",
+        (),
+        "Each row is a provision the product will serve with no topic on it, so "
+        "it cannot be routed to the right section of a report or filtered by "
+        "topic. Measured 3,197 of 19,957 served provisions on 2026-08-14 — "
+        "16.0%. DQ-24 is the Transport & Infrastructure SEPP slice of this "
+        "same number (523) and closing that one alone would leave 2,674 here.",
+    ),
     "DQ-24": (
         "Served Transport & Infrastructure SEPP provisions with no topic tag",
         # The row read "Transport & Infrastructure SEPP v2_topic retag" and sat
