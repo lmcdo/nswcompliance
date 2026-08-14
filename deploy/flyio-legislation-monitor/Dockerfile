@@ -9,6 +9,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY pco_client.py .
 COPY legislation_monitor.py .
+# refresh_runbook became an import of legislation_monitor in #504 and was never
+# added here, so the container died at import on every cycle — and run_loop.sh
+# swallows that with `|| echo "will retry next cycle"`, so the machine stayed
+# `started` and silent. Verified 2026-08-14 by running the monitor on the live
+# machine: ModuleNotFoundError: No module named 'refresh_runbook'.
+# tests/test_dockerfile_monitors_imports.py now fails if any local import of a
+# COPYd module is not itself COPYd — mutation-checked in both directions.
+COPY refresh_runbook.py .
 COPY check_ip.py .
 COPY run_loop.sh .
 

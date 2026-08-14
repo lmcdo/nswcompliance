@@ -209,6 +209,114 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "SELF-DISCLOSING -- each names its locality in its own condition text -- "
         "so they are not this defect and are not registered chapters anyway.",
     ),
+    "DQ-69": (
+        "Active NSW instruments the legislation monitor has not checked in 14 days",
+        # LIVENESS, not data quality. The monitor is a 7-day sleep loop on Fly
+        # (deploy/flyio-legislation-monitor/run_loop.sh) whose failure branch is
+        # `|| echo "will retry next cycle"` -- a permanently broken monitor and a
+        # healthy one look identical from outside, and did for 67 days. Nothing
+        # read the healthchecks.io ping, and no alert fires on silence.
+        #
+        # ⚠ This probe's original premise was WRONG and the gate caught it.
+        # It assumed last_checked was written on both the change and no-change
+        # paths. It was not: check_instrument returned early whenever the source
+        # gave no version, which on the PCO path is the NORMAL case, so a run
+        # that reported "Checked: 26" wrote zero rows (observed 2026-08-14).
+        # The gate therefore could not tell a dead monitor from a healthy quiet
+        # one -- the exact confusion it exists to remove. Fixed in the same
+        # change: PCO's export lists every amended instrument, so absence is an
+        # affirmative confirmation and is now recorded, but ONLY for instruments
+        # carrying a pco_instrument_id (one without can never appear, so silence
+        # about it means nothing and stamping it would fabricate a check).
+        #
+        # last_checked is now a true liveness signal and CANNOT be satisfied by
+        # editing code -- only by the monitor actually running. 14 days = 2x the
+        # 7-day loop period.
+        "SELECT count(*) FROM instrument_registry "
+        "WHERE is_active AND (last_checked IS NULL "
+        "                     OR last_checked < NOW() - INTERVAL '14 days')",
+        (),
+        "Each row is a SEPP or LEP whose amendments we would not have seen. "
+        "Measured 26 of 26 on 2026-08-14: max(last_checked) = 2026-06-08, i.e. "
+        "67 days blind, and 1 instrument has never been checked at all. A "
+        "residual of 1-2 means those specific instruments fail at the source "
+        "(PCO 403 / AustLII Cloudflare) and belongs in notes, not in a retry "
+        "loop; a residual of 26 means the monitor is not running.",
+    ),
+    "DQ-70": (
+        "Served provisions whose source PDF has CHANGED since they were extracted",
+        # THE OUTCOME SIGNAL, not a mechanism one. Every other gate in this file
+        # asks whether some machinery ran. This asks whether what we SERVE still
+        # corresponds to the document it came from -- and answers it exactly,
+        # with no PDF read, no LLM and no golden set.
+        #
+        # dcp_chapter_registry carries both halves already:
+        #   content_hash                   = the PDF we hold NOW
+        #   provisions_extracted_from_hash = the PDF the served rows came FROM
+        # When they differ we are knowingly serving an older extraction of a
+        # document that has since moved. docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md
+        # calls this "the precise unused signal" -- recorded since June, read by
+        # nothing.
+        #
+        # AFFIRMATIVE wrongness, unlike a missing check: we hold the file, we
+        # hold a different hash, we still serve the old rows. A code edit cannot
+        # move it; only a re-extraction can. Mutation-checked: flipping <> to =
+        # returns 12,069, so the comparison is doing the discriminating.
+        #
+        # Deliberately EXCLUDES the 348 chapters that never recorded a hash, so
+        # the number stays a defect count rather than a blend of defect and
+        # ignorance. That gap is real and larger -- see the note.
+        "SELECT count(*) FROM regulatory_provisions p "
+        "  JOIN dcp_chapter_registry r "
+        "    ON r.council = p.source_council AND r.chapter_key = p.source_chapter_key "
+        " WHERE p.is_current AND p.v2_is_actionable AND r.is_active "
+        "   AND r.provisions_extracted_from_hash IS NOT NULL "
+        "   AND r.content_hash IS NOT NULL "
+        "   AND r.content_hash <> r.provisions_extracted_from_hash",
+        (),
+        "Each row is a control we serve today that was read out of a version of "
+        "the document we no longer hold. We cannot say it reflects the current "
+        "text, and we would not know if it had changed. Measured 595 across 10 "
+        "chapters on 2026-08-14 (564 active: 206 hash-matched, 10 drifted). "
+        "Clears only by re-extracting those chapters -- not by editing code. "
+        "SEPARATE AND LARGER: 348 active chapters never recorded which version "
+        "their provisions came from at all (25 served provisions among them), so "
+        "for those the question cannot even be asked; that gap is not counted "
+        "here and needs its own row.",
+    ),
+    "DQ-71": (
+        "Provisions awaiting human approval with NO check against the source document",
+        # The reviewer's exposure, not the pipeline's. Each row is a provision a
+        # human is being asked to approve into the served corpus with nothing
+        # having confirmed its text appears in the council's own PDF.
+        #
+        # fidelity_status is NOT this check. 19,199 of 19,649 queue rows carry
+        # one, but it is a cheap inline heuristic -- garbled glyphs, junk ref,
+        # emptied, oversize -- and it never opens the PDF. fidelity_source_quote
+        # is the real thing: the passage from the source document that grounds
+        # the row. 12 rows in the table's history have one. 0.06%.
+        #
+        # Cause was a coupling, not an absence: dcp_fidelity_gate.gate_chapter
+        # was gated on AI_EXTRACTION, a flag that ALSO swaps the whole
+        # deterministic extractor for an LLM (~L1130 of dcp_extract_changed).
+        # Nobody was going to enable that in production to get verification, so
+        # verification never ran. Decoupled 2026-08-14 behind its own opt-OUT
+        # control, fidelity_gate_enabled().
+        #
+        # Scoped to what the grader can actually grade: 'removed' rows have no
+        # new_text to ground, so counting them would inflate this with rows no
+        # amount of grading could ever clear.
+        "SELECT count(*) FROM dcp_review_queue "
+        " WHERE status IN ('pending', 'in_progress') "
+        "   AND change_type <> 'removed' AND new_text IS NOT NULL "
+        "   AND fidelity_source_quote IS NULL",
+        (),
+        "Each row is a provision a reviewer is asked to approve on trust. "
+        "Measured 3,741 of 3,741 gradeable pending rows on 2026-08-14 -- 100%, "
+        "and 0 of all 8,693 pending rows carry a source quote. Clears as the "
+        "decoupled gate runs over each chapter; a residual means the grader read "
+        "the PDF and could not find the text, which is a FINDING, not a gap.",
+    ),
     "DQ-40": (
         "Setback controls still flagged for review",
         "SELECT count(*) FROM dcp_setback_controls WHERE needs_review IS TRUE",

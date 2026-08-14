@@ -107,17 +107,38 @@ class TestFetchFailsVisible:
         monkeypatch.setenv("MODAL_OCR_URL", "https://example.invalid/ocr")
         monkeypatch.setenv("MODAL_OCR_TOKEN", "t")
 
+    @staticmethod
+    def _resp(status_code, payload=None):
+        """A response fake for the STREAMED contract.
+
+        fetch_ocr_page_texts now uses `with requests.post(..., stream=True)` and
+        reads via iter_content, because a scalar requests timeout cannot bound
+        the call (measured 2026-08-14: a socket held 2472s against timeout=1800).
+
+        __enter__ must return THIS object. A bare MagicMock auto-creates a new
+        child for __enter__(), whose .status_code is a Mock that never equals
+        200 — so every test here would return None and the failure-path tests
+        would pass for the wrong reason while asserting nothing.
+        """
+        import json as _json
+        r = MagicMock(status_code=status_code)
+        r.__enter__ = lambda self=r: r
+        r.__exit__ = lambda *a, **k: False
+        body = b"" if payload is None else _json.dumps(payload).encode()
+        r.iter_content = lambda chunk_size=None, _b=body: iter([_b] if _b else [])
+        return r
+
     def test_non_200_returns_none(self, monkeypatch):
         self._env(monkeypatch)
         fake = MagicMock()
-        fake.post.return_value = MagicMock(status_code=503)
+        fake.post.return_value = self._resp(503)
         with patch.dict(sys.modules, {"requests": fake}):
             assert fetch_ocr_page_texts(__file__, 1) is None
 
     def test_junk_payload_returns_none(self, monkeypatch):
         self._env(monkeypatch)
         fake = MagicMock()
-        fake.post.return_value = MagicMock(status_code=200, json=lambda: {"pages": "not-a-list"})
+        fake.post.return_value = self._resp(200, {"pages": "not-a-list"})
         with patch.dict(sys.modules, {"requests": fake}):
             assert fetch_ocr_page_texts(__file__, 1) is None
 
@@ -126,7 +147,7 @@ class TestFetchFailsVisible:
         the wrong source pages — reject the whole response."""
         self._env(monkeypatch)
         fake = MagicMock()
-        fake.post.return_value = MagicMock(status_code=200, json=lambda: {"pages": ["a", "b"]})
+        fake.post.return_value = self._resp(200, {"pages": ["a", "b"]})
         with patch.dict(sys.modules, {"requests": fake}):
             assert fetch_ocr_page_texts(__file__, 3) is None
 
@@ -140,10 +161,8 @@ class TestFetchFailsVisible:
     def test_success_returns_normalised_pages(self, monkeypatch):
         self._env(monkeypatch)
         fake = MagicMock()
-        fake.post.return_value = MagicMock(
-            status_code=200,
-            json=lambda: {"pages": ["<|det|>text [1, 2, 3, 4]<|/det|>Objectives 1 To ensure"]},
-        )
+        fake.post.return_value = self._resp(
+            200, {"pages": ["<|det|>text [1, 2, 3, 4]<|/det|>Objectives 1 To ensure"]})
         with patch.dict(sys.modules, {"requests": fake}):
             out = fetch_ocr_page_texts(__file__, 1)
         assert out == ["Objectives 1 To ensure"]

@@ -529,6 +529,42 @@
       "passes_when": "exit 0 - every served provision carries a v2_topic",
       "red_when": "A provision the product serves has no topic, so it cannot be routed to the right section of a report or filtered by topic.",
       "note": "Opened 2026-08-14 because the ledger was narrower than the defect it described. DQ-24 tracks 523 of these - the Transport & Infrastructure SEPP slice - and scoping it that way was defensible, but it left 2,674 rows in exactly the same state with nothing watching them. Same served-set scope as DQ-24, so DQ-24 is a strict subset and the two numbers are comparable. Measured 3,197 of 19,957 served provisions (16.0%), concentrated in statewide instruments (2,530) and the Inner West former councils (marrickville 475, leichhardt 123)."
+    },
+    "DQ-69": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-69"
+      ],
+      "passes_when": "exit 0 - every active SEPP/LEP in instrument_registry was checked by the legislation monitor within the last 14 days (2x its 7-day loop). NOTE: 1 is the correct floor while wingecarribee_lep_2010 has no pco_instrument_id; 0 requires giving it one.",
+      "red_when": "The NSW legislation monitor is not running, so amendments to SEPPs and LEPs go unseen. LIVENESS, not data quality: last_checked is written on both the change and no-change paths, so only an actual run moves it - a code edit cannot satisfy this check.",
+      "note": "⚠ Opened as DQ-68 and RENUMBERED to DQ-69 on rebase: #954's ledger took 68 for the untagged-topic row. Measured 2026-08-14: 26 of 26 active instruments stale, max(last_checked) = 2026-06-08 = 67 days blind. TWO independent causes, both fixed: (a) the Fly container died at import - #504 added `refresh_runbook` to legislation_monitor.py and never added the COPY, confirmed live by ModuleNotFoundError; (b) even when it ran, check_instrument returned early whenever the source gave no version, which on the PCO path is the NORMAL case, so a run reporting 'Checked: 26' wrote ZERO rows. (b) also invalidated this probe's first premise - the gate caught its own flaw. PCO's export lists every amended instrument, so absence is an affirmative confirmation and is now recorded, but ONLY where pco_instrument_id is set. Post-fix measured 1. Silence stayed invisible because run_loop.sh swallows failures with `|| echo \"will retry next cycle\"`, the machine stays `started` either way, and the healthchecks.io ping is read by nothing. Telegram on the Fly machine was ALSO returning HTTP 404 (stale token) - reset from the working Railway secret."
+    },
+    "DQ-70": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-70"
+      ],
+      "passes_when": "exit 0 - no served provision comes from a chapter whose PDF has changed since that provision was extracted (content_hash = provisions_extracted_from_hash for every chapter backing served rows)",
+      "red_when": "We are serving a control read out of a version of the document we no longer hold. THE OUTCOME SIGNAL: every other check in this ledger asks whether machinery ran; this asks whether what we serve still corresponds to its source. A code edit cannot satisfy it - only re-extracting the drifted chapters.",
+      "note": "⚠ Opened as DQ-69 and RENUMBERED to DQ-70 on rebase (#951-#954 took 64-68). Measured 2026-08-14: 595 served provisions across 10 drifted chapters, of 564 active (206 hash-matched, 10 drifted, 348 never recorded a hash). docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md named content_hash != provisions_extracted_from_hash 'the precise unused signal' in June; both columns have been written since and read by nothing. Chosen as THE outcome gate because it needs no PDF read, no LLM and no golden set, and unlike the extraction coverage metric it compares served data against the SOURCE rather than against the previous pipeline's output - which is itself known to carry errors (wingecarribee serving Bowral's controls; ~1,543 collided refs), so 100% agreement there can mean reproducing a mistake. Mutation-checked at the SQL level: flipping <> to = returns 12,069, so the comparison is doing the discriminating. DELIBERATELY EXCLUDES the 348 chapters with no recorded hash (25 served provisions) so this stays an affirmative defect count, not a blend of defect and ignorance."
+    },
+    "DQ-71": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-71"
+      ],
+      "passes_when": "exit 0 - every gradeable provision awaiting human approval has been checked against its source PDF and carries a fidelity_source_quote",
+      "red_when": "A reviewer is being asked to approve provisions into the served corpus with nothing having confirmed the text appears in the council's own document. fidelity_status is NOT this check - 19,199 rows carry one, but it is a cheap inline heuristic (garbled glyphs, junk ref, oversize) that never opens the PDF.",
+      "note": "Measured 2026-08-14: 3,741 of 3,741 gradeable pending rows ungraded - 100% - and 0 of all 8,693 pending rows carry a source quote. Across the table's whole history, 12 of 19,649 rows have one: 0.06%. The cause was a COUPLING, not an absence: dcp_fidelity_gate.gate_chapter was gated on AI_EXTRACTION, a flag that also swaps the entire deterministic extractor for an LLM, so nobody would enable it in production merely to get verification. Decoupled 2026-08-14 behind its own opt-OUT control fidelity_gate_enabled(); the three other AI_EXTRACTION sites are legitimate and remain. Cost checked before switching on: one R2 download plus pdfplumber text extraction per chapter via the RAW page path, deliberately not the OCR-aware one, so it cannot inherit the unbounded Modal call. A residual after the gate runs means the grader read the PDF and could not find the text - that is a FINDING about the extraction, not a gap in coverage."
     }
   }
 }

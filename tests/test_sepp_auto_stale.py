@@ -46,9 +46,85 @@ class FakeCursor:
 class FakeConn:
     def __init__(self):
         self._cur = FakeCursor()
+        self.commits = 0
 
     def cursor(self):
         return self._cur
+
+    def commit(self):
+        self.commits += 1
+
+
+# ── "we checked it" must be recorded, and only when it is TRUE ───────────────
+# The monitor reported "Checked: 26" on 2026-08-14 while instrument_registry
+# last_checked sat frozen at 2026-06-08: check_instrument returned early on
+# new_version is None and wrote nothing, and the PCO no-change path makes that
+# the NORMAL case. So nothing could distinguish "monitor dead" from "monitor
+# fine, nothing changed" — and no currency claim could be dated.
+def _load_check_instrument():
+    """check_instrument sits at ~L567, after send_telegram and the dataclass it
+    returns, so the slice is (dataclass decorator .. def main) plus the two
+    datetime names it closes over."""
+    _dt = __import__("datetime")
+    ns: dict = {
+        "datetime": _dt.datetime,
+        "timezone": _dt.timezone,
+        "dataclass": __import__("dataclasses").dataclass,
+        "Optional": __import__("typing").Optional,
+    }
+    head = MON_SRC.index("@dataclass")
+    head_end = MON_SRC.index("def mark_dependent_standards_stale")
+    body = MON_SRC.index("def check_instrument")
+    body_end = MON_SRC.index("def main():")
+    exec(MON_SRC[head:head_end] + "\n\n" + MON_SRC[body:body_end], ns)
+    return ns["check_instrument"]
+
+
+check_instrument = _load_check_instrument()
+
+
+def _inst(pco_id):
+    return {
+        "instrument_key": "sepp_housing_2021",
+        "instrument_label": "SEPP (Housing) 2021",
+        "current_version": "1 Jan 2026",
+        "legislation_url": "https://example.invalid",
+        "pco_instrument_id": pco_id,
+    }
+
+
+class TestUncheckedIsRecorded:
+    def test_pco_silence_on_a_covered_instrument_stamps_last_checked(self):
+        """PCO lists every amended instrument, so absence IS a confirmation."""
+        conn = FakeConn()
+        check_instrument(_inst("epi-2021-0714"), None, "pco", False, conn)
+        sqls = [s for s, _ in conn._cur.executed]
+        assert any("last_checked" in s and "instrument_registry" in s for s in sqls), \
+            "a confirmed-unchanged instrument must record that it was checked"
+        assert conn.commits == 1
+
+    def test_pco_silence_on_an_UNCOVERED_instrument_stamps_nothing(self):
+        """No pco_instrument_id => it can never appear in the export, so silence
+        about it means nothing. Stamping would fabricate a confirmation.
+        Live case: wingecarribee_lep_2010."""
+        conn = FakeConn()
+        check_instrument(_inst(None), None, "pco", False, conn)
+        assert conn._cur.executed == [], \
+            "an instrument PCO does not cover must NOT be marked as checked"
+        assert conn.commits == 0
+
+    def test_other_sources_do_not_stamp_on_a_miss(self):
+        """nsw_legislation/austlii fetch per instrument — a None there is a
+        failed fetch, not a confirmation."""
+        for src in ("nsw_legislation", "austlii"):
+            conn = FakeConn()
+            check_instrument(_inst("epi-2021-0714"), None, src, False, conn)
+            assert conn._cur.executed == [], f"{src} must not stamp on a miss"
+
+    def test_dry_run_writes_nothing(self):
+        conn = FakeConn()
+        check_instrument(_inst("epi-2021-0714"), None, "pco", True, conn)
+        assert conn._cur.executed == [] and conn.commits == 0
 
 
 class TestMonitorMarking:

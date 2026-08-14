@@ -832,8 +832,20 @@ COUNCIL_SECTION_RE_OVERRIDES: dict[str, re.Pattern] = {
     #   - Letter-prefixed: "C8 Some control", "O9 Some objective"
     # Override to require at least one dot OR a letter prefix, preventing page-number
     # artifacts from being extracted as sections.
+    # ⚠ CORRECTED 2026-08-14 — the [A-Z]\d+ alternative was the primary defect.
+    # It deliberately admitted "C8 Some control" / "O9 Some objective" as SECTION
+    # headings. Those are clause markers, and COUNCIL_SUBSECTION_PATTERNS
+    # ["marrickville"] level 2 already splits them, so admitting them here was
+    # redundant — and harmful: it pushed ordinary body pages to 7–16 hits, over
+    # the TOC page guard's >=5 threshold, which then blanked ALL section
+    # detection on those pages. Measured: part2-s11-fencing holds 88 heading
+    # matches in its text and only 4 sections survived; every clause collapsed
+    # onto __preamble_*, losing the citable clause number. Woollahra's override
+    # 20 lines below excludes O1/C1 for exactly this reason, from 2026-05.
+    # Dotted-decimal only takes body pages to 1–4 hits (unsuppressed) while the
+    # genuine contents page stays at 13 (still suppressed).
     "marrickville": re.compile(
-        r'^([A-Z]\d+(?:\.\d+)*|\d+(?:\.\d+)+)\s+([A-Z][^\n]+)$', re.MULTILINE
+        r'^(\d+(?:\.\d+)+)\s+([A-Z][^\n]+)$', re.MULTILINE
     ),
     # Woollahra DCP 2015: section codes are letter + digit + dot + digit(s), e.g.
     # "B3.1 Introduction", "B3.2.3 Side setbacks", "E1.4 Parking rates".
@@ -1189,113 +1201,130 @@ class DCPExtractor:
                 # whose content is just the TOC list. Skip all section detection on these
                 # pages; their text is absorbed into the current (parent) section.
                 _toc_hits = len(section_re.findall(text))
-                if _toc_hits >= 5:
-                    match = None
-                else:
-                    match = section_re.search(text)
-                if match:
-                    new_code = match.group(1)
-                    if current and (
-                        current["section_number"] == new_code
-                        or current["section_number"].startswith(new_code + ".")
-                    ):
-                        # Running page header: either the same section code, or a parent
-                        # prefix (e.g. Marrickville prints "2.1 Urban Design" at the top
-                        # of every page in 2.1 and its sub-sections 2.1.1.3, 2.1.2.2
-                        # etc.). Don't start a new section for the parent code while
-                        # already inside a child of that section.
-                        match = None
-                if match:
-                    if current:
-                        current["page_end"] = page_num - 1
-                        sections.append(current)
-                    title = match.group(2).strip()
-                    # ── Heading continuation fix ──────────────────────────────
-                    # Some PDFs (e.g. Marrickville) wrap long section titles
-                    # across lines: the regex captures only the first line
-                    # (e.g. "Urban" instead of "Urban Design").  Look at up to
-                    # 2 lines immediately after the match end and append any
-                    # that look like title continuations (not blank, not a new
-                    # section code, not a bare page number).
-                    _after = text[match.end():]
-                    # Split on newlines; the first element is often empty because
-                    # the match ends just before a '\n' — skip leading empty entries
-                    # so we look at the actual lines that follow the heading.
-                    _extra_lines = _after.split('\n')
-                    _continuations = 0
-                    _saw_first_nonempty = False
-                    for _extra in _extra_lines[:10]:
-                        _stripped = _extra.strip()
-                        if not _stripped:
-                            if _saw_first_nonempty:
-                                # True blank line after content — stop
-                                break
-                            # Leading empty from trailing newline of match — skip
-                            continue
-                        _saw_first_nonempty = True
-                        if _STANDALONE_SECTION_CODE_RE.match(_stripped):
-                            # Looks like a new section code — stop
-                            break
-                        if re.match(r'^\d+$', _stripped):
-                            # Bare page number — stop
-                            break
-                        if len(_stripped) > 50:
-                            # Long line — real content, not a title continuation
-                            break
-                        if re.match(r'^[a-z]', _stripped):
-                            # Starts with lowercase — could be a conjunction in a title
-                            # (e.g. "and", "or", "of") or sentence content.
-                            # Allow short conjunctions (≤5 chars) as title continuations;
-                            # stop on any longer lowercase word (sentence content).
-                            if len(_stripped) > 5:
-                                break
-                            # Short lowercase word — treat as title conjunction, continue
-                        if re.match(r'^(Appendix|Part|Chapter|Section|Note|See|Where)\b', _stripped):
-                            # Structural keyword — end of heading, start of appendix/note
-                            break
-                        if '\u2013' in _stripped or '\u2014' in _stripped or ' - ' in _stripped:
-                            # En-dash or em-dash signals a descriptive sub-clause, not a title word
-                            break
-                        if _continuations >= 4:
-                            # Cap at 4 extra lines (handles multi-word wrapped titles)
-                            break
-                        title = title + ' ' + _stripped
-                        _continuations += 1
-                    current = {
-                        "section_number": match.group(1),
-                        "section_title": title,
-                        "content": "",
-                        "tables": [],
-                        "page_start": page_num,
-                        "page_end": page_num,
-                        "pages": [page_num],
-                    }
+                _suppress = _toc_hits >= 5
 
-                if current:
-                    current["content"] += f"\n\n{text}"
-                    if page_num not in current["pages"]:
-                        current["pages"].append(page_num)
-                    for tbl in page_tables:
-                        html = self._table_to_html(tbl)
-                        if html:
-                            current["tables"].append({"html": html, "page": page_num})
-                else:
-                    # Pre-section preamble (TOC, cover, etc.)
-                    if not sections or sections[-1].get("section_number") != "preamble":
-                        sections.append({
-                            "section_number": "preamble",
-                            "section_title": "Document Information",
-                            "content": text,
+                # Councils in MULTI_HEADING_COUNCILS carry more than one heading
+                # per page; split so each heading-delimited block runs through the
+                # SAME single-match logic below. Element 0 is the text before the
+                # first heading and belongs to the section still open from the
+                # previous page. Every other council gets [text] — one segment,
+                # behaviour bit-identical to before.
+                _segments = (
+                    split_page_at_headings(text, section_re)
+                    if (self.council in MULTI_HEADING_COUNCILS and not _suppress)
+                    else [text]
+                )
+
+                # Tables are extracted per PAGE, not per segment. Attach them to
+                # the first segment that has an open section and then clear, or a
+                # 3-heading page would attach the same tables three times.
+                _page_tables_left = page_tables
+                for text in _segments:
+                    match = None if _suppress else section_re.search(text)
+                    if match:
+                        new_code = match.group(1)
+                        if current and (
+                            current["section_number"] == new_code
+                            or current["section_number"].startswith(new_code + ".")
+                        ):
+                            # Running page header: either the same section code, or a parent
+                            # prefix (e.g. Marrickville prints "2.1 Urban Design" at the top
+                            # of every page in 2.1 and its sub-sections 2.1.1.3, 2.1.2.2
+                            # etc.). Don't start a new section for the parent code while
+                            # already inside a child of that section.
+                            match = None
+                    if match:
+                        if current:
+                            current["page_end"] = page_num - 1
+                            sections.append(current)
+                        title = match.group(2).strip()
+                        # ── Heading continuation fix ──────────────────────────────
+                        # Some PDFs (e.g. Marrickville) wrap long section titles
+                        # across lines: the regex captures only the first line
+                        # (e.g. "Urban" instead of "Urban Design").  Look at up to
+                        # 2 lines immediately after the match end and append any
+                        # that look like title continuations (not blank, not a new
+                        # section code, not a bare page number).
+                        _after = text[match.end():]
+                        # Split on newlines; the first element is often empty because
+                        # the match ends just before a '\n' — skip leading empty entries
+                        # so we look at the actual lines that follow the heading.
+                        _extra_lines = _after.split('\n')
+                        _continuations = 0
+                        _saw_first_nonempty = False
+                        for _extra in _extra_lines[:10]:
+                            _stripped = _extra.strip()
+                            if not _stripped:
+                                if _saw_first_nonempty:
+                                    # True blank line after content — stop
+                                    break
+                                # Leading empty from trailing newline of match — skip
+                                continue
+                            _saw_first_nonempty = True
+                            if _STANDALONE_SECTION_CODE_RE.match(_stripped):
+                                # Looks like a new section code — stop
+                                break
+                            if re.match(r'^\d+$', _stripped):
+                                # Bare page number — stop
+                                break
+                            if len(_stripped) > 50:
+                                # Long line — real content, not a title continuation
+                                break
+                            if re.match(r'^[a-z]', _stripped):
+                                # Starts with lowercase — could be a conjunction in a title
+                                # (e.g. "and", "or", "of") or sentence content.
+                                # Allow short conjunctions (≤5 chars) as title continuations;
+                                # stop on any longer lowercase word (sentence content).
+                                if len(_stripped) > 5:
+                                    break
+                                # Short lowercase word — treat as title conjunction, continue
+                            if re.match(r'^(Appendix|Part|Chapter|Section|Note|See|Where)\b', _stripped):
+                                # Structural keyword — end of heading, start of appendix/note
+                                break
+                            if '\u2013' in _stripped or '\u2014' in _stripped or ' - ' in _stripped:
+                                # En-dash or em-dash signals a descriptive sub-clause, not a title word
+                                break
+                            if _continuations >= 4:
+                                # Cap at 4 extra lines (handles multi-word wrapped titles)
+                                break
+                            title = title + ' ' + _stripped
+                            _continuations += 1
+                        current = {
+                            "section_number": match.group(1),
+                            "section_title": title,
+                            "content": "",
                             "tables": [],
                             "page_start": page_num,
                             "page_end": page_num,
                             "pages": [page_num],
-                        })
+                        }
+
+                    if current:
+                        current["content"] += f"\n\n{text}"
+                        if page_num not in current["pages"]:
+                            current["pages"].append(page_num)
+                        for tbl in _page_tables_left:
+                            html = self._table_to_html(tbl)
+                            if html:
+                                current["tables"].append({"html": html, "page": page_num})
+                        _page_tables_left = []  # this page's tables are placed
                     else:
-                        sections[-1]["content"] += f"\n\n{text}"
-                        sections[-1]["page_end"] = page_num
-                        if page_num not in sections[-1]["pages"]:
-                            sections[-1]["pages"].append(page_num)
+                        # Pre-section preamble (TOC, cover, etc.)
+                        if not sections or sections[-1].get("section_number") != "preamble":
+                            sections.append({
+                                "section_number": "preamble",
+                                "section_title": "Document Information",
+                                "content": text,
+                                "tables": [],
+                                "page_start": page_num,
+                                "page_end": page_num,
+                                "pages": [page_num],
+                            })
+                        else:
+                            sections[-1]["content"] += f"\n\n{text}"
+                            sections[-1]["page_end"] = page_num
+                            if page_num not in sections[-1]["pages"]:
+                                sections[-1]["pages"].append(page_num)
 
             if current:
                 current["page_end"] = total
@@ -1967,29 +1996,106 @@ def text_layer_garbled(page_texts: list[str]) -> bool:
     return any(_garble_evidence(t) for t in page_texts)
 
 
+# ── OCR call bounds ──────────────────────────────────────────────────────────
+# prior-art-checked: reuse not viable because no shared HTTP client exists —
+# r2_monitor.py, intelligence_brief.py and generate_conveyancing_report.py each
+# build their own requests call with their own scalar timeout, so there is
+# nothing to extend; this bounds THIS file's own OCR call in place. (Those three
+# carry the same scalar-timeout assumption and are noted in the plan as needing
+# the same treatment — a shared client is a separate refactor, not this fix.)
+#
+# ⚠ A SCALAR requests timeout CANNOT BOUND THIS CALL. In requests, `timeout=N`
+# is the maximum gap BETWEEN BYTES and resets on every byte received — it is not
+# a total deadline. Measured 2026-08-14 on the live sweep: an ESTABLISHED socket
+# to the Modal endpoint (54.156.152.125:443, one of the six A records for
+# lawrence-mcdonell--ocr-pdf.modal.run) sat open for 2472s against timeout=1800
+# and never fired, at 0.00s CPU. A server that dribbles anything holds the
+# nightly extraction open forever, silently, looking exactly like work.
+#
+# Bounding it needs a STRUCTURAL change, not a smaller number:
+#   OCR_CONNECT_TIMEOUT/OCR_READ_TIMEOUT — a dead socket still fails fast
+#   OCR_TOTAL_DEADLINE                   — streamed read against a monotonic
+#                                          clock, the only thing that caps total
+#                                          duration in one thread
+OCR_CONNECT_TIMEOUT = 30       # seconds to establish
+OCR_READ_TIMEOUT = 120         # seconds of SILENCE before giving up
+# ⚠ NOT enforceable in-thread — see the note in fetch_ocr_page_texts.
+# Kept as the value an EXTERNAL (subprocess) cap should use.
+OCR_TOTAL_DEADLINE = 600
+OCR_MAX_BYTES = 256 * 1024 * 1024  # refuse an unbounded body
+
+
 def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
     """POST the PDF to the Modal OCR endpoint; return normalised per-page
     texts, or None on ANY failure (caller stays on the text layer). The
     response must carry EXACTLY expected_pages entries — a short response
-    would serve OCR text for the wrong source pages (Sol review of PR #836)."""
+    would serve OCR text for the wrong source pages (Sol review of PR #836).
+
+    Bounded by OCR_TOTAL_DEADLINE wall-clock, not by requests' timeout — see
+    the note above for why the latter cannot do it.
+    """
     url = os.getenv("MODAL_OCR_URL", "").strip()
     token = os.getenv("MODAL_OCR_TOKEN", "").strip()
     if not url or not token:
         print("    [OCR] MODAL_OCR_URL/TOKEN not set — staying on text layer")
         return None
     try:
+        import json as _json
+        import time as _time
+
         import requests
 
-        resp = requests.post(
+        _t0 = _time.monotonic()
+        with requests.post(
             url,
             data=open(pdf_path, "rb").read(),
             headers={"X-OCR-Token": token},
-            timeout=1800,
-        )
-        if resp.status_code != 200:
-            print(f"    [OCR] endpoint returned {resp.status_code} — staying on text layer")
-            return None
-        pages = resp.json().get("pages")
+            timeout=(OCR_CONNECT_TIMEOUT, OCR_READ_TIMEOUT),
+            stream=True,
+        ) as resp:
+            if resp.status_code != 200:
+                print(f"    [OCR] endpoint returned {resp.status_code} — staying on text layer")
+                return None
+            # ⚠ TOTAL-DURATION BOUNDING IS NOT POSSIBLE HERE. THREE MECHANISMS
+            # WERE BUILT AND MEASURED ON 2026-08-14; ALL THREE FAILED:
+            #   1. iter_content(65536) + a clock between chunks — blocks until
+            #      64KB accumulates, so the check never runs. A 2s deadline took
+            #      100s against a server writing 1 byte per 0.2s, and only then
+            #      because the server stopped.
+            #   2. iter_content(None) — urllib3 read(None) reads to EOF, so it
+            #      blocks forever. Strictly worse.
+            #   3. A threading.Timer closing resp.raw underneath the blocked
+            #      read — did not unblock it. On Windows, closing a socket from
+            #      another thread does not reliably interrupt a blocked recv.
+            # Any byte count blocks until that many bytes arrive, so the loop
+            # body — wherever a clock would live — simply does not execute.
+            #
+            # WHAT IS BOUNDED HERE: silence. OCR_READ_TIMEOUT caps the gap
+            # between bytes, which is the common real failure (the endpoint dies
+            # or stops responding). That is worth having and the old scalar
+            # timeout=1800 made it 30 minutes instead of 2.
+            #
+            # WHAT IS NOT: a server that dribbles forever. Bounding THAT needs an
+            # external cap — run the fetch in a subprocess and kill it. See
+            # P6.0 in ce-provisions-pipeline-repair-2026-08.md; the measurement
+            # harness for the Marrickville gate is the reference implementation
+            # (one subprocess per chapter, hard wall-clock cap, TIMEOUT recorded
+            # and counted rather than dropped). Do not re-attempt an in-thread
+            # deadline — it has been tried three ways and measured each time.
+            chunks, size = [], 0
+            for chunk in resp.iter_content(65536):
+                if not chunk:
+                    continue
+                size += len(chunk)
+                if size > OCR_MAX_BYTES:
+                    print(f"    [OCR] response exceeded {OCR_MAX_BYTES:,} bytes — staying on text layer")
+                    return None
+                chunks.append(chunk)
+            body = b"".join(chunks)
+        _elapsed = _time.monotonic() - _t0
+        # Always report duration: a hang you never timed is a hang you cannot see.
+        print(f"    [OCR] endpoint responded in {_elapsed:.0f}s ({size:,} bytes)")
+        pages = _json.loads(body.decode("utf-8", "replace")).get("pages")
         if not isinstance(pages, list) or not pages:
             print("    [OCR] endpoint returned no pages — staying on text layer")
             return None
@@ -2082,6 +2188,104 @@ def suspect_reason(review_data: dict) -> str | None:
         return (f"preflight_empty_layer ({pf.get('empty_text_pages')}/"
                 f"{pf.get('total_pages')} pages without text layer — scanned source)")
     return None
+
+
+# Councils whose pages carry MORE THAN ONE section heading. _extract_sequential
+# takes one heading per page (section_re.search), so on these the 2nd and 3rd
+# headings are swallowed into the first heading's content and their clauses
+# collide onto the wrong ref. Marrickville measured 2026-08-14: fixing only the
+# SECTION_RE recovered 5 of ~10 real sections in part2-s11-fencing, because p5
+# holds 2.11/2.11.1, p6 holds 2.11.3/2.11.4/2.11.4.1 and p9 holds 2.11/2.11.6.
+#
+# OPT-IN, default off. Every other council keeps the exact single-match path,
+# so the blast radius of this change is one council. Leichhardt (same era and
+# format, 3,600 served provisions) and Parramatta were probed read-only and
+# extract correctly today — 8 and 644 real sections — so widening this is not
+# justified by evidence and must not be done without measuring the council first.
+MULTI_HEADING_COUNCILS = {"marrickville"}
+
+
+def fidelity_gate_enabled() -> bool:
+    """Whether to grade queued rows against their source PDF. Default ON.
+
+    ⚠ This used to be gated on AI_EXTRACTION, and that was the wrong flag. Of the
+    four AI_EXTRACTION sites, three are legitimate — it swaps the whole extractor
+    for an LLM (~L1130), selects that path per council (~L2616), and runs
+    coverage/truncation railguards that only mean anything for LLM output
+    (~L2742). But the fidelity gate grades rows that are ALREADY QUEUED, and
+    "does this text appear in the council's own document" is the same question
+    whichever extractor produced the row.
+
+    The cost of that coupling, measured 2026-08-14: of 19,649 review-queue rows
+    ever written, **12 carry a fidelity_source_quote** — 0.06% — because
+    AI_EXTRACTION is not set on the Railway dcp-extract service and nobody was
+    going to enable an LLM extractor in production just to get verification.
+    The one check that compares our output against the source has effectively
+    never run.
+
+    OPT-OUT, not opt-in. A verification that is off by default is exactly the
+    shape this work exists to remove. Set DCP_FIDELITY_GATE=0 to disable, and
+    only with a reason.
+    """
+    return os.getenv("DCP_FIDELITY_GATE", "").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
+def split_page_at_headings(text: str, section_re) -> list[str]:
+    """Split one page's text into [pre-heading remainder, heading-1 block, ...].
+
+    Element 0 is whatever precedes the first heading — it belongs to the section
+    still open from the previous page, and is '' when the page opens on a
+    heading. Each later element starts exactly at a heading match, so the
+    caller's existing single-match logic works on it unchanged.
+
+    Pure. Returns [text] when there is nothing to split, so the caller's
+    behaviour is bit-identical to before on 0- and 1-heading pages.
+    """
+    matches = list(section_re.finditer(text))
+    if len(matches) < 2:
+        return [text]
+    out = [text[: matches[0].start()]]
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        out.append(text[m.start(): end])
+    return out
+
+
+def suspect_alert_key(review_data: dict) -> str | None:
+    """Stable identity of a SUSPECT condition: (content_hash, reason).
+
+    None when the chapter is not suspect. Pure.
+
+    Both halves are load-bearing (see migrations/066_suspect_alert_dedup.sql):
+    hash alone would silence a chapter whose PDF is unchanged but whose failure
+    MODE changed; reason alone would re-alert on every re-export of an
+    identical document.
+    """
+    reason = suspect_reason(review_data)
+    if not reason:
+        return None
+    return f"{review_data.get('content_hash') or 'nohash'}::{reason}"
+
+
+def unalerted_suspects(suspect: list[dict], last_keys: dict) -> list[dict]:
+    """Those whose condition is NEW or CHANGED since the last alert. Pure.
+
+    `last_keys` maps (council, chapter_key) -> last_suspect_alert_key, absent or
+    None meaning never alerted. Between 1 and 13 Aug 2026 the same two chapters
+    alerted byte-identically every day because there was no such memory; the
+    channel stopped being read, and the numeric-value-change alerts sharing it
+    went unactioned for weeks.
+    """
+    fresh = []
+    for ch in suspect:
+        key = suspect_alert_key(ch)
+        if key is None:
+            continue
+        if last_keys.get((ch.get("council"), ch.get("chapter_key"))) != key:
+            fresh.append(ch)
+    return fresh
 
 
 def build_suspect_alert(council: str, suspect: list[dict]) -> str | None:
@@ -3325,7 +3529,12 @@ def main() -> None:
         # the reviewer sees only flagged rows with a source quote instead of the whole batch.
         # Lazy import dodges the circular import (dcp_fidelity_gate imports this module).
         # Advisory: a grading failure never fails the extract — the rows are still queued.
-        if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
+        # ⚠ Gated on fidelity_gate_enabled(), NOT on AI_EXTRACTION. See that
+        # function: the old coupling meant this ran on 12 of 19,649 rows ever.
+        # One R2 download + pdfplumber text extraction per chapter, via the RAW
+        # page path — deliberately not the OCR-aware one, so this cannot inherit
+        # the unbounded Modal call.
+        if fidelity_gate_enabled():
             try:
                 import dcp_fidelity_gate as _gate
                 pairs = sorted({(ch.get("council"), ch.get("chapter_key")) for ch in review_chapters})
@@ -3366,15 +3575,70 @@ def main() -> None:
             print(f"  Do NOT approve these without checking the source PDF.")
             print(f"  {'!'*58}")
 
+            # prior-art-checked: reuse not viable because no alert-state store
+            # exists anywhere — grepped scripts/, services/, migrations/ and
+            # DB_SCHEMA.md for alert_state/alert_log/last_alerted/notification/
+            # dedup and every hit is unrelated (provision de-duplication, or the
+            # word "suppressed" in report prose). dcp_watchdog.py has severity
+            # tiers but no memory of what it has already said. This extends this
+            # file's own alert path in place and stores state on the registry
+            # row that already holds this chapter's operational state.
+            #
             # Best-effort push so the quarterly run alerts, not just logs. Reuses
             # run_monitors.send_telegram (no-ops when TELEGRAM_* unset).
-            alert = build_suspect_alert(args.council or "all", suspect)
+            #
+            # Only NEW or CHANGED conditions are pushed. The console block above
+            # still lists every suspect chapter every run — suppression applies
+            # to the alert, not to the record. A still-true condition continues
+            # to surface in the WEEKLY dcp_watchdog (which reports the same
+            # review-blocked chapters, with their true age since 2026-08-14), so
+            # suppressed is not silent. If that watchdog check is ever removed,
+            # remove this suppression with it.
+            fresh = []
+            last_keys: dict = {}
+            try:
+                _c = conn.cursor()
+                _c.execute(
+                    "SELECT council, chapter_key, last_suspect_alert_key "
+                    "FROM dcp_chapter_registry WHERE last_suspect_alert_key IS NOT NULL"
+                )
+                last_keys = {(a, b): k for a, b, k in _c.fetchall()}
+                _c.close()
+                fresh = unalerted_suspects(suspect, last_keys)
+            except Exception as exc:
+                # Never let dedup bookkeeping suppress a real alert: on ANY
+                # failure fall back to alerting about everything.
+                print(f"  [warn] suspect-alert dedup unavailable ({exc}) — alerting on all")
+                fresh = suspect
+
+            repeats = len(suspect) - len(fresh)
+            if repeats:
+                print(f"  [alert] {repeats} unchanged condition(s) suppressed "
+                      f"(already alerted; still listed above and in the weekly watchdog)")
+
+            alert = build_suspect_alert(args.council or "all", fresh) if fresh else None
             if alert:
                 try:
                     from run_monitors import send_telegram
                     send_telegram(alert)
                 except Exception as exc:  # never let alerting break the run
                     print(f"  [warn] SUSPECT Telegram alert not sent: {exc}")
+                else:
+                    # Record ONLY after a successful send, so a failed push
+                    # re-alerts next run instead of being silently swallowed.
+                    try:
+                        _c = conn.cursor()
+                        for ch in fresh:
+                            _c.execute(
+                                "UPDATE dcp_chapter_registry "
+                                "SET last_suspect_alert_key = %s, last_suspect_alert_at = NOW() "
+                                "WHERE council = %s AND chapter_key = %s",
+                                (suspect_alert_key(ch), ch.get("council"), ch.get("chapter_key")),
+                            )
+                        conn.commit()
+                        _c.close()
+                    except Exception as exc:
+                        print(f"  [warn] could not record suspect-alert keys: {exc}")
 
         conn.close()
         sys.exit(2)  # exit 2 = review file written, triggers workflow quality gate

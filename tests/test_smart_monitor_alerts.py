@@ -190,6 +190,59 @@ class TestSmartFlaggingDecision:
         assert should_flag is False
 
 
+# ── Watchdog staleness must not be measured off a value we rewrite ──────────
+# On 2026-08-13 the alert read "5 chapters stuck >48h" and then "oldest 0d" for
+# five chapters flagged since 2026-06-22 — 53 days. The >48h tier was computed
+# from the chapter flag (right); the printed age came from MIN(queue.created_at),
+# and dcp_extract_changed.py:2969 deletes and re-inserts pending rows nightly, so
+# that clock resets every night. Loading by source slice: importing dcp_watchdog
+# would execute its module-level DB queries.
+def _load_stuck_review_line():
+    import datetime as _dt
+    from pathlib import Path as _P
+    src = (_P(__file__).resolve().parent.parent / "scripts" / "dcp_watchdog.py").read_text(
+        encoding="utf-8")
+    start = src.index("def stuck_review_line")
+    end = src.index("# ── Check 1")
+    ns: dict = {"datetime": _dt.datetime, "timezone": _dt.timezone}
+    exec(src[start:end], ns)
+    return ns["stuck_review_line"]
+
+
+class TestWatchdogStalenessSource:
+    stuck_review_line = staticmethod(_load_stuck_review_line())
+
+    def _now(self):
+        import datetime as dt
+        return dt.datetime(2026, 8, 13, 20, 0, tzinfo=dt.timezone.utc)
+
+    def test_age_comes_from_the_chapter_flag_not_the_nightly_queue_rows(self):
+        """The live case: flagged 2026-06-22, queue rows rebuilt today."""
+        import datetime as dt
+        flagged = dt.datetime(2026, 6, 22, 2, 0, tzinfo=dt.timezone.utc)
+        line = self.stuck_review_line("city_of_sydney", "section-3", flagged, 106, self._now())
+        assert "52d" in line or "53d" in line, (
+            f"a 53-day-old stall must not report as fresh; got: {line}"
+        )
+        assert "0d" not in line
+
+    def test_a_genuinely_new_stall_still_reads_as_new(self):
+        import datetime as dt
+        flagged = self._now() - dt.timedelta(days=0, hours=50)
+        line = self.stuck_review_line("blacktown", "part-a", flagged, 36, self._now())
+        assert "flagged 2d ago" in line
+
+    def test_missing_flag_says_unknown_rather_than_zero(self):
+        """A NULL url_last_changed must not silently render as 0 days."""
+        line = self.stuck_review_line("x", "y", None, 5, self._now())
+        assert "UNKNOWN" in line and "0d" not in line
+
+    def test_pending_row_count_is_still_reported(self):
+        import datetime as dt
+        flagged = self._now() - dt.timedelta(days=10)
+        assert "106 rows pending" in self.stuck_review_line("a", "b", flagged, 106, self._now())
+
+
 # ── Watchdog severity classification tests ──────────────────────────────────
 
 
