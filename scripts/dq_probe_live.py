@@ -45,7 +45,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         (SAR_SOURCE,),
         "These are the ones a user can still be served today.",
     ),
-    "DQ-69": (
+    "DQ-68": (
         "Served provisions carrying no topic, across every document",
         # Opened 2026-08-14 because the ledger was narrower than the defect it
         # described. DQ-24 counts 523 of these — the ones from one SEPP — and
