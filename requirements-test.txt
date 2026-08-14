@@ -89,3 +89,15 @@ shapely==2.1.2
 # numpy and pillow are already in CI's transitive closure, matplotlib was not,
 # so the 5 hillshade render tests never ran. Pinned to match requirements.txt:76.
 matplotlib==3.11.1
+
+# PyYAML: tests/test_data_watch_workflow.py parses .github/workflows/data-watch.yml
+# to prove the alarm names the check that actually failed — its outcome list and
+# its label array are mapped POSITIONALLY, so a new step added to one and not the
+# other reports the wrong check to somebody who then looks at the wrong thing.
+#
+# It was already in requirements.txt:132 and NOT here, which is the same gap this
+# file records for pvlib and PyMuPDF: requirements.txt is not what CI installs
+# (.github/workflows/gates.yml). The dependency-skip ratchet caught it on the
+# first run — the tests would have skipped silently in CI, so the guard against a
+# misdirecting alarm would itself have been dark. Pinned to match.
+PyYAML==6.0.3

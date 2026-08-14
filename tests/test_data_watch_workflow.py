@@ -22,8 +22,18 @@ import re
 from pathlib import Path
 
 import pytest
+import yaml  # noqa: F401  — see below
 
-yaml = pytest.importorskip("yaml")
+# A PLAIN import, deliberately, not pytest.importorskip("yaml").
+#
+# importorskip was the first version, and the dependency-skip ratchet caught it
+# on the first CI run: PyYAML sat in requirements.txt but not in
+# requirements-test.txt, which is the file CI installs, so these tests would
+# have SKIPPED in CI — silently. A guard against a misdirecting alarm would
+# itself have been dark, which is the failure this whole file is about.
+#
+# PyYAML is now declared in requirements-test.txt. A plain import means that if
+# it ever falls out again these tests go RED rather than quiet.
 
 _WF = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "data-watch.yml"
 
