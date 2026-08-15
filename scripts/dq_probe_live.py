@@ -591,7 +591,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "DISJOINT set: do not add the two numbers.",
     ),
     "DQ-76": (
-        "Served provisions showing LaTeX markup where a regulated number belongs",
+        "Served provisions carrying PDF-extraction residue in place of the text",
         # DQ-27 is NOT reopened by this and must not be. Its scope was
         # marrickville and its fix held perfectly: 36 -> 0, verified at ANY
         # status against this same predicate. This is the SAME corruption in a
@@ -606,25 +606,56 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # Found on 2026-08-15 by writing a check for a row whose ledger entry
         # said only "Historic." rather than trusting that status.
         #
-        # Token set is wider than DQ-27's original three: \mathrm and \pmb were
-        # both observed in the matched rows, \pmb in the setback formulae.
+        # WIDENED 2026-08-15 after the first version was shown unfit. It listed
+        # five macros I had happened to see (mathsf, mathfrak, mathtt, mathrm,
+        # pmb) and so counted 10 while reporting CLEAN on 89 rows carrying the
+        # identical fault -- a row with only \dag, \bullet, \div, \frac or
+        # \lambda scored green. A check that cannot fail on most of its own
+        # defect class is the DQ-30 "0% drift" shape, which passed while 241
+        # rows stayed broken.
         #
-        # A regex, not five LIKEs, and not for elegance: psycopg2 reads % in the
-        # SQL as a parameter placeholder even when params is empty, so the LIKE
-        # form raised IndexError before it ever reached the database. Doubling
-        # to %% would work and would also make the pattern unreadable. DQ-29
-        # already uses ~ for the same reason.
+        # The predicate now describes the FAULT -- pdfplumber emitting TeX
+        # math-mode residue instead of the rendered glyph -- through three
+        # signatures, each validated by reading every row it uniquely
+        # contributes rather than by sampling:
+        #
+        #   1. \word   any TeX control sequence. Justified by enumerating the
+        #      backslash tokens actually present: mathfrak, dag, mathbf,
+        #      bullet, pmb, mathtt, div, phantom, ast, cdots, zeta, begin/end,
+        #      textrm, pounds, frac, ell, tau, overbar, nu, ddot, vec, sf,
+        #      overline, lambda, operatorname, Delta, scriptstyle. All TeX.
+        #   2. $ NOT followed by a digit. 94 rows carry $ before a digit and
+        #      are money; this catches none of them. The 18 it uniquely finds
+        #      are '$L_{A10}$', '1 in 20 $( 5 % )', '$F o o d A c t 2003'.
+        #   3. a brace group wrapping a single symbol. The 24 it uniquely
+        #      finds are the worst of the set: '12 00 { m } 2' for 1,200 m2,
+        #      '4 {} 000 m 2 { - } 15 m' for a 4,000 m2 lot and a 15 m
+        #      setback, '3.6 { m } above ground level' for a height limit.
+        #
+        # TWO SIGNATURES WERE MEASURED AND REJECTED, on evidence not hunch.
+        # Digit-spacing ([0-9] [0-9] [0-9], 87 rows) matches "100 Year ARI
+        # Flood Level" and "1% AEP". Superscript-brace ([\^_]\s*\{, 8 rows)
+        # matches markdown section ids like 14e_3. Keeping either for coverage
+        # would make the number unfallable, which is how a check gets ignored.
+        #
+        # Regexes rather than LIKE: psycopg2 reads % as a parameter placeholder
+        # even when params is empty, so the LIKE form raised IndexError before
+        # reaching the database. DQ-29 uses ~ for the same reason.
         r"SELECT count(*) FROM regulatory_provisions "
-        r"WHERE is_current AND v2_is_actionable "
-        r"AND provision_text ~ '\\(mathsf|mathfrak|mathtt|mathrm|pmb)'",
+        r"WHERE is_current AND v2_is_actionable AND ("
+        r"provision_text ~ '\\[A-Za-z]{2,}' "
+        r"OR (provision_text LIKE '%%$%%' AND provision_text !~ '\$[0-9]') "
+        r"OR provision_text ~ '\{\s*\\?\s*[-A-Za-z0-9]\s*\}')",
         (),
-        "Each row shows a reader raw LaTeX where a regulated value belongs. "
-        "Measured 10 served rows on 2026-08-15, all statewide instruments. "
-        "These are not cosmetic: they are wall-height and setback CONTROLS - "
-        "'\\mathfrak { s o o m m }' is meant to read 900mm, and "
-        "'\\mathtt { s } = \\mathtt { h } - 3 \\mathtt { m }' is the setback "
-        "formula s = h - 3m. One of the ten carries the token beyond the first "
-        "190 characters, so it is corrupt but not visibly so at the top.",
+        "Each row shows a reader extraction residue where a regulated value "
+        "belongs. Measured 99 served rows on 2026-08-15 (the earlier figure of "
+        "10 was the narrow metric, not a smaller defect). Not cosmetic: the "
+        "affected text includes '12 00 { m } 2' for 1,200 m2, "
+        "'4 {} 000 m 2 { - } 15 m' for a 4,000 m2 lot with a 15 m setback, "
+        "'3.6 { m } above ground level' for a height limit, and "
+        "'Omit 666 m { - } 18 m 3 from clause 3C.28(4)' for an amendment "
+        "instruction. Clears only by repairing the text at source; editing the "
+        "predicate to make it fall would be the defect this row is about.",
     ),
 }
 
