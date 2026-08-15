@@ -1,0 +1,99 @@
+{
+  "tier": "standard",
+  "justification": "Fixes a one-field bug in the production monitor and corrects one registry row with a verified value. Standard rather than Light because head_request runs against every chapter nightly and the change alters what it records for any server that rejects HEAD. Standard rather than Critical because no served regulatory text is touched, the corrected value was measured against the live document rather than chosen, and the verified-correct content_hash is deliberately left alone.",
+  "commit_hash": "89b96024",
+  "files": [
+    "scripts/r2_monitor.py",
+    "tests/test_pdf_body_guard.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_pdf_body_guard.py -q; python scripts/dq_probe_live.py --id DQ-79; python scripts/dq_probe_live.py --id DQ-70",
+    "fails_when": "a chapter's recorded content length is too small to be the document, or the range fallback again reports the range's size instead of the document's",
+    "observed_red": "DQ-79 was RED at 1 before this change and is 0 after, re-read from the probe rather than inferred from the UPDATE. The regression test was watched failing: reintroducing the original bug by ignoring Content-Range fails test_range_response_reports_the_document_size_not_the_range, and only that one, so it is aimed at the defect rather than at the code's shape."
+  },
+  "pre_impl": {
+    "existing_data": "hornsby id=314 held url_content_length=1 against a document of 14,117,244 bytes. 524 active chapters carry a length and hornsby was the only one under 1,000. content_hash 193ac6a4... and url_etag 61d878e6-46c9-4ebe both match the live file exactly, confirmed by downloading it.",
+    "assumption_mismatch": "The whole of my previous diagnosis. I read url_content_length=1 as evidence the document could not be fetched, concluded the stored hash was 'a hash of the failure', and stated DQ-70 overstated by 32. Fetching the file disproved every part of that: it downloads fine, and its sha256 equals the stored hash. The lesson is that a suspicious FIELD is not evidence about a DOCUMENT, and I generalised from one to the other without checking. The correction is recorded in DQ-79's note and tracker row rather than quietly edited away.",
+    "external_source_error": "The range fallback exists because some council servers answer HEAD with 405. On that path a 206 response is correct and its Content-Length of 1 is also correct - it describes the range. Treating it as the document size was the error. The fix reads Content-Range's total and falls back to plain Content-Length when that header is absent or unparseable ('bytes */*' is legal and carries no total), so a server behaving differently degrades to the previous behaviour instead of raising inside the monitor loop.",
+    "frontend_type": "No frontend change. url_content_length is internal monitor bookkeeping and is not served, rendered or typed anywhere in the app.",
+    "user_failure_mode": "No user-visible failure either before or after: this field never reaches a report. The harm was to diagnosis. A wrong recorded size made a healthy chapter look broken, and I nearly acted on that reading - the danger was a wrong REPAIR prompted by a wrong number, not a wrong answer served to a planner.",
+    "new_vs_existing": "No new surface. _range_total is a helper beside head_request in the file that owns the behaviour, and the tests extend the existing tests/test_pdf_body_guard.py rather than starting a new module."
+  },
+  "functions": [
+    {
+      "name": "_range_total",
+      "file_line": "scripts/r2_monitor.py, called from head_request's 405 fallback",
+      "input": "the response headers of a range request, from which it needs the document's total size rather than the returned range's length",
+      "output": "the digits after the slash in Content-Range when present and parseable, otherwise plain Content-Length, otherwise None",
+      "if_none": "the fallback keeps storing 1 as the size of every chapter whose server rejects HEAD, and any metric reading that field misreads those chapters as broken"
+    }
+  ],
+  "values": [
+    {
+      "value": "hornsby live document = 14,117,244 bytes, sha256 193ac6a451b06b2a..., ETag 61d878e6-46c9-4ebe",
+      "read_at": "HEAD and GET against both the stored v/2 URL and the council's current v/3 URL, 2026-08-15, compared against the registry row",
+      "if_missing": "the retraction rests on it. Without the download, 'the hash is correct' would be another assertion, and the previous wrong diagnosis would have stood"
+    },
+    {
+      "value": "both URLs return byte-identical content",
+      "read_at": "same session, sha256 compared",
+      "if_missing": "repointing council_url would be an unverified change to how a chapter is fetched, rather than the tidiness it is"
+    }
+  ],
+  "queries": [
+    {
+      "query": "UPDATE dcp_chapter_registry SET url_content_length = %s, council_url = %s WHERE id = %s AND url_content_length = %s AND council_url = %s",
+      "file_line": "run once from a session script; the registry edit is data, not code, so it is not committed as a reusable tool",
+      "purpose": "Replace the bogus length with the measured one and repoint to the council's current path.",
+      "where_clause": "Guarded on BOTH prior values as well as the id, so a concurrent edit affects nothing; the script asserts rowcount == 1 and rolls back otherwise. content_hash is absent from the SET clause on purpose - it was verified correct and rewriting it would destroy the evidence that hornsby's change is genuine."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A server returns 206 with no Content-Range header at all.",
+      "what_happens": "Falls back to plain Content-Length, which is the pre-change behaviour. No exception, no None written where a number is expected.",
+      "repro": "python -m pytest tests/test_pdf_body_guard.py::test_unparseable_content_range_falls_back_rather_than_raising -q",
+      "mitigated": "Yes.",
+      "how": "The regex requires a trailing /<digits>; anything else falls through to Content-Length, and a test covers the legal-but-totalless 'bytes */*' form."
+    },
+    {
+      "scenario": "Someone clears DQ-79 in future by rewriting a content_hash instead of the length.",
+      "what_happens": "The probe would not move, because it reads url_content_length and not the hash.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-79",
+      "mitigated": "Yes, structurally.",
+      "how": "The metric deliberately measures the field that was wrong. Both the ledger note and the tracker row state that the hash must not be rewritten and why."
+    },
+    {
+      "scenario": "The corrected length is itself wrong and hides a real problem.",
+      "what_happens": "A chapter would look healthy while its stored size disagreed with the document.",
+      "repro": "curl -sI <hornsby v/3 url> | grep -i content-length   # expect 14117244",
+      "mitigated": "Yes.",
+      "how": "The value was not chosen or inferred: it is Content-Length from HEAD, Content-Length from GET, and len(content) on a full download, all three agreeing at 14,117,244."
+    },
+    {
+      "scenario": "Repointing council_url breaks fetching for this chapter.",
+      "what_happens": "The chapter would start failing checks and surface in DQ-69's staleness window rather than failing silently.",
+      "repro": "python -c \"import sys;sys.path.insert(0,'scripts');import r2_monitor as m;print(m.head_request('<v3 url>'))\"   # 200, 14117244",
+      "mitigated": "Yes.",
+      "how": "The new URL was fetched through the monitor's own head_request and download_pdf before the change, returning 200 and content whose sha256 equals the stored hash."
+    },
+    {
+      "scenario": "The same bogus length exists on other chapters and this fixes only the visible one.",
+      "what_happens": "Other chapters would carry wrong sizes that no metric catches.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-79   # counts every active chapter under the floor, not just hornsby",
+      "mitigated": "Yes.",
+      "how": "DQ-79 is corpus-wide rather than hornsby-specific, and returns 0 across all 524 active chapters carrying a length. The code fix prevents recurrence on any server that rejects HEAD."
+    }
+  ],
+  "mutation_analysis": "Mutation-tested against the ORIGINAL bug rather than an invented one: setting cr = None in _range_total, which is exactly the pre-change behaviour, fails test_range_response_reports_the_document_size_not_the_range and nothing else. That single, targeted failure is the evidence the test is aimed at the defect rather than at incidental structure. The three companion tests (server ignores Range, unparseable Content-Range, absent headers) correctly survive that mutant because they assert fallback behaviour the bug never affected. The earlier _assert_pdf_body guard in the same file remains mutation-verified at 6 of 10.",
+  "residual_risk": "DQ-70 is unchanged at 595 and is now CONFIRMED correct rather than suspected of overcounting - hornsby's 32 provisions really are extracted from a superseded version, along with 563 others across 8 more chapters. That work is untouched here. Ashfield's heritage chapter is 333 of the 595 and is the obvious next target. Separately, the re-export detector that distinguishes 'bytes changed, text identical' only runs at fetch time inside the monitor, so for these 9 chapters it has never been applied retrospectively - some of the 595 may be re-exports rather than genuine amendments, and that has not been measured.",
+  "post_merge": {
+    "db_reset": "No. One UPDATE to a single registry row, already applied, with prior values recorded in the commit message and this report. No schema change and no migration.",
+    "verify": "python scripts/dq_probe_live.py --id DQ-79 returns 0; --id DQ-70 returns 595; python -m pytest tests/test_pdf_body_guard.py passes 14.",
+    "secrets": "None added, read or referenced.",
+    "other_repo": "None in code. The monitor runs as a deployed job, so the head_request fix takes effect on its next scheduled run rather than at merge; the registry correction is already live.",
+    "manual_verify": "None required. The previous report asked for a human with a browser to find the moved PDF; that turned out to be unnecessary, because the old URL still serves the file and the new one is byte-identical."
+  }
+}
