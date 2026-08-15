@@ -889,6 +889,17 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "               WHERE r.council = p.lga AND r.is_active "
         "                 AND r.url_last_changed IS NOT NULL "
         "                 AND r.url_last_changed::date > p.portal_date "
+        # A NOT EXISTS over zero tokens is vacuously TRUE, so a name that
+        # yields no meaningful tokens would match every portal plan and let an
+        # unrelated chapter condemn the date. dcp_name is NOT NULL in the
+        # schema today, which makes the null half unreachable -- it is written
+        # anyway because the all-stopword half is NOT unreachable ('DCP' alone
+        # tokenises to nothing) and both are the same defect.
+        "                 AND r.dcp_name IS NOT NULL "
+        "                 AND EXISTS ("
+        "                   SELECT 1 FROM regexp_split_to_table("
+        "                          lower(r.dcp_name), %s) AS t0 "
+        "                    WHERE t0 <> %s AND t0 NOT IN (%s,%s,%s,%s,%s,%s)) "
         "                 AND NOT EXISTS ("
         "                   SELECT 1 FROM regexp_split_to_table("
         "                          lower(r.dcp_name), %s) AS t "
@@ -897,6 +908,8 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "                            regexp_split_to_table(lower(coalesce("
         "                              p.portal_plan_name,%s)), %s) AS pt)))",
         ("[^a-z0-9]+", "", "dcp", "development", "control", "plan",
+         "comprehensive", "the",
+         "[^a-z0-9]+", "", "dcp", "development", "control", "plan",
          "comprehensive", "the", "", "[^a-z0-9]+"),
         "Each row serves an 'as at' date that CANNOT describe the document we "
         "now hold, because our own copy changed after it. That disqualifies it "
