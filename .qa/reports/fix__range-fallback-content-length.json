@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Fixes a one-field bug in the production monitor and corrects one registry row with a verified value. Standard rather than Light because head_request runs against every chapter nightly and the change alters what it records for any server that rejects HEAD. Standard rather than Critical because no served regulatory text is touched, the corrected value was measured against the live document rather than chosen, and the verified-correct content_hash is deliberately left alone.",
-  "commit_hash": "ea23ef93",
+  "commit_hash": "89b96024",
   "files": [
     "scripts/r2_monitor.py",
     "tests/test_pdf_body_guard.py",
