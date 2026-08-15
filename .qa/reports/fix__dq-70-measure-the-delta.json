@@ -1,0 +1,113 @@
+{
+  "tier": "standard",
+  "justification": "Fixes a self-defeating branch in the production monitor and backfills one registry row with a re-verified value. Standard rather than Light because the branch runs against every chapter nightly and the change alters what it records on every re-export. Standard rather than Critical because no served regulatory text is touched, no provision is regenerated, and the one row written was re-measured immediately before writing. The change's main effect is to PREVENT an expensive and destructive operation, not to perform one.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/r2_monitor.py",
+    "scripts/dq70_measure_text_delta.py",
+    "tests/test_reexport_advances_extraction_hash.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_reexport_advances_extraction_hash.py -q; python scripts/dq70_measure_text_delta.py; python scripts/dq_probe_live.py --id DQ-70",
+    "fails_when": "the re-export branch stops advancing provisions_extracted_from_hash, a third writer of that field appears, or a chapter's extracted-from text stops matching what we hold without DQ-70 reflecting it",
+    "observed_red": "DQ-70 was 595 before and is 262 after, re-read from the probe rather than subtracted. The measurement script was watched producing the split that justified the change: 1 chapter re-export (333 served), 8 real (262), 0 unknown - and re-running it after the backfill reports 0 re-exports remaining, so the one row it was meant to clear is the one that cleared. The tests were mutation-verified by reverting the SET clause to its pre-fix form, which fails exactly the two targeted tests."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry: content_hash = bytes we hold; provisions_extracted_from_hash = bytes the served provisions were read from; DQ-70 counts served provisions where they differ. Nine chapters carried the 595. All nine had both a live URL and a stored copy, so re-extraction looked straightforward.",
+    "assumption_mismatch": "The framing of DQ-70 itself. It reads as 'these documents were amended, re-extract them', and I was one command from doing that. Measuring first showed 56% of the count was a chapter nobody had amended - Ashfield recompressed a PDF from 25,959,773 to 3,879,460 bytes with byte-identical normalised text. The deeper mismatch: I assumed the divergence meant the DOCUMENT had moved on. It could equally mean the monitor had moved content_hash without moving the extraction hash, and that is exactly what the re-export branch does.",
+    "external_source_error": "The measurement deliberately reads BOTH versions from R2 rather than fetching the live URL. Introducing a third fetch would let a network failure or a WAF block masquerade as a text difference - the confusion that produced my previous wrong diagnosis. Any R2 read failure is reported as UNKNOWN and explicitly counted separately from both outcomes, because could-not-look is not the same as found-nothing.",
+    "frontend_type": "No frontend change. Both fields are internal registry bookkeeping and are never served or rendered.",
+    "user_failure_mode": "The harm here was to decision-making, not to a served answer. A false 'the source changed' entry invites a re-extraction, and re-extraction is whole-chapter: it would have regenerated all 333 Ashfield provisions and pushed 333 rows into a review queue already holding 8,693 rows that your own notes record as a bug report, where approving them would soft-delete ~4,950 live provisions. So the realistic worst case was a large, hard-to-reverse write triggered by a number that was wrong.",
+    "new_vs_existing": "dq70_measure_text_delta.py is new and its prior-art sweep is in its header: r2_monitor runs is_reexport at fetch time only and never retrospectively, which is why these 9 chapters had never been asked; pdf_text_hash.py is the detector it reuses rather than reimplements; dq_probe_live.py counts the row but is read-only and takes SQL, not S3 reads; dcp_extract_changed.py has a normaliser but is coupled to the heavy extraction path, which is the documented reason pdf_text_hash was split out."
+  },
+  "functions": [
+    {
+      "name": "the re-export branch UPDATE",
+      "file_line": "scripts/r2_monitor.py, inside the per-chapter loop after is_reexport returns True",
+      "input": "a chapter whose bytes changed but whose normalised text is identical to the version being replaced",
+      "output": "advances content_hash AND provisions_extracted_from_hash to the new hash, leaving the latter NULL when it was already NULL",
+      "if_none": "the two fields diverge permanently and DQ-70 counts the chapter forever, because only the extractor writes that field and re-extraction is the very thing this branch skips"
+    },
+    {
+      "name": "main (dq70_measure_text_delta)",
+      "file_line": "scripts/dq70_measure_text_delta.py",
+      "input": "no arguments, or --council to narrow; reads the DQ-70 chapter set from the database and both PDF versions from R2",
+      "output": "each chapter classified re-export / real change / unknown, with served-provision totals per class",
+      "if_none": "the only way to tell a recompression from an amendment is to re-extract and compare afterwards, which is the expensive destructive path this exists to avoid"
+    }
+  ],
+  "values": [
+    {
+      "value": "1 chapter re-export (333 served), 8 chapters real change (262 served), 0 unknown",
+      "read_at": "scripts/dq70_measure_text_delta.py against production and R2, 2026-08-15",
+      "if_missing": "the whole change is unjustified. Without the split, advancing any extraction hash would be guesswork, and 333 provisions would have been regenerated for nothing"
+    },
+    {
+      "value": "ashfield old text hash == new text hash (86743030d90c5116...)",
+      "read_at": "re-verified inside the backfill immediately before the UPDATE, not carried over from the earlier run",
+      "if_missing": "acting on a measurement taken minutes earlier is how a stale number becomes a wrong write; the backfill refuses if the hashes differ"
+    },
+    {
+      "value": "DQ-70 595 -> 262",
+      "read_at": "scripts/dq_probe_live.py --id DQ-70, before and after",
+      "if_missing": "the drop would rest on arithmetic rather than on the metric that defines the row"
+    }
+  ],
+  "queries": [
+    {
+      "query": "UPDATE dcp_chapter_registry SET provisions_extracted_from_hash = %s WHERE id = %s AND content_hash = %s AND provisions_extracted_from_hash = %s",
+      "file_line": "run once from a session script; the backfill is data, not a reusable tool, and the code fix prevents recurrence",
+      "purpose": "Record that Ashfield's served provisions reflect the version we now hold, which is true because the text is byte-identical.",
+      "where_clause": "Guarded on the id AND both current hash values, so a concurrent edit affects nothing; the script asserts rowcount == 1 and rolls back otherwise. It also refuses outright if the two text hashes are not equal at the moment of writing, so the guard is on the FACT, not just on the row."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A chapter is marked as a re-export when its text actually changed.",
+      "what_happens": "Stale provisions would be recorded as current and DQ-70 would stop counting them - a false green, the worst outcome here.",
+      "repro": "python scripts/dq70_measure_text_delta.py   # re-run; any chapter must classify as re-export only if both text hashes match",
+      "mitigated": "Yes, twice over.",
+      "how": "The classification uses the existing deterministic pdf_text_hash rather than a new comparison, and the backfill re-verifies the hashes itself immediately before writing and refuses if they differ. The code path in the monitor is reached only after is_reexport has already returned True."
+    },
+    {
+      "scenario": "A chapter that was never extracted is given an extraction hash.",
+      "what_happens": "It would look extracted-and-current while having no provisions at all - a worse error than the one being fixed.",
+      "repro": "python -m pytest tests/test_reexport_advances_extraction_hash.py::test_reexport_update_leaves_a_null_extraction_hash_null -q",
+      "mitigated": "Yes.",
+      "how": "The SET uses CASE WHEN provisions_extracted_from_hash IS NULL THEN NULL ELSE %s END, and a test asserts that guard is present."
+    },
+    {
+      "scenario": "A third writer of provisions_extracted_from_hash appears and invalidates this reasoning.",
+      "what_happens": "The diagnosis - that divergence can only be created by the monitor and only cleared by the extractor - would silently stop being true.",
+      "repro": "python -m pytest tests/test_reexport_advances_extraction_hash.py::test_only_the_extractor_and_the_reexport_branch_write_the_field -q",
+      "mitigated": "Yes.",
+      "how": "A test greps scripts/ for writers of the field and fails if the set grows beyond dcp_extract_changed.py and r2_monitor.py, so a new writer breaks a test rather than a conclusion."
+    },
+    {
+      "scenario": "R2 cannot serve one of the two versions and the chapter is silently skipped.",
+      "what_happens": "A chapter would be omitted from the split without anyone noticing which.",
+      "repro": "python scripts/dq70_measure_text_delta.py   # UNKNOWN rows are printed individually with their reason",
+      "mitigated": "Yes.",
+      "how": "UNKNOWN is a third category counted and listed separately, with its served total, and the summary labels it 'not a pass'. It is currently 0."
+    },
+    {
+      "scenario": "Someone reads 262 as the number of provisions needing regeneration.",
+      "what_happens": "Over-extraction - a chapter can change on one page and leave 90 provisions untouched.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-70   # 262 is chapter-level, not clause-level",
+      "mitigated": "Partially, by disclosure only.",
+      "how": "Both the ledger note and the tracker row state that 262 is an upper bound and that clause-level impact has not been measured. No guard enforces it, because the clause-level diff has not been built."
+    }
+  ],
+  "mutation_analysis": "Mutation-tested against the ORIGINAL bug rather than an invented one: reverting the SET clause to its pre-fix form - dropping provisions_extracted_from_hash entirely - fails exactly test_reexport_update_advances_the_extraction_hash and test_reexport_update_leaves_a_null_extraction_hash_null, and no others. That precision is the evidence the tests target the defect rather than the code's shape. The three survivors assert the branch still exists, that content_hash is still advanced, and that the field's writer set has not grown, none of which the mutant touches. The measurement script was validated by re-running it after the backfill: it now reports 0 re-exports and the same 8 real changes, so it responded to the one row that changed and to nothing else.",
+  "residual_risk": "The 262 remaining are genuine text changes and are NOT fixed here - they still need re-extraction, and that work still lands in a review queue holding 8,693 rows that is itself a recorded bug report, so it should not be started before that queue's two extractor bugs are dealt with. 262 is also an UPPER BOUND at chapter granularity: a document can change on one page while the provisions we serve from it are untouched, and no clause-level diff exists to narrow it. Building that diff is the obvious next step and would likely cut the number substantially. Separately, the monitor fix only prevents FUTURE re-exports from creating false entries; any historical chapter already in the diverged state clears only when someone runs the measurement, as was done here for Ashfield.",
+  "post_merge": {
+    "db_reset": "No. One UPDATE to a single registry row, already applied, guarded and re-verified. No schema change, no migration, no provision touched.",
+    "verify": "python scripts/dq_probe_live.py --id DQ-70 returns 262; python scripts/dq70_measure_text_delta.py reports 0 re-exports and 8 real changes; python -m pytest tests/test_reexport_advances_extraction_hash.py passes 5.",
+    "secrets": "None added. The measurement script reads R2 credentials already present in .env, the same ones r2_monitor uses.",
+    "other_repo": "None in code. The monitor runs as a deployed job, so the re-export fix takes effect on its next scheduled run; the Ashfield correction is already live.",
+    "manual_verify": "None required. If you want the assurance yourself, run scripts/dq70_measure_text_delta.py - it prints each chapter's byte sizes and whether the text is identical, which is the entire basis for sparing Ashfield."
+  }
+}
