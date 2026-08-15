@@ -740,6 +740,40 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "Clears by excluding figure pages at extraction, NOT by repairing the "
         "text: there is nothing in these rows to recover.",
     ),
+    "DQ-79": (
+        "Active chapters whose last fetch returned something too small to be the document",
+        # A FETCH FAILURE RECORDED AS AN AMENDMENT. hornsby's part3-residential
+        # chapter has url_content_length = 1 and check_failures = 0: the monitor
+        # downloaded one byte, called the check successful, hashed it, and
+        # stamped url_last_changed.
+        #
+        # The consequence is not cosmetic. DQ-70 counts a chapter as "source
+        # changed since extraction" by comparing those hashes, so hornsby's 32
+        # served provisions look amended when the document simply cannot be
+        # fetched. The two want OPPOSITE remedies -- an amendment wants
+        # re-extraction, a dead URL wants the URL fixed -- and re-extracting on
+        # this signal would replace 32 live controls with nothing.
+        #
+        # download_pdf() already refused a non-PDF Content-Type, added after
+        # "HTML error pages hashed as changes". A header is not a body: this
+        # response passed that guard. r2_monitor now checks the %PDF- signature
+        # and a length floor as well.
+        #
+        # NULL is excluded deliberately: a chapter never checked is a different
+        # state from one checked and found empty, and counting them together
+        # would hide which is which.
+        "SELECT count(*) FROM dcp_chapter_registry "
+        "WHERE is_active AND url_content_length IS NOT NULL "
+        "AND url_content_length < 1000",
+        (),
+        "Each row is a chapter whose recorded 'current' content is too small to "
+        "be the document, so its stored hash is a hash of the failure. Any "
+        "check comparing that hash reads the chapter as amended. Measured 1 of "
+        "524 on 2026-08-15 (hornsby part3-residential, 1 byte, 0 recorded "
+        "failures); the next smallest genuine chapter is 277,208 bytes. Clears "
+        "by fixing the URL and re-checking, NOT by resetting the hash -- that "
+        "would hide the broken URL rather than repair it.",
+    ),
 }
 
 

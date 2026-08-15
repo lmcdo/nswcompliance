@@ -220,6 +220,36 @@ def head_request(url: str) -> dict:
         return {"error": str(exc), "status": None}
 
 
+#: Below this, a response cannot be a usable PDF. Read off the distribution
+#: rather than picked: of 524 active chapters carrying a length, the smallest
+#: genuine one is 277,208 bytes and the only row under 1,000 is a 1-byte
+#: response. Any threshold between ~10 and ~270,000 selects the same row today,
+#: so the exact value is not load-bearing.
+MIN_PDF_BYTES = 1000
+
+
+def _assert_pdf_body(content: bytes, url: str) -> None:
+    """Raise unless the body really is a PDF.
+
+    Two checks, strongest first. The %PDF- signature is definitional; the
+    length floor catches a file that starts correctly and is then truncated to
+    uselessness. Raises RuntimeError so the caller's existing
+    ``except (RuntimeError, WAFBlockError): raise`` path treats it as a content
+    error rather than retrying a server that is answering perfectly well.
+    """
+    if not content.lstrip()[:5].startswith(b"%PDF-"):
+        head = content[:40]
+        raise RuntimeError(
+            f"Response is not a PDF (no %PDF- signature, {len(content)} bytes, "
+            f"starts {head!r}) — treating as a fetch failure, not a change: {url}"
+        )
+    if len(content) < MIN_PDF_BYTES:
+        raise RuntimeError(
+            f"PDF is implausibly small ({len(content)} bytes, floor "
+            f"{MIN_PDF_BYTES}) — treating as a fetch failure, not a change: {url}"
+        )
+
+
 def download_pdf(url: str, retries: int = 3) -> tuple[bytes, requests.structures.CaseInsensitiveDict]:
     for attempt in range(1, retries + 1):
         try:
@@ -243,6 +273,24 @@ def download_pdf(url: str, retries: int = 3) -> tuple[bytes, requests.structures
                     f"Expected PDF but got Content-Type: {ct} — "
                     f"server may have returned an error page: {url}"
                 )
+            # Verify the BODY is a PDF, not just the Content-Type header.
+            #
+            # The header check above was added for "HTML error pages hashed as
+            # changes". It is not enough: a server can answer
+            # Content-Type: application/pdf with a one-byte payload, and the
+            # monitor will hash it, record check_failures=0, and stamp
+            # url_last_changed. That is not a hypothetical -- hornsby's
+            # part3-residential chapter sits in the registry TODAY with
+            # url_content_length = 1 and no recorded failure, which makes 32
+            # served provisions look amended when the truth is that the
+            # document can no longer be fetched. Re-extracting on that signal
+            # would replace 32 live controls with nothing.
+            #
+            # A fetch failure and an amendment need opposite remedies, so they
+            # must not be indistinguishable. Raising here routes this down the
+            # loop's existing failure path: check_failures increments and the
+            # stored hash is left alone.
+            _assert_pdf_body(resp.content, url)
             # Return resp.headers directly (CaseInsensitiveDict) — do NOT convert to dict().
             # dict() loses case-insensitivity; servers/CDNs may send 'etag' (lowercase)
             # while the code looks up 'ETag', causing None to be stored every run.
