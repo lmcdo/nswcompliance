@@ -1,0 +1,100 @@
+{
+  "tier": "standard",
+  "justification": "Adds a content guard to the production monitor and one read-only probe. No data is written by this change. Standard rather than Light because the guard alters what the monitor records for every chapter it fetches nightly, and because the finding it encodes - a fetch failure recorded as an amendment - was about to send me into a re-extraction that would have deleted 32 live controls. Standard rather than Critical because the guard can only make the monitor write LESS: a rejected response leaves the registry row untouched and increments a failure counter.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/r2_monitor.py",
+    "scripts/dq_probe_live.py",
+    "tests/test_pdf_body_guard.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_pdf_body_guard.py -q; python scripts/dq_probe_live.py --id DQ-79",
+    "fails_when": "the monitor accepts a response that is not a PDF body, or an active chapter's recorded content is too small to be the document",
+    "observed_red": "DQ-79 is RED at 1 today - hornsby/part3-residential, url_content_length = 1, check_failures = 0. That is the live defect, not a synthetic one. The guard was mutation-verified rather than assumed: replacing _assert_pdf_body's body with `return` kills 6 of its 10 tests, and the 4 survivors are the must-pass cases (a real PDF, leading whitespace, the smallest genuine chapter), which correctly survive a no-op."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry holds 524 active chapters carrying a url_content_length. EXACTLY ONE is under 1,000 bytes: hornsby at 1 byte. The next smallest is 277,208 bytes (leichhardt part-e-water), so there is a five-order-of-magnitude gap and the threshold is not a judgement call. DQ-70 reports 595 served provisions across 9 chapters whose source hash differs from their extraction hash; 32 of those are hornsby and are not a change at all.",
+    "assumption_mismatch": "One, and it stopped the work I had planned. DQ-70 presents as 'these documents were amended, re-extract them'. All 9 chapters have a live URL and a stored copy, so re-extraction looked straightforward. Checking the fingerprints before running anything showed hornsby's current content is 1 byte - a failed fetch that was hashed and recorded as a change. Re-extracting that chapter would have replaced 32 live controls with nothing. The lesson is that a hash difference means 'the bytes we hold differ from the bytes we fetched', which is NOT the same claim as 'the document was amended'.",
+    "external_source_error": "This IS the external-source error path, which is the point. Council servers can return a 200 with a pdf Content-Type and a useless body. Previously that produced a silent wrong result: check recorded as successful, hash stored, chapter marked changed. Now it raises RuntimeError, which the per-chapter loop already routes to its failure path - check_failures increments, the stored hash is left alone, and the chapter shows up in DQ-69's staleness window instead of masquerading as an amendment. Raising RuntimeError rather than a transient error is deliberate: the caller re-raises it without retrying, because a server answering promptly with the wrong body will answer the same way three times.",
+    "frontend_type": "No frontend change. The monitor is a backend job; nothing about a served provision's shape changes. The user-visible consequence is indirect and negative-space: a chapter that cannot be fetched will now be reported as unfetched rather than quietly presented as freshly amended.",
+    "user_failure_mode": "Before: a chapter whose URL had died looked identical to one the council had just amended. Both show as 'source changed since extraction'. Acting on that signal - which is what DQ-70 asks you to do - would re-extract from an empty document and delete every control it had contributed. For hornsby that is 32 served provisions covering residential development, silently replaced with nothing. After: the fetch fails loudly, the hash is not touched, and DQ-79 counts the chapter until someone fixes the URL.",
+    "new_vs_existing": "No new surface. The guard extends download_pdf()'s existing Content-Type check in the same function, and the probe is a new entry in the established PROBES dict. No new script and no new tracker."
+  },
+  "functions": [
+    {
+      "name": "_assert_pdf_body",
+      "file_line": "scripts/r2_monitor.py, called from download_pdf before it returns",
+      "input": "the raw response body as bytes together with the URL it came from, so a rejection names the chapter that failed",
+      "output": "returns None when the body starts with a %PDF- signature and is at least MIN_PDF_BYTES; otherwise raises RuntimeError naming the size, the first bytes and the URL",
+      "if_none": "a one-byte or HTML response is hashed and recorded as the chapter's current content, which is exactly how hornsby's 32 provisions came to look amended"
+    }
+  ],
+  "values": [
+    {
+      "value": "hornsby url_content_length = 1, check_failures = 0",
+      "read_at": "psycopg2 against production dcp_chapter_registry, 2026-08-15",
+      "if_missing": "without it this is a speculative hardening; with it, it is a live defect with a named row and a countable metric"
+    },
+    {
+      "value": "1 of 524 active chapters under 1,000 bytes; smallest genuine chapter 277,208 bytes",
+      "read_at": "same query, ordered by url_content_length",
+      "if_missing": "the 1,000-byte floor would be an arbitrary number. The gap between 1 and 277,208 is what makes it safe, and a test asserts the floor stays below the smallest real chapter"
+    }
+  ],
+  "queries": [
+    {
+      "query": "SELECT count(*) FROM dcp_chapter_registry WHERE is_active AND url_content_length IS NOT NULL AND url_content_length < 1000",
+      "file_line": "scripts/dq_probe_live.py, PROBES['DQ-79']",
+      "purpose": "Counts chapters whose recorded current content cannot be the document, so their stored hash is a hash of a failure.",
+      "where_clause": "is_active scopes to chapters the product actually depends on. url_content_length IS NOT NULL is deliberate and load-bearing: a chapter never checked is a different state from one checked and found empty, and merging them would hide which is which. < 1000 is the floor read off the distribution."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council server returns a valid PDF that happens to be genuinely tiny.",
+      "what_happens": "It would be rejected and the chapter reported as unfetched rather than updated. No data is corrupted - the previous hash stands - but a real change could be missed.",
+      "repro": "python -m pytest tests/test_pdf_body_guard.py::test_the_smallest_genuine_chapter_would_pass -q",
+      "mitigated": "Yes, by measurement rather than by hope.",
+      "how": "The floor is 1,000 bytes against a measured smallest-real-chapter of 277,208 - a 277x margin - and a test asserts MIN_PDF_BYTES stays below that figure, so raising it toward a real document's size fails the suite."
+    },
+    {
+      "scenario": "The guard makes the monitor silently skip chapters and nobody notices.",
+      "what_happens": "It cannot be silent. A rejection raises, the loop increments check_failures, and the chapter stops having its last_checked refreshed - which is what DQ-69 counts.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-69",
+      "mitigated": "Yes.",
+      "how": "The failure lands in the monitor's existing counter and in DQ-69's staleness window, both of which are already watched."
+    },
+    {
+      "scenario": "Someone clears DQ-79 by resetting hornsby's stored hash instead of fixing the URL.",
+      "what_happens": "The metric goes green while the chapter remains unfetchable, and the next real amendment is missed.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-79 after any hash edit - it reads url_content_length, not the hash, so a hash reset does NOT clear it",
+      "mitigated": "Yes, structurally.",
+      "how": "The probe deliberately measures url_content_length rather than the hash, so the obvious shortcut does not move the number. Both the ledger note and the tracker row say so explicitly."
+    },
+    {
+      "scenario": "A server sends the PDF gzipped, so the body does not start with %PDF-.",
+      "what_happens": "requests transparently decompresses by Content-Encoding before resp.content, so the check sees decompressed bytes. The 524-chapter corpus is fetched by this same path today and only one row is below the floor, which is the evidence this is not happening broadly.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-79   # 1, not 524",
+      "mitigated": "Yes - evidenced rather than argued.",
+      "how": "If decompression were failing, the guard would reject far more than one chapter; the probe returning 1 is the measurement that rules it out."
+    },
+    {
+      "scenario": "Leading whitespace before the signature causes a false rejection.",
+      "what_happens": "Would reject a valid document.",
+      "repro": "python -m pytest tests/test_pdf_body_guard.py::test_leading_whitespace_is_tolerated -q",
+      "mitigated": "Yes.",
+      "how": "The check lstrips before testing the signature, and a test covers it."
+    }
+  ],
+  "mutation_analysis": "The guard was mutation-tested, not assumed: replacing _assert_pdf_body's body with `return` kills 6 of its 10 tests. The 4 survivors are precisely the cases that assert a valid document is ACCEPTED - a real PDF, one with leading whitespace, one at the smallest genuine chapter size, and the floor-versus-header assertion - which must survive a no-op guard, so their survival is the correct result rather than weakness. The probe was checked for vacuity by the same query returning 0 across the other 523 chapters carrying a length.",
+  "residual_risk": "This does NOT fix hornsby. The 1-byte hash is already stored and is left alone deliberately: resetting it would hide the broken URL, so DQ-79 stays red at 1 until someone re-points the chapter. DQ-70 therefore still overstates by 32 - it counts hornsby as amended - and that overstatement is now documented in both rows rather than silently carried. The remaining 8 chapters in DQ-70 (563 provisions) do appear to be genuine amendments, but that has NOT been confirmed by diffing the old and new text; the re-export detector in the monitor only runs at fetch time. Ashfield's heritage chapter alone is 333 of them and is the obvious next target.",
+  "post_merge": {
+    "db_reset": "No. No schema change, no migration, no write. The probe is a SELECT and the monitor guard only prevents writes.",
+    "verify": "python scripts/dq_probe_live.py --id DQ-79 returns 1; python -m pytest tests/test_pdf_body_guard.py passes 10.",
+    "secrets": "None added, read or referenced.",
+    "other_repo": "None in this repository's code, but the monitor runs as a deployed job - the guard takes effect on its next scheduled run rather than at merge. No redeploy is required for the probe.",
+    "manual_verify": "Open hornsby's council_url in a browser and confirm it does not serve the Part 3 residential PDF. That is the fix DQ-79 is asking for, and it is the one thing here that needs a human with a browser rather than a query."
+  }
+}
