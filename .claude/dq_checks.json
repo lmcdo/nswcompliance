@@ -1,16 +1,16 @@
 {
   "_README": [
     "Executable half of .claude/DATA_QUALITY_TRACKER.md. The markdown holds the",
-    "narrative; this holds the one thing prose cannot do — answer 'is it still",
+    "narrative; this holds the one thing prose cannot do \u2014 answer 'is it still",
     "broken?' by being RUN.",
     "",
-    "WHY: on 2026-08-12 the tracker said DQ-54 was 'Open — report-only' when it",
+    "WHY: on 2026-08-12 the tracker said DQ-54 was 'Open \u2014 report-only' when it",
     "had been fixed and merged that morning, and its own row said 'three call",
     "sites' when there were nine. Its header said Last Updated 2026-08-08. A",
     "hand-written status decays silently, and this repo has the receipts: #398",
     "hid for ten weeks, DQ-54's prose recurred in four days.",
     "",
-    "THE RATCHET RUNS BOTH WAYS — that is the whole point:",
+    "THE RATCHET RUNS BOTH WAYS \u2014 that is the whole point:",
     "  declared 'fixed' + check FAILS  -> red. A regression, or a fix that never was.",
     "  declared 'open'  + check PASSES -> red. Silently fixed; the ledger is lying",
     "                                     the other way and nobody would ever look.",
@@ -23,11 +23,11 @@
     "check: null is HONEST, not a TODO to hide behind. It means nobody has written",
     "a falsifiable check yet, and the count of nulls is reported on every run so",
     "the gap stays visible. An invented check that cannot fail is what produced",
-    "DQ-30's '0% drift' verification — worse than no check."
+    "DQ-30's '0% drift' verification \u2014 worse than no check."
   ],
-  "_max_no_check": 56,
+  "_max_no_check": 50,
   "_max_unverified_unresolved": 3,
-  "_max_fixed_without_check": 46,
+  "_max_fixed_without_check": 40,
   "checks": {
     "DQ-54": {
       "declared": "fixed",
@@ -38,7 +38,7 @@
         "tests/test_git_env_ratchet.py",
         "-q"
       ],
-      "passes_when": "exit 0 — every git call in scripts/ that pins cwd also pins env=git_env()",
+      "passes_when": "exit 0 \u2014 every git call in scripts/ that pins cwd also pins env=git_env()",
       "red_when": "any script runs git with cwd= and no env=git_env(), so a hook's GIT_DIR silently redirects it to another repository",
       "fixed_by": "#930"
     },
@@ -48,9 +48,9 @@
         "python",
         "scripts/dq_probe_stale_workflow_docs.py"
       ],
-      "passes_when": "exit 0 — no doc names a .github/workflows file that does not exist",
+      "passes_when": "exit 0 \u2014 no doc names a .github/workflows file that does not exist",
       "red_when": "a doc again names a .github/workflows file that does not exist",
-      "note": "Declared open, so the ratchet requires this to FAIL. When the docs are corrected it starts passing and the ratchet goes red until 'declared' is flipped to fixed — which is the point.",
+      "note": "Declared open, so the ratchet requires this to FAIL. When the docs are corrected it starts passing and the ratchet goes red until 'declared' is flipped to fixed \u2014 which is the point.",
       "fixed_by": "2026-08-12 - DCP_MONITORING.md, DCP_UPDATE_GOVERNANCE.md and QA-DATA-PROVENANCE.md corrected to name the Railway crons that actually run, and to say plainly that DCP extraction is MANUAL with nothing scheduling it"
     },
     "DQ-48": {
@@ -59,7 +59,7 @@
         "python",
         "scripts/dq_probe_dead_sar_constants.py"
       ],
-      "passes_when": "exit 0 — no assignment of FLOOD_RATIO / PC_CATALOG / S1_COLLECTION in services/flood_truth.py",
+      "passes_when": "exit 0 \u2014 no assignment of FLOOD_RATIO / PC_CATALOG / S1_COLLECTION in services/flood_truth.py",
       "red_when": "a named SAR threshold or endpoint is reintroduced with no call site behind it, reading as a shipped detector that does not exist",
       "fixed_by": "#878 (Lane 1 / D2)",
       "note": "Matches ASSIGNMENTS, not mentions. A plain grep false-fails: the file still discusses FLOOD_RATIO in a comment explaining why it was removed."
@@ -70,10 +70,10 @@
         "python",
         "scripts/dq_probe_pvlib_claim.py"
       ],
-      "passes_when": "exit 0 — pvlib is not imported by any non-test module",
+      "passes_when": "exit 0 \u2014 pvlib is not imported by any non-test module",
       "red_when": "production code imports pvlib, or a served string credits it as the shadow method again, while pybdshadow is what actually runs",
       "fixed_by": "#878 (Lane 1 / D1)",
-      "note": "Scoped to non-test source deliberately. tests/test_shadow_calibration.py DOES import pvlib, legitimately — it is the external reference the calibration measures against. A repo-wide grep would false-fail on exactly the test that proves the fix."
+      "note": "Scoped to non-test source deliberately. tests/test_shadow_calibration.py DOES import pvlib, legitimately \u2014 it is the external reference the calibration measures against. A repo-wide grep would false-fail on exactly the test that proves the fix."
     },
     "DQ-57": {
       "declared": "open",
@@ -108,7 +108,7 @@
     "DQ-43": {
       "declared": "latent",
       "check": null,
-      "why_no_check": "Explicitly not live today — depends on the plan-identity model that does not exist yet. A check now would assert against a design that has not been built."
+      "why_no_check": "Explicitly not live today \u2014 depends on the plan-identity model that does not exist yet. A check now would assert against a design that has not been built."
     },
     "DQ-42": {
       "declared": "guarded",
@@ -136,7 +136,7 @@
       ],
       "passes_when": "exit 0 - the snapshot card renders each control's condition, draws every row even when control_type and section_ref collide, and states how many controls it is not showing",
       "red_when": "A served surface shows several values for one control slot without saying which case each covers, so the reader cannot tell which number is theirs.",
-      "note": "Fixed 2026-08-13 under the present-all ruling. ⚠ The old probe counted 562 rows in ambiguous groups and treated every one as a defect; 556 of them already state their case and are correct. Counting those is what made this look like weeks of adjudication when the real defect was a component dropping a field the API already sent. The remaining 6 conditionless rows are DQ-32c. This check is a jest test because the defect was in RENDERING - a DB probe cannot see it, which is exactly why it survived so long. The check needs frontend-nextjs/node_modules, so it runs in CI's Jest job (both runtimes) and reports UNVERIFIED anywhere they are absent rather than failing.",
+      "note": "Fixed 2026-08-13 under the present-all ruling. \u26a0 The old probe counted 562 rows in ambiguous groups and treated every one as a defect; 556 of them already state their case and are correct. Counting those is what made this look like weeks of adjudication when the real defect was a component dropping a field the API already sent. The remaining 6 conditionless rows are DQ-32c. This check is a jest test because the defect was in RENDERING - a DB probe cannot see it, which is exactly why it survived so long. The check needs frontend-nextjs/node_modules, so it runs in CI's Jest job (both runtimes) and reports UNVERIFIED anywhere they are absent rather than failing.",
       "cwd": "frontend-nextjs",
       "requires": "frontend-nextjs/node_modules"
     },
@@ -201,7 +201,7 @@
     "DQ-52": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "All five representations were deleted and services/sentinel2.py removed. A check would assert absence of marketing strings — worth writing, not yet written."
+      "why_no_check": "All five representations were deleted and services/sentinel2.py removed. A check would assert absence of marketing strings \u2014 worth writing, not yet written."
     },
     "DQ-51": {
       "declared": "fixed",
@@ -220,8 +220,15 @@
     },
     "DQ-45": {
       "declared": "fixed",
-      "check": null,
-      "why_no_check": "Pinned by two loop-survival tests in test_execution_manifests.py — wiring those in as this row's check is straightforward and not yet done."
+      "check": [
+        "python",
+        "-m",
+        "pytest",
+        "tests/test_execution_manifests.py",
+        "-q"
+      ],
+      "passes_when": "exit 0 - 26 tests pass, including the two that survive the granny-flat lot-clipping filter loop",
+      "red_when": "the filter-loop variable shadows the tile bbox again, so WGS84 conversion string-indexes a pixel list, raises TypeError and collapses the whole run to detection_failed"
     },
     "DQ-44": {
       "declared": "fixed",
@@ -313,7 +320,7 @@
     "DQ-17": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic — not orphaned."
+      "why_no_check": "Historic \u2014 not orphaned."
     },
     "DQ-16": {
       "declared": "fixed",
@@ -343,7 +350,7 @@
     "DQ-10": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic — documented."
+      "why_no_check": "Historic \u2014 documented."
     },
     "DQ-9": {
       "declared": "fixed",
@@ -353,7 +360,7 @@
     "DQ-8": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic — documented."
+      "why_no_check": "Historic \u2014 documented."
     },
     "DQ-7": {
       "declared": "fixed",
@@ -421,13 +428,23 @@
     },
     "DQ-59": {
       "declared": "fixed",
-      "check": null,
-      "why_no_check": "RESOLVED 2026-08-13. python scripts/check_dcp_as_at_coverage.py --baseline reports 0 dateless claims across 0 councils (2026-08-13); the per-council baseline file is now empty and shrink-only, so any council losing its date fails the build."
+      "check": [
+        "python",
+        "scripts/check_dcp_as_at_coverage.py",
+        "--baseline"
+      ],
+      "passes_when": "exit 0 - .claude/as_at_coverage_baseline.json reports 0 dateless claims and no council's count increased",
+      "red_when": "a served DCP claim carries no in-force date, or a council's dateless count rises above its recorded baseline, so the product shows a control without saying which version of the plan it came from"
     },
     "DQ-59b": {
       "declared": "fixed",
-      "check": null,
-      "why_no_check": "RESOLVED 2026-08-13. Every candidate is now adjudicated or superseded by a primary-source read. python scripts/check_dcp_as_at_coverage.py --baseline reports 0 dateless claims across 0 councils (2026-08-13); the per-council baseline file is now empty and shrink-only, so any council losing its date fails the build."
+      "check": [
+        "python",
+        "scripts/check_dcp_as_at_coverage.py",
+        "--baseline"
+      ],
+      "passes_when": "exit 0 - .claude/as_at_coverage_baseline.json reports 0 dateless claims and no council's count increased",
+      "red_when": "a candidate commencement date is stored without being adjudicated against the plan we actually serve, so a date from the wrong instrument reaches the served claim"
     },
     "DQ-59c": {
       "declared": "fixed",
@@ -437,13 +454,23 @@
     },
     "DQ-59d": {
       "declared": "fixed",
-      "check": null,
-      "why_no_check": "RESOLVED 2026-08-13. python scripts/check_dcp_as_at_coverage.py --baseline reports 0 dateless claims across 0 councils (2026-08-13); the per-council baseline file is now empty and shrink-only, so any council losing its date fails the build."
+      "check": [
+        "python",
+        "scripts/check_dcp_as_at_coverage.py",
+        "--baseline"
+      ],
+      "passes_when": "exit 0 - .claude/as_at_coverage_baseline.json reports 0 dateless claims and no council's count increased",
+      "red_when": "a council's commencement date is taken from a web page or the Planning Portal instead of the plan's own commencement clause, reintroducing the identity-mismatch class"
     },
     "DQ-59e": {
       "declared": "fixed",
-      "check": null,
-      "why_no_check": "RESOLVED 2026-08-13. Primary text obtained for the remaining councils. python scripts/check_dcp_as_at_coverage.py --baseline reports 0 dateless claims across 0 councils (2026-08-13); the per-council baseline file is now empty and shrink-only, so any council losing its date fails the build."
+      "check": [
+        "python",
+        "scripts/check_dcp_as_at_coverage.py",
+        "--baseline"
+      ],
+      "passes_when": "exit 0 - .claude/as_at_coverage_baseline.json reports 0 dateless claims and no council's count increased",
+      "red_when": "a search-engine summary is written into stated_evidence beside verbatim clause quotes, so the evidence column means two different things and a reader cannot tell which"
     },
     "DQ-59f": {
       "declared": "fixed",
@@ -483,12 +510,17 @@
       "passes_when": "exit 0 - no stored commencement postdates its own plan's name by 3+ years",
       "red_when": "A stored commencement is an amendment or consolidation date, which decides WHICH plan governs an application and so cannot be approximated.",
       "note": "Scope corrected 2026-08-13: this was recorded as parramatta-only and it is systemic. scan_statement returned max(effective dates), so wherever a document printed both its commencement and a later amendment the amendment won - the exact inversion of DQ-60. Four more councils carry the result: strathfield (DCP 2005 -> 2020-09-08), burwood (2013 -> 2026-03-05), fairfield (2013 -> 2024-08-22), the_hills (2012 -> 2022-05-06). WRITER FIXED: it now takes the earliest, returns None when the spread is 3+ years rather than guessing, and amendment tables write currency_* instead. The four stored values predate the fix and each needs its real commencement located; clearing them would raise the count the as-at ratchet guards. LIMIT OF THIS PROBE, learned by tripping it: it compares the stored date against dcp_chapter_registry.dcp_name, so a stale registry NAME reads as a wrong DATE. fairfield showed both failure directions in one row. When it fires, check which of the two is actually out of date before touching the date.",
-      "fixed_by": "2026-08-13. Writer fixed first (earliest wins; None when dated statements span 3+ years; amendment tables write currency_*). Then the three genuinely wrong values were replaced with the commencement each plan states in its OWN text: strathfield 2020-09-08 -> 2006-05-03 (clause 1.2 'Commencement of this Plan'), burwood 2026-03-05 -> 2013-03-01 (clause 1.4 'Date on Which the BDCP Takes Effect'), the_hills 2022-05-06 -> 2013-03-26 (Part A section 8 'Important Dates', with no amendment preceding it). Each previous value was traceable to a consolidation stamp on the SAME document's cover, which is what the writer had been reading. fairfield was a FALSE POSITIVE of this probe and its date was already right: data/dcps/fairfield-citywide-dcp-2013.pdf is actually the Fairfield CityWide DCP **2024** (title page, 567pp) whose clause 1.7 states it came into effect 22 August 2024 — the stale thing was dcp_chapter_registry.dcp_name, corrected on 3 rows to 'Fairfield City Wide DCP 2024'. Probe now returns 0."
+      "fixed_by": "2026-08-13. Writer fixed first (earliest wins; None when dated statements span 3+ years; amendment tables write currency_*). Then the three genuinely wrong values were replaced with the commencement each plan states in its OWN text: strathfield 2020-09-08 -> 2006-05-03 (clause 1.2 'Commencement of this Plan'), burwood 2026-03-05 -> 2013-03-01 (clause 1.4 'Date on Which the BDCP Takes Effect'), the_hills 2022-05-06 -> 2013-03-26 (Part A section 8 'Important Dates', with no amendment preceding it). Each previous value was traceable to a consolidation stamp on the SAME document's cover, which is what the writer had been reading. fairfield was a FALSE POSITIVE of this probe and its date was already right: data/dcps/fairfield-citywide-dcp-2013.pdf is actually the Fairfield CityWide DCP **2024** (title page, 567pp) whose clause 1.7 states it came into effect 22 August 2024 \u2014 the stale thing was dcp_chapter_registry.dcp_name, corrected on 3 rows to 'Fairfield City Wide DCP 2024'. Probe now returns 0."
     },
     "DQ-63": {
       "declared": "fixed",
-      "check": null,
-      "why_no_check": "The remaining undated councils are counted per council in .claude/as_at_coverage_baseline.json, which blocks the build if the count rises."
+      "check": [
+        "python",
+        "scripts/check_dcp_as_at_coverage.py",
+        "--baseline"
+      ],
+      "passes_when": "exit 0 - .claude/as_at_coverage_baseline.json reports 0 dateless claims and no council's count increased",
+      "red_when": "a council that had a commencement date loses it, or a new served council arrives undated, raising dateless_claims above the baseline"
     },
     "DQ-64": {
       "declared": "fixed",
@@ -540,7 +572,7 @@
       ],
       "passes_when": "exit 0 - every active SEPP/LEP in instrument_registry was checked by the legislation monitor within the last 14 days (2x its 7-day loop). NOTE: 1 is the correct floor while wingecarribee_lep_2010 has no pco_instrument_id; 0 requires giving it one.",
       "red_when": "The NSW legislation monitor is not running, so amendments to SEPPs and LEPs go unseen. LIVENESS, not data quality: last_checked is written on both the change and no-change paths, so only an actual run moves it - a code edit cannot satisfy this check.",
-      "note": "⚠ Opened as DQ-68 and RENUMBERED to DQ-69 on rebase: #954's ledger took 68 for the untagged-topic row. Measured 2026-08-14: 26 of 26 active instruments stale, max(last_checked) = 2026-06-08 = 67 days blind. TWO independent causes, both fixed: (a) the Fly container died at import - #504 added `refresh_runbook` to legislation_monitor.py and never added the COPY, confirmed live by ModuleNotFoundError; (b) even when it ran, check_instrument returned early whenever the source gave no version, which on the PCO path is the NORMAL case, so a run reporting 'Checked: 26' wrote ZERO rows. (b) also invalidated this probe's first premise - the gate caught its own flaw. PCO's export lists every amended instrument, so absence is an affirmative confirmation and is now recorded, but ONLY where pco_instrument_id is set. Post-fix measured 1. Silence stayed invisible because run_loop.sh swallows failures with `|| echo \"will retry next cycle\"`, the machine stays `started` either way, and the healthchecks.io ping is read by nothing. Telegram on the Fly machine was ALSO returning HTTP 404 (stale token) - reset from the working Railway secret."
+      "note": "\u26a0 Opened as DQ-68 and RENUMBERED to DQ-69 on rebase: #954's ledger took 68 for the untagged-topic row. Measured 2026-08-14: 26 of 26 active instruments stale, max(last_checked) = 2026-06-08 = 67 days blind. TWO independent causes, both fixed: (a) the Fly container died at import - #504 added `refresh_runbook` to legislation_monitor.py and never added the COPY, confirmed live by ModuleNotFoundError; (b) even when it ran, check_instrument returned early whenever the source gave no version, which on the PCO path is the NORMAL case, so a run reporting 'Checked: 26' wrote ZERO rows. (b) also invalidated this probe's first premise - the gate caught its own flaw. PCO's export lists every amended instrument, so absence is an affirmative confirmation and is now recorded, but ONLY where pco_instrument_id is set. Post-fix measured 1. Silence stayed invisible because run_loop.sh swallows failures with `|| echo \"will retry next cycle\"`, the machine stays `started` either way, and the healthchecks.io ping is read by nothing. Telegram on the Fly machine was ALSO returning HTTP 404 (stale token) - reset from the working Railway secret."
     },
     "DQ-70": {
       "declared": "open",
@@ -552,7 +584,7 @@
       ],
       "passes_when": "exit 0 - no served provision comes from a chapter whose PDF has changed since that provision was extracted (content_hash = provisions_extracted_from_hash for every chapter backing served rows)",
       "red_when": "We are serving a control read out of a version of the document we no longer hold. THE OUTCOME SIGNAL: every other check in this ledger asks whether machinery ran; this asks whether what we serve still corresponds to its source. A code edit cannot satisfy it - only re-extracting the drifted chapters.",
-      "note": "⚠ Opened as DQ-69 and RENUMBERED to DQ-70 on rebase (#951-#954 took 64-68). Measured 2026-08-14: 595 served provisions across 10 drifted chapters, of 564 active (206 hash-matched, 10 drifted, 348 never recorded a hash). docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md named content_hash != provisions_extracted_from_hash 'the precise unused signal' in June; both columns have been written since and read by nothing. Chosen as THE outcome gate because it needs no PDF read, no LLM and no golden set, and unlike the extraction coverage metric it compares served data against the SOURCE rather than against the previous pipeline's output - which is itself known to carry errors (wingecarribee serving Bowral's controls; ~1,543 collided refs), so 100% agreement there can mean reproducing a mistake. Mutation-checked at the SQL level: flipping <> to = returns 12,069, so the comparison is doing the discriminating. DELIBERATELY EXCLUDES the 348 chapters with no recorded hash (25 served provisions) so this stays an affirmative defect count, not a blend of defect and ignorance."
+      "note": "\u26a0 Opened as DQ-69 and RENUMBERED to DQ-70 on rebase (#951-#954 took 64-68). Measured 2026-08-14: 595 served provisions across 10 drifted chapters, of 564 active (206 hash-matched, 10 drifted, 348 never recorded a hash). docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md named content_hash != provisions_extracted_from_hash 'the precise unused signal' in June; both columns have been written since and read by nothing. Chosen as THE outcome gate because it needs no PDF read, no LLM and no golden set, and unlike the extraction coverage metric it compares served data against the SOURCE rather than against the previous pipeline's output - which is itself known to carry errors (wingecarribee serving Bowral's controls; ~1,543 collided refs), so 100% agreement there can mean reproducing a mistake. Mutation-checked at the SQL level: flipping <> to = returns 12,069, so the comparison is doing the discriminating. DELIBERATELY EXCLUDES the 348 chapters with no recorded hash (25 served provisions) so this stays an affirmative defect count, not a blend of defect and ignorance."
     },
     "DQ-71": {
       "declared": "open",
