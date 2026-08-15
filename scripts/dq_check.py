@@ -67,6 +67,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+# The probes are read with errors="replace", which substitutes U+FFFD for bytes
+# they could not decode. Printing that to a cp1252 console -- the default on the
+# Windows runners this repo uses -- raises UnicodeEncodeError, and --report died
+# mid-row on DQ-68 rather than reaching the coverage summary at the end. A
+# reporting tool that crashes before its own conclusion is worse than a wrong
+# number, because the rows it DID print look like the whole answer. Same
+# reconfigure as scripts/check_dcp_as_at_coverage.py, for the same reason.
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 _ROOT = Path(__file__).resolve().parents[1]
 _LEDGER = _ROOT / ".claude" / "DATA_QUALITY_TRACKER.md"
 _CHECKS = _ROOT / ".claude" / "dq_checks.json"
