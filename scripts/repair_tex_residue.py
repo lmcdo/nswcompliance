@@ -114,6 +114,54 @@ def digits(text: str) -> str:
     return "".join(ch for ch in text if ch.isdigit())
 
 
+# --------------------------------------------------------------------------
+# pass 2: DQ-77 -- a unit split across a space
+# --------------------------------------------------------------------------
+#
+# '900 m m' is 900mm, '7 p m' is 7pm, '20 t h' is 20th. The VALUE is not wrong;
+# the text a planner quotes is not what the instrument says.
+#
+# This pass is safer than the TeX one and its invariant says so: it only ever
+# deletes a space between two characters, so the ordered sequence of
+# NON-WHITESPACE characters must come out identical. Nothing added, dropped or
+# reordered. A row failing that check is skipped, not written.
+#
+# The space BEFORE the unit is KEPT -- '900 mm', not '900mm'. Closing that gap
+# is a typographic preference and this pass has no business holding one; the
+# minimal transform is also what makes the invariant provable.
+_UNIT_RULES: list[tuple[re.Pattern, str]] = [
+    # 900 m m -> 900 mm
+    (re.compile(r"(?<=[0-9])(\s+)m\s+m\b"), r"\1mm"),
+    # 900 m 2 -> 900 m2   (metres split from a squared/cubed exponent)
+    (re.compile(r"(?<=[0-9])(\s+)m\s+([23])\b"), r"\1m\2"),
+    # 7 p m -> 7 pm, 8 a m -> 8 am
+    (re.compile(r"(?<=[0-9])(\s+)([ap])\s+m\b"), r"\1\2m"),
+    # 20 t h -> 20th. The one place a space next to a digit is removed, because
+    # "th" is an ordinal suffix rather than a unit.
+    (re.compile(r"(?<=[0-9])\s+t\s+h\b"), "th"),
+]
+
+
+def repair_units(text: str) -> str:
+    out = text
+    for _ in range(3):
+        before = out
+        for pat, sub in _UNIT_RULES:
+            out = pat.sub(sub, out)
+        if out == before:
+            break
+    return out
+
+
+def nonspace(text: str) -> str:
+    """Every non-whitespace character, in order -- the unit pass's invariant.
+
+    Stronger than the digit check: it proves no character was added, dropped or
+    reordered, only spaces removed.
+    """
+    return "".join(ch for ch in text if not ch.isspace())
+
+
 def _connect():
     try:
         from dotenv import load_dotenv
@@ -129,45 +177,68 @@ def _connect():
     return conn
 
 
+#: Must stay identical to PROBES['DQ-77'] in dq_probe_live.py.
+UNIT_PREDICATE = (
+    r"provision_text ~ '[0-9]\s+m\s+m\M' "
+    r"OR provision_text ~ '[0-9]\s+m\s+[23]\M' "
+    r"OR provision_text ~ '[0-9]\s+[ap]\s+m\M' "
+    r"OR provision_text ~ '[0-9]\s+t\s+h\M'"
+)
+
+#: name -> (row id, predicate, transform, invariant, what the invariant means)
+PASSES = {
+    "tex": ("DQ-76", PREDICATE, repair, digits,
+            "the ordered digit sequence"),
+    "units": ("DQ-77", UNIT_PREDICATE, repair_units, nonspace,
+              "every non-whitespace character, in order"),
+}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--pass", dest="which", choices=sorted(PASSES),
+                    default="tex",
+                    help="tex = DQ-76 markup residue; units = DQ-77 split units")
     ap.add_argument("--apply", action="store_true",
                     help="write the repairs; without it this is a dry run")
     ap.add_argument("--show", type=int, default=12,
                     help="how many before/after pairs to print")
     args = ap.parse_args()
 
+    dq_id, predicate, transform, invariant, invariant_name = PASSES[args.which]
+
     conn = _connect()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
         f"""SELECT id, ref_number, source_council, provision_text
               FROM regulatory_provisions
-             WHERE is_current AND v2_is_actionable AND ({PREDICATE})
+             WHERE is_current AND v2_is_actionable AND ({predicate})
              ORDER BY id"""
     )
     rows = cur.fetchall()
-    print(f"served rows carrying extraction residue: {len(rows)}\n")
+    print(f"pass '{args.which}' ({dq_id}) - matching served rows: {len(rows)}")
+    print(f"invariant: {invariant_name} must be identical before and after\n")
 
     planned, skipped, unchanged = [], [], []
     for r in rows:
         original = r["provision_text"]
-        fixed = repair(original)
+        fixed = transform(original)
         if fixed == original:
             unchanged.append(r)
             continue
-        if digits(fixed) != digits(original):
+        if invariant(fixed) != invariant(original):
             skipped.append((r, fixed))
             continue
         planned.append((r, fixed))
 
-    print(f"  repairable (digit sequence preserved) : {len(planned)}")
-    print(f"  SKIPPED (digits would change)         : {len(skipped)}")
+    print(f"  repairable (invariant holds)          : {len(planned)}")
+    print(f"  SKIPPED (invariant would break)       : {len(skipped)}")
     print(f"  matched but no change produced        : {len(unchanged)}")
 
     for r, fixed in skipped:
-        print(f"\n  SKIPPED id={r['id']} - digits differ, not written")
-        print(f"    before digits: {digits(r['provision_text'])[:60]}")
-        print(f"    after  digits: {digits(fixed)[:60]}")
+        print(f"\n  SKIPPED id={r['id']} - {invariant_name} differs, not written")
+        print(f"    before: {invariant(r['provision_text'])[:60]}")
+        print(f"    after : {invariant(fixed)[:60]}")
 
     if unchanged:
         print("\n  rows the predicate matches but the repair leaves alone "
@@ -233,11 +304,13 @@ def main() -> int:
         print(f"ERROR: rolled back: {exc}", file=sys.stderr)
         return 2
 
+    # Re-measure from the database rather than reporting arithmetic, so the
+    # number quoted afterwards is the one the probe will report.
     cur.execute(
         f"""SELECT count(*) AS n FROM regulatory_provisions
-             WHERE is_current AND v2_is_actionable AND ({PREDICATE})"""
+             WHERE is_current AND v2_is_actionable AND ({predicate})"""
     )
-    print(f"DQ-76 after repair: {cur.fetchone()['n']}")
+    print(f"{dq_id} after repair: {cur.fetchone()['n']}")
     conn.close()
     return 0
 
