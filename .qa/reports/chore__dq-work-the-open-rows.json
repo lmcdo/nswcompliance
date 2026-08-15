@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "This branch WRITES to served regulatory text in production: 677 provisions across two passes, including setback formulae, wall-height limits and floor-area controls that a planner quotes. Nothing else in the change is close in blast radius, and a wrong transform would corrupt the very numbers the product exists to serve. Critical rather than Standard for that reason alone. It also rewrites the predicate of a live DQ metric twice, and a metric that silently stops seeing its own defect class is how DQ-30 passed while 241 rows stayed broken.",
-  "commit_hash": "16f78931",
+  "commit_hash": "3f211a0e",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -18,13 +18,16 @@
   "pre_impl": {
     "existing_data": "regulatory_provisions, served set is_current AND v2_is_actionable = 19,957 rows, unchanged before and after both repair passes. source_council IS NULL for statewide instruments, which is why DQ-27's council-scoped fix could never have reached these rows. A token census of every backslash command actually present (27 distinct macros, all TeX) replaced guessing at the predicate.",
     "assumption_mismatch": "Four, and each changed the work. (1) The DQ-76 predicate was a list of macros I had seen, not a description of the fault; it reported clean on 89 of 99 rows. (2) After widening, its brace class could not match an EMPTY '{}' nor '{ : }' nor '{ t h }', so the first repair pass reported success at 0 while 103 rows still carried braces. (3) I assumed the '12 00 { m } 2' rows could be repaired to '1,200 m2'; that joins digits, which is a judgement about the source PDF, so the repair deliberately leaves '12 00 m 2'. (4) I was about to deactivate DQ-78's 111 rows as containing no control. Reading the rows nearest the CUT showed several carry real controls with map text interleaved - deactivating would have hidden binding controls, the liability direction.",
-    "new_vs_existing": "repair_tex_residue.py is a new surface and the prior-art sweep is recorded in its header: repair_shadow_reports.py regenerates satellite report ROWS, cleanup_bad_setbacks.py and delete_bad_leichhardt_rows.py delete from other tables, fix_topics_step1_garbage_cleanup.py rewrites v2_topic not text, and dq_probe_live.py measures this set but is read-only by design and must stay so. The --pass flag follows the shape repair_shadow_reports.py already uses for two authorized passes over one guard chain."
+    "new_vs_existing": "repair_tex_residue.py is a new surface and the prior-art sweep is recorded in its header: repair_shadow_reports.py regenerates satellite report ROWS, cleanup_bad_setbacks.py and delete_bad_leichhardt_rows.py delete from other tables, fix_topics_step1_garbage_cleanup.py rewrites v2_topic not text, and dq_probe_live.py measures this set but is read-only by design and must stay so. The --pass flag follows the shape repair_shadow_reports.py already uses for two authorized passes over one guard chain.",
+    "external_source_error": "No external source is called. Both repair passes are pure string transforms over text already in regulatory_provisions, and both probes are SELECTs. The relevant failure is therefore the DATABASE being unreachable, not an API: dq_probe_live.run() reports UNKNOWN and exits 2 rather than 0, because 'could not look' must never be read as 'found nothing'. The repair aborts before any write if DATABASE_URL is unset, and rolls the whole transaction back if the connection drops mid-pass.",
+    "frontend_type": "No frontend type changes. provision_text was and remains a non-null text column, and the repairs only alter its CONTENT. The compliance UI and the report PDFs render it as a string, so a repaired row needs no deploy and no type migration - the corrected text is served on the next read. The visible difference is that a control now reads '3.6 m above ground level' instead of '3.6 { m } above ground level'.",
+    "user_failure_mode": "Before: a planner reading a served control saw markup where the regulated value belongs - a setback formula as '\\mathtt { s } = \\mathtt { h } - 3 \\mathtt { m }', a height limit as '3.6 { m }', a floor area as '12 00 { m } 2'. It fails VISIBLY, which is the one mercy: the reader can tell something is wrong, even though they cannot tell what the number was. The dangerous residue is DQ-78, where scrambled map text sits beside a real control and reads as though it were part of it. After: the text renders as written. The failure mode this change could introduce is a wrong number rendering as a plausible one, which is precisely why each pass asserts an invariant per row and skips rather than writes when it cannot hold."
   },
   "functions": [
     {
       "name": "repair",
       "file_line": "scripts/repair_tex_residue.py",
-      "input": "a provision_text carrying TeX math-mode residue",
+      "input": "a single provision_text string containing TeX math-mode residue such as '\\mathfrak { s }' or '{ - }', passed one row at a time from the planning SELECT",
       "output": "the same text with TeX wrappers stripped and their contents kept; digits never altered",
       "if_none": "without it the 104 rows keep serving markup where a regulated value belongs - '3.6 { m } above ground level' for a height limit"
     },
@@ -38,7 +41,7 @@
     {
       "name": "nonspace",
       "file_line": "scripts/repair_tex_residue.py",
-      "input": "any text",
+      "input": "any provision_text string, before or after transformation, used to compare the two for the units pass invariant",
       "output": "its non-whitespace characters in order - the units pass's invariant",
       "if_none": "the units pass would rest on the weaker digit check, which cannot detect a dropped or reordered LETTER"
     }
@@ -63,12 +66,14 @@
   "queries": [
     {
       "query": "UPDATE regulatory_provisions SET provision_text = %s WHERE id = %s AND provision_text = %s",
-      "purpose": "Guarded on the text read during planning, so a row changed by another writer between plan and write updates nothing rather than being clobbered. The transaction rolls back if the affected count disagrees with the planned set."
+      "purpose": "Guarded on the text read during planning, so a row changed by another writer between plan and write updates nothing rather than being clobbered. The transaction rolls back if the affected count disagrees with the planned set.",
+      "file_line": "scripts/repair_tex_residue.py, in main() inside the --apply branch",
+      "where_clause": "WHERE id = %s AND provision_text = %s - the id targets exactly one row, and the second predicate pins the text read during planning so a row modified by another writer between plan and write matches nothing and is skipped rather than clobbered. The run then rolls back because the affected count disagrees with the planned set."
     }
   ],
   "break_it": [
     {
-      "scenario": "A transform corrupts a regulated number.",
+      "scenario": "A transform corrupts a regulated number in served provision text.",
       "what_happens": "Cannot reach the database. Each pass asserts an invariant per row before writing - the TeX pass requires the ordered digit sequence to be identical, the units pass the stronger non-whitespace sequence. A row failing is skipped and printed, never written.",
       "repro": "python scripts/repair_tex_residue.py --pass units   # SKIPPED count must be 0",
       "mitigated": "Yes.",
@@ -82,7 +87,7 @@
       "how": "tests/test_repair_matches_probe.py asserts each repair predicate is CONTAINED in its probe's SQL, so a repair can never touch a row the metric is not watching. Mutation-verified: reintroducing the exact [-A-Za-z0-9] brace class that caused the 103-row miss makes the test fail."
     },
     {
-      "scenario": "Deactivating DQ-78's rows hides a binding control.",
+      "scenario": "Deactivating DQ-78's 111 rows would hide a control that binds a development.",
       "what_happens": "Would have happened. The bulk remedy was planned and abandoned after reading the rows nearest the cut, several of which carry real controls with map text interleaved.",
       "repro": "python scripts/dq_probe_live.py --id DQ-78 then read ids 95870, 95375, 95887",
       "mitigated": "Yes - by not doing it.",
@@ -96,7 +101,7 @@
       "how": "The surviving class was measured and opened as DQ-77 and DQ-78 rather than quietly folded into DQ-76's predicate, so how it was found stays on the record."
     },
     {
-      "scenario": "A concurrent writer's change is clobbered mid-repair.",
+      "scenario": "A concurrent writer's edit is clobbered part-way through a repair pass.",
       "what_happens": "The guarded UPDATE affects 0 rows, the totals disagree, and the whole transaction rolls back.",
       "repro": "inspect the UPDATE in main(): WHERE id = %s AND provision_text = %s",
       "mitigated": "Yes.",
