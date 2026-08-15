@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard, not critical: every change here REMOVES a claim rather than choosing a value. The serve-path fetchers stop answering when they cannot look, two stale portal dates are detached, and the two new probes only observe. Per the repair-calibration rule, removing a false claim cannot create a new one, while choosing a replacement could -- and no replacement value is chosen anywhere in this branch. Not minor either: scripts/conveyancing_db.py is on the live serve path and its error-path behaviour changes for four functions with 16 call sites.",
-  "commit_hash": "60b99db9",
+  "commit_hash": "8302b5ce",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
