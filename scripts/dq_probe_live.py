@@ -865,6 +865,22 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # who cannot tell, about a plan amended three times since -- and it
         # makes the CURRENCY metric FALL, so it books as progress.
         #
+        # WHAT THIS PROVES, EXACTLY. url_last_changed records when OUR COPY of
+        # the file changed. That is NOT proof the legal instrument was amended
+        # -- a re-upload or a cosmetic edit moves it too. What the
+        # contradiction does establish is narrower and still disqualifying:
+        # the portal's date cannot describe the document we now hold, so it
+        # cannot be served as that document's currency. The remedy is
+        # adjudication against the plan's own version table, never an automatic
+        # detach on this signal alone.
+        #
+        # SCOPED TO THE PLAN THE DATE IS ATTACHED TO, not merely to the
+        # council. cumberland has two active dcp_names ('Cumberland DCP 2021'
+        # and 'Cumberland DCP Part B - Residential Zones 2021'); on a
+        # council-only join, a change to either would condemn a date belonging
+        # to the other. The registry row must match the stored
+        # portal_plan_name by the same whole-token rule as DQ-80.
+        #
         # EXISTS, not JOIN: a council whose chapters all go inactive must not
         # quietly drop out of the count (the DQ-80 fail-open, same shape).
         "SELECT count(*) FROM dcp_plan_as_at p "
@@ -872,16 +888,28 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "  AND EXISTS (SELECT 1 FROM dcp_chapter_registry r "
         "               WHERE r.council = p.lga AND r.is_active "
         "                 AND r.url_last_changed IS NOT NULL "
-        "                 AND r.url_last_changed::date > p.portal_date)",
-        (),
-        "Each row serves an 'as at' date that predates our own copy of the "
-        "document, so the currency claim is false and the reader cannot tell. "
-        "Measured 2 of 2 attached rows on 2026-08-15: ashfield portal 2022-09-09 "
-        "vs document changed 2026-06-22, marrickville portal 2022-09-09 vs "
-        "2026-04-06 -- and marrickville's portal date is Amendment No. 15 when "
-        "the council is on No. 18 (31 July 2025). Clears by detaching the "
-        "portal date and reading the commencement from the plan's own version "
-        "table, NOT by re-fetching the portal, which is the stale source.",
+        "                 AND r.url_last_changed::date > p.portal_date "
+        "                 AND NOT EXISTS ("
+        "                   SELECT 1 FROM regexp_split_to_table("
+        "                          lower(r.dcp_name), %s) AS t "
+        "                    WHERE t <> %s AND t NOT IN (%s,%s,%s,%s,%s,%s) "
+        "                      AND t NOT IN (SELECT pt FROM "
+        "                            regexp_split_to_table(lower(coalesce("
+        "                              p.portal_plan_name,%s)), %s) AS pt)))",
+        ("[^a-z0-9]+", "", "dcp", "development", "control", "plan",
+         "comprehensive", "the", "", "[^a-z0-9]+"),
+        "Each row serves an 'as at' date that CANNOT describe the document we "
+        "now hold, because our own copy changed after it. That disqualifies it "
+        "as a currency claim; it is not by itself proof the legal instrument "
+        "was amended, so the remedy is adjudication against the plan's own "
+        "version table rather than an automatic detach. Measured 2 of 2 "
+        "attached rows on 2026-08-15: ashfield portal 2022-09-09 vs document "
+        "changed 2026-06-22, marrickville portal 2022-09-09 vs 2026-04-06 -- "
+        "and marrickville's was confirmed independently against Inner West "
+        "Council's own schedule as Amendment No. 15 where the council is on "
+        "No. 18 (31 July 2025), so in that case the staleness is established "
+        "and not merely suspected. NEVER clears by re-fetching the portal, "
+        "which is the stale source.",
     ),
 }
 
