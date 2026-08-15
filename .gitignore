@@ -587,6 +587,10 @@ scripts/*
 # untracked copy would leave the ledger citing a command CI cannot run — the
 # same shape as the trap this block warns about at the top.
 !scripts/dq_probe_zone_lint_keyed_map.py
+# The DQ-76 repair. It has already run against production, so an untracked copy
+# would leave 104 rows of served regulatory text altered with no reviewable
+# record of the transform that altered them.
+!scripts/repair_tex_residue.py
 !scripts/qa_report_template.json
 !scripts/main_red_alarm_logic_check.js
 !scripts/check_test_baselines.py

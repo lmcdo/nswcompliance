@@ -652,9 +652,33 @@
         "--id",
         "DQ-76"
       ],
-      "passes_when": "exit 0 - no served provision contains LaTeX math markup",
-      "red_when": "a served provision shows raw LaTeX where a regulated number belongs, so a reader is given markup instead of the control's value",
-      "note": "DQ-27 is NOT reopened and must not be: its scope was marrickville and its fix HELD, 36 -> 0 verified at any status against this same predicate. These 10 are the identical corruption in STATEWIDE instruments, where source_council IS NULL, so DQ-27's council-scoped query could never have found them however carefully written - the lesson is about the WHERE clause, not the effort. FOURTH instance of the row-scoped-to-the-slice-someone-measured pattern, after DQ-24/DQ-68 and DQ-33/DQ-74. Not cosmetic: the affected rows are wall-height and setback controls, '\\mathfrak { s o o m m }' meant to read 900mm and '\\mathtt { s } = \\mathtt { h } - 3 \\mathtt { m }' the setback formula s = h - 3m. Found 2026-08-15 by WRITING a check for DQ-27 instead of trusting its 'Historic.' status."
+      "passes_when": "exit 0 - no served provision carries PDF-extraction residue (TeX control sequence, non-money $, or a brace group wrapping a single symbol)",
+      "red_when": "a served provision shows extraction residue where a regulated value belongs, so a reader is given markup or a mangled number instead of the control",
+      "note": "REPAIRED 2026-08-15: 104 -> 9 by scripts/repair_tex_residue.py, verified by the probe rather than asserted. THE METRIC WAS WRONG TWICE FIRST, and both corrections are the point of this row. (1) It listed five TeX macros I had seen, counting 10 while reporting CLEAN on 89 rows with the identical fault - a row carrying only \\dag, \bullet, \\div or \\lambda scored green. (2) After widening, its brace class [-A-Za-z0-9] could not see an EMPTY '{}', nor '{ : }', nor '{ t h }', so the first repair pass drove the count to 0 while 103 rows still carried braces. It is now ANY brace, checked by sampling all 103 - none legitimate. THE REPAIR'S ONE RULE: no digit may change. It strips TeX wrappers and keeps contents; it never joins split digits, so '12 00 { m } 2' became '12 00 m 2' and NOT '1,200 m2', however obvious that reading is - that is a judgement about the source PDF, not a regex. Machine-checked per row: the ordered digit sequence must be identical or the row is skipped. 0 rows were skipped; 19,957 served rows before and after. THE RESIDUAL 9 ARE NOT REPAIRABLE THIS WAY. Each is a LONE brace substituting for another character rather than wrapping one: 7 HTML table cells reading '200m{-300m2' where '{' replaced a '2' (the neighbouring cells read '>300m2-900m2' and '600m2-900m2', which is why the reading is obvious and still a guess), plus 81108 '(ground or upper floor}' and 81112 '{incised decorative patterns' where a brace replaced a parenthesis. Deciding which character a lone brace should be requires the source document. SEPARATE AND LARGER, not counted here: 244 served rows carry '900 m m' where the source reads 900mm, and ~165 carry letter-spacing like 'F o o d A c t 2003'. Stripping the '$' from '$F o o d A c t 2003' removed the symptom this metric could see and left that corruption invisible - a repair blinding a metric, which needs its own row."
+    },
+    "DQ-77": {
+      "declared": "fixed",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-77"
+      ],
+      "passes_when": "exit 0 - no served provision splits a unit across a space",
+      "red_when": "a measurement reaches the reader with its unit split, so '900mm' is quoted as '900 m m' and '7pm' as '7 p m'",
+      "note": "FIXED 2026-08-15: 581 -> 0 via scripts/repair_tex_residue.py --pass units, verified by re-running the probe rather than by trusting the UPDATE count. 0 rows skipped, 0 unchanged, 19,957 served rows before and after, and DQ-76 held at 9 (no regression). THE INVARIANT IS STRONGER THAN DQ-76's: this pass only ever deletes a space between two characters, so the ordered sequence of NON-WHITESPACE characters must be identical - nothing added, dropped or reordered. Checked per row; a failure skips the row rather than writing it. The space BEFORE the unit is kept ('900 mm', not '900mm') because closing that gap is a typographic preference this pass has no business holding, and the minimal transform is what makes the invariant provable. The one exception is the ordinal '20 t h' -> '20th', where 'th' is a suffix rather than a unit. WHY IT EXISTED AT ALL: found because the DQ-76 repair stripped the '$' from '$F o o d A c t 2003', removing the symptom that metric could see and leaving the corruption invisible - a repair blinding its own metric. STILL EXCLUDED and tracked as DQ-78: letter-spacing like 'F o o d A c t 2003', because joining those requires deciding where words begin, which is a judgement about the source document rather than a whitespace deletion."
+    },
+    "DQ-78": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-78"
+      ],
+      "passes_when": "exit 0 - no served provision is scrambled map-figure text",
+      "red_when": "a served provision has map-figure text interleaved into it, so a planner reading the control also reads scrambled street names - and in the worst rows the control is buried inside them",
+      "note": "CORRECTED 2026-08-15, and the correction reverses the remedy. My first note said 'there is nothing in these rows to recover, clears by excluding figure pages'. That is WRONG for a large part of the set and I only found it by reading the rows nearest the CUT rather than the obvious ones at ratio 0.9. The top of the distribution is pure scramble: 'Go wrie Street Uni B o D n St r r e ee a t R v o y i c n h'. But the rows just inside the boundary carry REAL CONTROLS with map text interleaved: id 95870 (0.230) reads 'Objectives (a) Ensure that the safety and amenity of pedestrians and cyclists is not compromised by off-street parking access points'; id 95375 (0.202) reads 'This locality is bounded by Ashmore Street to the north, Mitchell Road to the east'; id 95887 (0.213) reads 'Building heights are to comply with Figure 6.1'. SO DEACTIVATING THESE ROWS WOULD HIDE REAL CONTROLS - the liability direction, and the one the DCP review queue memo already warns about. The remedy is to strip the figure text from the provision at EXTRACTION, keeping the prose, not to drop the row and not to edit the text with a regex: separating interleaved map labels from a control needs the source PDF's layout, which is exactly the information the extractor threw away. The metric stays as it is and stays RED at 111. It correctly identifies affected rows; what it cannot do is tell a pure-figure row from a mixed one, and that distinction is the whole remedy. Thresholds were read off the distribution (>=0.50: 34, >=0.30: 83, >=0.20: 128, >=0.10: 663) and the >=100-token floor separates this from DQ-77 by dropping the 31-token 's o o m m' rows. 110 of 111 are one council's Section 2 precinct pages, which is the shape of one broken document rather than a threshold artefact."
     }
   }
 }

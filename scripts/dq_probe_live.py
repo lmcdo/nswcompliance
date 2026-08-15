@@ -591,7 +591,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "DISJOINT set: do not add the two numbers.",
     ),
     "DQ-76": (
-        "Served provisions showing LaTeX markup where a regulated number belongs",
+        "Served provisions carrying PDF-extraction residue in place of the text",
         # DQ-27 is NOT reopened by this and must not be. Its scope was
         # marrickville and its fix held perfectly: 36 -> 0, verified at ANY
         # status against this same predicate. This is the SAME corruption in a
@@ -606,25 +606,139 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # Found on 2026-08-15 by writing a check for a row whose ledger entry
         # said only "Historic." rather than trusting that status.
         #
-        # Token set is wider than DQ-27's original three: \mathrm and \pmb were
-        # both observed in the matched rows, \pmb in the setback formulae.
+        # WIDENED 2026-08-15 after the first version was shown unfit. It listed
+        # five macros I had happened to see (mathsf, mathfrak, mathtt, mathrm,
+        # pmb) and so counted 10 while reporting CLEAN on 89 rows carrying the
+        # identical fault -- a row with only \dag, \bullet, \div, \frac or
+        # \lambda scored green. A check that cannot fail on most of its own
+        # defect class is the DQ-30 "0% drift" shape, which passed while 241
+        # rows stayed broken.
         #
-        # A regex, not five LIKEs, and not for elegance: psycopg2 reads % in the
-        # SQL as a parameter placeholder even when params is empty, so the LIKE
-        # form raised IndexError before it ever reached the database. Doubling
-        # to %% would work and would also make the pattern unreadable. DQ-29
-        # already uses ~ for the same reason.
+        # The predicate now describes the FAULT -- pdfplumber emitting TeX
+        # math-mode residue instead of the rendered glyph -- through three
+        # signatures, each validated by reading every row it uniquely
+        # contributes rather than by sampling:
+        #
+        #   1. \word   any TeX control sequence. Justified by enumerating the
+        #      backslash tokens actually present: mathfrak, dag, mathbf,
+        #      bullet, pmb, mathtt, div, phantom, ast, cdots, zeta, begin/end,
+        #      textrm, pounds, frac, ell, tau, overbar, nu, ddot, vec, sf,
+        #      overline, lambda, operatorname, Delta, scriptstyle. All TeX.
+        #   2. $ NOT followed by a digit. 94 rows carry $ before a digit and
+        #      are money; this catches none of them. The 18 it uniquely finds
+        #      are '$L_{A10}$', '1 in 20 $( 5 % )', '$F o o d A c t 2003'.
+        #   3. a brace group wrapping a single symbol. The 24 it uniquely
+        #      finds are the worst of the set: '12 00 { m } 2' for 1,200 m2,
+        #      '4 {} 000 m 2 { - } 15 m' for a 4,000 m2 lot and a 15 m
+        #      setback, '3.6 { m } above ground level' for a height limit.
+        #
+        # TWO SIGNATURES WERE MEASURED AND REJECTED, on evidence not hunch.
+        # Digit-spacing ([0-9] [0-9] [0-9], 87 rows) matches "100 Year ARI
+        # Flood Level" and "1% AEP". Superscript-brace ([\^_]\s*\{, 8 rows)
+        # matches markdown section ids like 14e_3. Keeping either for coverage
+        # would make the number unfallable, which is how a check gets ignored.
+        #
+        # Regexes rather than LIKE: psycopg2 reads % as a parameter placeholder
+        # even when params is empty, so the LIKE form raised IndexError before
+        # reaching the database. DQ-29 uses ~ for the same reason.
+        # Signature 3 was WIDENED AGAIN on 2026-08-15, after the first repair
+        # pass took the count to 0 while 103 rows still carried braces. The
+        # character class [-A-Za-z0-9] could not see an EMPTY group '{}', nor
+        # '{ : }', nor a multi-character one like '{ t h }' or '{ a m }'. So the
+        # metric read clean over '1 {} 200 m m' (1,200mm), '20 { t h } century',
+        # '7 { : } 00 p m' and '2 {} 300 {} 000 m 3'.
+        #
+        # It is now ANY brace. Checked before widening rather than assumed:
+        # every one of the 103 rows containing a brace was sampled and none was
+        # legitimate. A curly brace has no place in NSW planning text.
+        #
+        # The lesson is the same one this row keeps teaching: a predicate that
+        # enumerates the forms someone has already seen reports clean on the
+        # ones they have not. Describe the fault, not the examples.
         r"SELECT count(*) FROM regulatory_provisions "
-        r"WHERE is_current AND v2_is_actionable "
-        r"AND provision_text ~ '\\(mathsf|mathfrak|mathtt|mathrm|pmb)'",
+        r"WHERE is_current AND v2_is_actionable AND ("
+        r"provision_text ~ '\\[A-Za-z]{2,}' "
+        r"OR (provision_text LIKE '%%$%%' AND provision_text !~ '\$[0-9]') "
+        r"OR provision_text LIKE '%%{%%' OR provision_text LIKE '%%}%%')",
         (),
-        "Each row shows a reader raw LaTeX where a regulated value belongs. "
-        "Measured 10 served rows on 2026-08-15, all statewide instruments. "
-        "These are not cosmetic: they are wall-height and setback CONTROLS - "
-        "'\\mathfrak { s o o m m }' is meant to read 900mm, and "
-        "'\\mathtt { s } = \\mathtt { h } - 3 \\mathtt { m }' is the setback "
-        "formula s = h - 3m. One of the ten carries the token beyond the first "
-        "190 characters, so it is corrupt but not visibly so at the top.",
+        "Each row shows a reader extraction residue where a regulated value "
+        "belongs. Measured 99 served rows on 2026-08-15 (the earlier figure of "
+        "10 was the narrow metric, not a smaller defect). Not cosmetic: the "
+        "affected text includes '12 00 { m } 2' for 1,200 m2, "
+        "'4 {} 000 m 2 { - } 15 m' for a 4,000 m2 lot with a 15 m setback, "
+        "'3.6 { m } above ground level' for a height limit, and "
+        "'Omit 666 m { - } 18 m 3 from clause 3C.28(4)' for an amendment "
+        "instruction. Clears only by repairing the text at source; editing the "
+        "predicate to make it fall would be the defect this row is about.",
+    ),
+    "DQ-77": (
+        "Served provisions whose units are split by a space (900 m m, 7 p m)",
+        # The other half of the extractor fault DQ-76 measures. Found because
+        # the DQ-76 repair stripped the '$' from '$F o o d A c t 2003' -- the
+        # markup went, the corruption stayed, and the metric could no longer
+        # see it. A repair blinding its own metric is worth its own row.
+        #
+        # Every signature was sampled before inclusion, not assumed:
+        #   '900 m m of a side boundary', '600 m m', '150 m m diameter sewer
+        #   main', '7 { : } 00 p m', '20 t h century'. A space inside a unit is
+        #   never correct here.
+        #
+        # NOT included: the 4+-spaced-letters signature. It conflates this
+        # class with DQ-78's scrambled map text, and a metric that mixes two
+        # remedies cannot be driven to zero by either.
+        #
+        # Deliberately NOT repaired in the same pass as DQ-76. Joining '900 m m'
+        # to '900mm' deletes a space between characters, which is safe, but
+        # joining 'F o o d A c t' to 'Food Act' requires deciding where the word
+        # boundaries are. Those are different risks and want different review.
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable AND ("
+        r"provision_text ~ '[0-9]\s+m\s+m\M' "
+        r"OR provision_text ~ '[0-9]\s+m\s+[23]\M' "
+        r"OR provision_text ~ '[0-9]\s+[ap]\s+m\M' "
+        r"OR provision_text ~ '[0-9]\s+t\s+h\M')",
+        (),
+        "Each row shows a measurement whose unit has been split by the PDF "
+        "extractor, so '900mm' reaches the reader as '900 m m' and '7pm' as "
+        "'7 p m'. Measured 581 across the four signatures on 2026-08-15 "
+        "(228 of them the m-m form). The 738 figure recorded while exploring "
+        "this was the union INCLUDING the letter-spacing signature, which is "
+        "excluded here because it belongs to DQ-78. The value is not wrong, "
+        "but the text a planner quotes is not what the instrument says.",
+    ),
+    "DQ-78": (
+        "Served provisions that are scrambled MAP LABELS, not controls at all",
+        # Not a formatting defect. These rows are text lifted off a map IMAGE,
+        # where labels at different angles interleaved into nonsense:
+        #   'Go wrie Street Uni B o D n St r r e ee a t R v o y i c n h f S e
+        #    ord S tre t e S t re t e'
+        # There is no control in there to repair. The row should not be served.
+        #
+        # Signature: the fraction of whitespace-separated tokens that are a
+        # single letter. Real prose sits near zero -- only 'a' and 'I' -- while
+        # interleaved map text is dominated by them.
+        #
+        # The two thresholds were read off the DISTRIBUTION, not chosen:
+        # >=0.50 gives 34, >=0.30 gives 83, >=0.20 gives 128, >=0.10 gives 663.
+        # The >=100-token floor is what separates this class from DQ-77: it
+        # drops the 31-token 's o o m m' rows, which score 0.29 but are a unit
+        # defect, not a map. At tokens>=100 and ratio>=0.20 the result is 111
+        # rows and 110 of them are one council, which is the shape of a single
+        # broken document rather than a threshold artefact.
+        r"SELECT count(*) FROM ("
+        r"SELECT cardinality(regexp_split_to_array(btrim(provision_text), '\s+')) AS n, "
+        r"(SELECT count(*) FROM unnest(regexp_split_to_array(btrim(provision_text), '\s+')) w "
+        r"WHERE w ~ '^[A-Za-z]$') AS singles "
+        r"FROM regulatory_provisions "
+        r"WHERE is_current AND v2_is_actionable AND length(provision_text) > 80) x "
+        r"WHERE n >= 100 AND singles::numeric / n >= 0.20",
+        (),
+        "Each row is served to a planner as a development control and contains "
+        "no control -- it is street names lifted off a map figure and "
+        "interleaved into nonsense. Measured 111 on 2026-08-15, of which 110 "
+        "are city_of_sydney Section 2 precinct pages and 1 is ku_ring_gai. "
+        "Clears by excluding figure pages at extraction, NOT by repairing the "
+        "text: there is nothing in these rows to recover.",
     ),
 }
 
