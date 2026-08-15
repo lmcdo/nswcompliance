@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a content guard to the production monitor and one read-only probe. No data is written by this change. Standard rather than Light because the guard alters what the monitor records for every chapter it fetches nightly, and because the finding it encodes - a fetch failure recorded as an amendment - was about to send me into a re-extraction that would have deleted 32 live controls. Standard rather than Critical because the guard can only make the monitor write LESS: a rejected response leaves the registry row untouched and increments a failure counter.",
-  "commit_hash": "2ad1349d",
+  "commit_hash": "2ffd100c",
   "files": [
     "scripts/r2_monitor.py",
     "scripts/dq_probe_live.py",
