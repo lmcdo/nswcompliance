@@ -609,6 +609,30 @@
       "passes_when": "exit 0 - every gradeable provision awaiting human approval has been checked against its source PDF and carries a fidelity_source_quote",
       "red_when": "A reviewer is being asked to approve provisions into the served corpus with nothing having confirmed the text appears in the council's own document. fidelity_status is NOT this check - 19,199 rows carry one, but it is a cheap inline heuristic (garbled glyphs, junk ref, oversize) that never opens the PDF.",
       "note": "Measured 2026-08-14: 3,741 of 3,741 gradeable pending rows ungraded - 100% - and 0 of all 8,693 pending rows carry a source quote. Across the table's whole history, 12 of 19,649 rows have one: 0.06%. The cause was a COUPLING, not an absence: dcp_fidelity_gate.gate_chapter was gated on AI_EXTRACTION, a flag that also swaps the entire deterministic extractor for an LLM, so nobody would enable it in production merely to get verification. Decoupled 2026-08-14 behind its own opt-OUT control fidelity_gate_enabled(); the three other AI_EXTRACTION sites are legitimate and remain. Cost checked before switching on: one R2 download plus pdfplumber text extraction per chapter via the RAW page path, deliberately not the OCR-aware one, so it cannot inherit the unbounded Modal call. A residual after the gate runs means the grader read the PDF and could not find the text - that is a FINDING about the extraction, not a gap in coverage."
+    },
+    "DQ-73": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-73"
+      ],
+      "passes_when": "exit 0 - no dated setback control falls on the 1st of a month, because each has been adjudicated against the plan's own text and set to its real commencement or to NULL",
+      "red_when": "a setback control claims day precision for a date we only know to the month, so it is dated more precisely than the evidence supports",
+      "note": "CANDIDATES, not confirmed defects - a real commencement can fall on the 1st, so 301 is an upper bound. The evidence is the SHAPE: 82% of dated rows, clustered one value per council (canterbury_bankstown 40 on 2025-08-01, bayside 32 on 2026-04-01). Found 2026-08-15 while proving DQ-41's zero was a measurement and not a vacuous query. Adjudicate per council; set NULL rather than guess."
+    },
+    "DQ-74": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-74"
+      ],
+      "passes_when": "exit 0 - every served provision records how its applicability was decided",
+      "red_when": "a served provision carries no applicability provenance, so a row nobody ever tagged cannot be told apart from one deliberately left as ALL",
+      "note": "DISJOINT from DQ-33, and larger. DQ-33 counts v2_dev_type_source='no_config' (1,278) - rows the tagger looked at and could not resolve. These 10,103 are NULL: it never looked. Do not add the two. Third instance of the DQ-68/DQ-24 pattern where a row was scoped to the slice someone measured, leaving the larger population unwatched."
     }
   }
 }

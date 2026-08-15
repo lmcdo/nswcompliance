@@ -534,6 +534,62 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "cannot be asked of them; that gap is not counted here and needs its "
         "own row.",
     ),
+    "DQ-73": (
+        "Dated setback controls falling on the 1st of a month",
+        # CANDIDATES, not confirmed defects -- the same framing as DQ-29, and
+        # for the same reason: a real commencement CAN fall on the 1st, so this
+        # number is an upper bound that needs adjudication, not 301 things to
+        # go and change.
+        #
+        # What makes it worth a row is the SHAPE, not the count. 301 of 365
+        # dated rows is 82%, and the values cluster one per council:
+        # canterbury_bankstown 40 rows all on 2025-08-01, bayside 32 all on
+        # 2026-04-01, hornsby 30 all on 2025-06-01. Chance does not do that.
+        # It is the signature of a month ("August 2025") being stored as a day.
+        #
+        # Found on 2026-08-15 while PROVING DQ-41's zero was a measurement
+        # rather than a query that cannot match. DQ-41 removed the January
+        # instances; this asks whether the same manufacturing simply moved to
+        # other months.
+        #
+        # NULL effective_date is deliberately excluded. 706 rows have none and
+        # that is the honest state; counting it here would push toward
+        # inventing dates, which is the defect.
+        "SELECT count(*) FROM dcp_setback_controls "
+        "WHERE effective_date IS NOT NULL "
+        "AND EXTRACT(DAY FROM effective_date) = 1",
+        (),
+        "Each row may be claiming day precision for a date we only know to the "
+        "month, so a served control is dated more precisely than the evidence "
+        "supports. Measured 301 of 365 dated rows on 2026-08-15. This is an "
+        "upper bound: adjudicate per council against the plan's own text "
+        "before changing any value, and set NULL rather than guess.",
+    ),
+    "DQ-74": (
+        "Served provisions with no applicability provenance recorded at all",
+        # SEPARATE FROM DQ-33 and larger. DQ-33 counts rows whose
+        # v2_dev_type_source is the literal 'no_config' (1,278) -- rows the
+        # tagger looked at and could not resolve. These 10,103 have NULL: the
+        # tagger never looked. The two sets are disjoint and must not be added.
+        #
+        # This is the DQ-68/DQ-24 pattern for the third time: an existing row
+        # was scoped to the slice someone happened to measure, leaving the
+        # larger population in the same state with nothing watching it. DQ-33
+        # cannot see these because its own WHERE clause requires the column to
+        # be populated.
+        #
+        # Opened 2026-08-15 while wiring DQ-33's probe, by reading the full
+        # distribution of the column rather than only the value being counted.
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable "
+        "AND v2_dev_type_source IS NULL",
+        (),
+        "Each row is served with no record of how -- or whether -- its "
+        "applicability was ever decided, so it cannot be told apart from a row "
+        "deliberately left as ALL. Measured 10,103 of 19,957 served provisions "
+        "on 2026-08-15, against DQ-33's 1,278 no_config rows, which are a "
+        "DISJOINT set: do not add the two numbers.",
+    ),
 }
 
 
