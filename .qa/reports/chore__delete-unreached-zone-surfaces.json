@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Pure deletion of an unreachable surface. Fourteen files removed, one line removed from a health check. Nothing is rewired and no value is chosen, so the change is directionally safe: it removes a false regulatory claim and cannot create one. Standard rather than Critical because the deleted endpoint had no UI caller and the deleted components had no render path, both verified by grep before deletion; Standard rather than Light because the endpoint was live HTTP and served a hardcoded NSW zone-to-permitted-use table that contradicted the LEP in 135 places, so its removal changes what a direct caller receives.",
-  "commit_hash": "PENDING",
+  "commit_hash": "4449f929",
   "files": [
     "frontend-nextjs/pages/api/development-types.ts",
     "frontend-nextjs/contexts/DevelopmentContext.tsx",
