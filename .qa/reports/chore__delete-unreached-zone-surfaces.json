@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Pure deletion of an unreachable surface. Fourteen files removed, one line removed from a health check. Nothing is rewired and no value is chosen, so the change is directionally safe: it removes a false regulatory claim and cannot create one. Standard rather than Critical because the deleted endpoint had no UI caller and the deleted components had no render path, both verified by grep before deletion; Standard rather than Light because the endpoint was live HTTP and served a hardcoded NSW zone-to-permitted-use table that contradicted the LEP in 135 places, so its removal changes what a direct caller receives.",
-  "commit_hash": "0e8ce422",
+  "commit_hash": "dbb26072",
   "files": [
     "frontend-nextjs/pages/api/development-types.ts",
     "frontend-nextjs/contexts/DevelopmentContext.tsx",
@@ -21,12 +21,15 @@
   ],
   "falsifiable_check": {
     "command": "python scripts/lint_hardcoded_zone_codes.py --all",
-    "fails_when": "the tree-wide hardcoded zone-code count rises above the recorded baseline, or any deleted module is reintroduced by a later import"
+    "fails_when": "the tree-wide hardcoded zone-code count rises above the recorded baseline, or any deleted module is reintroduced by a later import",
+    "observed_red": "Yes. Before deletion, comparing ZONE_DEVELOPMENT_MAPPING against lep_land_use_table returned 135 contradicting (council, zone, claim) triples of 517, with 8 backed by an explicit prohibited row. That is the red state. After deletion the table does not exist, so the comparison has no left-hand side and the contradiction count is structurally zero rather than measured-zero. The standing guard is lint_hardcoded_zone_codes.py --all against .claude/zone_code_baseline.json, which was observed red on this very cluster - it is what recorded these files as violations in the first place."
   },
   "pre_impl": {
     "existing_data": "lep_land_use_table holds 18,196 rows across 26 LGAs, 32 zones and 356 development types, with permissibility in {permitted 9531, prohibited 8146, exempt 519}. It carries NO source_ref and NO effective_date column, so issue #928's suggested fix of returning both with each row is not implementable against the current schema. The deleted endpoint took no council parameter while the real table is keyed lga+zone.",
     "reachability": "Traced every caller before deleting. /api/development-types had exactly three references: contexts/DevelopmentContext.tsx (whose DevelopmentProvider is rendered by no page, only by its own test), store/slices/developmentSlice.ts (whose fetchDevelopmentTypes thunk is dispatched nowhere), and lib/health/migration-health-check.ts (which only pings the URL). components/development/* was imported only by those two files and one test. GroupedSetbackDisplay had no renderer, and was the sole consumer of components/compliance/DevelopmentTypeSelector. components/development-selector-enhanced.tsx had no importer. The whole redux store existed solely to hold the dead slice.",
-    "measured_defect": "Compared the deleted ZONE_DEVELOPMENT_MAPPING against lep_land_use_table across 26 councils and the five hardcoded zones. 517 (council, zone, claim) triples evaluated: 289 agree, 135 contradict, 93 indeterminate. 8 contradictions are explicit prohibited rows needing no inference (Inner West R2 boarding_houses, Georges River E1 residential_flat_buildings and E1 multi_dwelling_housing, Fairfield R3 residential_flat_buildings and R3 shop_top_housing, Canada Bay R3 shop_top_housing, Waverley R3 shop_top_housing, Inner West R1 dual_occupancies). The remaining 127 rest on the Item-4 catch-all, which reads prohibited for 23 of 26 councils in R2."
+    "measured_defect": "Compared the deleted ZONE_DEVELOPMENT_MAPPING against lep_land_use_table across 26 councils and the five hardcoded zones. 517 (council, zone, claim) triples evaluated: 289 agree, 135 contradict, 93 indeterminate. 8 contradictions are explicit prohibited rows needing no inference (Inner West R2 boarding_houses, Georges River E1 residential_flat_buildings and E1 multi_dwelling_housing, Fairfield R3 residential_flat_buildings and R3 shop_top_housing, Canada Bay R3 shop_top_housing, Waverley R3 shop_top_housing, Inner West R1 dual_occupancies). The remaining 127 rest on the Item-4 catch-all, which reads prohibited for 23 of 26 councils in R2.",
+    "assumption_mismatch": "Two. First, issue #928 states the fix is to re-point the endpoint at lep_land_use_table returning source_ref and effective_date per row; those columns do not exist on that table (id, zone, zone_name, lga, development_type, permissibility, notes, created_at), so the suggested fix is not implementable as written. Second, the issue calls the endpoint live and consumed, listing three call sites. All three are real references but none is reachable: the context provider is rendered by no page, the redux thunk is dispatched nowhere, and the third is a health check that only pings the URL. I initially repeated the issue's framing that a user could see this, then traced the render path and found no page. The endpoint was serving wrong data to anyone calling it directly, not to a user journey.",
+    "new_vs_existing": "No new surface. This is deletion only. The capability the endpoint claimed to provide - which development types are permitted in a zone - already exists correctly elsewhere and is already sourced from lep_land_use_table: app/api/lep/permissibility/route.ts and app/api/permissibility/check/route.ts. That is precisely why this was two parallel implementations of one question, one sourced and one invented, and why removing the invented one leaves no gap."
   },
   "functions": [
     {
@@ -34,7 +37,8 @@
       "file_line": "frontend-nextjs/lib/health/migration-health-check.ts:246",
       "input": "no arguments; iterates a literal list of endpoint paths",
       "output": "healthy when every listed endpoint responds ok. The deleted endpoint is removed from the list, so the health check no longer counts a 404 from a route that no longer exists as a failure.",
-      "why_it_changed": "leaving the path in the list would turn a deliberate deletion into a permanent unhealthy status"
+      "why_it_changed": "leaving the path in the list would turn a deliberate deletion into a permanent unhealthy status",
+      "if_none": "If the path were left in the list, checkApiEndpoints would fetch a route that no longer exists, get a 404, and report the API subsystem permanently unhealthy - turning an intentional deletion into a standing false alarm. Removing the entry keeps the check meaningful for the three endpoints that remain."
     }
   ],
   "values": [
@@ -55,37 +59,45 @@
       "scenario": "Something imports a deleted module after this merge.",
       "what_happens": "tsc and the Next.js build fail on an unresolved import. Not silent.",
       "covered_by": "npx tsc --noEmit and the CI build",
-      "repro": "cd frontend-nextjs && npx tsc --noEmit  # unresolved import surfaces here; currently 8 pre-existing react-map-gl errors, baseline 677"
+      "repro": "cd frontend-nextjs && npx tsc --noEmit  # unresolved import surfaces here; currently 8 pre-existing react-map-gl errors, baseline 677",
+      "mitigated": "tsc runs in the pre-commit hook against an error-count baseline and in CI, so an unresolved import cannot reach main silently."
     },
     {
       "scenario": "An external consumer calls GET /api/development-types after deletion.",
       "what_happens": "404 instead of a 200 carrying wrong data. Loud rather than silent, and the previous behaviour was the harmful one. No first-party caller exists.",
       "covered_by": "reachability trace recorded in pre_impl",
-      "repro": "curl -s -o /dev/null -w '%{http_code}' http://localhost:3003/api/development-types?zone=R2  # expect 404 after this change, was 200 with wrong data"
+      "repro": "curl -s -o /dev/null -w '%{http_code}' http://localhost:3003/api/development-types?zone=R2  # expect 404 after this change, was 200 with wrong data",
+      "mitigated": "Accepted deliberately, not mitigated. A 404 is the correct response for a route that should not exist, and it is louder than the previous behaviour of returning 200 with regulatory claims that contradict the LEP in 135 places. No first-party caller exists to break."
     },
     {
       "scenario": "Deleting store/index.ts breaks a component that used redux.",
       "what_happens": "cannot occur - the store held exactly one reducer, that reducer was the dead slice, and no component calls useSelector or useDispatch anywhere in the tree.",
       "covered_by": "grep for useSelector/useDispatch/Provider store returning only the deleted test",
-      "repro": "cd frontend-nextjs && grep -rn 'useSelector\\|useDispatch\\|@/store' --include=*.tsx --include=*.ts app/ components/ hooks/ contexts/ | grep -v node_modules  # expect zero hits"
+      "repro": "cd frontend-nextjs && grep -rn 'useSelector\\|useDispatch\\|@/store' --include=*.tsx --include=*.ts app/ components/ hooks/ contexts/ | grep -v node_modules  # expect zero hits",
+      "mitigated": "Mitigated by proof of absence rather than by a guard: the grep for useSelector, useDispatch and @/store returns only the deleted test, and the full 83-suite frontend run passes after deletion."
     },
     {
       "scenario": "The health check now reports healthy on a shorter list and hides a real outage.",
       "what_happens": "the other three endpoints are still checked and still required to pass; only the path to a deliberately removed route is gone.",
       "covered_by": "migration-health-check.ts:246 retains /api/property, /api/compliance/status, /api/compliance/checklist",
-      "repro": "cd frontend-nextjs && grep -n 'api/' lib/health/migration-health-check.ts  # expect /api/property, /api/compliance/status, /api/compliance/checklist and no /api/development-types"
+      "repro": "cd frontend-nextjs && grep -n 'api/' lib/health/migration-health-check.ts  # expect /api/property, /api/compliance/status, /api/compliance/checklist and no /api/development-types",
+      "mitigated": "The three remaining endpoints are still asserted, so a genuine outage in property, compliance status or compliance checklist still fails the check."
     },
     {
       "scenario": "A copy of the same hardcoded table survives elsewhere and keeps serving.",
       "what_happens": "two further copies of ZONE_DEVELOPMENT_TYPES existed and are deleted here. A third copy remains under migratePRPs/backup/ui_swap_20250921_213550/, which is an explicit backup directory, is imported by nothing, and is left untouched as pre-existing dead code.",
       "covered_by": "grep for ZONE_DEVELOPMENT_TYPES tree-wide, recorded in residual_risk",
-      "repro": "cd frontend-nextjs && grep -rn 'ZONE_DEVELOPMENT_TYPES\\|ZONE_DEVELOPMENT_MAPPING' --include=*.ts --include=*.tsx . | grep -v node_modules  # expect hits only under migratePRPs/backup/"
+      "repro": "cd frontend-nextjs && grep -rn 'ZONE_DEVELOPMENT_TYPES\\|ZONE_DEVELOPMENT_MAPPING' --include=*.ts --include=*.tsx . | grep -v node_modules  # expect hits only under migratePRPs/backup/",
+      "mitigated": "Partially mitigated. The two live copies are deleted here and lint_hardcoded_zone_codes.py guards against new ones. The surviving copy under migratePRPs/backup/ is imported by nothing and is left as pre-existing dead code; it still counts toward the zone-code baseline, which is recorded in residual_risk rather than silently cleaned."
     }
   ],
   "mutation_analysis": "Deletion cannot be mutation-tested in the usual sense - there is no surviving branch to invert. The equivalent check is reintroduction: restoring any single deleted file leaves it unimported, so no test would fail, which is precisely why the cluster survived eleven months. The guard that makes this stick is therefore not a unit test but scripts/lint_hardcoded_zone_codes.py --all against .claude/zone_code_baseline.json, whose per-file counts fall with this change and can never rise. The full frontend suite (83 suites, 1,110 tests) passes after deletion, confirming nothing depended on the removed modules.",
   "residual_risk": "Three things are deliberately not addressed here. First, migratePRPs/backup/ui_swap_20250921_213550/ still contains copies of GroupedSetbackDisplay and DevelopmentTypeSelector with their own hardcoded zone tables; they are unimported backup files and deleting a backup directory is out of scope for this change. Second, @reduxjs/toolkit and react-redux are now unused by application code but are left in package.json - a dependency removal needs verification on a fresh npm ci rather than against a junctioned node_modules, per the recorded hazard. Third, this deletes the wrong answer without providing a right one: nothing now serves permitted development types. That is correct while no caller exists, but if the capability is ever wanted it must be built against lep_land_use_table scoped by council, which requires a council parameter the old contract never had, and the table cannot supply source_ref or effective_date without a schema change.",
   "post_merge": {
     "db_reset": "No. No schema change, no data change, no migration.",
-    "verify": "GET /api/development-types returns 404 in the preview deployment; the app renders unchanged because no page referenced it."
+    "verify": "GET /api/development-types returns 404 in the preview deployment; the app renders unchanged because no page referenced it.",
+    "secrets": "None. No credential, token or environment variable is added, removed or referenced. The deleted endpoint read no secret; it returned a literal in-file table.",
+    "other_repo": "None. All changes are inside this repository, entirely within frontend-nextjs/. No Railway service, Fly app, Modal endpoint or external consumer references /api/development-types - it had no first-party caller and is not part of any documented public contract.",
+    "manual_verify": "In the Vercel preview: confirm GET /api/development-types returns 404, and load the assessment and reports pages to confirm they render unchanged - they never imported any deleted module, so any visible difference would mean the reachability trace was wrong and the change should be reverted."
   }
 }
