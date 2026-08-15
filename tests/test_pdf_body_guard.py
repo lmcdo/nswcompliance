@@ -117,3 +117,42 @@ def test_message_names_the_url_so_a_failure_is_actionable():
     with pytest.raises(RuntimeError) as exc:
         _assert_pdf_body(b"1", url)
     assert url in str(exc.value)
+
+
+# --------------------------------------------------------------------------
+# the range-request fallback: report the DOCUMENT's size, not the range's
+# --------------------------------------------------------------------------
+#
+# head_request() falls back to 'GET Range: bytes=0-0' when a server answers
+# HEAD with 405. It used to store that response's Content-Length, which is 1 by
+# definition - we asked for one byte. That put url_content_length = 1 on a 14 MB
+# chapter and made it look like a failed fetch, which in turn made me diagnose a
+# working document as unfetchable. The size lives in Content-Range.
+
+# Plain dicts, not requests' CaseInsensitiveDict: conftest_mocks.py stubs
+# `requests` so pure-logic tests run without native deps, and the stub has no
+# .structures. _range_total only calls .get(), so a dict exercises the parsing
+# faithfully. Case-insensitivity is requests' responsibility, not this
+# function's - in production it always receives a real CaseInsensitiveDict.
+_range_total = r2_monitor._range_total
+
+
+def test_range_response_reports_the_document_size_not_the_range():
+    """The exact regression: 206 with Content-Length 1."""
+    headers = {"Content-Length": "1", "Content-Range": "bytes 0-0/14117244"}
+    assert _range_total(headers) == "14117244"
+
+
+def test_server_that_ignores_range_is_unaffected():
+    """A plain 200 has no Content-Range; behaviour must be exactly as before."""
+    assert _range_total({"Content-Length": "14117244"}) == "14117244"
+
+
+def test_unparseable_content_range_falls_back_rather_than_raising():
+    """'bytes */*' is legal and carries no total. Falling back beats crashing."""
+    assert _range_total({"Content-Length": "1", "Content-Range": "bytes */*"}) == "1"
+
+
+def test_absent_headers_return_none_not_zero():
+    """None means 'unknown'. Zero would be a size, and a wrong one."""
+    assert _range_total({}) is None

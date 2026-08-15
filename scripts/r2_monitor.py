@@ -24,6 +24,7 @@ Exit codes:
 import argparse
 import hashlib
 import os
+import re
 import sys
 import time
 from collections import defaultdict
@@ -186,6 +187,25 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _range_total(headers) -> str | None:
+    """The DOCUMENT's size from a range response, not the range's size.
+
+    A ``Range: bytes=0-0`` request answered with 206 reports
+    ``Content-Length: 1`` -- correct, and useless as a document size. The full
+    size is the part after the slash in ``Content-Range: bytes 0-0/14117244``.
+
+    Falls back to plain Content-Length when Content-Range is absent or
+    unparseable, so a server that ignores Range and returns a normal 200
+    behaves exactly as it did before.
+    """
+    cr = headers.get("Content-Range")
+    if cr:
+        m = re.search(r"/\s*(\d+)\s*$", cr)
+        if m:
+            return m.group(1)
+    return headers.get("Content-Length")
+
+
 def head_request(url: str) -> dict:
     """HTTP HEAD to cheaply check Content-Length before downloading.
     Falls back to a range-0 GET if HEAD returns 405 (some council APIs
@@ -205,7 +225,13 @@ def head_request(url: str) -> dict:
             # Range request returns 206; some servers ignore Range and return 200
             status = 200 if resp.status_code in (200, 206) else resp.status_code
             return {
-                "content_length": resp.headers.get("Content-Length"),
+                # NOT resp.headers['Content-Length'] on this path. We asked for
+                # ONE byte, so a 206 reports Content-Length: 1 - the length of
+                # the range, not of the document. Storing that put
+                # url_content_length = 1 on hornsby's Part 3 Residential
+                # chapter, a 14 MB PDF, and made it look like a failed fetch
+                # for weeks. The total is in Content-Range: bytes 0-0/14117244.
+                "content_length": _range_total(resp.headers),
                 "etag": resp.headers.get("ETag"),
                 "last_modified": resp.headers.get("Last-Modified"),
                 "status": status,
