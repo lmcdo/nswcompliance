@@ -591,6 +591,10 @@ scripts/*
 # would leave 104 rows of served regulatory text altered with no reviewable
 # record of the transform that altered them.
 !scripts/repair_tex_residue.py
+# DQ-70's "is this change real?" measurement. It is the step that stops a
+# re-extraction being run on a chapter that was only recompressed, so it has to
+# be re-runnable by whoever works the remaining 262.
+!scripts/dq70_measure_text_delta.py
 !scripts/qa_report_template.json
 !scripts/main_red_alarm_logic_check.js
 !scripts/check_test_baselines.py
