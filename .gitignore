@@ -449,6 +449,29 @@ frontend-nextjs/public/pdfjs/
 # inert and new files were silently untracked. The already-tracked ones survived
 # only because gitignore does not apply to files already in the index.
 scripts/*
+# 2026-08-16: the allowlist below lost. 797 untracked .py files had accumulated
+# in this directory, including the three the /classify-lga workflow tells you to
+# run — populate_provision_types.py, backfill_structural_categories.py and
+# backfill_heritage_hca.py — none of which existed on any clone but one laptop.
+# A named allowlist only holds if every author remembers to extend it, and over
+# 300 tracked files it stopped being remembered.
+#
+# So the rule is inverted: CODE IS TRACKED, and data, binaries and generated
+# artefacts stay out. Nothing here needs adding when a new script is written,
+# which is the only version of this that survives contact with a working week.
+# The individually named lines further down are now redundant; they are left
+# because each records why that file mattered.
+!scripts/*/
+!scripts/*.py
+!scripts/*.sql
+!scripts/*.sh
+!scripts/*.mjs
+!scripts/*.js
+!scripts/*.bat
+# Generated, and bulk source documents (three PDFs here total ~50 MB).
+scripts/**/__pycache__/
+scripts/**/*.pyc
+scripts/**/*.pdf
 !scripts/pr_overlap_guard.py
 !scripts/r2_pdf_uploader.py
 # Cross-reference resolution pre-task artifacts (permanent QA artifacts)

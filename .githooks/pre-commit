@@ -36,7 +36,17 @@ fi
 # DB connection strings with an inline password (e.g. postgresql://user:pass@host).
 # Scoped to ADDED lines (^+) so REMOVING a previously-committed credential is never
 # blocked. This is the leak class that put a live Supabase password into ~22 files.
-ADDED_DB_URLS=$(git diff --cached -U0 -- ':!.githooks/*' | grep -E '^\+' | grep -iE '(postgres(ql)?|mysql|mongodb(\+srv)?|redis|amqp)://[^:@/]+:[^@/]+@' || true)
+# A PLACEHOLDER IS NOT A CREDENTIAL. `f"postgresql://{user}:{password}@..."` is
+# the pattern this very message tells you to move to, and the class above
+# matched it, so the guard rejected its own remedy — found while committing 735
+# scripts, 2026-08-16. The second grep drops a line only when BOTH the user and
+# the password are a placeholder: {x}, $VAR, ${VAR} or %s. A real credential
+# never takes that shape, so this narrows the false positive without widening
+# what gets through: the live Supabase string that prompted this block still
+# matches, and was verified to still match after the change.
+ADDED_DB_URLS=$(git diff --cached -U0 -- ':!.githooks/*' | grep -E '^\+' \
+  | grep -iE '(postgres(ql)?|mysql|mongodb(\+srv)?|redis|amqp)://[^:@/]+:[^@/]+@' \
+  | grep -vE '://(\{[^}]+\}|\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|%s):(\{[^}]+\}|\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|%s)@' || true)
 if [ -n "$ADDED_DB_URLS" ]; then
   echo "COMMIT REJECTED — database URL with inline password in staged changes:"
   echo "$ADDED_DB_URLS" | head -5
