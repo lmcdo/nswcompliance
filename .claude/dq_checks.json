@@ -655,6 +655,30 @@
       "passes_when": "exit 0 - no served provision carries PDF-extraction residue (TeX control sequence, non-money $, or a brace group wrapping a single symbol)",
       "red_when": "a served provision shows extraction residue where a regulated value belongs, so a reader is given markup or a mangled number instead of the control",
       "note": "REPAIRED 2026-08-15: 104 -> 9 by scripts/repair_tex_residue.py, verified by the probe rather than asserted. THE METRIC WAS WRONG TWICE FIRST, and both corrections are the point of this row. (1) It listed five TeX macros I had seen, counting 10 while reporting CLEAN on 89 rows with the identical fault - a row carrying only \\dag, \bullet, \\div or \\lambda scored green. (2) After widening, its brace class [-A-Za-z0-9] could not see an EMPTY '{}', nor '{ : }', nor '{ t h }', so the first repair pass drove the count to 0 while 103 rows still carried braces. It is now ANY brace, checked by sampling all 103 - none legitimate. THE REPAIR'S ONE RULE: no digit may change. It strips TeX wrappers and keeps contents; it never joins split digits, so '12 00 { m } 2' became '12 00 m 2' and NOT '1,200 m2', however obvious that reading is - that is a judgement about the source PDF, not a regex. Machine-checked per row: the ordered digit sequence must be identical or the row is skipped. 0 rows were skipped; 19,957 served rows before and after. THE RESIDUAL 9 ARE NOT REPAIRABLE THIS WAY. Each is a LONE brace substituting for another character rather than wrapping one: 7 HTML table cells reading '200m{-300m2' where '{' replaced a '2' (the neighbouring cells read '>300m2-900m2' and '600m2-900m2', which is why the reading is obvious and still a guess), plus 81108 '(ground or upper floor}' and 81112 '{incised decorative patterns' where a brace replaced a parenthesis. Deciding which character a lone brace should be requires the source document. SEPARATE AND LARGER, not counted here: 244 served rows carry '900 m m' where the source reads 900mm, and ~165 carry letter-spacing like 'F o o d A c t 2003'. Stripping the '$' from '$F o o d A c t 2003' removed the symptom this metric could see and left that corruption invisible - a repair blinding a metric, which needs its own row."
+    },
+    "DQ-77": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-77"
+      ],
+      "passes_when": "exit 0 - no served provision splits a unit across a space",
+      "red_when": "a measurement reaches the reader with its unit split, so '900mm' is quoted as '900 m m' and '7pm' as '7 p m'",
+      "note": "THE OTHER HALF OF DQ-76's FAULT, and found because of the repair: stripping '$' from '$F o o d A c t 2003' removed the symptom DQ-76 could see and left the corruption invisible. A repair blinding its own metric needs its own row. Every signature sampled before inclusion - '900 m m of a side boundary', '150 m m diameter sewer main', '7 { : } 00 p m', '20 t h century'; a space inside a unit is never correct here. DELIBERATELY EXCLUDES the 4+-spaced-letters signature, which conflates this with DQ-78's scrambled map text - a metric mixing two remedies can be driven to zero by neither. Not repaired alongside DQ-76 because joining '900 m m' deletes a space between characters (safe) while joining 'F o o d A c t' requires deciding where words begin (not safe): different risks, different review."
+    },
+    "DQ-78": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-78"
+      ],
+      "passes_when": "exit 0 - no served provision is scrambled map-figure text",
+      "red_when": "a row served to a planner as a development control contains no control, only street names lifted off a map image and interleaved",
+      "note": "NOT a formatting defect and NOT repairable: 'Go wrie Street Uni B o D n St r r e ee a t R v o y i c n h' is text lifted off a map FIGURE where labels at different angles interleaved. There is nothing in the row to recover; it should never have been extracted as a provision. Signature is the fraction of single-letter tokens - real prose sits near zero (only 'a' and 'I'). Both thresholds were READ OFF THE DISTRIBUTION, not chosen: >=0.50 gives 34, >=0.30 gives 83, >=0.20 gives 128, >=0.10 gives 663; the >=100-token floor is what separates this from DQ-77 by dropping the 31-token 's o o m m' rows that score 0.29 but are a unit defect. At the chosen cut, 110 of 111 rows are ONE council's Section 2 precinct pages - the shape of a single broken document rather than a threshold artefact. Clears by excluding figure pages at extraction."
     }
   }
 }

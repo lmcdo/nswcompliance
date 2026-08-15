@@ -671,6 +671,75 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "instruction. Clears only by repairing the text at source; editing the "
         "predicate to make it fall would be the defect this row is about.",
     ),
+    "DQ-77": (
+        "Served provisions whose units are split by a space (900 m m, 7 p m)",
+        # The other half of the extractor fault DQ-76 measures. Found because
+        # the DQ-76 repair stripped the '$' from '$F o o d A c t 2003' -- the
+        # markup went, the corruption stayed, and the metric could no longer
+        # see it. A repair blinding its own metric is worth its own row.
+        #
+        # Every signature was sampled before inclusion, not assumed:
+        #   '900 m m of a side boundary', '600 m m', '150 m m diameter sewer
+        #   main', '7 { : } 00 p m', '20 t h century'. A space inside a unit is
+        #   never correct here.
+        #
+        # NOT included: the 4+-spaced-letters signature. It conflates this
+        # class with DQ-78's scrambled map text, and a metric that mixes two
+        # remedies cannot be driven to zero by either.
+        #
+        # Deliberately NOT repaired in the same pass as DQ-76. Joining '900 m m'
+        # to '900mm' deletes a space between characters, which is safe, but
+        # joining 'F o o d A c t' to 'Food Act' requires deciding where the word
+        # boundaries are. Those are different risks and want different review.
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable AND ("
+        r"provision_text ~ '[0-9]\s+m\s+m\M' "
+        r"OR provision_text ~ '[0-9]\s+m\s+[23]\M' "
+        r"OR provision_text ~ '[0-9]\s+[ap]\s+m\M' "
+        r"OR provision_text ~ '[0-9]\s+t\s+h\M')",
+        (),
+        "Each row shows a measurement whose unit has been split by the PDF "
+        "extractor, so '900mm' reaches the reader as '900 m m' and '7pm' as "
+        "'7 p m'. Measured 581 across the four signatures on 2026-08-15 "
+        "(228 of them the m-m form). The 738 figure recorded while exploring "
+        "this was the union INCLUDING the letter-spacing signature, which is "
+        "excluded here because it belongs to DQ-78. The value is not wrong, "
+        "but the text a planner quotes is not what the instrument says.",
+    ),
+    "DQ-78": (
+        "Served provisions that are scrambled MAP LABELS, not controls at all",
+        # Not a formatting defect. These rows are text lifted off a map IMAGE,
+        # where labels at different angles interleaved into nonsense:
+        #   'Go wrie Street Uni B o D n St r r e ee a t R v o y i c n h f S e
+        #    ord S tre t e S t re t e'
+        # There is no control in there to repair. The row should not be served.
+        #
+        # Signature: the fraction of whitespace-separated tokens that are a
+        # single letter. Real prose sits near zero -- only 'a' and 'I' -- while
+        # interleaved map text is dominated by them.
+        #
+        # The two thresholds were read off the DISTRIBUTION, not chosen:
+        # >=0.50 gives 34, >=0.30 gives 83, >=0.20 gives 128, >=0.10 gives 663.
+        # The >=100-token floor is what separates this class from DQ-77: it
+        # drops the 31-token 's o o m m' rows, which score 0.29 but are a unit
+        # defect, not a map. At tokens>=100 and ratio>=0.20 the result is 111
+        # rows and 110 of them are one council, which is the shape of a single
+        # broken document rather than a threshold artefact.
+        r"SELECT count(*) FROM ("
+        r"SELECT cardinality(regexp_split_to_array(btrim(provision_text), '\s+')) AS n, "
+        r"(SELECT count(*) FROM unnest(regexp_split_to_array(btrim(provision_text), '\s+')) w "
+        r"WHERE w ~ '^[A-Za-z]$') AS singles "
+        r"FROM regulatory_provisions "
+        r"WHERE is_current AND v2_is_actionable AND length(provision_text) > 80) x "
+        r"WHERE n >= 100 AND singles::numeric / n >= 0.20",
+        (),
+        "Each row is served to a planner as a development control and contains "
+        "no control -- it is street names lifted off a map figure and "
+        "interleaved into nonsense. Measured 111 on 2026-08-15, of which 110 "
+        "are city_of_sydney Section 2 precinct pages and 1 is ku_ring_gai. "
+        "Clears by excluding figure pages at extraction, NOT by repairing the "
+        "text: there is nothing in these rows to recover.",
+    ),
 }
 
 
