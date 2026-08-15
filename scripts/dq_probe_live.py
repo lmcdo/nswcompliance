@@ -590,6 +590,42 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "on 2026-08-15, against DQ-33's 1,278 no_config rows, which are a "
         "DISJOINT set: do not add the two numbers.",
     ),
+    "DQ-76": (
+        "Served provisions showing LaTeX markup where a regulated number belongs",
+        # DQ-27 is NOT reopened by this and must not be. Its scope was
+        # marrickville and its fix held perfectly: 36 -> 0, verified at ANY
+        # status against this same predicate. This is the SAME corruption in a
+        # different part of the corpus that was never looked at.
+        #
+        # Fourth instance of the row-scoped-to-the-slice-someone-measured
+        # pattern (after DQ-24/DQ-68 and DQ-33/DQ-74). Every affected row is a
+        # STATEWIDE instrument, where source_council IS NULL -- so DQ-27's
+        # council-scoped query could not have found them however carefully it
+        # was written. The lesson is about the WHERE clause, not the effort.
+        #
+        # Found on 2026-08-15 by writing a check for a row whose ledger entry
+        # said only "Historic." rather than trusting that status.
+        #
+        # Token set is wider than DQ-27's original three: \mathrm and \pmb were
+        # both observed in the matched rows, \pmb in the setback formulae.
+        #
+        # A regex, not five LIKEs, and not for elegance: psycopg2 reads % in the
+        # SQL as a parameter placeholder even when params is empty, so the LIKE
+        # form raised IndexError before it ever reached the database. Doubling
+        # to %% would work and would also make the pattern unreadable. DQ-29
+        # already uses ~ for the same reason.
+        r"SELECT count(*) FROM regulatory_provisions "
+        r"WHERE is_current AND v2_is_actionable "
+        r"AND provision_text ~ '\\(mathsf|mathfrak|mathtt|mathrm|pmb)'",
+        (),
+        "Each row shows a reader raw LaTeX where a regulated value belongs. "
+        "Measured 10 served rows on 2026-08-15, all statewide instruments. "
+        "These are not cosmetic: they are wall-height and setback CONTROLS - "
+        "'\\mathfrak { s o o m m }' is meant to read 900mm, and "
+        "'\\mathtt { s } = \\mathtt { h } - 3 \\mathtt { m }' is the setback "
+        "formula s = h - 3m. One of the ten carries the token beyond the first "
+        "190 characters, so it is corrupt but not visibly so at the top.",
+    ),
 }
 
 

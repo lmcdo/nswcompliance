@@ -1,0 +1,94 @@
+{
+  "tier": "standard",
+  "justification": "Recovers the original detail for 21 ledger rows from git history and adds one read-only probe. No production data is written and no regulatory value is chosen. Standard rather than Light because the recovery rewrites 21 why_no_check fields that future sessions will act on, so a wrong or invented summary would mislead exactly the work it is meant to enable; and because the probe it produced (DQ-76) reports a LIVE defect in served regulatory text. Standard rather than Critical because every change is either a restatement of text already in git or a SELECT.",
+  "commit_hash": "1f4004d2",
+  "files": [
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_historic_recovered.json",
+    "scripts/dq_probe_live.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-76; python scripts/dq_check.py --coverage",
+    "fails_when": "a served provision contains LaTeX math markup, or the two halves of the ledger stop agreeing on which rows exist",
+    "observed_red": "DQ-76 exits 1 today at 10 rows, which is required of an open row and is the state this branch discovered. Non-vacuity proven two ways: the same predicate returns 0 for marrickville, so it distinguishes clean from corrupt rather than matching everything; and all ten matching rows were READ rather than counted, confirming they carry real artefacts. The recovery half was also observed failing: the first extraction ranked revisions by length alone and reported 3 of 21 rows as unrecoverable, when in fact all 21 were present - later revisions were longer but had already dropped the Verification field. That wrong result is what produced the corrected selection rule."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions: 19,957 served rows (is_current AND v2_is_actionable). source_council IS NULL for statewide instruments (~19.7k rows per DB_SCHEMA.md), which is why every DQ-76 row groups as statewide. 10 served rows match the LaTeX token set; 20 match across all statuses. marrickville, DQ-27's own scope, is 0 at any status.",
+    "assumption_mismatch": "Three. (1) I assumed the Historic rows had no recorded detail and could not be checked without reconstruction; the detail existed in git and had been lost in a reformat, so the honest job was recovery, not invention. (2) My first recovery ranked by length and concluded 3 of 21 were unrecoverable - wrong, and wrong in the direction that would have justified giving up on 18 rows. (3) I assumed DQ-27 might have regressed when its check failed; it had not - marrickville is 0 and the fix held. Reopening it would have blamed a sound repair for a defect in a corpus it never covered.",
+    "new_vs_existing": "No new surface. The probe is a new entry in the existing PROBES dict in dq_probe_live.py, which is the established home for ledger checks that are a query. No new script, no new tracker - the recovered detail goes back into the two files that already exist, per the standing rule not to add a fifth tracker. dq_historic_recovered.json is committed as the raw evidence behind the 21 rewrites so the summaries can be audited against their source."
+  },
+  "functions": [
+    {
+      "name": "PROBES['DQ-76']",
+      "file_line": "scripts/dq_probe_live.py",
+      "input": "no arguments; a registered SQL string executed by run()",
+      "output": "count of served provisions whose provision_text matches a LaTeX math token; 10 today, so run() returns 1",
+      "if_none": "Without it the corruption is invisible: DQ-27 is declared fixed and correctly so for its own scope, so nothing in the ledger would ever look at the statewide corpus again. A reader would keep being served a setback formula rendered as markup with no number in it."
+    }
+  ],
+  "values": [
+    {
+      "value": "10 served provisions contain LaTeX math markup, all statewide instruments",
+      "read_at": "psycopg2 against production regulatory_provisions, 2026-08-15, and all ten rows printed and read individually",
+      "if_missing": "the count alone would not establish harm; reading them is what showed they are wall-height and setback CONTROLS rather than incidental prose, which is the difference between a cosmetic defect and a wrong regulated number"
+    },
+    {
+      "value": "marrickville = 0 against the same predicate, at any status, down from 36",
+      "read_at": "same session, same connection",
+      "if_missing": "without it this looks like DQ-27 regressing, and the repair would be aimed at a fix that is working. It is the evidence that separates 'the fix failed' from 'the scope was too narrow'."
+    },
+    {
+      "value": "21 of 21 Historic rows recovered from 49 commits touching the tracker",
+      "read_at": "git log --follow over .claude/DATA_QUALITY_TRACKER.md, 2026-08-15",
+      "if_missing": "the alternative was reconstructing 21 defects from memory or archiving them unexamined; both would have lost the Verification specs that were written at the time"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A recovered summary misdescribes its defect, and someone writes a check against the wrong thing.",
+      "what_happens": "The summary is built from labelled sections of the original text (Problem/Finding/Evidence/Root Cause/Impact/Verification) rather than paraphrased, and each cites the commit it came from, so any claim can be diffed against its source.",
+      "repro": "python -c \"import json;d=json.load(open('.claude/dq_historic_recovered.json'));print(d['DQ-9']['commit'])\" then: git show <commit>:.claude/DATA_QUALITY_TRACKER.md | sed -n '/DQ-9/,/DQ-10/p'",
+      "mitigated": "Yes - by traceability rather than by review. The raw recovered bodies are committed alongside the summaries.",
+      "how": "dq_historic_recovered.json holds the full original text and its commit for all 21 rows, so a summary can be checked against the source without re-running the recovery."
+    },
+    {
+      "scenario": "DQ-76 is treated as a DQ-27 regression and someone re-runs the Marrickville repair.",
+      "what_happens": "Wasted work aimed at a fix that is holding, and the statewide rows stay broken.",
+      "repro": "python -c \"import os,psycopg2;from dotenv import load_dotenv;load_dotenv();c=psycopg2.connect(os.environ['DATABASE_URL']);cur=c.cursor();cur.execute(r\\\"SELECT count(*) FROM regulatory_provisions WHERE source_council='marrickville' AND provision_text ~ '\\\\\\\\(mathsf|mathfrak|mathtt|mathrm|pmb)'\\\");print(cur.fetchone())\"  # expect 0",
+      "mitigated": "Yes.",
+      "how": "Both the probe's inline comment and DQ-76's ledger note state that DQ-27 must not be reopened and record the 36 -> 0 measurement that proves its fix held."
+    },
+    {
+      "scenario": "The LaTeX regex matches ordinary text and overstates the defect.",
+      "what_happens": "A number that cannot fall, which is how a check gets ignored.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-76  then read the rows: the query is printed by the probe itself",
+      "mitigated": "Yes - checked by reading, not by trusting the pattern.",
+      "how": "All ten matching rows were printed and inspected; nine show the artefact in their opening text and the tenth carries it later, which is recorded in the probe's own means text so the number is not presented as ten visibly-broken rows."
+    },
+    {
+      "scenario": "psycopg2 parameter interpolation breaks the probe silently.",
+      "what_happens": "It did not break silently - the LIKE form raised IndexError before reaching the database, because % is read as a placeholder even when params is empty. Loud, immediate, and fixed by using a regex as DQ-29 already does.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-76  # runs clean; the LIKE form raised IndexError: tuple index out of range",
+      "mitigated": "Yes.",
+      "how": "The probe uses provision_text ~ '...' with no % in the SQL, and the reason is recorded in an inline comment so the next person does not reintroduce LIKE."
+    },
+    {
+      "scenario": "The recovery script's git calls read the wrong repository.",
+      "what_happens": "Summaries recovered from some other checkout, silently.",
+      "repro": "the recovery script lives in the session scratchpad, not in scripts/; its git_env() strips GIT_* before every call",
+      "mitigated": "Yes.",
+      "how": "The script strips GIT_DIR and friends via a local git_env() before each subprocess call, the same rule DQ-54 ratchets across scripts/, because a hook exports GIT_DIR and it overrides cwd."
+    }
+  ],
+  "mutation_analysis": "The probe is a single aggregate SELECT, so the meaningful mutation is to the predicate rather than to control flow. Two were run. Dropping the is_current AND v2_is_actionable scope changes 10 to 20, confirming the served-set filter is load-bearing and not decorative - without it the number would include superseded rows nobody can be shown, the exact overstatement the DB guard caught on DQ-29. Restricting the predicate to marrickville returns 0, confirming the pattern discriminates rather than matching all text. The recovery half was mutation-tested by accident and instructively: ranking revisions by length alone (the original implementation) yields 3 of 21 - so the corrected rule, prefer-a-Verification-line-then-longest, is the difference between recovering 21 rows and abandoning 18.",
+  "residual_risk": "DQ-76 is opened RED at 10 and not fixed here: repairing the text means re-extracting or hand-correcting statewide instrument provisions, which chooses a value and therefore needs a separate, more careful change than a probe. The 21 recovered rows still have NO check - this branch makes them checkable, it does not check them, and _max_no_check is unchanged at 48 for that reason. Of the 21, DQ-22 (dot-leader TOC text) measures 2 served rows today against 34 originally and was NOT opened as a row, because 2 may be legitimate and adjudicating that needs the rows read first. DQ-26 (truncated image URL stems) is checkable in principle but needs R2 filenames to compare against, which this session did not have.",
+  "post_merge": {
+    "db_reset": "No. No schema change, no migration, no write of any kind.",
+    "verify": "python scripts/dq_probe_live.py --id DQ-76 returns 10 and exits 1; python scripts/dq_check.py --coverage reports 81 rows in both halves.",
+    "secrets": "None. No credential, token or environment variable is added, read or referenced. The probe uses the existing dq_db connection helper.",
+    "other_repo": "None. All changes are in this repository, in .claude/ and scripts/. No deployed service reads dq_checks.json or the tracker.",
+    "manual_verify": "Read the ten DQ-76 rows and confirm they are the setback and wall-height controls described, not incidental prose - the case for treating this as P1 rather than cosmetic rests entirely on what those rows are. Then spot-check two recovered summaries against their cited commits to confirm the recovery restates rather than invents."
+  }
+}

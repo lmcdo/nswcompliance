@@ -287,97 +287,97 @@
     "DQ-28": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic, 2026-03-30."
+      "why_no_check": "RECOVERED from git c28b9e86 (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic, 2026-03-30.\"). Problem: The Haberfield neighbourhood chapter (121 provisions, all on pdf_page=2) had no extracted section-level TOC data. A depth=0 catch-all entry was inserted in migration 018 so the JOIN worked, but all 121 provisions grouped under a single bucket. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-27": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic, 2026-03-04."
+      "why_no_check": "RECOVERED from git b8c158ce (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic, 2026-03-04.\"). Problem: 36 Marrickville provisions contained raw LaTeX math mode tokens from pdfplumber extraction. Example: \"Contour lines and levels for sites in excess of 6 0 0 { \\mathsf { m } } ^ { 2 }$\" instead of \"600m2\". -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-26": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic, 2026-03-04."
+      "why_no_check": "RECOVERED from git b8c158ce (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic, 2026-03-04.\"). Problem: Old Marrickville provisions (double-underscore document_id format from first extraction pass) had `pdf_page_image_url` pointing to truncated R2 image filenames (e.g., `Signs_and_Adv_page_5.png` instead of `Signs_and_Advertising_page_5.png`). New re-extraction provisions used full names matching actual R2 filenames. ... | Root Cause: First extraction pass used truncated PDF filenames (likely Windows path-length limit). Image files were uploaded to R2 with truncated names. Re-extraction used full filenames. Some old images were deleted/overwritten; others remain. For Landscaping chapter (first reported), old images were absent from R2. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-23": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git a8e0f91c (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: Provisions appearing multiple times in DCP tab TOC-structured view. User reported \"C1.5 CORNER SITES\" showing 18 provisions on page 17 (6 provisions \u00c3\u2014 3 duplicates) and 6 provisions on page 18 (3 provisions \u00c3\u2014 2 duplicates). | Root Cause: The `groupByTocStructure` function (frontend-nextjs/app/api/provisions/for-property/route.ts:685-691) flattened provisions from all 4 layers (generic, use_specific, condition, precinct) WITHOUT deduplication. When the same provision appeared in multiple layers due to the layer query logic, it was added to the TOC st... | Impact: Prevents duplicate provision display in DCP tab. Keeps first occurrence (preserves layer priority order: generic -> use_specific -> condition -> precinct). -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-22": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git a8e0f91c (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: 34 Table of Contents (TOC) provisions had `v2_is_actionable = true`, causing them to appear in the DCP tab UI. User reported Part D showing TOC as first provision for 185 Parramatta Road Annandale. | Root Cause: v2 enrichment process didn't detect TOC patterns (dotted leaders like `........`). The `dcp-complete` route had TOC filters but `for-property` API relied solely on `v2_is_actionable`. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-21": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git a8e0f91c (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: Part 4.1/4.2 detection only checked `'4_1'` and `'4.1'`, missing `'4__1'` patterns used in some document_ids. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-20": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git a8e0f91c (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: Part 5 check for `'Commercial' in doc` matched before Part 9 for precinct names containing \"Commercial\". -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-19": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git a8e0f91c (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: Layer tagger pattern `'9__' in doc` matched section numbers like `19__` or `29__`, causing Part 2 sections to be misclassified as Part 9 precincts. | Root Cause: Pattern `'9__'` is a substring of `19__`, `29__`, etc. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-18": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git 3fdfed46 (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Verification: - url_page=7 -> pdf_page=1 \u00e2\u0153\u201c - UI now shows correct page numbers matching PDF footers -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-17": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic \u2014 not orphaned."
+      "why_no_check": "RECOVERED from git 81c2de0e (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic \u2014 not orphaned.\"). Initial Concern: 1,072 provisions in `dcp_general_requirements` not returned by provisions UI -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-16": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git 81c2de0e (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: Ashfield Heritage chapter provisions split across multiple topics in UI | Evidence: - User sees: Heritage (187), Character (80), Fencing (22), Streetscape (22), etc. - Reality: ALL 364 provisions are from Heritage chapter (part_name='Heritage') - The `category` field (subject matter) is being used as `v2_topic` in API response | Root Cause: In `queryHeritageFromDcpGeneralRequirements()` (for-property/route.ts:363): ```sql INITCAP(REPLACE(category, '_', ' ')) as v2_topic ``` This maps `category` (e.g., 'character', 'fencing') to `v2_topic` instead of using 'Heritage'. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-15": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git 10abd61e (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: Leichhardt had duplicate topics differing only by case (e.g., `parking` vs `Parking`) | Root Cause: Inconsistent capitalization during topic extraction - 17 topics affected: heritage, height, setbacks, parking, access, landscaping, trees, signage, waste, privacy, stormwater, fencing, flooding, contamination, safety, roofing, solar -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-14": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git 10abd61e (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: Only 26% of Leichhardt provisions had PDF page image URLs (vs 100% for Marrickville/Ashfield) | Root Cause: Multiple issues 1. `pdf_page_image_url` column was NULL, needed population from `pdf_page` 2. Folder mapping regex: \"Section 1\" matched before \"Part G\" 3. Part G offset: `pdf_page` has +100 offset, should use `page_number` column 4. Missing PNG files: pages 10, 21, 23, 24, 25, 35 not extracted -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-13": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git 10abd61e (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: 42% of Leichhardt provisions (1,242/2,962) had NULL v2_topic | Root Cause: Bug in `enrichment/extractors/layer_topic_tagger.py` - Section 1 handler only used C marker extraction - Many provisions lack C markers but have keyword matches - Missing fallback: `or self._extract_topic_from_text(provision_text)` -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-11": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git a55ddfc4 (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Problem: 907 heritage provisions shown as undifferentiated list. No way to find relevant controls. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-10": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic \u2014 documented."
+      "why_no_check": "RECOVERED from git a55ddfc4 (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic \u2014 documented.\"). Finding: Each council's DCP has a DIFFERENT compliance philosophy that UI should reflect. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-9": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git a55ddfc4 (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Finding: Wrong DCP filter was excluding valid DCP provisions. | Root Cause: - WRONG filter: `NOT ILIKE '%LEP%'` - excluded DCP files with \"IWLEP\" in name - CORRECT filter: `NOT ILIKE '%Local_Environmental_Plan%'` - only excludes actual LEP docs | Impact: - 2,330 Leichhardt DCP provisions were incorrectly filtered out - Leichhardt appeared to have \"659\" provisions but actually has **2,989** -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-8": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic \u2014 documented."
+      "why_no_check": "RECOVERED from git a55ddfc4 (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic \u2014 documented.\"). Finding: Previous DQ-7 enrichment incorrectly included SEPP/LEP provisions. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-7": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git 3ca56ea7 (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Evidence: All 13 dev_types now have adequate CDC provision coverage. | Dev Type | Before | After | Status | |----------|--------|-------|--------| | dwelling_house | 34 | 307 | OK | | secondary_dwelling | 8 | 281 | OK | | dual_occupancy | 10 | 283 | OK | | multi_dwelling_housing | 10 | 282 | OK | | residential_flat_building |... | Root Cause: 286 provisions tagged `['ALL']` instead of specific dev_types. -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-6": {
       "declared": "accepted",
@@ -397,12 +397,12 @@
     "DQ-3": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git 04be7cfa (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Evidence: \"Part 4 Multi Dwelling Housing\" is a chapter title, not actionable | Root Cause: Extraction captured structure, not filtered to controls only | Verification: Sample provisions should all be actionable controls -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-2": {
       "declared": "fixed",
       "check": null,
-      "why_no_check": "Historic."
+      "why_no_check": "RECOVERED from git 04be7cfa (the detail was written originally and lost when the tracker was condensed to a table; the stub said only \"Historic.\"). Evidence: \"Car parking design controls\" tagged as HEIGHT topic | Root Cause: v2_topic enrichment logic flawed or incomplete | Verification: Parking provisions should be under 'parking' topic -- still no check: this records WHAT the defect was, which is the precondition for writing one, not the check itself."
     },
     "DQ-1": {
       "declared": "not_a_bug",
@@ -643,6 +643,18 @@
       "passes_when": "exit 0 - lint_hardcoded_zone_codes.check_line flags a zone-keyed lookup object written one key per line",
       "red_when": "a hardcoded zone->value table written one key per line is invisible to the guard built to stop exactly that class",
       "note": "THE GUARD, NOT THE CORPUS. check_line needs >=2 distinct zone tokens on ONE line; a zone table is written one key per line, so it is never flagged. That is the #928 shape. Evidence: zone_code_baseline.json tracks 99 files and lists pages/api/development-types.ts with 5 violations, but all 5 are unrelated applicableZones ARRAYS - the actual ZONE_DEVELOPMENT_MAPPING is absent, and the two other files holding a full ZONE_DEVELOPMENT_TYPES map were not tracked at all. NOT fixed here because the obvious widening (any brace block with 2+ zone tokens) fires on switch statements, test fixtures and the DCP Part keys PART_KEY_RE already excuses; a noisy lint gets suppressed, which is worse than the gap. FIXING IT WILL RAISE the baseline - that is the guard finding what was always there."
+    },
+    "DQ-76": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-76"
+      ],
+      "passes_when": "exit 0 - no served provision contains LaTeX math markup",
+      "red_when": "a served provision shows raw LaTeX where a regulated number belongs, so a reader is given markup instead of the control's value",
+      "note": "DQ-27 is NOT reopened and must not be: its scope was marrickville and its fix HELD, 36 -> 0 verified at any status against this same predicate. These 10 are the identical corruption in STATEWIDE instruments, where source_council IS NULL, so DQ-27's council-scoped query could never have found them however carefully written - the lesson is about the WHERE clause, not the effort. FOURTH instance of the row-scoped-to-the-slice-someone-measured pattern, after DQ-24/DQ-68 and DQ-33/DQ-74. Not cosmetic: the affected rows are wall-height and setback controls, '\\mathfrak { s o o m m }' meant to read 900mm and '\\mathtt { s } = \\mathtt { h } - 3 \\mathtt { m }' the setback formula s = h - 3m. Found 2026-08-15 by WRITING a check for DQ-27 instead of trusting its 'Historic.' status."
     }
   }
 }
