@@ -102,6 +102,11 @@ def fetch_lep_clauses(
             conn.rollback()
         except Exception:
             pass
+        # RAISE rather than falling through to `return results`. Falling
+        # through returns whatever was accumulated before the failure — most
+        # often [] — which a caller cannot tell from "this property has no key
+        # sites clauses". See DQ-82.
+        raise
     return results
 
 
@@ -674,7 +679,14 @@ def fetch_heritage_postgis(
             conn.rollback()
         except Exception:
             pass
-        return empty
+        # RAISE, never `return empty`. `empty` carries has_heritage: False,
+        # which renders as "not heritage listed" — a statement of fact about
+        # the property, made without looking at anything. Returning it also
+        # returns NORMALLY, so services/conveyancing.py's except never fires
+        # and it sets _failed["heritage"] = False: the system then records a
+        # SUCCESSFUL check that found nothing. Raising makes that except fire
+        # and the flag correctly stay True. See DQ-82.
+        raise
 
     if not rows:
         return empty
@@ -759,7 +771,13 @@ def fetch_sepp_housing_standards(
             conn.rollback()
         except Exception:
             pass
-        return []
+        # RAISE, never `return []`. These are the SEPP standards a feasibility
+        # answer is computed from; an empty list silently removes every
+        # standard and the arithmetic proceeds as though none applied. The
+        # batch callers (build_lot_search_index, constraint_arithmetic) do not
+        # catch, so they now fail loudly rather than indexing a lot against no
+        # standards at all. That is the intended outcome. See DQ-82.
+        raise
 
     return [
         {
@@ -794,7 +812,16 @@ def get_sepp_standard_value(
 
     Returns None if not found. Never raises.
     """
-    standards = fetch_sepp_housing_standards(conn, zone_code, development_type)
+    # fetch_sepp_housing_standards now RAISES when it cannot query (DQ-82).
+    # This wrapper's published contract is "Never raises", and its None already
+    # means "no value available", so the failure is absorbed here rather than
+    # changing every caller. The distinction is not lost: callers that need to
+    # tell "no such standard" from "could not look" call the fetcher directly.
+    try:
+        standards = fetch_sepp_housing_standards(conn, zone_code, development_type)
+    except Exception as e:
+        logger.warning("get_sepp_standard_value: standards unavailable: %s", e)
+        return None
     for s in standards:
         if s["standard_type"] == standard_type:
             return s["numeric_value"]
@@ -994,7 +1021,12 @@ def fetch_nearby_das(
             conn.rollback()
         except Exception:
             pass
-        return []
+        # RAISE, never `return []`. An empty list renders as "no recent
+        # development applications nearby", which is a claim about the street,
+        # not about our connection. The comment above already records that a
+        # buggy council filter once produced exactly this false "no DAs" —
+        # this is the same wrong answer by a different route. See DQ-82.
+        raise
 
     nearby = []
     for row in rows:

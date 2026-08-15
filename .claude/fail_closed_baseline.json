@@ -6,21 +6,21 @@
     "Adding a name is not the fix and tests/test_serve_path_fails_closed.py will",
     "fail a newly added one on day one.",
     "",
-    "Measured 2026-08-15 against a connection whose cursor() raises. The two that",
-    "already refuse correctly are fetch_dcp_setbacks and fetch_tax_thresholds,",
-    "both returning None.",
+    "EMPTY as of 2026-08-15, and the empty list is the enforcement: every",
+    "fetch_* on the serve path now raises when it cannot query, so ANY future",
+    "one that answers anyway fails the build immediately. There is no longer a",
+    "grandfathered set to hide in.",
     "",
-    "WHY IT MATTERS AT THE CALLER: services/conveyancing.py wraps each fetch in",
-    "try/except and sets _failed[name] = False on the success path. A fetcher",
-    "that swallows its own exception returns NORMALLY, so the except never fires",
-    "and the system records a SUCCESSFUL check that found nothing.",
-    "fetch_heritage_postgis is the sharp one - it returns has_heritage: False,",
-    "which renders as 'not heritage listed' when the truth is 'we could not ask'."
+    "It opened at four. fetch_heritage_postgis returned has_heritage: False --",
+    "a statement of fact about a property, made without looking -- and",
+    "fetch_lep_clauses, fetch_nearby_das and fetch_sepp_housing_standards each",
+    "returned []. All four now re-raise after rolling back.",
+    "",
+    "WHY RAISE AND NOT RETURN None: services/conveyancing.py sets",
+    "_failed[name] = False on the SUCCESS path. Returning None still returns",
+    "normally, so the flag would read 'did not fail' and the system would still",
+    "record a successful check that found nothing. Raising makes the caller's",
+    "existing except fire and the flag correctly stay True."
   ],
-  "fail_open": [
-    "fetch_heritage_postgis",
-    "fetch_lep_clauses",
-    "fetch_nearby_das",
-    "fetch_sepp_housing_standards"
-  ]
+  "fail_open": []
 }
