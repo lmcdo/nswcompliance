@@ -774,6 +774,59 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "by fixing the URL and re-checking, NOT by resetting the hash -- that "
         "would hide the broken URL rather than repair it.",
     ),
+    "DQ-80": (
+        "Attached portal dates whose plan is no longer the plan we serve",
+        # THE GUARD THAT WAS MISSING ON 2026-08-15. The only thing stopping a
+        # portal date being attached across a plan-identity mismatch was
+        # pick_dcp_result()'s token-subset rule -- a convention living inside
+        # the one script it governs. Loosening it is a one-line edit, and
+        # NOTHING would have caught the result: check_served_answer_quality
+        # counts whether a served row HAS a dated basis, not whether the date
+        # belongs to our plan, so attaching Bankstown DCP 2015's date to
+        # Canterbury-Bankstown DCP 2023 would have made CURRENCY *fall* and
+        # read as progress. Same shape as the caps that used to live in the
+        # file they policed (#957).
+        #
+        # So this re-derives the subset test from what was actually STORED,
+        # against the registry's CURRENT dcp_name. It cannot be satisfied by
+        # editing the fetcher, and it fires on data drift with no commit --
+        # the Hornsby class, where the registry moves 2013 -> 2024 while a
+        # date attached under the old identity keeps serving.
+        #
+        # LEFT JOIN, and a NULL name array counts. The first draft inner-joined
+        # the registry, which SILENTLY DROPS an attached date once a council's
+        # chapters go inactive -- fail-open, reading CLEAN forever. Proven
+        # read-only before shipping: with marrickville's registry removed the
+        # inner form returns 0 and this one returns 1.
+        #
+        # Stopwords match _name_tokens() in fetch_dcp_as_at_dates.py. The
+        # ies/y normalisation there is deliberately NOT reproduced: without it
+        # this guard is strictly STRICTER, so the divergence can only produce
+        # a false RED that a human resolves, never a false CLEAN.
+        "SELECT count(*) FROM dcp_plan_as_at p "
+        "LEFT JOIN (SELECT council, ARRAY_AGG(DISTINCT dcp_name) AS names "
+        "             FROM dcp_chapter_registry "
+        "            WHERE is_active AND dcp_name IS NOT NULL "
+        "            GROUP BY council) r ON r.council = p.lga "
+        "WHERE p.portal_date IS NOT NULL "
+        "  AND (r.names IS NULL OR NOT EXISTS ("
+        "    SELECT 1 FROM unnest(r.names) AS n "
+        "     WHERE NOT EXISTS ("
+        "       SELECT 1 FROM regexp_split_to_table(lower(n), %s) AS t "
+        "        WHERE t <> %s AND t NOT IN (%s,%s,%s,%s,%s,%s) "
+        "          AND position(t IN lower(coalesce(p.portal_plan_name,%s))) = 0)))",
+        ("[^a-z0-9]+", "", "dcp", "development", "control", "plan",
+         "comprehensive", "the", ""),
+        "Each row serves a commencement date read off a DIFFERENT council "
+        "plan than the one we hold -- a fabricated currency claim, which is "
+        "worse than the missing date it replaced. Measured 0 of 2 attached "
+        "rows on 2026-08-15 (ashfield, marrickville). Falsifiability proven "
+        "read-only rather than asserted: a hypothetical registry name of "
+        "'Marrickville DCP 2027' returns 1, moving both councils returns 2, "
+        "and deleting a council's registry returns 1. Clears by detaching the "
+        "date or correcting the registry name -- NEVER by widening the token "
+        "match, which is the defect itself.",
+    ),
 }
 
 
