@@ -1,0 +1,26 @@
+{
+  "_note": [
+    "Serve-path fetchers that return a usable-looking value when the database is",
+    "unreachable, so a caller cannot tell 'we looked and found nothing' from 'we",
+    "could not look'. SHRINK-ONLY: repair a fetcher and REMOVE it from this list.",
+    "Adding a name is not the fix and tests/test_serve_path_fails_closed.py will",
+    "fail a newly added one on day one.",
+    "",
+    "Measured 2026-08-15 against a connection whose cursor() raises. The two that",
+    "already refuse correctly are fetch_dcp_setbacks and fetch_tax_thresholds,",
+    "both returning None.",
+    "",
+    "WHY IT MATTERS AT THE CALLER: services/conveyancing.py wraps each fetch in",
+    "try/except and sets _failed[name] = False on the success path. A fetcher",
+    "that swallows its own exception returns NORMALLY, so the except never fires",
+    "and the system records a SUCCESSFUL check that found nothing.",
+    "fetch_heritage_postgis is the sharp one - it returns has_heritage: False,",
+    "which renders as 'not heritage listed' when the truth is 'we could not ask'."
+  ],
+  "fail_open": [
+    "fetch_heritage_postgis",
+    "fetch_lep_clauses",
+    "fetch_nearby_das",
+    "fetch_sepp_housing_standards"
+  ]
+}

@@ -579,9 +579,24 @@ def unread_baselines() -> list[str]:
     d = root / ".claude"
     if not d.is_dir():
         return []
+    # tests/ counts as a reader, not just scripts/. The standard is unchanged --
+    # a baseline still needs something that actually RUNS to read it -- but a
+    # pytest is such a thing: gates.yml runs the suite on every PR, and
+    # check_test_quarantine.py guarantees no test file is excluded from
+    # collection, so a reader in tests/ cannot be silently skipped. The
+    # serve-path fail-closed ratchet was reported unwired while its only reader
+    # was a test that runs on every push; that is the scan being incomplete,
+    # not the baseline being dead.
+    #
+    # NAME NO BASELINE FILE IN THIS MODULE. scripts/ is scanned, so a filename
+    # written in a comment here becomes its own reader and the guard passes over
+    # a genuinely dead file. That happened while this change was being made:
+    # hiding the real reader left the check GREEN because the comment above had
+    # spelled the filename out. A guard must not be able to satisfy itself.
     readers = chr(10).join(
         f.read_text(encoding="utf-8", errors="replace")
-        for f in sorted((root / "scripts").glob("*.py"))
+        for d_ in ("scripts", "tests")
+        for f in sorted((root / d_).glob("*.py"))
     )
     out = []
     for f in sorted(d.glob("*baseline*.json")):
