@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Recovers the original detail for 21 ledger rows from git history and adds one read-only probe. No production data is written and no regulatory value is chosen. Standard rather than Light because the recovery rewrites 21 why_no_check fields that future sessions will act on, so a wrong or invented summary would mislead exactly the work it is meant to enable; and because the probe it produced (DQ-76) reports a LIVE defect in served regulatory text. Standard rather than Critical because every change is either a restatement of text already in git or a SELECT.",
-  "commit_hash": "PENDING",
+  "commit_hash": "1f4004d2",
   "files": [
     ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md",
