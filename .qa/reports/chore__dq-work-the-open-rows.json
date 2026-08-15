@@ -1,13 +1,14 @@
 {
   "tier": "critical",
   "justification": "This branch WRITES to served regulatory text in production: 677 provisions across two passes, including setback formulae, wall-height limits and floor-area controls that a planner quotes. Nothing else in the change is close in blast radius, and a wrong transform would corrupt the very numbers the product exists to serve. Critical rather than Standard for that reason alone. It also rewrites the predicate of a live DQ metric twice, and a metric that silently stops seeing its own defect class is how DQ-30 passed while 241 rows stayed broken.",
-  "commit_hash": "PENDING",
+  "commit_hash": "16f78931",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
     ".gitignore",
     "scripts/dq_probe_live.py",
-    "scripts/repair_tex_residue.py"
+    "scripts/repair_tex_residue.py",
+    "tests/test_repair_matches_probe.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/dq_probe_live.py --id DQ-76; python scripts/dq_probe_live.py --id DQ-77; python scripts/dq_probe_live.py --id DQ-78; python scripts/repair_tex_residue.py --pass tex; python scripts/repair_tex_residue.py --pass units",
@@ -77,8 +78,8 @@
       "scenario": "The repair silently diverges from the metric, so the row can never close.",
       "what_happens": "It already happened: a brace class of [-A-Za-z0-9] left 103 rows behind while the metric read 0.",
       "repro": "diff the PREDICATE constant in repair_tex_residue.py against PROBES['DQ-76'] in dq_probe_live.py",
-      "mitigated": "Partially.",
-      "how": "Both predicates carry a comment saying they must stay identical and naming the failure that happened when they drifted. This is a convention, not a gate - a test asserting the two strings match would be stronger and is not written."
+      "mitigated": "Yes - the comment was replaced with a test after this report first recorded it as only a convention.",
+      "how": "tests/test_repair_matches_probe.py asserts each repair predicate is CONTAINED in its probe's SQL, so a repair can never touch a row the metric is not watching. Mutation-verified: reintroducing the exact [-A-Za-z0-9] brace class that caused the 103-row miss makes the test fail."
     },
     {
       "scenario": "Deactivating DQ-78's rows hides a binding control.",
@@ -103,7 +104,7 @@
     }
   ],
   "mutation_analysis": "The repairs were mutation-tested by construction rather than after the fact: the invariant IS the mutation test, run per row on live data, and it passed 677 times with zero skips. The metrics were tested by perturbation - DQ-76's predicate returns 0 for marrickville against the same signatures, so it discriminates rather than matching everything, and DQ-78's SQL form was cross-checked against an independent Python implementation that scored every served row (both 111). The two rejected DQ-76 signatures are the strongest evidence the metric is not merely permissive: digit-spacing (87 rows) and superscript-brace (8 rows) were measured, found to match '100 Year ARI Flood Level' and markdown ids like 14e_3, and excluded, because a signature that cannot be wrong makes a number that cannot fall.",
-  "residual_risk": "DQ-76 stays open at 9: each is a LONE brace substituting for a character rather than wrapping one - 7 HTML cells reading '200m{-300m2' where '{' replaced a '2', plus two where a brace replaced a parenthesis. Deciding which character a lone brace should be needs the source document, so they are deliberately not guessed. DQ-78 stays open at 111 with its remedy corrected but not applied - stripping figure text from a provision needs the source PDF's layout, which the extractor discarded. Digit-splitting ('12 00' for 1,200, '4 000' for 4,000) is untouched by both passes and is NOT tracked by any row yet; it is visible in the repaired text and deserves one. And the predicate-drift between probe and repair is guarded only by a comment, not by a test.",
+  "residual_risk": "DQ-76 stays open at 9: each is a LONE brace substituting for a character rather than wrapping one - 7 HTML cells reading '200m{-300m2' where '{' replaced a '2', plus two where a brace replaced a parenthesis. Deciding which character a lone brace should be needs the source document, so they are deliberately not guessed. DQ-78 stays open at 111 with its remedy corrected but not applied - stripping figure text from a provision needs the source PDF's layout, which the extractor discarded. Digit-splitting ('12 00' for 1,200, '4 000' for 4,000) is untouched by both passes and is NOT tracked by any row yet; it is visible in the repaired text and deserves one. Predicate drift is now guarded by a test rather than a comment (tests/test_repair_matches_probe.py), mutation-verified against the exact drift that caused the 103-row miss.",
   "post_merge": {
     "db_reset": "No. Two UPDATE passes over provision_text only; no schema change, no migration, no row added or removed. Full before/after backups are in .claude/backups/tex_residue_repair_*.json if a revert is ever needed.",
     "verify": "python scripts/dq_probe_live.py --id DQ-76 returns 9, --id DQ-77 returns 0, --id DQ-78 returns 111; served row count is 19,957.",
