@@ -633,6 +633,16 @@
       "passes_when": "exit 0 - every served provision records how its applicability was decided",
       "red_when": "a served provision carries no applicability provenance, so a row nobody ever tagged cannot be told apart from one deliberately left as ALL",
       "note": "DISJOINT from DQ-33, and larger. DQ-33 counts v2_dev_type_source='no_config' (1,278) - rows the tagger looked at and could not resolve. These 10,103 are NULL: it never looked. Do not add the two. Third instance of the DQ-68/DQ-24 pattern where a row was scoped to the slice someone measured, leaving the larger population unwatched."
+    },
+    "DQ-75": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_zone_lint_keyed_map.py"
+      ],
+      "passes_when": "exit 0 - lint_hardcoded_zone_codes.check_line flags a zone-keyed lookup object written one key per line",
+      "red_when": "a hardcoded zone->value table written one key per line is invisible to the guard built to stop exactly that class",
+      "note": "THE GUARD, NOT THE CORPUS. check_line needs >=2 distinct zone tokens on ONE line; a zone table is written one key per line, so it is never flagged. That is the #928 shape. Evidence: zone_code_baseline.json tracks 99 files and lists pages/api/development-types.ts with 5 violations, but all 5 are unrelated applicableZones ARRAYS - the actual ZONE_DEVELOPMENT_MAPPING is absent, and the two other files holding a full ZONE_DEVELOPMENT_TYPES map were not tracked at all. NOT fixed here because the obvious widening (any brace block with 2+ zone tokens) fires on switch statements, test fixtures and the DCP Part keys PART_KEY_RE already excuses; a noisy lint gets suppressed, which is worse than the gap. FIXING IT WILL RAISE the baseline - that is the guard finding what was always there."
     }
   }
 }

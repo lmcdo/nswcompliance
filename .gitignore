@@ -583,6 +583,10 @@ scripts/*
 !scripts/dq_probe_stale_workflow_docs.py
 !scripts/dq_probe_dead_sar_constants.py
 !scripts/dq_probe_pvlib_claim.py
+# DQ-75's probe. It tests the zone-code LINT rather than the corpus, so an
+# untracked copy would leave the ledger citing a command CI cannot run — the
+# same shape as the trap this block warns about at the top.
+!scripts/dq_probe_zone_lint_keyed_map.py
 !scripts/qa_report_template.json
 !scripts/main_red_alarm_logic_check.js
 !scripts/check_test_baselines.py
