@@ -483,6 +483,57 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "text, so this number is an upper bound and needs adjudication before "
         "any repair. Recorded as measured rather than asserted.",
     ),
+    "DQ-41": (
+        "Setback controls still carrying a manufactured 1 January date",
+        # Migration 040's parser built effective_date out of the dcp_version
+        # LABEL, so "v2016-current" became 2016-01-01 and
+        # "v2014-amended-feb-2026" became 2014-01-01 -- contradicting its own
+        # label. 528 of 893 rows were dated this way.
+        #
+        # Zero is the right target here, unlike DQ-33 below, because no real
+        # commencement in this corpus fell on 1 January: every one of the 528
+        # was manufactured. A genuine 1 January date arriving later would be a
+        # false positive worth one row's adjudication, not a reason to soften
+        # this into a ratchet.
+        #
+        # NULL is deliberately NOT counted. 706 of 1,071 rows have no
+        # effective_date and that is the correct state -- "we do not know" is
+        # honest, a manufactured date is not. Counting NULLs here would create
+        # pressure to invent dates, which is the defect itself.
+        "SELECT count(*) FROM dcp_setback_controls "
+        "WHERE EXTRACT(MONTH FROM effective_date) = 1 "
+        "AND EXTRACT(DAY FROM effective_date) = 1",
+        (),
+        "Each row dates a setback control from a version label rather than "
+        "from the plan, so the date contradicts the document it cites. "
+        "Measured 0 of 1,071 on 2026-08-15, down from 528 of 893.",
+    ),
+    "DQ-33": (
+        "Served rows falling through to ALL with no config, ABOVE the recorded floor",
+        # A ratchet, not a zero-check, and the subtraction is the whole point.
+        # The repair took no_config on served rows 9,854 -> 1,278, and that
+        # 1,278 is DELIBERATE: retag_applicability_slug_docids.py resolves a
+        # slug only to a key the council's config already declares and leaves
+        # anything unrecognised as ALL/no_config rather than guessing a part to
+        # improve the number. Probing for zero would demand the one behaviour
+        # that repair was written to refuse.
+        #
+        # Direction of risk, from that script: narrowing HIDES controls, and a
+        # hidden binding control is the liability. So the floor may fall only
+        # by a council gaining real config, never by invention. GREATEST keeps
+        # 0 meaning clean in the runner's contract.
+        "SELECT GREATEST(count(*) - 1278, 0) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable "
+        "AND v2_dev_type_source = 'no_config'",
+        (),
+        "no_config on served rows has risen above the 1,278 left deliberately "
+        "by the 2026-08-01 retag, so document_ids are failing to resolve "
+        "against council config again and those rows silently apply to ALL "
+        "development types. SEPARATE AND LARGER: 10,103 served rows carry a "
+        "NULL v2_dev_type_source and were never tagged at all, so the question "
+        "cannot be asked of them; that gap is not counted here and needs its "
+        "own row.",
+    ),
 }
 
 

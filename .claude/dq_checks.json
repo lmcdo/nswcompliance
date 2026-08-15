@@ -25,9 +25,9 @@
     "the gap stays visible. An invented check that cannot fail is what produced",
     "DQ-30's '0% drift' verification \u2014 worse than no check."
   ],
-  "_max_no_check": 50,
+  "_max_no_check": 48,
   "_max_unverified_unresolved": 3,
-  "_max_fixed_without_check": 40,
+  "_max_fixed_without_check": 38,
   "checks": {
     "DQ-54": {
       "declared": "fixed",
@@ -237,8 +237,14 @@
     },
     "DQ-41": {
       "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs the live DB: verify 0 Jan-1 dates remain in dcp_setback_controls."
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-41"
+      ],
+      "passes_when": "exit 0 - zero setback controls carry a 1 January effective_date (0 of 1,071 on 2026-08-15, from 528 of 893)",
+      "red_when": "a setback control is dated from its dcp_version label rather than the plan, so the stored date contradicts the document it cites - the migration 040 parser class"
     },
     "DQ-40": {
       "declared": "partial",
@@ -269,8 +275,14 @@
     },
     "DQ-33": {
       "declared": "fixed",
-      "check": null,
-      "why_no_check": "Needs the live DB: no_config on served rows was 9,854 -> 1,278."
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-33"
+      ],
+      "passes_when": "exit 0 - no_config on served rows stays at or below the 1,278 the 2026-08-01 retag left deliberately",
+      "red_when": "document_ids stop resolving against council config again, so served rows fall through to ALL/ALL and a control that governs one development type is applied to every type"
     },
     "DQ-28": {
       "declared": "fixed",
