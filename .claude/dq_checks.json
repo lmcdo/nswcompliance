@@ -679,6 +679,18 @@
       "passes_when": "exit 0 - no served provision is scrambled map-figure text",
       "red_when": "a served provision has map-figure text interleaved into it, so a planner reading the control also reads scrambled street names - and in the worst rows the control is buried inside them",
       "note": "CORRECTED 2026-08-15, and the correction reverses the remedy. My first note said 'there is nothing in these rows to recover, clears by excluding figure pages'. That is WRONG for a large part of the set and I only found it by reading the rows nearest the CUT rather than the obvious ones at ratio 0.9. The top of the distribution is pure scramble: 'Go wrie Street Uni B o D n St r r e ee a t R v o y i c n h'. But the rows just inside the boundary carry REAL CONTROLS with map text interleaved: id 95870 (0.230) reads 'Objectives (a) Ensure that the safety and amenity of pedestrians and cyclists is not compromised by off-street parking access points'; id 95375 (0.202) reads 'This locality is bounded by Ashmore Street to the north, Mitchell Road to the east'; id 95887 (0.213) reads 'Building heights are to comply with Figure 6.1'. SO DEACTIVATING THESE ROWS WOULD HIDE REAL CONTROLS - the liability direction, and the one the DCP review queue memo already warns about. The remedy is to strip the figure text from the provision at EXTRACTION, keeping the prose, not to drop the row and not to edit the text with a regex: separating interleaved map labels from a control needs the source PDF's layout, which is exactly the information the extractor threw away. The metric stays as it is and stays RED at 111. It correctly identifies affected rows; what it cannot do is tell a pure-figure row from a mixed one, and that distinction is the whole remedy. Thresholds were read off the distribution (>=0.50: 34, >=0.30: 83, >=0.20: 128, >=0.10: 663) and the >=100-token floor separates this from DQ-77 by dropping the 31-token 's o o m m' rows. 110 of 111 are one council's Section 2 precinct pages, which is the shape of one broken document rather than a threshold artefact."
+    },
+    "DQ-79": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-79"
+      ],
+      "passes_when": "exit 0 - every active chapter's recorded content is large enough to be the document",
+      "red_when": "a chapter's stored 'current' content is too small to be the document, so its hash is a hash of a FETCH FAILURE and every check comparing that hash reads the chapter as amended",
+      "note": "A FETCH FAILURE RECORDED AS AN AMENDMENT. hornsby part3-residential has url_content_length=1 with check_failures=0: the monitor downloaded one byte, called the check successful, hashed it and stamped url_last_changed. DQ-70 compares those hashes, so hornsby's 32 served provisions read as amended when the document cannot be fetched at all - and the remedies are OPPOSITE. An amendment wants re-extraction; a dead URL wants the URL fixed. Re-extracting on this signal would replace 32 live controls with nothing. download_pdf() already refused a non-PDF Content-TYPE, added after 'HTML error pages hashed as changes', but a header is not a body and this response passed it; r2_monitor now checks the %PDF- signature and a length floor too (tests/test_pdf_body_guard.py, 10 tests, 6 die under mutation). Threshold read off the distribution: of 524 active chapters with a length, the only row under 1,000 bytes is the 1-byte one and the smallest genuine chapter is 277,208. CLEARS BY FIXING THE URL, not by resetting the hash - resetting would hide the broken URL, which is the whole defect. NULL is excluded deliberately: never-checked and checked-and-empty are different states."
     }
   }
 }
