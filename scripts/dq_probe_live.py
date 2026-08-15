@@ -827,6 +827,50 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "date or correcting the registry name -- NEVER by widening the token "
         "match, which is the defect itself.",
     ),
+    "DQ-81": (
+        "Attached portal dates older than the document we actually hold",
+        # THE PORTAL IS ITSELF A STALE SOURCE, and _plan_as_at ranks it FIRST.
+        #
+        # Confirmed against the councils on 2026-08-15. The NSW Planning Portal
+        # reports Marrickville DCP 2011 "as amended 9 September 2022" -- that is
+        # Amendment No. 15. Inner West Council's own page lists Amendment No. 18
+        # in force since 31 July 2025, with 16 and 17 in between. It reports the
+        # Ashfield 2016 plan at the same 2022 date while that plan's own
+        # chapters are published Mar-2023 and Apr-2024.
+        #
+        # Our own registry already knew: the documents we hold last changed
+        # 2026-06-22 (ashfield) and 2026-04-06 (marrickville), years after the
+        # date the portal put on them. So this needs no new source -- the
+        # contradiction is between two columns we already store.
+        #
+        # WHY DQ-80 DOES NOT COVER IT. That row checks the portal names the
+        # right PLAN. This one checks the portal's date is not older than our
+        # own copy of that same plan. Both were needed: the identity was
+        # correct in both these rows, and the date was stale anyway.
+        #
+        # WHY IT MATTERS MORE THAN A MISSING DATE. A blank renders no claim. A
+        # stale "as at" renders a currency assertion that is wrong, to a reader
+        # who cannot tell, about a plan amended three times since -- and it
+        # makes the CURRENCY metric FALL, so it books as progress.
+        #
+        # EXISTS, not JOIN: a council whose chapters all go inactive must not
+        # quietly drop out of the count (the DQ-80 fail-open, same shape).
+        "SELECT count(*) FROM dcp_plan_as_at p "
+        "WHERE p.portal_date IS NOT NULL "
+        "  AND EXISTS (SELECT 1 FROM dcp_chapter_registry r "
+        "               WHERE r.council = p.lga AND r.is_active "
+        "                 AND r.url_last_changed IS NOT NULL "
+        "                 AND r.url_last_changed::date > p.portal_date)",
+        (),
+        "Each row serves an 'as at' date that predates our own copy of the "
+        "document, so the currency claim is false and the reader cannot tell. "
+        "Measured 2 of 2 attached rows on 2026-08-15: ashfield portal 2022-09-09 "
+        "vs document changed 2026-06-22, marrickville portal 2022-09-09 vs "
+        "2026-04-06 -- and marrickville's portal date is Amendment No. 15 when "
+        "the council is on No. 18 (31 July 2025). Clears by detaching the "
+        "portal date and reading the commencement from the plan's own version "
+        "table, NOT by re-fetching the portal, which is the stale source.",
+    ),
 }
 
 
