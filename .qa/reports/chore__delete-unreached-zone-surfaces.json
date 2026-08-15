@@ -1,8 +1,12 @@
 {
   "tier": "standard",
-  "justification": "Pure deletion of an unreachable surface. Fourteen files removed, one line removed from a health check. Nothing is rewired and no value is chosen, so the change is directionally safe: it removes a false regulatory claim and cannot create one. Standard rather than Critical because the deleted endpoint had no UI caller and the deleted components had no render path, both verified by grep before deletion; Standard rather than Light because the endpoint was live HTTP and served a hardcoded NSW zone-to-permitted-use table that contradicted the LEP in 135 places, so its removal changes what a direct caller receives.",
-  "commit_hash": "11290b92",
+  "justification": "Two changes that turned out to be one. A pure deletion of an unreachable surface, and the ledger enforcement that makes the deletion COUNT - without it the tracked number stayed at 270 and by the project's own rule the work was not done. Standard rather than Critical because nothing here chooses a regulatory value: the deletion removes a false claim, and every ledger change either wires an existing command or adds a read-only probe. Standard rather than Light because the deleted endpoint was live HTTP serving a table that contradicted the LEP in 135 places, and because dq_check.py is the merge gate itself - a mistake in it would either block every branch or, far worse, silently stop enforcing.",
+  "commit_hash": "73d93560",
   "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    ".claude/zone_code_baseline.json",
+    ".gitignore",
     "frontend-nextjs/pages/api/development-types.ts",
     "frontend-nextjs/contexts/DevelopmentContext.tsx",
     "frontend-nextjs/store/index.ts",
@@ -17,12 +21,16 @@
     "frontend-nextjs/components/development-selector-enhanced.tsx",
     "frontend-nextjs/__tests__/components/development/DevelopmentSelector.test.tsx",
     "frontend-nextjs/__tests__/contexts/DevelopmentContext.test.tsx",
-    "frontend-nextjs/lib/health/migration-health-check.ts"
+    "frontend-nextjs/lib/health/migration-health-check.ts",
+    "scripts/dq_check.py",
+    "scripts/dq_probe_live.py",
+    "scripts/dq_probe_zone_lint_keyed_map.py",
+    "tests/test_dq_ratchet_enforcement.py"
   ],
   "falsifiable_check": {
-    "command": "python scripts/lint_hardcoded_zone_codes.py --all",
-    "fails_when": "the tree-wide hardcoded zone-code count rises above the recorded baseline, or any deleted module is reintroduced by a later import",
-    "observed_red": "Yes. Before deletion, comparing ZONE_DEVELOPMENT_MAPPING against lep_land_use_table returned 135 contradicting (council, zone, claim) triples of 517, with 8 backed by an explicit prohibited row. That is the red state. After deletion the table does not exist, so the comparison has no left-hand side and the contradiction count is structurally zero rather than measured-zero. The standing guard is lint_hardcoded_zone_codes.py --all against .claude/zone_code_baseline.json, which was observed red on this very cluster - it is what recorded these files as violations in the first place."
+    "command": "python -m pytest tests/test_dq_ratchet_enforcement.py -q; python scripts/dq_probe_zone_lint_keyed_map.py; python scripts/dq_probe_live.py --id DQ-73; python scripts/dq_probe_live.py --id DQ-74; python scripts/dq_probe_live.py --id DQ-41; python scripts/dq_probe_live.py --id DQ-33",
+    "fails_when": "a ratchet cap rises above origin/main, or a row is newly declared fixed with no check, or DQ-41/DQ-33 regress, or DQ-73/74/75 stop being red while still unfixed",
+    "observed_red": "Yes, each one, deliberately rather than by luck. Cap ratchet: set to 57 against main's 56 and watched it report the rise; 48 correctly did not. Newly-fixed rule: flipped DQ-66 from open to fixed with its check removed and watched it name DQ-66. The 18 enforcement tests were MUTATION-checked - stubbing raised_caps and newly_fixed_without_check to `return []` kills 5 of them, and the 13 that survive are the ones asserting emptiness, which must. DQ-75's probe exits 1 today and exits 0 under a patched check_line, so the row is closeable and not permanently red. DQ-73 and DQ-74 exit 1 as open rows must. DQ-41's zero was shown to be a measurement rather than a query that cannot match: widened to any first-of-month it returns 301."
   },
   "pre_impl": {
     "existing_data": "lep_land_use_table holds 18,196 rows across 26 LGAs, 32 zones and 356 development types, with permissibility in {permitted 9531, prohibited 8146, exempt 519}. It carries NO source_ref and NO effective_date column, so issue #928's suggested fix of returning both with each row is not implementable against the current schema. The deleted endpoint took no council parameter while the real table is keyed lga+zone.",
@@ -96,13 +104,13 @@
       "how": "python scripts/lint_hardcoded_zone_codes.py --all against .claude/zone_code_baseline.json \u2014 per-file counts are shrink-only, so the two deleted copies cannot return and the surviving backup copy stays counted rather than forgotten."
     }
   ],
-  "mutation_analysis": "Deletion cannot be mutation-tested in the usual sense - there is no surviving branch to invert. The equivalent check is reintroduction: restoring any single deleted file leaves it unimported, so no test would fail, which is precisely why the cluster survived eleven months. The guard that makes this stick is therefore not a unit test but scripts/lint_hardcoded_zone_codes.py --all against .claude/zone_code_baseline.json, whose per-file counts fall with this change and can never rise. The full frontend suite (83 suites, 1,110 tests) passes after deletion, confirming nothing depended on the removed modules.",
-  "residual_risk": "Three things are deliberately not addressed here. First, migratePRPs/backup/ui_swap_20250921_213550/ still contains copies of GroupedSetbackDisplay and DevelopmentTypeSelector with their own hardcoded zone tables; they are unimported backup files and deleting a backup directory is out of scope for this change. Second, @reduxjs/toolkit and react-redux are now unused by application code but are left in package.json - a dependency removal needs verification on a fresh npm ci rather than against a junctioned node_modules, per the recorded hazard. Third, this deletes the wrong answer without providing a right one: nothing now serves permitted development types. That is correct while no caller exists, but if the capability is ever wanted it must be built against lep_land_use_table scoped by council, which requires a council parameter the old contract never had, and the table cannot supply source_ref or effective_date without a schema change.",
+  "mutation_analysis": "The deletion half cannot be mutation-tested - restoring any deleted file leaves it unimported so no test fails, which is exactly why the cluster survived eleven months; its guard is the shrink-only zone baseline, now correctly lowered 270 -> 263. The enforcement half WAS mutation tested: both new pure functions stubbed to `return []`, 5 of 18 tests die. That split is the honest result - 13 survive because they assert that nothing is found, and a return-[] mutant satisfies them by construction. Full suites green after both halves: 5,331 python passed / 2 skipped, and 83 jest suites / 1,110 tests.",
+  "residual_risk": "Four things left open on purpose. (1) DQ-75 is logged, not fixed: widening the lint to catch a key-per-line map would fire on switch statements, test fixtures and the DCP Part keys PART_KEY_RE already excuses, and a noisy lint gets suppressed - worse than the gap. Fixing it will RAISE the baseline, which is the guard finding what was always there. (2) 38 rows remain declared fixed with no check; practice 1d stops that pile growing but cannot drain it. (3) DQ-58 is the one open row with no check, and its stated reason was TESTED today and found correct - check_failures pairs with council_url, the document, while DQ-58 is about council_page_url, the human page, so a check built on it would have measured the wrong URL and passed. (4) 115 scripts in scripts/ are untracked because .gitignore excludes the directory wholesale; only this branch's new probe was rescued, the rest are pre-existing and out of scope. Also: @reduxjs/toolkit and react-redux are now unused by app code but left in package.json, since dependency removal needs a fresh npm ci to verify rather than a junctioned node_modules.",
   "post_merge": {
     "db_reset": "No. No schema change, no data change, no migration.",
     "verify": "GET /api/development-types returns 404 in the preview deployment; the app renders unchanged because no page referenced it.",
     "secrets": "None. No credential, token or environment variable is added, removed or referenced. The deleted endpoint read no secret; it returned a literal in-file table.",
     "other_repo": "None. All changes are inside this repository, entirely within frontend-nextjs/. No Railway service, Fly app, Modal endpoint or external consumer references /api/development-types - it had no first-party caller and is not part of any documented public contract.",
-    "manual_verify": "In the Vercel preview: confirm GET /api/development-types returns 404, and load the assessment and reports pages to confirm they render unchanged - they never imported any deleted module, so any visible difference would mean the reachability trace was wrong and the change should be reverted."
+    "manual_verify": "In the Vercel preview confirm GET /api/development-types returns 404 and the app renders unchanged. Then on main confirm `python scripts/dq_check.py` still reaches its ratchet section - practices 1c and 1d compare against origin/main, so their FIRST run after this merges is the first time they compare against a main that contains them."
   }
 }
