@@ -458,6 +458,105 @@ def _no_check_cap(key: str = "_max_no_check") -> int | None:
     return v
 
 
+def _committed_doc() -> dict | None:
+    """``.claude/dq_checks.json`` as committed on ``origin/main``.
+
+    WHY THIS EXISTS — the ratchets above mark their own homework. Every cap
+    lives in the same file it polices, so lowering the bar is a one-line edit
+    that PASSES, and practice 1b's own failure text says out loud to "raise the
+    cap deliberately". Nothing stopped a cap going back up, and nothing could
+    tell which row was newly excused: the message admits it "cannot tell WHICH
+    row is new" and prints `git diff origin/main` for a human to run. This
+    function is that diff, run by the gate instead of suggested to a person.
+
+    Returns None — never a guess — when origin/main cannot be read (a shallow
+    clone, a detached fetch, a brand-new repo). Callers must SKIP rather than
+    pass, because "git could not answer" and "git answered no" are different
+    and conflating them is how a gate fails open.
+
+    ``git_env()`` is mandatory here, not decorative. A hook exports ``GIT_DIR``
+    and it OVERRIDES ``cwd``, so without it this reads the HOOK's repository and
+    answers confidently about the wrong one. DQ-54 ratchets exactly that rule.
+    """
+    try:
+        from qa_report_path import git_env
+    except ImportError:
+        return None
+    try:
+        # env=git_env() is written out at BOTH call sites rather than hoisted
+        # into a local. The DQ-54 ratchet reads the call with an AST and cannot
+        # follow a variable, so `env=env` would pass review and fail the guard —
+        # it caught this exact shortcut here. Static-checkability is worth the
+        # repetition.
+        #
+        # Confirm which repository we are actually in before trusting an answer
+        # from it — the whole point of stripping GIT_*.
+        top = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=_ROOT, env=git_env(), capture_output=True, text=True, timeout=15,
+        )
+        if top.returncode != 0:
+            return None
+        if Path(top.stdout.strip()).resolve() != _ROOT.resolve():
+            return None
+        proc = subprocess.run(
+            ["git", "show", "origin/main:.claude/dq_checks.json"],
+            cwd=_ROOT, env=git_env(), capture_output=True, text=True, timeout=15,
+        )
+        if proc.returncode != 0:
+            return None
+        return json.loads(proc.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+
+
+#: The caps that practice 1c holds against origin/main.
+_RATCHET_KEYS = ("_max_no_check", "_max_unverified_unresolved",
+                 "_max_fixed_without_check")
+
+
+def raised_caps(current: dict, committed: dict) -> list[tuple[str, int, int]]:
+    """Caps higher here than on origin/main, as ``(key, was, now)``.
+
+    Pure so it can be tested without a repository. A cap MISSING or non-integer
+    on main is skipped rather than treated as zero: absent is not the same as
+    zero, and treating it so would fail every branch that adds a new cap.
+    """
+    out = []
+    for key in _RATCHET_KEYS:
+        was = committed.get(key)
+        if isinstance(was, bool) or not isinstance(was, int):
+            continue
+        now = current.get(key)
+        if isinstance(now, bool) or not isinstance(now, int):
+            continue
+        if now > was:
+            out.append((key, was, now))
+    return out
+
+
+def newly_fixed_without_check(current_checks: dict, committed_checks: dict,
+                              ids) -> list[tuple[str, str]]:
+    """Rows that just became ``fixed`` carrying nothing that could go red.
+
+    Returns ``(id, what it was on main)``. A row already ``fixed`` on main is
+    NOT reported however long it has lacked a check -- that backlog is
+    practice 1b's business. This is a forward standard, so it must be
+    impossible for it to fail on history alone, or it gets deleted.
+    """
+    out = []
+    for i in sorted(ids):
+        row = current_checks.get(i)
+        if not row or row.get("declared") != "fixed" or row.get("check"):
+            continue
+        before = committed_checks.get(i)
+        if before is None:
+            out.append((i, "absent on main"))
+        elif before.get("declared") != "fixed":
+            out.append((i, str(before.get("declared"))))
+    return out
+
+
 
 def unread_baselines() -> list[str]:
     """Ratchet baselines that no script reads -- practice 4, generalised.
@@ -617,6 +716,54 @@ def main() -> int:
     if fcap is not None and len(fixed_no_check) < fcap:
         print(f"DQ-CHECK: IMPROVED - {len(fixed_no_check)} fixed row(s) lack a "
               f"check (cap {fcap}). Lower _max_fixed_without_check.")
+
+    # --- practice 1c: a ratchet may not raise its own ceiling ---
+    #
+    # Every cap above is stored in the file it guards, so until now "we only go
+    # forwards" was a convention: edit the number, and the gate that enforces it
+    # agrees with you. This compares each cap to the value committed on
+    # origin/main and refuses anything higher. Raising a cap is still possible —
+    # it just has to be a visible, deliberate regression rather than a quiet
+    # edit that passes.
+    committed = _committed_doc()
+    if committed is None:
+        print("DQ-CHECK: NOTE - origin/main copy of dq_checks.json unreadable, "
+              "so the caps could not be checked against their committed values. "
+              "This is a SKIP, not a pass.")
+    else:
+        try:
+            current_doc = json.loads(
+                (_ROOT / ".claude" / "dq_checks.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            current_doc = {}
+        raised = raised_caps(current_doc, committed)
+        if raised:
+            print("DQ-CHECK: FAILED - a ratchet cap was RAISED against origin/main.")
+            for key, was, now in raised:
+                print(f"  {key}: {was} on main, {now} here (+{now - was})")
+            print("  A cap that can rise is not a ratchet. Either write the check")
+            print("  the new row needs, or say plainly in the PR why the bar is")
+            print("  being lowered - do not do it silently in the file the gate reads.")
+            return 1
+
+        # --- practice 1d: a row newly marked FIXED must arrive with its proof ---
+        #
+        # practice 1b freezes the TOTAL of fixed-without-check, which stops the
+        # pile growing but cannot say which row is new — its own text admits it
+        # "cannot tell WHICH row is new" and prints a git diff for a human. With
+        # main in hand we can name it. A row that is new, or that has just
+        # changed to `fixed`, must carry a check; the pre-existing backlog is
+        # untouched, so this is a forward standard that cannot fail on history.
+        newly = newly_fixed_without_check(checks, committed.get("checks") or {}, ids)
+        if newly:
+            print("DQ-CHECK: FAILED - a row was newly declared FIXED with no check.")
+            for i, was in newly:
+                print(f"  {i}: {was} -> fixed, and nothing would go red if it came back")
+            print("  This names the row rather than counting, so it cannot blame an")
+            print("  innocent one. 'Fixed' with no check is a claim about the past;")
+            print("  the probe that would go red is what makes it a fix and not a")
+            print("  memory. DQ-54 was declared fixed while still broken.")
+            return 1
 
     # --- practice 4: an artifact whose value needs an invoker must have one ---
     dead = unread_baselines()
