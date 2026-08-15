@@ -175,6 +175,75 @@ def test_the_probe_can_actually_detect_a_failure():
     )
 
 
+def test_the_real_caller_records_every_check_as_failed():
+    """The property that actually matters, tested where it actually matters.
+
+    Everything above asks whether a fetcher REFUSES. That is necessary and not
+    sufficient: services/conveyancing.py sets _failed[name] = False after a
+    normal return, so a fetcher that refuses by returning None still leaves the
+    caller believing the check completed. fetch_dcp_setbacks did exactly that
+    -- honest fetcher, misinformed caller -- and no test above could see it,
+    because it looks at the fetchers in isolation.
+
+    So this drives the real _fetch_pdf_db_data with a database that fails on
+    every query, using the REAL fetchers, and requires all four flags to stay
+    True. It is the end-to-end statement of "a dead database must not produce a
+    completed check".
+    """
+    # Same import route as tests/test_typed_absence_fixes.py: services/ on the
+    # path and imported bare. `import services.conveyancing` fails on its
+    # sibling imports (lga_lookup), which resolve relative to services/.
+    sys.path.insert(0, str(_ROOT / "services"))
+    sys.path.insert(0, str(_ROOT))
+
+    import psycopg2
+
+    import conveyancing
+
+    class _DeadCursor:
+        def execute(self, *a, **k):
+            raise RuntimeError("connection lost mid-query")
+
+        def close(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    class _Conn:
+        autocommit = False
+
+        def cursor(self, *a, **k):
+            return _DeadCursor()
+
+        def rollback(self):
+            pass
+
+        def close(self):
+            pass
+
+    real_connect = psycopg2.connect
+    psycopg2.connect = lambda *a, **k: _Conn()
+    try:
+        _das, _lep, _dcp, _heritage, failed = conveyancing._fetch_pdf_db_data(
+            "postgresql://unused", -33.8, 151.2, None,
+            {"key_sites_clause": "cl 6.15", "zone_epi": "X LEP 2013", "zone": "R2"},
+            "inner_west",
+        )
+    finally:
+        psycopg2.connect = real_connect
+
+    still_believed_ok = sorted(k for k, v in failed.items() if not v)
+    assert not still_believed_ok, (
+        f"every query failed, but {still_believed_ok} are recorded as having "
+        f"completed. Those checks will render as a clean absence rather than "
+        f"'could not be determined'."
+    )
+
+
 @pytest.mark.parametrize("name", [n for n, _ in serve_path_fetchers()])
 def test_each_fetcher_reported(name):
     """Visibility, not enforcement: prints the current verdict per fetcher so a

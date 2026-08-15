@@ -799,10 +799,21 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # read-only before shipping: with marrickville's registry removed the
         # inner form returns 0 and this one returns 1.
         #
-        # Stopwords match _name_tokens() in fetch_dcp_as_at_dates.py. The
-        # ies/y normalisation there is deliberately NOT reproduced: without it
-        # this guard is strictly STRICTER, so the divergence can only produce
-        # a false RED that a human resolves, never a false CLEAN.
+        # WHOLE-TOKEN comparison on BOTH sides, splitting the portal name with
+        # the same delimiter as the registry name. An earlier draft used
+        # position(t IN portal_name) -- a substring test -- which reports a
+        # match whenever a token merely occurs INSIDE a longer one:
+        # position('2027' IN 'marrickville dcp 20270') is nonzero, so a
+        # different plan would have satisfied the guard. Measured both forms on
+        # the live rows before switching: they agree on every real case
+        # (Marrickville 2011, Hornsby 2024 vs the portal's 2013, Inner West
+        # Ashfield 2016) and disagree only on the 2027/20270 pair, so this is
+        # strictly tighter with no change to today's answer.
+        #
+        # Stopwords match _name_tokens() in fetch_dcp_as_at_dates.py. Its ies/y
+        # normalisation is NOT reproduced, which makes this guard stricter on
+        # that one axis only -- a registry name using the 'ies' spelling would
+        # read as a mismatch and go RED for a human to resolve, never CLEAN.
         "SELECT count(*) FROM dcp_plan_as_at p "
         "LEFT JOIN (SELECT council, ARRAY_AGG(DISTINCT dcp_name) AS names "
         "             FROM dcp_chapter_registry "
@@ -814,9 +825,10 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "     WHERE NOT EXISTS ("
         "       SELECT 1 FROM regexp_split_to_table(lower(n), %s) AS t "
         "        WHERE t <> %s AND t NOT IN (%s,%s,%s,%s,%s,%s) "
-        "          AND position(t IN lower(coalesce(p.portal_plan_name,%s))) = 0)))",
+        "          AND t NOT IN (SELECT pt FROM regexp_split_to_table("
+        "                lower(coalesce(p.portal_plan_name,%s)), %s) AS pt))))",
         ("[^a-z0-9]+", "", "dcp", "development", "control", "plan",
-         "comprehensive", "the", ""),
+         "comprehensive", "the", "", "[^a-z0-9]+"),
         "Each row serves a commencement date read off a DIFFERENT council "
         "plan than the one we hold -- a fabricated currency claim, which is "
         "worse than the missing date it replaced. Measured 0 of 2 attached "

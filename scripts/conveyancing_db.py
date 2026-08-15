@@ -810,18 +810,20 @@ def get_sepp_standard_value(
     E.g. get_sepp_standard_value(conn, "secondary_dwelling", "min_lot_size", "R2")
     returns the stored numeric value for that standard
 
-    Returns None if not found. Never raises.
+    Returns None if the standard is not found. RAISES if the standards could
+    not be read at all (DQ-82) — those are different answers and must not
+    share one return value. The previous "Never raises" contract meant a dead
+    database and a genuinely absent standard were indistinguishable here.
     """
-    # fetch_sepp_housing_standards now RAISES when it cannot query (DQ-82).
-    # This wrapper's published contract is "Never raises", and its None already
-    # means "no value available", so the failure is absorbed here rather than
-    # changing every caller. The distinction is not lost: callers that need to
-    # tell "no such standard" from "could not look" call the fetcher directly.
-    try:
-        standards = fetch_sepp_housing_standards(conn, zone_code, development_type)
-    except Exception as e:
-        logger.warning("get_sepp_standard_value: standards unavailable: %s", e)
-        return None
+    # Deliberately NOT wrapped. An earlier version of this change absorbed the
+    # failure here and returned None to preserve the old "Never raises" line,
+    # which put "could not look" and "no such standard" back into the same
+    # value -- the exact ambiguity DQ-82 exists to remove, reintroduced one
+    # layer up. Repo-wide grep, 2026-08-16: this function has ZERO production
+    # callers (its own docstring and two tests), so letting the exception
+    # propagate costs nothing and keeps the distinction intact for whoever
+    # calls it first.
+    standards = fetch_sepp_housing_standards(conn, zone_code, development_type)
     for s in standards:
         if s["standard_type"] == standard_type:
             return s["numeric_value"]
