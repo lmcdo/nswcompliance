@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Fixes a self-defeating branch in the production monitor and backfills one registry row with a re-verified value. Standard rather than Light because the branch runs against every chapter nightly and the change alters what it records on every re-export. Standard rather than Critical because no served regulatory text is touched, no provision is regenerated, and the one row written was re-measured immediately before writing. The change's main effect is to PREVENT an expensive and destructive operation, not to perform one.",
-  "commit_hash": "PENDING",
+  "commit_hash": "696dcfe9",
   "files": [
     "scripts/r2_monitor.py",
     "scripts/dq70_measure_text_delta.py",
