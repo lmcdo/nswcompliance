@@ -41,7 +41,8 @@ import re
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from typing import Optional
 from pathlib import Path
 
 if sys.platform == "win32":
@@ -564,6 +565,41 @@ def check_via_austlii(instruments: list[dict]) -> tuple[dict[str, str | None], l
 # Core check logic
 # ---------------------------------------------------------------------------
 
+_MONTHS = {m.lower(): i for i, m in enumerate(
+    ["January", "February", "March", "April", "May", "June", "July", "August",
+     "September", "October", "November", "December"], start=1)}
+_VERSION_DATE_RE = re.compile(
+    r"\b(\d{1,2})\s+(" + "|".join(_MONTHS) + r")\s+((?:19|20)\d{2})\b", re.I)
+
+
+def parse_version_date(version: Optional[str]) -> Optional[date]:
+    """Turn a version label like '15 May 2026' into a date, or None.
+
+    instrument_registry.version_date is a column that existed and was NEVER
+    written by anything (repo-wide grep, 2026-08-16), while current_version
+    carried a readable date as text on 25 of 26 active instruments. That is the
+    currency date of every LEP and SEPP we monitor, sitting one column away
+    from being usable.
+
+    STRICT ON PURPOSE. Only an explicit 'D Month YYYY' phrase parses. A bare
+    year, a version number, or anything else returns None and leaves the column
+    empty, because a guessed currency date is worse than an absent one — the
+    same rule that retired the old version-label parser. wingecarribee_lep_2010
+    has no current_version at all (no pco_instrument_id, the known DQ-69 floor)
+    and correctly stays NULL.
+    """
+    if not version:
+        return None
+    m = _VERSION_DATE_RE.search(version)
+    if not m:
+        return None
+    day, month, year = int(m.group(1)), _MONTHS[m.group(2).lower()], int(m.group(3))
+    try:
+        return date(year, month, day)
+    except ValueError:  # 31 February and friends
+        return None
+
+
 def check_instrument(
     instrument: dict, new_version: str | None, source: str,
     dry_run: bool, conn,
@@ -629,12 +665,12 @@ def check_instrument(
             cur.execute(
                 """
                 UPDATE instrument_registry
-                SET current_version = %s, last_checked = %s,
+                SET current_version = %s, version_date = %s, last_checked = %s,
                     last_changed = %s, needs_review = TRUE,
                     check_failures = 0
                 WHERE instrument_key = %s
                 """,
-                (new_version, now, now, key),
+                (new_version, parse_version_date(new_version), now, now, key),
             )
             # Auto-stale dependent standards (W3): last-reviewed values keep
             # serving WITH a notice; founder clears on re-verification.
@@ -651,10 +687,12 @@ def check_instrument(
             cur.execute(
                 """
                 UPDATE instrument_registry
-                SET current_version = %s, last_checked = %s, check_failures = 0
+                SET current_version = %s, version_date = %s,
+                    last_checked = %s, check_failures = 0
                 WHERE instrument_key = %s
                 """,
-                (new_version or stored_version, now, key),
+                (new_version or stored_version,
+                 parse_version_date(new_version or stored_version), now, key),
             )
             # Update currency — confirmed current as of this check
             cur.execute(
