@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Pure deletion of an unreachable surface. Fourteen files removed, one line removed from a health check. Nothing is rewired and no value is chosen, so the change is directionally safe: it removes a false regulatory claim and cannot create one. Standard rather than Critical because the deleted endpoint had no UI caller and the deleted components had no render path, both verified by grep before deletion; Standard rather than Light because the endpoint was live HTTP and served a hardcoded NSW zone-to-permitted-use table that contradicted the LEP in 135 places, so its removal changes what a direct caller receives.",
-  "commit_hash": "dbb26072",
+  "commit_hash": "11290b92",
   "files": [
     "frontend-nextjs/pages/api/development-types.ts",
     "frontend-nextjs/contexts/DevelopmentContext.tsx",
@@ -60,35 +60,40 @@
       "what_happens": "tsc and the Next.js build fail on an unresolved import. Not silent.",
       "covered_by": "npx tsc --noEmit and the CI build",
       "repro": "cd frontend-nextjs && npx tsc --noEmit  # unresolved import surfaces here; currently 8 pre-existing react-map-gl errors, baseline 677",
-      "mitigated": "tsc runs in the pre-commit hook against an error-count baseline and in CI, so an unresolved import cannot reach main silently."
+      "mitigated": "tsc runs in the pre-commit hook against an error-count baseline and in CI, so an unresolved import cannot reach main silently.",
+      "how": "cd frontend-nextjs && npx tsc --noEmit \u2014 wired into .githooks/pre-commit as an error-count gate (baseline 677, currently 8) and re-run in the CI build, so an unresolved import fails before merge."
     },
     {
       "scenario": "An external consumer calls GET /api/development-types after deletion.",
       "what_happens": "404 instead of a 200 carrying wrong data. Loud rather than silent, and the previous behaviour was the harmful one. No first-party caller exists.",
       "covered_by": "reachability trace recorded in pre_impl",
       "repro": "curl -s -o /dev/null -w '%{http_code}' http://localhost:3003/api/development-types?zone=R2  # expect 404 after this change, was 200 with wrong data",
-      "mitigated": "Accepted deliberately, not mitigated. A 404 is the correct response for a route that should not exist, and it is louder than the previous behaviour of returning 200 with regulatory claims that contradict the LEP in 135 places. No first-party caller exists to break."
+      "mitigated": "Accepted deliberately, not mitigated. A 404 is the correct response for a route that should not exist, and it is louder than the previous behaviour of returning 200 with regulatory claims that contradict the LEP in 135 places. No first-party caller exists to break.",
+      "how": "Not mitigated by a guard, accepted by design: the reachability trace in pre_impl shows zero first-party callers, and a 404 is a louder failure than the 200-with-wrong-data it replaces."
     },
     {
       "scenario": "Deleting store/index.ts breaks a component that used redux.",
       "what_happens": "cannot occur - the store held exactly one reducer, that reducer was the dead slice, and no component calls useSelector or useDispatch anywhere in the tree.",
       "covered_by": "grep for useSelector/useDispatch/Provider store returning only the deleted test",
       "repro": "cd frontend-nextjs && grep -rn 'useSelector\\|useDispatch\\|@/store' --include=*.tsx --include=*.ts app/ components/ hooks/ contexts/ | grep -v node_modules  # expect zero hits",
-      "mitigated": "Mitigated by proof of absence rather than by a guard: the grep for useSelector, useDispatch and @/store returns only the deleted test, and the full 83-suite frontend run passes after deletion."
+      "mitigated": "Mitigated by proof of absence rather than by a guard: the grep for useSelector, useDispatch and @/store returns only the deleted test, and the full 83-suite frontend run passes after deletion.",
+      "how": "cd frontend-nextjs && npx jest \u2014 83 suites / 1,110 tests pass after deletion, plus the grep in this scenario's repro returning zero hits outside the deleted test."
     },
     {
       "scenario": "The health check now reports healthy on a shorter list and hides a real outage.",
       "what_happens": "the other three endpoints are still checked and still required to pass; only the path to a deliberately removed route is gone.",
       "covered_by": "migration-health-check.ts:246 retains /api/property, /api/compliance/status, /api/compliance/checklist",
       "repro": "cd frontend-nextjs && grep -n 'api/' lib/health/migration-health-check.ts  # expect /api/property, /api/compliance/status, /api/compliance/checklist and no /api/development-types",
-      "mitigated": "The three remaining endpoints are still asserted, so a genuine outage in property, compliance status or compliance checklist still fails the check."
+      "mitigated": "The three remaining endpoints are still asserted, so a genuine outage in property, compliance status or compliance checklist still fails the check.",
+      "how": "frontend-nextjs/lib/health/migration-health-check.ts:246 still lists /api/property, /api/compliance/status and /api/compliance/checklist, and checkApiEndpoints requires all listed endpoints to respond ok."
     },
     {
       "scenario": "A copy of the same hardcoded table survives elsewhere and keeps serving.",
       "what_happens": "two further copies of ZONE_DEVELOPMENT_TYPES existed and are deleted here. A third copy remains under migratePRPs/backup/ui_swap_20250921_213550/, which is an explicit backup directory, is imported by nothing, and is left untouched as pre-existing dead code.",
       "covered_by": "grep for ZONE_DEVELOPMENT_TYPES tree-wide, recorded in residual_risk",
       "repro": "cd frontend-nextjs && grep -rn 'ZONE_DEVELOPMENT_TYPES\\|ZONE_DEVELOPMENT_MAPPING' --include=*.ts --include=*.tsx . | grep -v node_modules  # expect hits only under migratePRPs/backup/",
-      "mitigated": "Partially mitigated. The two live copies are deleted here and lint_hardcoded_zone_codes.py guards against new ones. The surviving copy under migratePRPs/backup/ is imported by nothing and is left as pre-existing dead code; it still counts toward the zone-code baseline, which is recorded in residual_risk rather than silently cleaned."
+      "mitigated": "Partially mitigated. The two live copies are deleted here and lint_hardcoded_zone_codes.py guards against new ones. The surviving copy under migratePRPs/backup/ is imported by nothing and is left as pre-existing dead code; it still counts toward the zone-code baseline, which is recorded in residual_risk rather than silently cleaned.",
+      "how": "python scripts/lint_hardcoded_zone_codes.py --all against .claude/zone_code_baseline.json \u2014 per-file counts are shrink-only, so the two deleted copies cannot return and the surviving backup copy stays counted rather than forgotten."
     }
   ],
   "mutation_analysis": "Deletion cannot be mutation-tested in the usual sense - there is no surviving branch to invert. The equivalent check is reintroduction: restoring any single deleted file leaves it unimported, so no test would fail, which is precisely why the cluster survived eleven months. The guard that makes this stick is therefore not a unit test but scripts/lint_hardcoded_zone_codes.py --all against .claude/zone_code_baseline.json, whose per-file counts fall with this change and can never rise. The full frontend suite (83 suites, 1,110 tests) passes after deletion, confirming nothing depended on the removed modules.",
