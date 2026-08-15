@@ -969,10 +969,35 @@ def run_monitor(
                                 """
                                 UPDATE dcp_chapter_registry
                                 SET content_hash=%s, url_last_checked=%s, url_content_length=%s,
-                                    url_etag=%s, url_last_modified=%s, check_failures=0
+                                    url_etag=%s, url_last_modified=%s, check_failures=0,
+                                    -- Advance the extraction hash TOO, or this
+                                    -- optimisation defeats itself downstream.
+                                    --
+                                    -- provisions_extracted_from_hash records which
+                                    -- version the served provisions reflect, and it is
+                                    -- written in exactly one place: the extractor. So
+                                    -- if we move content_hash and leave it behind, the
+                                    -- two differ FOREVER — and that difference is
+                                    -- precisely what DQ-70 counts as "the source
+                                    -- changed since we extracted". Every re-export
+                                    -- therefore created a permanent false entry,
+                                    -- clearable only by the full re-extraction this
+                                    -- branch exists to avoid.
+                                    --
+                                    -- Advancing it states something TRUE: the text is
+                                    -- byte-identical, so provisions read from the old
+                                    -- bytes reflect the new ones just as accurately.
+                                    --
+                                    -- NULL is left NULL. That means the chapter was
+                                    -- never extracted, and setting it would claim
+                                    -- provisions exist that do not.
+                                    provisions_extracted_from_hash =
+                                        CASE WHEN provisions_extracted_from_hash IS NULL
+                                             THEN NULL ELSE %s END
                                 WHERE id=%s
                                 """,
-                                (new_hash, now, new_len, new_etag, new_lm, chapter_id),
+                                (new_hash, now, new_len, new_etag, new_lm,
+                                 new_hash, chapter_id),
                             )
                             if not dry_run:
                                 conn.commit()
