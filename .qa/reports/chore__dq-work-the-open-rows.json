@@ -1,0 +1,114 @@
+{
+  "tier": "critical",
+  "justification": "This branch WRITES to served regulatory text in production: 677 provisions across two passes, including setback formulae, wall-height limits and floor-area controls that a planner quotes. Nothing else in the change is close in blast radius, and a wrong transform would corrupt the very numbers the product exists to serve. Critical rather than Standard for that reason alone. It also rewrites the predicate of a live DQ metric twice, and a metric that silently stops seeing its own defect class is how DQ-30 passed while 241 rows stayed broken.",
+  "commit_hash": "PENDING",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    ".gitignore",
+    "scripts/dq_probe_live.py",
+    "scripts/repair_tex_residue.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-76; python scripts/dq_probe_live.py --id DQ-77; python scripts/dq_probe_live.py --id DQ-78; python scripts/repair_tex_residue.py --pass tex; python scripts/repair_tex_residue.py --pass units",
+    "fails_when": "extraction residue returns to served text, or either repair pass finds rows it can no longer transform within its invariant",
+    "observed_red": "Every number here was watched moving, not asserted. DQ-76 went 10 -> 99 -> 104 as the metric was corrected twice, then 104 -> 9 after the repair. DQ-77 was 581 and is 0. DQ-78 is 111 and stays red. The two metric corrections were themselves observed failures: the first predicate returned CLEAN on 89 rows carrying the identical fault, and the second drove the count to 0 while 103 rows still held braces - both caught by reading data after a green result rather than believing it."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions, served set is_current AND v2_is_actionable = 19,957 rows, unchanged before and after both repair passes. source_council IS NULL for statewide instruments, which is why DQ-27's council-scoped fix could never have reached these rows. A token census of every backslash command actually present (27 distinct macros, all TeX) replaced guessing at the predicate.",
+    "assumption_mismatch": "Four, and each changed the work. (1) The DQ-76 predicate was a list of macros I had seen, not a description of the fault; it reported clean on 89 of 99 rows. (2) After widening, its brace class could not match an EMPTY '{}' nor '{ : }' nor '{ t h }', so the first repair pass reported success at 0 while 103 rows still carried braces. (3) I assumed the '12 00 { m } 2' rows could be repaired to '1,200 m2'; that joins digits, which is a judgement about the source PDF, so the repair deliberately leaves '12 00 m 2'. (4) I was about to deactivate DQ-78's 111 rows as containing no control. Reading the rows nearest the CUT showed several carry real controls with map text interleaved - deactivating would have hidden binding controls, the liability direction.",
+    "new_vs_existing": "repair_tex_residue.py is a new surface and the prior-art sweep is recorded in its header: repair_shadow_reports.py regenerates satellite report ROWS, cleanup_bad_setbacks.py and delete_bad_leichhardt_rows.py delete from other tables, fix_topics_step1_garbage_cleanup.py rewrites v2_topic not text, and dq_probe_live.py measures this set but is read-only by design and must stay so. The --pass flag follows the shape repair_shadow_reports.py already uses for two authorized passes over one guard chain."
+  },
+  "functions": [
+    {
+      "name": "repair",
+      "file_line": "scripts/repair_tex_residue.py",
+      "input": "a provision_text carrying TeX math-mode residue",
+      "output": "the same text with TeX wrappers stripped and their contents kept; digits never altered",
+      "if_none": "without it the 104 rows keep serving markup where a regulated value belongs - '3.6 { m } above ground level' for a height limit"
+    },
+    {
+      "name": "repair_units",
+      "file_line": "scripts/repair_tex_residue.py",
+      "input": "a provision_text whose unit is split across a space",
+      "output": "the same text with the unit joined: '900 m m' -> '900 mm'. Only spaces are deleted",
+      "if_none": "581 rows keep quoting a control as '900 m m' when the instrument says 900mm"
+    },
+    {
+      "name": "nonspace",
+      "file_line": "scripts/repair_tex_residue.py",
+      "input": "any text",
+      "output": "its non-whitespace characters in order - the units pass's invariant",
+      "if_none": "the units pass would rest on the weaker digit check, which cannot detect a dropped or reordered LETTER"
+    }
+  ],
+  "values": [
+    {
+      "value": "DQ-76 104 -> 9; DQ-77 581 -> 0; DQ-78 111 unchanged",
+      "read_at": "scripts/dq_probe_live.py against production, before and after each pass, 2026-08-15",
+      "if_missing": "the repair would rest on its own UPDATE count, which reports what it did rather than what is left"
+    },
+    {
+      "value": "19,957 served rows before and after both passes",
+      "read_at": "same session, same connection",
+      "if_missing": "a transform that silently dropped rows would look like a successful repair - the count falling for the wrong reason"
+    },
+    {
+      "value": "0 rows skipped by either invariant, across 677 writes",
+      "read_at": "the scripts' own per-row check, printed on both runs",
+      "if_missing": "a skipped row is the signal that a transform is unsafe on some input; zero skips is what makes the blanket application defensible"
+    }
+  ],
+  "queries": [
+    {
+      "query": "UPDATE regulatory_provisions SET provision_text = %s WHERE id = %s AND provision_text = %s",
+      "purpose": "Guarded on the text read during planning, so a row changed by another writer between plan and write updates nothing rather than being clobbered. The transaction rolls back if the affected count disagrees with the planned set."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A transform corrupts a regulated number.",
+      "what_happens": "Cannot reach the database. Each pass asserts an invariant per row before writing - the TeX pass requires the ordered digit sequence to be identical, the units pass the stronger non-whitespace sequence. A row failing is skipped and printed, never written.",
+      "repro": "python scripts/repair_tex_residue.py --pass units   # SKIPPED count must be 0",
+      "mitigated": "Yes.",
+      "how": "Per-row invariant check in main(), plus a full before/after JSON backup written before any UPDATE and an abort if it cannot be saved."
+    },
+    {
+      "scenario": "The repair silently diverges from the metric, so the row can never close.",
+      "what_happens": "It already happened: a brace class of [-A-Za-z0-9] left 103 rows behind while the metric read 0.",
+      "repro": "diff the PREDICATE constant in repair_tex_residue.py against PROBES['DQ-76'] in dq_probe_live.py",
+      "mitigated": "Partially.",
+      "how": "Both predicates carry a comment saying they must stay identical and naming the failure that happened when they drifted. This is a convention, not a gate - a test asserting the two strings match would be stronger and is not written."
+    },
+    {
+      "scenario": "Deactivating DQ-78's rows hides a binding control.",
+      "what_happens": "Would have happened. The bulk remedy was planned and abandoned after reading the rows nearest the cut, several of which carry real controls with map text interleaved.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-78 then read ids 95870, 95375, 95887",
+      "mitigated": "Yes - by not doing it.",
+      "how": "DQ-78's ledger note and tracker row both record the reversal and why, so the bulk fix is not reached for again."
+    },
+    {
+      "scenario": "A repair blinds its own metric, hiding a defect it did not fix.",
+      "what_happens": "It did. Stripping '$' from '$F o o d A c t 2003' removed the symptom DQ-76 could see and left the letter-spacing corruption invisible.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-77   # the class that was left behind",
+      "mitigated": "Yes.",
+      "how": "The surviving class was measured and opened as DQ-77 and DQ-78 rather than quietly folded into DQ-76's predicate, so how it was found stays on the record."
+    },
+    {
+      "scenario": "A concurrent writer's change is clobbered mid-repair.",
+      "what_happens": "The guarded UPDATE affects 0 rows, the totals disagree, and the whole transaction rolls back.",
+      "repro": "inspect the UPDATE in main(): WHERE id = %s AND provision_text = %s",
+      "mitigated": "Yes.",
+      "how": "Per-row guard on the planned text, single transaction, rollback on any count mismatch."
+    }
+  ],
+  "mutation_analysis": "The repairs were mutation-tested by construction rather than after the fact: the invariant IS the mutation test, run per row on live data, and it passed 677 times with zero skips. The metrics were tested by perturbation - DQ-76's predicate returns 0 for marrickville against the same signatures, so it discriminates rather than matching everything, and DQ-78's SQL form was cross-checked against an independent Python implementation that scored every served row (both 111). The two rejected DQ-76 signatures are the strongest evidence the metric is not merely permissive: digit-spacing (87 rows) and superscript-brace (8 rows) were measured, found to match '100 Year ARI Flood Level' and markdown ids like 14e_3, and excluded, because a signature that cannot be wrong makes a number that cannot fall.",
+  "residual_risk": "DQ-76 stays open at 9: each is a LONE brace substituting for a character rather than wrapping one - 7 HTML cells reading '200m{-300m2' where '{' replaced a '2', plus two where a brace replaced a parenthesis. Deciding which character a lone brace should be needs the source document, so they are deliberately not guessed. DQ-78 stays open at 111 with its remedy corrected but not applied - stripping figure text from a provision needs the source PDF's layout, which the extractor discarded. Digit-splitting ('12 00' for 1,200, '4 000' for 4,000) is untouched by both passes and is NOT tracked by any row yet; it is visible in the repaired text and deserves one. And the predicate-drift between probe and repair is guarded only by a comment, not by a test.",
+  "post_merge": {
+    "db_reset": "No. Two UPDATE passes over provision_text only; no schema change, no migration, no row added or removed. Full before/after backups are in .claude/backups/tex_residue_repair_*.json if a revert is ever needed.",
+    "verify": "python scripts/dq_probe_live.py --id DQ-76 returns 9, --id DQ-77 returns 0, --id DQ-78 returns 111; served row count is 19,957.",
+    "secrets": "None added, read or referenced. Both scripts use the existing DATABASE_URL via dotenv.",
+    "other_repo": "None. All changes are in this repository. No deployed service reads dq_checks.json or the tracker; the repaired text is read by the compliance API from the database, which needs no deploy.",
+    "manual_verify": "Open a served DCP control that was repaired - id 37643 should now read 's = h - 3 m' and id 45614 '3.6 m above ground level' - and confirm the rendered report shows the number rather than markup. Then read two DQ-78 rows near the cut (95870, 95375) and confirm for yourself that they contain real controls, because the decision NOT to deactivate them rests on that."
+  }
+}
