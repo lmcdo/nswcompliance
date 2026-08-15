@@ -483,6 +483,113 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "text, so this number is an upper bound and needs adjudication before "
         "any repair. Recorded as measured rather than asserted.",
     ),
+    "DQ-41": (
+        "Setback controls still carrying a manufactured 1 January date",
+        # Migration 040's parser built effective_date out of the dcp_version
+        # LABEL, so "v2016-current" became 2016-01-01 and
+        # "v2014-amended-feb-2026" became 2014-01-01 -- contradicting its own
+        # label. 528 of 893 rows were dated this way.
+        #
+        # Zero is the right target here, unlike DQ-33 below, because no real
+        # commencement in this corpus fell on 1 January: every one of the 528
+        # was manufactured. A genuine 1 January date arriving later would be a
+        # false positive worth one row's adjudication, not a reason to soften
+        # this into a ratchet.
+        #
+        # NULL is deliberately NOT counted. 706 of 1,071 rows have no
+        # effective_date and that is the correct state -- "we do not know" is
+        # honest, a manufactured date is not. Counting NULLs here would create
+        # pressure to invent dates, which is the defect itself.
+        "SELECT count(*) FROM dcp_setback_controls "
+        "WHERE EXTRACT(MONTH FROM effective_date) = 1 "
+        "AND EXTRACT(DAY FROM effective_date) = 1",
+        (),
+        "Each row dates a setback control from a version label rather than "
+        "from the plan, so the date contradicts the document it cites. "
+        "Measured 0 of 1,071 on 2026-08-15, down from 528 of 893.",
+    ),
+    "DQ-33": (
+        "Served rows falling through to ALL with no config, ABOVE the recorded floor",
+        # A ratchet, not a zero-check, and the subtraction is the whole point.
+        # The repair took no_config on served rows 9,854 -> 1,278, and that
+        # 1,278 is DELIBERATE: retag_applicability_slug_docids.py resolves a
+        # slug only to a key the council's config already declares and leaves
+        # anything unrecognised as ALL/no_config rather than guessing a part to
+        # improve the number. Probing for zero would demand the one behaviour
+        # that repair was written to refuse.
+        #
+        # Direction of risk, from that script: narrowing HIDES controls, and a
+        # hidden binding control is the liability. So the floor may fall only
+        # by a council gaining real config, never by invention. GREATEST keeps
+        # 0 meaning clean in the runner's contract.
+        "SELECT GREATEST(count(*) - 1278, 0) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable "
+        "AND v2_dev_type_source = 'no_config'",
+        (),
+        "no_config on served rows has risen above the 1,278 left deliberately "
+        "by the 2026-08-01 retag, so document_ids are failing to resolve "
+        "against council config again and those rows silently apply to ALL "
+        "development types. SEPARATE AND LARGER: 10,103 served rows carry a "
+        "NULL v2_dev_type_source and were never tagged at all, so the question "
+        "cannot be asked of them; that gap is not counted here and needs its "
+        "own row.",
+    ),
+    "DQ-73": (
+        "Dated setback controls falling on the 1st of a month",
+        # CANDIDATES, not confirmed defects -- the same framing as DQ-29, and
+        # for the same reason: a real commencement CAN fall on the 1st, so this
+        # number is an upper bound that needs adjudication, not 301 things to
+        # go and change.
+        #
+        # What makes it worth a row is the SHAPE, not the count. 301 of 365
+        # dated rows is 82%, and the values cluster one per council:
+        # canterbury_bankstown 40 rows all on 2025-08-01, bayside 32 all on
+        # 2026-04-01, hornsby 30 all on 2025-06-01. Chance does not do that.
+        # It is the signature of a month ("August 2025") being stored as a day.
+        #
+        # Found on 2026-08-15 while PROVING DQ-41's zero was a measurement
+        # rather than a query that cannot match. DQ-41 removed the January
+        # instances; this asks whether the same manufacturing simply moved to
+        # other months.
+        #
+        # NULL effective_date is deliberately excluded. 706 rows have none and
+        # that is the honest state; counting it here would push toward
+        # inventing dates, which is the defect.
+        "SELECT count(*) FROM dcp_setback_controls "
+        "WHERE effective_date IS NOT NULL "
+        "AND EXTRACT(DAY FROM effective_date) = 1",
+        (),
+        "Each row may be claiming day precision for a date we only know to the "
+        "month, so a served control is dated more precisely than the evidence "
+        "supports. Measured 301 of 365 dated rows on 2026-08-15. This is an "
+        "upper bound: adjudicate per council against the plan's own text "
+        "before changing any value, and set NULL rather than guess.",
+    ),
+    "DQ-74": (
+        "Served provisions with no applicability provenance recorded at all",
+        # SEPARATE FROM DQ-33 and larger. DQ-33 counts rows whose
+        # v2_dev_type_source is the literal 'no_config' (1,278) -- rows the
+        # tagger looked at and could not resolve. These 10,103 have NULL: the
+        # tagger never looked. The two sets are disjoint and must not be added.
+        #
+        # This is the DQ-68/DQ-24 pattern for the third time: an existing row
+        # was scoped to the slice someone happened to measure, leaving the
+        # larger population in the same state with nothing watching it. DQ-33
+        # cannot see these because its own WHERE clause requires the column to
+        # be populated.
+        #
+        # Opened 2026-08-15 while wiring DQ-33's probe, by reading the full
+        # distribution of the column rather than only the value being counted.
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable "
+        "AND v2_dev_type_source IS NULL",
+        (),
+        "Each row is served with no record of how -- or whether -- its "
+        "applicability was ever decided, so it cannot be told apart from a row "
+        "deliberately left as ALL. Measured 10,103 of 19,957 served provisions "
+        "on 2026-08-15, against DQ-33's 1,278 no_config rows, which are a "
+        "DISJOINT set: do not add the two numbers.",
+    ),
 }
 
 
