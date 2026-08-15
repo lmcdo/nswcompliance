@@ -248,7 +248,6 @@ export class MigrationHealthCheck {
  '/api/property',
  '/api/compliance/status',
  '/api/compliance/checklist',
- '/api/development-types',
  ];
 
  const results = await Promise.allSettled(
