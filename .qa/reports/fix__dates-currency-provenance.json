@@ -1,0 +1,135 @@
+{
+  "tier": "standard",
+  "justification": "Standard, not critical: every change here REMOVES a claim rather than choosing a value. The serve-path fetchers stop answering when they cannot look, two stale portal dates are detached, and the two new probes only observe. Per the repair-calibration rule, removing a false claim cannot create a new one, while choosing a replacement could -- and no replacement value is chosen anywhere in this branch. Not minor either: scripts/conveyancing_db.py is on the live serve path and its error-path behaviour changes for four functions with 16 call sites.",
+  "commit_hash": "8dcbc9a7",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    ".claude/fail_closed_baseline.json",
+    ".claude/served_answer_quality_baseline.json",
+    "scripts/conveyancing_db.py",
+    "scripts/dq_check.py",
+    "scripts/dq_probe_live.py",
+    "tests/test_conveyancing_db.py",
+    "tests/test_regulatory_constants.py",
+    "tests/test_serve_path_fails_closed.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_serve_path_fails_closed.py -q && python scripts/dq_probe_live.py --id DQ-80 && python scripts/dq_probe_live.py --id DQ-81 && python scripts/dq_check.py",
+    "fails_when": "any serve-path fetch_* returns a usable-looking value on a dead connection (DQ-82); an attached portal_date names a plan we no longer serve (DQ-80); an attached portal_date predates our own copy of the document (DQ-81); or any ledger row's declared status disagrees with its check in either direction.",
+    "observed_red": "WATCHED FAILING, NOT ASSERTED, at every step. (1) Before the fix, tests/test_serve_path_fails_closed.py reported 4 fail-open fetchers: fetch_heritage_postgis returning {'hca': [], 'items': [], 'has_heritage': False, 'raw': []} and fetch_lep_clauses / fetch_nearby_das / fetch_sepp_housing_standards each returning []. (2) The ratchet was mutation-proven in both directions: removing fetch_heritage_postgis from the baseline (equivalent to adding a new fail-open fetcher) FAILED 2 tests; adding the already-correct fetch_dcp_setbacks FAILED 1, because a repaired fetcher must be released rather than left as amnesty. (3) After the repair, with all four fixed but still listed, test_baseline_may_only_shrink FAILED and named all four. (4) DQ-80 mutation-proven read-only: a hypothetical registry name of 'Marrickville DCP 2027' returns 1, moving both attached councils returns 2, removing a council's registry returns 1. (5) DQ-81 opened RED at 2 and reached 0 only after the detach; shifting its comparison date +30 years returns 0, proving it is closeable rather than permanently red. (6) dq_check itself went RED with 'DQ-81 declared OPEN but the check PASSES' after the detach, catching a status I had not yet updated. (7) The served-answer ratchet went RED naming currency_observation_only/ashfield NEW 20 and .../marrickville NEW 57. (8) unread_baselines: after widening its scan, hiding the real reader must fail -- it did NOT at first, because a comment in scripts/dq_check.py had spelled the filename out and the comment became its own reader; after removing the literal, hiding the reader FAILS as required.",
+    "full_suite": "20 failed / 4514 passed, byte-identical to the same run with this branch's changes stashed. The 20 are pre-existing full-suite pollution in test_ai_extractor.py, which passes 51/51 in isolation both with and without these changes."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_plan_as_at (28 rows, portal_date/stated_date/portal_plan_name/portal_raw), dcp_chapter_registry (council, dcp_name, is_active, url_last_changed), dcp_setback_controls via fetch_dcp_setbacks. Schema and join keys confirmed live before writing either probe: all 28 dcp_plan_as_at.lga have an active registry council, 0 orphans.",
+    "reachability": "scripts/conveyancing_db.py is the shared serve path -- conveyancing.py, intelligence_brief.py, constraint_arithmetic.py and build_lot_search_index.py all read through it. All 16 call sites of the four changed fetchers were enumerated before editing and are listed in the commit message.",
+    "measured_defect": "4 of 6 serve-path fetchers answered a constraint question while unable to query. fetch_heritage_postgis returned has_heritage: False -- a statement of fact about a property, made without looking. services/conveyancing.py sets _failed[name] = False on the SUCCESS path, so a fetcher that swallowed its own exception returned normally, the except never fired, and the system recorded a SUCCESSFUL check that found nothing. Separately: 2 of 2 attached portal dates were stale -- the portal reports Marrickville DCP 2011 'as amended 9 September 2022' (Amendment No. 15) while Inner West Council lists Amendment No. 18 in force 31 July 2025.",
+    "assumption_mismatch": "The dangerous assumption was that returning None would be enough. It is not: None still returns NORMALLY, so _failed[name] would still be set False and the defect would survive a fix that looked correct. That is why these raise. Second assumption tested and found wrong: that the identity mismatches were a matching problem worth solving -- checking the registry names against the portal names showed the portal lists a plan we do not serve in all seven cases, so loosening the match would have attached a date from a superseded plan.",
+    "new_vs_existing": "The fetcher change affects the ERROR path only; the success path is untouched, so existing behaviour on a healthy database is unchanged. The portal-date detach affects 2 existing rows and no serving table -- dcp_plan_as_at is additive provenance. Both probes are read-only."
+  },
+  "functions": [
+    {
+      "name": "fetch_heritage_postgis",
+      "file_line": "scripts/conveyancing_db.py:629",
+      "input": "psycopg2 connection + lat/lng/lot_wkt from the serve path",
+      "output": "dict of heritage hits; now raises instead of returning the empty dict on query failure",
+      "why_it_changed": "the empty dict carries has_heritage: False, which renders as 'not heritage listed'",
+      "if_none": "conn None raises AttributeError inside the try, is rolled back where possible, and re-raised -- the caller's except fires and _failed['heritage'] correctly stays True"
+    },
+    {
+      "name": "fetch_lep_clauses",
+      "file_line": "scripts/conveyancing_db.py:61",
+      "input": "connection + key_sites_clause + epi_name",
+      "output": "list of clause rows; now raises instead of falling through to the partially-accumulated results",
+      "why_it_changed": "falling through returned whatever had accumulated before the failure, most often [], indistinguishable from 'this property has no key sites clauses'",
+      "if_none": "same -- raises, caller's except fires, _failed['lep'] stays True"
+    },
+    {
+      "name": "fetch_nearby_das",
+      "file_line": "scripts/conveyancing_db.py:976",
+      "input": "connection + lat/lng + radius/days",
+      "output": "list of nearby DAs; now raises instead of returning []",
+      "why_it_changed": "[] renders as 'no recent development applications nearby', a claim about the street rather than about our connection. The function's own comments already record a buggy council filter producing exactly that false 'no DAs'.",
+      "if_none": "raises, caller's except fires, _failed['das'] stays True"
+    },
+    {
+      "name": "fetch_sepp_housing_standards",
+      "file_line": "scripts/conveyancing_db.py:723",
+      "input": "connection + zone_code + development_type",
+      "output": "list of SEPP standards; now raises instead of returning []",
+      "why_it_changed": "these are the standards a feasibility answer is computed FROM; [] silently removes every standard and the arithmetic proceeds as though none applied",
+      "if_none": "raises. get_sepp_standard_value absorbs it and returns None to preserve its documented 'Never raises' contract; build_lot_search_index.py:753 and constraint_arithmetic.py:1252 now propagate, which is intended -- failing loudly beats indexing a lot against no standards"
+    },
+    {
+      "name": "unread_baselines",
+      "file_line": "scripts/dq_check.py:570",
+      "input": "repo root; globs scripts/*.py and now tests/*.py for a reader",
+      "output": "list of baseline files nobody reads",
+      "why_it_changed": "it reported the new fail-closed ratchet unwired while a test read it on every push; a pytest that gates.yml runs IS a reader",
+      "if_none": "a missing tests/ directory yields no readers, so every baseline reports unread -- fails closed, never open"
+    }
+  ],
+  "values": [
+    {
+      "value": "dcp_plan_as_at.portal_date",
+      "read_at": "scripts/conveyancing_db.py:_plan_as_at:203",
+      "if_missing": "resolution falls through to stated_in_document, then observed_current, then None. Detaching the two stale dates therefore moves ashfield and marrickville back to observed_current and CURRENCY rises 403 -> 480, which is the honest figure -- it was never 460, because ashfield's pre-existing stale date had been masking 20 rows from the count."
+    },
+    {
+      "value": "_failed[name]",
+      "read_at": "services/conveyancing.py:255-298",
+      "if_missing": "initialised True and set False only after a successful return, so a raising fetcher leaves it True and the check renders as not-assessed -- which is the entire mechanism this branch relies on"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone loosens pick_dcp_result's token-subset match to 'convert' the seven identity mismatches into attached dates.",
+      "what_happens": "Bankstown DCP 2015's date attaches to Canterbury-Bankstown DCP 2023. CURRENCY FALLS and books as progress, because check_served_answer_quality counts whether a row HAS a dated basis, not whether the date belongs to our plan.",
+      "covered_by": "DQ-80",
+      "repro": "python scripts/dq_probe_live.py --id DQ-80",
+      "mitigated": true,
+      "how": "scripts/dq_probe_live.py DQ-80 re-derives the subset test from the STORED portal_plan_name against the registry's CURRENT dcp_name, so it cannot be satisfied by editing the fetcher. Runs in gates.yml and data-watch.yml."
+    },
+    {
+      "scenario": "A council amends its DCP, the portal's copy stays behind, and we keep serving the portal's older 'as amended' date. No commit occurs.",
+      "what_happens": "a false currency claim renders to a reader who cannot tell, about a plan amended since.",
+      "covered_by": "DQ-81",
+      "repro": "python scripts/dq_probe_live.py --id DQ-81",
+      "mitigated": true,
+      "how": "DQ-81 compares the attached portal_date against max(url_last_changed) for that council's active chapters -- both columns we already store, so no new source is needed. Nightly via data-watch.yml, because this drifts with no commit."
+    },
+    {
+      "scenario": "A new serve-path fetcher is added next month and swallows its own DB error, returning [].",
+      "what_happens": "a fresh instance of the same silent-wrong-answer defect, invisible until a customer notices.",
+      "covered_by": "DQ-82",
+      "repro": "python -m pytest tests/test_serve_path_fails_closed.py -q",
+      "mitigated": true,
+      "how": "tests/test_serve_path_fails_closed.py discovers fetchers by REFLECTION over conveyancing_db, so the new one is covered the day it is written. The baseline is now empty, so there is no grandfathered set to hide in and it fails the build on day one."
+    },
+    {
+      "scenario": "The reflection or DeadConnection breaks, the fetcher set comes back empty, and every assertion passes over nothing.",
+      "what_happens": "a green run that proves nothing -- the 13%-mutation-kill-rate failure already on record for this repo.",
+      "covered_by": "test_the_probe_can_actually_detect_a_failure",
+      "repro": "python -m pytest tests/test_serve_path_fails_closed.py -q -k can_actually_detect",
+      "mitigated": true,
+      "how": "a control case asserts the fetcher list is non-empty AND feeds the probe a deliberately fail-open function that must be caught. DeadConnection is a real object, not a MagicMock, whose cursor would return another MagicMock and make every query 'succeed'."
+    },
+    {
+      "scenario": "A batch job hits the now-raising fetchers and dies mid-run.",
+      "what_happens": "build_lot_search_index or constraint_arithmetic aborts instead of completing.",
+      "covered_by": "accepted, by design",
+      "repro": "run build_lot_search_index.py with DATABASE_URL pointing at an unreachable host",
+      "mitigated": true,
+      "how": "intended and stated in the code comment at scripts/conveyancing_db.py:756 -- an aborted index run is recoverable, whereas a lot indexed against zero SEPP standards is a wrong served answer with no signal. Not silent: the exception propagates with the original message."
+    }
+  ],
+  "mutation_analysis": "The ratchet was mutation-checked rather than trusted. Removing a fail-open name from the baseline fails 2 tests; adding an already-correct one fails 1. Stubbing fetchers_that_answer_anyway() to return [] would leave test_no_new_fetcher_answers_when_it_cannot_look and test_each_fetcher_reported passing -- which is exactly why the control case exists: it asserts the discovery is non-empty and that a known-bad function is still caught, so the empty-return mutant dies there. The 8 pre-existing tests that asserted the OLD fail-open behaviour were rewritten rather than deleted, and renamed to state the property, because the old names would have made this fix read as a regression.",
+  "residual_risk": "1) DQ-82 covers the Python serve path only. The output-grounding campaign records ~7 TypeScript routes that read dcp_setback_controls with their own inline SQL and bypass this path entirely; they inherit none of this and remain the largest known gap. 2) check_served_answer_quality --baseline --update will RAISE its file without complaint and, unlike the dq_checks caps, it is not compared against origin/main -- so a quiet raise would pass CI. Recorded, not fixed here. 3) CURRENCY 480 includes 31 nsw_statewide rows that can never close, because check_dcp_as_at_coverage explicitly excludes statewide instruments while this check counts them; the two disagree and it needs one stated rule applied to both, NOT a quiet exclusion. 4) fetch_dcp_setbacks returns None on error rather than raising, so services/conveyancing.py still sets _failed['dcp'] = False for it -- the same caller-flag defect in a fetcher that is otherwise honest. Not changed here because None is also its legitimate 'no controls' answer; it needs its own row.",
+  "post_merge": {
+    "db_reset": "No",
+    "verify": "python scripts/dq_check.py (expect PASSED) and python scripts/check_served_answer_quality.py --baseline (expect OK at 1290). The two portal dates were already detached against production on 2026-08-15; the pre-write state of all 28 dcp_plan_as_at rows is backed up outside the repo.",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
