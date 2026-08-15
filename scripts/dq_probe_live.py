@@ -641,11 +641,25 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # Regexes rather than LIKE: psycopg2 reads % as a parameter placeholder
         # even when params is empty, so the LIKE form raised IndexError before
         # reaching the database. DQ-29 uses ~ for the same reason.
+        # Signature 3 was WIDENED AGAIN on 2026-08-15, after the first repair
+        # pass took the count to 0 while 103 rows still carried braces. The
+        # character class [-A-Za-z0-9] could not see an EMPTY group '{}', nor
+        # '{ : }', nor a multi-character one like '{ t h }' or '{ a m }'. So the
+        # metric read clean over '1 {} 200 m m' (1,200mm), '20 { t h } century',
+        # '7 { : } 00 p m' and '2 {} 300 {} 000 m 3'.
+        #
+        # It is now ANY brace. Checked before widening rather than assumed:
+        # every one of the 103 rows containing a brace was sampled and none was
+        # legitimate. A curly brace has no place in NSW planning text.
+        #
+        # The lesson is the same one this row keeps teaching: a predicate that
+        # enumerates the forms someone has already seen reports clean on the
+        # ones they have not. Describe the fault, not the examples.
         r"SELECT count(*) FROM regulatory_provisions "
         r"WHERE is_current AND v2_is_actionable AND ("
         r"provision_text ~ '\\[A-Za-z]{2,}' "
         r"OR (provision_text LIKE '%%$%%' AND provision_text !~ '\$[0-9]') "
-        r"OR provision_text ~ '\{\s*\\?\s*[-A-Za-z0-9]\s*\}')",
+        r"OR provision_text LIKE '%%{%%' OR provision_text LIKE '%%}%%')",
         (),
         "Each row shows a reader extraction residue where a regulated value "
         "belongs. Measured 99 served rows on 2026-08-15 (the earlier figure of "
