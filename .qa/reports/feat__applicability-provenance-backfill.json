@@ -1,12 +1,12 @@
 {
   "tier": "standard",
   "justification": "Standard, not critical: this writes to 19,558 production rows but only ever RECORDS why a value is what it is — v2_zone_source and v2_dev_type_source — and never the value itself. Directionality per the repair-calibration rule: recording a reason cannot create a false claim, whereas changing an applicability tag could, so the one risky direction is refused rather than attempted. Not minor either: it is a bulk write on the serve path and it reopened a row that was declared fixed.",
-  "commit_hash": "9c4d7331",
+  "commit_hash": "8c520227",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
     "enrichment/pipeline.py",
-    "tests/test_applicability_provenance.py"
+    "tests/test_applicability_provenance_backfill.py"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_applicability_provenance.py -q && python enrichment/pipeline.py --phase applicability_provenance --dry-run && python scripts/dq_check.py",
@@ -86,10 +86,18 @@
       "repro": "python scripts/dq_probe_live.py --id DQ-33",
       "mitigated": true,
       "how": "the floor stays at 1,278 and the row is declared OPEN at its true size instead. The note states that the 1,278 was measured while 10,103 rows had no source at all, so it was computed on a fraction of the population."
+    },
+    {
+      "scenario": "A new test file is given the name of an existing one, silently replacing its coverage.",
+      "what_happens": "tests/test_applicability_provenance.py has existed since #857 with 25 tests over the TAGGER's provenance derivation. Writing a same-named file replaced all of it; the suite still went green because the replacement passed, so the loss was invisible.",
+      "covered_by": "caught by inspection, not by a guard",
+      "repro": "git diff origin/main -- tests/test_applicability_provenance.py",
+      "mitigated": true,
+      "how": "the original is restored byte-identical to origin/main (diff is empty) and this branch's tests live in tests/test_applicability_provenance_backfill.py. Both run: 36 pass, 25 from #857 and 11 here. NOT MITIGATED IN GENERAL — nothing in the repo would have caught it. A same-named overwrite that happens to pass is indistinguishable from a green suite."
     }
   ],
   "mutation_analysis": "The write-only guard was mutation-tested rather than trusted: adding a forbidden column to the UPDATE fails the suite with that column named; reverting passes 11/11. The match rule carries a control case that kills an always-False stub, which would otherwise satisfy all five refusal assertions and produce a clean-looking run that wrote nothing. The population invariant was verified against the live table, not inferred from the code: 18,328 served rows tagged ALL before and after.",
-  "residual_risk": "1) The 1,148 rows still without a source are REFUSALS — today's config produces something different from what is stored, usually a specific dev type where the row says ALL. That is a real finding about the served answer and needs adjudication per council, not a backfill; it is deliberately left open in DQ-74. 2) `no_config` is literally correct for statewide instruments — nothing matched, ALL by fallthrough — but it carries a different meaning there than on a council DCP chapter, where it means a config is MISSING. The vocabulary has no value distinguishing 'not applicable to this document class', and adding one needs a migration to the CHECK constraint. 3) The phase processes 20,948 rows (all actionable versions) while DQ-74 counts 10,103 (current only); writing provenance on superseded versions is harmless but means the two numbers are not directly comparable.",
+  "residual_risk": "1) The 1,148 rows still without a source are REFUSALS — today's config produces something different from what is stored, usually a specific dev type where the row says ALL. That is a real finding about the served answer and needs adjudication per council, not a backfill; it is deliberately left open in DQ-74. 2) `no_config` is literally correct for statewide instruments — nothing matched, ALL by fallthrough — but it carries a different meaning there than on a council DCP chapter, where it means a config is MISSING. The vocabulary has no value distinguishing 'not applicable to this document class', and adding one needs a migration to the CHECK constraint. 3) The phase processes 20,948 rows (all actionable versions) while DQ-74 counts 10,103 (current only); writing provenance on superseded versions is harmless but means the two numbers are not directly comparable. 4) Nothing detects a test file being replaced by a same-named one whose own tests pass. This branch did exactly that to tests/test_applicability_provenance.py and only inspection caught it — the suite stayed green throughout, because the replacement was green. Worth a guard: a test-count or test-name ratchet per file would see it.",
   "post_merge": {
     "db_reset": "No",
     "verify": "python scripts/dq_check.py (expect PASSED) and python scripts/dq_probe_live.py --id DQ-74 (expect 1,148). The write is already applied; the id list of every affected row is at .claude/backups/applicability_provenance_pre_write.json and reverting is setting both source columns back to NULL for those ids.",
