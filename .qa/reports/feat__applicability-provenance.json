@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard, not critical: this writes to 19,558 production rows but only ever RECORDS why a value is what it is — v2_zone_source and v2_dev_type_source — and never the value itself. Directionality per the repair-calibration rule: recording a reason cannot create a false claim, whereas changing an applicability tag could, so the one risky direction is refused rather than attempted. Not minor either: it is a bulk write on the serve path and it reopened a row that was declared fixed.",
-  "commit_hash": "8ccf8637",
+  "commit_hash": "3346a6de",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",

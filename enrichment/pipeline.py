@@ -884,6 +884,8 @@ def run_applicability_provenance(
             f"""SELECT id, provision_text, document_id,
                        v2_applicable_zones, v2_applicable_dev_types
                   FROM regulatory_provisions {where} AND id > %s
+                 -- scope: the WHERE above carries the v2_is_actionable filter,
+                 -- and is_current is deliberately absent. See the docstring.
                  ORDER BY id LIMIT %s""",
             (last_id, batch_size),
         )
