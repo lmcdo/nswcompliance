@@ -88,11 +88,48 @@ print(f"\nBackup {BACKUP}: {cur.fetchone()['n']} rows")
 cur.execute("""UPDATE dcp_setback_controls
                   SET needs_review = TRUE, review_reason = %s, is_current = FALSE
                 WHERE id = 696 AND is_current = TRUE""", (REVIEW_REASON_696,))
-print(f"id=696 excluded: {cur.rowcount} row")
+n696 = cur.rowcount
+print(f"id=696 excluded: {n696} row")
 cur.execute("""UPDATE dcp_setback_controls SET condition = %s
                 WHERE id = 698 AND (condition IS NULL OR btrim(condition) = '')""",
             (CONDITION_698,))
-print(f"id=698 condition set: {cur.rowcount} row")
+n698 = cur.rowcount
+print(f"id=698 condition set: {n698} row")
+
+# prior-art-checked: no new capability and no new data source — this is the
+# post-write assertion for THIS repair's own two ids. The flagged files read
+# controls for other purposes (a blog page, an API route, a debug dump); none
+# verifies that a specific repair landed, and none should grow that job.
+#
+# A repair that matched nothing must not report success. Either row may have
+# moved since the dry run — 698 could have gained a different, incomplete
+# qualifier, or either row could already be non-current — and then the served
+# defect is STILL THERE while this exits 0. Roll back rather than commit a
+# no-op. Raised by adversarial review.
+if n696 != 1 or n698 != 1:
+    conn.rollback()
+    print("\nERROR: expected to change exactly one row each, changed "
+          f"{n696} and {n698}. Nothing was committed, and the backup table was "
+          "rolled back with it. The rows are not in the state the dry run "
+          "showed — re-read them before deciding what the repair should be.",
+          file=sys.stderr)
+    conn.close()
+    sys.exit(1)
+
 conn.commit()
 show("AFTER")
+
+# Read the served state back rather than trusting the rowcount.
+cur.execute("""SELECT count(*) AS n FROM dcp_setback_controls
+                WHERE id = 696 AND is_current = TRUE
+                  AND (needs_review IS NULL OR needs_review = FALSE)""")
+still_served = cur.fetchone()['n']
+cur.execute("SELECT condition FROM dcp_setback_controls WHERE id = 698")
+row = cur.fetchone()
+landed = bool(row) and row['condition'] == CONDITION_698
+ok = still_served == 0 and landed
+print(f"\nVERIFY: id=696 still served = {still_served} (want 0); "
+      f"id=698 qualifier present = {landed}")
+print("VERIFY: " + ("PASSED" if ok else "FAILED — the writes did not take"))
 conn.close()
+sys.exit(0 if ok else 1)
