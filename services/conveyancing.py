@@ -284,7 +284,14 @@ def _fetch_pdf_db_data(db_url, lat, lng, lot_wkt, controls, dcp_former_council):
                 logger.warning("DB pre-fetch: LEP-clause query failed: %s", e)
         if dcp_former_council:
             try:
-                _dcp = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
+                # raise_on_error=True (DQ-82): without it this fetcher returns
+                # None on a query failure AND on a genuine absence of controls,
+                # so it returns NORMALLY either way and _failed["dcp"] is set
+                # False below — recording a completed check that found nothing.
+                # The other three fetchers now raise; this one already had the
+                # flag for it and simply was not being asked.
+                _dcp = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone,
+                                          raise_on_error=True)
                 _failed["dcp"] = False
             except Exception as e:
                 logger.warning("DB pre-fetch: DCP-setback query failed: %s", e)

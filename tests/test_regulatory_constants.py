@@ -110,17 +110,21 @@ class TestFetchSeppHousingStandards:
         assert "secondary_dwelling" in params
         assert "R3" in params
 
-    def test_returns_empty_on_db_error(self):
+    def test_raises_on_db_error_rather_than_dropping_every_standard(self):
+        """DQ-82. These are the standards a feasibility answer is computed
+        FROM. An empty list silently removes all of them and the arithmetic
+        proceeds as though none applied."""
         conn = MagicMock()
         conn.cursor.side_effect = Exception("connection lost")
-        result = fetch_sepp_housing_standards(conn)
-        assert result == []
+        with pytest.raises(Exception, match="connection lost"):
+            fetch_sepp_housing_standards(conn)
 
-    def test_returns_empty_for_none_conn(self):
-        """Passing None should not crash — returns empty."""
-        # Can't call cursor() on None, so should catch and return []
-        result = fetch_sepp_housing_standards(None)
-        assert result == []
+    def test_raises_for_none_conn(self):
+        """DQ-82. This previously asserted that None "should not crash —
+        returns empty". Not crashing WAS the bug: the caller received [] and
+        could not tell it from a genuine absence of standards."""
+        with pytest.raises(AttributeError):
+            fetch_sepp_housing_standards(None)
 
 
 # ── get_sepp_standard_value ──
@@ -336,31 +340,37 @@ class TestConnectionIsolation:
         fetch_dcp_setbacks(conn, "inner-west")
         conn.rollback.assert_called_once()
 
-    def test_heritage_rollback_on_failure(self):
+    # DQ-82: these three still assert the rollback, which is the connection
+    # hygiene they were written for and is unchanged. What changed is the
+    # second half: the fetchers no longer hand back a clean-looking answer on
+    # the way out. Rolling back AND returning [] left the connection usable and
+    # the caller misinformed, which is the worse half of the two.
+
+    def test_heritage_rolls_back_and_raises(self):
         conn = MagicMock()
         cur = MagicMock()
         conn.cursor.return_value = cur
         cur.execute.side_effect = Exception("relation does not exist")
-        result = fetch_heritage_postgis(conn, -33.8, 151.2)
-        assert result == {"hca": [], "items": [], "has_heritage": False, "raw": []}
+        with pytest.raises(Exception, match="relation does not exist"):
+            fetch_heritage_postgis(conn, -33.8, 151.2)
         conn.rollback.assert_called_once()
 
-    def test_lep_clauses_rollback_on_failure(self):
+    def test_lep_clauses_rolls_back_and_raises(self):
         conn = MagicMock()
         cur = MagicMock()
         conn.cursor.return_value = cur
         cur.execute.side_effect = Exception("timeout")
-        result = fetch_lep_clauses(conn, "Clause 4.3C", "Inner West LEP 2022")
-        assert result == []
+        with pytest.raises(Exception, match="timeout"):
+            fetch_lep_clauses(conn, "Clause 4.3C", "Inner West LEP 2022")
         conn.rollback.assert_called_once()
 
-    def test_sepp_rollback_on_failure(self):
+    def test_sepp_rolls_back_and_raises(self):
         conn = MagicMock()
         cur = MagicMock()
         conn.cursor.return_value = cur
         cur.execute.side_effect = Exception("connection reset")
-        result = fetch_sepp_housing_standards(conn)
-        assert result == []
+        with pytest.raises(Exception, match="connection reset"):
+            fetch_sepp_housing_standards(conn)
         conn.rollback.assert_called_once()
 
     def test_tax_rollback_on_failure(self):
@@ -437,14 +447,18 @@ class TestFetchNearbyDas:
         assert len(result) == 1
         assert result[0]["number"] == "PAN-111"
 
-    def test_returns_empty_on_db_error(self):
+    def test_rolls_back_and_raises_on_db_error(self):
+        """DQ-82. [] renders as "no recent development applications nearby" --
+        a claim about the street, not about our connection. This function's own
+        comments already record a buggy council filter producing exactly that
+        false "no DAs"; this was the same wrong answer by a different route."""
         from conveyancing_db import fetch_nearby_das
 
         conn = MagicMock()
         conn.cursor.side_effect = Exception("connection lost")
 
-        result = fetch_nearby_das(conn, -33.894, 151.141)
-        assert result == []
+        with pytest.raises(Exception, match="connection lost"):
+            fetch_nearby_das(conn, -33.894, 151.141)
         conn.rollback.assert_called_once()
 
     def test_parses_jsonb_development_type(self):

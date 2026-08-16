@@ -471,11 +471,15 @@ class TestHeritageClassification:
         result = fetch_heritage_postgis(_mock_heritage_conn(rows), -33.9, 151.1)
         assert len(result["items"]) == 1
 
-    def test_db_exception_returns_empty(self):
+    def test_db_exception_raises_rather_than_saying_not_heritage(self):
+        """DQ-82. This test previously asserted the opposite, and that is the
+        point of the rename: it locked in the defect. The old empty return
+        carries has_heritage: False, which renders as "not heritage listed" --
+        a statement about the property made without looking at anything."""
         conn = MagicMock()
         conn.cursor.side_effect = Exception("timeout")
-        result = fetch_heritage_postgis(conn, -33.9, 151.1)
-        assert result == {"hca": [], "items": [], "has_heritage": False, "raw": []}
+        with pytest.raises(Exception, match="timeout"):
+            fetch_heritage_postgis(conn, -33.9, 151.1)
 
 
 # ── fetch_lep_clauses guard paths ──
@@ -491,7 +495,10 @@ class TestFetchLepClausesGuards:
     def test_empty_clause_returns_empty(self):
         assert fetch_lep_clauses(MagicMock(), "", "LEP 2022") == []
 
-    def test_db_exception_returns_empty(self):
+    def test_db_exception_raises_rather_than_returning_no_clauses(self):
+        """DQ-82. [] is indistinguishable from "this property has no key sites
+        clauses", so the caller cannot tell a real answer from a dead query."""
         conn = MagicMock()
         conn.cursor.side_effect = Exception("connection refused")
-        assert fetch_lep_clauses(conn, "Clause 4.3", "LEP 2022") == []
+        with pytest.raises(Exception, match="connection refused"):
+            fetch_lep_clauses(conn, "Clause 4.3", "LEP 2022")

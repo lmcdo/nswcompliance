@@ -77,6 +77,17 @@ def get_staged_diff_lines() -> list[tuple[str, int, str]]:
     for line in diff.splitlines():
         if line.startswith("+++ b/"):
             current_file = line[6:]
+            # scripts/archive/ holds retired one-off scripts nothing runs, kept
+            # so they survive the laptop they lived on. Backing up a years-old
+            # throwaway is not authoring a new hardcoded zone list, and this
+            # lint cannot tell those apart — 31 archived files tripped it on a
+            # pure backup, 2026-08-16. Same exemption, same reasoning and same
+            # single directory as the QA gate's content scanners; live code
+            # under scripts/ proper is unaffected, and
+            # tests/test_archive_is_not_live_code.py fails if anything outside
+            # the archive ever imports from it.
+            if "scripts/archive/" in current_file.replace("\\", "/"):
+                current_file = None
             continue
         if line.startswith("@@"):
             m = re.search(r'\+(\d+)', line)
@@ -146,7 +157,15 @@ def sweep_all() -> dict[str, int]:
         + glob.glob("**/*.ts", recursive=True)
         + glob.glob("**/*.tsx", recursive=True)
     )
-    files = [f for f in files if "node_modules" not in f and ".next" not in f]
+    # scripts/archive/ is excluded for the same reason the staged-diff scan
+    # skips it: it holds retired one-off scripts, backed up so they survive the
+    # laptop they lived on, and a backup is not new hardcoded regulatory data.
+    # Without this the baseline RISES the moment those files are tracked, which
+    # is the ratchet firing on an act of preservation. Live code is unaffected —
+    # everything under scripts/ proper still counts.
+    files = [f for f in files
+             if "node_modules" not in f and ".next" not in f
+             and "scripts/archive/" not in f.replace("\\", "/")]
     per: Counter = Counter()
     for filepath in files:
         try:
@@ -238,7 +257,12 @@ def main() -> int:
             + glob.glob("**/*.ts", recursive=True)
             + glob.glob("**/*.tsx", recursive=True)
         )
-        files = [f for f in files if "node_modules" not in f and ".next" not in f]
+        # Same archive exclusion as the baseline walk above — see the comment
+        # there. --all and --baseline must agree, or the two halves of one
+        # guard disagree about what they are measuring.
+        files = [f for f in files
+                 if "node_modules" not in f and ".next" not in f
+                 and "scripts/archive/" not in f.replace("\\", "/")]
         all_violations = []
         for filepath in files:
             try:

@@ -118,6 +118,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
     place_scoped = _place_scoped_chapters(cur)
 
     served = 0
+    no_locator: dict = {}
     no_page: dict = {}
     observation_only: dict = {}
     ungated_locality: dict = {}
@@ -142,6 +143,24 @@ def main() -> int:  # pragma: no cover - CLI entry point
         documented = basis in DOCUMENTED_BASES
 
         for e in entries:
+            # THE CITATION IS `clause`, NOT `pdf_page`. fetch_dcp_setbacks
+            # returns "clause": section_ref or "" (conveyancing_db.py:473) and
+            # carries pdf_page as a separate convenience field. This check
+            # originally counted missing pages and reported 780 of 968 as
+            # unciteable, which described the wrong thing: all 968 rows carry
+            # BOTH a section_ref and a verbatim source_text.
+            #
+            # A ref must point somewhere to be a citation, so the test is
+            # whether it carries a locator at all. Anything with a digit does --
+            # part-c-s2.4, table-6.2.1, lep-cl-6-12 are all real locations in
+            # slug form, and an earlier strict clause-number regex wrongly
+            # graded those as junk. What is left is refs naming an instrument
+            # or an unnumbered part and nothing more: LEP, ADG,
+            # part-c-residential. 75 of 968, and none of those 75 has a page
+            # number either.
+            clause = (e.get("clause") or "").strip()
+            if not clause or not any(ch.isdigit() for ch in clause):
+                no_locator[slug] = no_locator.get(slug, 0) + 1
             if e.get("pdf_page") is None:
                 no_page[slug] = no_page.get(slug, 0) + 1
             if not documented:
@@ -160,10 +179,21 @@ def main() -> int:  # pragma: no cover - CLI entry point
     print(f"served control rows (via fetch_dcp_setbacks): {served}")
     print(f"  run_date: {date.today().isoformat()}")
     print()
-    print(f"PROVENANCE    no page number            : {sum(no_page.values()):5d}  "
+    print(f"PROVENANCE    ref carries no locator    : {sum(no_locator.values()):5d}  "
+          f"({pct(sum(no_locator.values()))})")
+    print("                the citation names an instrument or an unnumbered")
+    print("                part and nothing more (LEP, ADG, part-c-residential),")
+    print("                so a reader cannot turn to it. All served rows carry")
+    print("                a section_ref AND a verbatim quote; this counts the")
+    print("                ones that do not point anywhere.")
+    print()
+    print(f"  (convenience) no page number           : {sum(no_page.values()):5d}  "
           f"({pct(sum(no_page.values()))})")
-    print("                a verbatim quote with no page is a claim the reader")
-    print("                cannot check in a 300-page plan.")
+    print("                NOT the citation — the serve path renders `clause`")
+    print("                from section_ref and carries pdf_page separately.")
+    print("                Ratcheted too, so it cannot rot, but a missing page")
+    print("                is an inconvenience where a missing locator is a")
+    print("                citation that does not resolve.")
     print()
     print(f"CURRENCY      date from a URL check only: {sum(observation_only.values()):5d}  "
           f"({pct(sum(observation_only.values()))})")
@@ -179,7 +209,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
     # One flat map so a single baseline file holds all three, keyed by
     # dimension and council. Per-council because a 4-row council and a 90-row
     # council regressing are not the same event.
-    current = {f"provenance_no_page/{k}": v for k, v in no_page.items()}
+    current = {f"provenance_no_locator/{k}": v for k, v in no_locator.items()}
+    current.update({f"provenance_no_page/{k}": v for k, v in no_page.items()})
     current.update({f"currency_observation_only/{k}": v
                     for k, v in observation_only.items()})
     current.update({f"applicability_ungated/{k}": v

@@ -1,0 +1,26 @@
+{
+  "_note": [
+    "Serve-path fetchers that return a usable-looking value when the database is",
+    "unreachable, so a caller cannot tell 'we looked and found nothing' from 'we",
+    "could not look'. SHRINK-ONLY: repair a fetcher and REMOVE it from this list.",
+    "Adding a name is not the fix and tests/test_serve_path_fails_closed.py will",
+    "fail a newly added one on day one.",
+    "",
+    "EMPTY as of 2026-08-15, and the empty list is the enforcement: every",
+    "fetch_* on the serve path now raises when it cannot query, so ANY future",
+    "one that answers anyway fails the build immediately. There is no longer a",
+    "grandfathered set to hide in.",
+    "",
+    "It opened at four. fetch_heritage_postgis returned has_heritage: False --",
+    "a statement of fact about a property, made without looking -- and",
+    "fetch_lep_clauses, fetch_nearby_das and fetch_sepp_housing_standards each",
+    "returned []. All four now re-raise after rolling back.",
+    "",
+    "WHY RAISE AND NOT RETURN None: services/conveyancing.py sets",
+    "_failed[name] = False on the SUCCESS path. Returning None still returns",
+    "normally, so the flag would read 'did not fail' and the system would still",
+    "record a successful check that found nothing. Raising makes the caller's",
+    "existing except fire and the flag correctly stay True."
+  ],
+  "fail_open": []
+}

@@ -67,6 +67,17 @@ import subprocess
 import sys
 from pathlib import Path
 
+# The probes are read with errors="replace", which substitutes U+FFFD for bytes
+# they could not decode. Printing that to a cp1252 console -- the default on the
+# Windows runners this repo uses -- raises UnicodeEncodeError, and --report died
+# mid-row on DQ-68 rather than reaching the coverage summary at the end. A
+# reporting tool that crashes before its own conclusion is worse than a wrong
+# number, because the rows it DID print look like the whole answer. Same
+# reconfigure as scripts/check_dcp_as_at_coverage.py, for the same reason.
+_reconfigure = getattr(sys.stdout, "reconfigure", None)
+if callable(_reconfigure):  # a replaced stdout (io.StringIO) has no reconfigure
+    _reconfigure(encoding="utf-8", errors="replace")
+
 _ROOT = Path(__file__).resolve().parents[1]
 _LEDGER = _ROOT / ".claude" / "DATA_QUALITY_TRACKER.md"
 _CHECKS = _ROOT / ".claude" / "dq_checks.json"
@@ -570,9 +581,39 @@ def unread_baselines() -> list[str]:
     d = root / ".claude"
     if not d.is_dir():
         return []
+    # tests/ counts as a reader, not just scripts/. The standard is unchanged --
+    # a baseline still needs something that actually RUNS to read it -- but a
+    # pytest is such a thing: gates.yml runs the suite on every PR, and
+    # check_test_quarantine.py guarantees no test file is excluded from
+    # collection, so a reader in tests/ cannot be silently skipped. The
+    # serve-path fail-closed ratchet was reported unwired while its only reader
+    # was a test that runs on every push; that is the scan being incomplete,
+    # not the baseline being dead.
+    #
+    # NAME NO BASELINE FILE IN THIS MODULE. scripts/ is scanned, so a filename
+    # written in a comment here becomes its own reader and the guard passes over
+    # a genuinely dead file. That happened while this change was being made:
+    # hiding the real reader left the check GREEN because the comment above had
+    # spelled the filename out. A guard must not be able to satisfy itself.
+    # COMMENT LINES ARE STRIPPED before scanning. This is still a textual scan,
+    # but prose can no longer satisfy it -- and that is not a hypothetical:
+    # naming a baseline file in a comment in THIS module made the comment its
+    # own reader, and the guard passed over a file whose real reader had been
+    # removed. Deleting that one literal fixed the instance; stripping comments
+    # fixes the class. A reader hidden behind a permanently skipped test would
+    # still count, which is recorded in the row's residual risk rather than
+    # solved here -- proving a test actually executes needs a collection hook,
+    # not a glob.
+    def _code_only(text: str) -> str:
+        return chr(10).join(
+            line for line in text.splitlines()
+            if not line.lstrip().startswith("#")
+        )
+
     readers = chr(10).join(
-        f.read_text(encoding="utf-8", errors="replace")
-        for f in sorted((root / "scripts").glob("*.py"))
+        _code_only(f.read_text(encoding="utf-8", errors="replace"))
+        for d_ in ("scripts", "tests")
+        for f in sorted((root / d_).glob("*.py"))
     )
     out = []
     for f in sorted(d.glob("*baseline*.json")):

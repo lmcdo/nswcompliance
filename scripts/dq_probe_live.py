@@ -774,6 +774,156 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "by fixing the URL and re-checking, NOT by resetting the hash -- that "
         "would hide the broken URL rather than repair it.",
     ),
+    "DQ-80": (
+        "Attached portal dates whose plan is no longer the plan we serve",
+        # THE GUARD THAT WAS MISSING ON 2026-08-15. The only thing stopping a
+        # portal date being attached across a plan-identity mismatch was
+        # pick_dcp_result()'s token-subset rule -- a convention living inside
+        # the one script it governs. Loosening it is a one-line edit, and
+        # NOTHING would have caught the result: check_served_answer_quality
+        # counts whether a served row HAS a dated basis, not whether the date
+        # belongs to our plan, so attaching Bankstown DCP 2015's date to
+        # Canterbury-Bankstown DCP 2023 would have made CURRENCY *fall* and
+        # read as progress. Same shape as the caps that used to live in the
+        # file they policed (#957).
+        #
+        # So this re-derives the subset test from what was actually STORED,
+        # against the registry's CURRENT dcp_name. It cannot be satisfied by
+        # editing the fetcher, and it fires on data drift with no commit --
+        # the Hornsby class, where the registry moves 2013 -> 2024 while a
+        # date attached under the old identity keeps serving.
+        #
+        # LEFT JOIN, and a NULL name array counts. The first draft inner-joined
+        # the registry, which SILENTLY DROPS an attached date once a council's
+        # chapters go inactive -- fail-open, reading CLEAN forever. Proven
+        # read-only before shipping: with marrickville's registry removed the
+        # inner form returns 0 and this one returns 1.
+        #
+        # WHOLE-TOKEN comparison on BOTH sides, splitting the portal name with
+        # the same delimiter as the registry name. An earlier draft used
+        # position(t IN portal_name) -- a substring test -- which reports a
+        # match whenever a token merely occurs INSIDE a longer one:
+        # position('2027' IN 'marrickville dcp 20270') is nonzero, so a
+        # different plan would have satisfied the guard. Measured both forms on
+        # the live rows before switching: they agree on every real case
+        # (Marrickville 2011, Hornsby 2024 vs the portal's 2013, Inner West
+        # Ashfield 2016) and disagree only on the 2027/20270 pair, so this is
+        # strictly tighter with no change to today's answer.
+        #
+        # Stopwords match _name_tokens() in fetch_dcp_as_at_dates.py. Its ies/y
+        # normalisation is NOT reproduced, which makes this guard stricter on
+        # that one axis only -- a registry name using the 'ies' spelling would
+        # read as a mismatch and go RED for a human to resolve, never CLEAN.
+        "SELECT count(*) FROM dcp_plan_as_at p "
+        "LEFT JOIN (SELECT council, ARRAY_AGG(DISTINCT dcp_name) AS names "
+        "             FROM dcp_chapter_registry "
+        "            WHERE is_active AND dcp_name IS NOT NULL "
+        "            GROUP BY council) r ON r.council = p.lga "
+        "WHERE p.portal_date IS NOT NULL "
+        "  AND (r.names IS NULL OR NOT EXISTS ("
+        "    SELECT 1 FROM unnest(r.names) AS n "
+        "     WHERE NOT EXISTS ("
+        "       SELECT 1 FROM regexp_split_to_table(lower(n), %s) AS t "
+        "        WHERE t <> %s AND t NOT IN (%s,%s,%s,%s,%s,%s) "
+        "          AND t NOT IN (SELECT pt FROM regexp_split_to_table("
+        "                lower(coalesce(p.portal_plan_name,%s)), %s) AS pt))))",
+        ("[^a-z0-9]+", "", "dcp", "development", "control", "plan",
+         "comprehensive", "the", "", "[^a-z0-9]+"),
+        "Each row serves a commencement date read off a DIFFERENT council "
+        "plan than the one we hold -- a fabricated currency claim, which is "
+        "worse than the missing date it replaced. Measured 0 of 2 attached "
+        "rows on 2026-08-15 (ashfield, marrickville). Falsifiability proven "
+        "read-only rather than asserted: a hypothetical registry name of "
+        "'Marrickville DCP 2027' returns 1, moving both councils returns 2, "
+        "and deleting a council's registry returns 1. Clears by detaching the "
+        "date or correcting the registry name -- NEVER by widening the token "
+        "match, which is the defect itself.",
+    ),
+    "DQ-81": (
+        "Attached portal dates older than the document we actually hold",
+        # THE PORTAL IS ITSELF A STALE SOURCE, and _plan_as_at ranks it FIRST.
+        #
+        # Confirmed against the councils on 2026-08-15. The NSW Planning Portal
+        # reports Marrickville DCP 2011 "as amended 9 September 2022" -- that is
+        # Amendment No. 15. Inner West Council's own page lists Amendment No. 18
+        # in force since 31 July 2025, with 16 and 17 in between. It reports the
+        # Ashfield 2016 plan at the same 2022 date while that plan's own
+        # chapters are published Mar-2023 and Apr-2024.
+        #
+        # Our own registry already knew: the documents we hold last changed
+        # 2026-06-22 (ashfield) and 2026-04-06 (marrickville), years after the
+        # date the portal put on them. So this needs no new source -- the
+        # contradiction is between two columns we already store.
+        #
+        # WHY DQ-80 DOES NOT COVER IT. That row checks the portal names the
+        # right PLAN. This one checks the portal's date is not older than our
+        # own copy of that same plan. Both were needed: the identity was
+        # correct in both these rows, and the date was stale anyway.
+        #
+        # WHY IT MATTERS MORE THAN A MISSING DATE. A blank renders no claim. A
+        # stale "as at" renders a currency assertion that is wrong, to a reader
+        # who cannot tell, about a plan amended three times since -- and it
+        # makes the CURRENCY metric FALL, so it books as progress.
+        #
+        # WHAT THIS PROVES, EXACTLY. url_last_changed records when OUR COPY of
+        # the file changed. That is NOT proof the legal instrument was amended
+        # -- a re-upload or a cosmetic edit moves it too. What the
+        # contradiction does establish is narrower and still disqualifying:
+        # the portal's date cannot describe the document we now hold, so it
+        # cannot be served as that document's currency. The remedy is
+        # adjudication against the plan's own version table, never an automatic
+        # detach on this signal alone.
+        #
+        # SCOPED TO THE PLAN THE DATE IS ATTACHED TO, not merely to the
+        # council. cumberland has two active dcp_names ('Cumberland DCP 2021'
+        # and 'Cumberland DCP Part B - Residential Zones 2021'); on a
+        # council-only join, a change to either would condemn a date belonging
+        # to the other. The registry row must match the stored
+        # portal_plan_name by the same whole-token rule as DQ-80.
+        #
+        # EXISTS, not JOIN: a council whose chapters all go inactive must not
+        # quietly drop out of the count (the DQ-80 fail-open, same shape).
+        "SELECT count(*) FROM dcp_plan_as_at p "
+        "WHERE p.portal_date IS NOT NULL "
+        "  AND EXISTS (SELECT 1 FROM dcp_chapter_registry r "
+        "               WHERE r.council = p.lga AND r.is_active "
+        "                 AND r.url_last_changed IS NOT NULL "
+        "                 AND r.url_last_changed::date > p.portal_date "
+        # A NOT EXISTS over zero tokens is vacuously TRUE, so a name that
+        # yields no meaningful tokens would match every portal plan and let an
+        # unrelated chapter condemn the date. dcp_name is NOT NULL in the
+        # schema today, which makes the null half unreachable -- it is written
+        # anyway because the all-stopword half is NOT unreachable ('DCP' alone
+        # tokenises to nothing) and both are the same defect.
+        "                 AND r.dcp_name IS NOT NULL "
+        "                 AND EXISTS ("
+        "                   SELECT 1 FROM regexp_split_to_table("
+        "                          lower(r.dcp_name), %s) AS t0 "
+        "                    WHERE t0 <> %s AND t0 NOT IN (%s,%s,%s,%s,%s,%s)) "
+        "                 AND NOT EXISTS ("
+        "                   SELECT 1 FROM regexp_split_to_table("
+        "                          lower(r.dcp_name), %s) AS t "
+        "                    WHERE t <> %s AND t NOT IN (%s,%s,%s,%s,%s,%s) "
+        "                      AND t NOT IN (SELECT pt FROM "
+        "                            regexp_split_to_table(lower(coalesce("
+        "                              p.portal_plan_name,%s)), %s) AS pt)))",
+        ("[^a-z0-9]+", "", "dcp", "development", "control", "plan",
+         "comprehensive", "the",
+         "[^a-z0-9]+", "", "dcp", "development", "control", "plan",
+         "comprehensive", "the", "", "[^a-z0-9]+"),
+        "Each row serves an 'as at' date that CANNOT describe the document we "
+        "now hold, because our own copy changed after it. That disqualifies it "
+        "as a currency claim; it is not by itself proof the legal instrument "
+        "was amended, so the remedy is adjudication against the plan's own "
+        "version table rather than an automatic detach. Measured 2 of 2 "
+        "attached rows on 2026-08-15: ashfield portal 2022-09-09 vs document "
+        "changed 2026-06-22, marrickville portal 2022-09-09 vs 2026-04-06 -- "
+        "and marrickville's was confirmed independently against Inner West "
+        "Council's own schedule as Amendment No. 15 where the council is on "
+        "No. 18 (31 July 2025), so in that case the staleness is established "
+        "and not merely suspected. NEVER clears by re-fetching the portal, "
+        "which is the stale source.",
+    ),
 }
 
 
