@@ -157,7 +157,15 @@ def sweep_all() -> dict[str, int]:
         + glob.glob("**/*.ts", recursive=True)
         + glob.glob("**/*.tsx", recursive=True)
     )
-    files = [f for f in files if "node_modules" not in f and ".next" not in f]
+    # scripts/archive/ is excluded for the same reason the staged-diff scan
+    # skips it: it holds retired one-off scripts, backed up so they survive the
+    # laptop they lived on, and a backup is not new hardcoded regulatory data.
+    # Without this the baseline RISES the moment those files are tracked, which
+    # is the ratchet firing on an act of preservation. Live code is unaffected —
+    # everything under scripts/ proper still counts.
+    files = [f for f in files
+             if "node_modules" not in f and ".next" not in f
+             and "scripts/archive/" not in f.replace("\\", "/")]
     per: Counter = Counter()
     for filepath in files:
         try:
@@ -249,7 +257,12 @@ def main() -> int:
             + glob.glob("**/*.ts", recursive=True)
             + glob.glob("**/*.tsx", recursive=True)
         )
-        files = [f for f in files if "node_modules" not in f and ".next" not in f]
+        # Same archive exclusion as the baseline walk above — see the comment
+        # there. --all and --baseline must agree, or the two halves of one
+        # guard disagree about what they are measuring.
+        files = [f for f in files
+                 if "node_modules" not in f and ".next" not in f
+                 and "scripts/archive/" not in f.replace("\\", "/")]
         all_violations = []
         for filepath in files:
             try:
