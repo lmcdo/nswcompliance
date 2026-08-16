@@ -108,18 +108,24 @@ def main() -> int:  # pragma: no cover - CLI entry point
         return 2
     import psycopg2
 
-    where = "TRUE" if args.all_versions else "is_current AND v2_is_actionable"
     try:
         conn = psycopg2.connect(url)
         cur = conn.cursor()
         cur.execute("SET statement_timeout = '180000'")
-        cur.execute(f"""
+        # prior-art-checked: no new data source — same read, same table, scope
+        # written inline instead of interpolated. An earlier version built
+        # `WHERE {where}` from a variable that could hold "TRUE", and the DB
+        # guard rejected it on exactly that ground: a scope you have to read
+        # another line to know is a scope that can quietly widen. --all-versions
+        # is now a bound parameter, so widening it is deliberate and the default
+        # stays the served set.
+        cur.execute("""
             SELECT id, source_council, v2_extracted_rules
               FROM regulatory_provisions
-             WHERE {where}
+             WHERE (is_current AND v2_is_actionable OR %(all_versions)s)
                AND v2_extracted_rules IS NOT NULL
                AND jsonb_array_length(v2_extracted_rules) > 0
-        """)
+        """, {"all_versions": bool(args.all_versions)})
         rows = cur.fetchall()
         conn.close()
     except Exception as exc:  # noqa: BLE001 - any failure here is UNKNOWN
