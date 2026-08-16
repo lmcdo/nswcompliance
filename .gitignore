@@ -668,7 +668,15 @@ frontend-nextjs/.wrangler/
 lancedb_data/
 
 # Archived investigation/fix scripts (kept locally for reference)
+# 2026-08-16: "kept locally" is exactly the failure this rule caused — the
+# scripts were kept locally and NOWHERE ELSE. scripts/archive/ is now tracked
+# so they survive the laptop; the QA gate's content scanners skip that one
+# directory (see scripts/qa_gate.py) because it holds retired one-off scripts
+# nothing runs, and tests/test_archive_is_not_live_code.py fails if anything
+# outside it ever imports from it.
 archive/
+!scripts/archive/
+!scripts/archive/**
 parramatta/
 frontend-nextjs/check-lep-data.js
 ku-ring-gai/

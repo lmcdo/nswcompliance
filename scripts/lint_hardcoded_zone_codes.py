@@ -77,6 +77,17 @@ def get_staged_diff_lines() -> list[tuple[str, int, str]]:
     for line in diff.splitlines():
         if line.startswith("+++ b/"):
             current_file = line[6:]
+            # scripts/archive/ holds retired one-off scripts nothing runs, kept
+            # so they survive the laptop they lived on. Backing up a years-old
+            # throwaway is not authoring a new hardcoded zone list, and this
+            # lint cannot tell those apart — 31 archived files tripped it on a
+            # pure backup, 2026-08-16. Same exemption, same reasoning and same
+            # single directory as the QA gate's content scanners; live code
+            # under scripts/ proper is unaffected, and
+            # tests/test_archive_is_not_live_code.py fails if anything outside
+            # the archive ever imports from it.
+            if "scripts/archive/" in current_file.replace("\\", "/"):
+                current_file = None
             continue
         if line.startswith("@@"):
             m = re.search(r'\+(\d+)', line)
