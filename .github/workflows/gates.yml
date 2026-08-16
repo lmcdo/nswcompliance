@@ -171,13 +171,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/check_data_watch_freshness.py
+      # A ratchet that cannot run is not a ratchet that passed.
+      #
+      # This was ::warning:: + exit 0 until 2026-08-16, which is the #398 shape:
+      # the control keeps its green tick while enforcing nothing, and the one
+      # signal that it stopped is a warning nobody is assigned to read. Both
+      # files are TRACKED, so "absent" here cannot mean "not set up yet" — it
+      # means deleted, renamed, or a checkout that did not complete, and every
+      # one of those is a thing to stop for.
       - name: Mutation-count baselines (counts never drop)
         run: |
-          if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
-            python scripts/check_test_baselines.py mutation-baselines.json
-          else
-            echo "::warning::mutation-baselines.json absent — ratchet NOT enforced"
+          MISSING=""
+          [ -f mutation-baselines.json ] || MISSING="$MISSING mutation-baselines.json"
+          [ -f scripts/check_test_baselines.py ] || MISSING="$MISSING scripts/check_test_baselines.py"
+          if [ -n "$MISSING" ]; then
+            echo "::error::the mutation-count ratchet could not run — missing:$MISSING"
+            echo "Both files are tracked in git, so this is a deletion or a bad checkout,"
+            echo "not an unconfigured repo. Restore them, or delete this step deliberately"
+            echo "in a PR that says why the ratchet is going away."
+            exit 1
           fi
+          python scripts/check_test_baselines.py mutation-baselines.json
       - name: Fabricated-verdict lint (report surfaces)
         run: python scripts/lint_fabricated_verdicts.py
       # Output-grounding campaign items 2-5 (PRs #874/#876, merged 2026-08-03).
@@ -223,13 +237,16 @@ jobs:
             echo "--- $s ---"
             python "scripts/$s.py" || echo "::warning::$s exited non-zero (observation mode)"
           done
+      # Same change, same reason as the mutation-count step above: a missing
+      # tracked script is a deletion, and a deletion must not present as a pass.
       - name: Brief field-coverage ratchet
         run: |
-          if [ -f scripts/brief_field_coverage_ratchet.py ]; then
-            python scripts/brief_field_coverage_ratchet.py
-          else
-            echo "::warning::ratchet script absent — NOT enforced"
+          if [ ! -f scripts/brief_field_coverage_ratchet.py ]; then
+            echo "::error::the brief field-coverage ratchet could not run — scripts/brief_field_coverage_ratchet.py is absent"
+            echo "It is tracked in git. Restore it, or remove this step in a PR that says why."
+            exit 1
           fi
+          python scripts/brief_field_coverage_ratchet.py
 
   # pre-push [2/4] — and unlike pre-push, this can never self-skip for missing deps
   frontend-tests:
@@ -416,8 +433,22 @@ jobs:
             echo "::error::Duplication exceeds the 8% ratchet. Reuse or refactor rather than copy-paste."
             exit 1
           fi
+          # jscpd exited non-zero WITHOUT reporting a breach: it did not run.
+          # Until 2026-08-16 that was a ::warning:: and a green tick, so a
+          # broken or unreachable tool was indistinguishable on the PR page from
+          # a clean ratchet — for however long it stayed broken.
+          #
+          # This does mean an npm-registry outage can fail the job. That is the
+          # intended trade and it is the cheap direction: a transient failure is
+          # loud, diagnosable and re-runnable, while a silent one is neither.
+          # The full output is printed rather than summarised so the re-run
+          # decision can be made from the log instead of by guessing.
           if [ $RC -ne 0 ]; then
-            echo "::warning::jscpd could not run cleanly — ratchet NOT enforced on this run"
+            echo "::error::jscpd could not run (exit $RC) — the duplication ratchet did NOT check this diff"
+            echo "--- jscpd output ---"
+            echo "$OUT"
+            echo "--------------------"
+            exit 1
           fi
 
   # New. Needs the live catalog, so it needs the DATABASE_URL secret.
