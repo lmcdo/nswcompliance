@@ -27,6 +27,10 @@ import os
 import re
 import sys
 
+# See dq_check.py: Windows stdout is cp1252 and cannot encode every character
+# this script prints, which aborts the run instead of printing them.
+sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COVERAGE_TS = os.path.join(REPO_ROOT, "frontend-nextjs", "lib", "coverage.ts")
 
