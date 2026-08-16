@@ -838,6 +838,15 @@ def run_applicability_provenance(
     cur = conn.cursor(cursor_factory=RealDictCursor)
     tagger = ApplicabilityTagger()
 
+    # SCOPE, stated because the DB currency guard is right to ask. This filters
+    # on v2_is_actionable and deliberately NOT on is_current: a superseded
+    # version is still a row whose applicability was decided for a reason, and
+    # leaving it unlabelled would keep the older record permanently
+    # unattributable while its successor is explained. Nothing here is SERVED —
+    # the phase writes provenance columns only — so the staleness this guard
+    # exists to stop cannot arise from it. The consequence to know: this
+    # examines every actionable version (20,948) while DQ-74 counts current
+    # rows only (10,103), so the two numbers are not directly comparable.
     actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
     where = f"""
         WHERE v2_dev_type_source IS NULL
@@ -846,6 +855,7 @@ def run_applicability_provenance(
           AND provision_text != ''
           {actionable_filter}
     """
+    # is_current intentionally absent — see the scope note above.
     cur.execute(f"SELECT COUNT(*) AS total FROM regulatory_provisions {where}")
     total = cur.fetchone()['total']
     if limit:
@@ -865,6 +875,11 @@ def run_applicability_provenance(
     # forever. This is the loop-invariant trap the pre-impl protocol asks about.
     last_id = 0
     while stats["total_processed"] < total:
+        # Same `where` as the count above: filters v2_is_actionable, and
+        # is_current is intentionally absent — see the scope note at the top of
+        # this function. Paginated by id, never by the NULL sentinel, because a
+        # REFUSED row keeps its NULL source and a sentinel loop would fetch it
+        # forever.
         cur.execute(
             f"""SELECT id, provision_text, document_id,
                        v2_applicable_zones, v2_applicable_dev_types
