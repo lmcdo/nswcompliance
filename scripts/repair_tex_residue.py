@@ -73,6 +73,53 @@ PREDICATE = (
     r"OR provision_text LIKE '%%{%%' OR provision_text LIKE '%%}%%'"
 )
 
+#: Commands that carry NO meaning - they set a font or a weight. Unwrapping
+#: these keeps every character and changes only presentation, which is the
+#: entire premise of this pass.
+PRESENTATION_ONLY = frozenset({
+    "mathsf", "mathfrak", "mathtt", "mathrm", "mathbf", "mathit", "mathnormal",
+    "textrm", "textbf", "textit", "texttt", "textsf", "textnormal",
+    "pmb", "bf", "it", "sf", "rm", "tt", "emph",
+})
+
+#: Everything else is assumed to MEAN something until proven otherwise.
+#:
+#: THIS EXISTS BECAUSE THE FIRST VERSION OF THIS PASS DAMAGED PRODUCTION.
+#: It unwrapped every \command generically, which deletes operators:
+#:
+#:   "ratio $\div 2"                    -> "ratio 2"          division GONE
+#:   "(building height- 4.5 m) \div 4"  -> "(...4.5 m) 4"     a setback formula
+#:   "Y is A H \div 100"                -> "Y is A H 100"
+#:   "C = \frac { X x (100 RY - 3) } 3" -> fraction destroyed
+#:   "\phantom { - } 0.9 m"             -> "- 0.9 m"          minus INVENTED
+#:
+#: The digit-preservation invariant passed on all of them: every digit was
+#: unchanged, only the operators moved. 38 rows were written and had to be
+#: restored from backup.
+#:
+#: An adversarial review caught it; my invariant did not, because I guarded the
+#: failure I had already imagined. So the rule is inverted here: a command is
+#: skipped unless it is KNOWN cosmetic, and an unknown command means the row is
+#: left alone and reported rather than guessed at.
+# Control WORDS (\mathsf) and control SYMBOLS (\{, \%, \_, \&) both matter.
+# An earlier version matched [A-Za-z]+ only, so an escaped literal slipped
+# straight past the gate: "S = \{1, 2\}" reports no unknown command, the brace
+# rule then eats the escaped braces, and the digit invariant still passes
+# because no digit moved. An escaped delimiter IS the content.
+_ANY_TOKEN = re.compile(r"\\([A-Za-z]+|.)", re.S)
+
+
+def unknown_commands(text: str) -> list[str]:
+    """TeX tokens here that are not known to be presentation-only.
+
+    Control symbols are never allowlisted: a backslash before a punctuation
+    character exists precisely to make that character literal, so removing it
+    changes the text.
+    """
+    return sorted({m for m in _ANY_TOKEN.findall(text or "")
+                   if m not in PRESENTATION_ONLY})
+
+
 # Order matters: unwrap inner groups before removing the commands that wrap
 # them, or the contents are lost with the wrapper.
 _RULES: list[tuple[re.Pattern, str]] = [
@@ -219,9 +266,19 @@ def main() -> int:
     print(f"pass '{args.which}' ({dq_id}) - matching served rows: {len(rows)}")
     print(f"invariant: {invariant_name} must be identical before and after\n")
 
-    planned, skipped, unchanged = [], [], []
+    planned, skipped, unchanged, refused = [], [], [], []
     for r in rows:
         original = r["provision_text"]
+        # FIRST GATE, before any transform is even attempted: a command this
+        # pass does not KNOW to be cosmetic may carry meaning, and unwrapping it
+        # deletes that meaning without disturbing a single digit. Refuse the row
+        # rather than guess. Only the tex pass unwraps commands, so only it needs
+        # this; the units pass moves whitespace and cannot lose an operator.
+        if args.which == "tex":
+            unknown = unknown_commands(original)
+            if unknown:
+                refused.append((r, unknown))
+                continue
         fixed = transform(original)
         if fixed == original:
             unchanged.append(r)
@@ -232,8 +289,17 @@ def main() -> int:
         planned.append((r, fixed))
 
     print(f"  repairable (invariant holds)          : {len(planned)}")
+    print(f"  REFUSED (command may carry meaning)   : {len(refused)}")
     print(f"  SKIPPED (invariant would break)       : {len(skipped)}")
     print(f"  matched but no change produced        : {len(unchanged)}")
+
+    if refused:
+        print("\n  REFUSED - these need a human against the source document, "
+              "because unwrapping the command would change what the text says:")
+        from collections import Counter
+        why = Counter(c for _r, cmds in refused for c in cmds)
+        for cmd, n in why.most_common(12):
+            print(f"    \\{cmd:16} {n:4} row(s)")
 
     for r, fixed in skipped:
         print(f"\n  SKIPPED id={r['id']} - {invariant_name} differs, not written")
@@ -269,7 +335,13 @@ def main() -> int:
     try:
         backup.write_text(json.dumps(
             {"captured_at": stamp,
-             "predicate": PREDICATE,
+             # The SELECTED pass's predicate, not the module-level TeX one. A
+             # --pass units backup used to claim its rows were chosen by the
+             # DQ-76 predicate, giving any later audit or restore false
+             # provenance about why a row was touched.
+             "pass": args.which,
+             "dq_id": dq_id,
+             "predicate": predicate,
              "rows": [{"id": r["id"], "ref_number": r["ref_number"],
                        "before": r["provision_text"], "after": f}
                       for r, f in planned]},
