@@ -1,0 +1,46 @@
+{
+  "tier": "standard",
+  "justification": "A new read-only check plus two ledger rows. It writes nothing and changes no served value. It is Standard rather than Minor because it OPENS RED on a live row, so it changes what the build says about production, and because its first version produced four false positives on served rows - the failure mode being guarded against is a flag list that trains you to ignore it.",
+  "commit_hash": "307c743f",
+  "files": [
+    "scripts/check_control_subject_mismatch.py",
+    "tests/test_control_subject_mismatch.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "A council writes a correct setback whose CONDITION mentions a driveway: 'Minimum side setback: a. Must be 4 metres where there is no driveway along the side boundary. b. Must be 7 metres where a driveway is proposed.' Four such rows are served for marrickville.",
+      "what_happens": "The first version of this rule flagged all four. They are correct - the driveway is what distinguishes two valid setbacks, not the subject of either. Every SERVED flag it produced was false, which is worse than no check: it teaches the reader to skip the list, and the one real entry dies inside it. That is the same failure validate_control_source_values documents for unit conversions.",
+      "mitigated": true,
+      "how": "The rule is positional rather than lexical. A foreign noun counts only when it governs the number with no conditional word ('where', 'if', 'unless', 'other than', 'except') between them. All four marrickville rows put 'driveway' after 'where', so none is flagged; fairfield's 'All driveways are to be set a minimum of 0.5m' has the noun as subject and is. Both sentences are fixtures in the test file, on opposite sides.",
+      "repro": "python -m pytest tests/test_control_subject_mismatch.py -k driveway -q"
+    },
+    {
+      "scenario": "source_text or value_min stops being written by a future extractor change, so no row can be checked at all.",
+      "what_happens": "A naive implementation reports 0 mismatches and exits 0. The build goes green while verifying nothing - the comfortable-green failure this whole class of check keeps dying of.",
+      "mitigated": true,
+      "how": "0 checkable exits 2, never 0, and the message names the expected denominator (~242 served). The denominator prints on every run, pass or fail, so a silent collapse is visible before it becomes a habit.",
+      "repro": "python scripts/check_control_subject_mismatch.py  # prints CHECKABLE alongside MISMATCHED"
+    },
+    {
+      "scenario": "The one served row it flags (camden id=696) is excluded, and camden secondary_dwelling is then left with no front setback at all.",
+      "what_happens": "That control becomes ABSENT rather than wrong. Measured before proposing it: id=696 is the only served front setback for that council and development type, because its slot-mate id=695 - a 12 m facade-to-facade separation, also mis-filed - was already excluded.",
+      "mitigated": true,
+      "how": "Absent is the honest state and the safer direction: removing a false claim cannot create one, whereas re-filing the row under a control it might not belong to chooses a value. The row is excluded with a review_reason quoting its own text, so the source lookup that would recover the real control is recorded rather than lost.",
+      "repro": "python scripts/check_control_subject_mismatch.py --all-rows"
+    },
+    {
+      "scenario": "A mis-filed control that is NOT a foreign subject - id=702 stores a corner-lot side setback ('must have a secondary street (side setback) of a minimum of 2m') under front_setback.",
+      "what_happens": "This check does not catch it. Widening the vocabulary until it did is exactly what reintroduced the false positives in the first version.",
+      "mitigated": false,
+      "how": "Left uncaught and stated - in the module docstring, the ledger row and the tracker - as a front-vs-side confusion, a different defect class needing its own rule. The row is already excluded from the served path, so nothing is being served on the strength of this omission.",
+      "repro": "python -c \"import sys;sys.path.insert(0,'scripts');from check_control_subject_mismatch import subject_mismatch as s;print(s('must have a secondary street (side setback) of a minimum of 2m', 2.0))\"  # prints None"
+    }
+  ],
+  "post_merge": {
+    "watch": "DQ-84 opens RED at 1 served row and must reach 0 by excluding or re-filing camden id=696, not by relaxing the rule. If the number rises, a new extraction has introduced mis-filed controls and the extractor is the thing to fix.",
+    "owner": "data quality",
+    "rollback": "Revert the commit. The check is read-only, so nothing served changes either way; reverting only stops the build reporting the defect."
+  }
+}
