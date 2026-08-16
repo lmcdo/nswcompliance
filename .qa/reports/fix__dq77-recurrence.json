@@ -1,0 +1,23 @@
+{
+  "tier": "minor",
+  "justification": "Minor: a ledger note only. No code, no schema, no query. The DATA repair it records was made with an existing, tested script (scripts/repair_tex_residue.py --pass units, 8 tests in tests/test_repair_matches_probe.py) and is already reflected in the live count.",
+  "commit_hash": "87d6ce57",
+  "files": [
+    ".claude/dq_checks.json"
+  ],
+  "break_it": [
+    {
+      "scenario": "A reader takes DQ-77 = 0 as the split-unit corruption being solved.",
+      "what_happens": "the extractor keeps emitting it, the number returns, and each repair looks like a fix rather than the second symptom of an unfixed cause.",
+      "mitigated": true,
+      "how": ".claude/dq_checks.json DQ-77 note now states outright that the root cause is not fixed, that #959 repaired 677 rows and this is the second repair, and that a 0 must not be read as solved.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-77"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
