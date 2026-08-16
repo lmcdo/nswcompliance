@@ -777,6 +777,175 @@ def run_applicability_tagging(
     return stats
 
 
+def tags_reproduce(stored_zones, stored_dev_types,
+                   recomputed_zones, recomputed_dev_types) -> bool:
+    """Does today's config still produce exactly what is stored?
+
+    Pure, so the rule that decides whether 20,948 rows get written can be
+    tested without a database — the same reason #957 made its ratchet
+    practices pure functions over two dicts.
+
+    Set-equality on both axes, because array ORDER carries no meaning here and
+    a reordering is not a disagreement. NULL and [] are treated alike: both mean
+    "no values recorded", and a row cannot be said to disagree with itself over
+    which empty it used.
+
+    Deliberately strict in one direction: if the recomputed value is a STRICT
+    SUBSET of what is stored — today's config says `retail_premises` where the
+    row says `ALL` — that is a MISMATCH, not a refinement to be written. The
+    stored tag is what the product currently serves, and quietly recording a
+    source for a value we no longer derive would attach a justification to a
+    claim the config contradicts.
+    """
+    return (set(stored_zones or []) == set(recomputed_zones or [])
+            and set(stored_dev_types or []) == set(recomputed_dev_types or []))
+
+
+def run_applicability_provenance(
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+    batch_size: int = 1000,
+    actionable_only: bool = True
+) -> Dict[str, Any]:
+    """Recover WHY a row is tagged, for rows that were tagged before we recorded it.
+
+    THE GAP THIS FILLS. 10,103 served provisions carry applicability tags and no
+    v2_dev_type_source, so `['ALL']` on them cannot be told apart from a decision
+    that it applies everywhere. `run_applicability_tagging` cannot reach them: it
+    selects on `v2_applicable_zones IS NULL`, and zero of those rows match, so the
+    phase reports "Processed: 0" and looks like a no-op rather than a miss. The
+    rows were written before the provenance columns existed — nine scripts write
+    v2_applicable_dev_types and not one writes a source.
+
+    WHY THIS ONLY WRITES THE SOURCE COLUMNS. The configs may have moved since
+    those scripts ran, so recomputing can legitimately produce DIFFERENT tags.
+    Overwriting 10,103 live applicability decisions on that basis is CHOOSING a
+    value, not removing a false claim, and that is the direction that needs the
+    most care. So the recomputed tags are used only to ANSWER A QUESTION — does
+    today's config still produce what is stored? — and never to replace them:
+
+        match    -> the stored tags are reproducible, so the source that produced
+                    them is knowable, and it is written.
+        mismatch -> REFUSED. The row keeps its NULL source and is counted and
+                    sampled, because "the config no longer agrees with this row"
+                    is a finding for a human, not something to paper over by
+                    writing a source that describes a value we did not store.
+
+    So a mismatch leaves the row exactly as DQ-74 already counts it. The number
+    falls by what we can prove and no further, which is the point.
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    tagger = ApplicabilityTagger()
+
+    # SCOPE, stated because the DB currency guard is right to ask. This filters
+    # on v2_is_actionable and deliberately NOT on is_current: a superseded
+    # version is still a row whose applicability was decided for a reason, and
+    # leaving it unlabelled would keep the older record permanently
+    # unattributable while its successor is explained. Nothing here is SERVED —
+    # the phase writes provenance columns only — so the staleness this guard
+    # exists to stop cannot arise from it. The consequence to know: this
+    # examines every actionable version (20,948) while DQ-74 counts current
+    # rows only (10,103), so the two numbers are not directly comparable.
+    actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
+    where = f"""
+        WHERE v2_dev_type_source IS NULL
+          AND v2_applicable_dev_types IS NOT NULL
+          AND provision_text IS NOT NULL
+          AND provision_text != ''
+          {actionable_filter}
+    """
+    # is_current intentionally absent — see the scope note above.
+    cur.execute(f"SELECT COUNT(*) AS total FROM regulatory_provisions {where}")
+    total = cur.fetchone()['total']
+    if limit:
+        total = min(total, limit)
+
+    print(f"Rows tagged but with no recorded source: {total}")
+    print(f"Batch size: {batch_size}")
+    print(f"Dry run: {dry_run}")
+    print("=" * 60)
+
+    stats = {
+        "total_processed": 0, "matched": 0, "mismatched": 0, "errors": 0,
+        "by_source": {}, "samples": [],
+    }
+    # Paginate by id, not by the NULL sentinel: a MISMATCH deliberately leaves
+    # the source NULL, so a sentinel-driven loop would fetch those same rows
+    # forever. This is the loop-invariant trap the pre-impl protocol asks about.
+    last_id = 0
+    while stats["total_processed"] < total:
+        # Same `where` as the count above: filters v2_is_actionable, and
+        # is_current is intentionally absent — see the scope note at the top of
+        # this function. Paginated by id, never by the NULL sentinel, because a
+        # REFUSED row keeps its NULL source and a sentinel loop would fetch it
+        # forever.
+        cur.execute(
+            f"""SELECT id, provision_text, document_id,
+                       v2_applicable_zones, v2_applicable_dev_types
+                  FROM regulatory_provisions {where} AND id > %s
+                 -- scope: the WHERE above carries the v2_is_actionable filter,
+                 -- and is_current is deliberately absent. See the docstring.
+                 ORDER BY id LIMIT %s""",
+            (last_id, batch_size),
+        )
+        provisions = cur.fetchall()
+        if not provisions:
+            break
+
+        writes = []
+        for prov in provisions:
+            last_id = prov['id']
+            if limit and stats["total_processed"] >= limit:
+                break
+            try:
+                zones, dev_types, src = tagger.tag_with_provenance(
+                    prov['provision_text'], prov['document_id'])
+                stored_dt = list(prov['v2_applicable_dev_types'] or [])
+                stored_z = list(prov['v2_applicable_zones'] or [])
+                if tags_reproduce(stored_z, stored_dt, zones, dev_types):
+                    writes.append((src['zone_source'], src['dev_type_source'],
+                                   prov['id']))
+                    stats["matched"] += 1
+                    k = src['dev_type_source']
+                    stats["by_source"][k] = stats["by_source"].get(k, 0) + 1
+                else:
+                    stats["mismatched"] += 1
+                    if len(stats["samples"]) < 10:
+                        stats["samples"].append({
+                            "id": prov['id'],
+                            "document_id": prov['document_id'],
+                            "stored_dev_types": stored_dt,
+                            "recomputed_dev_types": sorted(dev_types),
+                            "stored_zones": stored_z,
+                            "recomputed_zones": sorted(zones),
+                        })
+            except Exception as e:
+                print(f"Error on provision {prov['id']}: {e}")
+                stats["errors"] += 1
+            stats["total_processed"] += 1
+
+        if writes and not dry_run:
+            # ONLY the two source columns. v2_applicable_zones and
+            # v2_applicable_dev_types are deliberately absent from this
+            # statement — see the docstring.
+            for zone_src, dev_src, prov_id in writes:
+                cur.execute(
+                    """UPDATE regulatory_provisions
+                          SET v2_zone_source = %s, v2_dev_type_source = %s
+                        WHERE id = %s""",
+                    (zone_src, dev_src, prov_id))
+            conn.commit()
+
+        pct = (stats["total_processed"] / total) * 100 if total else 100
+        print(f"Processed {stats['total_processed']}/{total} ({pct:.1f}%) - "
+              f"matched {stats['matched']}, refused {stats['mismatched']}")
+
+    cur.close()
+    conn.close()
+    return stats
+
+
 def run_layer_tagging(
     limit: Optional[int] = None,
     dry_run: bool = False,
@@ -951,7 +1120,7 @@ def get_enrichment_status() -> Dict[str, Any]:
 
 def main():
     parser = argparse.ArgumentParser(description="Run enrichment pipeline")
-    parser.add_argument("--phase", choices=["actionability", "numeric", "site_condition", "type", "applicability", "layer", "status"], default="status",
+    parser.add_argument("--phase", choices=["actionability", "numeric", "site_condition", "type", "applicability", "applicability_provenance", "layer", "status"], default="status",
                        help="Which phase to run (default: status)")
     parser.add_argument("--limit", type=int, help="Limit number of provisions to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't commit changes")
@@ -1086,6 +1255,37 @@ def main():
         print(f"General (all dev types): {stats['all_dev_types']:,}")
         print(f"Errors: {stats['errors']:,}")
 
+        if args.dry_run:
+            print("\n[DRY RUN - No changes committed]")
+
+    elif args.phase == "applicability_provenance":
+        print("\n=== Recovering applicability provenance ===")
+        actionable_only = not args.all
+        if actionable_only:
+            print("(Processing actionable provisions only)")
+        stats = run_applicability_provenance(
+            limit=args.limit,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+            actionable_only=actionable_only,
+        )
+        print("\n=== Results ===")
+        print(f"Examined: {stats['total_processed']:,}")
+        print(f"Reproducible, source recovered: {stats['matched']:,}")
+        print(f"REFUSED - config no longer agrees: {stats['mismatched']:,}")
+        print(f"Errors: {stats['errors']:,}")
+        if stats['by_source']:
+            print("\nRecovered sources:")
+            for k, v in sorted(stats['by_source'].items(),
+                               key=lambda kv: -kv[1]):
+                print(f"  {k:20} {v:,}")
+        if stats['samples']:
+            print("\nRefused, first few — each is a row today's config would "
+                  "tag differently than what is stored:")
+            for s in stats['samples']:
+                print(f"  id={s['id']} {str(s['document_id'])[:52]}")
+                print(f"     stored dev_types: {s['stored_dev_types']}")
+                print(f"     recomputed      : {s['recomputed_dev_types']}")
         if args.dry_run:
             print("\n[DRY RUN - No changes committed]")
 

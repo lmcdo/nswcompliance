@@ -1,0 +1,108 @@
+{
+  "tier": "standard",
+  "justification": "Standard, not critical: this writes to 19,558 production rows but only ever RECORDS why a value is what it is — v2_zone_source and v2_dev_type_source — and never the value itself. Directionality per the repair-calibration rule: recording a reason cannot create a false claim, whereas changing an applicability tag could, so the one risky direction is refused rather than attempted. Not minor either: it is a bulk write on the serve path and it reopened a row that was declared fixed.",
+  "commit_hash": "7acbff32",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "enrichment/pipeline.py",
+    "tests/test_applicability_provenance_backfill.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_applicability_provenance.py -q && python enrichment/pipeline.py --phase applicability_provenance --dry-run && python scripts/dq_check.py",
+    "fails_when": "the match rule accepts a row today's config no longer reproduces; the phase's UPDATE gains any column other than the two source columns; or a ledger status disagrees with its check.",
+    "observed_red": "WATCHED FAILING, NOT ASSERTED. (1) The write-only-provenance guard was mutation-proven: adding v2_applicable_dev_types to the phase's UPDATE makes test_the_phase_writes_only_provenance_columns FAIL with the column named, and removing it passes 11/11. (2) The match rule carries a control case — every refusal assertion is `not tags_reproduce(...)`, which a function stubbed to `return False` satisfies completely, and a rule that always refused would write nothing and look like a clean run over 20,948 rows; test_the_rule_can_say_no asserts it also says yes. (3) The population invariant was checked against the live table rather than trusted: served rows tagged ALL numbered 18,328 before the run (9,377 unlabelled + 8,951 labelled) and 18,328 after. Not one tag moved. (4) DQ-33 going RED was PREDICTED IN THE PRE-IMPL BEFORE THE RUN, not discovered after it, and the prediction named the mechanism: rows whose recovered source is no_config move from DQ-74 into DQ-33's population.",
+    "measured": "DQ-74 10,103 -> 1,148. 19,558 of 20,948 rows reproducible; 1,390 refused. Recovered sources: config_all 6,095, config_silent 4,331, config_specific 1,625, text_regex 572, no_config 6,935. On the served set, 11,100 provisions now have an ALL that was DECIDED rather than defaulted."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions. 10,103 served rows with v2_dev_type_source IS NULL and applicability tags already present. Vocabulary for the source columns is constrained by a CHECK constraint from migrations/062_applicability_provenance.sql and mirrored in APPLICABILITY_SOURCES.",
+    "reachability": "enrichment/pipeline.py --phase applicability is the only existing writer of these columns and it selects on v2_applicable_zones IS NULL. Measured: 0 served rows match, so it processes zero and cannot close DQ-74 — it reports 'Processed: 0', which reads as a no-op rather than a miss. Nine other scripts write v2_applicable_dev_types and none writes a source, which is how the rows came to be tagged without one.",
+    "measured_defect": "A served provision tagged ['ALL'] with no source cannot be told apart from one where a config decided it applies everywhere. 10,103 of 19,957 served rows were in that state, and 9,377 of them carry ALL.",
+    "assumption_mismatch": "THE DANGEROUS ONE: council configs have moved since those rows were written, so recomputing can legitimately produce different tags — measured 1,390 of 20,948, most often a specific dev type where the row stores ALL. Overwriting live applicability on that basis is choosing a value. So the recomputed tags answer one question only, does today's config still reproduce what is stored, and a disagreement REFUSES the row.",
+    "new_vs_existing": "Touches only rows whose source is NULL, so re-running is idempotent and a row that already carries provenance is never revisited. The phase is additive: no existing phase changes behaviour."
+  },
+  "functions": [
+    {
+      "name": "tags_reproduce",
+      "file_line": "enrichment/pipeline.py:780",
+      "input": "stored zones and dev types from the row, recomputed zones and dev types from the tagger",
+      "output": "bool — whether today's config still produces exactly what is stored",
+      "why_it_changed": "new; extracted as a pure function so the rule deciding whether 20,948 live rows get written is testable without a database, the same reason #957 made its ratchet practices pure",
+      "if_none": "NULL and [] are treated alike — both mean no values recorded, and a row cannot disagree with itself over which empty it used"
+    },
+    {
+      "name": "run_applicability_provenance",
+      "file_line": "enrichment/pipeline.py:805",
+      "input": "limit, dry_run, batch_size, actionable_only — same shape as the sibling phases",
+      "output": "stats dict; writes only v2_zone_source and v2_dev_type_source",
+      "why_it_changed": "new phase; the existing applicability phase cannot reach these rows because of its selection key",
+      "if_none": "a row with NULL tags is excluded by the WHERE clause, so it is never considered reproducible by vacuous equality"
+    }
+  ],
+  "values": [
+    {
+      "value": "v2_dev_type_source",
+      "read_at": "scripts/dq_probe_live.py DQ-33 and DQ-74",
+      "if_missing": "the row is counted by DQ-74 as having no applicability provenance. After this run 1,148 remain, all of them refusals rather than misses."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A future edit adds v2_applicable_dev_types to the phase's UPDATE, turning a provenance backfill into a mass rewrite of live applicability.",
+      "what_happens": "20,948 rows have their served applicability replaced by whatever today's config produces, including the 1,390 the config no longer agrees with.",
+      "covered_by": "test_the_phase_writes_only_provenance_columns",
+      "repro": "add the column to the UPDATE and run pytest tests/test_applicability_provenance.py",
+      "mitigated": true,
+      "how": "the test reads the phase's own UPDATE statement out of the source and fails on any column beyond the two source columns. Mutation-proven: it fails with the column named, and passes when reverted."
+    },
+    {
+      "scenario": "The match rule is loosened to accept a recompute that is narrower than what is stored, on the reasoning that a specific dev type is 'better' than ALL.",
+      "what_happens": "1,390 rows get a source recorded for a value the config contradicts — a justification attached to a claim we do not derive, which is worse than the missing source it replaced.",
+      "covered_by": "test_a_narrower_recompute_is_a_mismatch_not_a_refinement",
+      "repro": "python -m pytest tests/test_applicability_provenance.py -q -k narrower",
+      "mitigated": true,
+      "how": "tags_reproduce is set equality on BOTH axes and the docstring states the subset case explicitly. The refusal is the whole point of the phase."
+    },
+    {
+      "scenario": "The rule is stubbed or broken so that it always refuses.",
+      "what_happens": "nothing is written, the run reports 20,948 examined and reads as clean, and the defect is untouched while looking addressed.",
+      "covered_by": "test_the_rule_can_say_no",
+      "repro": "stub tags_reproduce to return False and run the suite",
+      "mitigated": true,
+      "how": "a control case asserts the rule accepts a reproducing row, so an always-refusing mutant dies rather than satisfying every `not ...` assertion in the file."
+    },
+    {
+      "scenario": "The batch loop paginates on the NULL-source sentinel that the write clears.",
+      "what_happens": "refused rows keep their NULL source, are re-fetched forever, and the phase never terminates.",
+      "covered_by": "the loop advances by last-seen id",
+      "repro": "run with a limit smaller than the refusal count",
+      "mitigated": true,
+      "how": "pagination is `AND id > last_id ORDER BY id`, not a re-query of the sentinel — the loop-invariant question the pre-impl protocol asks, answered before writing."
+    },
+    {
+      "scenario": "DQ-33 goes red and someone raises its floor to today's number to make it green.",
+      "what_happens": "the ratchet stops meaning anything: a floor that moves to match each measurement can never be exceeded.",
+      "covered_by": "recorded in the DQ-33 note",
+      "repro": "python scripts/dq_probe_live.py --id DQ-33",
+      "mitigated": true,
+      "how": "the floor stays at 1,278 and the row is declared OPEN at its true size instead. The note states that the 1,278 was measured while 10,103 rows had no source at all, so it was computed on a fraction of the population."
+    },
+    {
+      "scenario": "A new test file is given the name of an existing one, silently replacing its coverage.",
+      "what_happens": "tests/test_applicability_provenance.py has existed since #857 with 25 tests over the TAGGER's provenance derivation. Writing a same-named file replaced all of it; the suite still went green because the replacement passed, so the loss was invisible.",
+      "covered_by": "caught by inspection, not by a guard",
+      "repro": "git diff origin/main -- tests/test_applicability_provenance.py",
+      "mitigated": true,
+      "how": "the original is restored byte-identical to origin/main (diff is empty) and this branch's tests live in tests/test_applicability_provenance_backfill.py. Both run: 36 pass, 25 from #857 and 11 here. NOT MITIGATED IN GENERAL — nothing in the repo would have caught it. A same-named overwrite that happens to pass is indistinguishable from a green suite."
+    }
+  ],
+  "mutation_analysis": "The write-only guard was mutation-tested rather than trusted: adding a forbidden column to the UPDATE fails the suite with that column named; reverting passes 11/11. The match rule carries a control case that kills an always-False stub, which would otherwise satisfy all five refusal assertions and produce a clean-looking run that wrote nothing. The population invariant was verified against the live table, not inferred from the code: 18,328 served rows tagged ALL before and after.",
+  "residual_risk": "1) The 1,148 rows still without a source are REFUSALS — today's config produces something different from what is stored, usually a specific dev type where the row says ALL. That is a real finding about the served answer and needs adjudication per council, not a backfill; it is deliberately left open in DQ-74. 2) `no_config` is literally correct for statewide instruments — nothing matched, ALL by fallthrough — but it carries a different meaning there than on a council DCP chapter, where it means a config is MISSING. The vocabulary has no value distinguishing 'not applicable to this document class', and adding one needs a migration to the CHECK constraint. 3) The phase processes 20,948 rows (all actionable versions) while DQ-74 counts 10,103 (current only); writing provenance on superseded versions is harmless but means the two numbers are not directly comparable. 4) Nothing detects a test file being replaced by a same-named one whose own tests pass. This branch did exactly that to tests/test_applicability_provenance.py and only inspection caught it — the suite stayed green throughout, because the replacement was green. Worth a guard: a test-count or test-name ratchet per file would see it.",
+  "post_merge": {
+    "db_reset": "No",
+    "verify": "python scripts/dq_check.py (expect PASSED) and python scripts/dq_probe_live.py --id DQ-74 (expect 1,148). The write is already applied; the id list of every affected row is at .claude/backups/applicability_provenance_pre_write.json and reverting is setting both source columns back to NULL for those ids.",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
