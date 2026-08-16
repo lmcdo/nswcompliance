@@ -132,6 +132,45 @@ class TestValueFormsFoundInTheQuote:
         assert locate_value("shall not exceed two (2) storeys", 2) is not None
 
 
+class TestTheWindowStopsAtTheSentence:
+    """Raised by adversarial review. A window measured in characters runs past
+    the full stop, and the noun in the NEXT sentence governs the NEXT number."""
+
+    def test_a_driveway_in_the_following_sentence_is_not_the_subject(self):
+        text = ("Minimum dwelling side setback 3m. Driveways must be 1m from "
+                "the side boundary")
+        assert subject_mismatch(text, 3.0) is None
+
+    def test_but_that_driveway_still_governs_its_own_number(self):
+        """CONTROL for the control: the guard must not have made the rule
+        blind, only precise. 1 m IS the driveway's number."""
+        text = ("Minimum dwelling side setback 3m. Driveways must be 1m from "
+                "the side boundary")
+        assert subject_mismatch(text, 1.0) is not None
+
+    def test_a_fence_in_the_preceding_sentence_is_not_the_subject(self):
+        text = ("Front fencing must not exceed 1.2m. The dwelling must be set "
+                "back 6m from the front boundary")
+        assert subject_mismatch(text, 6.0) is None
+
+    def test_the_facade_case_has_no_sentence_break_and_still_flags(self):
+        assert subject_mismatch(FACADE_SEPARATION, 12.0) is not None
+
+
+class TestOneStrayWasteWordIsNotAWasteControl:
+    """Raised by adversarial review: a genuine setback clause that merely
+    cross-references the waste guideline must not be condemned by one word."""
+
+    def test_a_single_mention_does_not_condemn_the_quote(self):
+        text = ("Minimum front setback 6m. Refer also to the Waste Management "
+                "Guideline for servicing.")
+        assert subject_mismatch(text, 6.0) is None
+
+    def test_the_real_bin_list_carries_several_and_still_flags(self):
+        why = subject_mismatch(BIN_HARDSTAND, 3.0)
+        assert why is not None and "waste-storage" in why
+
+
 def test_the_rule_can_say_yes_and_no():
     """Control case.
 

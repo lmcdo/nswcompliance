@@ -119,6 +119,22 @@ WASTE_QUOTE = re.compile(
 GOVERN_WINDOW_BEFORE = 110
 GOVERN_WINDOW_AFTER = 60
 
+# A window must not run past the end of the sentence the number is in.
+# "Minimum dwelling side setback 3m. Driveways must be 1m from the side
+# boundary" puts 'driveways' inside a 60-character window, but in the NEXT
+# sentence, where it governs a different number. Raised by adversarial review.
+SENTENCE_END = re.compile(r"(?:[.;]\s|\n)")
+
+# A single stray mention is not enough to call a whole quote a waste control -
+# a genuine setback clause that happens to cross-reference the waste guideline
+# would be condemned by one word. The bin row carries several independently
+# ('hardstand', 'Waste Management', 'collect and return', 'bin').
+MIN_WASTE_INDICATORS = 2
+
+# Coverage floor. Measured at 242/250 = 97% served on 2026-08-17, so a drop
+# below half means the shape of the data changed, not that it got cleaner.
+MIN_COVERAGE = 0.5
+
 
 def locate_value(source_text: str, value) -> re.Match | None:
     """Where the stored number appears in its own quote, in any plain form.
@@ -156,16 +172,25 @@ def subject_mismatch(source_text: str, value) -> str | None:
         return None
 
     before = source_text[max(0, m.start() - GOVERN_WINDOW_BEFORE):m.start()]
+    # Only the sentence the number belongs to. A foreign noun in the PREVIOUS
+    # sentence governs that sentence's number, not this one.
+    breaks = list(SENTENCE_END.finditer(before))
+    if breaks:
+        before = before[breaks[-1].end():]
     found = list(FOREIGN.finditer(before))
     if found and not CONDITIONAL.search(before[found[-1].end():]):
         return f"the number is governed by '{found[-1].group(0)}'"
 
     after = source_text[m.end():m.end() + GOVERN_WINDOW_AFTER]
+    brk = SENTENCE_END.search(after)
+    if brk:
+        after = after[:brk.start()]
     fa = FOREIGN.search(after)
     if fa and not CONDITIONAL.search(after[:fa.start()]):
         return f"the number is qualified by '{fa.group(0)}'"
 
-    if WASTE_QUOTE.search(source_text) and not BUILDING.search(source_text):
+    waste_hits = {h.group(0).lower() for h in WASTE_QUOTE.finditer(source_text)}
+    if len(waste_hits) >= MIN_WASTE_INDICATORS and not BUILDING.search(source_text):
         return "the whole quote is a waste-storage control and names no building"
     return None
 
@@ -244,12 +269,20 @@ def main() -> int:  # pragma: no cover - CLI entry point
             print(f"     quote: {quote[:180]}")
         return 1
 
-    if checkable == 0:
+    # Zero is not the only way coverage collapses. If 241 of 242 rows changed
+    # to a number format locate_value cannot recognise, a bare `checkable == 0`
+    # test would still pass on the one remaining row while saying nothing about
+    # the served set. Compare coverage against the rows actually considered, so
+    # the guard needs no external baseline to notice. Raised by adversarial
+    # review of the first version.
+    coverage = (checkable / considered) if considered else 0.0
+    if checkable == 0 or coverage < MIN_COVERAGE:
         print()
-        print("ERROR: 0 rows were checkable, so nothing was verified. That is "
-              "not a pass — exiting 2. Expect ~268 with --all-rows; if this "
-              "has gone to zero, source_text or value_min has stopped being "
-              "written.", file=sys.stderr)
+        print(f"ERROR: only {checkable} of {considered} setback/height rows "
+              f"were checkable ({coverage:.0%}), below the {MIN_COVERAGE:.0%} "
+              f"floor, so this run says little about the served set. That is "
+              f"not a pass — exiting 2. Expect ~97%; if coverage has fallen, "
+              f"source_text or value_min has changed shape.", file=sys.stderr)
         return 2
     return 0
 

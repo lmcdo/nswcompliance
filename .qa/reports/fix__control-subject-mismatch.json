@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A new read-only check plus two ledger rows. It writes nothing and changes no served value. It is Standard rather than Minor because it OPENS RED on a live row, so it changes what the build says about production, and because its first version produced four false positives on served rows - the failure mode being guarded against is a flag list that trains you to ignore it.",
-  "commit_hash": "04df57bd",
+  "commit_hash": "373e739d",
   "files": [
     "scripts/check_control_subject_mismatch.py",
     "tests/test_control_subject_mismatch.py",
@@ -36,6 +36,27 @@
       "mitigated": false,
       "how": "Left uncaught and stated - in the module docstring, the ledger row and the tracker - as a front-vs-side confusion, a different defect class needing its own rule. The row is already excluded from the served path, so nothing is being served on the strength of this omission.",
       "repro": "python -c \"import sys;sys.path.insert(0,'scripts');from check_control_subject_mismatch import subject_mismatch as s;print(s('must have a secondary street (side setback) of a minimum of 2m', 2.0))\"  # prints None"
+    },
+    {
+      "scenario": "A quote holds two sentences: 'Minimum dwelling side setback 3m. Driveways must be 1m from the side boundary.' The stored value is 3.",
+      "what_happens": "The 60-character after-window runs straight past the full stop and finds 'Driveways' with no conditional word in between, so a correct 3 m dwelling setback is reported as a driveway control. The first version did exactly this.",
+      "mitigated": true,
+      "how": "Both windows are truncated at the nearest sentence boundary, so only the sentence the number belongs to is considered. Tested in BOTH directions on the same quote: value 3.0 must not flag, and value 1.0 - which really is the driveway's number - still must, so the guard made the rule precise rather than blind.",
+      "repro": "python -m pytest tests/test_control_subject_mismatch.py -k Sentence -q"
+    },
+    {
+      "scenario": "A genuine setback clause cross-references the waste guideline once: 'Minimum front setback 6m. Refer also to the Waste Management Guideline for servicing.'",
+      "what_happens": "The whole-quote rule fired on a single stray mention and condemned a correct setback as a bin control.",
+      "mitigated": true,
+      "how": "The rule now needs at least two DISTINCT waste indicators. The real bin row carries several independently ('hardstand', 'Waste Management', 'bin'); a passing cross-reference carries one. Both cases are fixtures.",
+      "repro": "python -m pytest tests/test_control_subject_mismatch.py -k Stray -q"
+    },
+    {
+      "scenario": "A future extractor change alters the number format so 241 of the 242 served rows can no longer be located in their own quote, leaving one benign row checkable.",
+      "what_happens": "A bare `checkable == 0` guard passes on that single row and the build goes green having verified almost nothing - the same comfortable-green failure the zero-check was written to prevent, one row above the floor.",
+      "mitigated": true,
+      "how": "Coverage is compared against the rows actually considered, not against zero: below 50% the run exits 2 and prints the ratio. This needs no external baseline, so it cannot silently stop ratcheting. Measured today at 242/250 = 97%.",
+      "repro": "python scripts/check_control_subject_mismatch.py  # prints CHECKABLE against setback/height rows on every run"
     }
   ],
   "post_merge": {
@@ -51,7 +72,7 @@
     "command": "python -m pytest tests/test_control_subject_mismatch.py -q  &&  python scripts/check_control_subject_mismatch.py --all-rows",
     "fails_when": "The rule is exercised in BOTH directions on the SAME foreign noun, which is the only way to show it is a rule and not a word list. 'All driveways are to be set a minimum of 0.5m' must flag; 'Must be 4 metres where there is no driveway along the side boundary' must NOT. A stub returning None for everything satisfies most assertions in the file - that is why test_the_rule_can_say_yes_and_no pins both on those two sentences, and such a stub fails it. Live, --all-rows must report 5 mismatches over 268 checkable rows; if it reported 0 over 0 the script exits 2, not 0.",
     "external_authority": "Not asserted by this code: each flagged row's own stored source_text is quoted in the output, so the verdict is checkable against the council's own words rather than against the rule. id=712 reads 'All driveways are to be set a minimum of 0.5m from any side boundary'; the row is filed as the dwelling_house side_setback.",
-    "observed_red": "Observed, not asserted. The rule was mutated to `return None` - the stub that would report 0 mismatches over the whole table forever - and the suite went 6 failed / 9 passed, with test_the_rule_can_say_yes_and_no among the failures. Nine still passed, which is the point of recording this: most assertions in the file are `is None` and a stub satisfies them, so the control case is what carries the falsifiability. The file was restored and re-run at 15 passed. Live, the served run exits 1 today naming camden id=696, so the check is red against production right now rather than hypothetically red."
+    "observed_red": "Observed, not asserted. The rule was mutated to `return None` - the stub that would report 0 mismatches over the whole table forever - and the suite went 6 failed / 9 passed, with test_the_rule_can_say_yes_and_no among the failures. Nine still passed, which is the point of recording this: most assertions in the file are `is None` and a stub satisfies them, so the control case is what carries the falsifiability. The file was restored and re-run at 15 passed. Live, the served run exits 1 today naming camden id=696, so the check is red against production right now rather than hypothetically red. Re-measured after adversarial hardening (sentence-bounded windows, two distinct waste indicators, a coverage floor): 21 tests pass and the live result is unchanged at 5 of 5 real over 268 checkable, 1 served, 0 false positives - the rule got stricter without losing a true positive."
   },
   "pre_impl": {
     "existing_data": "dcp_setback_controls 1,071 rows; the value column is value_min, NOT 'value' (a first query assuming 'value' failed against live schema). 280 setback/height rows, of which 268 carry a number locatable in their own source_text. The served filter is is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE), read from scripts/conveyancing_db.py:317-319.",
