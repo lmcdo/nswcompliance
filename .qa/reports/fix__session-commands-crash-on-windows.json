@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Seven substantive files, but no production data is read or written and no query changes: each script gains one line reconfiguring its own stdout, plus a structural test. Standard rather than Minor because the tier floor forbids Minor above three substantive files, and because two of the seven are push-hook infrastructure (qa_gate.py, cross_review.py) that every push executes. Not Critical: the change reads nothing, writes nothing and decides nothing, so it can only ever replace an abort with printed text.",
-  "commit_hash": "PENDING",
+  "commit_hash": "ba9a4185",
   "files": [
     "scripts/dq_check.py",
     "scripts/dq_probe_live.py",
