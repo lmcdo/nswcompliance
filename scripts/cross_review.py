@@ -23,6 +23,18 @@ Usage:
     # Only the staged diff, write a JSON report, fail if a high finding appears:
     python scripts/cross_review.py --staged --out review.json --fail-on high
 
+    # Record that the finding which blocked the last push was WRONG (or right),
+    # and read back what has accumulated across branches:
+    python scripts/cross_review.py --adjudicated <rec>.json \
+        --record-verdict "wrong: the null guard at line 40 already covers it"
+    python scripts/cross_review.py --adjudicated <rec>.json --verdict-report
+
+Verdicts exist because the adjudication record used to store only that a finding
+had been SEEN. Campaign section 7 finding 6 promotes a gate to blocking on an
+observed false-positive rate, and the record threw that input away, so the
+promotion path could never start. `--verdict-report` is the command that answers
+it; it refuses to state a percentage from a sample too small to mean anything.
+
 The OpenAI key is read from OPENAI_API_KEY, or from the repo-root .env if unset.
 Never hardcode a key here (see scripts/openai_semantic_processor.py for what not
 to do — it has a committed key that must be rotated).
@@ -292,20 +304,246 @@ def finding_key(f: dict) -> str:
     return f"{(f.get('file') or '?').strip()}::{(f.get('category') or '?').strip()}"
 
 
-def load_adjudicated(path: Path | None) -> set:
+# ── Verdicts ────────────────────────────────────────────────────────────────
+# prior-art-checked: reuse not viable because nothing in scripts/, services/,
+# src/ or enrichment/ records a REVIEWER's verdict or a false-positive rate.
+# The guard named dq_probe_live.py (its "adjudication" is prose about regulatory
+# rows, not a stored verdict) and extracted_data_integrity.py (validates an
+# extracted value against its source text — a different subject). The artifact
+# being extended is this file's own adjudication record, which is the reuse.
+#
+# The record used to store a SET OF KEYS: proof a finding had been seen, and
+# nothing about whether it was RIGHT. Campaign §7 finding 6 says a gate earns
+# blocking status from an *observed false-positive rate*, so the one input that
+# path needs was the one thing the record discarded by design, and the promotion
+# path could never start. Measured on disk 2026-08-16: 40 branch records, 114
+# findings, 75 distinct, **0 carrying any verdict**. Plenty of observation, no
+# denominator.
+#
+# UNREVIEWED is a first-class value, not a gap to be filled in later by
+# assumption. A finding that was raised and never judged is evidence of nothing,
+# and counting it either way is how "~1 in 3 wrong" became a rule that outlived
+# its own measurement.
+VERDICT_UNREVIEWED = "unreviewed"
+VERDICT_REAL = "real"
+VERDICT_FALSE_POSITIVE = "false_positive"
+VERDICTS = (VERDICT_UNREVIEWED, VERDICT_REAL, VERDICT_FALSE_POSITIVE)
+
+# What a human types in SOL_OVERRIDE, mapped to a verdict. The prefix is
+# REQUIRED to score: an override with no prefix still records its reason and
+# still lets the push through, but stays UNREVIEWED rather than being guessed
+# into a bucket. Guessing here would silently manufacture the very rate this is
+# built to measure.
+_VERDICT_PREFIXES = {
+    "wrong": VERDICT_FALSE_POSITIVE,
+    "false-positive": VERDICT_FALSE_POSITIVE,
+    "false_positive": VERDICT_FALSE_POSITIVE,
+    "fp": VERDICT_FALSE_POSITIVE,
+    "real": VERDICT_REAL,
+    "valid": VERDICT_REAL,
+    "true": VERDICT_REAL,
+}
+
+# The smallest adjudicated sample this tool will express as a percentage.
+# Not a statistical threshold — a guard against this repo's own recorded
+# failure: a base rate inferred from a handful of reviews ("roughly one finding
+# in three is invalid") hardened into the stated reason a gate blocks narrowly,
+# outlived its withdrawal on 2026-08-06, and was still being printed to the
+# operator on 2026-08-16. A ratio over four findings is an anecdote; printing it
+# with a % sign is what makes it durable.
+MIN_SAMPLE_FOR_RATE = 20
+
+
+def parse_verdict(text: str) -> tuple[str, str]:
+    """Split an override string into (verdict, reason).
+
+    ``"wrong: the guard at line 40 already covers it"`` -> (false_positive, ...).
+    An unprefixed string keeps its full text as the reason and scores
+    UNREVIEWED — see the note on _VERDICT_PREFIXES.
+    """
+    raw = (text or "").strip()
+    head, sep, tail = raw.partition(":")
+    if sep and head.strip().lower() in _VERDICT_PREFIXES:
+        return _VERDICT_PREFIXES[head.strip().lower()], tail.strip()
+    return VERDICT_UNREVIEWED, raw
+
+
+def _blank_entry() -> dict:
+    return {"verdict": VERDICT_UNREVIEWED, "reason": "", "severity": None,
+            "seen": 0, "gated": False, "awaiting_verdict": False}
+
+
+def load_record(path: Path | None) -> dict:
+    """The full per-branch record as {key: entry}, tolerant of both formats.
+
+    Reads the v1 shape (``{"keys": [...]}``) as every key UNREVIEWED, so a
+    record written by the previous version keeps granting exactly the amnesty it
+    granted before. All 40 records on disk are v1, so upgrading the format
+    without this would re-block every in-flight branch mid-cycle.
+    """
     if not path or not path.exists():
-        return set()
+        return {}
     try:
-        # `.get("keys", [])` returns None when the key EXISTS with a null
-        # value — the default only covers a missing key. set(None) then raises
-        # and lands in the except below, which would report the file as
-        # "unreadable" when it parsed perfectly well. `or []` covers both.
-        return set(json.loads(path.read_text(encoding="utf-8")).get("keys") or [])
+        data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         # A corrupt record must not silently grant amnesty to everything, nor
         # block a push. Treat it as empty: every finding gates as if new.
         print(f"(adjudicated record at {path} unreadable — treating as empty)")
-        return set()
+        return {}
+    if not isinstance(data, dict):
+        print(f"(adjudicated record at {path} is not an object — treating as empty)")
+        return {}
+
+    findings = data.get("findings")
+    if isinstance(findings, dict):
+        out = {}
+        for key, entry in findings.items():
+            merged = _blank_entry()
+            if isinstance(entry, dict):
+                merged.update(entry)
+            # An out-of-vocab verdict is NOT trusted as an adjudication. It
+            # falls back to unreviewed, which is the conservative direction:
+            # the finding keeps its amnesty (it is still a known key) but never
+            # counts toward a false-positive rate.
+            if merged.get("verdict") not in VERDICTS:
+                merged["verdict"] = VERDICT_UNREVIEWED
+            out[str(key)] = merged
+        return out
+
+    # v1: `.get("keys", [])` returns None when the key EXISTS with a null value
+    # — the default only covers a missing key. `or []` covers both.
+    return {str(k): _blank_entry() for k in (data.get("keys") or [])}
+
+
+def load_adjudicated(path: Path | None) -> set:
+    """The set of keys already adjudicated on this branch (any verdict).
+
+    Gating is unchanged by verdicts, deliberately: a finding that has been
+    raised once does not gate again whether it was judged real, wrong, or never
+    judged at all. The verdict is evidence for a policy decision, not a second
+    amnesty rule — making `false_positive` behave differently here would widen
+    the gate's scope on the strength of a record nothing has validated yet.
+    """
+    return set(load_record(path))
+
+
+def save_record(path: Path, record: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"version": 2, "findings": dict(sorted(record.items()))}, indent=2),
+        encoding="utf-8")
+
+
+def ledger_path(record_path: Path) -> Path:
+    """The durable, cross-branch verdict ledger beside the per-branch records.
+
+    The per-branch record dies with the branch ON PURPOSE — a permanent one
+    would be standing amnesty. But a false-positive RATE needs a denominator
+    accumulated across branches, so the verdicts (not the amnesty) are appended
+    here as well. Under .git/, which every linked worktree shares via
+    --git-common-dir; it therefore survives branch deletion but NOT a fresh
+    clone. That is enough to start the observation the campaign asks for, and
+    it is stated rather than implied: `--verdict-report` prints the ledger path
+    it read, so a report from an empty machine cannot read as a clean record.
+    """
+    return record_path.parent / "verdicts.jsonl"
+
+
+def append_ledger(path: Path, rows: list[dict]) -> None:
+    """Append verdict rows. Best-effort: losing evidence must never fail a push."""
+    if not rows:
+        return
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            for row in rows:
+                fh.write(json.dumps(row, sort_keys=True) + "\n")
+    except OSError as exc:
+        print(f"(could not append to the verdict ledger at {path}: {exc})")
+
+
+def read_ledger(path: Path) -> list[dict]:
+    """Every verdict row, skipping unparseable lines rather than dying on them."""
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def verdict_report(record_path: Path) -> str:
+    """What the promotion decision in campaign §7 finding 6 actually needs.
+
+    Prints the counts with their denominator visible, and REFUSES to express a
+    percentage until the adjudicated sample reaches MIN_SAMPLE_FOR_RATE. A rate
+    is the output most likely to be quoted back later with its sample size
+    dropped, so the sample size is the part that cannot be dropped.
+    """
+    ledger = ledger_path(record_path)
+    rows = read_ledger(ledger)
+    # Last verdict per (branch, key) wins: a finding re-judged on the same
+    # branch is one datum, not two.
+    latest: dict[tuple, dict] = {}
+    for row in rows:
+        latest[(row.get("branch"), row.get("key"))] = row
+
+    counts = {v: 0 for v in VERDICTS}
+    for row in latest.values():
+        verdict = row.get("verdict")
+        counts[verdict if verdict in counts else VERDICT_UNREVIEWED] += 1
+    judged = counts[VERDICT_REAL] + counts[VERDICT_FALSE_POSITIVE]
+
+    # How much OBSERVATION exists, against how much judgement — the comparison
+    # §7 finding 6 actually turns on. The branch records are not backfilled into
+    # the ledger (they hold no verdicts to file, and writing 114 non-judgements
+    # into an evidence file would pad the denominator with nothing), but their
+    # size is the context that stops "1 adjudicated" reading as "1 finding".
+    observed = 0
+    for sibling in sorted(record_path.parent.glob("*.json")):
+        observed += len(load_record(sibling))
+
+    lines = [
+        "Sol cross-review verdicts",
+        f"  ledger      : {ledger}",
+        f"  observed    : {observed} finding(s) recorded across the branch records",
+        f"  rows        : {len(rows)} appended, {len(latest)} distinct (branch, finding)",
+        f"  real        : {counts[VERDICT_REAL]}",
+        f"  false pos.  : {counts[VERDICT_FALSE_POSITIVE]}",
+        f"  unreviewed  : {counts[VERDICT_UNREVIEWED]}"
+        "  (raised, never judged — evidence of nothing)",
+        f"  adjudicated : {judged}",
+    ]
+    if judged < MIN_SAMPLE_FOR_RATE:
+        lines += [
+            "",
+            f"  NO RATE. {judged} adjudicated finding(s) is under the "
+            f"{MIN_SAMPLE_FOR_RATE} this tool will state as a percentage.",
+            "  Campaign section 7 finding 6 promotes a gate to blocking on an "
+            "OBSERVED false-positive rate.",
+            "  There is not yet one. Do not infer a base rate from this; the "
+            "last prior inferred from",
+            "  a handful of reviews (\"~1 in 3 wrong\") outlived its own "
+            "withdrawal by ten days.",
+        ]
+    else:
+        rate = counts[VERDICT_FALSE_POSITIVE] / judged
+        lines += [
+            "",
+            f"  false-positive rate: {counts[VERDICT_FALSE_POSITIVE]}/{judged} "
+            f"= {rate:.0%}",
+            "  Quote this ONLY with its denominator. A rate without its sample "
+            "size is how the last one survived.",
+        ]
+    return "\n".join(lines)
 
 
 def main() -> None:
@@ -324,7 +562,29 @@ def main() -> None:
     parser.add_argument("--fail-on", choices=["high", "medium", "low"], help="Exit non-zero if a finding at/above this severity exists.")
     parser.add_argument("--adjudicated", type=Path, help="JSON record of findings already adjudicated on this branch; they are reported but do not gate.")
     parser.add_argument("--record-adjudicated", action="store_true", help="Add this run's findings to the --adjudicated record.")
+    parser.add_argument("--record-verdict", metavar="TEXT",
+                        help="Record a VERDICT for the findings that gated the last run, then exit "
+                             "without calling the model. Prefix the text 'real:' or 'wrong:' to score "
+                             "it; anything else is kept as a reason and stays unreviewed.")
+    parser.add_argument("--branch", help="Branch name to stamp on ledger rows (default: the current ref).")
+    parser.add_argument("--verdict-report", action="store_true",
+                        help="Print the accumulated verdict counts for the --adjudicated record's ledger and exit.")
     args = parser.parse_args()
+
+    # Both of these read and write only local files. They must run without an
+    # OpenAI key: recording that a finding was WRONG cannot be gated on the
+    # reviewer being reachable, or the evidence is lost exactly when the review
+    # service is down.
+    if args.verdict_report:
+        if not args.adjudicated:
+            sys.exit("--verdict-report needs --adjudicated to locate the ledger.")
+        print(verdict_report(args.adjudicated))
+        return
+    if args.record_verdict is not None:
+        if not args.adjudicated:
+            sys.exit("--record-verdict needs --adjudicated to say which record to write.")
+        _apply_verdict(args.adjudicated, args.record_verdict, args.branch)
+        return
 
     api_key = sol_common.load_api_key(_REPO_ROOT)
     diff = get_diff(args)
@@ -353,19 +613,101 @@ def main() -> None:
         args.out.write_text(json.dumps({"model": args.model, "findings": findings}, indent=2), encoding="utf-8")
         print(f"Report written to {args.out}")
 
-    if args.record_adjudicated and args.adjudicated:
-        args.adjudicated.parent.mkdir(parents=True, exist_ok=True)
-        args.adjudicated.write_text(
-            json.dumps({"keys": sorted(known | {finding_key(f) for f in findings})}, indent=2),
-            encoding="utf-8")
-
+    # Which findings would gate — computed BEFORE the record is written, because
+    # writing the record makes every one of them a "repeat" on the next read.
+    gating = []
     if args.fail_on:
         threshold = _SEVERITY_ORDER[args.fail_on]
         # Missing severity -> unknown rank (most severe), so a gate never fails open.
         # Gates on FRESH findings only; repeats were adjudicated once already.
-        worst = min((severity_rank(f.get("severity")) for f in fresh), default=99)
-        if worst <= threshold:
-            sys.exit(2)
+        gating = [f for f in fresh if severity_rank(f.get("severity")) <= threshold]
+
+    if args.record_adjudicated and args.adjudicated:
+        record = load_record(args.adjudicated)
+        gating_keys = {finding_key(f) for f in gating}
+        # Clear every stale pending flag before setting this run's. Without
+        # this, a finding that gated in round 1 and was then FIXED stays
+        # "awaiting a verdict" forever, and a later --record-verdict would
+        # attach round 3's reason to round 1's finding — a verdict about the
+        # wrong defect is worse than no verdict, because it reads as evidence.
+        for entry in record.values():
+            entry["awaiting_verdict"] = False
+        for f in findings:
+            key = finding_key(f)
+            entry = record.get(key) or _blank_entry()
+            entry["seen"] = int(entry.get("seen") or 0) + 1
+            entry["severity"] = f.get("severity") or entry.get("severity")
+            if key in gating_keys:
+                entry["gated"] = True
+                # Only a finding that actually BLOCKED is asked for a verdict.
+                # An advisory finding nobody was forced to read is exactly the
+                # kind of thing that would be nodded through as "real" and
+                # poison the denominator.
+                entry["awaiting_verdict"] = entry["verdict"] == VERDICT_UNREVIEWED
+            record[key] = entry
+        save_record(args.adjudicated, record)
+
+    if gating:
+        sys.exit(2)
+
+
+def _apply_verdict(record_path: Path, text: str, branch: str | None) -> None:
+    """Attach a verdict to whatever gated the last run, and append the evidence.
+
+    Called by .githooks/pre-push when SOL_OVERRIDE is used. The override was
+    already a written justification the operator had to type; until now it was
+    echoed to the terminal and thrown away, so the one moment a human actually
+    judges a finding produced no record of the judgement.
+    """
+    verdict, reason = parse_verdict(text)
+    record = load_record(record_path)
+    pending = [k for k, e in record.items() if e.get("awaiting_verdict")]
+    if not pending:
+        # Refuse rather than guess. Applying the reason to every finding on the
+        # branch would inflate the denominator with findings this override was
+        # never about.
+        print("(no finding is awaiting a verdict on this branch — nothing recorded)")
+        return
+
+    if branch is None:
+        try:
+            proc = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                cwd=_REPO_ROOT, capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=10, env=git_env(),
+            )
+            branch = proc.stdout.strip() if proc.returncode == 0 else "unknown"
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            branch = "unknown"
+
+    stamped = _now()
+    rows = []
+    for key in pending:
+        entry = record[key]
+        entry["verdict"] = verdict
+        entry["reason"] = reason
+        entry["awaiting_verdict"] = False
+        entry["decided_at"] = stamped
+        rows.append({"at": stamped, "branch": branch, "key": key,
+                     "severity": entry.get("severity"), "verdict": verdict,
+                     "reason": reason})
+    save_record(record_path, record)
+    append_ledger(ledger_path(record_path), rows)
+
+    print(f"Recorded verdict '{verdict}' for {len(pending)} finding(s): "
+          f"{', '.join(sorted(pending))}")
+    if verdict == VERDICT_UNREVIEWED:
+        # Say it plainly. A reason with no verdict is a note, and a note does
+        # not move the promotion path one step.
+        print("  NOT SCORED: the reason carries no 'real:' or 'wrong:' prefix, so it")
+        print("  counts toward neither side of the false-positive rate. Prefix it to score:")
+        print("    SOL_OVERRIDE=\"wrong: the null guard at line 40 already covers this\"")
+        print("    SOL_OVERRIDE=\"real: correct finding, but out of scope for this PR\"")
+
+
+def _now() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 if __name__ == "__main__":

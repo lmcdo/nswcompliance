@@ -395,10 +395,31 @@ fi
 # apply" from missing zone data. The full gate stack passed both times. An
 # advisory line that scrolls past the end of a push is not a control.
 #
-# Why it blocks NARROWLY: roughly one finding in three has been invalid. Blocking
-# on everything would train people to bypass it, which is worse than not having
-# it. So: HIGH severity AND the diff touches output a customer reads. Everything
-# else stays advisory.
+# Why it blocks NARROWLY: blocking on everything would train people to bypass it,
+# which is worse than not having it. So: HIGH severity AND the diff touches output
+# a customer reads. Everything else stays advisory.
+#
+# ── What this scoping is NOT justified by, any more ──────────────────────────
+# It used to cite a base rate of invalid findings. That prior ("~1 in 3 wrong")
+# was WITHDRAWN on 2026-08-06 (meta-session-prompt-template-2026-08.md) and the
+# code acting on it kept quoting it for ten days — including in the message
+# printed to the operator at the moment of the decision, which is the worst
+# possible place for a retired number. What was actually observed after it:
+#   - 08-06, lane 1: 16 rounds, MOST findings real — several of them defects the
+#     session introduced while fixing earlier ones.
+#   - 08-16, fix/tex-repair-semantic-safety: 3 rounds, 7 findings, 7 real.
+#   - The same reviewer had ALREADY flagged repair_tex_residue.py::correctness on
+#     an earlier push, with the exact failure scenario. It was advisory there, so
+#     it printed and passed, and the defect went on to damage 38 production rows.
+# So the narrow scope is a deliberate trade against bypass behaviour, NOT a claim
+# that the findings are usually wrong. Treat a finding as right until the code
+# says otherwise.
+#
+# The honest position is that the rate is UNMEASURED: 114 findings were recorded
+# across 40 branches by 2026-08-16 and not one carried a verdict, because the
+# record stored only that a finding had been seen. It now stores the verdict, so
+# this comment can eventually be replaced by a number with a denominator:
+#   python scripts/cross_review.py --adjudicated <record> --verdict-report
 # ── The review base is INCREMENTAL, and this is load-bearing ────────────────
 # It used to be the merge-base with main, so every push re-read the ENTIRE
 # branch. Three things followed, and all three were observed on fix/flood-finish
@@ -460,7 +481,15 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
       if [ -n "$SOL_OVERRIDE" ] && [ ${#SOL_OVERRIDE} -ge 15 ]; then
         echo ""
         echo "⚠  Sol HIGH finding overridden: $SOL_OVERRIDE"
-        echo "   (recorded here only — repeat it in the PR body)"
+        # THE OVERRIDE IS THE VERDICT. This is the only moment a human actually
+        # judges a finding, and until 2026-08-16 the judgement was echoed to a
+        # terminal and discarded — which is why §7 finding 6's promotion path
+        # (block once an observed false-positive rate justifies it) had an input
+        # of zero after 114 recorded findings. `|| true`: failing to file
+        # evidence must never fail a push that was already allowed.
+        python scripts/cross_review.py --adjudicated "$SOL_ADJUDICATED" \
+          --record-verdict "$SOL_OVERRIDE" || true
+        echo "   (repeat it in the PR body — this record is local and per-branch)"
       elif [ "$SOL_ROUND_N" -ge 3 ]; then
         # ── The round cap ───────────────────────────────────────────────────
         # Three blocked pushes on one branch is no longer a review finding
@@ -475,8 +504,12 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
         echo "iterate:"
         echo ""
         echo "  - the finding is REAL and worth it  -> fix it, and expect another round"
-        echo "  - it is real but not worth blocking -> SOL_OVERRIDE=\"...\" git push"
-        echo "  - it is wrong                       -> SOL_OVERRIDE=\"...\" git push"
+        echo "  - it is real but not worth blocking -> SOL_OVERRIDE=\"real: ...\" git push"
+        echo "  - it is wrong                       -> SOL_OVERRIDE=\"wrong: ...\" git push"
+        echo ""
+        echo "  The real:/wrong: prefix is what makes the override countable. Without"
+        echo "  one the push still goes through and the reason is still kept, but the"
+        echo "  finding stays UNREVIEWED and proves nothing either way."
         echo ""
         echo "  Reset the counter: rm \"$SOL_ROUNDS\""
         exit 1
@@ -485,10 +518,16 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
         echo "Sol reported a HIGH finding on output a customer reads. Push blocked."
         echo "(round $SOL_ROUND_N on this branch; at 3 the guidance changes)"
         echo ""
-        echo "  1. Verify the finding against the code. It is wrong roughly 1 time in 3."
+        echo "  1. Verify the finding against the code. Treat it as RIGHT until the"
+        echo "     code says otherwise — the last measured rounds were 7 findings /"
+        echo "     7 real (08-16) and 16 rounds mostly real (08-06). Do not carry a"
+        echo "     base rate in from memory; ask --verdict-report for the measured one."
         echo "  2. If it is REAL   — fix it."
-        echo "  3. If it is WRONG  — re-push with a one-line reason, e.g."
-        echo "       SOL_OVERRIDE=\"finding assumes X, but Y guards it at line N\" git push"
+        echo "  3. If it is WRONG  — re-push with a PREFIXED one-line reason:"
+        echo "       SOL_OVERRIDE=\"wrong: assumes X, but Y guards it at line N\" git push"
+        echo "     'real:' works too, for a correct finding you are not fixing here."
+        echo "     The prefix is what records a verdict; without it the reason is kept"
+        echo "     but the finding stays UNREVIEWED and no rate can ever be measured."
         echo ""
         echo "  Emergency bypass (leaves no reason on record): git push --no-verify"
         exit 1
