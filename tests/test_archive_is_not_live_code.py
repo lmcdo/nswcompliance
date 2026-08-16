@@ -67,11 +67,16 @@ def test_nothing_outside_archive_imports_from_it():
 def test_nothing_outside_archive_shells_out_to_it():
     """Same rule, second route in. An exemption that only covers `import` is
     trivially walked around with subprocess."""
-    # qa_gate.py must NAME the path in order to EXCLUDE it — that is the
-    # definition site of the rule, not a dependency on it. Exempting it by
-    # exact filename rather than by pattern, so a second file cannot quietly
-    # inherit the exemption.
-    definition_sites = {"qa_gate.py", Path(__file__).name}
+    # These NAME the path in order to EXCLUDE it — the definition sites of the
+    # rule, not dependencies on it. Listed by exact filename rather than by
+    # pattern so a new file cannot quietly inherit the exemption: this test
+    # correctly failed when lint_hardcoded_zone_codes.py became the second
+    # definition site and had not been added here.
+    definition_sites = {
+        "qa_gate.py",                    # content scanners skip the archive
+        "lint_hardcoded_zone_codes.py",  # zone lint skips it, same reasoning
+        Path(__file__).name,
+    }
     offenders: list[str] = []
     for p in _candidate_files():
         if p.name in definition_sites:
