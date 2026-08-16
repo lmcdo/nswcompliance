@@ -73,8 +73,9 @@ def test_nothing_outside_archive_shells_out_to_it():
     # correctly failed when lint_hardcoded_zone_codes.py became the second
     # definition site and had not been added here.
     definition_sites = {
-        "qa_gate.py",                    # content scanners skip the archive
-        "lint_hardcoded_zone_codes.py",  # zone lint skips it, same reasoning
+        "qa_gate.py",                     # content scanners skip the archive
+        "lint_hardcoded_zone_codes.py",   # zone lint skips it, same reasoning
+        "liability_language_check.py",    # language scan skips it, same reasoning
         Path(__file__).name,
     }
     offenders: list[str] = []
