@@ -82,14 +82,20 @@ def inconsistency(raw_match: str, value: float | None, unit: str | None):
     u = (unit or "").strip().lower()
     if u not in TO_METRES:
         return None
-    m = LENGTH_IN_TEXT.search(raw_match)
-    if not m:
+    # EVERY length in the text, not the first one. "3 m wide with a 600 mm
+    # setback" carries two, and a stored 0.6 is the second — matching only the
+    # first would report a mismatch against a value that is plainly correct.
+    # The claim this check makes is deliberately narrow: the stored number
+    # corresponds to SOME length the text states. It cannot tell which length
+    # was meant, so it does not pretend to.
+    candidates = [float(n) * TO_METRES[unit_text.lower()]
+                  for n, unit_text in LENGTH_IN_TEXT.findall(raw_match)]
+    if not candidates:
         return None
-    expected_m = float(m.group(1)) * TO_METRES[m.group(2).lower()]
     stored_m = float(value) * TO_METRES[u]
-    if abs(stored_m - expected_m) < TOLERANCE_M:
+    if any(abs(stored_m - c) < TOLERANCE_M for c in candidates):
         return None
-    return stored_m, expected_m
+    return stored_m, candidates[0]
 
 
 def main() -> int:  # pragma: no cover - CLI entry point
@@ -173,6 +179,18 @@ def main() -> int:  # pragma: no cover - CLI entry point
             print(f"     stored {stored_m} m, text says {expected_m} m "
                   f"({factor:.0f}x out)")
         return 1
+
+    if checkable == 0:
+        # Zero inconsistencies out of zero rows is not a clean bill of health,
+        # it is a check that did not run. If raw_match stopped being written,
+        # or the unit vocabulary changed, this is the shape the failure takes:
+        # a green light produced by having nothing to look at.
+        print()
+        print("ERROR: 0 rules were checkable, so nothing was verified. That is "
+              "not a pass — exiting 2. Expect ~432 on the served set; if this "
+              "has gone to zero, raw_match or unit has stopped being written.",
+              file=sys.stderr)
+        return 2
     return 0
 
 

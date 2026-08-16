@@ -75,6 +75,27 @@ class TestSaysNothingRatherThanGuessing:
         assert inconsistency("must be landscaped", 1.0, "m") is None
 
 
+class TestTextCarryingMoreThanOneLength:
+    """Raised by adversarial review of the first version, which took only the
+    FIRST length in the text and would have reported a mismatch against a
+    stored value that plainly appears in it."""
+
+    def test_the_second_length_in_the_text_is_accepted(self):
+        assert inconsistency("3 m wide with a 600 mm setback", 0.6, "m") is None
+
+    def test_the_first_length_in_the_text_is_still_accepted(self):
+        assert inconsistency("3 m wide with a 600 mm setback", 3.0, "m") is None
+
+    def test_a_value_matching_NEITHER_is_still_caught(self):
+        """CONTROL. Widening to 'any length in the text' must not widen to
+        'anything at all' — otherwise the check stops being able to fail."""
+        got = inconsistency("3 m wide with a 600 mm setback", 600.0, "m")
+        assert got is not None
+
+    def test_three_lengths_the_last_one_matches(self):
+        assert inconsistency("1.5 m, 2 m or 900 mm", 0.9, "m") is None
+
+
 def test_the_rule_can_say_yes_and_no():
     """Control case.
 
