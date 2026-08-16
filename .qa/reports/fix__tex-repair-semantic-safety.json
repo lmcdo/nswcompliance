@@ -1,0 +1,148 @@
+{
+  "tier": "critical",
+  "justification": "This branch rolls back damage it caused to live regulatory text and then makes that class of damage impossible. The first half is a production data restore: a generic TeX unwrap deleted mathematical operators from 38 served provisions, turning 'floor space ratio ÷ 2' into 'ratio 2' and an invisible \\phantom{-} into a literal minus sign. The second half inverts the repair rule so an unknown command refuses the row rather than guessing. Riding alongside is an independent extractor defect where two of seventeen unit alternations listed 'm' before 'mm', recording 600 mm as 600 metres in the values the product calculates with rather than merely displays. Critical rather than Standard because production rows were written and restored, and because the extractor defect misreads undamaged documents.",
+  "commit_hash": "394e9f94",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "enrichment/extractors/numeric_extractor.py",
+    "scripts/dq_probe_live.py",
+    "scripts/repair_tex_residue.py",
+    "tests/test_ledger_has_no_control_chars.py",
+    "tests/test_numeric_extractor_unit_order.py",
+    "tests/test_repair_matches_probe.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_numeric_extractor_unit_order.py -q",
+    "fails_when": "Any unit alternation inside numeric_extractor lists the token 'm' ahead of 'mm', so regex alternation stops on the leading character and a millimetre measurement is recorded as metres. The structural case reads all seventeen patterns rather than the two that were known broken, so a pattern written next month is covered without anyone remembering this incident existed.",
+    "observed_red": "Restoring enrichment/extractors/numeric_extractor.py to its parent-commit content and running the file printed '4 failed, 7 passed in 0.30s'. test_no_pattern_lists_m_before_mm printed: AssertionError: these unit alternations put 'm' before 'mm', so millimetres will be read as metres: ['m|metres?|mm|millimetres?', 'm|metres?|mm']. The value cases printed 'excavation to a depth of 600 mm below ground level' gave 600.0m against an expected 0.6, and 'a window with a width of 3400 mm' gave 3400.0m against an expected 3.4."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.provision_text is the served regulatory text and the TeX pass had already written 38 of those rows before this branch; all 38 were restored from the run backup, each guarded on the exact value the repair had written, and none had been altered by anything else in between. v2_extracted_rules holds the numbers derived from that text by numeric_extractor. The DQ ledger in .claude/dq_checks.json carries the DQ-76 and DQ-78 counts that describe both.",
+    "assumption_mismatch": "The original repair assumed meaning lives in digits, so it asserted that no digit changed and treated that as proof of safety. Meaning also lives in operators, and every damaged row passed the digit assertion untouched because only the division signs and fraction structure moved. The inverted gate makes the opposite assumption: a command means something unless it is on a short list of font and weight macros known to be cosmetic.",
+    "prior_art": "Extended the existing repair script and the existing probe rather than adding parallel ones, and extended tests/test_repair_matches_probe.py instead of opening a second file for the same predicate. scripts/_deactivate_cos_garbled.py was found to have independently derived the same single-character ratio signature used by DQ-78; its remedy of deactivating the rows was considered and rejected here because rows near the cut carry real controls, and the probe note now records that reasoning so the next reader does not re-derive it.",
+    "new_vs_existing": "Applies to existing rows in both directions but recalculates nothing. The refusal gate changes what future runs of the repair are permitted to write, and the unit-order fix changes what future extraction produces. Values already sitting in v2_extracted_rules that were derived through the broken alternation are NOT re-derived by this branch, so they stay wrong until a re-extraction runs; that is deliberate scope and is recorded in break_it rather than quietly assumed away.",
+    "external_source_error": "The upstream PDF text layer is the source of the corruption: it splits '900mm' into '900 m m', which the extractor then reads as metres. This branch does not repair that source, it refuses to guess at it. A database connection failure raises out of _connect rather than returning an empty row set, so a dead database cannot present itself as zero rows needing repair. A row whose text contains a command outside the presentation-only set is reported for a human against the source document instead of being transformed.",
+    "frontend_type": "No frontend change and no type change. The provision text and the extracted rules are read through existing API routes whose shapes are untouched; restoring 38 rows to their pre-repair content changes the characters a reader sees, not the schema, and the two DQ ledger counts are internal.",
+    "user_failure_mode": "Visibly rather than silently, which is the whole argument for the rollback. A reader who sees '\\div' in a provision knows the text is damaged and goes to the source document. The repaired version read cleanly and stated a different rule, which is worse because nothing about it invites suspicion. The DQ-76 count rising from 9 to 47 is that honesty being restored to the metric, not a regression."
+  },
+  "functions": [
+    {
+      "name": "unknown_commands",
+      "file_line": "scripts/repair_tex_residue.py:112",
+      "input": "The raw provision_text string read from regulatory_provisions, or None when the column is empty",
+      "output": "A sorted list of distinct TeX tokens present in that text which are not in the PRESENTATION_ONLY set",
+      "if_none": "The regex is applied to an empty string, so it returns an empty list and the row proceeds to the transform rather than raising"
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/repair_tex_residue.py:244",
+      "input": "Command-line arguments selecting a pass, plus the rows the selected pass predicate returns from the database",
+      "output": "An exit code, a printed breakdown of repairable, refused, skipped and unchanged rows, and a JSON backup naming the pass that produced it",
+      "if_none": "With no matching rows the loop body never runs and every bucket prints zero, so an empty result set cannot be mistaken for a successful repair"
+    },
+    {
+      "name": "_convert_mm_to_m",
+      "file_line": "enrichment/extractors/numeric_extractor.py:277",
+      "input": "An ExtractedValue whose unit string has already been normalised by _normalize_unit",
+      "output": "The same value divided by one thousand with its unit rewritten to metres, but only when the unit actually reads mm",
+      "if_none": "A value whose unit is not mm is returned untouched, which is exactly why the alternation order mattered so much: the conversion never fires if the pattern captured 'm'"
+    }
+  ],
+  "values": [
+    {
+      "value": "PRESENTATION_ONLY",
+      "read_at": "scripts/repair_tex_residue.py:112",
+      "nullable": "no",
+      "guard_at": "scripts/repair_tex_residue.py:112 — membership test, anything absent is refused",
+      "if_missing": "A command absent from the set refuses its row and prints it under the refused breakdown for a human to read"
+    },
+    {
+      "value": "provision_text",
+      "read_at": "scripts/repair_tex_residue.py:260",
+      "nullable": "yes",
+      "guard_at": "scripts/repair_tex_residue.py:112 — the regex tolerates None via the `text or \"\"` fallback",
+      "if_missing": "An empty text yields no unknown commands and no transform, so the row lands in the unchanged bucket and is never written"
+    },
+    {
+      "value": "ev.unit",
+      "read_at": "enrichment/extractors/numeric_extractor.py:277",
+      "nullable": "yes",
+      "guard_at": "enrichment/extractors/numeric_extractor.py:290 — _normalize_unit returns None for an absent unit",
+      "if_missing": "No conversion is applied and the raw number is kept with no unit, rather than a metre being assumed on the caller's behalf"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "select served provisions whose text still carries TeX residue for the chosen repair pass",
+      "file_line": "scripts/repair_tex_residue.py:260",
+      "where_clause": "is_current AND v2_is_actionable AND the selected pass predicate over provision_text",
+      "if_zero": "Every bucket prints zero and nothing is written, so an empty selection reads as no work rather than as work completed",
+      "if_wrong": "A predicate broader than the probe would draw in rows the metric never counted; tests/test_repair_matches_probe.py now asserts the two predicates are equal rather than one containing the other"
+    },
+    {
+      "purpose": "count remaining affected rows after a pass so the ledger figure can be restated",
+      "file_line": "scripts/repair_tex_residue.py:382",
+      "where_clause": "the same pass predicate, is_current AND v2_is_actionable",
+      "if_zero": "Reported as zero remaining, which for the TeX pass would now be wrong to celebrate because refusal is the expected outcome, not repair",
+      "if_wrong": "A count taken with the wrong pass predicate would restate the ledger against rows it does not describe; the backup now records the pass and dq_id alongside the predicate so any later audit can tell which one ran"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone adds a semantic command such as \\div or \\frac to PRESENTATION_ONLY, believing it merely presentational, and re-runs the TeX pass",
+      "what_happens": "Operators are deleted from served regulatory text again while every digit stays identical, so a formula silently states a different rule to every reader",
+      "mitigated": true,
+      "how": "scripts/repair_tex_residue.py:112 — the set holds only font and weight macros, and the docstring above it records the five production rows each unwrap destroyed",
+      "repro": "python -m pytest tests/test_repair_matches_probe.py::test_semantic_words_are_still_refused"
+    },
+    {
+      "scenario": "An escaped punctuation literal such as \\{ or \\% reaches the gate, which an earlier version matched with a letters-only pattern",
+      "what_happens": "The gate reports no unknown command, the brace rule then eats the escaped delimiter, and the digit assertion still passes because no digit moved",
+      "mitigated": true,
+      "how": "scripts/repair_tex_residue.py:112 — the token regex matches a control symbol as well as a control word, and symbols are never allowlisted",
+      "repro": "python -m pytest tests/test_repair_matches_probe.py::test_escaped_literals_are_refused"
+    },
+    {
+      "scenario": "A future dimension pattern is written with the metre token placed ahead of the millimetre token, repeating the alternation ordering mistake",
+      "what_happens": "Millimetre measurements are stored as metres in v2_extracted_rules, a thousandfold error in the number the product calculates with",
+      "mitigated": true,
+      "how": "tests/test_numeric_extractor_unit_order.py:85 — the structural case walks all seventeen patterns rather than the two that were known broken",
+      "repro": "python -m pytest tests/test_numeric_extractor_unit_order.py::test_no_pattern_lists_m_before_mm"
+    },
+    {
+      "scenario": "The repair predicate is narrowed below the probe predicate, for instance by dropping one OR arm during a later edit",
+      "what_happens": "The metric keeps counting rows the repair no longer touches, so a number that never reaches zero is read as work outstanding rather than as a mismatch",
+      "mitigated": true,
+      "how": "tests/test_repair_matches_probe.py:58 — the assertion is equality now; containment permitted exactly the narrowing it was written to prevent",
+      "repro": "python -m pytest tests/test_repair_matches_probe.py::test_dropping_an_OR_arm_from_the_repair_is_caught"
+    },
+    {
+      "scenario": "A ledger note is edited in Python source where a TeX token such as \\frac is single-escaped and becomes a control character",
+      "what_happens": "The stored note carries a formfeed instead of the command name, so the ledger no longer names the commands a human is being asked to review",
+      "mitigated": true,
+      "how": "tests/test_ledger_has_no_control_chars.py:51 — every string value in the ledger is rejected if it holds a control character",
+      "repro": "python -m pytest tests/test_ledger_has_no_control_chars.py::test_ledger_contains_no_control_characters"
+    },
+    {
+      "scenario": "Numbers already sitting in v2_extracted_rules were derived through the broken alternation before this branch and are not recalculated by it",
+      "what_happens": "Provisions keep serving values a thousand times too large until a re-extraction runs, because fixing the reader does not rewrite what it previously read",
+      "mitigated": false,
+      "how": "Not mitigated here and deliberately out of scope — re-deriving before the reader was fixed would have reproduced most of the same wrong values, which is why the order matters",
+      "repro": "python scripts/dq_probe_live.py --id DQ-76"
+    },
+    {
+      "scenario": "An operator reads the DQ-78 note and bulk-deactivates the rows it counts, treating the whole population as unrecoverable figure text",
+      "what_happens": "Binding controls are hidden from the served answer, which is the harmful direction, because rows near the cut carry real prose with map labels interleaved",
+      "mitigated": true,
+      "how": "scripts/dq_probe_live.py:737 — the note now names three specific rows that carry real controls and states that the metric cannot separate pure figure text from mixed",
+      "repro": "python scripts/dq_probe_live.py --id DQ-78"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — the 38 refused rows need a human against the source PDFs, since refusing them is the correct outcome and not a state that clears itself. Run python scripts/repair_tex_residue.py --pass tex to list them by command."
+  }
+}
