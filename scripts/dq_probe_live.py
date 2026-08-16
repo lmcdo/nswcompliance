@@ -737,8 +737,18 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "no control -- it is street names lifted off a map figure and "
         "interleaved into nonsense. Measured 111 on 2026-08-15, of which 110 "
         "are city_of_sydney Section 2 precinct pages and 1 is ku_ring_gai. "
-        "Clears by excluding figure pages at extraction, NOT by repairing the "
-        "text: there is nothing in these rows to recover.",
+        "DO NOT BULK-EXCLUDE OR DEACTIVATE THESE ROWS. The top of the "
+        "distribution is pure figure text, but rows nearest the cut carry REAL "
+        "CONTROLS with map labels interleaved - id 95870 'Ensure that the "
+        "safety and amenity of pedestrians and cyclists is not compromised by "
+        "off-street parking access points', id 95375 'This locality is bounded "
+        "by Ashmore Street to the north', id 95887 'Building heights are to "
+        "comply with Figure 6.1'. Dropping them would HIDE BINDING CONTROLS, "
+        "which is the harmful direction. Clears by stripping figure text at "
+        "extraction while keeping the prose, which needs the source PDF's "
+        "layout - the information the extractor discarded. This metric finds "
+        "affected rows; it cannot tell a pure-figure row from a mixed one, and "
+        "that distinction is the whole remedy.",
     ),
     "DQ-79": (
         "Active chapters whose last fetch returned something too small to be the document",

@@ -127,9 +127,22 @@ class NumericExtractor:
         ],
 
         # Generic dimensions
+        #
+        # UNIT ORDER IS LOAD-BEARING: 'mm' MUST precede 'm'.
+        #
+        # Regex alternation is ordered and stops at the first match, so
+        # (m|metres?|mm) applied to "600 mm" matches the leading 'm', leaves the
+        # second 'm' dangling, and records 600 METRES. These two patterns were
+        # the only ones of seventeen with 'm' first, and they are why a served
+        # provision claimed a retaining wall could be 600 m high and a window
+        # 3,400 m wide - a factor of a thousand, in the values the product
+        # calculates with rather than merely displays.
+        #
+        # This misreads CLEAN documents. It needs no OCR damage to fire, which
+        # is why it outlived the corrupted-text repair that first exposed it.
         'dimension': [
-            r'(\d+\.?\d*)\s*(m|metres?|mm|millimetres?)\s+(?:wide|width|long|length|deep|depth)',
-            r'(?:width|length|depth)\s+(?:of\s+)?(\d+\.?\d*)\s*(m|metres?|mm)',
+            r'(\d+\.?\d*)\s*(mm|millimetres?|metres?|m)\s+(?:wide|width|long|length|deep|depth)',
+            r'(?:width|length|depth)\s+(?:of\s+)?(\d+\.?\d*)\s*(mm|millimetres?|metres?|m)',
         ],
     }
 
