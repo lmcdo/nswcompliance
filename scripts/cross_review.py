@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -368,18 +369,36 @@ def parse_verdict(text: str) -> tuple[str, str]:
     return VERDICT_UNREVIEWED, raw
 
 
-def split_target(text: str, pending: list) -> tuple[str | None, str]:
+# A finding key is ``file::category``, so a targeted override starts with one
+# followed by ``=``. Used ONLY to tell "no target was named" from "a target was
+# named and does not match" — the match itself is against the real pending keys.
+_TARGET_RE = re.compile(r"^(?P<key>[^\s=]+::[^\s=]*)=")
+
+
+def split_target(text: str, pending: list) -> tuple[str | None, str, str]:
     """Pull an optional ``<key>=`` target off the front of an override string.
 
+    Returns ``(key, remainder, status)`` where status is ``none`` (no target
+    named), ``matched``, or ``unmatched``.
+
+    The third state is load-bearing, and its absence was a real defect: with a
+    single finding pending, a mistyped or stale key returned "no target" and the
+    override was applied to whatever happened to be pending instead — clearing
+    that finding's pending flag with no verdict, no error, and an operator who
+    believes they judged something else. Silent, and in the one place whose
+    entire job is to stop a judgement being attached to the wrong defect.
+
     Matched against the ACTUAL pending keys rather than split on the first
-    ``=``, so a key containing the character cannot be truncated into something
-    that silently matches nothing.
+    ``=``, so a key containing that character cannot be truncated into
+    something that matches nothing.
     """
     raw = (text or "").strip()
     for key in sorted(pending, key=len, reverse=True):
         if raw.startswith(f"{key}="):
-            return key, raw[len(key) + 1:].strip()
-    return None, raw
+            return key, raw[len(key) + 1:].strip(), "matched"
+    if _TARGET_RE.match(raw):
+        return None, raw, "unmatched"
+    return None, raw, "none"
 
 
 def _blank_entry() -> dict:
@@ -682,7 +701,20 @@ def _apply_verdict(record_path: Path, text: str, branch: str | None) -> None:
         print("(no finding is awaiting a verdict on this branch — nothing recorded)")
         return
 
-    target, remainder = split_target(text, pending)
+    target, remainder, status = split_target(text, pending)
+    if status == "unmatched":
+        # An explicit target that matches nothing means the operator is not
+        # judging what they think they are judging. Write NOTHING — not even the
+        # reason — and leave every pending flag set. Falling back to "apply it
+        # to whatever is pending" is the shared-verdict bug in a smaller hat.
+        print("NOT SCORED: this override names a finding that is not awaiting a "
+              "verdict on this branch.")
+        print(f"  named   : {_TARGET_RE.match(text.strip()).group('key')}")
+        print("  pending : " + (", ".join(sorted(pending)) or "(none)"))
+        print("  Nothing was recorded. Re-run with one of the pending keys, or "
+              "drop the key\n  entirely if only one finding is pending.")
+        return
+
     verdict, reason = parse_verdict(remainder)
 
     # ── One override, several blocked findings ──────────────────────────────

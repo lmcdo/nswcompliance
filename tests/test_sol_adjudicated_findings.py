@@ -284,6 +284,53 @@ def test_a_key_naming_something_not_pending_is_not_silently_applied(cr, tmp_path
     assert "NOT SCORED" in capsys.readouterr().out
 
 
+def test_a_stale_key_is_refused_even_when_only_one_finding_is_pending(cr, tmp_path, capsys):
+    """The gap the two-pending test above was hiding.
+
+    With one finding pending, an unmatched target used to read as "no target"
+    and the override was applied to whatever happened to be pending — clearing
+    that finding's pending flag with no verdict and no error, while the operator
+    believed they had judged a different one. The multi-pending refusal masked
+    it; nothing covered the single-pending path.
+    """
+    p = tmp_path / "one.json"
+    p.write_text(json.dumps({"version": 2, "findings": {
+        "a.py::correctness": {"verdict": "unreviewed", "awaiting_verdict": True},
+    }}), encoding="utf-8")
+
+    cr._apply_verdict(p, "typo.py::correctness=wrong: nope", branch="feat/x")
+
+    entry = cr.load_record(p)["a.py::correctness"]
+    assert entry["verdict"] == cr.VERDICT_UNREVIEWED
+    assert entry["awaiting_verdict"] is True, (
+        "the finding stopped awaiting a verdict without ever receiving one"
+    )
+    assert entry["reason"] == "", "a reason aimed at another finding was stored here"
+    out = capsys.readouterr().out
+    assert "NOT SCORED" in out and "typo.py::correctness" in out
+    assert not cr.ledger_path(p).exists()
+
+
+def test_split_target_tells_absent_from_unmatched(cr):
+    """Two states was the bug; three is the fix. Pinned directly, because the
+    difference is invisible from the outside until it goes wrong."""
+    pending = ["a.py::correctness"]
+    assert cr.split_target("a.py::correctness=wrong: x", pending) == (
+        "a.py::correctness", "wrong: x", "matched")
+    assert cr.split_target("wrong: no key here", pending) == (
+        None, "wrong: no key here", "none")
+    assert cr.split_target("b.py::null-guard=wrong: x", pending)[2] == "unmatched"
+
+
+def test_a_plain_reason_mentioning_a_path_is_not_read_as_a_target(cr):
+    """The false-positive risk of the regex above: prose must stay prose."""
+    pending = ["a.py::correctness"]
+    for text in ("wrong: see services/a.py::x for the guard",
+                 "real: a.py::correctness is right, fixing later",
+                 "the value == the other value"):
+        assert cr.split_target(text, pending)[2] in ("none", "matched")
+
+
 def test_an_override_with_nothing_pending_records_nothing(cr, tmp_path, capsys):
     """Refuse rather than guess: with no pending finding there is no subject for
     the verdict, and attaching it to something would be an invention."""
