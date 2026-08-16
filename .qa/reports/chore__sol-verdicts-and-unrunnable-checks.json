@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard, not critical: nothing here touches the database, the served answer, or any customer-facing surface \u2014 it changes a review harness and three CI steps. Not minor either: it changes what a gate does when it CANNOT run (three steps now fail where they passed), and it rewrites a record format that 40 live files on disk are already written in, so a back-compat mistake would re-block every in-flight branch.",
-  "commit_hash": "adfd9ebe",
+  "commit_hash": "af7d5d3c",
   "files": [
     "scripts/cross_review.py",
     ".githooks/pre-push",
