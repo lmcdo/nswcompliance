@@ -1,0 +1,94 @@
+{
+  "tier": "standard",
+  "justification": "Seven substantive files, but no production data is read or written and no query changes: each script gains one line reconfiguring its own stdout, plus a structural test. Standard rather than Minor because the tier floor forbids Minor above three substantive files, and because two of the seven are push-hook infrastructure (qa_gate.py, cross_review.py) that every push executes. Not Critical: the change reads nothing, writes nothing and decides nothing, so it can only ever replace an abort with printed text.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/dq_check.py",
+    "scripts/dq_probe_live.py",
+    "scripts/verify_coverage_stats.py",
+    "scripts/check_data_watch_freshness.py",
+    "scripts/cross_review.py",
+    "scripts/qa_gate.py",
+    "tests/test_session_commands_survive_cp1252.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_session_commands_survive_cp1252.py -q",
+    "fails_when": "Any of the nine listed session commands stops reconfiguring its stdout to a UTF-8 encoding, or places that call above its own `import sys` where it would raise NameError before helping. The list is the set CURRENT-AIM instructs every session to run, so a script joining that table without the line is caught the moment it is added here.",
+    "observed_red": "Two independent observations. (1) Deleting the reconfigure line from scripts/dq_check.py and re-running printed '2 failed, 19 passed', naming test_session_command_configures_stdout[scripts/dq_check.py] and test_reconfigure_comes_after_import_sys[scripts/dq_check.py]; the file was restored immediately after. (2) The underlying crash, with PYTHONIOENCODING unset so stdout is cp1252: `python -c \"print('\\u26a0 warning sign')\"` exits 1 with \"UnicodeEncodeError: 'charmap' codec can't encode character '\\u26a0' in position 0: character maps to <undefined>\", while the identical print after importing dq_check prints the character and exits 0."
+  },
+  "pre_impl": {
+    "existing_data": ".claude/dq_checks.json is the only data involved and is read, never written. It carries U+26A0 in exactly two notes, at /checks/DQ-32/note and /checks/DQ-69/note, both belonging to resolved rows.",
+    "assumption_mismatch": "The reported crash did not reproduce, and the tempting conclusion was that it had been fixed. It had not: --report prints only unresolved rows, and both notes holding the character sit on resolved ones, so the defect went quiet because the data moved. A repro-based regression test would have gone green for that same accidental reason, which is why the test asserts the call exists rather than replaying the crash.",
+    "prior_art": "The line already existed verbatim in check_dcp_as_at_coverage.py, check_satellite_manifests.py and check_served_answer_quality.py, so this applies a convention rather than inventing one. A first audit by grep reported those three as guarded and implied a single house idiom; the AST test then failed all three, revealing two distinct idioms in use — unconditional in the check_* scripts, wrapped in `if sys.platform == \"win32\"` in the Fly monitor and add_new_chapter.py. The test was corrected to accept both, and the six new call sites follow the unconditional form used by their three nearest neighbours.",
+    "new_vs_existing": "Applies to every future run of these nine commands and changes no stored state. Nothing is backfilled because nothing was persisted; the defect was always in the printing, never in the data."
+  },
+  "functions": [
+    {
+      "name": "reconfigure_lineno",
+      "file_line": "tests/test_session_commands_survive_cp1252.py:81",
+      "input": "The full text of a Python source file, as a string",
+      "output": "The line number of the sys.stdout.reconfigure call requesting UTF-8, or None when the file has none",
+      "if_none": "Returns None for a file with no such call and also for a file that will not parse, so a syntax error reads as unprotected rather than as passing"
+    },
+    {
+      "name": "_is_sys_stdout_reconfigure",
+      "file_line": "tests/test_session_commands_survive_cp1252.py:62",
+      "input": "An AST node from anywhere in the parsed module",
+      "output": "True only for a Call whose receiver chain is sys.stdout and whose encoding keyword names a UTF-8 variant",
+      "if_none": "A reconfigure call that omits encoding, or sets it to cp1252, returns False because it does not fix the crash"
+    }
+  ],
+  "values": [
+    {
+      "value": "sys.stdout.encoding",
+      "read_at": "scripts/dq_check.py:69",
+      "nullable": "no",
+      "guard_at": "scripts/dq_check.py:69 — reconfigured to utf-8 with errors=replace before anything prints",
+      "if_missing": "Measured as cp1252 in both PowerShell and Git Bash on the dev machine, with PYTHONUTF8 and PYTHONIOENCODING unset; unreconfigured, the first non-cp1252 character aborts the run"
+    }
+  ],
+  "queries": "N/A — this change adds, removes and alters no database query. The six edited scripts gain one stdout call each and the seventh file is a test that parses source text.",
+  "break_it": [
+    {
+      "scenario": "A new script is added to CURRENT-AIM's command table without the stdout line, and crashes for the next session that runs it",
+      "what_happens": "The session's first command aborts part-way through a report, and the reader cannot tell a crash from a short report",
+      "mitigated": true,
+      "how": "tests/test_session_commands_survive_cp1252.py:107 — the list is asserted per script, so adding the command here without the line fails",
+      "repro": "python -m pytest tests/test_session_commands_survive_cp1252.py -q"
+    },
+    {
+      "scenario": "Someone deletes a reconfigure call but leaves the explanatory comment above it, which names both reconfigure and utf-8",
+      "what_happens": "A text-search check reports the file as protected while it crashes on the next non-cp1252 character",
+      "mitigated": true,
+      "how": "tests/test_session_commands_survive_cp1252.py:62 — the check is AST-based and comments never reach the AST",
+      "repro": "python -m pytest tests/test_session_commands_survive_cp1252.py::test_a_comment_naming_reconfigure_is_not_a_call"
+    },
+    {
+      "scenario": "errors=replace silently substitutes a question mark for a character that carried meaning in a served figure",
+      "what_happens": "A reader sees a mangled character rather than an error, which is the failure mode this project treats as worse than a loud one",
+      "mitigated": false,
+      "how": "Not mitigated, and accepted deliberately: the encoding is set to utf-8 first, so replace can only fire on a character utf-8 itself cannot represent. These are operator-facing diagnostics, not served output, and an abort mid-report is strictly worse than a substituted glyph",
+      "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); import dq_check; print('\\u26a0')\""
+    },
+    {
+      "scenario": "Reconfiguring stdout at import time breaks pytest, which replaces sys.stdout with its own capture object",
+      "what_happens": "Every test importing qa_gate fails at collection, which is nine test files for that module alone",
+      "mitigated": true,
+      "how": "Measured before writing the change: at collection time sys.stdout is _pytest.capture.EncodedFile, it implements reconfigure, and calling it returns OK. Full suite re-run after: 5,481 passed, 2 skipped",
+      "repro": "python -m pytest -q"
+    },
+    {
+      "scenario": "The crash stops reproducing again because the rows carrying the character are resolved, and someone reads that as fixed",
+      "what_happens": "The next note gaining an arrow or a tick reopens the identical defect, and the previous investigation is repeated from scratch",
+      "mitigated": true,
+      "how": "tests/test_session_commands_survive_cp1252.py:1 — the module docstring records why the test is structural rather than a repro, so the reasoning survives the data moving",
+      "repro": "python scripts/dq_check.py --report"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

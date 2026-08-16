@@ -48,6 +48,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+# See dq_check.py: Windows stdout is cp1252. This one prints model-authored
+# review text, so the characters it must encode are not under our control at
+# all — a finding containing an arrow would take down the push hook itself.
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # for the sibling module
 import sol_common
 # DQ-54: git exports GIT_DIR and GIT_INDEX_FILE to its hooks and they OVERRIDE

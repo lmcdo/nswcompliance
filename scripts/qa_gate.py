@@ -31,6 +31,11 @@ import re
 from pathlib import Path
 from typing import Optional
 
+# See dq_check.py: Windows stdout is cp1252. This gate echoes report prose and
+# .gitignore patterns back to the operator, so the text it prints comes from
+# files it does not control. Crashing here fails the push for the wrong reason.
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 # Same directory, but this file is run as a script from the repo root and is
 # also loaded by tests via importlib, so neither cwd nor a package context can
 # be relied on to find it.
