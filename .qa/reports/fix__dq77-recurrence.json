@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: a ledger note only. No code, no schema, no query. The DATA repair it records was made with an existing, tested script (scripts/repair_tex_residue.py --pass units, 8 tests in tests/test_repair_matches_probe.py) and is already reflected in the live count.",
-  "commit_hash": "87d6ce57",
+  "commit_hash": "b7d3dd33",
   "files": [
     ".claude/dq_checks.json"
   ],
