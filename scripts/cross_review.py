@@ -51,7 +51,10 @@ from pathlib import Path
 # See dq_check.py: Windows stdout is cp1252. This one prints model-authored
 # review text, so the characters it must encode are not under our control at
 # all — a finding containing an arrow would take down the push hook itself.
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+# backslashreplace matters most here: this text arrives via json.loads, which
+# is where a lone surrogate can enter, and `replace` would hand the operator a
+# silently reworded finding.
+sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # for the sibling module
 import sol_common

@@ -25,7 +25,7 @@ from pathlib import Path
 
 # See dq_check.py: Windows stdout is cp1252 and probe text carries characters
 # it cannot encode, which aborts the run instead of printing them.
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import dq_db  # noqa: E402

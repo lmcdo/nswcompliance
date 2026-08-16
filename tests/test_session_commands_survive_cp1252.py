@@ -15,37 +15,57 @@ UnicodeEncodeError on Windows. stdout is cp1252 in both PowerShell and Git
 Bash on the dev machine (PYTHONUTF8 and PYTHONIOENCODING both unset), and
 .claude/dq_checks.json carries U+26A0 in two notes.
 
-WHY A STRUCTURAL TEST AND NOT A REPRO. By the time it was investigated the
-crash no longer reproduced — not because it was fixed, but because both notes
-holding the character belong to RESOLVED rows and --report only prints
-unresolved ones. A regression test pinned to that data would go green for the
-same accidental reason. So this asserts the RECONFIGURE exists, which does not
-depend on which rows happen to be open today.
+WHY THIS TEST IS BEHAVIOURAL AND NOT STRUCTURAL. Three earlier attempts to
+decide "is this file protected?" by looking at its SHAPE were each wrong, and
+each was wrong in the direction that reports a broken file as fine:
 
-WHAT IT DOES NOT ASSERT: the form. Two idioms are in use here — unconditional
-(the three check_* scripts) and `if sys.platform == "win32":` (the Fly monitor,
-add_new_chapter). Both fix the crash, so both pass. Asserting one idiom failed
-three correctly-protected files on the first run of this test.
+  1. A grep for `win32` said six files lacked the guard. Three of those were
+     already protected — they use an unconditional call with no platform
+     branch.
+  2. An AST matcher for `sys.stdout.reconfigure(...)` walked the whole tree,
+     so a call moved into a function nobody calls still counted. Measured: a
+     source whose only call sat inside `def configure():` was reported present.
+  3. The same matcher accepted any encoding containing "utf" — including
+     utf-16, utf-7, and `not-utf`, which is not a codec and raises LookupError
+     the moment the script starts. It ALSO missed scripts/dq_check.py, which
+     is protected through `_reconfigure = getattr(sys.stdout, "reconfigure")`
+     (added by #964) and matches no `sys.stdout.reconfigure` pattern at all.
 
-The check is AST-based on purpose. A text search would match the explanatory
-comment sitting directly above each call and pass on a file whose call had
-been deleted — the precise false positive that hit the unit-order guard on
-2026-08-16 (see tests/test_numeric_extractor_unit_order.py). Comments are not
-in the AST, so they cannot satisfy this.
+So this does not inspect the code. It imports each script in a subprocess whose
+stdout really is cp1252, prints the characters that crashed it, and checks the
+process survived. Any idiom that works passes; any that does not, fails. That
+is the property we actually want, rather than a proxy for it.
+
+VERIFIED ABLE TO FAIL, against the real pre-fix code at origin/main:
+dq_probe_live, verify_coverage_stats, check_data_watch_freshness, cross_review
+and qa_gate each raised `UnicodeEncodeError: 'charmap' codec can't encode
+character '\\u26a0'` and now survive. dq_check.py survived even before this
+branch — it was already fixed by #964 — which is why this branch adds nothing
+to it.
 """
 from __future__ import annotations
 
-import ast
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 
-#: Every script CURRENT-AIM's "ASK THESE, DO NOT ASK THIS FILE" table names,
-#: plus the two pieces of push-hook infrastructure that print text they do not
-#: author (a review finding, a report's prose) and so cannot predict the
-#: characters they must encode.
+#: The seven distinct scripts named by CURRENT-AIM's "ASK THESE, DO NOT ASK
+#: THIS FILE" table (read 2026-08-17), plus two more:
+#:
+#:   - dq_probe_live.py, which the same file reaches for outside the table
+#:     ("Run the DQ-32 probe for the current counts") and which dq_check.py
+#:     drives per row to enforce a status; and
+#:   - qa_gate.py, which is not a session command at all but runs inside
+#:     .githooks/pre-push, where a crash fails the push for the wrong reason.
+#:
+#: What the last two have in common with cross_review.py is the reason all
+#: three are here: they print text they do not author — a report's prose, a
+#: probe's message, a finding from another model — so they cannot predict the
+#: characters they will be asked to encode.
 SESSION_COMMANDS = [
     "scripts/dq_check.py",
     "scripts/dq_probe_live.py",
@@ -58,120 +78,99 @@ SESSION_COMMANDS = [
     "scripts/qa_gate.py",
 ]
 
+#: The three that actually turned up in .claude/dq_checks.json and in review
+#: findings: a warning sign, an arrow and a tick. None encode in cp1252.
+CRASHING_CHARS = "⚠ → ✓"
 
-def _is_sys_stdout_reconfigure(node: ast.AST) -> bool:
-    """True for a call to ``sys.stdout.reconfigure(...)`` asking for UTF-8."""
-    if not isinstance(node, ast.Call):
-        return False
-    func = node.func
-    if not isinstance(func, ast.Attribute) or func.attr != "reconfigure":
-        return False
-    stdout = func.value
-    if not isinstance(stdout, ast.Attribute) or stdout.attr != "stdout":
-        return False
-    if not isinstance(stdout.value, ast.Name) or stdout.value.id != "sys":
-        return False
-    # A reconfigure() that does not set a UTF-8 encoding does not fix this.
-    for kw in node.keywords:
-        if kw.arg == "encoding" and isinstance(kw.value, ast.Constant):
-            return "utf" in str(kw.value.value).lower()
-    return False
-
-
-def reconfigure_lineno(source: str) -> int | None:
-    """Line of the stdout reconfigure call, or None if there isn't one.
-
-    Structural, so an explanatory comment naming ``reconfigure`` cannot satisfy
-    it — comments never reach the AST.
-    """
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return None
-    lines = [n.lineno for n in ast.walk(tree) if _is_sys_stdout_reconfigure(n)]
-    return min(lines) if lines else None
+#: Imports the target by path with a genuinely cp1252 stdout, then prints the
+#: characters that crashed the real run. Exits 0 only if both survive.
+#:
+#: `errors="strict"` is the point — it reproduces the console default rather
+#: than a forgiving stand-in. Without it every script would pass regardless.
+_PROBE = '''
+import importlib.util, io, pathlib, sys
+sys.path.insert(0, sys.argv[2])
+sys.path.insert(0, str(pathlib.Path(sys.argv[1]).resolve().parent))
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="cp1252", errors="strict")
+spec = importlib.util.spec_from_file_location("_probe_target", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+print({chars!r})
+'''
 
 
-def _import_sys_lineno(tree: ast.Module) -> int | None:
-    lines = [
-        node.lineno
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Import)
-        for alias in node.names
-        if alias.name == "sys"
-    ]
-    return min(lines) if lines else None
+def _run_probe(script: Path) -> subprocess.CompletedProcess:
+    """Import `script` under a cp1252 stdout and try to print the bad chars."""
+    return subprocess.run(
+        [sys.executable, "-c", _PROBE.format(chars=CRASHING_CHARS), str(script), str(REPO)],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
 
 
 @pytest.mark.parametrize("rel", SESSION_COMMANDS)
-def test_session_command_configures_stdout(rel: str) -> None:
+def test_session_command_survives_a_cp1252_console(rel: str) -> None:
     path = REPO / rel
     assert path.exists(), (
         f"{rel} is listed as a session command but does not exist. Either the "
         f"script was renamed and this list is stale, or CURRENT-AIM now names "
         f"a command nobody can run."
     )
-    assert reconfigure_lineno(path.read_text(encoding="utf-8")) is not None, (
-        f"{rel} prints to a stdout that is cp1252 on Windows and never "
-        f"reconfigures it. One character outside cp1252 — an arrow, a tick, a "
-        f"warning sign, in text this script may not even author — aborts the "
-        f"run with UnicodeEncodeError instead of printing.\n"
-        f"    Add, after `import sys`:\n"
-        f'        sys.stdout.reconfigure(encoding="utf-8", errors="replace")'
+
+    result = _run_probe(path)
+
+    assert "UnicodeEncodeError" not in result.stderr, (
+        f"{rel} dies on a cp1252 console — the default in both PowerShell and "
+        f"Git Bash on the machine these commands are run from. One character "
+        f"outside cp1252 (an arrow, a tick, a warning sign, in text this "
+        f"script may not even author) aborts the run part-way through, which "
+        f"reads as a short report rather than as a crash.\n"
+        f"    Add, at module level, after `import sys`:\n"
+        f'        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")\n'
+        f"    stderr tail: {result.stderr.strip()[-400:]}"
+    )
+    assert result.returncode == 0, (
+        f"{rel} could not be imported at all, so whether it survives a cp1252 "
+        f"console is unknown — which is NOT the same as passing.\n"
+        f"    stderr tail: {result.stderr.strip()[-400:]}"
     )
 
 
-@pytest.mark.parametrize("rel", SESSION_COMMANDS)
-def test_reconfigure_comes_after_import_sys(rel: str) -> None:
-    """A reconfigure above `import sys` raises NameError before it can help."""
-    source = (REPO / rel).read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    sys_line = _import_sys_lineno(tree)
-    call_line = reconfigure_lineno(source)
-    assert sys_line is not None, f"{rel}: reconfigure needs `import sys`"
-    assert call_line is not None and call_line > sys_line, (
-        f"{rel}: reconfigure is at line {call_line}, not below `import sys` "
-        f"at line {sys_line} — it would raise NameError at import."
-    )
+def test_the_probe_can_fail() -> None:
+    """A test that cannot fail asserts nothing. Prove this one can.
 
-
-def test_the_detector_can_fail() -> None:
-    """The detector must be able to return None, or it asserts nothing."""
-    assert reconfigure_lineno("import sys\nprint('hi')\n") is None
-    # Both idioms in use in this repo must pass.
-    assert reconfigure_lineno(
-        'import sys\nsys.stdout.reconfigure(encoding="utf-8", errors="replace")\n'
-    ) == 2
-    assert reconfigure_lineno(
-        'import sys\n'
-        'if sys.platform == "win32":\n'
-        '    sys.stdout.reconfigure(encoding="utf-8")\n'
-    ) == 3
-
-
-def test_reconfigure_without_utf8_is_not_enough() -> None:
-    """Calling reconfigure while leaving the encoding alone fixes nothing."""
-    assert reconfigure_lineno(
-        'import sys\nsys.stdout.reconfigure(line_buffering=True)\n'
-    ) is None
-    assert reconfigure_lineno(
-        'import sys\nsys.stdout.reconfigure(encoding="cp1252")\n'
-    ) is None
-
-
-def test_a_comment_naming_reconfigure_is_not_a_call() -> None:
-    """The false positive a text search would produce, pinned.
-
-    Every protected file in this repo carries a comment explaining the call.
-    A grep-based check would pass on this source, which has the words and none
-    of the behaviour — and a grep is exactly how the first audit for this fix
-    mis-classified three files.
+    Written as a script with no reconfigure at all — the exact state the five
+    fixed files were in at origin/main — and confirmed to reproduce the real
+    error, not merely a non-zero exit.
     """
-    source = (
-        "import sys\n"
-        "# We would normally sys.stdout.reconfigure(encoding='utf-8') here\n"
-        '# because sys.platform == "win32" means cp1252. We do not, yet.\n'
-        "print('hi')\n"
-    )
-    assert "reconfigure" in source and "utf-8" in source
-    assert reconfigure_lineno(source) is None
+    unprotected = REPO / "tests" / "_tmp_unprotected_probe_target.py"
+    unprotected.write_text("VALUE = 1\n", encoding="utf-8")
+    try:
+        result = _run_probe(unprotected)
+        assert result.returncode != 0, "the probe passed a script with no guard"
+        assert "UnicodeEncodeError" in result.stderr, (
+            f"the probe failed for the wrong reason: {result.stderr.strip()[-400:]}"
+        )
+    finally:
+        unprotected.unlink()
+
+
+def test_the_probe_requires_a_real_import() -> None:
+    """A script that cannot be imported must not be recorded as surviving.
+
+    The failure mode that makes a green suite meaningless: the probe crashes
+    early, never reaches the print, and "no UnicodeEncodeError" then looks
+    exactly like success. The returncode assertion above is what separates
+    them, so it is pinned here.
+    """
+    broken = REPO / "tests" / "_tmp_broken_probe_target.py"
+    broken.write_text("raise RuntimeError('cannot import')\n", encoding="utf-8")
+    try:
+        result = _run_probe(broken)
+        assert result.returncode != 0
+        assert "UnicodeEncodeError" not in result.stderr
+        assert "cannot import" in result.stderr
+    finally:
+        broken.unlink()

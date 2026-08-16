@@ -67,24 +67,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Windows gives stdout the cp1252 codepage, which cannot encode the ⚠ that
-# ledger notes carry, so `dq_check.py --report` aborted part-way through with
-# UnicodeEncodeError. This is the FIRST command CURRENT-AIM tells every session
-# to run, and it was failing on the machine it is run from.
-#
-# It stopped firing on 2026-08-16 without anyone fixing it: both notes holding
-# the character (DQ-32, DQ-69) belong to RESOLVED rows, and --report only
-# prints unresolved ones. The data moved, not the code. Reopening either row —
-# or any new note gaining an arrow or a tick — brings it straight back.
-#
-# Unconditional, matching the three sibling checks (check_dcp_as_at_coverage,
-# check_satellite_manifests, check_served_answer_quality) rather than the
-# `if sys.platform == "win32"` form used elsewhere: there is nothing to gain
-# from leaving a POSIX run one stray character away from the same abort.
-# Verified safe under pytest — at collection time sys.stdout is
-# _pytest.capture.EncodedFile, which implements reconfigure().
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-
 # The probes are read with errors="replace", which substitutes U+FFFD for bytes
 # they could not decode. Printing that to a cp1252 console -- the default on the
 # Windows runners this repo uses -- raises UnicodeEncodeError, and --report died

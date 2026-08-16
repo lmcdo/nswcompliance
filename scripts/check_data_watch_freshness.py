@@ -38,7 +38,7 @@ from datetime import datetime, timezone
 
 # See dq_check.py: Windows stdout is cp1252 and cannot encode every character
 # this script prints, which aborts the run instead of printing them.
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 WORKFLOW = "data-watch.yml"
 DEFAULT_MAX_AGE_HOURS = 48
