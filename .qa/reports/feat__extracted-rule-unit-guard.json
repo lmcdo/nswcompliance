@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: a new blocking check over 8,340 served rules on the serve path. No writes, no schema change — it only reads and reports — but it is wired into the ledger, so a false positive here would block every build and a false negative would leave a thousandfold arithmetic error unwatched.",
-  "commit_hash": "dac0f5e1",
+  "commit_hash": "8ea901c4",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
