@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard, not critical: nothing here touches the database, the served answer, or any customer-facing surface \u2014 it changes a review harness and three CI steps. Not minor either: it changes what a gate does when it CANNOT run (three steps now fail where they passed), and it rewrites a record format that 40 live files on disk are already written in, so a back-compat mistake would re-block every in-flight branch.",
-  "commit_hash": "3fd4fadf",
+  "commit_hash": "c1041c3b",
   "files": [
     "scripts/cross_review.py",
     ".githooks/pre-push",
@@ -11,8 +11,8 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_sol_adjudicated_findings.py tests/test_checks_cannot_silently_not_run.py -q",
-    "fails_when": "a verdict is inferred from an unprefixed override, a v1 record stops granting its amnesty, a rate is printed from a sample under 20, a verdict lands on a finding that did not block, or any gates.yml step goes back to announcing NOT enforced and exiting 0",
-    "observed_red": "Ran red twice before it ran green, both times on real defects in this change: 'AssertionError: assert ::warning:: not in ...' (the jscpd assertion was reading my own explanatory comment as executable text) and 'AssertionError: the withdrawn prior is still quoted: [one finding in three has been invalid]' (my replacement comment reproduced the stale sentence verbatim while explaining that it was withdrawn). Five separate in-memory mutants were then planted against the verdict logic and all five were killed: guessing an unprefixed override as 'real', printing a rate regardless of sample size, applying a verdict to every key instead of the pending one, dropping v1 record support, and counting unreviewed rows in the denominator."
+    "fails_when": "a verdict is inferred from an unprefixed override, one override scores several pending findings at once, a v1 record stops granting its amnesty, a rate is printed from a sample under 20, a verdict lands on a finding that did not block, or any gates.yml step goes back to announcing NOT enforced and exiting 0",
+    "observed_red": "Ran red twice before it ran green, both times on real defects in this change: 'AssertionError: assert ::warning:: not in ...' (the jscpd assertion was reading my own explanatory comment as executable text) and 'AssertionError: the withdrawn prior is still quoted: [one finding in three has been invalid]' (my replacement comment reproduced the stale sentence verbatim while explaining that it was withdrawn). Five separate in-memory mutants were then planted against the verdict logic and all five were killed: guessing an unprefixed override as 'real', printing a rate regardless of sample size, applying a verdict to every key instead of the pending one, dropping v1 record support, and counting unreviewed rows in the denominator. After the first push the cross-reviewer then found a defect the tests had NOT covered - one override applied to every pending finding - at 0.98 confidence and advisory only; six further tests now cover the shared-verdict, named-target, differing-verdict, single-pending and stale-key paths."
   },
   "pre_impl": {
     "existing_data": "No database. One JSON file per branch under .git/sol-review/, plus a new append-only verdicts.jsonl beside them. Measured on disk before writing anything: 40 record files, 114 findings, 75 distinct keys, every single one in the v1 {\"keys\": [...]} shape, 0 carrying a verdict.",
@@ -32,39 +32,46 @@
     },
     {
       "name": "load_record",
-      "file_line": "scripts/cross_review.py:376",
+      "file_line": "scripts/cross_review.py:390",
       "input": "Path | None \u2014 a per-branch record, v1 or v2",
       "output": "dict {key: entry}; entries always carry every field of _blank_entry()",
       "if_none": "None, missing, corrupt, or a non-object JSON all return {} after printing why \u2014 fail CLOSED, so every finding gates as if new rather than being granted blanket amnesty."
     },
     {
       "name": "_apply_verdict",
-      "file_line": "scripts/cross_review.py:654",
+      "file_line": "scripts/cross_review.py:668",
       "input": "record path + override text + optional branch name",
       "output": "writes the record and appends rows to verdicts.jsonl",
       "if_none": "No finding awaiting a verdict -> prints 'nothing recorded' and writes NOTHING. Refusing beats attaching the reason to findings it was never about."
     },
     {
       "name": "verdict_report",
-      "file_line": "scripts/cross_review.py:483",
+      "file_line": "scripts/cross_review.py:497",
       "input": "record path (used to locate the sibling ledger)",
       "output": "str \u2014 counts, and a rate only above MIN_SAMPLE_FOR_RATE",
       "if_none": "No ledger -> every count 0, 'NO RATE', and the ledger path printed, so an empty machine cannot read as a clean record."
+    },
+    {
+      "name": "split_target",
+      "file_line": "scripts/cross_review.py:371",
+      "input": "override text + the list of pending keys",
+      "output": "(key or None, remaining text)",
+      "if_none": "No key prefix -> (None, text). Matched against ACTUAL pending keys longest-first, never split on the first '=', so a key containing that character cannot be truncated into something matching nothing."
     }
   ],
   "values": [
     {
       "value": "awaiting_verdict",
-      "read_at": "scripts/cross_review.py:664",
+      "read_at": "scripts/cross_review.py:678",
       "nullable": "yes \u2014 absent on any v1 entry",
-      "guard_at": "scripts/cross_review.py:628 clears every stale flag before each run sets its own; _blank_entry() defaults it to False",
+      "guard_at": "scripts/cross_review.py:642 clears every stale flag before each run sets its own; _blank_entry() defaults it to False",
       "if_missing": "Treated as False, so a v1 entry is never pending. The clear-then-set order is the load-bearing part: without it a finding that gated in round 1 and was then fixed stays pending forever, and round 3's override would be filed against round 1's defect."
     },
     {
       "value": "entry['verdict']",
-      "read_at": "scripts/cross_review.py:407",
+      "read_at": "scripts/cross_review.py:421",
       "nullable": "yes \u2014 hand-edited or future-format records may hold anything",
-      "guard_at": "scripts/cross_review.py:408 \u2014 anything outside VERDICTS falls back to unreviewed",
+      "guard_at": "scripts/cross_review.py:422 - anything outside VERDICTS falls back to unreviewed",
       "if_missing": "Counts toward neither side of the rate while keeping its amnesty. The conservative direction: an unrecognised string must not be read as a judgement somebody made."
     },
     {
@@ -90,6 +97,13 @@
       "mitigated": true,
       "how": "scripts/cross_review.py:525 \u2014 under MIN_SAMPLE_FOR_RATE (20) the report prints NO RATE with the count, and says in terms not to infer one. test_no_percentage_is_printed_from_a_sample_too_small_to_mean_one asserts no % survives.",
       "repro": "seed verdicts.jsonl with 4 rows and run --verdict-report; the output contains 'NO RATE' and 'adjudicated : 4' and no percentage"
+    },
+    {
+      "scenario": "Two HIGH findings block one push, one of them real and one wrong, and the operator types a single SOL_OVERRIDE=\"wrong: ...\".",
+      "what_happens": "Both are filed as false positives. The rate this whole change exists to measure is corrupted off evidence nobody gave, and in the direction that argues for weakening the gate - the worst direction for it to be wrong in.",
+      "mitigated": true,
+      "how": "scripts/cross_review.py:699 - with more than one finding pending and no key named, NOTHING is scored: the operator's reason is kept against each, the pending flags stay set, and the exact per-finding command is printed. Naming a finding scores only that one. FOUND BY THE CROSS-REVIEWER ON THIS CHANGE at 0.98 confidence, as an ADVISORY finding - scripts/ is outside the blocking scope, so it printed and passed, which is precisely how repair_tex_residue.py::correctness was read past before it damaged 38 production rows.",
+      "repro": "tests/test_sol_adjudicated_findings.py::test_one_reason_cannot_judge_two_findings and ::test_each_finding_can_be_given_a_different_verdict"
     },
     {
       "scenario": "A branch has ten advisory findings and one that blocked. The override is applied to all eleven.",

@@ -368,6 +368,20 @@ def parse_verdict(text: str) -> tuple[str, str]:
     return VERDICT_UNREVIEWED, raw
 
 
+def split_target(text: str, pending: list) -> tuple[str | None, str]:
+    """Pull an optional ``<key>=`` target off the front of an override string.
+
+    Matched against the ACTUAL pending keys rather than split on the first
+    ``=``, so a key containing the character cannot be truncated into something
+    that silently matches nothing.
+    """
+    raw = (text or "").strip()
+    for key in sorted(pending, key=len, reverse=True):
+        if raw.startswith(f"{key}="):
+            return key, raw[len(key) + 1:].strip()
+    return None, raw
+
+
 def _blank_entry() -> dict:
     return {"verdict": VERDICT_UNREVIEWED, "reason": "", "severity": None,
             "seen": 0, "gated": False, "awaiting_verdict": False}
@@ -659,7 +673,6 @@ def _apply_verdict(record_path: Path, text: str, branch: str | None) -> None:
     echoed to the terminal and thrown away, so the one moment a human actually
     judges a finding produced no record of the judgement.
     """
-    verdict, reason = parse_verdict(text)
     record = load_record(record_path)
     pending = [k for k, e in record.items() if e.get("awaiting_verdict")]
     if not pending:
@@ -668,6 +681,41 @@ def _apply_verdict(record_path: Path, text: str, branch: str | None) -> None:
         # never about.
         print("(no finding is awaiting a verdict on this branch — nothing recorded)")
         return
+
+    target, remainder = split_target(text, pending)
+    verdict, reason = parse_verdict(remainder)
+
+    # ── One override, several blocked findings ──────────────────────────────
+    # Found by the cross-reviewer ON THIS CHANGE, at 0.98 confidence, and it was
+    # right: two HIGH findings block, one real and one wrong, the operator types
+    # a single `wrong:` reason, and BOTH get filed as false positives. That
+    # corrupts the exact rate this file exists to measure, and it does it in the
+    # direction that argues for weakening the gate.
+    #
+    # So a shared verdict is refused when it would be ambiguous. The reason is
+    # still kept against each finding — the operator's words are never thrown
+    # away — but nothing is scored until each is named. Same principle as the
+    # unprefixed override: record, do not guess.
+    if target is None and len(pending) > 1:
+        stamped = _now()
+        for key in pending:
+            record[key]["reason"] = reason
+            record[key]["noted_at"] = stamped
+        save_record(record_path, record)
+        print(f"NOT SCORED: {len(pending)} findings are awaiting a verdict and this "
+              "override names none of them.")
+        print("  One reason cannot judge two findings — one may be real and the other "
+              "wrong, and")
+        print("  filing both the same way corrupts the rate this record exists to "
+              "measure.")
+        print("  Your reason has been kept against each. Score them one at a time:")
+        for key in sorted(pending):
+            print(f"    python scripts/cross_review.py --adjudicated {record_path} \\")
+            print(f"      --record-verdict \"{key}=wrong: <why>\"")
+        return
+
+    if target is not None:
+        pending = [target]
 
     if branch is None:
         try:

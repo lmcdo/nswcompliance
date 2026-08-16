@@ -528,6 +528,9 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
         echo "     'real:' works too, for a correct finding you are not fixing here."
         echo "     The prefix is what records a verdict; without it the reason is kept"
         echo "     but the finding stays UNREVIEWED and no rate can ever be measured."
+        echo "     If SEVERAL findings blocked, name the one you are judging —"
+        echo "     one reason cannot judge two, so an unnamed verdict is not scored:"
+        echo "       SOL_OVERRIDE=\"services/x.py::null-guard=wrong: ...\" git push"
         echo ""
         echo "  Emergency bypass (leaves no reason on record): git push --no-verify"
         exit 1

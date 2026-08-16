@@ -196,6 +196,94 @@ def test_a_verdict_only_lands_on_what_actually_blocked(cr, tmp_path):
     assert rec["blocked.py::correctness"]["awaiting_verdict"] is False
 
 
+def _two_pending(tmp_path, name="rec.json"):
+    p = tmp_path / name
+    p.write_text(json.dumps({"version": 2, "findings": {
+        "a.py::correctness": {"verdict": "unreviewed", "severity": "high",
+                              "awaiting_verdict": True},
+        "b.py::null-guard": {"verdict": "unreviewed", "severity": "high",
+                             "awaiting_verdict": True},
+    }}), encoding="utf-8")
+    return p
+
+
+def test_one_reason_cannot_judge_two_findings(cr, tmp_path, capsys):
+    """Found by the cross-reviewer on this very change, and it was right.
+
+    Two HIGH findings block, one real and one wrong. A single `wrong:` reason
+    would file BOTH as false positives — corrupting the rate in the direction
+    that argues for weakening the gate, off evidence nobody actually gave.
+    """
+    p = _two_pending(tmp_path)
+    cr._apply_verdict(p, "wrong: guarded at line 40", branch="feat/x")
+
+    rec = cr.load_record(p)
+    assert {e["verdict"] for e in rec.values()} == {cr.VERDICT_UNREVIEWED}
+    assert "NOT SCORED" in capsys.readouterr().out
+    # Nothing may reach the ledger: an unscored note is not evidence.
+    assert not cr.ledger_path(p).exists()
+
+
+def test_the_operators_reason_is_kept_even_when_it_cannot_be_scored(cr, tmp_path):
+    """Refusing to score must not mean discarding what they wrote — that is the
+    original defect (the override was echoed and thrown away) in a new place."""
+    p = _two_pending(tmp_path)
+    cr._apply_verdict(p, "wrong: both of these are about a dead path", branch="feat/x")
+
+    rec = cr.load_record(p)
+    for entry in rec.values():
+        assert entry["reason"] == "both of these are about a dead path"
+        assert entry["awaiting_verdict"] is True    # still owed a judgement
+
+
+def test_naming_the_finding_scores_only_that_one(cr, tmp_path):
+    p = _two_pending(tmp_path)
+    cr._apply_verdict(p, "a.py::correctness=wrong: guarded at line 40", branch="feat/x")
+
+    rec = cr.load_record(p)
+    assert rec["a.py::correctness"]["verdict"] == cr.VERDICT_FALSE_POSITIVE
+    assert rec["a.py::correctness"]["awaiting_verdict"] is False
+    # The other is untouched and still owed a verdict.
+    assert rec["b.py::null-guard"]["verdict"] == cr.VERDICT_UNREVIEWED
+    assert rec["b.py::null-guard"]["awaiting_verdict"] is True
+    assert len(cr.read_ledger(cr.ledger_path(p))) == 1
+
+
+def test_each_finding_can_be_given_a_different_verdict(cr, tmp_path):
+    """The case the shared-verdict bug got wrong: one real, one wrong."""
+    p = _two_pending(tmp_path)
+    cr._apply_verdict(p, "a.py::correctness=wrong: unreachable", branch="feat/x")
+    cr._apply_verdict(p, "b.py::null-guard=real: fixed in the next commit", branch="feat/x")
+
+    rec = cr.load_record(p)
+    assert rec["a.py::correctness"]["verdict"] == cr.VERDICT_FALSE_POSITIVE
+    assert rec["b.py::null-guard"]["verdict"] == cr.VERDICT_REAL
+    verdicts = {r["key"]: r["verdict"] for r in cr.read_ledger(cr.ledger_path(p))}
+    assert verdicts == {"a.py::correctness": "false_positive",
+                        "b.py::null-guard": "real"}
+
+
+def test_a_single_pending_finding_still_takes_a_bare_reason(cr, tmp_path):
+    """The common case must stay ergonomic — one blocked finding, one reason,
+    no key to type. Requiring the key always would push people to --no-verify."""
+    p = tmp_path / "one.json"
+    p.write_text(json.dumps({"version": 2, "findings": {
+        "a.py::correctness": {"verdict": "unreviewed", "awaiting_verdict": True},
+    }}), encoding="utf-8")
+    cr._apply_verdict(p, "wrong: guarded at line 40", branch="feat/x")
+    assert cr.load_record(p)["a.py::correctness"]["verdict"] == cr.VERDICT_FALSE_POSITIVE
+
+
+def test_a_key_naming_something_not_pending_is_not_silently_applied(cr, tmp_path, capsys):
+    """A typo'd or stale key must not fall through to 'apply to everything'."""
+    p = _two_pending(tmp_path)
+    cr._apply_verdict(p, "typo.py::correctness=wrong: nope", branch="feat/x")
+
+    rec = cr.load_record(p)
+    assert {e["verdict"] for e in rec.values()} == {cr.VERDICT_UNREVIEWED}
+    assert "NOT SCORED" in capsys.readouterr().out
+
+
 def test_an_override_with_nothing_pending_records_nothing(cr, tmp_path, capsys):
     """Refuse rather than guess: with no pending finding there is no subject for
     the verdict, and attaching it to something would be an invention."""
