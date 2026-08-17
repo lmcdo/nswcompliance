@@ -1,0 +1,105 @@
+{
+  "tier": "standard",
+  "justification": "A new read-only check plus two ledger rows. It writes nothing and changes no served value. It is Standard rather than Minor because it OPENS RED on a live row, so it changes what the build says about production, and because its first version produced four false positives on served rows - the failure mode being guarded against is a flag list that trains you to ignore it.",
+  "commit_hash": "41a4045e",
+  "files": [
+    "scripts/check_control_subject_mismatch.py",
+    "tests/test_control_subject_mismatch.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "A council writes a correct setback whose CONDITION mentions a driveway: 'Minimum side setback: a. Must be 4 metres where there is no driveway along the side boundary. b. Must be 7 metres where a driveway is proposed.' Four such rows are served for marrickville.",
+      "what_happens": "The first version of this rule flagged all four. They are correct - the driveway is what distinguishes two valid setbacks, not the subject of either. Every SERVED flag it produced was false, which is worse than no check: it teaches the reader to skip the list, and the one real entry dies inside it. That is the same failure validate_control_source_values documents for unit conversions.",
+      "mitigated": true,
+      "how": "The rule is positional rather than lexical. A foreign noun counts only when it governs the number with no conditional word ('where', 'if', 'unless', 'other than', 'except') between them. All four marrickville rows put 'driveway' after 'where', so none is flagged; fairfield's 'All driveways are to be set a minimum of 0.5m' has the noun as subject and is. Both sentences are fixtures in the test file, on opposite sides.",
+      "repro": "python -m pytest tests/test_control_subject_mismatch.py -k driveway -q"
+    },
+    {
+      "scenario": "source_text or value_min stops being written by a future extractor change, so no row can be checked at all.",
+      "what_happens": "A naive implementation reports 0 mismatches and exits 0. The build goes green while verifying nothing - the comfortable-green failure this whole class of check keeps dying of.",
+      "mitigated": true,
+      "how": "0 checkable exits 2, never 0, and the message names the expected denominator (~242 served). The denominator prints on every run, pass or fail, so a silent collapse is visible before it becomes a habit.",
+      "repro": "python scripts/check_control_subject_mismatch.py  # prints CHECKABLE alongside MISMATCHED"
+    },
+    {
+      "scenario": "The one served row it flags (camden id=696) is excluded, and camden secondary_dwelling is then left with no front setback at all.",
+      "what_happens": "That control becomes ABSENT rather than wrong. Measured before proposing it: id=696 is the only served front setback for that council and development type, because its slot-mate id=695 - a 12 m facade-to-facade separation, also mis-filed - was already excluded.",
+      "mitigated": true,
+      "how": "Absent is the honest state and the safer direction: removing a false claim cannot create one, whereas re-filing the row under a control it might not belong to chooses a value. The row is excluded with a review_reason quoting its own text, so the source lookup that would recover the real control is recorded rather than lost.",
+      "repro": "python scripts/check_control_subject_mismatch.py --all-rows"
+    },
+    {
+      "scenario": "A mis-filed control that is NOT a foreign subject - id=702 stores a corner-lot side setback ('must have a secondary street (side setback) of a minimum of 2m') under front_setback.",
+      "what_happens": "This check does not catch it. Widening the vocabulary until it did is exactly what reintroduced the false positives in the first version.",
+      "mitigated": false,
+      "how": "Left uncaught and stated - in the module docstring, the ledger row and the tracker - as a front-vs-side confusion, a different defect class needing its own rule. The row is already excluded from the served path, so nothing is being served on the strength of this omission.",
+      "repro": "python -c \"import sys;sys.path.insert(0,'scripts');from check_control_subject_mismatch import subject_mismatch as s;print(s('must have a secondary street (side setback) of a minimum of 2m', 2.0))\"  # prints None"
+    },
+    {
+      "scenario": "A quote holds two sentences: 'Minimum dwelling side setback 3m. Driveways must be 1m from the side boundary.' The stored value is 3.",
+      "what_happens": "The 60-character after-window runs straight past the full stop and finds 'Driveways' with no conditional word in between, so a correct 3 m dwelling setback is reported as a driveway control. The first version did exactly this.",
+      "mitigated": true,
+      "how": "Both windows are truncated at the nearest sentence boundary, so only the sentence the number belongs to is considered. Tested in BOTH directions on the same quote: value 3.0 must not flag, and value 1.0 - which really is the driveway's number - still must, so the guard made the rule precise rather than blind.",
+      "repro": "python -m pytest tests/test_control_subject_mismatch.py -k Sentence -q"
+    },
+    {
+      "scenario": "A genuine setback clause cross-references the waste guideline once: 'Minimum front setback 6m. Refer also to the Waste Management Guideline for servicing.'",
+      "what_happens": "The whole-quote rule fired on a single stray mention and condemned a correct setback as a bin control.",
+      "mitigated": true,
+      "how": "The rule now needs at least two DISTINCT waste indicators. The real bin row carries several independently ('hardstand', 'Waste Management', 'bin'); a passing cross-reference carries one. Both cases are fixtures.",
+      "repro": "python -m pytest tests/test_control_subject_mismatch.py -k Stray -q"
+    },
+    {
+      "scenario": "A future extractor change alters the number format so 241 of the 242 served rows can no longer be located in their own quote, leaving one benign row checkable.",
+      "what_happens": "A bare `checkable == 0` guard passes on that single row and the build goes green having verified almost nothing - the same comfortable-green failure the zero-check was written to prevent, one row above the floor.",
+      "mitigated": true,
+      "how": "Coverage is compared against the rows actually considered, not against zero: below 50% the run exits 2 and prints the ratio. This needs no external baseline, so it cannot silently stop ratcheting. Measured today at 242/250 = 97%.",
+      "repro": "python scripts/check_control_subject_mismatch.py  # prints CHECKABLE against setback/height rows on every run"
+    }
+  ],
+  "post_merge": {
+    "watch": "DQ-84 opens RED at 1 served row and must reach 0 by excluding or re-filing camden id=696, not by relaxing the rule. If the number rises, a new extraction has introduced mis-filed controls and the extractor is the thing to fix.",
+    "owner": "data quality",
+    "rollback": "Revert the commit. The check is read-only, so nothing served changes either way; reverting only stops the build reporting the defect.",
+    "db_reset": "No schema change and nothing written by this branch. The separate repair of camden id=696 backs up to dcp_setback_controls_dq32c_backup_20260817 before touching anything and is reversed by restoring is_current and clearing needs_review from that table.",
+    "secrets": "None added, read or printed.",
+    "other_repo": "None.",
+    "manual_verify": "Run `python scripts/check_control_subject_mismatch.py`. It must report 1 MISMATCHED against 242 CHECKABLE and exit 1 until camden id=696 is excluded, then 0 and exit 0. The DQ-84 row must move from open to fixed at that point and not before - a declared-fixed row whose check still fails is red by design."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_control_subject_mismatch.py -q  &&  python scripts/check_control_subject_mismatch.py --all-rows",
+    "fails_when": "The rule is exercised in BOTH directions on the SAME foreign noun, which is the only way to show it is a rule and not a word list. 'All driveways are to be set a minimum of 0.5m' must flag; 'Must be 4 metres where there is no driveway along the side boundary' must NOT. A stub returning None for everything satisfies most assertions in the file - that is why test_the_rule_can_say_yes_and_no pins both on those two sentences, and such a stub fails it. Live, --all-rows must report 5 mismatches over 268 checkable rows; if it reported 0 over 0 the script exits 2, not 0.",
+    "external_authority": "Not asserted by this code: each flagged row's own stored source_text is quoted in the output, so the verdict is checkable against the council's own words rather than against the rule. id=712 reads 'All driveways are to be set a minimum of 0.5m from any side boundary'; the row is filed as the dwelling_house side_setback.",
+    "observed_red": "Observed, not asserted. The rule was mutated to `return None` - the stub that would report 0 mismatches over the whole table forever - and the suite went 6 failed / 9 passed, with test_the_rule_can_say_yes_and_no among the failures. Nine still passed, which is the point of recording this: most assertions in the file are `is None` and a stub satisfies them, so the control case is what carries the falsifiability. The file was restored and re-run at 15 passed. Live, the served run exits 1 today naming camden id=696, so the check is red against production right now rather than hypothetically red. Re-measured after adversarial hardening (sentence-bounded windows, two distinct waste indicators, a coverage floor): 21 tests pass and the live result is unchanged at 5 of 5 real over 268 checkable, 1 served, 0 false positives - the rule got stricter without losing a true positive."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls 1,071 rows; the value column is value_min, NOT 'value' (a first query assuming 'value' failed against live schema). 280 setback/height rows, of which 268 carry a number locatable in their own source_text. The served filter is is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE), read from scripts/conveyancing_db.py:317-319.",
+    "assumption_mismatch": "TWO, both material. (1) 'These rows need a source lookup' - the source is already stored on each row as source_text, so no PDF was needed for 16 of 18. (2) The bigger one: I first reported that 18 rows were serving wrong answers. Checked against the served filter rather than the table, NINE were already excluded - burwood's 15 m, fairfield's 0.5 m and camden's 2 m among them. Reporting from the table would have produced four fabricated user-impact claims. Only ONE mis-filed row is actually served.",
+    "new_vs_existing": "A new file, because the gap is precise and nothing covers it. validate_control_source_values.py asks whether the DIGITS are derivable from the quote and every one of these rows PASSES it. services/extracted_data_integrity.py conflicting_values sees one key holding two values with no condition - it detects a symptom, never says why, and cannot see a mis-filed control that is alone in its slot, which is exactly the state camden id=696 is now in. validate_dcp_setbacks.py is scoped to 280 rows and its four signals never compare subject to control_type.",
+    "external_source_error": "No external source. The database being unreachable exits 2 (UNKNOWN), never 0; 0 checkable rows also exits 2 and names the expected denominator."
+  },
+  "functions": [
+    {
+      "name": "subject_mismatch",
+      "file_line": "scripts/check_control_subject_mismatch.py",
+      "what": "Returns why a stored number is about something other than the control it is filed under, or None. Pure - no database, so the thing that decides whether the build goes red is testable without one.",
+      "input": "source_text: the row's own quote; value: the stored value_min",
+      "output": "A reason string naming the governing noun, or None for consistent / not checkable",
+      "if_none": "None means consistent OR not checkable, and those are NOT merged in the caller: a row whose number cannot be located in its quote is excluded from the denominator rather than counted as fine.",
+      "edge_cases": "A foreign noun on the far side of a conditional word ('where', 'if', 'unless', 'other than', 'except') is a CONDITION, not a subject - this single guard removed all four false positives. Checked in both directions, because 'between front facades' follows its number while 'All driveways are to be set' precedes it. A metre value may be written as millimetres in the source, so 0.9 is located in '900mm'.",
+      "failure_mode": "At worst it stays silent on a mis-filed row - id=702, a corner-lot side setback under front_setback, is deliberately not reached. A false positive is the direction that would do damage, because it would train the reader to skip the list; measured at 0 over 268 rows."
+    },
+    {
+      "name": "locate_value",
+      "file_line": "scripts/check_control_subject_mismatch.py",
+      "what": "Finds where the stored number appears in its own quote, trying the plain form, the integer form and the millimetre form.",
+      "input": "source_text: the row's own stored quote; value: the stored value_min, numeric or None",
+      "output": "A regex Match, or None when the number is not present",
+      "if_none": "The row is NOT checkable - a third state, counted separately from 'checked and fine' and reported as the denominator on every run.",
+      "edge_cases": "Digit-boundary guarded, so 15 does not match inside 150. Non-numeric or absent values return None rather than raising.",
+      "failure_mode": "If it fails to locate a number that is present, the row silently leaves the denominator - which is why the denominator is printed rather than implied."
+    }
+  ]
+}
