@@ -90,8 +90,13 @@ cur.execute("""UPDATE dcp_setback_controls
                 WHERE id = 696 AND is_current = TRUE""", (REVIEW_REASON_696,))
 n696 = cur.rowcount
 print(f"id=696 excluded: {n696} row")
+# is_current is required, not incidental: id is the primary key, so without it
+# this would happily qualify a HISTORICAL row, report one row changed, and pass
+# its own verification while the served control stayed understated.
 cur.execute("""UPDATE dcp_setback_controls SET condition = %s
-                WHERE id = 698 AND (condition IS NULL OR btrim(condition) = '')""",
+                WHERE id = 698 AND is_current = TRUE
+                  AND (needs_review IS NULL OR needs_review = FALSE)
+                  AND (condition IS NULL OR btrim(condition) = '')""",
             (CONDITION_698,))
 n698 = cur.rowcount
 print(f"id=698 condition set: {n698} row")
@@ -124,7 +129,11 @@ cur.execute("""SELECT count(*) AS n FROM dcp_setback_controls
                 WHERE id = 696 AND is_current = TRUE
                   AND (needs_review IS NULL OR needs_review = FALSE)""")
 still_served = cur.fetchone()['n']
-cur.execute("SELECT condition FROM dcp_setback_controls WHERE id = 698")
+# Scoped the same way the served path is, so a qualifier that landed on a
+# historical row cannot be read back as success.
+cur.execute("""SELECT condition FROM dcp_setback_controls
+                WHERE id = 698 AND is_current = TRUE
+                  AND (needs_review IS NULL OR needs_review = FALSE)""")
 row = cur.fetchone()
 landed = bool(row) and row['condition'] == CONDITION_698
 ok = still_served == 0 and landed
