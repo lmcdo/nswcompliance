@@ -29,6 +29,13 @@ const getSupabase = () => createClient(
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
+// Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
+// default total system loss of 14.08% — inverter and wiring losses, soiling,
+// shading, mismatch, ageing. Mirrors services/solar_yield.py, which is the
+// authority; this constant exists only so an older payload without
+// annual_kwh_delivered cannot silently fall back to the DC figure.
+const DC_TO_DELIVERED    = 1 - 0.1408;
+
 const RETAIL_RATE        = 0.32;
 const FEED_IN_RATE       = 0.06;
 const SELF_CONSUME_RATIO = 0.30;
@@ -151,11 +158,21 @@ export async function POST(req: NextRequest) {
   ]);
 
   // Pre-compute ROI and grade (same formulas as the tool component)
-  const kwh        = Number(raw.annual_kwh_estimate ?? 0);
+  const kwhDc      = Number(raw.annual_kwh_estimate ?? 0);
   const maxPanels  = Number(raw.max_panels ?? 0);
   const pitch      = Number(raw.best_pitch_deg ?? 0);
   const azimuth    = Number(raw.best_azimuth_deg ?? 0);
   const sunHours   = Number(raw.sunshine_hours_per_year ?? 0);
+
+  // MONEY IS COMPUTED FROM DELIVERED ENERGY, NOT DC.
+  // Google Solar reports energy at the panel. Feeding that straight into the
+  // ROI overstated the annual saving by 16.4%, showed payback at 6.4 years
+  // against 7.5, and reported a ten-year return of $2,420 where the figure was
+  // $671 — the system cost is subtracted afterwards, so the whole error lands
+  // on the margin. The backend supplies annual_kwh_delivered; the fallback
+  // applies the same published NREL PVWatts default rather than silently
+  // reverting to DC if an older payload arrives.
+  const kwh = Number(raw.annual_kwh_delivered ?? kwhDc * DC_TO_DELIVERED);
 
   const roi   = calcROI(kwh, maxPanels);
   const grade = solarGrade(pitch, azimuth, sunHours);
@@ -169,7 +186,9 @@ export async function POST(req: NextRequest) {
     return { feed_in_rate: feedIn, annual_saving: Math.round(annualSaving), payback_years: paybackYears !== null ? Math.round(paybackYears * 10) / 10 : null };
   });
 
-  // Monthly kWh estimate from annual × NSW irradiance distribution
+  // Monthly delivered kWh from annual × NSW irradiance distribution. Uses the
+  // delivered figure so the twelve months sum to the number the money is based
+  // on — a monthly chart in DC beside an annual saving in AC would not add up.
   const monthly_kwh = kwh > 0
     ? MONTHLY_IRRADIANCE_SHARE.map((share) => Math.round(kwh * share))
     : null;
@@ -183,7 +202,12 @@ export async function POST(req: NextRequest) {
     lng: lng ?? 0,
     max_panels: maxPanels,
     max_panel_area_m2: Number(raw.max_panel_area_m2 ?? 0),
-    annual_kwh_estimate: kwh,
+    // Both, named for what they are. The report used to carry one number under
+    // this key while the money was computed from it, so a reader could not tell
+    // which basis they were looking at.
+    annual_kwh_estimate: kwhDc,
+    annual_kwh_delivered: Math.round(kwh),
+    delivery_basis: raw.delivery_basis ? String(raw.delivery_basis) : null,
     sunshine_hours_per_year: sunHours,
     best_pitch_deg: pitch,
     best_azimuth_deg: azimuth,

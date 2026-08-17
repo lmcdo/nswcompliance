@@ -1922,6 +1922,7 @@ function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
 
 interface SolarOutputs {
   max_panels?: number; max_panel_area_m2?: number; annual_kwh_estimate?: number;
+  annual_kwh_delivered?: number | null; delivery_basis?: string | null;
   sunshine_hours_per_year?: number; roof_area_m2?: number; is_heritage?: boolean;
   imagery_date?: string; coverage_available?: boolean;
   best_pitch_deg?: number; best_azimuth_deg?: number; is_commercial_scale?: boolean;
@@ -2007,7 +2008,21 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
           <div><dt className="text-xs text-slate-500">Panel capacity</dt><dd className="text-slate-900 tabular-nums">{o.max_panels.toLocaleString()} panels{o.max_panel_area_m2 != null ? ` (~${Math.round(o.max_panel_area_m2)} m²)` : ''}</dd></div>
         )}
         {o.annual_kwh_estimate != null && (
-          <div><dt className="text-xs text-slate-500">Calculated yield</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year</dd></div>
+          /* Delivered energy leads, because that is what a meter records.
+             Google Solar reports DC at the panel; showing that alone read as
+             expected output and overstated it by about 16%. Both are shown so
+             the basis is visible rather than implied. */
+          <div>
+            <dt className="text-xs text-slate-500">Calculated yield</dt>
+            <dd className="text-slate-900 tabular-nums">
+              {Math.round(o.annual_kwh_delivered ?? o.annual_kwh_estimate * (1 - 0.1408)).toLocaleString()} kWh/year delivered
+            </dd>
+            <dd className="text-xs text-slate-500 leading-snug mt-0.5">
+              {Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year at the panel (DC),
+              less 14% system losses — inverter and wiring, soiling, shading,
+              mismatch and ageing (NREL PVWatts v8 default).
+            </dd>
+          </div>
         )}
         {o.sunshine_hours_per_year != null && (
           <div><dt className="text-xs text-slate-500">Sunshine</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.sunshine_hours_per_year).toLocaleString()} hours/year</dd></div>

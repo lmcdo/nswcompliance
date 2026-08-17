@@ -30,7 +30,9 @@ export interface SolarYieldReportData {
   // outputs
   max_panels: number;
   max_panel_area_m2: number;
-  annual_kwh_estimate: number;
+  annual_kwh_estimate: number;              // DC at the panel, as Google reports it
+  annual_kwh_delivered?: number | null;     // after system losses — monetise THIS
+  delivery_basis?: string | null;
   sunshine_hours_per_year: number;
   best_pitch_deg: number;
   best_azimuth_deg: number;
@@ -228,6 +230,18 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 // Build findings (mirrors ReportCard logic from SolarYieldTool.tsx)
 // ---------------------------------------------------------------------------
 
+// Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
+// default total system loss of 14.08%. Mirrors services/solar_yield.py, which
+// is the authority; the fallback exists so a stored report written before this
+// field existed cannot silently present a DC number as delivered output.
+const DC_TO_DELIVERED = 1 - 0.1408;
+const LOSS_PCT = '14%';
+
+/** Delivered energy, from the payload if present, derived if not. */
+function deliveredKwh(data: SolarYieldReportData): number {
+  return data.annual_kwh_delivered ?? data.annual_kwh_estimate * DC_TO_DELIVERED;
+}
+
 function buildFindings(data: SolarYieldReportData): Finding[] {
   const findings: Finding[] = [];
 
@@ -274,13 +288,17 @@ function buildFindings(data: SolarYieldReportData): Finding[] {
     });
   }
 
-  // Annual output + dollar estimate
-  const annualDollar = Math.round(data.annual_kwh_estimate * 0.32);
+  // Annual output + dollar estimate.
+  // The headline is DELIVERED energy, because that is what the meter records
+  // and what the dollar figure beside it depends on. Google's DC figure is
+  // kept and named, so the reader can see both and check the basis.
+  const delivered = deliveredKwh(data);
+  const annualDollar = Math.round(delivered * 0.32);
   findings.push({
     label: 'Google Solar building analysis',
-    value: `${Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr from ${data.system_kw.toFixed(1)} kW system`,
-    detail: `Your roof can fit ${data.max_panels} panels (${data.max_panel_area_m2} m² of ${data.roof_area_m2} m² total roof area). At current retail rates, this output is worth roughly $${annualDollar.toLocaleString('en-AU')}/yr before feed-in adjustments.`,
-    severity: data.annual_kwh_estimate > 5000 ? 'green' : data.annual_kwh_estimate > 2000 ? 'amber' : 'red',
+    value: `${Math.round(delivered).toLocaleString('en-AU')} kWh/yr delivered from a ${data.system_kw.toFixed(1)} kW system`,
+    detail: `Your roof can fit ${data.max_panels} panels (${data.max_panel_area_m2} m² of ${data.roof_area_m2} m² total roof area). Google Solar reports ${Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr at the panel (DC); the figure above is what reaches the meter after ${LOSS_PCT} system losses — inverter and wiring, soiling, shading, panel mismatch and ageing (NREL PVWatts v8 default). At current retail rates the delivered output is worth roughly $${annualDollar.toLocaleString('en-AU')}/yr before feed-in adjustments. An installer's quote will state the figure for the specific hardware.`,
+    severity: delivered > 5000 ? 'green' : delivered > 2000 ? 'amber' : 'red',
   });
 
   // Sunshine hours
@@ -380,7 +398,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
               {data.solar_grade_reason}
             </Text>
             <Text style={{ fontSize: 8.5, color: GRAY_700 }}>
-              {data.system_kw.toFixed(1)} kW system · {data.max_panels} panels · {Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr
+              {data.system_kw.toFixed(1)} kW system · {data.max_panels} panels · {Math.round(deliveredKwh(data)).toLocaleString('en-AU')} kWh/yr delivered
             </Text>
           </View>
         </View>
@@ -488,7 +506,9 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
 
             {/* Battery upgrade callout */}
             {(() => {
-              const batteryAnnualSaving = data.annual_kwh_estimate * (0.80 * 0.32 + 0.20 * 0.06);
+              // Delivered, not DC — a battery can only store energy that
+              // actually reaches the meter.
+              const batteryAnnualSaving = deliveredKwh(data) * (0.80 * 0.32 + 0.20 * 0.06);
               const batteryPayback = batteryAnnualSaving > 0
                 ? (data.system_cost_aud + 12000) / batteryAnnualSaving
                 : null;

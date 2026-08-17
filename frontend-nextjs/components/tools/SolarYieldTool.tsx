@@ -24,7 +24,9 @@ const AerialTile = dynamic(
 interface SolarYieldOutputs {
   max_panels: number;
   max_panel_area_m2: number;
-  annual_kwh_estimate: number;
+  annual_kwh_estimate: number;             // DC at the panel, as Google reports it
+  annual_kwh_delivered?: number | null;    // after system losses — monetise THIS
+  delivery_basis?: string | null;
   sunshine_hours_per_year: number;
   best_pitch_deg: number;
   best_azimuth_deg: number;
@@ -58,6 +60,13 @@ type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
 
 const PANEL_WATTS        = 400;
 const RETAIL_RATE        = 0.32;   // $/kWh — matches solar-yield generate route
+// Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
+// default total system loss of 14.08% — inverter and wiring, soiling, shading,
+// mismatch, ageing. services/solar_yield.py is the authority; this fallback
+// only covers a payload written before the field existed, so a DC figure can
+// never be presented as delivered output.
+const DC_TO_DELIVERED    = 1 - 0.1408;
+const LOSS_PCT           = '14%';
 const FEED_IN_TARIFF     = 0.06;   // $/kWh
 const SELF_CONSUME_RATIO = 0.30;
 const COST_PER_WATT      = 1.00;   // $/W installed
@@ -395,12 +404,16 @@ function ReportCard({ report }: { report: ReportData }) {
     });
   }
 
-  // Annual output
+  // Annual output.
+  // The headline is DELIVERED energy — what the meter records — because the
+  // dollar figure beside it depends on it. Google's DC number is kept and
+  // named rather than dropped, so the basis is visible instead of implied.
+  const deliveredKwh = o.annual_kwh_delivered ?? o.annual_kwh_estimate * DC_TO_DELIVERED;
   findings.push({
     label: 'Google Solar building analysis',
-    value: `${Math.round(o.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr from ${systemKw.toFixed(1)} kW system`,
-    detail: `Your roof can fit ${o.max_panels} panels (${o.roof_area_m2.toLocaleString('en-AU')} m² usable area). At current retail rates, this output is worth roughly $${Math.round(o.annual_kwh_estimate * RETAIL_RATE).toLocaleString('en-AU')}/yr before feed-in adjustments.`,
-    severity: o.annual_kwh_estimate > 5000 ? 'green' : o.annual_kwh_estimate > 2000 ? 'amber' : 'red',
+    value: `${Math.round(deliveredKwh).toLocaleString('en-AU')} kWh/yr delivered from a ${systemKw.toFixed(1)} kW system`,
+    detail: `Your roof can fit ${o.max_panels} panels (${o.roof_area_m2.toLocaleString('en-AU')} m² usable area). Google Solar reports ${Math.round(o.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr at the panel (DC); the figure above is what reaches the meter after ${LOSS_PCT} system losses — inverter and wiring, soiling, shading, panel mismatch and ageing (NREL PVWatts v8 default). At current retail rates the delivered output is worth roughly $${Math.round(deliveredKwh * RETAIL_RATE).toLocaleString('en-AU')}/yr before feed-in adjustments. An installer's quote will state the figure for the specific hardware.`,
+    severity: deliveredKwh > 5000 ? 'green' : deliveredKwh > 2000 ? 'amber' : 'red',
   });
 
   // Sunshine hours
@@ -408,7 +421,12 @@ function ReportCard({ report }: { report: ReportData }) {
     label: 'Bureau of Meteorology — solar exposure data',
     value: `${o.sunshine_hours_per_year.toLocaleString('en-AU')} sunshine hours per year`,
     detail: o.sunshine_hours_per_year >= 1700
-      ? 'Above-average sunshine for NSW. Your panels will perform at or above nameplate capacity for much of the year.'
+      // "at or above nameplate capacity for much of the year" was false and is
+      // removed: a panel's nameplate rating is measured at 25°C cell
+      // temperature, and NSW roof cells run well above that whenever the sun is
+      // strong, so output sits BELOW nameplate in exactly the conditions the
+      // sentence claimed it would exceed it.
+      ? 'Above-average sunshine for NSW. More sunshine hours raise annual output, though panels produce below their nameplate rating whenever cell temperature is above 25°C — which is most of a NSW summer day.'
       : o.sunshine_hours_per_year >= 1500
       ? 'Typical sunshine hours for Sydney metro. Standard solar yield assumptions apply.'
       : 'Below-average sunshine hours. This could be due to local shading, coastal cloud, or valley fog. Factor this into your installer\'s yield estimate.',
@@ -595,7 +613,11 @@ function SolarLockedPreviewCard({
   outputs: SolarYieldOutputs;
 }) {
   const systemKw        = (outputs.max_panels * PANEL_WATTS) / 1000;
-  const annualKwh       = outputs.annual_kwh_estimate;
+  // Savings and payback come from DELIVERED energy. Using Google's DC figure
+  // here overstated the annual saving by 16% and understated payback by more
+  // than a year.
+  const annualKwh       = outputs.annual_kwh_delivered
+                          ?? outputs.annual_kwh_estimate * DC_TO_DELIVERED;
   const selfConsumed    = annualKwh * SELF_CONSUME_RATIO;
   const exported        = annualKwh * (1 - SELF_CONSUME_RATIO);
   const annualSavings   = (selfConsumed * RETAIL_RATE) + (exported * FEED_IN_TARIFF);
@@ -618,7 +640,7 @@ function SolarLockedPreviewCard({
     <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
       <div className="bg-amber-50 border-b border-amber-100 px-5 py-4">
         <p className="text-sm font-semibold text-amber-900 leading-snug">
-          {fmt(outputs.annual_kwh_estimate)} kWh / yr potential — see the full financial case
+          {fmt(annualKwh)} kWh / yr delivered — see the full financial case
         </p>
         <p className="text-xs text-amber-700 mt-1 leading-relaxed">
           Your installer will ask for panel count, system size, and payback period before quoting.
