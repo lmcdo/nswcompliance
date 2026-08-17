@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A new read-only check plus two ledger rows. It writes nothing and changes no served value. It is Standard rather than Minor because it OPENS RED on a live row, so it changes what the build says about production, and because its first version produced four false positives on served rows - the failure mode being guarded against is a flag list that trains you to ignore it.",
-  "commit_hash": "72c4876c",
+  "commit_hash": "a396ccf6",
   "files": [
     "scripts/check_control_subject_mismatch.py",
     "tests/test_control_subject_mismatch.py",
