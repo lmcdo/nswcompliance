@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Three guards against a session-behaviour failure that cost an hour on 2026-08-17. No product code and no served output changes - this is developer tooling. Standard rather than Minor because two of the three BLOCK a tool call, so a false positive would stop work, and because the whole point is that they must fire on the real case and not on ordinary commands.",
-  "commit_hash": "a0b06ead",
+  "commit_hash": "81f91d92",
   "files": [
     ".githooks/pre-push",
     ".claude/hooks/push-retry-needs-full-output.py",
