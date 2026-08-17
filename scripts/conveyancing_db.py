@@ -36,6 +36,40 @@ logger = logging.getLogger(__name__)
 # Clause normalisation
 # ---------------------------------------------------------------------------
 
+# A section_ref that is nothing but an instrument acronym is not a citation.
+# Measured on production 2026-08-17: 'LEP' on 18 served rows across 9 councils
+# and 'ADG' on 12 across 6. A planner reading "ADG" goes to the Apartment
+# Design Guide — a 200-page document — and does not find the control.
+#
+# The clause is NOT invented here. It lives in each council's LEP and in the
+# ADG, and choosing one would be the direction this repo bans: removing a false
+# claim cannot create one, choosing a value can. So the value stops pretending
+# to be resolvable and says what it actually is.
+_BARE_INSTRUMENT = {
+    "LEP": "Local Environmental Plan",
+    "ADG": "Apartment Design Guide",
+    "SEPP": "State Environmental Planning Policy",
+    "DCP": "Development Control Plan",
+    "BCA": "Building Code of Australia",
+}
+
+
+def cite_clause(section_ref: str | None) -> str:
+    """The reader-facing citation, or an honest statement that there isn't one.
+
+    Anything carrying structure — a number, a part, a table — is returned
+    untouched: 'part-c-table-cb' is imperfect but it tells a reader where to
+    look, and rewriting it would be a judgement per reference.
+    """
+    ref = (section_ref or "").strip()
+    if not ref:
+        return ""
+    name = _BARE_INSTRUMENT.get(ref.upper())
+    if name and ref.upper() == ref.strip().upper() and " " not in ref:
+        return f"{name} — no clause recorded"
+    return ref
+
+
 def normalise_clauses(raw: str) -> list[str]:
     """Parse portal Legislative Clause field into individual clause numbers.
 
@@ -470,7 +504,7 @@ def fetch_dcp_setbacks(
             "value_min":    float(vmin) if vmin is not None else None,
             "value_max":    float(vmax) if vmax is not None else None,
             "unit":         unit or "m",
-            "clause":       section_ref or "",
+            "clause":       cite_clause(section_ref),
             "notes":        condition or "",
             # Raw citation fields for the /pipeline/dcp-controls proxy (item
             # 5): TS consumers shape these; the guards stay HERE.
