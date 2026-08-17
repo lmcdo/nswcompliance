@@ -73,9 +73,9 @@ export function usableDelivered(v: unknown): number | null {
  */
 export function deliveredKwhFrom(dc: unknown, delivered: unknown): number | null {
   const d = usableDelivered(delivered);
-  if (d !== null) return d;
+  if (d != null) return d;
   const raw = usableDelivered(dc);
-  return raw === null ? null : raw * DC_TO_DELIVERED;
+  return raw == null ? null : raw * DC_TO_DELIVERED;
 }
 
 /**
@@ -92,7 +92,7 @@ export function deliveryBasisText(dc: unknown): string {
     `NREL PVWatts v8's ${(PVWATTS_SYSTEM_LOSS * 100).toFixed(2)}% system losses ` +
     `(soiling, shading, mismatch, wiring, ageing) and its separate ` +
     `${PVWATTS_INVERTER_EFFICIENCY * 100}% inverter efficiency`;
-  if (raw === null) {
+  if (raw == null) {
     return `Delivered output as supplied. Where it is derived, the gap from ` +
            `energy at the panel is about ${DELIVERED_LOSS_PCT}% — ${losses}.`;
   }
