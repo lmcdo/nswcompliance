@@ -85,6 +85,43 @@ class TestAbsenceStaysAbsence:
         assert cite_clause(ref) == ""
 
 
+class TestAPlanThatGovernsOneTownSaysSo:
+    """Wingecarribee publishes three town plans. All 30 served controls come
+    from BOWRAL's and are served shire-wide.
+
+    The numbers are NOT wrong — the three plans were hash-matched and Part C
+    Sections 2-4 are numerically identical. The citation is: it names a plan
+    that does not govern a Mittagong or Moss Vale property, and table numbers
+    differ between the plans, so it does not resolve there.
+    """
+
+    REF = "part-c-s2/C2.13.2(a)-Table-C2.2"      # 8 served rows
+    CH = "wingecarribee-bowral-town-plan"
+
+    def test_the_reference_survives(self):
+        """The clause number is the useful half and must not be lost."""
+        assert self.REF in cite_clause(self.REF, "wingecarribee", self.CH)
+
+    def test_it_names_the_plan_the_numbers_came_from(self):
+        assert "Bowral Town Plan" in cite_clause(self.REF, "wingecarribee", self.CH)
+
+    def test_it_states_what_holds_and_what_does_not(self):
+        out = cite_clause(self.REF, "wingecarribee", self.CH)
+        assert "identical" in out, "must say the NUMBERS carry across"
+        assert "table numbers differ" in out, "must say the CITATION does not"
+
+    def test_another_council_is_untouched(self):
+        """CONTROL. Only Wingecarribee publishes per-town plans; applying this
+        anywhere else would attach a caveat that is simply false."""
+        assert cite_clause("C1.1", "ashfield", "chapter-f-dev-category") == "C1.1"
+
+    def test_a_wingecarribee_ref_from_a_non_town_chapter_is_untouched(self):
+        assert cite_clause("C1.1", "wingecarribee", "part-a-general") == "C1.1"
+
+    def test_no_lga_means_no_caveat(self):
+        assert cite_clause(self.REF) == self.REF
+
+
 def test_the_rule_can_say_yes_and_no():
     """Control case.
 

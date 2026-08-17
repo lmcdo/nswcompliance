@@ -54,19 +54,52 @@ _BARE_INSTRUMENT = {
 }
 
 
-def cite_clause(section_ref: str | None) -> str:
-    """The reader-facing citation, or an honest statement that there isn't one.
+# Wingecarribee publishes its DCP as three town plans — Bowral, Mittagong and
+# Moss Vale — and all 30 served controls are extracted from BOWRAL's, then
+# served across the whole shire. The NUMBERS are not wrong: all three plans were
+# hash-matched and Part C Sections 2-4, which back every stored control, are
+# numerically identical (100/40/16 numeric tokens per section, zero differences
+# across all six pairwise comparisons). The defect is the CITATION — it names a
+# plan that does not govern a Mittagong or Moss Vale property, and table
+# numbering differs between the plans, so it does not resolve there.
+#
+# Saying so is the cheaper and truer of the two recorded options. The other —
+# match address to suburb to town plan — needs a suburb-to-plan mapping the
+# shire's own scoping does not publish for every suburb, and guessing one would
+# cite a different wrong plan.
+_SHARED_TOWN_PLANS = {
+    "wingecarribee": (
+        "Bowral Town Plan",
+        "Part C Sections 2-4 are numerically identical in the Mittagong and "
+        "Moss Vale town plans; table numbers differ between them",
+    ),
+}
 
-    Anything carrying structure — a number, a part, a table — is returned
-    untouched: 'part-c-table-cb' is imperfect but it tells a reader where to
+
+def cite_clause(
+    section_ref: str | None,
+    lga: str | None = None,
+    chapter_key: str | None = None,
+) -> str:
+    """The reader-facing citation, or an honest statement about its limits.
+
+    Anything carrying structure — a number, a part, a table — keeps its
+    reference: 'part-c-table-cb' is imperfect but it tells a reader where to
     look, and rewriting it would be a judgement per reference.
     """
     ref = (section_ref or "").strip()
     if not ref:
         return ""
+
     name = _BARE_INSTRUMENT.get(ref.upper())
     if name and ref.upper() == ref.strip().upper() and " " not in ref:
         return f"{name} — no clause recorded"
+
+    shared = _SHARED_TOWN_PLANS.get((lga or "").strip().lower())
+    if shared and "town-plan" in (chapter_key or ""):
+        plan, caveat = shared
+        return f"{ref} ({plan} — {caveat})"
+
     return ref
 
 
@@ -504,7 +537,7 @@ def fetch_dcp_setbacks(
             "value_min":    float(vmin) if vmin is not None else None,
             "value_max":    float(vmax) if vmax is not None else None,
             "unit":         unit or "m",
-            "clause":       cite_clause(section_ref),
+            "clause":       cite_clause(section_ref, lga_slug, source_chapter_key),
             "notes":        condition or "",
             # Raw citation fields for the /pipeline/dcp-controls proxy (item
             # 5): TS consumers shape these; the guards stay HERE.
