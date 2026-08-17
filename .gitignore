@@ -764,3 +764,7 @@ latent-scope-data/
 # machine is not a pre-commitment.
 !scripts/sample_structure_label_set.py
 !scripts/measure_structure_detection_recall.py
+
+# Per-branch push-attempt counter for push-retry-needs-full-output.py.
+# Session state, not repo state.
+.claude/.push-attempts.json
