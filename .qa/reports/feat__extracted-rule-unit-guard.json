@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Standard: a new blocking check over 8,340 served rules on the serve path. No writes, no schema change — it only reads and reports — but it is wired into the ledger, so a false positive here would block every build and a false negative would leave a thousandfold arithmetic error unwatched.",
+  "commit_hash": "bcbae929",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "scripts/check_extracted_rule_units.py",
+    "tests/test_extracted_rule_units.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_extracted_rule_units.py -q && python scripts/check_extracted_rule_units.py",
+    "fails_when": "any checkable rule stores a length its own quoted text contradicts.",
+    "observed_red": "WATCHED FAILING, NOT ASSERTED. The rule is pinned in both directions: inconsistency('600 mm', 600.0, 'm') returns a finding (the #968 misread) and inconsistency('600 mm', 0.6, 'm') returns None (the legitimate conversion), asserted together in test_the_rule_can_say_yes_and_no so a function stubbed to `return None` — which would report 0 over the whole table forever — cannot pass. THE FIRST VERSION OF THE CHECK WAS WRONG AND WAS CAUGHT BY MEASURING: comparing the stored UNIT against the unit in the text flagged 29 rows and every one was a legitimate conversion ('350mm wide' stored 0.35 m). Five of those exact rows are now regression fixtures.",
+    "measured": "Served: 8,104 provisions, 8,340 rules, 432 checkable, 0 inconsistent. All versions: 18,222 provisions, 18,961 rules, 1,101 checkable, 0 inconsistent."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.v2_extracted_rules (jsonb array). Each rule may carry raw_match, value_exact and unit — the text matched, the parsed number, and its unit.",
+    "reachability": "Read-only. Runs from the ledger, which gates.yml executes on every PR and data-watch.yml nightly.",
+    "measured_defect": "NONE FOUND, and that is the finding. #968 recorded 'values already persisted in v2_extracted_rules by the broken alternation are NOT re-derived here, so they stay wrong until a re-extraction runs.' Across every version, 1,101 checkable rules all agree with their own text. The 21 known bad values were in dcp_setback_controls and were repaired there.",
+    "assumption_mismatch": "The assumption worth testing was that the note was right and a re-derivation was owed. It was not: re-deriving 19,957 rows on the strength of that sentence would have rewritten the table to fix nothing, which is the CHOOSING-a-value direction that needs most care.",
+    "new_vs_existing": "Additive. Nothing else changes behaviour."
+  },
+  "functions": [
+    {
+      "name": "inconsistency",
+      "file_line": "scripts/check_extracted_rule_units.py:78",
+      "input": "raw_match text, stored value_exact, stored unit",
+      "output": "(stored_metres, expected_metres) when the row contradicts its own text, else None",
+      "why_it_changed": "new; pure so the thing that decides whether the build goes red does not need a database",
+      "if_none": "a missing value, missing text, or a non-length unit returns None — the check says nothing rather than guessing, and the run prints how many rules were checkable so silence is not read as coverage"
+    }
+  ],
+  "values": [
+    {
+      "value": "v2_extracted_rules[].value_exact",
+      "read_at": "scripts/check_extracted_rule_units.py:150",
+      "if_missing": "the rule is not checkable and is counted out of the denominator, never counted as consistent"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A unit alternation regresses so `m` precedes `mm` again.",
+      "what_happens": "'600 mm' records 600 metres — a thousandfold error in a value the product does arithmetic with.",
+      "covered_by": "DQ-83",
+      "repro": "python scripts/check_extracted_rule_units.py",
+      "mitigated": true,
+      "how": "the check compares stored metres against the text's number times its unit factor, so a misread is out by exactly the factor and cannot agree. Pinned by test_the_600mm_case_that_started_this."
+    },
+    {
+      "scenario": "The check is written against the unit LABEL rather than the arithmetic.",
+      "what_happens": "29 legitimate conversions flag as defects, the list is ignored, and a real mismatch survives inside it.",
+      "covered_by": "TestAcceptsLegitimateDerivation",
+      "repro": "python -m pytest tests/test_extracted_rule_units.py -q -k Legitimate",
+      "mitigated": true,
+      "how": "five of the 29 real rows are regression fixtures asserting they are NOT findings."
+    },
+    {
+      "scenario": "The function is stubbed, or the corpus becomes empty, and the check reports 0 forever.",
+      "what_happens": "a comfortable green over nothing — the exact shape this whole effort exists to remove.",
+      "covered_by": "test_the_rule_can_say_yes_and_no + the printed denominator",
+      "repro": "python scripts/check_extracted_rule_units.py",
+      "mitigated": true,
+      "how": "the control case asserts the rule both fires and stays silent on the same input pair, and every run prints CHECKABLE so a zero denominator is visible rather than implied."
+    },
+    {
+      "scenario": "A reader takes 0 INCONSISTENT as 'all extracted values are correct'.",
+      "what_happens": "only 432 of 8,340 served rules carry both a value and the text they came from; the rest are unexamined.",
+      "covered_by": "the run's own output",
+      "repro": "python scripts/check_extracted_rule_units.py",
+      "mitigated": true,
+      "how": "the denominator is printed with the explicit line that the remainder 'are not evidence of correctness'."
+    }
+  ],
+  "mutation_analysis": "The discriminating rule is pinned both ways in one test, so a `return None` stub — which would produce a permanently green check over the whole table — dies there rather than satisfying the file's many `is None` assertions. The false-positive class is pinned by five rows taken from the live table that the first version wrongly flagged.",
+  "residual_risk": "1) 7,908 of 8,340 served rules carry no value, no text, or a non-length unit and are outside this check entirely. It is a guard on lengths, not a warrant for the column. 2) Areas (m2) and rates (spaces per dwelling) are deliberately out of scope; the same arithmetic idea extends to them but each needs its own conversion table and its own false-positive review. 3) The check reads raw_match, which is what the extractor RECORDED as matching. If the extractor stored a raw_match that is not the text it actually parsed, this check would compare against a fiction and pass.",
+  "post_merge": {
+    "db_reset": "No",
+    "verify": "python scripts/check_extracted_rule_units.py (expect 0 of 432) and python scripts/dq_check.py",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
