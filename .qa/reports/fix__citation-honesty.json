@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "Changes a citation a conveyancer reads, on 60 of 967 served control rows: 30 that cite a bare instrument acronym and 30 Wingecarribee rows that cite one town's plan across a whole shire. Direction is one-way - a value that looked resolvable now states its limits. No number changes, nothing is stored, and no clause and no town mapping is invented.",
+  "commit_hash": "f8510cf6",
+  "files": [
+    "scripts/conveyancing_db.py",
+    "tests/test_cite_clause.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_cite_clause.py -q",
+    "fails_when": "NOT SELF-REFERENTIAL - the fixtures are section_ref values read out of the production table, and the rule has to SEPARATE them. It fails if 'LEP' or 'ADG' come back unchanged, and equally if 'part-c-table-cb', 'C1.1', '3.6.2.2' or 'lep-schedule-solar' come back rewritten. An empty ref must stay empty rather than becoming prose about an instrument nobody named.",
+    "observed_red": "Both mutants are killed by one line. A stub returning its input unchanged passes every test in TestAnythingWithStructureIsLeftALONE and fails test_the_rule_can_say_yes_and_no; a stub rewriting everything passes TestABareInstrumentIsNotACitation and fails the same test. Run against production afterwards: exactly 30 rows change, and the before and after were printed side by side for six of them rather than asserted.",
+    "external_authority": "The evidence is the production table, not this code: the counts come from dcp_setback_controls (18 rows 'LEP' across 9 councils, 12 'ADG' across 6), and the instrument names are the statutory titles - Local Environmental Plan, Apartment Design Guide - not labels chosen here."
+  },
+  "pre_impl": {
+    "existing_data": "967 served control rows. 66 across 29 distinct section_refs carry no locator. Of those, exactly 30 are a BARE INSTRUMENT ACRONYM matched by ^[A-Za-z]{2,4}$: 'LEP' (18 rows, 9 councils) and 'ADG' (12 rows, 6 councils). scripts/conveyancing_db.py:473 is the ONLY place section_ref becomes the reader-facing `clause` field, and its own comment says the guards stay there. Separately: all 30 wingecarribee served controls carry source_chapter_key = 'wingecarribee-bowral-town-plan', while dcp_chapter_registry lists Bowral, Mittagong and Moss Vale town plans, all is_active. DQ-66 records that the three were hash-matched and Part C Sections 2-4 are numerically identical (100/40/16 numeric tokens per section, zero differences across six pairwise comparisons), so the numbers hold and only the citation does not.",
+    "assumption_mismatch": "I first treated all 66 unlocatable refs as one problem. They are not. 'part-c-table-cb' (19 rows) names a part AND a table - imperfect, but it tells a reader where to look, and rewriting it would be a judgement per reference. Only the 30 bare acronyms name nothing at all. Treating the 66 as one class would have meant editing 36 references on no evidence, which is the false-positive trap this session hit twice already.",
+    "new_vs_existing": "One function and one call site in an existing module. No new file, no query change, no schema change, no write. Deliberately NO new DQ row: check_served_answer_quality.py already ratchets 'ref carries no locator', and that count does NOT fall here because the underlying gap is unchanged - only its presentation is honest. Adding a row would be a second tracker for one defect, which the DQ ledger explicitly forbids. The Wingecarribee half takes the CHEAPER of the two options the aim file records: state that the control is common to the three plans, rather than match address to suburb to plan. The shire's own scoping does not publish a suburb-to-plan mapping for every suburb, and guessing one would cite a different wrong plan."
+  },
+  "functions": [
+    {
+      "name": "cite_clause",
+      "file_line": "scripts/conveyancing_db.py",
+      "what": "Returns the reader-facing citation, or an honest statement that no clause was recorded when the reference is nothing but an instrument acronym.",
+      "input": "section_ref: the stored reference, possibly None or blank",
+      "output": "The reference unchanged when it carries structure; '<Instrument name> - no clause recorded' for a bare acronym; '' for an absent reference",
+      "if_none": "None and blank both return '' - absence stays absence. Turning an empty reference into prose would invent a claim about an instrument nobody named.",
+      "edge_cases": "Case-insensitive on the acronym, but only when the reference is the acronym ALONE: 'LEP Schedule 1' and 'lep-schedule-solar' both locate something and are returned untouched.",
+      "failure_mode": "At worst it leaves a weak citation weak. It cannot make a citation look more precise than it is, which is the only direction that would hurt a professional reader."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A planner reads a control cited as 'ADG' and opens the Apartment Design Guide to check it.",
+      "what_happens": "The ADG is a ~200-page statewide document. The citation names it and nothing else, so the reader searches and finds nothing, having been given something that looked like a reference. That is worse than a blank, because a blank makes no claim.",
+      "mitigated": true,
+      "how": "The value now reads 'Apartment Design Guide - no clause recorded'. The instrument is still named, so the reader keeps everything they had, and the missing half is stated instead of implied.",
+      "repro": "python -m pytest tests/test_cite_clause.py -k Bare -q"
+    },
+    {
+      "scenario": "The rule is applied to every reference that lacks a clause number.",
+      "what_happens": "36 references that DO carry structure get rewritten - 'part-c-table-cb' on 19 canada_bay rows names a part and a table. Rewriting them would remove a real locator and would be a per-reference judgement made on no evidence.",
+      "mitigated": true,
+      "how": "Only a reference that is the acronym ALONE is transformed. Nine structure-carrying references from the real table are fixtures asserting they come back unchanged, including 'lep-schedule-solar', which contains the acronym but locates something.",
+      "repro": "python -m pytest tests/test_cite_clause.py -k LEFT_ALONE -q"
+    },
+    {
+      "scenario": "A future edit reaches for the obvious fix and fills in a clause number.",
+      "what_happens": "A citation is manufactured. The real clause lives in each council's LEP and in the ADG; choosing one would be the direction this repo bans - removing a false claim cannot create one, choosing a value can.",
+      "mitigated": false,
+      "how": "Not mitigated by code, and stated rather than hidden: closing this properly means reading 9 councils' LEPs and the ADG and recording the clause each control came from. That is source work, and the count stays visible in check_served_answer_quality until it is done.",
+      "repro": "python scripts/check_served_answer_quality.py --baseline   # PROVENANCE line, unchanged at 75 by this PR"
+    },
+    {
+      "scenario": "A Moss Vale property is served a control cited to 'part-c-s2/C2.13.2(a)-Table-C2.2'. The reader opens the Moss Vale Town Plan.",
+      "what_happens": "Wingecarribee publishes three town plans and all 30 served controls are extracted from BOWRAL's. Table numbering differs between the plans, so the reference does not resolve and the reader concludes the control is invented. The NUMBERS are correct - all three plans were hash-matched and Part C Sections 2-4 are numerically identical - so the reader would be discarding a right answer over a wrong citation.",
+      "mitigated": true,
+      "how": "The reference keeps its clause number and gains what was actually verified: the plan it was read from, that Sections 2-4 are numerically identical in the other two, and that table numbers differ. A reader can act on all three facts.",
+      "repro": "python -m pytest tests/test_cite_clause.py -k OneTown -q"
+    },
+    {
+      "scenario": "The town-plan caveat is applied to a council that does not publish per-town plans, or to a Wingecarribee chapter that is not a town plan.",
+      "what_happens": "A false statement is attached to a correct citation - the opposite defect, and harder to spot because it reads as extra rigour.",
+      "mitigated": true,
+      "how": "Keyed on the council AND on the chapter key containing 'town-plan'. Wingecarribee is the only shire that publishes this way. Two control tests assert ashfield and a non-town Wingecarribee chapter come back untouched.",
+      "repro": "python -m pytest tests/test_cite_clause.py -k untouched -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No schema change and nothing written. Reverting the commit restores the previous strings exactly.",
+    "secrets": "None read, added or printed.",
+    "other_repo": "None.",
+    "watch": "The 'ref carries no locator' figure in check_served_answer_quality does NOT move - it is still 75, because the gap is real and only its presentation changed. If someone reports that number as improved by this PR, that is the misreading to correct.",
+    "owner": "compliance data",
+    "manual_verify": "Run a conveyancing report for a council with ADG-sourced controls (cumberland, georges_river, liverpool, penrith, randwick, sutherland_shire). Deep-soil and site-coverage rows must read 'Apartment Design Guide - no clause recorded' rather than 'ADG'. Then run a Wingecarribee report: setback and height rows must carry the clause number PLUS the Bowral-plan caveat, and an Ashfield report must carry no caveat at all."
+  }
+}
