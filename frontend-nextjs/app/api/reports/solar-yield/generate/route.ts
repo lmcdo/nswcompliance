@@ -30,11 +30,12 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 // Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
-// default total system loss of 14.08% — inverter and wiring losses, soiling,
-// shading, mismatch, ageing. Mirrors services/solar_yield.py, which is the
+// default total system loss of 14.08% AND, separately, 96% inverter
+// efficiency — the 14.08% does NOT include the inverter. Mirrors
+// services/solar_yield.py, which is the
 // authority; this constant exists only so an older payload without
 // annual_kwh_delivered cannot silently fall back to the DC figure.
-const DC_TO_DELIVERED    = 1 - 0.1408;
+const DC_TO_DELIVERED    = (1 - 0.1408) * 0.96;
 
 const RETAIL_RATE        = 0.32;
 const FEED_IN_RATE       = 0.06;
@@ -172,7 +173,12 @@ export async function POST(req: NextRequest) {
   // on the margin. The backend supplies annual_kwh_delivered; the fallback
   // applies the same published NREL PVWatts default rather than silently
   // reverting to DC if an older payload arrives.
-  const kwh = Number(raw.annual_kwh_delivered ?? kwhDc * DC_TO_DELIVERED);
+  // A finite positive number or nothing. `??` alone would accept '' (and
+  // Number('') is 0), serving zero yield and zero savings as if measured.
+  const rawDelivered = Number(raw.annual_kwh_delivered);
+  const kwh = Number.isFinite(rawDelivered) && rawDelivered > 0
+    ? rawDelivered
+    : kwhDc * DC_TO_DELIVERED;
 
   const roi   = calcROI(kwh, maxPanels);
   const grade = solarGrade(pitch, azimuth, sunHours);

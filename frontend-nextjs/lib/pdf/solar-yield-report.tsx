@@ -231,15 +231,22 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 // ---------------------------------------------------------------------------
 
 // Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
-// default total system loss of 14.08%. Mirrors services/solar_yield.py, which
-// is the authority; the fallback exists so a stored report written before this
+// default total system loss of 14.08% AND a separate 96% inverter
+// efficiency — the 14.08% does NOT include the inverter, which is why both
+// factors appear. Mirrors services/solar_yield.py, which is the authority; the fallback exists so a stored report written before this
 // field existed cannot silently present a DC number as delivered output.
-const DC_TO_DELIVERED = 1 - 0.1408;
-const LOSS_PCT = '14%';
+const DC_TO_DELIVERED = (1 - 0.1408) * 0.96;
+const LOSS_PCT = '18%';
 
 /** Delivered energy, from the payload if present, derived if not. */
 function deliveredKwh(data: SolarYieldReportData): number {
-  return data.annual_kwh_delivered ?? data.annual_kwh_estimate * DC_TO_DELIVERED;
+  // A finite positive number or nothing. `??` alone would accept '' from a
+  // drifted payload, and Number('') is 0 — a stored report would then render
+  // a real roof as producing nothing.
+  const d = Number(data.annual_kwh_delivered);
+  return Number.isFinite(d) && d > 0
+    ? d
+    : data.annual_kwh_estimate * DC_TO_DELIVERED;
 }
 
 function buildFindings(data: SolarYieldReportData): Finding[] {

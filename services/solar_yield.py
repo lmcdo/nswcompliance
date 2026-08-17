@@ -169,12 +169,22 @@ class SolarYieldRequest(BaseModel):
 # saving by 16.4%, shows payback at 6.4 years against 7.5, and reports a
 # ten-year return of $2,420 where the figure is $671 — 3.6x, because the system
 # cost is subtracted afterwards, so the whole error lands on the margin.
-PVWATTS_DEFAULT_SYSTEM_LOSS = 0.1408
-DC_TO_DELIVERED = 1.0 - PVWATTS_DEFAULT_SYSTEM_LOSS
+# TWO FACTORS, NOT ONE. PVWatts' 14.08% system loss does NOT include the
+# inverter — PVWatts models inverter efficiency as a SEPARATE parameter with a
+# default of 96%. The first version of this change applied only the 14.08% and
+# still overstated delivered output by about 4%, which adversarial review
+# caught. Both are needed to get from DC at the panel to AC at the meter.
+PVWATTS_DEFAULT_SYSTEM_LOSS = 0.1408      # soiling, shading, mismatch, wiring,
+                                          # connections, LID, nameplate, age,
+                                          # availability
+PVWATTS_INVERTER_EFFICIENCY = 0.96        # PVWatts default, DC -> AC conversion
+DC_TO_DELIVERED = (1.0 - PVWATTS_DEFAULT_SYSTEM_LOSS) * PVWATTS_INVERTER_EFFICIENCY
+DELIVERED_LOSS_PCT = round((1.0 - DC_TO_DELIVERED) * 100)   # 18
 DELIVERY_BASIS = (
     "Google Solar reports energy at the panel (DC). Delivered output applies "
-    "NREL PVWatts v8's published default total system loss of 14.08% — "
-    "inverter and wiring losses, soiling, shading, panel mismatch and ageing. "
+    "NREL PVWatts v8's two published defaults: 14.08% total system losses "
+    "(soiling, shading, panel mismatch, wiring, connections, ageing) and 96% "
+    "inverter efficiency for the DC-to-AC conversion — about 18% in total. "
     "An installer's quote will state the figure for the specific hardware."
 )
 

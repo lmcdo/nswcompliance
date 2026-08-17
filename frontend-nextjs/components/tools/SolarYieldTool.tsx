@@ -61,12 +61,13 @@ type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
 const PANEL_WATTS        = 400;
 const RETAIL_RATE        = 0.32;   // $/kWh — matches solar-yield generate route
 // Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
-// default total system loss of 14.08% — inverter and wiring, soiling, shading,
-// mismatch, ageing. services/solar_yield.py is the authority; this fallback
+// default total system loss of 14.08% AND a separate 96% inverter efficiency;
+// the 14.08% does NOT include the inverter. services/solar_yield.py is the
+// authority; this fallback
 // only covers a payload written before the field existed, so a DC figure can
 // never be presented as delivered output.
-const DC_TO_DELIVERED    = 1 - 0.1408;
-const LOSS_PCT           = '14%';
+const DC_TO_DELIVERED    = (1 - 0.1408) * 0.96;
+const LOSS_PCT           = '18%';
 const FEED_IN_TARIFF     = 0.06;   // $/kWh
 const SELF_CONSUME_RATIO = 0.30;
 const COST_PER_WATT      = 1.00;   // $/W installed
@@ -408,7 +409,10 @@ function ReportCard({ report }: { report: ReportData }) {
   // The headline is DELIVERED energy — what the meter records — because the
   // dollar figure beside it depends on it. Google's DC number is kept and
   // named rather than dropped, so the basis is visible instead of implied.
-  const deliveredKwh = o.annual_kwh_delivered ?? o.annual_kwh_estimate * DC_TO_DELIVERED;
+  const rawDelivered = Number(o.annual_kwh_delivered);
+  const deliveredKwh = Number.isFinite(rawDelivered) && rawDelivered > 0
+    ? rawDelivered
+    : o.annual_kwh_estimate * DC_TO_DELIVERED;
   findings.push({
     label: 'Google Solar building analysis',
     value: `${Math.round(deliveredKwh).toLocaleString('en-AU')} kWh/yr delivered from a ${systemKw.toFixed(1)} kW system`,
@@ -616,8 +620,10 @@ function SolarLockedPreviewCard({
   // Savings and payback come from DELIVERED energy. Using Google's DC figure
   // here overstated the annual saving by 16% and understated payback by more
   // than a year.
-  const annualKwh       = outputs.annual_kwh_delivered
-                          ?? outputs.annual_kwh_estimate * DC_TO_DELIVERED;
+  const rawDeliveredKwh = Number(outputs.annual_kwh_delivered);
+  const annualKwh       = Number.isFinite(rawDeliveredKwh) && rawDeliveredKwh > 0
+                          ? rawDeliveredKwh
+                          : outputs.annual_kwh_estimate * DC_TO_DELIVERED;
   const selfConsumed    = annualKwh * SELF_CONSUME_RATIO;
   const exported        = annualKwh * (1 - SELF_CONSUME_RATIO);
   const annualSavings   = (selfConsumed * RETAIL_RATE) + (exported * FEED_IN_TARIFF);

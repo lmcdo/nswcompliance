@@ -25,8 +25,10 @@ sys.path.insert(0, str(_ROOT))
 
 from services.solar_yield import (  # noqa: E402
     DC_TO_DELIVERED,
-    PVWATTS_DEFAULT_SYSTEM_LOSS,
+    DELIVERED_LOSS_PCT,
     DELIVERY_BASIS,
+    PVWATTS_DEFAULT_SYSTEM_LOSS,
+    PVWATTS_INVERTER_EFFICIENCY,
     delivered_kwh,
 )
 
@@ -43,11 +45,33 @@ class TestDeliveredIsAlwaysLessThanDC:
         publishes 14.08% total system losses. If a future edit nudges this, the
         test fails and the edit has to argue with the citation."""
         assert PVWATTS_DEFAULT_SYSTEM_LOSS == pytest.approx(0.1408)
-        assert DC_TO_DELIVERED == pytest.approx(0.8592)
+
+    def test_the_inverter_is_a_SEPARATE_factor(self):
+        """The correction adversarial review forced.
+
+        PVWatts' 14.08% does NOT include the inverter — PVWatts models inverter
+        efficiency as its own parameter, default 96%. The first version of this
+        change applied only the 14.08% and still overstated delivered output by
+        about 4%. Both factors are required to get from DC at the panel to AC
+        at the meter, and this pins that they are BOTH applied rather than one
+        quietly standing in for the pair.
+        """
+        assert PVWATTS_INVERTER_EFFICIENCY == pytest.approx(0.96)
+        assert DC_TO_DELIVERED == pytest.approx(0.8592 * 0.96)
+        assert DC_TO_DELIVERED < 1.0 - PVWATTS_DEFAULT_SYSTEM_LOSS, (
+            "the inverter factor is not being applied — this is the exact "
+            "regression that leaves delivered output ~4% too high"
+        )
+
+    def test_the_stated_percentage_matches_the_arithmetic(self):
+        """The copy says 'about 18%'. If the factors change and the sentence
+        does not, the number and the words disagree on the same screen."""
+        assert DELIVERED_LOSS_PCT == 18
+        assert "18%" in DELIVERY_BASIS
 
     def test_the_worked_case_that_started_this(self):
         dc = 9000.0
-        assert delivered_kwh(dc) == pytest.approx(7732.8, abs=0.1)
+        assert delivered_kwh(dc) == pytest.approx(7423.5, abs=0.5)
 
 
 class TestAbsenceStaysAbsent:
@@ -95,18 +119,42 @@ class TestTheFrontendMirrorsCannotDiverge:
         "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     ]
 
-    def test_every_mirror_carries_the_authority_figure(self):
+    def test_every_mirror_carries_BOTH_authority_figures(self):
+        """Both, because one alone is the bug that shipped in the first draft:
+        14.08% without the inverter leaves delivered output ~4% too high."""
         loss = f"{PVWATTS_DEFAULT_SYSTEM_LOSS}"          # "0.1408"
+        inv = f"{PVWATTS_INVERTER_EFFICIENCY}"           # "0.96"
         missing = []
         for rel in self.MIRRORS:
             p = _ROOT / rel
             assert p.exists(), f"{rel} moved — update this list, do not delete it"
-            if loss not in p.read_text(encoding="utf-8", errors="replace"):
-                missing.append(rel)
+            text = p.read_text(encoding="utf-8", errors="replace")
+            absent = [f for f in (loss, inv) if f not in text]
+            if absent:
+                missing.append(f"{rel} (missing {absent})")
         assert not missing, (
-            f"these surfaces no longer carry the {loss} system-loss figure from "
-            f"services/solar_yield.py, so they are presenting a different basis "
-            f"than the backend: {missing}"
+            f"these surfaces no longer carry both the {loss} system-loss and "
+            f"{inv} inverter figures from services/solar_yield.py, so they are "
+            f"presenting a different basis than the backend: {missing}"
+        )
+
+    def test_no_mirror_uses_the_system_loss_alone(self):
+        """CONTROL for the above. `(1 - 0.1408)` NOT followed by the inverter
+        factor is precisely the first-draft defect, and a file could satisfy
+        the presence test above by mentioning 0.96 in an unrelated line."""
+        import re
+        bad = []
+        for rel in self.MIRRORS:
+            text = (_ROOT / rel).read_text(encoding="utf-8", errors="replace")
+            for n, line in enumerate(text.splitlines(), 1):
+                s = line.strip()
+                if s.startswith(("//", "*", "/*")):
+                    continue
+                if re.search(r"\(\s*1\s*-\s*0\.1408\s*\)", s) and "0.96" not in s:
+                    bad.append(f"{rel}:{n}")
+        assert not bad, (
+            "system loss applied without the inverter factor — delivered output "
+            "is ~4% too high on these lines: " + str(bad)
         )
 
     def test_no_surface_still_monetises_the_dc_figure_directly(self):
@@ -163,4 +211,7 @@ def test_the_rule_can_say_yes_and_no():
     place, in both directions.
     """
     assert delivered_kwh(1000.0) != 1000.0          # it must actually derate
-    assert delivered_kwh(1000.0) == pytest.approx(1000.0 * DC_TO_DELIVERED)
+    # abs=0.05 because the function rounds to 0.1 kWh; the tolerance is the
+    # rounding step, not slack that would let a wrong factor through — 0.05 kWh
+    # is far tighter than the 4% the missing inverter factor cost.
+    assert delivered_kwh(1000.0) == pytest.approx(1000.0 * DC_TO_DELIVERED, abs=0.05)

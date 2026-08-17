@@ -1,7 +1,7 @@
 {
   "tier": "critical",
-  "justification": "Every dollar figure the solar product shows changes. The served annual kWh was Google's DC energy at the panel and was being monetised directly, so annual saving, payback, ten-year return, the battery case and the monthly chart were all computed from a number roughly 16% higher than what a meter records. Direction matters: this only ever REMOVES an overstatement, and the correction factor is a published NREL PVWatts default rather than a value chosen here.",
-  "commit_hash": "26e5c054",
+  "justification": "Every dollar figure the solar product shows changes. The served annual kWh was Google's DC energy at the panel and was being monetised directly, so annual saving, payback, ten-year return, the battery case and the monthly chart were all computed from a number 21% higher than what a meter records. Direction matters: this only ever REMOVES an overstatement, and both correction factors are published NREL PVWatts defaults rather than values chosen here.",
+  "commit_hash": "7841c71e",
   "files": [
     "services/solar_yield.py",
     "frontend-nextjs/app/api/reports/solar-yield/generate/route.ts",
@@ -13,12 +13,12 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_solar_delivered_vs_dc.py -q",
     "fails_when": "NOT SELF-REFERENTIAL, and the reason is the pass criterion: a figure this project does not produce and cannot influence. NREL PVWatts v8 publishes 14.08% as its default total system loss; the test asserts our constant EQUALS that published figure, so an edit that tunes it to flatter the product fails against the outside number, not against our own output. Nothing re-executes the code and checks it agrees with itself. Second, the mirror-parity test reads four TypeScript FILES the test does not own and asserts the same external figure appears in each - so a frontend edit that reverts the basis fails a PYTHON test, crossing a language boundary no import can police. It fails when: delivered_kwh returns its input unchanged; the constant moves off 0.1408; any of the four mirrors stops carrying it; or a money expression multiplies a rate by annual_kwh_estimate again. That last rule is pinned by a control fed the exact line the code USED to carry and the line it carries NOW - it must reject one and accept the other, so a rule that could only ever pass fails it.",
-    "observed_red": "Observed twice, not asserted. (1) The drift guard's FIRST version fired on a real line and was WRONG: it asked whether annual_kwh_estimate and RETAIL_RATE appeared on the same line, and flagged a template literal that correctly prints the DC figure as context while computing the dollar from delivered. Co-occurrence is not the defect; the multiplication is. Tightened to the multiplication and re-run: 46 pass. (2) test_that_guard_can_actually_fire pins the corrected rule against the exact line the code used to carry and the exact line it carries now - it must match the first and not the second, so a rule that could only ever pass fails this test.",
+    "observed_red": "Observed twice, not asserted. (1) The drift guard's FIRST version fired on a real line and was WRONG: it asked whether annual_kwh_estimate and RETAIL_RATE appeared on the same line, and flagged a template literal that correctly prints the DC figure as context while computing the dollar from delivered. Co-occurrence is not the defect; the multiplication is. Tightened to the multiplication and re-run: 46 pass. (2) test_that_guard_can_actually_fire pins the corrected rule against the exact line the code used to carry and the exact line it carries now - it must match the first and not the second, so a rule that could only ever pass fails this test. (3) Adversarial review then failed the change itself, twice, and both were real: the missing inverter factor, and '' defeating nullish coalescing. The guard now pins both.",
     "external_authority": "The 14.08% is NREL PVWatts v8's published default total system loss (soiling, shading, mismatch, wiring, connections, light-induced degradation, nameplate rating, age, availability). Not our number, and cited at every one of the five places it appears so a reader can check it against the source rather than take ours."
   },
   "pre_impl": {
     "existing_data": "services/solar_yield.py sums Google Solar's per-panel yearlyEnergyDcKwh - DC energy at the panel. services/CLAUDE.md already records that this module is a Google pass-through and that neither pvlib nor PVGIS is called. A grep for DC, inverter and yearlyEnergyDc across frontend-nextjs/app/reports and components returned nothing relevant: the DC basis was stated NOWHERE on any served surface.",
-    "assumption_mismatch": "TWO. (1) I had recorded solar as a pure pass-through that cannot be checked at all. Reading the code, _clip_panels_to_lot filters Google's panels to our own cadastral boundary and recomputes counts, area and yield - that part is OUR computation, it is checkable, and it is already tested. (2) The bigger one: I proposed labelling the kWh as the fix. Labelling alone would have left every dollar figure wrong, because the DC number feeds calcROI. The label was the visible symptom, not the defect.",
+    "assumption_mismatch": "TWO. (1) I had recorded solar as a pure pass-through that cannot be checked at all. Reading the code, _clip_panels_to_lot filters Google's panels to our own cadastral boundary and recomputes counts, area and yield - that part is OUR computation, it is checkable, and it is already tested. (2) The bigger one: I proposed labelling the kWh as the fix. Labelling alone would have left every dollar figure wrong, because the DC number feeds calcROI. The label was the visible symptom, not the defect. (3) THIRD, and found by review of my own first commit: I treated PVWatts' 14.08% as the whole DC-to-AC conversion. It is not - PVWatts models inverter efficiency as a separate parameter with a 96% default, and the 14.08% excludes it. My first correction was itself ~4% short.",
     "new_vs_existing": "No new file, no new API, no new table, no new dependency. One function and two fields added to an existing module; four existing render sites changed to read the delivered field. The alternative - converting at each render site - was rejected because the factor would then live in four places with no authority, which is the drift the guard now blocks.",
     "external_source_error": "If Google returns no yield, annual_kwh_delivered is None rather than 0.0, so an absent figure stays absent. A zero would render as a real roof that generates nothing, which is a wrong answer wearing a number.",
     "frontend_type": "annual_kwh_delivered is Optional[float] in pydantic and number-or-null in TypeScript, so a stored report written before this field existed deserialises cleanly. Each surface falls back to annual_kwh_estimate times DC_TO_DELIVERED rather than to the raw DC figure - the fallback preserves the basis instead of silently reverting it, which is the boundary a bare null-coalesce would have got wrong.",
@@ -38,7 +38,7 @@
   ],
   "values": [
     {
-      "value": "Worked on the route's own constants for a 20-panel roof at 9,000 kWh DC: annual saving $1,242 to $1,067 (16.4% overstated), payback 6.4 yr to 7.5 yr, ten-year return $2,420 to $671.",
+      "value": "Worked on the route's own constants for a 20-panel roof at 9,000 kWh DC: annual saving $1,242 to $1,024 (21.2% overstated), payback 6.4 yr to 7.8 yr, ten-year return $2,420 to $244 - nearly tenfold.",
       "read_at": "Recomputed with RETAIL_RATE 0.32, FEED_IN_RATE 0.06, SELF_CONSUME_RATIO 0.30, COST_PER_WATT 1.00, PANEL_WATTS 400 and INVERTER_REPLACE 2000 as declared in the solar-yield generate route, 2026-08-17",
       "if_missing": "The fix would have been argued as a labelling nicety. The ten-year figure being 3.6x out is what made it a critical-tier change rather than a copy edit."
     },
@@ -46,6 +46,11 @@
       "value": "0 occurrences of DC, inverter or yearlyEnergyDc anywhere in the served frontend",
       "read_at": "Case-insensitive grep over frontend-nextjs/app/reports and frontend-nextjs/components, 2026-08-17 - the only hit was an unrelated parseAlternatingLineTable in a compliance panel",
       "if_missing": "Without this the claim that nothing says DC would rest on memory. It is the evidence that the basis was not merely under-explained but absent."
+    },
+    {
+      "value": "PVWatts applies TWO factors, not one: 14.08% system losses AND 96% inverter efficiency, giving 0.8248 rather than 0.8592.",
+      "read_at": "NREL PVWatts v8 parameter documentation - system losses and inverter efficiency are separate inputs with separate defaults. Raised by adversarial review of the first commit on this branch, 2026-08-17.",
+      "if_missing": "The first version of this fix applied only the system loss and still overstated delivered output by about 4%. A correction that is itself short is worse than none, because the caveat then vouches for it."
     }
   ],
   "queries": [
@@ -98,10 +103,24 @@
       "mitigated": true,
       "how": "Both numbers are shown and named: Google's DC figure at the panel, the delivered figure, the percentage between them, what the losses are, and whose default it is. The copy ends by pointing at the installer's quote as the figure for the specific hardware.",
       "repro": "python -m pytest tests/test_solar_delivered_vs_dc.py -k Basis -q"
+    },
+    {
+      "scenario": "A payload arrives with annual_kwh_delivered set to an empty string during schema drift, rather than null.",
+      "what_happens": "Nullish coalescing only catches null and undefined. '' passes straight through, Number('') is 0, and the report serves zero yield, zero savings and no monthly output - presented as a measurement of a real roof.",
+      "mitigated": true,
+      "how": "Every read now demands a finite positive number before trusting the field, and falls back to the derived figure otherwise. Applied at all four surfaces, not just the route.",
+      "repro": "search the four surfaces for Number.isFinite - each delivered read is guarded before use"
+    },
+    {
+      "scenario": "Someone applies the 14.08% system loss without the 96% inverter efficiency, as the first commit on this branch did.",
+      "what_happens": "Delivered output stays about 4% too high, every dollar figure inherits it, and the copy claiming an honest basis now vouches for the residue.",
+      "mitigated": true,
+      "how": "test_the_inverter_is_a_SEPARATE_factor asserts DC_TO_DELIVERED is strictly below the system-loss-only figure, and test_no_mirror_uses_the_system_loss_alone rejects any line applying (1 - 0.1408) without 0.96 beside it.",
+      "repro": "python -m pytest tests/test_solar_delivered_vs_dc.py -k inverter -q"
     }
   ],
   "mutation_analysis": "Mutated in the direction that matters. Setting DC_TO_DELIVERED to 1.0 - the change that silently reinstates the defect - fails test_strictly_lower_for_any_positive_input, test_the_factor_is_the_published_pvwatts_default and the control case. Making delivered_kwh return its input unchanged while leaving the constant alone would slip past a test that only reads the constant, which is why test_the_rule_can_say_yes_and_no pins the BEHAVIOUR and the CONSTANT together in one place. The mirror-parity guard was itself mutated by accident: its first version flagged a correct line, which is the false-positive failure mode, and it was tightened rather than deleted.",
-  "residual_risk": "The 14.08% is a NATIONAL-SCALE DEFAULT, not this roof. Real system losses vary with inverter model, string layout, local soiling and shading, and a specific installation can sit either side of it. This change does not make the yield figure correct for a given house - it makes it correct about WHICH QUESTION IT ANSWERS, and says so, pointing at the installer's quote for the hardware-specific number. The underlying yield is still Google's model and remains unvalidated against metered generation; that ceiling is recorded in the product assurance position and this change does not lift it. RETAIL_RATE 0.32 and FEED_IN_RATE 0.06 are hardcoded and untouched here - they carry an AER citation in the PDF footer but no freshness check, and they go stale silently. Not in scope, deliberately, but a real second-order exposure on the same numbers.",
+  "residual_risk": "Both factors are NATIONAL-SCALE DEFAULTS, not this roof. Real system losses vary with inverter model, string layout, local soiling and shading, and a specific installation can sit either side of it. This change does not make the yield figure correct for a given house - it makes it correct about WHICH QUESTION IT ANSWERS, and says so, pointing at the installer's quote for the hardware-specific number. The underlying yield is still Google's model and remains unvalidated against metered generation; that ceiling is recorded in the product assurance position and this change does not lift it. RETAIL_RATE 0.32 and FEED_IN_RATE 0.06 are hardcoded and untouched here - they carry an AER citation in the PDF footer but no freshness check, and they go stale silently. Not in scope, deliberately, but a real second-order exposure on the same numbers.",
   "post_merge": {
     "db_reset": "No schema change and nothing written. Reverting the commit restores the previous behaviour exactly; no stored report is modified by this change, so there is nothing to roll back in the database.",
     "secrets": "None added, read or printed.",

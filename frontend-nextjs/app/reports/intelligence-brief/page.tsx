@@ -2015,12 +2015,17 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
           <div>
             <dt className="text-xs text-slate-500">Calculated yield</dt>
             <dd className="text-slate-900 tabular-nums">
-              {Math.round(o.annual_kwh_delivered ?? o.annual_kwh_estimate * (1 - 0.1408)).toLocaleString()} kWh/year delivered
+              {Math.round(
+                Number.isFinite(Number(o.annual_kwh_delivered)) && Number(o.annual_kwh_delivered) > 0
+                  ? Number(o.annual_kwh_delivered)
+                  : o.annual_kwh_estimate * (1 - 0.1408) * 0.96
+              ).toLocaleString()} kWh/year delivered
             </dd>
             <dd className="text-xs text-slate-500 leading-snug mt-0.5">
               {Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year at the panel (DC),
-              less 14% system losses — inverter and wiring, soiling, shading,
-              mismatch and ageing (NREL PVWatts v8 default).
+              less about 18% — NREL PVWatts v8's 14.08% system losses (soiling,
+              shading, mismatch, wiring, ageing) and its separate 96%
+              inverter efficiency.
             </dd>
           </div>
         )}
