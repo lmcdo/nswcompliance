@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Three guards against a session-behaviour failure that cost an hour on 2026-08-17. No product code and no served output changes - this is developer tooling. Standard rather than Minor because two of the three BLOCK a tool call, so a false positive would stop work, and because the whole point is that they must fire on the real case and not on ordinary commands.",
+  "commit_hash": "81f91d92",
+  "files": [
+    ".githooks/pre-push",
+    ".claude/hooks/push-retry-needs-full-output.py",
+    ".claude/hooks/no-unreferenced-new-file.py",
+    ".claude/settings.json",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "TOOL_INPUT='{\"command\":\"git push 2>&1 | grep error\"}' python .claude/hooks/push-retry-needs-full-output.py   (twice, then unfiltered)",
+    "fails_when": "NOT SELF-REFERENTIAL: each guard is exercised against the ACTUAL files and commands from the incident, and required to separate them. The new-file guard must BLOCK frontend-nextjs/scripts/verify-solar-delivered.tsx (the throwaway that was committed) while ALLOWING frontend-nextjs/lib/solar/delivered.ts, scripts/check_control_subject_mismatch.py and scripts/fixes/dq84_exclude_misfiled_controls.py - all real, all created the same day. A guard that blocks all four, or none, fails. The retry guard must allow the first filtered push, block the second at the same unpushed sha, and allow an unfiltered one.",
+    "observed_red": "Observed in both directions, not asserted. New-file guard, run against the four real files: 4 of 4 correct. Its FIRST version was wrong and was caught this way - searching for the bare stem, it passed lib/solar/delivered.ts because two January strategy documents under .claude/docs/history/ contain the word 'delivered'. A guard satisfied by prose is not looking for a caller; tightened to the basename and the parent/stem import path. Retry guard: attempt 1 filtered exits 0, attempt 2 at the same sha exits 2 with the message, an unfiltered push exits 0. Both guards exit 0 on `ls -la`.",
+    "external_authority": "The evidence is the repository, not this code: git grep decides whether anything references a file, and the remote-tracking ref decides whether the previous push landed. Neither is a claim the hook makes about itself, which is the point - the escape the prior-art guard offers is a written sentence, and that sentence was supplied three times on 08-17 while the habit continued."
+  },
+  "pre_impl": {
+    "existing_data": "The Sol round cap ALREADY EXISTED at 3, added by #967 on 2026-08-16. Its counter for fix/solar-dc-vs-delivered read 1 - so the reviewer blocked ONCE and the cap never fired. Meanwhile 5 of that branch's 9 commits were `chore(qa): restamp`. The cap was not the binding constraint, and lowering it alone would not have prevented the incident.",
+    "assumption_mismatch": "The whole diagnosis was wrong twice. First I blamed the adversarial reviewer for looping; the counter says it blocked once. Then I blamed the QA-report stamp treadmill; that was real but not what failed the pushes either. The actual cause was that every push command ended in `| grep -aE 'error:|QA-GATE: FAILED'`, which printed the failure HEADER and cut off the line beneath it naming the error - a single `=== null`. Six attempts on a filter that could only confirm my own hypothesis.",
+    "new_vs_existing": "Two new hook files, both wired into the existing PreToolUse[Bash] chain beside pre-commit-gate.py rather than into a new mechanism. The cap change is one number in an existing block. Deliberately NOT a written rule: prose guidance was given and broken four times the same day, and the repo's own memory records that prose rules fail within hours while gated ones hold."
+  },
+  "functions": [
+    {
+      "name": "main (push-retry-needs-full-output.py)",
+      "file_line": ".claude/hooks/push-retry-needs-full-output.py",
+      "what": "Counts push attempts per branch and HEAD sha, and blocks a SECOND attempt at the same unpushed sha when the command filters its own output.",
+      "input": "TOOL_INPUT env var, JSON carrying the Bash command about to run",
+      "output": "exit 0 to allow, exit 2 to block with a message on stderr",
+      "if_none": "If the branch, HEAD or repo root cannot be resolved it exits 0. It never blocks on ignorance - a guard that fires when it cannot tell gets switched off.",
+      "edge_cases": "`cd \"<path>\" && git push` is resolved to that directory, because this repo runs everything from worktrees and reading the session's project dir would count another branch's attempts. --no-verify is left alone: an explicit emergency bypass is its own decision. The counter resets when origin/<branch> contains HEAD, so a successful push clears it.",
+      "failure_mode": "At worst it asks for one unfiltered push. It cannot let a bad push through, because it never permits anything the other hooks would refuse."
+    },
+    {
+      "name": "main (no-unreferenced-new-file.py)",
+      "file_line": ".claude/hooks/no-unreferenced-new-file.py",
+      "what": "Blocks `git commit` when a newly ADDED file is named nowhere else in the repository - the signature of a file written to answer a question rather than to change the product.",
+      "input": "TOOL_INPUT env var; reads the staged add-list from git",
+      "output": "exit 0 to allow, exit 2 listing the unreferenced files",
+      "if_none": "No staged additions, or none outside the exempt paths, exits 0.",
+      "edge_cases": "Tests, migrations, docs, .qa/, .claude/, .github/ and data-ish suffixes are exempt - they are found by convention, not by being named, and blocking them would make the hook fire on ordinary work. The search deliberately excludes .claude/docs/history/, whose archived prose made the first version pass a file on the word 'delivered'. A QA report mentioning the script it was written for does not count as a caller.",
+      "failure_mode": "A genuinely new module committed BEFORE its first caller is blocked. That is the intended trade: give it a caller, or a ledger entry, in the same commit. The remedy is stated in the message."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A push fails, and the retry is run with the same output filter that hid the reason the first time.",
+      "what_happens": "This is the incident. Six attempts, each showing 'QA-GATE: FAILED' and cutting off the line that named the error, each followed by a fix for the wrong thing.",
+      "mitigated": true,
+      "how": "The second attempt at the same unpushed sha is blocked when the command pipes to grep/head/tail/awk/sed. The message names the command and tells the operator to re-run it bare, or to ask the gate directly.",
+      "repro": "TOOL_INPUT='{\"command\":\"git push | grep error\"}' python .claude/hooks/push-retry-needs-full-output.py   # run twice"
+    },
+    {
+      "scenario": "The guard fires on the first push of every branch, or on ordinary commands.",
+      "what_happens": "It becomes noise, and a hook that fires constantly gets bypassed - which this repo has already recorded as the reason the Sol block is scoped narrowly rather than applied to everything.",
+      "mitigated": true,
+      "how": "Only a REPEATED attempt at the same sha is blocked, and only when the command actually filters. Verified: `ls -la` exits 0, the first filtered push exits 0, an unfiltered push always exits 0.",
+      "repro": "TOOL_INPUT='{\"command\":\"ls -la\"}' python .claude/hooks/push-retry-needs-full-output.py"
+    },
+    {
+      "scenario": "A real new module is committed and the new-file guard blocks it - for example lib/solar/delivered.ts, or a DQ check script.",
+      "what_happens": "Legitimate work is stopped and the guard gets disabled.",
+      "mitigated": true,
+      "how": "Tested against the four real files created on 08-17: the throwaway is blocked, the shared module (imported by four surfaces) and the two check scripts (named in .claude/dq_checks.json) are allowed. 4 of 4. A new module committed with its caller, or a check committed with its ledger row, passes - because git grep reads the working tree, so the staged reference is already visible.",
+      "repro": "on fix/solar-dc-vs-delivered: stage the shared solar module and commit - allowed; stage frontend-nextjs/scripts/verify-solar-delivered.tsx - blocked"
+    },
+    {
+      "scenario": "Someone assumes the lowered Sol cap is what fixes the looping.",
+      "what_happens": "The wrong lever gets pulled again. Measured on the branch in question: the Sol counter was 1, and the repeated cycle was output filtering plus the QA restamp, neither of which the cap touches.",
+      "mitigated": true,
+      "how": "The cap block in .githooks/pre-push now carries that measurement inline, so the next person to look at the number reads what it did and did not cause before changing it.",
+      "repro": "read the round-cap comment in .githooks/pre-push"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No database access, no schema change, nothing written.",
+    "secrets": "None read, added or printed.",
+    "other_repo": "None.",
+    "watch": "If either guard blocks work that is plainly legitimate, say so rather than working around it - a bypassed guard is worse than none, and the exemption lists in both files are meant to be extended.",
+    "owner": "tooling",
+    "manual_verify": "Run the two repro commands above. The retry guard must allow, then block, then allow-unfiltered. For the new-file guard, the four files it was calibrated on live on OTHER branches (fix/solar-dc-vs-delivered and fix/control-subject-mismatch), so re-run it there: it must block verify-solar-delivered.tsx and allow the shared solar module plus both DQ check scripts."
+  }
+}

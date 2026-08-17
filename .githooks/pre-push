@@ -490,12 +490,22 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
         python scripts/cross_review.py --adjudicated "$SOL_ADJUDICATED" \
           --record-verdict "$SOL_OVERRIDE" || true
         echo "   (repeat it in the PR body — this record is local and per-branch)"
-      elif [ "$SOL_ROUND_N" -ge 3 ]; then
+      elif [ "$SOL_ROUND_N" -ge 2 ]; then
         # ── The round cap ───────────────────────────────────────────────────
-        # Three blocked pushes on one branch is no longer a review finding
-        # defects, it is a loop. Keep blocking, but stop implying that another
-        # fix round will clear it: make the human decision explicit instead of
-        # something that emerges after an hour of grinding.
+        # LOWERED 3 -> 2 on 2026-08-17, by the operator, after a session spent
+        # an hour on fix/solar-dc-vs-delivered grinding through five rounds of
+        # findings. Two blocked pushes on one branch is no longer a review
+        # finding defects, it is a loop. Keep blocking, but stop implying that
+        # another fix round will clear it: make the human decision explicit
+        # instead of something that emerges after an hour of grinding.
+        #
+        # ⚠ THE CAP WAS NOT THE BINDING CONSTRAINT IN THAT SESSION, and lowering
+        # it will not on its own prevent a repeat. Measured afterwards: Sol
+        # blocked ONCE (the .rounds file read 1), while 5 of the branch's 9
+        # commits were `chore(qa): restamp`. The multiplier was the QA report
+        # stamp — every fix commit staled it, the gate then refused the push,
+        # and clearing that took another commit which staled it again. Look
+        # there before assuming this counter is what ran away.
         echo ""
         echo "Sol has now blocked this branch $SOL_ROUND_N times. STOP FIXING."
         echo ""
@@ -516,7 +526,7 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
       else
         echo ""
         echo "Sol reported a HIGH finding on output a customer reads. Push blocked."
-        echo "(round $SOL_ROUND_N on this branch; at 3 the guidance changes)"
+        echo "(round $SOL_ROUND_N on this branch; at 2 the guidance changes)"
         echo ""
         echo "  1. Verify the finding against the code. Treat it as RIGHT until the"
         echo "     code says otherwise — the last measured rounds were 7 findings /"
