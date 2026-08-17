@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Documentation only. Corrects two claims in the pitch package that were wrong in the buyer's favour - both UNDERSTATED the work - and records that the stylesheet its own regeneration command needs does not exist. No code, no query, no served output.",
-  "commit_hash": "38543eb8",
+  "commit_hash": "3938f73e",
   "files": [
     "docs/pitch/cheat-sheet.md",
     "docs/pitch/positioning-paragraph.md",
