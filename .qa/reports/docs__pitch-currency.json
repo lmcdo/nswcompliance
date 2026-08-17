@@ -1,0 +1,40 @@
+{
+  "tier": "minor",
+  "justification": "Documentation only. Corrects two claims in the pitch package that were wrong in the buyer's favour - both UNDERSTATED the work - and records that the stylesheet its own regeneration command needs does not exist. No code, no query, no served output.",
+  "commit_hash": "3938f73e",
+  "files": [
+    "docs/pitch/cheat-sheet.md",
+    "docs/pitch/positioning-paragraph.md",
+    "docs/pitch/README.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "A buyer reads 'doc_claims.py runs on demand; not yet wired to a hook or CI' and asks why a check the seller sells is not switched on.",
+      "what_happens": "The seller has undersold a check that has run on every push since #890 - the same PR the row cites. The claim reads as an admission and is simply false.",
+      "mitigated": true,
+      "how": "Corrected to what it does: runs on every push and in CI, in observation mode, so it reports and never blocks. Verified by following qa_gate.py::_load_doc_claims rather than grepping for the filename, which finds nothing because the call is a spec_from_file_location.",
+      "repro": "grep -n _load_doc_claims scripts/qa_gate.py; grep -rn qa_gate .githooks/ .github/workflows/"
+    },
+    {
+      "scenario": "A buyer asks 'which of the 4,000 tests' and the real number is 5,460.",
+      "what_happens": "A figure that has now been wrong twice - 3,207, then 4,024 - is quoted a third time. In a document whose whole subject is unverified claims, that is the worst possible thing to be caught on.",
+      "mitigated": true,
+      "how": "The document now carries the COMMAND rather than the number, with the 2026-08-17 reading given only as an example and labelled as one that will go stale.",
+      "repro": "python -m pytest --collect-only -q | tail -1"
+    },
+    {
+      "scenario": "Someone follows the README to regenerate the buyer-facing formats.",
+      "what_happens": "pandoc is invoked with '-H style.html' and that file exists nowhere - not in docs/pitch/, not in the generated package. The command fails, or silently produces unstyled output.",
+      "mitigated": true,
+      "how": "Recorded inline with both remedies. Noted as the same failure the README already describes - a rendered artefact whose source was discarded - repeated one level up in the tooling.",
+      "repro": "find . -name style.html"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No database access.",
+    "secrets": "None.",
+    "other_repo": "The GENERATED package at 'solvyra/projects/compliance engine/pitch-package' still carries the old text in its html/docx/pdf. It is untracked by design and must be regenerated before anything is sent - which needs the missing stylesheet decided first.",
+    "owner": "founder",
+    "manual_verify": "Read the three corrected passages. Then confirm the generated package has NOT been regenerated yet, so nothing goes out carrying the old 'not yet wired' line."
+  }
+}
