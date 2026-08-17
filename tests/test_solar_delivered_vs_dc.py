@@ -102,16 +102,22 @@ class TestTheBasisIsStatedAndUsable:
 
 
 class TestTheFrontendMirrorsCannotDiverge:
-    """The factor now appears in five files, and four of them are mirrors.
+    """There is ONE TypeScript implementation, and the surfaces import it.
 
-    A mirrored constant is a defect waiting to happen — the Python side gets
-    corrected, the TypeScript side keeps the old figure, and the money quietly
-    goes back to being wrong on the surface the customer actually reads. There
-    is no import boundary between them, so the only thing that can hold them
-    together is a check. This one runs in pytest, which runs in CI, rather than
-    in jest, which cannot run from a bare worktree.
+    The first version of this change put the conversion inline on four
+    surfaces. Adversarial review then found the four copies disagreeing three
+    separate ways: one rejected a numeric string, one treated a real zero as a
+    missing field, one claimed a DC conversion that had not happened. Four
+    implementations of one rule IS the defect, so the copies were collapsed
+    into frontend-nextjs/lib/solar/delivered.ts.
+
+    What is left to guard is therefore structural and checkable: exactly one
+    definition, everybody imports it, nobody re-derives the factor inline. That
+    runs in pytest, which runs in CI, rather than in jest, which cannot run
+    from a bare worktree.
     """
 
+    SHARED = "frontend-nextjs/lib/solar/delivered.ts"
     MIRRORS = [
         "frontend-nextjs/app/api/reports/solar-yield/generate/route.ts",
         "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
@@ -119,64 +125,49 @@ class TestTheFrontendMirrorsCannotDiverge:
         "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     ]
 
-    def test_every_mirror_carries_BOTH_authority_figures(self):
-        """Both, because one alone is the bug that shipped in the first draft:
-        14.08% without the inverter leaves delivered output ~4% too high."""
-        loss = f"{PVWATTS_DEFAULT_SYSTEM_LOSS}"          # "0.1408"
-        inv = f"{PVWATTS_INVERTER_EFFICIENCY}"           # "0.96"
-        missing = []
-        for rel in self.MIRRORS:
-            p = _ROOT / rel
-            assert p.exists(), f"{rel} moved — update this list, do not delete it"
-            text = p.read_text(encoding="utf-8", errors="replace")
-            absent = [f for f in (loss, inv) if f not in text]
-            if absent:
-                missing.append(f"{rel} (missing {absent})")
-        assert not missing, (
-            f"these surfaces no longer carry both the {loss} system-loss and "
-            f"{inv} inverter figures from services/solar_yield.py, so they are "
-            f"presenting a different basis than the backend: {missing}"
+    def test_there_is_exactly_one_typescript_definition(self):
+        definers = []
+        for p in (_ROOT / "frontend-nextjs").rglob("*.ts*"):
+            if "node_modules" in str(p):
+                continue
+            if "DC_TO_DELIVERED =" in p.read_text(encoding="utf-8", errors="replace"):
+                definers.append(str(p.relative_to(_ROOT)).replace("\\", "/"))
+        assert definers == [self.SHARED], (
+            f"the conversion must be defined once, in {self.SHARED}. Found: {definers}"
         )
 
-    def test_every_mirror_distinguishes_a_real_zero_from_an_absent_field(self):
-        """Raised by adversarial review, and the two failures pull opposite ways.
+    def test_every_surface_imports_the_shared_module(self):
+        missing = [
+            rel for rel in self.MIRRORS
+            if "lib/solar/delivered" not in
+               (_ROOT / rel).read_text(encoding="utf-8", errors="replace")
+        ]
+        assert not missing, (
+            "these surfaces do not import the shared conversion, so they are "
+            "computing delivered energy their own way: " + str(missing)
+        )
 
-        `> 0` rejects a genuine `annual_kwh_delivered: 0` and substitutes a
-        derived positive number — a roof recorded as delivering nothing would
-        be reported as delivering something. But `>= 0` alone re-admits `''`,
-        because Number('') is 0. Only the RAW value separates them, so every
-        surface must inspect the type before coercing. Any surface still
-        reaching for a bare Number() comparison has one of the two bugs.
-        """
+    def test_no_surface_re_derives_the_factor_inline(self):
+        """0.1408 outside the shared module means a second implementation is
+        growing back — which is exactly how the four copies drifted apart."""
         offenders = []
         for rel in self.MIRRORS:
             text = (_ROOT / rel).read_text(encoding="utf-8", errors="replace")
-            if "annual_kwh_delivered" not in text:
-                continue
-            if "typeof" not in text:
-                offenders.append(f"{rel} (coerces without checking the raw type)")
+            for n, line in enumerate(text.splitlines(), 1):
+                if "0.1408" in line and not line.strip().startswith("//"):
+                    offenders.append(f"{rel}:{n}")
         assert not offenders, (
-            "these surfaces cannot tell a real zero from schema drift: " + str(offenders)
+            "the loss factor is being re-derived outside the shared module: "
+            + str(offenders)
         )
 
-    def test_no_mirror_uses_the_system_loss_alone(self):
-        """CONTROL for the above. `(1 - 0.1408)` NOT followed by the inverter
-        factor is precisely the first-draft defect, and a file could satisfy
-        the presence test above by mentioning 0.96 in an unrelated line."""
-        import re
-        bad = []
-        for rel in self.MIRRORS:
-            text = (_ROOT / rel).read_text(encoding="utf-8", errors="replace")
-            for n, line in enumerate(text.splitlines(), 1):
-                s = line.strip()
-                if s.startswith(("//", "*", "/*")):
-                    continue
-                if re.search(r"\(\s*1\s*-\s*0\.1408\s*\)", s) and "0.96" not in s:
-                    bad.append(f"{rel}:{n}")
-        assert not bad, (
-            "system loss applied without the inverter factor — delivered output "
-            "is ~4% too high on these lines: " + str(bad)
-        )
+    def test_the_shared_module_carries_both_authority_figures(self):
+        text = (_ROOT / self.SHARED).read_text(encoding="utf-8", errors="replace")
+        for figure in (f"{PVWATTS_DEFAULT_SYSTEM_LOSS}", f"{PVWATTS_INVERTER_EFFICIENCY}"):
+            assert figure in text, (
+                f"{self.SHARED} no longer carries {figure} from "
+                f"services/solar_yield.py, so backend and surface disagree"
+            )
 
     def test_no_surface_still_monetises_the_dc_figure_directly(self):
         """The original defect, pinned by shape rather than by memory: a rate

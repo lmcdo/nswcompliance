@@ -1,8 +1,9 @@
 {
   "tier": "critical",
   "justification": "Every dollar figure the solar product shows changes. The served annual kWh was Google's DC energy at the panel and was being monetised directly, so annual saving, payback, ten-year return, the battery case and the monthly chart were all computed from a number 21% higher than what a meter records. Direction matters: this only ever REMOVES an overstatement, and both correction factors are published NREL PVWatts defaults rather than values chosen here.",
-  "commit_hash": "fc6269af",
+  "commit_hash": "0cb16fd4",
   "files": [
+    "frontend-nextjs/lib/solar/delivered.ts",
     "services/solar_yield.py",
     "frontend-nextjs/app/api/reports/solar-yield/generate/route.ts",
     "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
@@ -19,7 +20,7 @@
   "pre_impl": {
     "existing_data": "services/solar_yield.py sums Google Solar's per-panel yearlyEnergyDcKwh - DC energy at the panel. services/CLAUDE.md already records that this module is a Google pass-through and that neither pvlib nor PVGIS is called. A grep for DC, inverter and yearlyEnergyDc across frontend-nextjs/app/reports and components returned nothing relevant: the DC basis was stated NOWHERE on any served surface.",
     "assumption_mismatch": "TWO. (1) I had recorded solar as a pure pass-through that cannot be checked at all. Reading the code, _clip_panels_to_lot filters Google's panels to our own cadastral boundary and recomputes counts, area and yield - that part is OUR computation, it is checkable, and it is already tested. (2) The bigger one: I proposed labelling the kWh as the fix. Labelling alone would have left every dollar figure wrong, because the DC number feeds calcROI. The label was the visible symptom, not the defect. (3) THIRD, and found by review of my own first commit: I treated PVWatts' 14.08% as the whole DC-to-AC conversion. It is not - PVWatts models inverter efficiency as a separate parameter with a 96% default, and the 14.08% excludes it. My first correction was itself ~4% short.",
-    "new_vs_existing": "No new file, no new API, no new table, no new dependency. One function and two fields added to an existing module; four existing render sites changed to read the delivered field. The alternative - converting at each render site - was rejected because the factor would then live in four places with no authority, which is the drift the guard now blocks.",
+    "new_vs_existing": "ONE new file: frontend-nextjs/lib/solar/delivered.ts. It exists because the first version of this change put the conversion inline on four surfaces, and adversarial review found the four copies disagreeing three separate ways - one rejected a numeric string, one treated a real zero as a missing field, one claimed a DC conversion that had not happened. Four implementations of one rule IS the defect. All four now import it, and a test asserts exactly one TypeScript definition exists. No new API, table or dependency; services/solar_yield.py remains the authority for the factors.",
     "external_source_error": "If Google returns no yield, annual_kwh_delivered is None rather than 0.0, so an absent figure stays absent. A zero would render as a real roof that generates nothing, which is a wrong answer wearing a number.",
     "frontend_type": "annual_kwh_delivered is Optional[float] in pydantic and number-or-null in TypeScript, so a stored report written before this field existed deserialises cleanly. Each surface falls back to annual_kwh_estimate times DC_TO_DELIVERED rather than to the raw DC figure - the fallback preserves the basis instead of silently reverting it, which is the boundary a bare null-coalesce would have got wrong.",
     "user_failure_mode": "A homeowner or installer reads payback of 6.4 years, budgets on it, and the system pays back in 7.5. The ten-year return is the sharpest: $2,420 shown against $671 actual, because the system cost is subtracted after the revenue, so a 16% revenue error lands almost entirely on the margin. This is a financial figure a buyer acts on, published under our name."
@@ -131,6 +132,13 @@
       "mitigated": true,
       "how": "The block is gated on EITHER field being present, and the DC line degrades to naming the basis without a number when the DC figure is absent.",
       "repro": "read the Calculated yield block in app/reports/intelligence-brief/page.tsx"
+    },
+    {
+      "scenario": "The explanatory sentence is written separately on each surface, as it was before the consolidation.",
+      "what_happens": "Two of them said '18% system losses - inverter and wiring', conflating the two PVWatts factors back together in the copy while the arithmetic kept them apart. The words and the number disagreed on the same screen, and the wording would drift again on the next edit.",
+      "mitigated": true,
+      "how": "deliveryBasisText() in the shared module writes the sentence once, sized to what is known - naming the DC figure when there is one, and not claiming a conversion when the delivered figure was supplied directly. All three reading surfaces call it.",
+      "repro": "read deliveryBasisText in frontend-nextjs/lib/solar/delivered.ts"
     }
   ],
   "mutation_analysis": "Mutated in the direction that matters. Setting DC_TO_DELIVERED to 1.0 - the change that silently reinstates the defect - fails test_strictly_lower_for_any_positive_input, test_the_factor_is_the_published_pvwatts_default and the control case. Making delivered_kwh return its input unchanged while leaving the constant alone would slip past a test that only reads the constant, which is why test_the_rule_can_say_yes_and_no pins the BEHAVIOUR and the CONSTANT together in one place. The mirror-parity guard was itself mutated by accident: its first version flagged a correct line, which is the false-positive failure mode, and it was tightened rather than deleted.",
@@ -141,6 +149,6 @@
     "other_repo": "None.",
     "watch": "Every solar dollar figure drops by about 16% and payback lengthens by roughly a year. That is the correction, not a regression - if anyone reports the numbers got worse, this is why.",
     "owner": "satellite products",
-    "manual_verify": "Run a solar report on a known address. The headline must read kWh/yr delivered, the detail must state Google's DC figure and the 14% loss with the PVWatts attribution, and the payback must be longer than the previously published figure for the same address. Then confirm the twelve monthly bars sum to the delivered annual figure and not the DC one."
+    "manual_verify": "Run a solar report on a known address. The headline must read kWh/yr delivered, the detail must state Google's DC figure and the 14% loss with the PVWatts attribution, and the payback must be longer than the previously published figure for the same address. Then confirm the twelve monthly bars sum to the delivered annual figure and not the DC one. Confirm the detail sentence names BOTH PVWatts factors separately - 14.08% system losses AND 96% inverter efficiency - rather than describing 18% as 'system losses including the inverter', which is the wording that had to be corrected twice."
   }
 }

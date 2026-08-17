@@ -20,6 +20,7 @@ import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 import { verifyReport } from '@/lib/report-token';
 import { generateQRBase64 } from '@/lib/pdf/qr';
 import { createClient } from '@supabase/supabase-js';
+import { deliveredKwhFrom } from '@/lib/solar/delivered';
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,14 +29,6 @@ const getSupabase = () => createClient(
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
-
-// Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
-// default total system loss of 14.08% AND, separately, 96% inverter
-// efficiency — the 14.08% does NOT include the inverter. Mirrors
-// services/solar_yield.py, which is the
-// authority; this constant exists only so an older payload without
-// annual_kwh_delivered cannot silently fall back to the DC figure.
-const DC_TO_DELIVERED    = (1 - 0.1408) * 0.96;
 
 const RETAIL_RATE        = 0.32;
 const FEED_IN_RATE       = 0.06;
@@ -51,20 +44,6 @@ const MONTHLY_IRRADIANCE_SHARE = [
 ];
 
 const SENSITIVITY_FEED_IN_RATES = [0.04, 0.06, 0.10];
-
-// Delivered energy from a payload field, or null when the field is not a
-// usable number. Written out rather than using `??` because the two failure
-// modes differ: `annual_kwh_delivered: 0` is a REAL zero and must be kept,
-// while `''` is schema drift and must NOT become 0 — `??` accepts both and
-// Number('') is 0, so a roof would report zero yield as if measured.
-function usableDelivered(v: unknown): number | null {
-  if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : null;
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v);
-    return Number.isFinite(n) && n >= 0 ? n : null;
-  }
-  return null;
-}
 
 function calcROI(kwh: number, maxPanels: number) {
   const systemKw      = (maxPanels * PANEL_WATTS) / 1000;
@@ -187,8 +166,7 @@ export async function POST(req: NextRequest) {
   // on the margin. The backend supplies annual_kwh_delivered; the fallback
   // applies the same published NREL PVWatts default rather than silently
   // reverting to DC if an older payload arrives.
-  const deliveredField = usableDelivered(raw.annual_kwh_delivered);
-  const kwh = deliveredField ?? kwhDc * DC_TO_DELIVERED;
+  const kwh = deliveredKwhFrom(raw.annual_kwh_estimate, raw.annual_kwh_delivered) ?? 0;
 
   const roi   = calcROI(kwh, maxPanels);
   const grade = solarGrade(pitch, azimuth, sunHours);

@@ -16,6 +16,7 @@ import {
 import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 import { solarImageryCurrency } from './imagery-currency';
 import { AerialWithOverlay } from './map-overlay';
+import { deliveredKwhFrom, deliveryBasisText } from '@/lib/solar/delivered';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -230,33 +231,11 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 // Build findings (mirrors ReportCard logic from SolarYieldTool.tsx)
 // ---------------------------------------------------------------------------
 
-// Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
-// default total system loss of 14.08% AND a separate 96% inverter
-// efficiency — the 14.08% does NOT include the inverter, which is why both
-// factors appear. Mirrors services/solar_yield.py, which is the authority; the fallback exists so a stored report written before this
-// field existed cannot silently present a DC number as delivered output.
-const DC_TO_DELIVERED = (1 - 0.1408) * 0.96;
-const LOSS_PCT = '18%';
 
 /** Delivered energy, from the payload if present, derived if not. */
-// Delivered energy from a payload field, or null when the field is not a
-// usable number. Written out rather than using `??` because the two failure
-// modes differ: `annual_kwh_delivered: 0` is a REAL zero and must be kept,
-// while `''` is schema drift and must NOT become 0 — `??` accepts both and
-// Number('') is 0, so a roof would report zero yield as if measured.
-function usableDelivered(v: unknown): number | null {
-  if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : null;
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v);
-    return Number.isFinite(n) && n >= 0 ? n : null;
-  }
-  return null;
-}
-
 /** Delivered energy, from the payload if usable, derived if not. */
 function deliveredKwh(data: SolarYieldReportData): number {
-  return usableDelivered(data.annual_kwh_delivered)
-    ?? data.annual_kwh_estimate * DC_TO_DELIVERED;
+  return deliveredKwhFrom(data.annual_kwh_estimate, data.annual_kwh_delivered) ?? 0;
 }
 
 function buildFindings(data: SolarYieldReportData): Finding[] {
@@ -313,8 +292,8 @@ function buildFindings(data: SolarYieldReportData): Finding[] {
   const annualDollar = Math.round(delivered * 0.32);
   findings.push({
     label: 'Google Solar building analysis',
-    value: `${Math.round(delivered).toLocaleString('en-AU')} kWh/yr delivered from a ${data.system_kw.toFixed(1)} kW system`,
-    detail: `Your roof can fit ${data.max_panels} panels (${data.max_panel_area_m2} m² of ${data.roof_area_m2} m² total roof area). Google Solar reports ${Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr at the panel (DC); the figure above is what reaches the meter after ${LOSS_PCT} system losses — inverter and wiring, soiling, shading, panel mismatch and ageing (NREL PVWatts v8 default). At current retail rates the delivered output is worth roughly $${annualDollar.toLocaleString('en-AU')}/yr before feed-in adjustments. An installer's quote will state the figure for the specific hardware.`,
+    value: `${Math.round(delivered).toLocaleString('en-AU')} kWh/yr delivered from ${data.system_kw.toFixed(1)} kW system`,
+    detail: `Your roof can fit ${data.max_panels} panels (${data.max_panel_area_m2} m² of ${data.roof_area_m2} m² total roof area). ${deliveryBasisText(data.annual_kwh_estimate)} At current retail rates the delivered output is worth roughly $${annualDollar.toLocaleString('en-AU')}/yr before feed-in adjustments. An installer's quote will state the figure for the specific hardware.`,
     severity: delivered > 5000 ? 'green' : delivered > 2000 ? 'amber' : 'red',
   });
 

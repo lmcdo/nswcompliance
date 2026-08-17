@@ -1,5 +1,7 @@
 'use client';
 
+import { deliveredKwhFrom, deliveryBasisText } from '@/lib/solar/delivered';
+
 import { useState, useCallback, useEffect, useMemo, useRef, Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
@@ -2015,19 +2017,10 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
           <div>
             <dt className="text-xs text-slate-500">Calculated yield</dt>
             <dd className="text-slate-900 tabular-nums">
-              {Math.round(
-                typeof o.annual_kwh_delivered === 'number' && Number.isFinite(o.annual_kwh_delivered) && o.annual_kwh_delivered >= 0
-                  ? o.annual_kwh_delivered
-                  : (o.annual_kwh_estimate ?? 0) * (1 - 0.1408) * 0.96
-              ).toLocaleString()} kWh/year delivered
+              {(deliveredKwhFrom(o.annual_kwh_estimate, o.annual_kwh_delivered) ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} kWh/year delivered
             </dd>
             <dd className="text-xs text-slate-500 leading-snug mt-0.5">
-              {o.annual_kwh_estimate != null
-                ? `${Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year at the panel (DC),`
-                : 'Reported at the panel (DC),'}
-              less about 18% — NREL PVWatts v8's 14.08% system losses (soiling,
-              shading, mismatch, wiring, ageing) and its separate 96%
-              inverter efficiency.
+              {deliveryBasisText(o.annual_kwh_estimate)}
             </dd>
           </div>
         )}

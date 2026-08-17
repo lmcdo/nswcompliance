@@ -8,6 +8,7 @@ import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+import { deliveredKwhFrom, deliveryBasisText } from '@/lib/solar/delivered';
 
 const SOLAR_STEPS: TransparencyStep[] = [
   { label: 'Detecting roof geometry from satellite imagery…', ms: 0 },
@@ -15,20 +16,6 @@ const SOLAR_STEPS: TransparencyStep[] = [
   { label: 'Modelling annual solar irradiance…',             ms: 4000 },
   { label: 'Estimating energy yield and savings…',           ms: 7000 },
 ];
-
-// Delivered energy from a payload field, or null when the field is not a
-// usable number. Written out rather than using `??` because the two failure
-// modes differ: `annual_kwh_delivered: 0` is a REAL zero and must be kept,
-// while `''` is schema drift and must NOT become 0 — `??` accepts both and
-// Number('') is 0, so a roof would report zero yield as if measured.
-function usableDelivered(v: unknown): number | null {
-  if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : null;
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v);
-    return Number.isFinite(n) && n >= 0 ? n : null;
-  }
-  return null;
-}
 
 const AerialTile = dynamic(
   () => import('@/components/reports/AerialTile').then(m => m.AerialTile),
@@ -74,14 +61,6 @@ type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
 
 const PANEL_WATTS        = 400;
 const RETAIL_RATE        = 0.32;   // $/kWh — matches solar-yield generate route
-// Google Solar reports DC energy at the panel. NREL PVWatts v8 publishes a
-// default total system loss of 14.08% AND a separate 96% inverter efficiency;
-// the 14.08% does NOT include the inverter. services/solar_yield.py is the
-// authority; this fallback
-// only covers a payload written before the field existed, so a DC figure can
-// never be presented as delivered output.
-const DC_TO_DELIVERED    = (1 - 0.1408) * 0.96;
-const LOSS_PCT           = '18%';
 const FEED_IN_TARIFF     = 0.06;   // $/kWh
 const SELF_CONSUME_RATIO = 0.30;
 const COST_PER_WATT      = 1.00;   // $/W installed
@@ -423,12 +402,11 @@ function ReportCard({ report }: { report: ReportData }) {
   // The headline is DELIVERED energy — what the meter records — because the
   // dollar figure beside it depends on it. Google's DC number is kept and
   // named rather than dropped, so the basis is visible instead of implied.
-  const deliveredKwh = usableDelivered(o.annual_kwh_delivered)
-    ?? o.annual_kwh_estimate * DC_TO_DELIVERED;
+  const deliveredKwh = deliveredKwhFrom(o.annual_kwh_estimate, o.annual_kwh_delivered) ?? 0;
   findings.push({
     label: 'Google Solar building analysis',
-    value: `${Math.round(deliveredKwh).toLocaleString('en-AU')} kWh/yr delivered from a ${systemKw.toFixed(1)} kW system`,
-    detail: `Your roof can fit ${o.max_panels} panels (${o.roof_area_m2.toLocaleString('en-AU')} m² usable area). Google Solar reports ${Math.round(o.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr at the panel (DC); the figure above is what reaches the meter after ${LOSS_PCT} system losses — inverter and wiring, soiling, shading, panel mismatch and ageing (NREL PVWatts v8 default). At current retail rates the delivered output is worth roughly $${Math.round(deliveredKwh * RETAIL_RATE).toLocaleString('en-AU')}/yr before feed-in adjustments. An installer's quote will state the figure for the specific hardware.`,
+    value: `${Math.round(deliveredKwh).toLocaleString('en-AU')} kWh/yr delivered from ${systemKw.toFixed(1)} kW system`,
+    detail: `Your roof can fit ${o.max_panels} panels (${o.roof_area_m2.toLocaleString('en-AU')} m² usable area). ${deliveryBasisText(o.annual_kwh_estimate)} At current retail rates the delivered output is worth roughly $${Math.round(deliveredKwh * RETAIL_RATE).toLocaleString('en-AU')}/yr before feed-in adjustments. An installer's quote will state the figure for the specific hardware.`,
     severity: deliveredKwh > 5000 ? 'green' : deliveredKwh > 2000 ? 'amber' : 'red',
   });
 
@@ -632,8 +610,8 @@ function SolarLockedPreviewCard({
   // Savings and payback come from DELIVERED energy. Using Google's DC figure
   // here overstated the annual saving by 16% and understated payback by more
   // than a year.
-  const annualKwh       = usableDelivered(outputs.annual_kwh_delivered)
-                          ?? outputs.annual_kwh_estimate * DC_TO_DELIVERED;
+  const annualKwh       = deliveredKwhFrom(outputs.annual_kwh_estimate,
+                                           outputs.annual_kwh_delivered) ?? 0;
   const selfConsumed    = annualKwh * SELF_CONSUME_RATIO;
   const exported        = annualKwh * (1 - SELF_CONSUME_RATIO);
   const annualSavings   = (selfConsumed * RETAIL_RATE) + (exported * FEED_IN_TARIFF);
