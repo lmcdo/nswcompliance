@@ -25,7 +25,9 @@ Response contract (must match frontend-nextjs/app/reports/solar-yield/page.tsx):
 {
   "max_panels": int,
   "max_panel_area_m2": float,
-  "annual_kwh_estimate": float,
+  "annual_kwh_estimate": float,   # DC at the panel, as Google reports it
+  "annual_kwh_delivered": float,  # after system losses — the figure to monetise
+  "delivery_basis": str,          # plain-English reason the two differ
   "sunshine_hours_per_year": float,
   "best_pitch_deg": float,
   "best_azimuth_deg": float,   # compass bearing: 0=N, 90=E, 180=S, 270=W
@@ -155,10 +157,56 @@ class SolarYieldRequest(BaseModel):
     lot_polygon_wgs84: Optional[dict] = None  # GeoJSON Polygon in WGS84
 
 
+# DC -> delivered. NOT a number invented here: NREL's PVWatts v8 publishes a
+# default total system loss of 14.08% covering soiling, shading, mismatch,
+# wiring, connections, light-induced degradation, nameplate tolerance, age and
+# availability. It is the industry reference default, and naming it here means
+# a reader can check the figure against its source rather than take ours.
+#
+# WHY IT MATTERS MORE THAN A LABEL. Google Solar returns `yearlyEnergyDcKwh` —
+# energy at the panel, before the inverter. That figure was being monetised
+# directly: on a typical 20-panel roof at 9,000 kWh DC it overstates the annual
+# saving by 16.4%, shows payback at 6.4 years against 7.5, and reports a
+# ten-year return of $2,420 where the figure is $671 — 3.6x, because the system
+# cost is subtracted afterwards, so the whole error lands on the margin.
+# TWO FACTORS, NOT ONE. PVWatts' 14.08% system loss does NOT include the
+# inverter — PVWatts models inverter efficiency as a SEPARATE parameter with a
+# default of 96%. The first version of this change applied only the 14.08% and
+# still overstated delivered output by about 4%, which adversarial review
+# caught. Both are needed to get from DC at the panel to AC at the meter.
+PVWATTS_DEFAULT_SYSTEM_LOSS = 0.1408      # soiling, shading, mismatch, wiring,
+                                          # connections, LID, nameplate, age,
+                                          # availability
+PVWATTS_INVERTER_EFFICIENCY = 0.96        # PVWatts default, DC -> AC conversion
+DC_TO_DELIVERED = (1.0 - PVWATTS_DEFAULT_SYSTEM_LOSS) * PVWATTS_INVERTER_EFFICIENCY
+DELIVERED_LOSS_PCT = round((1.0 - DC_TO_DELIVERED) * 100)   # 18
+DELIVERY_BASIS = (
+    "Google Solar reports energy at the panel (DC). Delivered output applies "
+    "NREL PVWatts v8's two published defaults: 14.08% total system losses "
+    "(soiling, shading, panel mismatch, wiring, connections, ageing) and 96% "
+    "inverter efficiency for the DC-to-AC conversion — about 18% in total. "
+    "An installer's quote will state the figure for the specific hardware."
+)
+
+
+def delivered_kwh(dc_kwh: float | None) -> float | None:
+    """Energy reaching the meter, from energy at the panel.
+
+    Returns None for None so an absent figure stays absent rather than
+    becoming 0.0 — a zero here would render as a real roof that generates
+    nothing.
+    """
+    if dc_kwh is None:
+        return None
+    return round(float(dc_kwh) * DC_TO_DELIVERED, 1)
+
+
 class SolarYieldOutput(BaseModel):
     max_panels: int
     max_panel_area_m2: float
-    annual_kwh_estimate: float
+    annual_kwh_estimate: float          # DC at the panel, as Google reports it
+    annual_kwh_delivered: Optional[float] = None   # after system losses
+    delivery_basis: Optional[str] = None           # why the two differ
     sunshine_hours_per_year: float
     best_pitch_deg: float
     best_azimuth_deg: float
@@ -466,6 +514,8 @@ def _parse_solar_response(
         max_panels=max_panels,
         max_panel_area_m2=max_panel_area,
         annual_kwh_estimate=round(annual_kwh, 0),
+        annual_kwh_delivered=delivered_kwh(round(annual_kwh, 0)),
+        delivery_basis=DELIVERY_BASIS,
         sunshine_hours_per_year=round(float(sp["maxSunshineHoursPerYear"]), 0),
         best_pitch_deg=round(best_pitch, 1),
         best_azimuth_deg=round(best_azimuth, 1),

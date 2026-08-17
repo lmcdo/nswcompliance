@@ -8,6 +8,7 @@ import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+import { deliveredKwhFrom, deliveryBasisText } from '@/lib/solar/delivered';
 
 const SOLAR_STEPS: TransparencyStep[] = [
   { label: 'Detecting roof geometry from satellite imagery…', ms: 0 },
@@ -24,7 +25,9 @@ const AerialTile = dynamic(
 interface SolarYieldOutputs {
   max_panels: number;
   max_panel_area_m2: number;
-  annual_kwh_estimate: number;
+  annual_kwh_estimate: number;             // DC at the panel, as Google reports it
+  annual_kwh_delivered?: number | null;    // after system losses — monetise THIS
+  delivery_basis?: string | null;
   sunshine_hours_per_year: number;
   best_pitch_deg: number;
   best_azimuth_deg: number;
@@ -395,12 +398,16 @@ function ReportCard({ report }: { report: ReportData }) {
     });
   }
 
-  // Annual output
+  // Annual output.
+  // The headline is DELIVERED energy — what the meter records — because the
+  // dollar figure beside it depends on it. Google's DC number is kept and
+  // named rather than dropped, so the basis is visible instead of implied.
+  const deliveredKwh = deliveredKwhFrom(o.annual_kwh_estimate, o.annual_kwh_delivered) ?? 0;
   findings.push({
     label: 'Google Solar building analysis',
-    value: `${Math.round(o.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr from ${systemKw.toFixed(1)} kW system`,
-    detail: `Your roof can fit ${o.max_panels} panels (${o.roof_area_m2.toLocaleString('en-AU')} m² usable area). At current retail rates, this output is worth roughly $${Math.round(o.annual_kwh_estimate * RETAIL_RATE).toLocaleString('en-AU')}/yr before feed-in adjustments.`,
-    severity: o.annual_kwh_estimate > 5000 ? 'green' : o.annual_kwh_estimate > 2000 ? 'amber' : 'red',
+    value: `${Math.round(deliveredKwh).toLocaleString('en-AU')} kWh/yr delivered from ${systemKw.toFixed(1)} kW system`,
+    detail: `Your roof can fit ${o.max_panels} panels (${o.roof_area_m2.toLocaleString('en-AU')} m² usable area). ${deliveryBasisText(o.annual_kwh_estimate)} At current retail rates the delivered output is worth roughly $${Math.round(deliveredKwh * RETAIL_RATE).toLocaleString('en-AU')}/yr before feed-in adjustments. An installer's quote will state the figure for the specific hardware.`,
+    severity: deliveredKwh > 5000 ? 'green' : deliveredKwh > 2000 ? 'amber' : 'red',
   });
 
   // Sunshine hours
@@ -408,7 +415,12 @@ function ReportCard({ report }: { report: ReportData }) {
     label: 'Bureau of Meteorology — solar exposure data',
     value: `${o.sunshine_hours_per_year.toLocaleString('en-AU')} sunshine hours per year`,
     detail: o.sunshine_hours_per_year >= 1700
-      ? 'Above-average sunshine for NSW. Your panels will perform at or above nameplate capacity for much of the year.'
+      // "at or above nameplate capacity for much of the year" was false and is
+      // removed: a panel's nameplate rating is measured at 25°C cell
+      // temperature, and NSW roof cells run well above that whenever the sun is
+      // strong, so output sits BELOW nameplate in exactly the conditions the
+      // sentence claimed it would exceed it.
+      ? 'Above-average sunshine for NSW. More sunshine hours raise annual output. Nameplate ratings are measured at 25°C cell temperature, and NSW roof cells usually run hotter than that in strong sun, so sustained output typically sits below nameplate rather than above it.'
       : o.sunshine_hours_per_year >= 1500
       ? 'Typical sunshine hours for Sydney metro. Standard solar yield assumptions apply.'
       : 'Below-average sunshine hours. This could be due to local shading, coastal cloud, or valley fog. Factor this into your installer\'s yield estimate.',
@@ -595,7 +607,11 @@ function SolarLockedPreviewCard({
   outputs: SolarYieldOutputs;
 }) {
   const systemKw        = (outputs.max_panels * PANEL_WATTS) / 1000;
-  const annualKwh       = outputs.annual_kwh_estimate;
+  // Savings and payback come from DELIVERED energy. Using Google's DC figure
+  // here overstated the annual saving by 16% and understated payback by more
+  // than a year.
+  const annualKwh       = deliveredKwhFrom(outputs.annual_kwh_estimate,
+                                           outputs.annual_kwh_delivered) ?? 0;
   const selfConsumed    = annualKwh * SELF_CONSUME_RATIO;
   const exported        = annualKwh * (1 - SELF_CONSUME_RATIO);
   const annualSavings   = (selfConsumed * RETAIL_RATE) + (exported * FEED_IN_TARIFF);
@@ -618,7 +634,7 @@ function SolarLockedPreviewCard({
     <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
       <div className="bg-amber-50 border-b border-amber-100 px-5 py-4">
         <p className="text-sm font-semibold text-amber-900 leading-snug">
-          {fmt(outputs.annual_kwh_estimate)} kWh / yr potential — see the full financial case
+          {fmt(annualKwh)} kWh / yr delivered — see the full financial case
         </p>
         <p className="text-xs text-amber-700 mt-1 leading-relaxed">
           Your installer will ask for panel count, system size, and payback period before quoting.
