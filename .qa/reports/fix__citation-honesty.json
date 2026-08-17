@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes a citation a conveyancer reads, on 60 of 967 served control rows: 30 that cite a bare instrument acronym and 30 Wingecarribee rows that cite one town's plan across a whole shire. Direction is one-way - a value that looked resolvable now states its limits. No number changes, nothing is stored, and no clause and no town mapping is invented.",
-  "commit_hash": "f0d0e339",
+  "commit_hash": "f8510cf6",
   "files": [
     "scripts/conveyancing_db.py",
     "tests/test_cite_clause.py"
