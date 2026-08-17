@@ -170,13 +170,22 @@ describe('SolarYieldTool — LockedPreviewCard after result', () => {
     expect(screen.getAllByText(/Full PDF report/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('blurred values contain real computed $ amounts', async () => {
+  it('blurred values contain real computed $ amounts, on DELIVERED energy', async () => {
     await runReport();
-    // annual_savings = (8200*0.30*0.32) + (8200*0.70*0.06) = 787.2 + 344.4 = 1,131.6 → $1,132
-    const savingsEl = screen.getByText(/\$1,1\d\d\s*\/\s*yr/);
-    expect(savingsEl).toBeInTheDocument();
-    // payback = (20*400*1.00) / 1131.6 ≈ 7.1 years
-    expect(screen.getByText(/7\.\d years/)).toBeInTheDocument();
+    // THIS TEST USED TO ENCODE THE BUG. It computed savings straight off the
+    // fixture's 8,200 kWh, which is Google's DC figure — energy at the panel,
+    // before the inverter — and asserted $1,132/yr and ~7.1 years payback.
+    // Money has to come off what reaches the meter:
+    //   delivered = 8200 × (1 − 0.1408) × 0.96          = 6,763.6 kWh
+    //   savings   = 6763.6×0.30×0.32 + 6763.6×0.70×0.06 = $933.4  → $933
+    //   payback   = (20 × 400 × 1.00) / 933.4           = 8.6 years
+    // The old figures are kept above deliberately: the gap between 7.1 and 8.6
+    // years is the defect this change fixes, and a future edit that "restores"
+    // the old numbers is reintroducing it.
+    expect(screen.getByText(/\$9\d\d\s*\/\s*yr/)).toBeInTheDocument();
+    expect(screen.getByText(/8\.\d years/)).toBeInTheDocument();
+    // And the DC figure must NOT be what the money was built from.
+    expect(screen.queryByText(/\$1,1\d\d\s*\/\s*yr/)).not.toBeInTheDocument();
   });
 
   it('does NOT show LockedPreviewCard when coverage_available is false', async () => {

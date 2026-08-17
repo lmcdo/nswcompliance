@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Every dollar figure the solar product shows changes. The served annual kWh was Google's DC energy at the panel and was being monetised directly, so annual saving, payback, ten-year return, the battery case and the monthly chart were all computed from a number 21% higher than what a meter records. Direction matters: this only ever REMOVES an overstatement, and both correction factors are published NREL PVWatts defaults rather than values chosen here.",
-  "commit_hash": "3f9a8e6b",
+  "commit_hash": "ebbef304",
   "files": [
     "frontend-nextjs/lib/solar/delivered.ts",
     "services/solar_yield.py",
@@ -9,12 +9,14 @@
     "frontend-nextjs/lib/pdf/solar-yield-report.tsx",
     "frontend-nextjs/components/tools/SolarYieldTool.tsx",
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "tests/test_solar_delivered_vs_dc.py"
+    "tests/test_solar_delivered_vs_dc.py",
+    "frontend-nextjs/__tests__/components/tools/SolarYieldTool-paywall.test.tsx",
+    "frontend-nextjs/scripts/verify-solar-delivered.tsx"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_solar_delivered_vs_dc.py -q",
     "fails_when": "NOT SELF-REFERENTIAL, and the reason is the pass criterion: a figure this project does not produce and cannot influence. NREL PVWatts v8 publishes 14.08% as its default total system loss; the test asserts our constant EQUALS that published figure, so an edit that tunes it to flatter the product fails against the outside number, not against our own output. Nothing re-executes the code and checks it agrees with itself. Second, the mirror-parity test reads four TypeScript FILES the test does not own and asserts the same external figure appears in each - so a frontend edit that reverts the basis fails a PYTHON test, crossing a language boundary no import can police. It fails when: delivered_kwh returns its input unchanged; the constant moves off 0.1408; any of the four mirrors stops carrying it; or a money expression multiplies a rate by annual_kwh_estimate again. That last rule is pinned by a control fed the exact line the code USED to carry and the line it carries NOW - it must reject one and accept the other, so a rule that could only ever pass fails it.",
-    "observed_red": "Observed twice, not asserted. (1) The drift guard's FIRST version fired on a real line and was WRONG: it asked whether annual_kwh_estimate and RETAIL_RATE appeared on the same line, and flagged a template literal that correctly prints the DC figure as context while computing the dollar from delivered. Co-occurrence is not the defect; the multiplication is. Tightened to the multiplication and re-run: 46 pass. (2) test_that_guard_can_actually_fire pins the corrected rule against the exact line the code used to carry and the exact line it carries now - it must match the first and not the second, so a rule that could only ever pass fails this test. (3) Adversarial review then failed the change itself, twice, and both were real: the missing inverter factor, and '' defeating nullish coalescing. The guard now pins both.",
+    "observed_red": "Observed twice, not asserted. (1) The drift guard's FIRST version fired on a real line and was WRONG: it asked whether annual_kwh_estimate and RETAIL_RATE appeared on the same line, and flagged a template literal that correctly prints the DC figure as context while computing the dollar from delivered. Co-occurrence is not the defect; the multiplication is. Tightened to the multiplication and re-run: 46 pass. (2) test_that_guard_can_actually_fire pins the corrected rule against the exact line the code used to carry and the exact line it carries now - it must match the first and not the second, so a rule that could only ever pass fails this test. (3) Adversarial review then failed the change itself, twice, and both were real: the missing inverter factor, and '' defeating nullish coalescing. The guard now pins both. (4) VERIFIED IN THE REAL ENVIRONMENT after node_modules was installed in the worktree: tsc --noEmit exits 0, and jest runs 83 suites / 1,110 tests. One test FAILED and it was the right one - SolarYieldTool-paywall.test.tsx asserted '$1,132/yr' and '7.1 years' payback, both computed from the fixture's DC figure. The test had encoded the defect. Updated to the delivered figures ($933, 8.6 years) with the old numbers kept in the comment, plus an assertion that the DC-derived dollar value is NOT present, so restoring the old numbers fails.",
     "external_authority": "The 14.08% is NREL PVWatts v8's published default total system loss (soiling, shading, mismatch, wiring, connections, light-induced degradation, nameplate rating, age, availability). Not our number, and cited at every one of the five places it appears so a reader can check it against the source rather than take ours."
   },
   "pre_impl": {
@@ -52,6 +54,11 @@
       "value": "PVWatts applies TWO factors, not one: 14.08% system losses AND 96% inverter efficiency, giving 0.8248 rather than 0.8592.",
       "read_at": "NREL PVWatts v8 parameter documentation - system losses and inverter efficiency are separate inputs with separate defaults. Raised by adversarial review of the first commit on this branch, 2026-08-17.",
       "if_missing": "The first version of this fix applied only the system loss and still overstated delivered output by about 4%. A correction that is itself short is worse than none, because the caveat then vouches for it."
+    },
+    {
+      "value": "Rendered against a REAL stored report (38 Park Rd Bowral, 443a8444-f6d4-435e-a435-d429341290a5, 94,180 kWh DC, annual_kwh_delivered NULL so the fallback path is what ran): 77,683 kWh delivered; annual saving $12,997 -> $10,720; payback 5.1 -> 6.2 years; ten-year return $61,568 -> $38,802.",
+      "read_at": "frontend-nextjs/scripts/verify-solar-delivered.tsx against property_reports, 2026-08-17. The PDF was rendered from the same data (14 KB) rather than only asserted about.",
+      "if_missing": "Every other check on this branch used fixtures. A stored row carries annual_kwh_delivered = NULL, so the fallback is the path that actually runs in production and fixtures never exercised it. The $22,766 difference on one real report is what the change is worth."
     }
   ],
   "queries": [
@@ -149,6 +156,6 @@
     "other_repo": "None.",
     "watch": "Every solar dollar figure drops by about 16% and payback lengthens by roughly a year. That is the correction, not a regression - if anyone reports the numbers got worse, this is why.",
     "owner": "satellite products",
-    "manual_verify": "Run a solar report on a known address. The headline must read kWh/yr delivered, the detail must state Google's DC figure and the 14% loss with the PVWatts attribution, and the payback must be longer than the previously published figure for the same address. Then confirm the twelve monthly bars sum to the delivered annual figure and not the DC one. Confirm the detail sentence names BOTH PVWatts factors separately - 14.08% system losses AND 96% inverter efficiency - rather than describing 18% as 'system losses including the inverter', which is the wording that had to be corrected twice."
+    "manual_verify": "Run a solar report on a known address. The headline must read kWh/yr delivered, the detail must state Google's DC figure and the 14% loss with the PVWatts attribution, and the payback must be longer than the previously published figure for the same address. Then confirm the twelve monthly bars sum to the delivered annual figure and not the DC one. Confirm the detail sentence names BOTH PVWatts factors separately - 14.08% system losses AND 96% inverter efficiency - rather than describing 18% as 'system losses including the inverter', which is the wording that had to be corrected twice. Already done for one real report - see values[3]. Re-run `npx tsx scripts/verify-solar-delivered.tsx` after exporting a row to .real-solar-report.json to repeat it on another address."
   }
 }
