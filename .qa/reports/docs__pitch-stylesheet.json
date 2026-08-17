@@ -1,0 +1,39 @@
+{
+  "tier": "minor",
+  "justification": "Adds the print stylesheet the README's regeneration command has always referenced and which never existed, and records the regeneration it unblocked. One new file, one README passage. No code, no query, no served output.",
+  "commit_hash": "b161a7ec",
+  "files": [
+    "docs/pitch/style.html",
+    "docs/pitch/README.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone follows the README to regenerate the buyer-facing formats, as it has read since the package was created.",
+      "what_happens": "pandoc is passed '-H style.html' and the file is absent, so the command fails or silently emits unstyled HTML. The 2026-08-10 PDFs therefore could not be reproduced at all - the same defect the README already records about its markdown, one level up in the tooling.",
+      "mitigated": true,
+      "how": "The stylesheet is committed beside the sources it styles, so the command in the README now runs. Proven by running it: 7 documents to html, docx and pdf, 21 pages.",
+      "repro": "cd docs/pitch && pandoc cheat-sheet.md -f gfm -t html5 -s -H style.html -o /tmp/x.html"
+    },
+    {
+      "scenario": "The regenerated PDFs are sent while still carrying the corrected text's predecessor - the 'not yet wired' claim and the 4,024 test count.",
+      "what_happens": "The exact failure the package exists to sell against: a document about unverified claims, carrying two.",
+      "mitigated": true,
+      "how": "Verified with pypdf against the rendered PDFs rather than the markdown: 'observation mode' PRESENT and 'collect-only' PRESENT in the new cheat-sheet, while the backed-up previous edition still reads '4,024 Python tests'. Reading the source would not have proven what the buyer opens.",
+      "repro": "python -c \"from pypdf import PdfReader; print('observation mode' in ''.join(p.extract_text() for p in PdfReader('cheat-sheet.pdf').pages))\""
+    },
+    {
+      "scenario": "A stylesheet is invented that carries a visual identity - logo, brand colours, imagery - because the package looked plain without one.",
+      "what_happens": "A design decision gets made silently inside a fix for a missing file, and every future document inherits it without anyone having chosen it.",
+      "mitigated": true,
+      "how": "Deliberately plain: type, spacing, table rules, A4 margins. No logo, no colour beyond near-black and one grey, no images. The README states that the package has no images and that inventing an identity was treated as out of scope.",
+      "repro": "read docs/pitch/style.html - the header says so"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No database access.",
+    "secrets": "None.",
+    "other_repo": "The generated package at 'solvyra/projects/compliance engine/pitch-package' was regenerated on 2026-08-17 and is untracked by design. Previous edition preserved at backup-2026-08-17/.",
+    "owner": "founder",
+    "manual_verify": "Open pitch-package/pdf/cheat-sheet.pdf. Row 2 must read 'Runs on every push and in CI - in observation mode', and the closing note must give the pytest command rather than a test count."
+  }
+}

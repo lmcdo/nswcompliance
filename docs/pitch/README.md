@@ -27,17 +27,21 @@ done
 ```
 PDFs are printed from the HTML with headless Chromium (A4, 18/16 mm margins, backgrounds on).
 
-> ⚠ **`style.html` does not exist — this command cannot run as written.** Checked
-> 2026-08-17: it is in neither `docs/pitch/` nor the generated `pitch-package/`, so the
-> stylesheet that produced the 2026-08-10 HTML was never committed and is gone. This is
-> the same failure the section below describes — a rendered artefact whose source was
-> discarded — repeated one level up, in the tooling rather than the content. Either drop
-> `-H style.html` and accept pandoc's default styling, or write the stylesheet and commit
-> it here before regenerating.
+> **`style.html` is now committed here.** It did not exist until 2026-08-17: the
+> stylesheet behind the 2026-08-10 HTML was never saved, so the command above could not
+> run as written — the same failure this README already records about the markdown,
+> repeated one level up in the tooling. The replacement is deliberately plain: type,
+> spacing, table rules, and A4 print margins matching the line below. No logo and no
+> colour beyond near-black and one grey.
 >
-> **The package contains no images.** No `<img>`, no data URIs, no image files: the PDFs
-> are styled text at 69–100 KB. If a buyer-facing version needs a diagram, it does not
-> exist yet.
+> **The package contains no images.** No `<img>`, no data URIs, no image files. If a
+> buyer-facing version needs a diagram, it does not exist yet and inventing a visual
+> identity was not treated as part of restoring the stylesheet.
+>
+> **Regenerated 2026-08-17** — 7 documents × md/html/docx/pdf, 21 pages. Verified with
+> `pypdf` that the PDFs a buyer opens carry the corrected text: `observation mode`
+> present, the old `4,024 Python tests` gone. The previous edition is kept at
+> `pitch-package/backup-2026-08-17/`.
 
 ## Why the sources are in the repo at all
 
