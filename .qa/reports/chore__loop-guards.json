@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Three guards against a session-behaviour failure that cost an hour on 2026-08-17. No product code and no served output changes - this is developer tooling. Standard rather than Minor because two of the three BLOCK a tool call, so a false positive would stop work, and because the whole point is that they must fire on the real case and not on ordinary commands.",
-  "commit_hash": "75715d5e",
+  "commit_hash": "a0b06ead",
   "files": [
     ".githooks/pre-push",
     ".claude/hooks/push-retry-needs-full-output.py",
@@ -62,7 +62,7 @@
       "what_happens": "Legitimate work is stopped and the guard gets disabled.",
       "mitigated": true,
       "how": "Tested against the four real files created on 08-17: the throwaway is blocked, the shared module (imported by four surfaces) and the two check scripts (named in .claude/dq_checks.json) are allowed. 4 of 4. A new module committed with its caller, or a check committed with its ledger row, passes - because git grep reads the working tree, so the staged reference is already visible.",
-      "repro": "stage frontend-nextjs/lib/solar/delivered.ts and commit — allowed; stage frontend-nextjs/scripts/verify-solar-delivered.tsx — blocked"
+      "repro": "on fix/solar-dc-vs-delivered: stage the shared solar module and commit - allowed; stage frontend-nextjs/scripts/verify-solar-delivered.tsx - blocked"
     },
     {
       "scenario": "Someone assumes the lowered Sol cap is what fixes the looping.",
@@ -78,6 +78,6 @@
     "other_repo": "None.",
     "watch": "If either guard blocks work that is plainly legitimate, say so rather than working around it - a bypassed guard is worse than none, and the exemption lists in both files are meant to be extended.",
     "owner": "tooling",
-    "manual_verify": "Run the two repro commands above. The retry guard must allow, then block, then allow-unfiltered. The new-file guard must block verify-solar-delivered.tsx and allow lib/solar/delivered.ts."
+    "manual_verify": "Run the two repro commands above. The retry guard must allow, then block, then allow-unfiltered. For the new-file guard, the four files it was calibrated on live on OTHER branches (fix/solar-dc-vs-delivered and fix/control-subject-mismatch), so re-run it there: it must block verify-solar-delivered.tsx and allow the shared solar module plus both DQ check scripts."
   }
 }

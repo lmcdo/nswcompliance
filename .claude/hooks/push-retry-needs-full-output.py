@@ -59,7 +59,9 @@ def main():
         data = json.loads(os.environ.get("TOOL_INPUT", "{}"))
     except json.JSONDecodeError:
         sys.exit(0)
-    command = data.get("command", "")
+    # `or ""` not a default: a key PRESENT with value null skips the
+    # default and would hand None to the `in` test below.
+    command = data.get("command") or ""
 
     if "git push" not in command:
         sys.exit(0)
