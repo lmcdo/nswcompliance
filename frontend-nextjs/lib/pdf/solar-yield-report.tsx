@@ -239,14 +239,24 @@ const DC_TO_DELIVERED = (1 - 0.1408) * 0.96;
 const LOSS_PCT = '18%';
 
 /** Delivered energy, from the payload if present, derived if not. */
+// Delivered energy from a payload field, or null when the field is not a
+// usable number. Written out rather than using `??` because the two failure
+// modes differ: `annual_kwh_delivered: 0` is a REAL zero and must be kept,
+// while `''` is schema drift and must NOT become 0 — `??` accepts both and
+// Number('') is 0, so a roof would report zero yield as if measured.
+function usableDelivered(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : null;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+  return null;
+}
+
+/** Delivered energy, from the payload if usable, derived if not. */
 function deliveredKwh(data: SolarYieldReportData): number {
-  // A finite positive number or nothing. `??` alone would accept '' from a
-  // drifted payload, and Number('') is 0 — a stored report would then render
-  // a real roof as producing nothing.
-  const d = Number(data.annual_kwh_delivered);
-  return Number.isFinite(d) && d > 0
-    ? d
-    : data.annual_kwh_estimate * DC_TO_DELIVERED;
+  return usableDelivered(data.annual_kwh_delivered)
+    ?? data.annual_kwh_estimate * DC_TO_DELIVERED;
 }
 
 function buildFindings(data: SolarYieldReportData): Finding[] {

@@ -52,6 +52,20 @@ const MONTHLY_IRRADIANCE_SHARE = [
 
 const SENSITIVITY_FEED_IN_RATES = [0.04, 0.06, 0.10];
 
+// Delivered energy from a payload field, or null when the field is not a
+// usable number. Written out rather than using `??` because the two failure
+// modes differ: `annual_kwh_delivered: 0` is a REAL zero and must be kept,
+// while `''` is schema drift and must NOT become 0 — `??` accepts both and
+// Number('') is 0, so a roof would report zero yield as if measured.
+function usableDelivered(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : null;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+  return null;
+}
+
 function calcROI(kwh: number, maxPanels: number) {
   const systemKw      = (maxPanels * PANEL_WATTS) / 1000;
   const selfKwh       = kwh * SELF_CONSUME_RATIO;
@@ -173,12 +187,8 @@ export async function POST(req: NextRequest) {
   // on the margin. The backend supplies annual_kwh_delivered; the fallback
   // applies the same published NREL PVWatts default rather than silently
   // reverting to DC if an older payload arrives.
-  // A finite positive number or nothing. `??` alone would accept '' (and
-  // Number('') is 0), serving zero yield and zero savings as if measured.
-  const rawDelivered = Number(raw.annual_kwh_delivered);
-  const kwh = Number.isFinite(rawDelivered) && rawDelivered > 0
-    ? rawDelivered
-    : kwhDc * DC_TO_DELIVERED;
+  const deliveredField = usableDelivered(raw.annual_kwh_delivered);
+  const kwh = deliveredField ?? kwhDc * DC_TO_DELIVERED;
 
   const roi   = calcROI(kwh, maxPanels);
   const grade = solarGrade(pitch, azimuth, sunHours);

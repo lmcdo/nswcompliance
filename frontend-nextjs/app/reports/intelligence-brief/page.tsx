@@ -2007,7 +2007,7 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
         {o.max_panels != null && (
           <div><dt className="text-xs text-slate-500">Panel capacity</dt><dd className="text-slate-900 tabular-nums">{o.max_panels.toLocaleString()} panels{o.max_panel_area_m2 != null ? ` (~${Math.round(o.max_panel_area_m2)} m²)` : ''}</dd></div>
         )}
-        {o.annual_kwh_estimate != null && (
+        {(o.annual_kwh_estimate != null || o.annual_kwh_delivered != null) && (
           /* Delivered energy leads, because that is what a meter records.
              Google Solar reports DC at the panel; showing that alone read as
              expected output and overstated it by about 16%. Both are shown so
@@ -2016,13 +2016,15 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
             <dt className="text-xs text-slate-500">Calculated yield</dt>
             <dd className="text-slate-900 tabular-nums">
               {Math.round(
-                Number.isFinite(Number(o.annual_kwh_delivered)) && Number(o.annual_kwh_delivered) > 0
-                  ? Number(o.annual_kwh_delivered)
-                  : o.annual_kwh_estimate * (1 - 0.1408) * 0.96
+                typeof o.annual_kwh_delivered === 'number' && Number.isFinite(o.annual_kwh_delivered) && o.annual_kwh_delivered >= 0
+                  ? o.annual_kwh_delivered
+                  : (o.annual_kwh_estimate ?? 0) * (1 - 0.1408) * 0.96
               ).toLocaleString()} kWh/year delivered
             </dd>
             <dd className="text-xs text-slate-500 leading-snug mt-0.5">
-              {Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year at the panel (DC),
+              {o.annual_kwh_estimate != null
+                ? `${Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year at the panel (DC),`
+                : 'Reported at the panel (DC),'}
               less about 18% — NREL PVWatts v8's 14.08% system losses (soiling,
               shading, mismatch, wiring, ageing) and its separate 96%
               inverter efficiency.

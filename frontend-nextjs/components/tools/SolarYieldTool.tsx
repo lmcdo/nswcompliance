@@ -16,6 +16,20 @@ const SOLAR_STEPS: TransparencyStep[] = [
   { label: 'Estimating energy yield and savings…',           ms: 7000 },
 ];
 
+// Delivered energy from a payload field, or null when the field is not a
+// usable number. Written out rather than using `??` because the two failure
+// modes differ: `annual_kwh_delivered: 0` is a REAL zero and must be kept,
+// while `''` is schema drift and must NOT become 0 — `??` accepts both and
+// Number('') is 0, so a roof would report zero yield as if measured.
+function usableDelivered(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : null;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+  return null;
+}
+
 const AerialTile = dynamic(
   () => import('@/components/reports/AerialTile').then(m => m.AerialTile),
   { ssr: false, loading: () => <div className="w-full bg-gray-100 animate-pulse" style={{ height: 220 }} /> }
@@ -409,10 +423,8 @@ function ReportCard({ report }: { report: ReportData }) {
   // The headline is DELIVERED energy — what the meter records — because the
   // dollar figure beside it depends on it. Google's DC number is kept and
   // named rather than dropped, so the basis is visible instead of implied.
-  const rawDelivered = Number(o.annual_kwh_delivered);
-  const deliveredKwh = Number.isFinite(rawDelivered) && rawDelivered > 0
-    ? rawDelivered
-    : o.annual_kwh_estimate * DC_TO_DELIVERED;
+  const deliveredKwh = usableDelivered(o.annual_kwh_delivered)
+    ?? o.annual_kwh_estimate * DC_TO_DELIVERED;
   findings.push({
     label: 'Google Solar building analysis',
     value: `${Math.round(deliveredKwh).toLocaleString('en-AU')} kWh/yr delivered from a ${systemKw.toFixed(1)} kW system`,
@@ -430,7 +442,7 @@ function ReportCard({ report }: { report: ReportData }) {
       // temperature, and NSW roof cells run well above that whenever the sun is
       // strong, so output sits BELOW nameplate in exactly the conditions the
       // sentence claimed it would exceed it.
-      ? 'Above-average sunshine for NSW. More sunshine hours raise annual output, though panels produce below their nameplate rating whenever cell temperature is above 25°C — which is most of a NSW summer day.'
+      ? 'Above-average sunshine for NSW. More sunshine hours raise annual output. Nameplate ratings are measured at 25°C cell temperature, and NSW roof cells usually run hotter than that in strong sun, so sustained output typically sits below nameplate rather than above it.'
       : o.sunshine_hours_per_year >= 1500
       ? 'Typical sunshine hours for Sydney metro. Standard solar yield assumptions apply.'
       : 'Below-average sunshine hours. This could be due to local shading, coastal cloud, or valley fog. Factor this into your installer\'s yield estimate.',
@@ -620,10 +632,8 @@ function SolarLockedPreviewCard({
   // Savings and payback come from DELIVERED energy. Using Google's DC figure
   // here overstated the annual saving by 16% and understated payback by more
   // than a year.
-  const rawDeliveredKwh = Number(outputs.annual_kwh_delivered);
-  const annualKwh       = Number.isFinite(rawDeliveredKwh) && rawDeliveredKwh > 0
-                          ? rawDeliveredKwh
-                          : outputs.annual_kwh_estimate * DC_TO_DELIVERED;
+  const annualKwh       = usableDelivered(outputs.annual_kwh_delivered)
+                          ?? outputs.annual_kwh_estimate * DC_TO_DELIVERED;
   const selfConsumed    = annualKwh * SELF_CONSUME_RATIO;
   const exported        = annualKwh * (1 - SELF_CONSUME_RATIO);
   const annualSavings   = (selfConsumed * RETAIL_RATE) + (exported * FEED_IN_TARIFF);

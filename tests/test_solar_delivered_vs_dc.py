@@ -138,6 +138,27 @@ class TestTheFrontendMirrorsCannotDiverge:
             f"presenting a different basis than the backend: {missing}"
         )
 
+    def test_every_mirror_distinguishes_a_real_zero_from_an_absent_field(self):
+        """Raised by adversarial review, and the two failures pull opposite ways.
+
+        `> 0` rejects a genuine `annual_kwh_delivered: 0` and substitutes a
+        derived positive number — a roof recorded as delivering nothing would
+        be reported as delivering something. But `>= 0` alone re-admits `''`,
+        because Number('') is 0. Only the RAW value separates them, so every
+        surface must inspect the type before coercing. Any surface still
+        reaching for a bare Number() comparison has one of the two bugs.
+        """
+        offenders = []
+        for rel in self.MIRRORS:
+            text = (_ROOT / rel).read_text(encoding="utf-8", errors="replace")
+            if "annual_kwh_delivered" not in text:
+                continue
+            if "typeof" not in text:
+                offenders.append(f"{rel} (coerces without checking the raw type)")
+        assert not offenders, (
+            "these surfaces cannot tell a real zero from schema drift: " + str(offenders)
+        )
+
     def test_no_mirror_uses_the_system_loss_alone(self):
         """CONTROL for the above. `(1 - 0.1408)` NOT followed by the inverter
         factor is precisely the first-draft defect, and a file could satisfy

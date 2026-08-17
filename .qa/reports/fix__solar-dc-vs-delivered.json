@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Every dollar figure the solar product shows changes. The served annual kWh was Google's DC energy at the panel and was being monetised directly, so annual saving, payback, ten-year return, the battery case and the monthly chart were all computed from a number 21% higher than what a meter records. Direction matters: this only ever REMOVES an overstatement, and both correction factors are published NREL PVWatts defaults rather than values chosen here.",
-  "commit_hash": "e980878d",
+  "commit_hash": "44cc58bc",
   "files": [
     "services/solar_yield.py",
     "frontend-nextjs/app/api/reports/solar-yield/generate/route.ts",
@@ -117,10 +117,24 @@
       "mitigated": true,
       "how": "test_the_inverter_is_a_SEPARATE_factor asserts DC_TO_DELIVERED is strictly below the system-loss-only figure, and test_no_mirror_uses_the_system_loss_alone rejects any line applying (1 - 0.1408) without 0.96 beside it.",
       "repro": "python -m pytest tests/test_solar_delivered_vs_dc.py -k inverter -q"
+    },
+    {
+      "scenario": "A payload carries annual_kwh_delivered: 0 alongside a positive annual_kwh_estimate - a roof recorded as delivering nothing.",
+      "what_happens": "A `> 0` validity test rejects the real zero and silently substitutes the derived figure, so the report prints positive generation, a dollar value and a battery case for a roof the data says delivers nothing. The opposite guard, `>= 0`, re-admits '' because Number('') is 0. The two failures pull in opposite directions and no single numeric comparison separates them.",
+      "mitigated": true,
+      "how": "Every surface inspects the RAW value before coercing: a number is trusted including 0, a non-empty numeric string is trusted, anything else derives. One shared helper per file rather than a comparison repeated inline, and a test asserts each surface checks the type rather than coercing blind.",
+      "repro": "python -m pytest tests/test_solar_delivered_vs_dc.py -k zero -q"
+    },
+    {
+      "scenario": "A payload carries annual_kwh_delivered but no annual_kwh_estimate - valid under the declared optional interface.",
+      "what_happens": "The intelligence-brief yield block was gated on annual_kwh_estimate alone, so it rendered nothing at all despite holding a usable delivered figure.",
+      "mitigated": true,
+      "how": "The block is gated on EITHER field being present, and the DC line degrades to naming the basis without a number when the DC figure is absent.",
+      "repro": "read the Calculated yield block in app/reports/intelligence-brief/page.tsx"
     }
   ],
   "mutation_analysis": "Mutated in the direction that matters. Setting DC_TO_DELIVERED to 1.0 - the change that silently reinstates the defect - fails test_strictly_lower_for_any_positive_input, test_the_factor_is_the_published_pvwatts_default and the control case. Making delivered_kwh return its input unchanged while leaving the constant alone would slip past a test that only reads the constant, which is why test_the_rule_can_say_yes_and_no pins the BEHAVIOUR and the CONSTANT together in one place. The mirror-parity guard was itself mutated by accident: its first version flagged a correct line, which is the false-positive failure mode, and it was tightened rather than deleted.",
-  "residual_risk": "Both factors are NATIONAL-SCALE DEFAULTS, not this roof. Real system losses vary with inverter model, string layout, local soiling and shading, and a specific installation can sit either side of it. This change does not make the yield figure correct for a given house - it makes it correct about WHICH QUESTION IT ANSWERS, and says so, pointing at the installer's quote for the hardware-specific number. The underlying yield is still Google's model and remains unvalidated against metered generation; that ceiling is recorded in the product assurance position and this change does not lift it. RETAIL_RATE 0.32 and FEED_IN_RATE 0.06 are hardcoded and untouched here - they carry an AER citation in the PDF footer but no freshness check, and they go stale silently. Not in scope, deliberately, but a real second-order exposure on the same numbers.",
+  "residual_risk": "Both factors are NATIONAL-SCALE DEFAULTS, not this roof. Real system losses vary with inverter model, string layout, local soiling and shading, and a specific installation can sit either side of it. This change does not make the yield figure correct for a given house - it makes it correct about WHICH QUESTION IT ANSWERS, and says so, pointing at the installer's quote for the hardware-specific number. The underlying yield is still Google's model and remains unvalidated against metered generation; that ceiling is recorded in the product assurance position and this change does not lift it. RETAIL_RATE 0.32 and FEED_IN_RATE 0.06 are hardcoded and untouched here - they carry an AER citation in the PDF footer but no freshness check, and they go stale silently. Not in scope, deliberately, but a real second-order exposure on the same numbers. One claim was softened rather than removed after review pushed back: panels CAN briefly exceed nameplate at high irradiance with moderate cell temperature, so the copy now says sustained output TYPICALLY sits below nameplate rather than asserting it always does.",
   "post_merge": {
     "db_reset": "No schema change and nothing written. Reverting the commit restores the previous behaviour exactly; no stored report is modified by this change, so there is nothing to roll back in the database.",
     "secrets": "None added, read or printed.",
