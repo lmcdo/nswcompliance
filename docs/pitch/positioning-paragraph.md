@@ -22,7 +22,7 @@ Both versions are 60–90 words. Both are truthful about the AI-assisted nature 
 
 **Why it works.** Leads with the technical rule, which is the actual intellectual property. The AI framing is still in there ("most with an AI writing the code") but it lands after the buyer has already registered the technique. "4,000-plus tests missed" is the concrete number that stops the "prompter" frame in its tracks.
 
-**Where it risks trouble.** A buyer who asks "which of the 4,000 tests specifically, and how did you know they missed it" needs you to point at PR [\#856](https://github.com/lmcdo/nswcompliance/pull/856) — the schema-contract gate — which is on `main` and readable. Have that PR open in a tab. Do **not** cite `STRATEGY_REVIEW_2026-08-08.md`: it sits in unmerged PR #899, so a buyer who looks for it will not find it.
+**Where it risks trouble.** A buyer who asks "which of the tests specifically, and how did you know they missed it" needs you to point at PR [\#856](https://github.com/lmcdo/nswcompliance/pull/856) — the schema-contract gate — which is on `main` and readable. Have that PR open in a tab. Do **not** cite `STRATEGY_REVIEW_2026-08-08.md`: it sits in unmerged PR #899, so a buyer who looks for it will not find it.
 
 ------------------------------------------------------------------------
 
