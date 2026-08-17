@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Adds the print stylesheet the README's regeneration command has always referenced and which never existed, and records the regeneration it unblocked. One new file, one README passage. No code, no query, no served output.",
-  "commit_hash": "b161a7ec",
+  "commit_hash": "b8fdc24e",
   "files": [
     "docs/pitch/style.html",
     "docs/pitch/README.md"
