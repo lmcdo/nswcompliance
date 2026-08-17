@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Every dollar figure the solar product shows changes. The served annual kWh was Google's DC energy at the panel and was being monetised directly, so annual saving, payback, ten-year return, the battery case and the monthly chart were all computed from a number 21% higher than what a meter records. Direction matters: this only ever REMOVES an overstatement, and both correction factors are published NREL PVWatts defaults rather than values chosen here.",
-  "commit_hash": "75d248be",
+  "commit_hash": "b2ca7449",
   "files": [
     "frontend-nextjs/lib/solar/delivered.ts",
     "services/solar_yield.py",
