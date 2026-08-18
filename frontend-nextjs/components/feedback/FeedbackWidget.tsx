@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { getCohort } from '@/lib/cohort';
 
 interface FeedbackWidgetProps {
   propertyAddress?: string;
@@ -21,7 +22,9 @@ type FeedbackType =
   | 'bug_report'
   | 'general';
 
-type UserType = 'certifier' | 'town_planner' | 'architect' | 'developer' | 'other';
+type UserType =
+  | 'certifier' | 'town_planner' | 'architect' | 'developer'
+  | 'student' | 'academic' | 'other';
 
 export default function FeedbackWidget({
   propertyAddress,
@@ -31,7 +34,12 @@ export default function FeedbackWidget({
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('general');
   const [feedbackText, setFeedbackText] = useState('');
   const [email, setEmail] = useState('');
-  const [userType, setUserType] = useState<UserType>('certifier');
+  // A tagged visitor is a student until they say otherwise. Leaving the
+  // default at 'certifier' would mislabel a whole cohort's feedback unless
+  // every student remembered to change it every time.
+  const cohort = typeof window !== 'undefined' ? getCohort() : null;
+  const [userType, setUserType] = useState<UserType>(
+    cohort ? 'student' : 'certifier');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -51,7 +59,9 @@ export default function FeedbackWidget({
     { value: 'town_planner', label: 'Town Planner' },
     { value: 'architect', label: 'Architect' },
     { value: 'developer', label: 'Developer' },
-    { value: 'other', label: 'Other Professional' },
+    { value: 'student', label: 'Student' },
+    { value: 'academic', label: 'Academic / lecturer' },
+    { value: 'other', label: 'Other' },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +78,7 @@ export default function FeedbackWidget({
           email: email || null,
           userType,
           context: {
+            cohort,          // null when untagged — never a placeholder
             page: pathname,
             url: typeof window !== 'undefined' ? window.location.href : '',
             propertyAddress: propertyAddress || 'Not specified',
@@ -89,7 +100,9 @@ export default function FeedbackWidget({
           setFeedbackText('');
           setEmail('');
           setFeedbackType('general');
-          setUserType('certifier');
+          // Back to the cohort-aware default, not 'certifier' — a student
+          // filing a second report would otherwise be relabelled.
+          setUserType(cohort ? 'student' : 'certifier');
         }, 3000);
       } else {
         console.error('Failed to submit feedback');
