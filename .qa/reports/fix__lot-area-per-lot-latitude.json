@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes a number every app serves. Lot area and lot width are recomputed for the Site Report, the property API, the setbacks calculator, the upzoning/duplex check and the CDC calculator, and lot width gates SEPP minimum-frontage eligibility — so this alters yes/no answers, not only displayed figures. Critical rather than Standard because the directionality is CHOOSING A VALUE, not removing a false claim: per the repair-calibration rule, removing a claim cannot create a wrong one but selecting a number can. Every new value is therefore validated against an external reference (the cadastre) rather than against our own other implementation, which is precisely the mistake the old golden made.",
-  "commit_hash": "43d5494b",
+  "commit_hash": "b7a34ea7",
   "files": [
     "frontend-nextjs/lib/geometry/__tests__/lot-shape-analysis.test.ts",
     "frontend-nextjs/lib/geometry/__tests__/mercator-latitude.test.ts",
