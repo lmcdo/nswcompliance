@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Re-includes docs/outreach/ in .gitignore, lands the 109-line student brief that was silently excluded by it, and adds a guard on the rule. No code path, no query, no served output, no number. One substantive file by the gate's own definition (the test), well inside the minor floor of three. Minor rather than standard on blast radius, not on importance: nothing a user sees changes, but the failure being fixed is silent loss of a committed-looking document.",
-  "commit_hash": "PENDING",
+  "commit_hash": "01ffe912",
   "files": [
     ".gitignore",
     "docs/outreach/student-brief.md",
