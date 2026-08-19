@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds cohort tagging to the feedback path so a student class can be told apart from professional users, and adds the two user types that had no representation. Touches a served surface (the feedback widget) but changes no number, no report and no stored answer. Standard because a silent failure here means a cohort's feedback is unattributable and the trial produces nothing.",
-  "commit_hash": "93a0a7b1",
+  "commit_hash": "7e431b01",
   "files": [
     "frontend-nextjs/lib/cohort.ts",
     "frontend-nextjs/components/feedback/FeedbackWidget.tsx",
@@ -10,7 +10,7 @@
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest --testPathPatterns=lib/cohort",
     "fails_when": "NOT SELF-REFERENTIAL: the rule is exercised against inputs a stranger can put in a URL, and must SEPARATE them. It fails if 'uts-16658' is rejected, and equally if any of empty, single-character, leading/trailing dash, a space, a quote-and-comment, markup, or a 60-character string is accepted. An untagged visit must return null rather than a placeholder, because 'unknown' would read as a cohort in the data.",
-    "observed_red": "Observed. The FIRST test helper redefined window.location per test and the suite could not run at all - 84 suites failed, 0 tests. The second attempt did it once with configurable:true and still threw 'Cannot redefine property: location', because the jest setup pins it. Rewritten to drive the query string through history.replaceState, which is also how a real navigation sets it: 14 pass. The control case pins both directions, so a stub returning null always and a stub echoing input both fail.",
+    "observed_red": "Observed. The FIRST test helper redefined window.location per test and the suite could not run at all - 84 suites failed, 0 tests. The second attempt did it once with configurable:true and still threw 'Cannot redefine property: location', because the jest setup pins it. Rewritten to drive the query string through history.replaceState, which is also how a real navigation sets it: 14 pass. The control case pins both directions, so a stub returning null always and a stub echoing input both fail. A third defect was found by the operator asking what the URL should visibly DO: nothing did. The tag was invisible, which made the whole mechanism unverifiable without database access. Fixed, and the fix then introduced a hydration mismatch by reading window during render - caught before push and moved into useEffect.",
     "external_authority": "The acceptance set is not invented here: it is what a lecturer can paste into an LMS and what a browser will carry through a redirect. The rejection set is the standard shape of injected input for a value written to a varchar column."
   },
   "pre_impl": {
@@ -58,6 +58,20 @@
       "mitigated": false,
       "how": "NOT mitigated here and stated: the route builds its own pg Pool from DB_HOST/DB_NAME/DB_PASSWORD, which default to localhost. They are present in .env.local; whether they are set in the Vercel production environment is UNVERIFIED from here. The failure is at least visible - the API returns 500 and the widget alerts the student - but this must be tested against production before a cohort is invited.",
       "repro": "submit feedback on the deployed site and confirm the row appears in user_feedback"
+    },
+    {
+      "scenario": "A lecturer opens the class link to check it worked before sending it to 40 students.",
+      "what_happens": "Nothing on screen changes. The code is invisible, so the only way to confirm the tag is being applied is to query the database - and a student has no way at all to know their feedback is grouped.",
+      "mitigated": true,
+      "how": "The closed button shows the code as a chip and reads 'Report an issue' rather than 'Feedback'; the open panel repeats it as 'Tagged to <code>' directly above the form. The link now verifies itself.",
+      "repro": "open /assessment?cohort=test-1 and look at the bottom-right button"
+    },
+    {
+      "scenario": "The cohort is read during render instead of after mount.",
+      "what_happens": "getCohort() touches the URL and localStorage, neither of which exists on the server, so the server emits 'Feedback' and the client emits the class code. React resolves that hydration mismatch by discarding the client markup - the tag can disappear on exactly the page it is meant to prove.",
+      "mitigated": true,
+      "how": "Moved into useEffect with useState initialised to the untagged values, so server and first client render agree and the chip appears on the second paint.",
+      "repro": "grep useEffect in FeedbackWidget.tsx - the read is inside it, not in the component body"
     }
   ],
   "post_merge": {
@@ -66,6 +80,6 @@
     "other_repo": "None.",
     "watch": "SELECT context_data->>'cohort', count(*) FROM user_feedback GROUP BY 1 - should show the cohort code once a class starts, and null for everyone else.",
     "owner": "founder",
-    "manual_verify": "THE ONE THING TO DO BEFORE INVITING ANYONE: open the deployed /assessment?cohort=test-1, submit feedback, and confirm a row lands in user_feedback with cohort 'test-1' and user_type 'student'. If the DB_* variables are missing in Vercel this fails, and every student's report would be lost."
+    "manual_verify": "Open the deployed /assessment?cohort=test-1. The bottom-right button must read 'Report an issue' with a 'test-1' chip, and opening it must show 'Tagged to test-1'. THEN submit and confirm a row lands in user_feedback with cohort test-1 and user_type student - if the DB_* variables are missing in Vercel this fails and every student's report would be lost."
   }
 }

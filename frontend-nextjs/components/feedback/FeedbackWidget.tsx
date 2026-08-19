@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { getCohort } from '@/lib/cohort';
@@ -34,12 +34,22 @@ export default function FeedbackWidget({
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('general');
   const [feedbackText, setFeedbackText] = useState('');
   const [email, setEmail] = useState('');
-  // A tagged visitor is a student until they say otherwise. Leaving the
-  // default at 'certifier' would mislabel a whole cohort's feedback unless
-  // every student remembered to change it every time.
-  const cohort = typeof window !== 'undefined' ? getCohort() : null;
-  const [userType, setUserType] = useState<UserType>(
-    cohort ? 'student' : 'certifier');
+  // Read AFTER mount, never during render. getCohort() touches the URL and
+  // localStorage, neither of which exists on the server — reading it inline
+  // makes the server emit "Feedback" and the client emit the class code, which
+  // is a hydration mismatch React resolves by discarding the client markup.
+  const [cohort, setCohort] = useState<string | null>(null);
+  const [userType, setUserType] = useState<UserType>('certifier');
+
+  useEffect(() => {
+    const c = getCohort();
+    if (!c) return;
+    setCohort(c);
+    // A tagged visitor is a student until they say otherwise. Left at
+    // 'certifier' a whole cohort files under a profession none of them hold,
+    // unless every student remembers to change it on every submission.
+    setUserType('student');
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -124,7 +134,17 @@ export default function FeedbackWidget({
         aria-label="Open feedback panel"
       >
         <MessageCircle size={20} />
-        <span className="font-medium">Feedback</span>
+        <span className="font-medium">
+          {cohort ? 'Report an issue' : 'Feedback'}
+        </span>
+        {cohort && (
+          <span
+            className="ml-1 rounded-full bg-blue-500/40 px-2 py-0.5 text-[11px] font-medium tracking-wide"
+            title={`Your feedback is tagged to ${cohort}`}
+          >
+            {cohort}
+          </span>
+        )}
       </button>
     );
   }
@@ -135,7 +155,16 @@ export default function FeedbackWidget({
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
         <div className="flex items-center gap-2">
           <MessageCircle size={20} className="text-blue-600" />
-          <h3 className="font-semibold text-gray-900">Share Your Feedback</h3>
+          <div>
+            <h3 className="font-semibold text-gray-900">
+              {cohort ? 'Report an issue' : 'Share Your Feedback'}
+            </h3>
+            {cohort && (
+              <p className="text-xs text-gray-500">
+                Tagged to <span className="font-medium">{cohort}</span>
+              </p>
+            )}
+          </div>
         </div>
         <button
           onClick={() => setIsOpen(false)}
