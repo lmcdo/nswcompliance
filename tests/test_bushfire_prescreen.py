@@ -20,6 +20,9 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from services.bushfire_prescreen import (
+    ALGORITHM_VERSION,
+    build_cache_manifest,
+    build_live_manifest,
     _is_in_nsw,
     _BAL_LOOKUP,
     _FIRE_SIGNAL_MAP,
@@ -355,3 +358,119 @@ class TestS414Triggers:
 
     def test_special_fire_protection_in_triggers(self):
         assert any("special fire protection" in t.lower() for t in _S414_TRIGGERS)
+
+
+# ---------------------------------------------------------------------------
+# Execution manifest — provenance for every report row
+# ---------------------------------------------------------------------------
+
+from datetime import date as _date
+
+from services.execution_manifest import MANIFEST_KEY  # noqa: E402
+
+
+class TestExecutionManifest:
+    """Every bushfire report row must record how it was made.
+
+    ORIGIN, 2026-08-19. scripts/check_satellite_manifests.py measured
+    bushfire at 0 of 65 reports carrying an execution manifest — the only
+    satellite product wired to none — and the count of unprovenanced rows ROSE
+    from 61 to 65 between 08-17 and 08-19, so new reports kept being written
+    without provenance and the ratchet failed the build for every branch.
+
+    A manifest cannot be backfilled: it is derivable only at computation time.
+    So these tests fix the FORWARD behaviour. The 65 existing rows stay
+    unprovenanced permanently, honestly counted.
+    """
+
+    def test_live_manifest_records_the_sources_actually_queried(self):
+        rfs = _rfs_result(
+            designation_source="NSW RFS BFPL",
+            designation_category="Vegetation Category 1",
+            designation_guideline="PBP 2019",
+            data_currency="2024-11-01",
+            fire_signal="high",
+        )
+        m = build_live_manifest(
+            rfs, {"overlay_type": "flood_planning"}, {"overlay_type": "hca"},
+            {"zone_code": "R2"}, -33.87, 151.2, 12345,
+        )
+        assert m["product"] == "bushfire"
+        assert m["algorithm_version"] == ALGORITHM_VERSION
+        rfs_id = m["inputs"]["rfs_bfpl"]
+        assert rfs_id["designation_category"] == "Vegetation Category 1"
+        assert rfs_id["data_currency"] == "2024-11-01"
+        assert m["inputs"]["spatial_overlays"]["zone_code"] == "R2"
+        assert m["inputs"]["provenance"]["served_from"] == "live_query"
+        assert m["query_params"] == {"lat": -33.87, "lng": 151.2}
+        assert m["parcel_identity"] == {"prop_id": 12345}
+
+    def test_live_manifest_reads_the_result_dict_not_a_second_lookup(self):
+        """The identity must MOVE with the result, or it describes another call."""
+        rfs = _rfs_result(designation_category="Vegetation Buffer", data_currency="2019-01-01")
+        m = build_live_manifest(rfs, None, None, None, -33.0, 151.0, None)
+        assert m["inputs"]["rfs_bfpl"]["designation_category"] == "Vegetation Buffer"
+        assert m["inputs"]["rfs_bfpl"]["data_currency"] == "2019-01-01"
+        # absent overlays are recorded as absent, never as a default value
+        assert m["inputs"]["spatial_overlays"]["flood"] is None
+        assert m["inputs"]["spatial_overlays"]["heritage"] is None
+        assert m["inputs"]["spatial_overlays"]["zone_code"] is None
+
+    def test_cache_manifest_does_not_claim_a_query_that_never_happened(self):
+        """The failure this guards: a cached copy labelled as a live screen.
+
+        False provenance is worse than none, because it reads as evidence.
+        """
+        cached = {"run_date": _date(2026, 5, 1), "data_sources": ["NSW RFS BFPL"]}
+        m = build_cache_manifest(cached, -33.87, 151.2, 999)
+        prov = m["inputs"]["provenance"]
+        assert prov["served_from"] == "cache"
+        assert prov["served_from"] != "live_query"
+        assert prov["source_run_date"] == "2026-05-01"
+        assert prov["source_data_sources"] == ["NSW RFS BFPL"]  # recorded, so reported
+        # It must NOT invent source identities it did not observe.
+        assert "rfs_bfpl" not in m["inputs"]
+        assert "spatial_overlays" not in m["inputs"]
+
+    def test_cache_manifest_does_not_invent_a_source_it_cannot_know(self):
+        """A legacy row with no recorded sources must say so, not guess.
+
+        Raised by scripts/cross_review.py at 0.97 and correct: the first
+        version defaulted a NULL data_sources to the RFS map, which asserts a
+        fact about a run nobody recorded — inside the one structure whose job
+        is to record what actually happened. False provenance in a manifest is
+        worse than false provenance anywhere else.
+        """
+        m = build_cache_manifest({"run_date": _date(2026, 5, 1)}, -33.0, 151.0, None)
+        assert m["inputs"]["provenance"]["source_data_sources"] is None
+        m2 = build_cache_manifest({"data_sources": []}, -33.0, 151.0, None)
+        assert m2["inputs"]["provenance"]["source_data_sources"] is None
+        # A row that DOES record its sources still reports them.
+        m3 = build_cache_manifest({"data_sources": ["NSW RFS BFPL"]}, -33.0, 151.0, None)
+        assert m3["inputs"]["provenance"]["source_data_sources"] == ["NSW RFS BFPL"]
+
+    def test_cache_manifest_survives_a_missing_run_date(self):
+        """A cache row from before run_date was selected must not crash the write."""
+        m = build_cache_manifest({}, -33.87, 151.2, None)
+        assert m["inputs"]["provenance"]["source_run_date"] is None
+        assert m["inputs"]["provenance"]["served_from"] == "cache"
+        m2 = build_cache_manifest({"run_date": "2026-05-01"}, -33.87, 151.2, None)
+        assert m2["inputs"]["provenance"]["source_run_date"] == "2026-05-01"
+
+    def test_both_manifests_carry_the_key_the_ratchet_counts(self):
+        """The check counts `inputs ? 'execution_manifest'` — pin that exact key.
+
+        A manifest stored under any other key is invisible to the ratchet, which
+        is how solar-yield could look like 0 coverage while writing one.
+        """
+        assert MANIFEST_KEY == "execution_manifest"
+        for m in (build_live_manifest(_rfs_result(), None, None, None, -33.0, 151.0, None),
+                  build_cache_manifest({}, -33.0, 151.0, None)):
+            envelope = {"lat": -33.0, "lng": 151.0, MANIFEST_KEY: m}
+            assert "execution_manifest" in envelope
+            assert envelope["execution_manifest"]["product"] == "bushfire"
+
+    def test_the_algorithm_version_is_named_not_blank(self):
+        """A manifest naming no version cannot say which code made the report."""
+        assert ALGORITHM_VERSION
+        assert ALGORITHM_VERSION.startswith("bushfire-")

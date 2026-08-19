@@ -57,6 +57,17 @@ from pydantic import BaseModel
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 
+# prior-art-checked: reuses the shared item-4 module the other four satellite
+# products already write through (services/execution_manifest.py, #876). This
+# pipeline was simply never wired to it — the ratchet in
+# scripts/check_satellite_manifests.py counted 0 of 65 bushfire reports
+# carrying one, and the count rose by 4 between 2026-08-17 and 08-19 because
+# new reports kept being written without provenance.
+try:
+    from services.execution_manifest import MANIFEST_KEY, build_manifest
+except ImportError:
+    from execution_manifest import MANIFEST_KEY, build_manifest
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -69,6 +80,10 @@ RFS_BFPL_REST = (
 
 _DATA_SOURCE_RFS = "NSW Rural Fire Service Bush Fire Prone Land Map"
 _DATA_SOURCE_SPATIAL = "PostGIS spatial_overlays"
+
+#: Bump when the screening logic changes what a given input produces, so a
+#: stored manifest names the code that actually made that report.
+ALGORITHM_VERSION = "bushfire-rfs-prescreen-1.0"
 
 # NSW bounding box (rough) — reject obviously out-of-state coordinates
 _NSW_BBOX = {"min_lat": -37.6, "max_lat": -28.0, "min_lng": 140.9, "max_lng": 154.0}
@@ -437,6 +452,78 @@ def _build_compliance(
     }
 
 
+def build_live_manifest(rfs_result: dict, flood_overlay, heritage_overlay,
+                        zone, lat: float, lng: float, prop_id) -> dict:
+    """Manifest for a report whose sources were actually queried this run.
+
+    Every identity is read from the dict the source query ITSELF returned —
+    never re-fetched here. A parallel lookup would describe a different call
+    than the one that produced the numbers, which is the exact failure the
+    execution manifest exists to prevent.
+    """
+    return build_manifest(
+        product="bushfire",
+        algorithm_version=ALGORITHM_VERSION,
+        inputs={
+            "rfs_bfpl": {
+                "endpoint": RFS_BFPL_REST,
+                "designation_source": rfs_result.get("designation_source"),
+                "designation_category": rfs_result.get("designation_category"),
+                "designation_guideline": rfs_result.get("designation_guideline"),
+                "data_currency": rfs_result.get("data_currency", "unknown"),
+                "fire_signal": rfs_result.get("fire_signal", "unavailable"),
+            },
+            "spatial_overlays": {
+                "source": _DATA_SOURCE_SPATIAL,
+                "flood": (flood_overlay or {}).get("overlay_type"),
+                "heritage": (heritage_overlay or {}).get("overlay_type"),
+                "zone_code": (zone or {}).get("zone_code"),
+            },
+            "provenance": {
+                "served_from": "live_query",
+                "note": "RFS BFPL and the PostGIS overlays were queried for this report",
+            },
+        },
+        query_params={"lat": lat, "lng": lng},
+        parcel_identity={"prop_id": prop_id},
+    )
+
+
+def build_cache_manifest(cached: dict, lat: float, lng: float, prop_id) -> dict:
+    """Manifest for a report served from an earlier run's stored outputs.
+
+    A cache hit still writes a NEW report row, so it still needs a manifest —
+    but it must not claim a query that never happened. What is honest is the
+    copy: nothing was fetched, and these numbers were produced on an earlier
+    date. Recording it as ``live_query`` would be false provenance, which is
+    worse than no manifest because it reads as evidence.
+    """
+    run_date = (cached or {}).get("run_date")
+    return build_manifest(
+        product="bushfire",
+        algorithm_version=ALGORITHM_VERSION,
+        inputs={
+            "provenance": {
+                "served_from": "cache",
+                "note": "No source was queried for this report. The outputs were "
+                        "copied from the most recent valid stored bushfire report "
+                        "for this address.",
+                "source_run_date": (
+                    run_date.isoformat() if hasattr(run_date, "isoformat") else run_date
+                ),
+                # NOT defaulted to the RFS source. A legacy row with a NULL
+                # data_sources genuinely does not record what it queried, and
+                # filling that gap with the likeliest answer would invent a
+                # fact inside the one structure whose whole job is to record
+                # what actually happened. Unknown is recorded as unknown.
+                "source_data_sources": (cached or {}).get("data_sources") or None,
+            },
+        },
+        query_params={"lat": lat, "lng": lng},
+        parcel_identity={"prop_id": prop_id},
+    )
+
+
 def _build_data_sources(rfs_result: dict, cross_overlays: list) -> list:
     sources = [_DATA_SOURCE_RFS]
     if cross_overlays:
@@ -525,7 +612,10 @@ def run_bushfire(req: BushfireRequest):
         conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT outputs, confidence, data_sources FROM property_reports "
+                # run_date is selected so the cache manifest can name WHEN the
+                # numbers it copies were actually produced. Without it the
+                # manifest would say "from cache" and be unable to say how old.
+                "SELECT outputs, confidence, data_sources, run_date FROM property_reports "
                 "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 5",
                 (req.address,)
             )
@@ -540,10 +630,20 @@ def run_bushfire(req: BushfireRequest):
             # Merge with defaults so cached blobs from older code versions still have all fields
             compliance_merged = {**_DEFAULT_OUTPUTS["compliance"], **(raw.get("compliance") or {})}
             merged = {**_DEFAULT_OUTPUTS, **raw, "compliance": compliance_merged}
+            # A cached row is still a NEW report row, so it needs a manifest —
+            # but it must not claim a live query that did not happen. What is
+            # honest here is the copy itself: nothing was queried, and these
+            # numbers came from an earlier run. Recording it as though it were
+            # fresh would be the false-provenance failure the manifest exists
+            # to prevent, and it is the likelier source of the four
+            # unprovenanced rows added since 2026-08-17, because the cache path
+            # runs whenever an address has been screened before.
+            cache_manifest = build_cache_manifest(cached, req.lat, req.lng, req.prop_id)
             # Write a row for the new report_id so PDF generation can find it
             _write_report(
                 req.report_id, req.address, req.lat, req.lng,
-                req.prop_id, {"lat": req.lat, "lng": req.lng},
+                req.prop_id,
+                {"lat": req.lat, "lng": req.lng, MANIFEST_KEY: cache_manifest},
                 raw, cached["confidence"],
                 cached["data_sources"] or [_DATA_SOURCE_RFS],
             )
@@ -623,8 +723,16 @@ def run_bushfire(req: BushfireRequest):
         "data_currency": rfs_result.get("data_currency", "unknown"),
     }
 
+    # Execution manifest: every identity below is read from the dicts the
+    # source queries THEMSELVES returned on this run — never a parallel lookup,
+    # which is the anti-pattern the campaign's item 4 exists to prevent.
+    manifest = build_live_manifest(
+        rfs_result, flood_overlay, heritage_overlay, zone,
+        req.lat, req.lng, req.prop_id,
+    )
+
     # Write to DB
-    inputs = {"lat": req.lat, "lng": req.lng}
+    inputs = {"lat": req.lat, "lng": req.lng, MANIFEST_KEY: manifest}
     if req.lot_geometry:
         inputs["lot_geometry"] = req.lot_geometry
     try:
