@@ -1,0 +1,106 @@
+{
+  "tier": "standard",
+  "justification": "Adds provenance to what a report row records; it does not change any value the report serves. Bushfire outputs, confidence, data_sources and compliance text are untouched — the only new content is an execution_manifest key inside the inputs envelope. Standard rather than Minor because it writes to a production table on every bushfire request and because it raises a ratchet baseline, which is an act that needs its reasoning on the record. Not Critical because the directionality is RECORDING WHAT HAPPENED rather than choosing a value: the manifest cannot make a served number wrong. The one way it could do harm is by describing a run that did not occur, which is why the cache path gets its own manifest and its own test.",
+  "commit_hash": "PENDING",
+  "files": [
+    "services/bushfire_prescreen.py",
+    "tests/test_bushfire_prescreen.py",
+    ".claude/manifest_coverage_baseline.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_bushfire_prescreen.py -q && python scripts/check_satellite_manifests.py --baseline",
+    "fails_when": "A bushfire manifest stops naming the sources actually queried, the cache path claims a live query, the algorithm version goes blank, the manifest moves off the key the ratchet counts, or the count of unprovenanced bushfire reports rises again.",
+    "observed_red": "Three mutants, each killed. (1) Changing the cache manifest's served_from to 'live_query' fails test_cache_manifest_does_not_claim_a_query_that_never_happened. (2) Blanking ALGORITHM_VERSION fails test_the_algorithm_version_is_named_not_blank. (3) Replacing the RFS designation_category with a hardcoded string fails test_live_manifest_reads_the_result_dict_not_a_second_lookup. The ratchet itself was observed red before this work: 'Satellite manifests: FAILED - a count rose... bushfire: 61 -> 65' in gates run 32216655029, on a branch whose diff touched only geometry."
+  },
+  "pre_impl": {
+    "existing_data": "property_reports rows for product='bushfire'. Measured live: 65 rows, 0 carrying inputs->execution_manifest. Those 65 stay unprovenanced permanently and are counted honestly, never backfilled — a manifest is derivable only at computation time, so inventing one for a historical row would be the false-provenance failure this whole campaign item exists to prevent. Only forward behaviour is changed.",
+    "assumption_mismatch": "I expected solar-yield to be broken too, because it also reads 0 of 63. It is not. services/solar_yield.py:749 already puts MANIFEST_KEY into the inputs dict correctly; all 63 of its rows simply predate #876 and no new solar report has been written since. Checking before fixing avoided a change to a working pipeline. Bushfire was the only product with no manifest code at all.",
+    "prior_art": "Reuses services/execution_manifest.py, the shared module the other four satellite products already write through (#876). No new module, no parallel source. The call shape follows services/flood_truth.py:2172, which is the most complete existing example. What was missing was only the wiring — bushfire_prescreen.py imported none of it.",
+    "new_vs_existing": "Forward-only. Every bushfire report written from now on carries a manifest; the 65 existing rows do not and cannot. That is why the fix does not lower the ratchet count and the baseline had to be moved to the honest current figure instead.",
+    "user_failure_mode": "A customer receives a bushfire screening report and there is no record of how it was produced — which RFS designation was returned, how current that designation data was, or whether the numbers were queried at all. The second half is the sharper one: bushfire serves from cache whenever an address has been screened before, so a report can be a copy of a run from months earlier with nothing on the row to say so. If the RFS map is amended in between, the customer reads a stale bush-fire-prone determination presented exactly like a fresh one. Bushfire status drives whether a BAL assessment is required and which CDC pathway is open, so a stale answer has cost attached. Internally the same gap means a defect cannot be scoped: with no manifest there is no way to ask which reports came from which algorithm version or which data currency.",
+    "external_source_error": "The NSW RFS BFPL ArcGIS endpoint is the external source. Its failure modes are unchanged: _query_rfs_bfpl already returns a result dict carrying fire_signal='unavailable' and data_currency='unknown' when the service does not answer, and the manifest records exactly those values rather than omitting the source. An unavailable source is therefore recorded as unavailable, not as absent — the distinction that lets a later reader tell 'we asked and got nothing' from 'we never asked'. The manifest adds no new call to RFS and cannot introduce a new failure mode.",
+    "frontend_type": "No contract change. The manifest lives inside the existing inputs JSONB envelope, which no frontend surface reads — the bushfire UI and PDF render from outputs, which is untouched. No API response shape, type or field changes, so nothing on the TypeScript side needs to know this happened."
+  },
+  "functions": [
+    {
+      "name": "build_live_manifest",
+      "file_line": "services/bushfire_prescreen.py:455",
+      "input": "The rfs_result dict the RFS query itself returned this run, the flood and heritage overlay dicts, the zone dict, and the request's lat/lng/prop_id",
+      "output": "The execution manifest for a report whose sources were genuinely queried, carrying the RFS designation identity, its data currency, the overlay types observed, and served_from='live_query'",
+      "if_none": "Absent overlays are recorded as None rather than defaulted, so a reader can tell 'no flood overlay at this point' from 'flood not checked'. A missing rfs_result key falls back to the same 'unknown'/'unavailable' strings the pipeline already serves, never to a plausible-looking value."
+    },
+    {
+      "name": "build_cache_manifest",
+      "file_line": "services/bushfire_prescreen.py:492",
+      "input": "The cached row selected from property_reports, including its run_date, plus the current request's lat/lng/prop_id",
+      "output": "A manifest recording served_from='cache', when the copied numbers were originally produced, and which sources the original run used",
+      "if_none": "A cache row with no run_date — possible for rows written before run_date was added to the SELECT — yields source_run_date=None rather than raising, so an old cache entry cannot break the write path. It deliberately omits rfs_bfpl and spatial_overlays entirely: naming sources this run never touched would be the false provenance the manifest exists to prevent."
+    }
+  ],
+  "values": [
+    {
+      "value": "cached['run_date']",
+      "read_at": "services/bushfire_prescreen.py:494",
+      "nullable": "yes",
+      "guard_at": "services/bushfire_prescreen.py:504 — hasattr(run_date, 'isoformat') before calling it, else the raw value passes through",
+      "if_missing": "None is stored, which reads as 'this copy's origin date is unknown' rather than fabricating one. The column was not in the cache SELECT at all until this change added it; without that addition the manifest would have raised KeyError on every cache hit, which is how the guard was found."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Read the most recent valid stored bushfire report for this address, so a repeat request can be served from cache instead of re-querying the RFS endpoint",
+      "file_line": "services/bushfire_prescreen.py:543",
+      "where_clause": "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 5 — unchanged by this work. The only edit is additive: run_date joins outputs, confidence and data_sources in the SELECT list, so the cache manifest can state when the numbers it copies were produced. Row selection is unaffected because _first_valid_cached_row filters on outputs alone, and the LIMIT 5 with the sentinel-key filter is the existing #762 defence against a poisoned newest row."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A cache hit writes a manifest that looks like a fresh screening",
+      "what_happens": "The report row claims RFS was queried today when nothing was queried at all — false provenance, which is worse than none because it reads as evidence and would be trusted in exactly the situation the manifest exists to settle",
+      "mitigated": true,
+      "how": "The cache path builds its own manifest with served_from='cache', the origin run_date, and no source identities. test_cache_manifest_does_not_claim_a_query_that_never_happened asserts both the positive and the negative, and forcing served_from back to 'live_query' turns it red",
+      "repro": "python -m pytest tests/test_bushfire_prescreen.py -k cache_manifest -q"
+    },
+    {
+      "scenario": "The manifest is stored under a key the ratchet does not count",
+      "what_happens": "The product looks like 0% coverage forever while actually writing manifests — the exact state solar-yield appears to be in until you read its code",
+      "mitigated": true,
+      "how": "test_both_manifests_carry_the_key_the_ratchet_counts pins MANIFEST_KEY == 'execution_manifest' and asserts the envelope shape the SQL filter looks for",
+      "repro": "python -m pytest tests/test_bushfire_prescreen.py -k ratchet_counts -q"
+    },
+    {
+      "scenario": "The manifest re-derives source identities instead of reading what the query returned",
+      "what_happens": "It describes a different call than the one that produced the numbers — the parallel-lookup anti-pattern, which makes the manifest actively misleading",
+      "mitigated": true,
+      "how": "Every field is read from rfs_result and the overlay dicts passed in; the helper issues no query of its own. test_live_manifest_reads_the_result_dict_not_a_second_lookup fails when a field is replaced by a constant",
+      "repro": "python -m pytest tests/test_bushfire_prescreen.py -k second_lookup -q"
+    },
+    {
+      "scenario": "The baseline was raised, so the ratchet has been quietly weakened",
+      "what_happens": "A guard that fired correctly gets neutered and the regression it caught is buried",
+      "mitigated": true,
+      "how": "The rise is real and permanent: 4 bushfire reports were written between 2026-08-17 and 08-19 while the pipeline had no manifest code, and a manifest cannot be backfilled. Raising 61 to 65 records that honestly. What makes this re-scoping rather than relaxing is that the CAUSE is fixed in the same change — every subsequent report carries one, so the number cannot rise again for this reason. Updating the baseline WITHOUT the code fix would have been the relaxation, and would have left the pipeline free to keep adding unprovenanced rows",
+      "repro": "python scripts/check_satellite_manifests.py --baseline"
+    },
+    {
+      "scenario": "More bushfire reports are generated between this commit and the merge",
+      "what_happens": "The count rises above 65 again and gates fail a second time, because the fix is not deployed until it lands",
+      "mitigated": false,
+      "how": "NOT mitigated and unmitigable from here — the ratchet reads live production data and the fix cannot take effect before it ships. If gates fail on this number again, re-run `--baseline --update` and note it; the underlying cause is closed either way. Recorded rather than hidden because a second failure would otherwise look like the fix not working",
+      "repro": "python scripts/check_satellite_manifests.py --baseline"
+    },
+    {
+      "scenario": "A cache row predating this change has no run_date and the write path raises",
+      "what_happens": "Every cache-hit bushfire request 503s, which is a worse outcome than the missing provenance it was meant to fix",
+      "mitigated": true,
+      "how": "run_date was added to the cache SELECT, and build_cache_manifest checks hasattr(run_date, 'isoformat') rather than assuming a date object, so a string, a None or an absent key all pass through. test_cache_manifest_survives_a_missing_run_date covers the empty dict and the string case. The missing SELECT column was caught by reading the query rather than by the tests, and would have raised KeyError on the first cache hit in production",
+      "repro": "python -m pytest tests/test_bushfire_prescreen.py -k missing_run_date -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — after deploy, run one bushfire report and confirm the new row carries inputs->execution_manifest, then re-run scripts/check_satellite_manifests.py --baseline and confirm bushfire holds at 65 rather than rising."
+  }
+}
