@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One copy line in the feedback panel, branched on the cohort tag that #981 already added. Changes no number, no query, no stored value and no API shape. Minor rather than standard because the blast radius is a sentence a reader sees: the worst outcome is a student reading the wrong audience label, which is recoverable by reading the next line. Two substantive files, inside the minor-tier floor of three.",
-  "commit_hash": "PENDING",
+  "commit_hash": "8d2169e1",
   "files": [
     "frontend-nextjs/components/feedback/FeedbackWidget.tsx",
     "frontend-nextjs/__tests__/components/feedback/FeedbackWidget-cohort-copy.test.tsx"
