@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds cohort tagging to the feedback path so a student class can be told apart from professional users, and adds the two user types that had no representation. Touches a served surface (the feedback widget) but changes no number, no report and no stored answer. Standard because a silent failure here means a cohort's feedback is unattributable and the trial produces nothing.",
-  "commit_hash": "f3658ceb",
+  "commit_hash": "5c20bfe0",
   "files": [
     "frontend-nextjs/lib/cohort.ts",
     "frontend-nextjs/components/feedback/FeedbackWidget.tsx",
