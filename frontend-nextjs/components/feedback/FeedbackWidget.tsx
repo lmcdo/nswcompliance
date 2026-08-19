@@ -203,8 +203,15 @@ export default function FeedbackWidget({
             )}
 
             {/* Intro Text */}
+            {/* A tagged visitor is a student, and the professional line told them
+                they were in the wrong place. Every other cue already switched
+                (title, tag, role default); this line was the one that did not.
+                The cohort wording names the two reports docs/outreach/student-brief.md
+                asks for, so the panel and the brief ask for the same thing. */}
             <p className="text-sm text-gray-600">
-              As a professional user, your insights help us improve this tool for certifiers and planners.
+              {cohort
+                ? 'Tell us what you found. The two most useful reports: a control missing for your site, or a number that does not match the DCP.'
+                : 'As a professional user, your insights help us improve this tool for certifiers and planners.'}
             </p>
 
             {/* User Type */}
