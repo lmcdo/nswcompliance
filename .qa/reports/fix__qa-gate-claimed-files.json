@@ -1,0 +1,81 @@
+{
+  "tier": "standard",
+  "justification": "Adds an enforcement rule to the shared QA gate, so it can block every future PR in the repository. That blast radius, not the 80-line diff, sets the tier: a false positive here stops all work and gets the gate dismissed or bypassed, which is worse than the hole it closes. Minor would have been defensible on file count (2 substantive) and indefensible on consequence.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/qa_gate.py",
+    "tests/test_qa_gate_claimed_files.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_qa_gate_claimed_files.py -q",
+    "fails_when": "The suite pins BOTH directions, because a one-directional check is what created this hole in the first place. It fails if a report claiming a gitignored path is accepted (the #982 and #979 losses, reconstructed in a real temp repo), and equally if a legitimate claim is refused: a file deleted by the change, an untracked but addable scratch script, a dot-prefixed local marker, a tracked file that also matches an ignore pattern, and a path re-included by a negation. It also fails if the check is moved back inside `if diff_files:`, which would restore the exact blind spot, and if only the first offender is reported rather than all of them.",
+    "observed_red": "Two mutations applied to the implementation and measured, not reasoned about. MUTATION 1, the function returns [] immediately: 6 of 16 tests fail. MUTATION 2, the ignore test is skipped so every claimed path is flagged: 4 of 16 fail, including the negation case and all three silence cases. Both restored, 16 pass. Full Python suite after the change: 4,885 passed, 2 skipped, no regressions.",
+    "external_authority": "Not self-referential and not invented. The acceptance and rejection sets come from the 64 QA reports already in this repository, not from imagination. Running the candidate rule over all 64: a 'claimed files must be TRACKED' rule fires on 6 reports and several hundred paths, nearly all legitimate deletions and scratch scripts. The 'claimed files must not be GITIGNORED' rule fires on exactly 2, and both are genuine losses — docs/outreach/student-brief.md (#982) and docs/pitch/style.html (#979). The rule was chosen by measuring the false-positive rate of both candidates against real data, not by picking the stricter one."
+  },
+  "pre_impl": {
+    "existing_data": "64 QA reports under .qa/reports/ on origin/main d1034243. check_diff_coverage exists at scripts/qa_gate.py and compares in ONE direction only: changed files absent from the report. Its substantive filter drops anything dot-prefixed or ending .json/.md/.txt/.yml/.yaml, so a documentation-only commit produces an empty substantive set and returns before doing anything. A _git helper already exists and already routes through qa_report_path.git_env(); check_report_reachable already applies the same gitignore reasoning to the report file itself. This change extends that existing reasoning to the files the report names, and adds no new dependency, no new flag and no new config.",
+    "assumption_mismatch": "Three assumptions going in were wrong. (1) 'The gate checks the report against the diff' — it checks the diff against the report, never the reverse. (2) 'One document was lost' — measuring found a second, docs/pitch/style.html from #979, which is gone from disk as well as from git and which nobody had noticed. (3) 'Requiring claimed files to be tracked is the fix' — measured against the 64 real reports that rule is unusable, firing on 6 of them and hundreds of legitimate paths, because deletions and working-tree scratch both look identical to it. The narrower gitignored rule was chosen only after that measurement.",
+    "new_vs_existing": "One new 60-line function and one call site, reusing the module's own _git helper, its own git_env scrub and its own dot-prefixed convention for non-substantive paths. No new module, no new flag, no CI change, no dependency. The call is placed OUTSIDE the existing `if diff_files:` guard deliberately, because both losses were documentation commits — exactly the shape that skips the guard — and a test asserts it stays outside."
+  },
+  "functions": [
+    {
+      "name": "check_claimed_files_reachable",
+      "file_line": "scripts/qa_gate.py",
+      "what": "Refuses a QA report that lists a file git will never carry, because the path is gitignored and no git add can make the claim true.",
+      "input": "the report's `files` list, and the project directory to ask git about",
+      "output": "a list of error strings, one per unreachable claim, each naming the offending path and the .gitignore pattern that matched it",
+      "if_none": "an empty list, which is the same shape the other check_* helpers return, so it composes into the existing errors list without any special casing at the call site",
+      "edge_cases": "Skips dot-prefixed paths, reusing this module's own definition of non-substantive, which exempts the .claude and .qa_report.json markers that real reports legitimately name. Skips empty strings and N/A entries, the report's own way of saying nothing applies. Normalises backslashes so a report written on Windows is read the same way. Ignores non-string entries rather than raising, so a malformed report cannot take the gate down with a TypeError. Uses check-ignore -q and never -v for the decision, because with -v git exits 0 when the winning rule is a NEGATION, which would invert the answer for a deliberately re-included path; -v is called only afterwards, to name the pattern in the message.",
+      "failure_mode": "Fails open, deliberately. git returning 128 — binary missing, not a repository — is treated as not-ignored rather than as an error, matching the file's existing reasoning that a gate which breaks when git is unavailable is a gate that gets bypassed. The cost of that choice is bounded: the check is one of several, and CI always has git."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A report claims a path that the change DELETED, which is the single most common legitimate case.",
+      "what_happens": "A naive 'claimed files must exist / be tracked' rule fails the PR. Measured on real data this is not hypothetical: chore__delete-unreached-zone-surfaces.json claims 14 deleted paths and fix__dates-currency-provenance.json several hundred scratch scripts. A gate that fires on those is abandoned within a week.",
+      "mitigated": true,
+      "how": "The rule tests gitignored, not tracked. A deleted path is not ignored, so it passes. Pinned by test_silent_on_a_file_deleted_by_the_change and test_silent_on_an_untracked_scratch_file.",
+      "repro": "python -m pytest tests/test_qa_gate_claimed_files.py -k silent_on"
+    },
+    {
+      "scenario": "A file is already tracked and ALSO matches an ignore pattern — docs/pitch/README.md under docs/*.",
+      "what_happens": "If the check reasoned from patterns rather than asking git, it would flag a file that is demonstrably in the repository. This exact pair is why #979 was so easy to miss: it could modify the tracked README while its new sibling was silently dropped.",
+      "mitigated": true,
+      "how": "git does not report a tracked file as ignored, and the check asks git rather than parsing .gitignore itself. Pinned by test_silent_on_a_tracked_file_that_also_matches_a_pattern, which commits a file and then adds the pattern.",
+      "repro": "python -m pytest tests/test_qa_gate_claimed_files.py -k tracked_file_that_also"
+    },
+    {
+      "scenario": "The check is later moved inside `if diff_files:` to sit tidily beside check_diff_coverage.",
+      "what_happens": "It stops running on exactly the commits it exists for. Both losses were documentation-only, which is the shape that reaches that guard with an empty substantive set and returns. The hole reopens with the tests still green, because every other test calls the function directly.",
+      "mitigated": true,
+      "how": "test_runs_when_there_is_no_diff_file_list drives the full validate_report with diff_files=None and asserts the error still appears, so the wiring is pinned rather than the function alone.",
+      "repro": "Move the call inside the guard and run the suite — that test fails and names the cause."
+    },
+    {
+      "scenario": "Someone silences the new failure by deleting the path from the report's `files` list instead of fixing .gitignore.",
+      "what_happens": "The gate goes green and the file is still lost. The check cannot distinguish this from an honest correction, because a report that no longer claims the file is, on its face, accurate.",
+      "mitigated": false,
+      "repro": "Add \"docs/pitch/style.html\" to this report's files and run python scripts/qa_gate.py — it fails. Delete the line again and it passes, with the file still absent from the repository. Nothing distinguishes that from an honest correction."
+    },
+    {
+      "scenario": "A directory is re-included by negation but the author writes the negation wrongly — '!docs/outreach/**' without first re-including the directory itself.",
+      "what_happens": "git never descends into an excluded directory, so the ** negation alone does nothing and the file stays invisible. The author believes it is fixed.",
+      "mitigated": true,
+      "how": "The check keeps failing, because it asks git for the effective answer rather than reading the patterns. test_a_negation_clears_it pins that the CORRECT two-line form is accepted, so the error is actionable rather than merely persistent.",
+      "repro": "Write only the ** line in a temp repo and re-run: still refused."
+    },
+    {
+      "scenario": "Several claimed files are unreachable at once, across different directories.",
+      "what_happens": "A check reporting only the first sends the author round the loop once per directory. .gitignore already carries separately hand-added negations for docs/qa/ and docs/servicing/, each patched after its own incident — that is precisely this failure mode, spread over months.",
+      "mitigated": true,
+      "how": "Every offender is appended, not just the first. Pinned by test_flags_every_offender_not_only_the_first, which asserts three errors for three paths.",
+      "repro": "python -m pytest tests/test_qa_gate_claimed_files.py -k every_offender"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No schema, no migration, no query, no data. The change reads .gitignore through git and returns strings.",
+    "secrets": "None added, read or rotated. The check runs git check-ignore and nothing else.",
+    "other_repo": "None. Single repo. It does change behaviour for every future PR in it: a report naming a gitignored path now fails the gate where it previously passed. Two reports already on main would fail under the new rule — docs__pitch-stylesheet.json and docs__student-brief.json — but both are merged, their branches are gone, and the gate only ever runs against the current branch's report, so no existing PR is affected. PR #988 lands the .gitignore negation that clears the student-brief case at source.",
+    "manual_verify": "On this branch: `python scripts/qa_gate.py` still PASSES, since both files it claims are tracked. To see it bite, add \"docs/pitch/style.html\" to this report's files list and re-run — it fails naming .gitignore line 415, `docs/*`. Remove it again before committing."
+  }
+}
