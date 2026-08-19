@@ -1,0 +1,57 @@
+{
+  "tier": "minor",
+  "justification": "Re-includes docs/outreach/ in .gitignore, lands the 109-line student brief that was silently excluded by it, and adds a guard on the rule. No code path, no query, no served output, no number. One substantive file by the gate's own definition (the test), well inside the minor floor of three. Minor rather than standard on blast radius, not on importance: nothing a user sees changes, but the failure being fixed is silent loss of a committed-looking document.",
+  "commit_hash": "PENDING",
+  "files": [
+    ".gitignore",
+    "docs/outreach/student-brief.md",
+    "tests/test_outreach_docs_tracked.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_outreach_docs_tracked.py -q",
+    "fails_when": "Not required at minor tier; supplied because it can genuinely fail, and did. The suite pins the RULE in both directions: a hypothetical new docs/outreach/*.md must NOT be ignored, and an unlisted docs/<other>/ path must STILL be ignored. Deleting the negations fails the first; deleting `docs/*` outright fails the second, so the fix cannot be widened into disabling the rule. Two further cases pin that the brief is tracked and is not a truncated stub.",
+    "observed_red": "Observed, not assumed. Run before `git add`, test_student_brief_is_tracked FAILED and the other three passed — the guard detected exactly the condition that lost the document in the first place. After staging, 4 passed. The control case was also checked by hand: `git check-ignore -q docs/some-subdir/thing.md` still exits 0, so docs/* continues to bite everywhere it did before.",
+    "external_authority": "Not self-referential. `git check-ignore` is git's own answer about its own rules, asked about a path that need not exist, so the test interrogates the ignore file rather than the repository's current contents. The -q flag is required rather than stylistic: with -v git exits 0 when the winning rule is a negation, which would make a re-included path read as ignored to any caller testing the exit code."
+  },
+  "break_it": [
+    {
+      "scenario": "Someone removes the !docs/outreach/ negations while tidying .gitignore, and the brief is already tracked.",
+      "what_happens": "Git keeps tracking the existing brief regardless — .gitignore does not affect tracked files — so a test asserting 'the brief is tracked' would still pass. The next document written to docs/outreach/ then vanishes exactly as this one did, with the guard green.",
+      "mitigated": true,
+      "how": "The primary test asks git about a hypothetical path, docs/outreach/some-future-brief.md, which no tracking status can mask. It fails the moment the negation is gone.",
+      "repro": "Delete the two negation lines, run pytest tests/test_outreach_docs_tracked.py — test_a_new_outreach_document_would_not_be_ignored fails."
+    },
+    {
+      "scenario": "Someone fixes the ignore problem by deleting the `docs/*` line entirely instead of adding a negation.",
+      "what_happens": "Every previously ignored artefact under docs/ — large PDFs, scratch files, extraction dumps — becomes stageable, and the first `git add -A` commits them. The outreach test would pass while the repository takes on the exact weight docs/* exists to keep out.",
+      "mitigated": true,
+      "how": "A control test asserts an unlisted subdirectory path is STILL ignored, so the rule surviving is pinned as tightly as the exception.",
+      "repro": "Remove `docs/*` from .gitignore, run the suite — test_the_docs_star_rule_still_applies_elsewhere fails."
+    },
+    {
+      "scenario": "The brief is committed as an empty or truncated file, or is later gutted.",
+      "what_happens": "Tracking and ignore checks both pass on a one-line file. A stub handout is worse than a missing one, because it still gets emailed to a cohort and burns the introduction.",
+      "mitigated": true,
+      "how": "A content test requires more than 50 lines and the presence of the two findings the launch plan calls worth the whole exercise.",
+      "repro": "Truncate docs/outreach/student-brief.md to 10 lines and run the suite."
+    },
+    {
+      "scenario": "The test shells out to git while running inside the pre-push hook.",
+      "what_happens": "Git exports GIT_DIR and GIT_INDEX_FILE to its hooks and both OVERRIDE cwd, so the subprocess reads whichever repository the hook was invoked for rather than the one under test — DQ-54, already recorded.",
+      "mitigated": true,
+      "how": "The test reuses scripts/qa_report_path.py's own git_env() rather than reimplementing the scrub, so it drops GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE/GIT_OBJECT_DIRECTORY while preserving the GIT_SSH* authentication variables.",
+      "repro": "GIT_DIR=/some/other/repo/.git python -m pytest tests/test_outreach_docs_tracked.py -q  # still reads this repo"
+    },
+    {
+      "scenario": "A future QA report again claims a file the commit does not contain.",
+      "what_happens": "NOT MITIGATED by this change, and recorded here rather than left implicit. scripts/qa_gate.py's check_diff_coverage only looks for changed files absent from the report, never for files the report claims that are absent from the change; it also filters .md out of the substantive set, so a docs-only commit skips the check entirely. That combination is why #982 passed while losing its only real file. Fixing the gate touches shared QA infrastructure and is deliberately left to its own change.",
+      "mitigated": false
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No schema, no migration, no data. A markdown handout, a .gitignore negation and a test.",
+    "secrets": "None. The brief contains no credentials, no internal pipeline names and no table or function names — checked against .claude/rules/blog-content.md, since it is an external handout.",
+    "other_repo": "None. Single repo. The document is referenced by the feedback widget's cohort comment in PR #987, which currently states the brief is NOT on main; that comment becomes stale once this lands and should be trimmed when both are merged.",
+    "manual_verify": "After merge: `git show origin/main:docs/outreach/student-brief.md | wc -l` returns 109. Before this change the same command returns 'fatal: path does not exist', which is the whole defect."
+  }
+}

@@ -417,6 +417,8 @@ docs/*
 !docs/user-stories/
 !docs/intelligence-brief/
 !docs/intelligence-brief/**
+!docs/outreach/
+!docs/outreach/**
 !docs/*.md
 
 # PDF page images (stored in cloud, not git)
