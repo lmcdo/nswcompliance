@@ -191,7 +191,7 @@ export class PreciseSetbackCalculator {
  // A malformed ring must fail the setback calculation visibly rather than
  // producing NaN geometry that downstream setbacks silently consume.
  const safeRing = usableRing(coordinates);
- if (safeRing === null) {
+ if (safeRing == null) {
  throw new Error("Lot geometry contains non-finite coordinates");
  }
  const scaleFactor = scaleFactorForRing(safeRing);
@@ -527,7 +527,7 @@ export class PreciseSetbackCalculator {
 
  const coordinates = geometry.rings[0];
  const safeRing = usableRing(coordinates);
- if (safeRing === null) {
+ if (safeRing == null) {
  return 0;
  }
  const scaleFactor = scaleFactorForRing(safeRing);

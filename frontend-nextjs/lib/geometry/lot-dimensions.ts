@@ -64,7 +64,7 @@ export function calculateLotDimensions(geometry: LotGeometry): LotDimensions | n
   // coordinates safe, it only stops the divisor being NaN, and a NaN area then
   // slips past every `> 0` check because comparisons with NaN are false.
   const safeRing = usableRing(coordinates);
-  if (safeRing === null) {
+  if (safeRing == null) {
     notes.push('Lot geometry contains non-finite coordinates');
     return null;
   }
