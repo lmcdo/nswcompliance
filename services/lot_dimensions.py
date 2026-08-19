@@ -20,9 +20,63 @@ if TYPE_CHECKING:
     from services.constraint_models import LotDimensions
 
 
-# NSW average latitude for Web Mercator scale correction
+# Web Mercator scale correction.
+#
+# EPSG:3857 stretches distance by 1/cos(latitude), so an area computed on raw
+# rings is wrong by 1/cos^2(latitude). This module used to divide by a single
+# constant built from -33.87 (Sydney), which is exact in Sydney and wrong
+# everywhere else. Measured against the surveyed area on title over 577,081
+# single-part cadastre lots, by region (median ratio, computed area / surveyed):
+#
+#     Sydney      -33..-35   1.0026     far north  -28..-30   0.9021
+#     mid north   -30..-33   0.9708     south      -35..-37   1.0479
+#
+# So a Tweed Heads lot read ~9.8% small and a Bega lot ~4.8% large. Lengths
+# carry half that error (area scales with the square), and lot WIDTH gates
+# minimum-frontage eligibility, so the constant changed yes/no answers near a
+# threshold, not merely a displayed number.
+#
+# The ring already carries its own latitude, so nothing new has to be passed in:
+# invert the Mercator y back to a latitude and use that lot's own cosine. This
+# is the method services/granny_flat.py::_compute_lot_area_m2 has been using in
+# production since the granny-flat work — it was correct there and simply never
+# reached this shared module, which is why granny flat was right while the Site
+# Report, property API, setbacks calculator, upzoning check and CDC calculator
+# were all wrong together. Re-measured with the per-lot latitude, every region
+# above lands within 0.4% of the surveyed area.
+_MERCATOR_R = 20037508.342789244  # half the EPSG:3857 world extent, metres
+
+# Kept for the legacy fixed-latitude behaviour that tests and callers may still
+# reference. NOT used to correct geometry any more.
 _NSW_LATITUDE = -33.87
 _SCALE_FACTOR = 1.0 / math.cos(math.radians(abs(_NSW_LATITUDE)))
+
+
+def _mercator_latitude(y: float) -> float:
+    """Latitude in radians for an EPSG:3857 northing.
+
+    Inverse of the spherical Mercator projection. A lot-sized polygon spans far
+    too little latitude for the choice of point within it to matter, so the ring
+    centroid is used.
+    """
+    return 2.0 * math.atan(math.exp(y * math.pi / _MERCATOR_R)) - math.pi / 2.0
+
+
+def _scale_factor_for_ring(ring: list) -> float:
+    """Mercator scale factor at this ring's own latitude.
+
+    Falls back to the NSW-average constant only when the ring carries no usable
+    northing, which cannot happen for real Portal geometry but keeps a malformed
+    payload from raising instead of degrading.
+    """
+    ys = [pt[1] for pt in ring if len(pt) >= 2 and isinstance(pt[1], (int, float))]
+    if not ys:
+        return _SCALE_FACTOR
+    lat_rad = _mercator_latitude(sum(ys) / len(ys))
+    cos_lat = math.cos(lat_rad)
+    if cos_lat <= 0.0:
+        return _SCALE_FACTOR
+    return 1.0 / cos_lat
 
 # Planning Portal lot API
 LOT_API = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot"
@@ -66,8 +120,9 @@ def calculate_lot_dimensions(geometry: Optional[dict]) -> Optional[LotDimensions
 
     outer_ring = rings[0]
 
-    # Convert to real-world metres (scale correction for NSW latitude)
-    points = [(x / _SCALE_FACTOR, y / _SCALE_FACTOR) for x, y in outer_ring]
+    # Convert to real-world metres using THIS lot's latitude, not a state average.
+    scale = _scale_factor_for_ring(outer_ring)
+    points = [(x / scale, y / scale) for x, y in outer_ring]
 
     # Remove closing point if duplicate
     if len(points) > 1 and points[0] == points[-1]:

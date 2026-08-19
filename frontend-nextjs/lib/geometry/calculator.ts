@@ -14,11 +14,11 @@ interface Point {
  y: number;
 }
 
-// Helper functions for angle conversions
-function toRadians(degrees: number): number {
- return degrees * (Math.PI / 180);
-}
+import { scaleFactorForRing } from './mercator';
 
+// Helper functions for angle conversions.
+// toRadians() was removed with the fixed-latitude constant that was its only
+// caller; the Mercator correction now lives in ./mercator.
 function toDegrees(radians: number): number {
  return radians * (180 / Math.PI);
 }
@@ -26,13 +26,14 @@ function toDegrees(radians: number): number {
 export class PreciseSetbackCalculator {
  private db: DatabaseClient;
 
- // NSW average latitude for Web Mercator scale correction
- private readonly NSW_LATITUDE = -33.87;
- private readonly scaleFactor: number;
+ // Web Mercator scale correction is per-lot, taken from the ring's own
+ // latitude — see ./mercator. This class used to hold a single constant built
+ // from -33.87 (Sydney), which measured a Tweed Heads lot ~9.8% small and a
+ // Bega lot ~4.8% large against the surveyed area on title. Setbacks are
+ // derived from these distances, so the error reached a customer-facing number.
 
  constructor() {
  this.db = new DatabaseClient();
- this.scaleFactor = 1 / Math.cos(toRadians(Math.abs(this.NSW_LATITUDE)));
  }
 
  async calculatePreciseSetbacks(
@@ -187,9 +188,10 @@ export class PreciseSetbackCalculator {
  }
 
  // Convert Web Mercator coordinates to real-world meters
+ const scaleFactor = scaleFactorForRing(coordinates);
  const realPoints: Point[] = coordinates.slice(0, -1).map(coord => ({
- x: coord[0] / this.scaleFactor,
- y: coord[1] / this.scaleFactor
+ x: coord[0] / scaleFactor,
+ y: coord[1] / scaleFactor
  }));
 
  // Create boundary lines
@@ -518,9 +520,10 @@ export class PreciseSetbackCalculator {
  }
 
  const coordinates = geometry.rings[0];
+ const scaleFactor = scaleFactorForRing(coordinates);
  const points = coordinates.slice(0, -1).map(coord => ({
- x: coord[0] / this.scaleFactor,
- y: coord[1] / this.scaleFactor
+ x: coord[0] / scaleFactor,
+ y: coord[1] / scaleFactor
  }));
 
  // Use shoelace formula for polygon area

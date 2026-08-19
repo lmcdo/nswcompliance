@@ -20,11 +20,11 @@
  * 3. Detect narrow→wide pattern using proportion-based threshold
  */
 
+import { scaleFactorForRing } from './mercator';
 import type { LotGeometry } from '@/types/property';
 
 // NSW average latitude for Web Mercator scale correction
-const NSW_LATITUDE = -33.87;
-const SCALE_FACTOR = 1 / Math.cos((Math.abs(NSW_LATITUDE) * Math.PI) / 180);
+// Mercator correction now comes from the ring's own latitude — see ./mercator.
 
 // SEPP Housing 2021 requirements
 const MIN_ACCESS_WAY_WIDTH = 3.0; // meters
@@ -125,9 +125,10 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
   const coordinates = geometry.rings[0];
 
   // Convert to real-world meters
+  const scaleFactor = scaleFactorForRing(coordinates);
   const points: Point[] = coordinates.map((coord) => ({
-    x: coord[0] / SCALE_FACTOR,
-    y: coord[1] / SCALE_FACTOR,
+    x: coord[0] / scaleFactor,
+    y: coord[1] / scaleFactor,
   }));
 
   // Remove closing point if duplicate

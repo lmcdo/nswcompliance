@@ -9,6 +9,7 @@
 
 import type { LotGeometry } from '@/types/property';
 import { analyzeLotShape, type BattleaxeDetectionResult } from './lot-shape-analysis';
+import { scaleFactorForRing } from './mercator';
 
 export interface LotDimensions {
   /** Lot area in square meters */
@@ -38,8 +39,8 @@ export interface BoundarySegment {
 }
 
 // NSW average latitude for Web Mercator scale correction
-const NSW_LATITUDE = -33.87;
-const SCALE_FACTOR = 1 / Math.cos((Math.abs(NSW_LATITUDE) * Math.PI) / 180);
+// Mercator correction now comes from the ring's own latitude — see ./mercator.
+// A single state-wide constant read a Tweed Heads lot ~9.8% small.
 
 /**
  * Calculate lot dimensions from geometry rings
@@ -59,9 +60,10 @@ export function calculateLotDimensions(geometry: LotGeometry): LotDimensions | n
   }
 
   // Convert to real-world meters and close the polygon if needed
+  const scaleFactor = scaleFactorForRing(coordinates);
   const points = coordinates.map((coord) => ({
-    x: coord[0] / SCALE_FACTOR,
-    y: coord[1] / SCALE_FACTOR,
+    x: coord[0] / scaleFactor,
+    y: coord[1] / scaleFactor,
   }));
 
   // Calculate area using shoelace formula
