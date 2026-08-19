@@ -1,0 +1,46 @@
+{
+  "tier": "minor",
+  "justification": "One markdown handout for students testing the tool. No code, no query, no served output. It states known defects to students, so every figure in it was re-measured rather than recalled.",
+  "commit_hash": "c28b0143",
+  "files": [
+    "docs/outreach/student-brief.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "Students are asked for feedback with no guidance.",
+      "what_happens": "They report 'it looks good' and interface nits. The two reports worth the exercise - a missing control, and a number that disagrees with the DCP - never arrive, and the trial produces nothing usable.",
+      "mitigated": true,
+      "how": "The brief names those two as the most valuable, gives the exact fields to include, and says plainly that 'it looks good' cannot be acted on. It also asks them to use a site they already know, because only then can they tell a wrong answer from a right one.",
+      "repro": "read the 'three reports worth the most' section"
+    },
+    {
+      "scenario": "A student finds one of the known defects and concludes the tool is unreliable.",
+      "what_happens": "Trust is spent on something already measured and recorded, and the report tells us nothing new.",
+      "mitigated": true,
+      "how": "The known defects are listed up front with their real figures: ~1 in 13 citations unresolvable, the Wingecarribee mis-citation, 28 councils with numeric controls, and that nothing has been checked against a council determination. Every figure re-measured 2026-08-17 to 08-19, not recalled.",
+      "repro": "cross-check the figures against check_served_answer_quality.py and the dcp_setback_controls council count"
+    },
+    {
+      "scenario": "A student relies on a number from the tool in assessable work.",
+      "what_happens": "They submit a figure that may be wrong, in work that is graded, on the strength of a tool given to them for free by a stranger.",
+      "mitigated": true,
+      "how": "Stated in bold: none of it is advice, none of it substitutes for reading the instrument, and any number used in assessable work must be checked against the source and cited to the source rather than to the tool.",
+      "repro": "read the closing line of the known-defects section"
+    },
+    {
+      "scenario": "Students arrive by typing the address rather than following the tagged link.",
+      "what_happens": "Their feedback is untagged and lands in a general pile, so the cohort looks quieter than it was.",
+      "mitigated": true,
+      "how": "The brief asks them explicitly to use the lecturer's link and says why. Partial by design - a student who ignores it is still untagged, and the alternative is a login wall the whole approach exists to avoid.",
+      "repro": "read 'Start here'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No database access.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "watch": "If a cohort runs and the feedback is still mostly 'it looks good', this brief did not work and the ask needs sharpening rather than repeating.",
+    "owner": "founder",
+    "manual_verify": "Re-check the four known-defect figures before handing this to any cohort - they are current as at 2026-08-19 and the citation and coverage numbers move as work lands."
+  }
+}
