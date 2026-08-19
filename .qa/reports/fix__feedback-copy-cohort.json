@@ -1,0 +1,51 @@
+{
+  "tier": "minor",
+  "justification": "One copy line in the feedback panel, branched on the cohort tag that #981 already added. Changes no number, no query, no stored value and no API shape. Minor rather than standard because the blast radius is a sentence a reader sees: the worst outcome is a student reading the wrong audience label, which is recoverable by reading the next line. Two substantive files, inside the minor-tier floor of three.",
+  "commit_hash": "8d2169e1",
+  "files": [
+    "frontend-nextjs/components/feedback/FeedbackWidget.tsx",
+    "frontend-nextjs/__tests__/components/feedback/FeedbackWidget-cohort-copy.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --testPathPatterns=FeedbackWidget-cohort-copy",
+    "fails_when": "Not required at minor tier, and supplied anyway because this one can fail. The suite pins BOTH directions: a tagged visitor must not see the professional line, and an untagged visitor must not see the student line. A stub that always returns the student copy fails the untagged case; a stub that always returns the professional copy fails the tagged case. A third case pins the two findings the brief asks for, so the copy cannot drift into generic 'send us feedback' wording while still passing.",
+    "observed_red": "Observed by mutation, not assumed. Reverting the branch to the original unconditional professional line was applied to the file and the suite re-run: 2 of 4 failed (both cohort cases), 2 passed (both professional cases, correctly unaffected). The fix was then restored and all 4 pass. Full suite 86 suites / 1155 tests pass. tsc reports 8 pre-existing errors in react-map-gl and schema files, none in a touched file; origin/main itself reports 10 of the same class.",
+    "external_authority": "The wording is not invented here. The two findings named in the copy are the two the STUDENT LAUNCH section of ce-institutional-endorsement-gtm-2026-07.md calls worth the whole exercise, and they are items 1 and 2 of the student brief's 'three reports worth the most' — item 2 being the one the brief calls the single most valuable. The brief's third item, 'I could not tell what this meant', is deliberately omitted from a one-line prompt: the plan expects interface confusion to arrive unprompted, and the two data findings not to. CORRECTION recorded during this change: the brief is NOT on origin/main. PR #982, titled 'A one-page brief for students testing the tool', merged a single 46-line file — its own QA report — and the 109-line document is stranded on the pushed branch docs/student-brief at 794ed217. Verified with `git show origin/main:docs/outreach/student-brief.md` (fatal: path does not exist) and `git show --stat ee446c72`."
+  },
+  "break_it": [
+    {
+      "scenario": "A lecturer sends a code too short to validate, such as ?cohort=1, and a student opens it.",
+      "what_happens": "getCohort rejects it and returns null, so the panel must fall back to the professional intro rather than render a half-tagged student view with no code shown.",
+      "mitigated": true,
+      "how": "A test seeds localStorage with '1' and asserts the professional line renders and the student line does not. Confirmed against the deployed site: ?cohort=1 leaves the button reading 'Feedback' and stores nothing.",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=FeedbackWidget-cohort-copy -t 'too short'"
+    },
+    {
+      "scenario": "Someone later edits the professional sentence for an unrelated reason and drops the cohort branch while doing it.",
+      "what_happens": "Students silently return to reading 'certifiers and planners' — exactly the defect being fixed, reintroduced invisibly, because nothing else on the page would look wrong.",
+      "mitigated": true,
+      "how": "The tagged-visitor test asserts the professional line is ABSENT, not merely that the student line is present, so deleting the branch fails rather than passes.",
+      "repro": "Delete the ternary, restore the plain sentence, re-run the suite: 2 tests fail."
+    },
+    {
+      "scenario": "The cohort value is read during render instead of after mount, on a server-rendered page.",
+      "what_happens": "The server emits the professional line and the client emits the student line, a hydration mismatch React resolves by discarding client markup — the same defect #981 already hit and fixed.",
+      "mitigated": true,
+      "how": "No new read was introduced. This change consumes the existing `cohort` state variable that #981 populates inside useEffect; it does not call getCohort itself.",
+      "repro": "grep -n 'getCohort' components/feedback/FeedbackWidget.tsx — one call site, inside useEffect."
+    },
+    {
+      "scenario": "A reader follows the code comment to docs/outreach/student-brief.md to check the copy matches the brief.",
+      "what_happens": "On origin/main that path does not exist, so the justification for the wording cannot be checked and the comment reads as invented. The document is real but stranded on an unmerged branch.",
+      "mitigated": true,
+      "how": "The comment now states outright that the brief is not on main and names the branch and PR that stranded it, so the reader is sent somewhere that actually holds it rather than to a dead path.",
+      "repro": "git show origin/main:docs/outreach/student-brief.md  # fatal: path does not exist"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No schema change, no migration, no backfill, no stored value touched. The cohort already rides in context_data via the existing route.",
+    "secrets": "None added or rotated. The change reads no environment variable.",
+    "other_repo": "None. Single repo, single component, no shared package or API contract affected.",
+    "manual_verify": "Open the deployed /assessment?cohort=test-1, click the widget, and confirm the intro line names a missing control and a number that does not match the DCP. Then open /assessment with no cohort and confirm the professional line returns. Both were verified on the live site before this change for the surrounding behaviour (title, tag, role default)."
+  }
+}
