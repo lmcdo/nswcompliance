@@ -100,6 +100,33 @@ def test_the_docs_star_rule_still_applies_elsewhere():
     )
 
 
+def test_every_outreach_document_on_disk_is_tracked():
+    """The general form: nothing sitting in docs/outreach/ may be invisible.
+
+    Naming one file per test does not scale and, worse, only protects the
+    documents someone remembered to name. This walks what is actually there,
+    so a handout dropped in the folder and forgotten fails the build instead of
+    quietly living on one machine — which is exactly how the brief was lost.
+    """
+    outreach = REPO_ROOT / "docs" / "outreach"
+    if not outreach.is_dir():
+        pytest.fail("docs/outreach/ is missing entirely")
+
+    on_disk = sorted(p for p in outreach.rglob("*.md"))
+    assert on_disk, "docs/outreach/ holds no markdown — the brief should be here"
+
+    untracked = [
+        p for p in on_disk
+        if not _tracked(p.relative_to(REPO_ROOT).as_posix())
+    ]
+    assert not untracked, (
+        "Untracked outreach document(s): "
+        + ", ".join(p.relative_to(REPO_ROOT).as_posix() for p in untracked)
+        + ". These exist on this machine only and vanish with the worktree. "
+        "Either `git add` them or delete them."
+    )
+
+
 def test_student_brief_is_tracked():
     assert _tracked(str(BRIEF).replace("\\", "/")), (
         f"{BRIEF} is not tracked by git. It is the handout the student launch "
