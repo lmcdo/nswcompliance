@@ -1,0 +1,47 @@
+{
+  "tier": "minor",
+  "justification": "One marketing page following the existing /for/<audience> pattern, plus a footer link. No code path, no query, no data. Minor because nothing computes: it is copy and two links.",
+  "commit_hash": "c28b0143",
+  "files": [
+    "frontend-nextjs/app/for/students/page.tsx",
+    "frontend-nextjs/components/marketing/SiteFooter.tsx"
+  ],
+  "break_it": [
+    {
+      "scenario": "A student or lecturer arrives at plotdetect.com.au and has to work out which of 119 pages is relevant.",
+      "what_happens": "They leave. The site has ten report types and six audience pages and none of them says anything about teaching or study.",
+      "mitigated": true,
+      "how": "A seventh /for/ page in the established pattern, linked from the footer beside the other audiences. Two clear doors — student, lecturer — and one button each.",
+      "repro": "open /for/students"
+    },
+    {
+      "scenario": "A new microsite or bespoke layout is built for this audience instead.",
+      "what_happens": "A seventh design to maintain, diverging from six pages that already share SiteNav, SiteFooter and layout.",
+      "mitigated": true,
+      "how": "Copied the structure of /for/councils exactly: same nav, footer, max-width, card grid and teal accent. No new components.",
+      "repro": "diff the section structure against app/for/councils/page.tsx"
+    },
+    {
+      "scenario": "The page sells to students and they discover the gaps themselves.",
+      "what_happens": "The audience whose entire value is honest bug reports learns the tool oversold itself. Trust is the only currency here and it does not come back.",
+      "mitigated": true,
+      "how": "The limitations sit BEFORE the call to action, not after: the unresolvable citations, the 28-council coverage, Wingecarribee, and that nothing has been tested against a council determination. Plus the line that matters for graded work — check the source and cite the source, not this tool.",
+      "repro": "read the amber section; it precedes the two buttons"
+    },
+    {
+      "scenario": "The student button points at the info site rather than the app.",
+      "what_happens": "A student lands back on marketing instead of the tool, on a site with 119 pages.",
+      "mitigated": true,
+      "how": "It points at verify.plotdetect.com.au/assessment — the subdomain middleware.ts routes to Site Controls — and the page tells students to prefer their lecturer's link because that one carries the class code.",
+      "repro": "grep SITE_CONTROLS in the page"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No database access.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "watch": "If lecturers arrive but do not email, the 'I teach a class' door is not doing its job and the offer needs to be more concrete, not louder.",
+    "owner": "founder",
+    "manual_verify": "Open /for/students. Confirm the limitations appear ABOVE the two buttons, the student button opens Site Controls on the verify subdomain, and the footer lists 'For Students' with the other audiences."
+  }
+}

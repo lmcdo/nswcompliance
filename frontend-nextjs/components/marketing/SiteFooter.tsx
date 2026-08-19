@@ -40,6 +40,7 @@ const COMPANY_LINKS = [
   { label: 'For Conveyancers', href: '/for/conveyancers' },
   { label: 'For Builders', href: '/for/builders' },
   { label: 'For Planners', href: '/for/planners' },
+  { label: 'For Students', href: '/for/students' },
   { label: 'Developers / API', href: '/developers' },
   { label: 'Contact', href: '/contact' },
   { label: 'Site directory', href: '/site-directory' },
