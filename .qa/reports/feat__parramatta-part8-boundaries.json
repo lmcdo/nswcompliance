@@ -1,0 +1,109 @@
+{
+  "tier": "critical",
+  "justification": "Loads 76 precinct polygons that decide which DCP controls a Parramatta property is told apply to it. A boundary in the wrong place does not error — it silently attributes another precinct's controls to a site, which is the liability path the whole product rests on. The write itself is additive and reversible; the tier is set by what the data drives, not by the size of the diff.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/import_parramatta_part8_boundaries.py"
+  ],
+  "falsifiable_check": {
+    "command": "./venv_linux/Scripts/python.exe scripts/import_parramatta_part8_boundaries.py   # dry-run, then --commit",
+    "fails_when": "The script aborts rather than loading when any of its assumptions breaks: the shapefile is not EPSG:28356 (both the reprojection and every area figure depend on it), a repaired geometry moves in area by more than 0.1% (a reshape, not a repair), a shared PART_REF gains a sub-area not in SHARED_REF_SUFFIX, precinct_ids collide inside the shapefile, or no .env is found (which would otherwise fall through to a localhost default and silently target the wrong database). After writing, it re-queries and exits non-zero if ANY imported centroid falls outside the Parramatta envelope — the failure mode of a botched reprojection is 76 plausible-looking rows pointing at the wrong continent, and a row count cannot detect that.",
+    "observed_red": "Two real failures, both caught before any data landed. FIRST: run from a worktree, the connection fell through to localhost and failed with 'server does not support SSL' — a misleading message for what is actually a missing .env, since .env is gitignored and exists only in the main working tree. Now located explicitly, with a refusal to proceed on an unset DB_HOST. SECOND: the first --commit attempt aborted mid-loop on 'Geometry has Z dimension but column does not' — the shapefile polygons carry a Z ordinate and the column is 2D. Verified afterwards that the aborted transaction wrote nothing: table still 274, Parramatta still 13, council_supplied rows 0. Fixed with ST_Force2D. A third defect was caught in the BACKUP rather than the import: selecting ST_AsText(boundary) and ST_AsText(centroid) returned two columns both named st_astext, so the centroid silently overwrote the boundary and the 'backup' held 44-character POINTs. It looked complete. Re-taken with aliases: 1.0 MB, all MULTIPOLYGON, boundary WKT 113 to 83,144 chars.",
+    "external_authority": "Not self-referential. The geometry is the City of Parramatta's own GIS extract, supplied by their GIS Analyst on 2026-08-18 — not traced, not inferred from an adjacent LEP layer. Correctness was checked against the real world rather than against the file: Epping station resolves to 8.1.1.1 Epping Central, Harris Park station to 8.3.1 Harris Park, and Bondi Beach to nothing. A fourth probe returned nothing for Telopea, which on inspection was a bad test coordinate 513 m west of a correctly-placed 63.8 ha polygon, not a data defect."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_precinct_boundaries held 274 rows before this: Sydney 145, Inner West 86, Woollahra 14, City of Parramatta 13, Ku-ring-gai 10, Waverley 6. The 13 Parramatta rows were twelve Part 7.10 heritage areas (eplanning_epi_heritage) and one Part 9 city centre (council_agol_lep2023). No Part 8 geometry existed in any form. Parramatta holds 720 current provisions of which 532 carry a v2_precinct_id across 72 distinct keys, 38 of them under 8.*.",
+    "assumption_mismatch": "Four assumptions were wrong and each was caught by measuring. The lga value is 'City of Parramatta', while the shapefile says 'PARRAMATTA'. precinct_id is the BARE part number ('7.10.1', '9'), not 'Part 7.10.1' — and the provisions independently use the same bare form ('8.2.6'), which is why the join works at all. PART_REF is not unique: 76 features carry 74 refs because 'Part 8.3.2' maps three separate Harris Park areas. And the polygons are finer-grained than the provisions in places — provisions keyed 8.1.1 against polygons 8.1.1.1 through 8.1.1.5.1 — so an exact-match join would have silently dropped them.",
+    "new_vs_existing": "One new script. No migration, no schema change, no new table, no new dependency — geopandas, pyproj, shapely and psycopg2 are already in venv_linux. It borrows the upsert shape from import_krg_local_centre_boundaries.py and adds the two things that file never needed: reprojection, and a post-write geographic assertion. The existing ArcGIS harvester was not extended because this is a file, not a REST endpoint.",
+    "external_source_error": "The council's own caveat is recorded on every row rather than remembered: 'may be subject to future amendments and is correct as at today.' Each row's source_document carries its DCP citation, its amendment number where one applies, its commencement date, the supplier and the supply date. Six of the 76 carry amendments 4 and 6 through 9 with their own later commencement dates, so the dates are stored per row — collapsing them to a single as-at date would misdate 70 of them. If Parramatta amends Part 8, nothing here detects it; there is no re-check mechanism and that is an accepted, recorded gap.",
+    "frontend_type": "No frontend change. The data reaches a reader only through existing point-in-polygon paths against dcp_precinct_boundaries, whose column types are unchanged: boundary MULTIPOLYGON/4326, centroid POINT/4326, area_sqm and perimeter_m double precision. area_sqm is populated in true square metres because it is computed in EPSG:28356 BEFORE reprojection; computing it from 4326 degrees is what made lot areas roughly 45% too large once already.",
+    "user_failure_mode": "The dangerous failure is silent and geographic: a boundary in the wrong place returns another precinct's controls for a real address, and looks entirely normal. Row counts cannot see it. That is why the script asserts every centroid lands inside the Parramatta envelope after writing, and why correctness was probed at named stations rather than by counting rows. The second failure mode is staleness — the controls stay served after the council amends the plan — which is unmitigated and recorded below."
+  },
+  "functions": [
+    {
+      "name": "load_features",
+      "file_line": "scripts/import_parramatta_part8_boundaries.py",
+      "what": "Reads the shapefile, repairs invalid geometry under an area-drift check, measures area and perimeter in the source metric CRS, then reprojects to 4326.",
+      "input": "a path to the council shapefile, expected to be EPSG:28356",
+      "output": "a list of row dicts carrying precinct_id, name, GeoJSON geometry in 4326, a provenance string, and exact area and perimeter in metres",
+      "if_none": "it does not return a partial set — a wrong CRS, an over-large repair drift or an unrecognised shared sub-area all raise SystemExit before any row reaches the database",
+      "edge_cases": "Order of operations is load-bearing: validity is repaired first, area and perimeter are measured second while the units are still metres, and reprojection happens last. Measuring after reprojection would yield square degrees. Two of the 76 geometries are invalid and both repaired with 0.0000% area drift.",
+      "failure_mode": "Fails closed and loudly. Every abort path raises before the connection is opened, so a bad file cannot half-load."
+    },
+    {
+      "name": "build_precinct_id",
+      "file_line": "scripts/import_parramatta_part8_boundaries.py",
+      "what": "Derives the stored id from the DCP part reference, suffixing only where one reference maps several distinct areas.",
+      "input": "a PART_REF such as 'Part 8.3.2', its PART_NAME, and the set of refs known to be shared",
+      "output": "a bare id such as '8.2.1', or a suffixed one such as '8.3.2-football-estate' for the three Harris Park areas",
+      "if_none": "there is no fallback id — an unrecognised sub-area under a shared ref raises SystemExit, because inventing one would silently create a row nothing can cite",
+      "edge_cases": "Suffixes are chosen so a LIKE '8.3.2%' lookup still finds all three, keeping the citation prefix intact. The parenthetical in the name is treated as part of the citation identity rather than decoration.",
+      "failure_mode": "Aborts rather than guessing, so a future amendment adding a fourth Harris Park area stops the run instead of merging into an existing row."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Detect ids that already exist before writing, so an insert cannot silently become an overwrite unnoticed",
+      "file_line": "scripts/import_parramatta_part8_boundaries.py",
+      "where_clause": "WHERE lga = %s AND precinct_id = ANY(%s) — scoped to City of Parramatta and to the 76 ids in hand; measured 0 clashes, existing rows being 7.10.* and 9"
+    },
+    {
+      "purpose": "Prove after writing that the reprojection put the geometry in Parramatta rather than merely that rows exist",
+      "file_line": "scripts/import_parramatta_part8_boundaries.py",
+      "where_clause": "WHERE lga = %s AND extraction_method = %s AND NOT ST_Within(centroid, ST_MakeEnvelope(150.85, -33.90, 151.15, -33.72, 4326)) — expects zero; exits non-zero otherwise"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The shapefile's eastings are loaded straight into a 4326 column without reprojection.",
+      "what_happens": "EPSG:28356 coordinates are metres in the hundreds of thousands. Interpreted as degrees they place every Parramatta precinct off the coast of Africa. Every row inserts cleanly, the count is right, and every point-in-polygon lookup returns nothing forever.",
+      "mitigated": true,
+      "how": "The CRS is asserted on read, reprojection is explicit, and after the write every imported centroid is required to fall inside the Parramatta envelope. All 76 passed.",
+      "repro": "Comment out the to_crs call and run --commit against a scratch database: the envelope assertion fails and the script exits 1."
+    },
+    {
+      "scenario": "Area is computed after reprojection, in EPSG:4326.",
+      "what_happens": "area_sqm is filled with square degrees and is meaningless, but plausible-looking and never null. Anything downstream that divides by site area silently produces nonsense. Lot areas were already wrong by roughly 45% once through exactly this class of error.",
+      "mitigated": true,
+      "how": "Area and perimeter are measured while the geometry is still in EPSG:28356, the correct metric projection for Sydney, so the figures are exact rather than approximated. Epping Central comes out at 209,010 m2, which is a plausible 21 ha town centre.",
+      "repro": "Move the two measurement lines below the to_crs call: areas drop to the order of 1e-5."
+    },
+    {
+      "scenario": "PART_REF is treated as a unique key.",
+      "what_happens": "'Part 8.3.2' maps three distinct Harris Park areas. Under a unique-key assumption the second and third overwrite the first, and two mapped areas vanish with the row count still looking sane at 74.",
+      "mitigated": true,
+      "how": "Shared refs are detected from the data rather than hardcoded, and the three get suffixed ids that still prefix-match 8.3.2. An unrecognised fourth sub-area aborts the run.",
+      "repro": "Remove an entry from SHARED_REF_SUFFIX and re-run: it aborts naming the unmatched area."
+    },
+    {
+      "scenario": "The two invalid geometries are repaired silently.",
+      "what_happens": "make_valid can legitimately reshape a badly self-intersecting polygon. A repair that moves a real boundary produces a wrong answer for every address near the edge, and nothing downstream can tell.",
+      "mitigated": true,
+      "how": "Each repair is measured in the source CRS and the run aborts if area moves more than 0.1%. Both actual repairs came in at 0.0000%.",
+      "repro": "Lower MAX_REPAIR_AREA_DRIFT to 0 and re-run: it aborts on the first repair."
+    },
+    {
+      "scenario": "The script is run from a git worktree, where .env does not exist.",
+      "what_happens": "PG* never loads, db_config falls back to its localhost defaults, and the run either fails with a misleading 'server does not support SSL' or, on a machine with a local postgres, writes 76 rows into the wrong database entirely.",
+      "mitigated": true,
+      "how": "find_env walks up to the main working tree, and connect refuses to proceed on an unset DB_HOST rather than letting the localhost default stand. This happened on the first run and is what prompted the guard.",
+      "repro": "Run from .claude/worktrees/<name>/ with find_env stubbed to return a nonexistent path: it aborts naming the cause."
+    },
+    {
+      "scenario": "Provisions keyed one level coarser than the map are joined by prefix, and the result is read as per-precinct truth.",
+      "what_happens": "29 provisions keyed at 8.1.1 attach to each of the eight 8.1.1.3.* Epping sub-precincts. That is correct for 'which controls apply at this point' and WRONG for 'how many provisions does this precinct have' — the same 29 are counted eight times. A per-precinct provision count built on this join overstates by design.",
+      "mitigated": false
+    },
+    {
+      "scenario": "Parramatta amends DCP Part 8 after the supply date.",
+      "what_happens": "The stored boundaries keep being served as current. The council explicitly warned the data 'may be subject to future amendments'. Nothing here polls for changes, and a superseded boundary is indistinguishable from a live one at query time.",
+      "mitigated": false
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None required, and the write is already done: dcp_precinct_boundaries went from 274 to 350 rows, City of Parramatta from 13 to 89. Additive only — 0 of the 76 ids collided with the existing 7.10.* and 9, so no pre-existing row was updated or deleted. A full pre-write backup of all 274 rows including boundary WKT was taken to the session scratchpad. Rollback is one scoped statement: DELETE FROM dcp_precinct_boundaries WHERE lga='City of Parramatta' AND extraction_method='council_supplied_shapefile'.",
+    "secrets": "None added or rotated. Credentials are read from the gitignored repo-root .env, and no value is printed by the script.",
+    "other_repo": "None. The shapefile itself is NOT committed — it is council-supplied third-party data of unstated licence, and the repository is not the right place for it pending confirmation of terms. The script takes a --shapefile path so the import is reproducible from wherever the file is held.",
+    "manual_verify": "Point-in-polygon against real locations, not row counts: Epping station (151.0819, -33.7727) returns 8.1.1.1 Epping Central; Harris Park station (151.0086, -33.8244) returns 8.3.1 Harris Park; Bondi Beach returns nothing. Then confirm the payoff: 284 distinct current Parramatta provisions now join to a polygon, against 0 before."
+  }
+}
