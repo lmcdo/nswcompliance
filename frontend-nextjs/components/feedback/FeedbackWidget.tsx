@@ -206,8 +206,14 @@ export default function FeedbackWidget({
             {/* A tagged visitor is a student, and the professional line told them
                 they were in the wrong place. Every other cue already switched
                 (title, tag, role default); this line was the one that did not.
-                The cohort wording names the two reports docs/outreach/student-brief.md
-                asks for, so the panel and the brief ask for the same thing. */}
+                The two findings named here are the two the student launch plan
+                calls worth the whole exercise (a missing control, and a number
+                that contradicts the DCP). The student brief lists a third —
+                "I could not tell what this meant" — deliberately left out of a
+                one-line prompt, since interface confusion arrives unprompted and
+                the two data findings do not. The brief itself is NOT on main yet:
+                PR #982 merged only its QA report, leaving the document stranded
+                on branch docs/student-brief. */}
             <p className="text-sm text-gray-600">
               {cohort
                 ? 'Tell us what you found. The two most useful reports: a control missing for your site, or a number that does not match the DCP.'
