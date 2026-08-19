@@ -14,7 +14,7 @@ interface Point {
  y: number;
 }
 
-import { scaleFactorForRing } from './mercator';
+import { scaleFactorForRing, usableRing } from './mercator';
 
 // Helper functions for angle conversions.
 // toRadians() was removed with the fixed-latitude constant that was its only
@@ -188,8 +188,14 @@ export class PreciseSetbackCalculator {
  }
 
  // Convert Web Mercator coordinates to real-world meters
- const scaleFactor = scaleFactorForRing(coordinates);
- const realPoints: Point[] = coordinates.slice(0, -1).map(coord => ({
+ // A malformed ring must fail the setback calculation visibly rather than
+ // producing NaN geometry that downstream setbacks silently consume.
+ const safeRing = usableRing(coordinates);
+ if (safeRing === null) {
+ throw new Error("Lot geometry contains non-finite coordinates");
+ }
+ const scaleFactor = scaleFactorForRing(safeRing);
+ const realPoints: Point[] = safeRing.slice(0, -1).map(coord => ({
  x: coord[0] / scaleFactor,
  y: coord[1] / scaleFactor
  }));
@@ -520,8 +526,12 @@ export class PreciseSetbackCalculator {
  }
 
  const coordinates = geometry.rings[0];
- const scaleFactor = scaleFactorForRing(coordinates);
- const points = coordinates.slice(0, -1).map(coord => ({
+ const safeRing = usableRing(coordinates);
+ if (safeRing === null) {
+ return 0;
+ }
+ const scaleFactor = scaleFactorForRing(safeRing);
+ const points = safeRing.slice(0, -1).map(coord => ({
  x: coord[0] / scaleFactor,
  y: coord[1] / scaleFactor
  }));

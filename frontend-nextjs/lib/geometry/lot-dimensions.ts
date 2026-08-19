@@ -9,7 +9,7 @@
 
 import type { LotGeometry } from '@/types/property';
 import { analyzeLotShape, type BattleaxeDetectionResult } from './lot-shape-analysis';
-import { scaleFactorForRing } from './mercator';
+import { scaleFactorForRing, usableRing } from './mercator';
 
 export interface LotDimensions {
   /** Lot area in square meters */
@@ -60,8 +60,17 @@ export function calculateLotDimensions(geometry: LotGeometry): LotDimensions | n
   }
 
   // Convert to real-world meters and close the polygon if needed
-  const scaleFactor = scaleFactorForRing(coordinates);
-  const points = coordinates.map((coord) => ({
+  // Reject a malformed ring outright — a fallback scale does not make NaN
+  // coordinates safe, it only stops the divisor being NaN, and a NaN area then
+  // slips past every `> 0` check because comparisons with NaN are false.
+  const safeRing = usableRing(coordinates);
+  if (safeRing === null) {
+    notes.push('Lot geometry contains non-finite coordinates');
+    return null;
+  }
+
+  const scaleFactor = scaleFactorForRing(safeRing);
+  const points = safeRing.map((coord) => ({
     x: coord[0] / scaleFactor,
     y: coord[1] / scaleFactor,
   }));

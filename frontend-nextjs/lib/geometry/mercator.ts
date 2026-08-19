@@ -32,6 +32,33 @@ const MERCATOR_R = 20037508.342789244;
 const NSW_LATITUDE_FALLBACK = -33.87;
 const FALLBACK_SCALE = 1 / Math.cos((Math.abs(NSW_LATITUDE_FALLBACK) * Math.PI) / 180);
 
+/**
+ * A usable coordinate: a real finite number. `Number.isFinite` is what separates
+ * NaN and Infinity from a number, and `typeof` alone does not.
+ */
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+/**
+ * The ring if every point is a finite [x, y], else null.
+ *
+ * A fallback scale factor does NOT make a malformed ring safe — it only stops
+ * the divisor being NaN. The coordinates are still divided and still produce NaN
+ * area and frontage, which then slip past `area <= 0` style checks because every
+ * comparison with NaN is false. Callers must reject the ring instead, and return
+ * their own unavailable result: measured in Python before this guard existed,
+ * calculate_lot_dimensions returned a LotDimensions whose area was NaN.
+ */
+export function usableRing(ring: unknown): number[][] | null {
+  if (!Array.isArray(ring) || ring.length === 0) return null;
+  for (const pt of ring) {
+    if (!Array.isArray(pt) || pt.length < 2) return null;
+    if (!isFiniteNumber(pt[0]) || !isFiniteNumber(pt[1])) return null;
+  }
+  return ring as number[][];
+}
+
 /** Latitude in radians for an EPSG:3857 northing (inverse spherical Mercator). */
 export function mercatorLatitude(y: number): number {
   return 2 * Math.atan(Math.exp((y * Math.PI) / MERCATOR_R)) - Math.PI / 2;
@@ -48,10 +75,10 @@ export function mercatorLatitude(y: number): number {
 export function scaleFactorForRing(ring: number[][]): number {
   if (!ring || ring.length === 0) return FALLBACK_SCALE;
   const ys = ring
-    .filter((c) => Array.isArray(c) && c.length >= 2 && Number.isFinite(c[1]))
+    .filter((c) => Array.isArray(c) && c.length >= 2 && isFiniteNumber(c[1]))
     .map((c) => c[1]);
   if (ys.length === 0) return FALLBACK_SCALE;
   const cosLat = Math.cos(mercatorLatitude(ys.reduce((a, b) => a + b, 0) / ys.length));
-  if (!(cosLat > 0)) return FALLBACK_SCALE;
+  if (!Number.isFinite(cosLat) || !(cosLat > 0)) return FALLBACK_SCALE;
   return 1 / cosLat;
 }

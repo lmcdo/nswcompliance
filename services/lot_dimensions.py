@@ -62,19 +62,50 @@ def _mercator_latitude(y: float) -> float:
     return 2.0 * math.atan(math.exp(y * math.pi / _MERCATOR_R)) - math.pi / 2.0
 
 
+def _is_finite_number(v: object) -> bool:
+    """A usable coordinate: a real number, not a bool, not NaN or infinity.
+
+    ``isinstance(True, int)`` is True in Python, and ``math.isfinite`` is what
+    separates NaN from a number — an earlier version of this guard checked only
+    ``isinstance(v, (int, float))``, which admits both and let NaN through.
+    """
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def _usable_ring(ring: object) -> Optional[list]:
+    """The ring if every point is a finite (x, y), else None.
+
+    Returning None rather than repairing is deliberate: a caller that cannot
+    measure the lot must say so. ``calculate_lot_dimensions`` already returns
+    None for absent geometry and every consumer handles it — the Site Report
+    falls back to the valuation area — whereas a NaN propagates silently, which
+    is the failure mode this repo treats as worse than a loud one.
+    """
+    if not isinstance(ring, (list, tuple)) or not ring:
+        return None
+    for pt in ring:
+        if not isinstance(pt, (list, tuple)) or len(pt) < 2:
+            return None
+        if not _is_finite_number(pt[0]) or not _is_finite_number(pt[1]):
+            return None
+    return list(ring)
+
+
 def _scale_factor_for_ring(ring: list) -> float:
     """Mercator scale factor at this ring's own latitude.
 
-    Falls back to the NSW-average constant only when the ring carries no usable
-    northing, which cannot happen for real Portal geometry but keeps a malformed
-    payload from raising instead of degrading.
+    Falls back to the NSW-average constant when the ring carries no usable
+    northing. Callers must reject a malformed ring themselves — see
+    ``_usable_ring`` — because a fallback scale does not make NaN coordinates
+    safe, it only stops the divisor being NaN.
     """
-    ys = [pt[1] for pt in ring if len(pt) >= 2 and isinstance(pt[1], (int, float))]
+    ys = [pt[1] for pt in ring if isinstance(pt, (list, tuple)) and len(pt) >= 2
+          and _is_finite_number(pt[1])]
     if not ys:
         return _SCALE_FACTOR
     lat_rad = _mercator_latitude(sum(ys) / len(ys))
     cos_lat = math.cos(lat_rad)
-    if cos_lat <= 0.0:
+    if not math.isfinite(cos_lat) or cos_lat <= 0.0:
         return _SCALE_FACTOR
     return 1.0 / cos_lat
 
@@ -119,6 +150,14 @@ def calculate_lot_dimensions(geometry: Optional[dict]) -> Optional[LotDimensions
         return None
 
     outer_ring = rings[0]
+
+    # Reject a malformed ring outright. A non-finite coordinate divided by any
+    # scale is still NaN, and NaN slips past the `area <= 0` check below because
+    # every comparison with NaN is False — so the function would return a
+    # LotDimensions whose area is NaN. Measured before this guard existed.
+    outer_ring = _usable_ring(outer_ring)
+    if outer_ring is None:
+        return None
 
     # Convert to real-world metres using THIS lot's latitude, not a state average.
     scale = _scale_factor_for_ring(outer_ring)

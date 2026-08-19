@@ -420,3 +420,32 @@ class TestLatitudeCorrection:
         from services.lot_dimensions import _scale_factor_for_ring, _SCALE_FACTOR
         assert _scale_factor_for_ring([]) == _SCALE_FACTOR
         assert _scale_factor_for_ring([("a", "b")]) == _SCALE_FACTOR
+
+    @pytest.mark.parametrize("bad,label", [
+        ([[0, 0], [20, 0], [20, float("nan")], [0, 30], [0, 0]], "NaN northing"),
+        ([[0, 0], [float("inf"), 0], [20, 30], [0, 30], [0, 0]], "infinite easting"),
+        ([[0, 0], [20], [20, 30], [0, 30], [0, 0]], "short tuple"),
+        ([[0, 0], ["x", "y"], [20, 30], [0, 30], [0, 0]], "non-numeric"),
+        ([[True, False], [True, True], [False, True], [False, False], [True, False]], "booleans"),
+    ])
+    def test_malformed_ring_returns_none_not_a_nan_measurement(self, bad, label):
+        """A non-finite coordinate must yield NO measurement, never a NaN one.
+
+        Found by scripts/cross_review.py on the first push of this branch, and it
+        was right. A fallback scale factor does not make a malformed ring safe —
+        it only stops the DIVISOR being NaN. The coordinates were still divided,
+        the shoelace area came out NaN, and `if area <= 0: return None` did not
+        catch it because every comparison with NaN is False. Measured before the
+        fix: this returned LotDimensions(area_m2=nan).
+
+        None is the right answer because every caller already handles it — the
+        Site Report falls back to the valuation area — whereas a NaN propagates
+        into eligibility arithmetic silently.
+        """
+        assert calculate_lot_dimensions({"rings": [bad]}) is None, label
+
+    def test_a_good_ring_still_measures_after_the_guard(self):
+        """The guard must not reject valid geometry — otherwise it is a kill switch."""
+        dims = calculate_lot_dimensions({"rings": [_rect_ring(20.0, 30.0, lat_deg=-34.48)]})
+        assert dims is not None
+        assert dims.area_m2 == pytest.approx(600.0, rel=0.005)

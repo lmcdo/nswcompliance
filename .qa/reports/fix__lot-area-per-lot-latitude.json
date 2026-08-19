@@ -1,16 +1,16 @@
 {
   "tier": "critical",
   "justification": "Changes a number every app serves. Lot area and lot width are recomputed for the Site Report, the property API, the setbacks calculator, the upzoning/duplex check and the CDC calculator, and lot width gates SEPP minimum-frontage eligibility — so this alters yes/no answers, not only displayed figures. Critical rather than Standard because the directionality is CHOOSING A VALUE, not removing a false claim: per the repair-calibration rule, removing a claim cannot create a wrong one but selecting a number can. Every new value is therefore validated against an external reference (the cadastre) rather than against our own other implementation, which is precisely the mistake the old golden made.",
-  "commit_hash": "d2235721",
+  "commit_hash": "6869c5b6",
   "files": [
-    "services/lot_dimensions.py",
-    "frontend-nextjs/lib/geometry/mercator.ts",
+    "frontend-nextjs/lib/geometry/__tests__/lot-shape-analysis.test.ts",
+    "frontend-nextjs/lib/geometry/__tests__/mercator-latitude.test.ts",
+    "frontend-nextjs/lib/geometry/calculator.ts",
     "frontend-nextjs/lib/geometry/lot-dimensions.ts",
     "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
-    "frontend-nextjs/lib/geometry/calculator.ts",
-    "tests/test_lot_dimensions.py",
-    "frontend-nextjs/lib/geometry/__tests__/mercator-latitude.test.ts",
-    "frontend-nextjs/lib/geometry/__tests__/lot-shape-analysis.test.ts"
+    "frontend-nextjs/lib/geometry/mercator.ts",
+    "services/lot_dimensions.py",
+    "tests/test_lot_dimensions.py"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_lot_dimensions.py -q",
@@ -30,24 +30,38 @@
   "functions": [
     {
       "name": "_scale_factor_for_ring",
-      "file_line": "services/lot_dimensions.py:69",
+      "file_line": "services/lot_dimensions.py:94",
       "input": "An EPSG:3857 ring as a list of coordinate pairs",
       "output": "The Mercator scale factor at that ring's own centroid latitude",
       "if_none": "A ring with no usable numeric northing returns the NSW-average constant rather than raising, so a malformed payload degrades to the previous behaviour instead of breaking the request. Asserted in test_malformed_ring_falls_back_instead_of_raising."
     },
     {
       "name": "_mercator_latitude",
-      "file_line": "services/lot_dimensions.py:60",
+      "file_line": "services/lot_dimensions.py:55",
       "input": "An EPSG:3857 northing in metres, taken from the centroid of the lot ring currently being measured rather than from any caller-supplied coordinate",
       "output": "Latitude in radians for that northing, computed as the inverse spherical Mercator projection so no caller has to supply a coordinate of its own",
       "if_none": "Total function over finite input. Round-trip against the forward projection is asserted to 1e-6 degrees at six NSW latitudes."
     },
     {
       "name": "scaleFactorForRing",
-      "file_line": "frontend-nextjs/lib/geometry/mercator.ts:52",
+      "file_line": "frontend-nextjs/lib/geometry/mercator.ts:75",
       "input": "An EPSG:3857 ring as number[][], the same Portal geometry shape the three TypeScript geometry modules already receive from their callers",
       "output": "The Mercator scale factor at that ring's own centroid latitude",
       "if_none": "Empty ring, non-finite northings, or a non-positive cosine all return the NSW-average fallback. Verified to agree with the Python implementation to 12 decimal places on the Bowral ring, including the fallback value."
+    },
+    {
+      "name": "_usable_ring",
+      "file_line": "services/lot_dimensions.py:75",
+      "input": "The outer ring straight off the Planning Portal payload, before any arithmetic touches it",
+      "output": "The same ring when every point is a finite (x, y) pair, or None when any coordinate is NaN, infinite, missing, non-numeric or boolean. The TypeScript twin usableRing at frontend-nextjs/lib/geometry/mercator.ts:53 is identical.",
+      "if_none": "calculate_lot_dimensions returns None and the TypeScript returns null, which every consumer already handles — the Site Report falls back to the valuation area. The setback calculator throws explicitly rather than computing on NaN points, because a silent NaN setback is worse than a failed one."
+    },
+    {
+      "name": "_is_finite_number",
+      "file_line": "services/lot_dimensions.py:65",
+      "input": "One coordinate component straight off the Portal payload, of entirely unknown type",
+      "output": "True only for a real finite number — bools are excluded explicitly and NaN/infinity are excluded by math.isfinite",
+      "if_none": "Anything else is False, which makes _usable_ring reject the whole ring. isinstance(True, int) is True in Python, so a bool would otherwise have passed a plain numeric check and been divided as a coordinate."
     }
   ],
   "values": [
@@ -61,6 +75,13 @@
   ],
   "queries": "N/A — no database query is added, removed or altered. The measurements quoted were read-only analysis against nsw_cadastre_lots with conn.set_session(readonly=True); no write was issued at any point.",
   "break_it": [
+    {
+      "scenario": "A Portal ring arrives with a NaN, infinite or short coordinate",
+      "what_happens": "Before this change the fallback scale factor stopped the DIVISOR being NaN but not the coordinates. They were still divided, the shoelace area came out NaN, and `if area <= 0: return None` did not catch it because every comparison with NaN is False — so the function returned a LotDimensions whose area was NaN, into eligibility arithmetic",
+      "mitigated": true,
+      "how": "Raised by scripts/cross_review.py on the first push of this branch at 0.99 confidence and confirmed against the code rather than taken on trust: calculate_lot_dimensions returned area_m2=nan for a ring containing NaN. Both languages now reject the ring before any arithmetic. Note the isinstance trap the reviewer also implied: isinstance(True, int) is True in Python, so booleans passed the old numeric check; math.isfinite plus an explicit bool exclusion is what actually separates a coordinate from a non-coordinate. Five malformed shapes are asserted in each language, plus a positive case so the guard cannot become a kill switch",
+      "repro": "python -m pytest tests/test_lot_dimensions.py -k malformed -q; cd frontend-nextjs && npx jest --testPathPatterns=geometry"
+    },
     {
       "scenario": "Someone reinstates a single state-wide latitude constant, or copies the geometry module again and hardcodes one",
       "what_happens": "Areas silently drift by up to ~10% at the state edges and nothing in the old suite objects",
@@ -86,7 +107,7 @@
       "scenario": "A malformed Portal payload arrives with no usable northing",
       "what_happens": "An exception in a geometry helper would fail a whole report rather than one field",
       "mitigated": true,
-      "how": "Both implementations fall back to the NSW-average constant — the previous behaviour — instead of raising. Asserted for an empty ring and for non-numeric coordinates",
+      "how": "Superseded by the entry above and strengthened: the fallback alone was NOT sufficient, which the cross-reviewer caught. The ring is now rejected outright and the fallback remains only for the scale factor itself.",
       "repro": "python -m pytest tests/test_lot_dimensions.py::TestLatitudeCorrection::test_malformed_ring_falls_back_instead_of_raising"
     },
     {

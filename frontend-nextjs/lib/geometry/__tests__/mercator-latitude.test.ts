@@ -20,7 +20,7 @@
  * cancelled out.
  */
 import { calculateLotDimensions } from '../lot-dimensions';
-import { scaleFactorForRing, mercatorLatitude } from '../mercator';
+import { scaleFactorForRing, mercatorLatitude, usableRing } from '../mercator';
 import type { LotGeometry } from '@/types/property';
 
 const EARTH_R = 6378137.0;
@@ -94,5 +94,40 @@ describe('scaleFactorForRing', () => {
     const FALLBACK = 1 / Math.cos((33.87 * Math.PI) / 180);
     expect(scaleFactorForRing([])).toBeCloseTo(FALLBACK, 12);
     expect(scaleFactorForRing([[NaN, NaN]])).toBeCloseTo(FALLBACK, 12);
+  });
+});
+
+
+describe('malformed rings produce no measurement, never a NaN one', () => {
+  // Raised by scripts/cross_review.py on the first push of this branch and
+  // confirmed against the code: a fallback scale factor only stops the DIVISOR
+  // being NaN. The coordinates were still divided, area came out NaN, and every
+  // `> 0` guard passed because comparisons with NaN are false.
+  const BAD: [string, unknown][] = [
+    ['NaN northing', [[0, 0], [20, 0], [20, NaN], [0, 30], [0, 0]]],
+    ['infinite easting', [[0, 0], [Infinity, 0], [20, 30], [0, 30], [0, 0]]],
+    ['short tuple', [[0, 0], [20], [20, 30], [0, 30], [0, 0]]],
+    ['non-numeric', [[0, 0], ['x', 'y'], [20, 30], [0, 30], [0, 0]]],
+    ['empty', []],
+  ];
+
+  it.each(BAD)('usableRing rejects %s', (_label, ring) => {
+    expect(usableRing(ring)).toBeNull();
+  });
+
+  it.each(BAD)('calculateLotDimensions returns null for %s', (_label, ring) => {
+    const geom = {
+      hasM: false, hasZ: false,
+      rings: [ring], spatialReference: { wkid: 3857 },
+    } as unknown as LotGeometry;
+    const dims = calculateLotDimensions(geom);
+    expect(dims).toBeNull();
+  });
+
+  it('a valid ring still measures, so the guard is not a kill switch', () => {
+    const dims = calculateLotDimensions(rectAt(20, 30, -34.48));
+    expect(dims).not.toBeNull();
+    expect(dims!.area).toBeGreaterThan(600 * 0.995);
+    expect(dims!.area).toBeLessThan(600 * 1.005);
   });
 });
