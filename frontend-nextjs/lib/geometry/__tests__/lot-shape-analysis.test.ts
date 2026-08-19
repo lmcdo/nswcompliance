@@ -7,13 +7,31 @@
 import { detectBattleaxeLot, analyzeLotShape } from '../lot-shape-analysis';
 import type { LotGeometry } from '@/types/property';
 
-// Helper to create LotGeometry from simple coordinate array
-function createGeometry(coords: [number, number][]): LotGeometry {
-  // Scale up to Web Mercator-like values (NSW is around x: 16800000, y: -3950000)
-  const NSW_LATITUDE = -33.87;
-  const SCALE_FACTOR = 1 / Math.cos((Math.abs(NSW_LATITUDE) * Math.PI) / 180);
+const EARTH_R = 6378137.0;
 
-  const scaledCoords = coords.map(([x, y]) => [x * SCALE_FACTOR, y * SCALE_FACTOR]);
+/** EPSG:3857 northing for a latitude — the forward projection. */
+function mercatorY(latDeg: number): number {
+  const lat = (latDeg * Math.PI) / 180;
+  return EARTH_R * Math.log(Math.tan(Math.PI / 4 + lat / 2));
+}
+
+/**
+ * Build LotGeometry from real-world metre coordinates, placed AT A REAL LATITUDE.
+ *
+ * The previous helper declared its own `NSW_LATITUDE = -33.87`, scaled by it, and
+ * left the ring at (0, 0) — which is the equator. That made every area assertion
+ * circular: the constant used to build the fixture was the same constant the code
+ * used to read it, so it cancelled and the tests passed for ANY latitude,
+ * including a wrong one. The module under test now takes the latitude from the
+ * ring's own northing, so the fixture has to put the ring where it claims to be.
+ *
+ * Defaults to Sydney so existing expectations keep their meaning; pass a latitude
+ * to prove the correction holds across the state.
+ */
+function createGeometry(coords: [number, number][], latDeg = -33.87): LotGeometry {
+  const k = 1 / Math.cos((Math.abs(latDeg) * Math.PI) / 180);
+  const y0 = mercatorY(latDeg);
+  const scaledCoords = coords.map(([x, y]) => [x * k, y0 + y * k]);
   // Close the polygon
   scaledCoords.push(scaledCoords[0]);
 

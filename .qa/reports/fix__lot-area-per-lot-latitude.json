@@ -1,0 +1,134 @@
+{
+  "tier": "critical",
+  "justification": "Changes a number every app serves. Lot area and lot width are recomputed for the Site Report, the property API, the setbacks calculator, the upzoning/duplex check and the CDC calculator, and lot width gates SEPP minimum-frontage eligibility — so this alters yes/no answers, not only displayed figures. Critical rather than Standard because the directionality is CHOOSING A VALUE, not removing a false claim: per the repair-calibration rule, removing a claim cannot create a wrong one but selecting a number can. Every new value is therefore validated against an external reference (the cadastre) rather than against our own other implementation, which is precisely the mistake the old golden made.",
+  "commit_hash": "b7a34ea7",
+  "files": [
+    "frontend-nextjs/lib/geometry/__tests__/lot-shape-analysis.test.ts",
+    "frontend-nextjs/lib/geometry/__tests__/mercator-latitude.test.ts",
+    "frontend-nextjs/lib/geometry/calculator.ts",
+    "frontend-nextjs/lib/geometry/lot-dimensions.ts",
+    "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
+    "frontend-nextjs/lib/geometry/mercator.ts",
+    "services/lot_dimensions.py",
+    "tests/test_lot_dimensions.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lot_dimensions.py -q",
+    "fails_when": "A lot of known size fails to measure that size at any NSW latitude, or the Bowral golden drifts from the surveyed area on title, or a state-wide latitude constant is reinstated.",
+    "observed_red": "Reverting services/lot_dimensions.py to the fixed constant turns 14 of the 45 tests red, including test_a_minimum_frontage_decision_does_not_depend_on_latitude and the whole TestLatitudeCorrection matrix. The signature that proves the tests measure the real thing: the parametrised case at -33.87 is the ONLY latitude that stays green on the old code, because Sydney is exactly where the old constant was correct.",
+    "ground_truth": "Not self-referential. The Bowral fixture lot is 12//DP702113 in nsw_cadastre_lots, whose polygon measures 4117.7 m2 geodesically. The old pinned value was 4188.6 m2 (+1.7%); the new value is 4127.7 m2 (+0.24%, the residual being independent vertex capture between the Portal ring and the cadastre polygon)."
+  },
+  "pre_impl": {
+    "existing_data": "None written. Lot area and dimensions are computed per request in every consumer — verified by grepping the two Python consumers for INSERT/UPDATE and finding none. Unlike the 2026-08-10 lot_search_index repair, there is NO stored column and no backfill: the corrected value appears the moment the code ships.",
+    "assumption_mismatch": "The brief for this work assumed the 2026-08-10 satellite-pipeline repair had already fixed this. It had not, and could not have: services/intelligence_brief.py references lot_search_index ZERO times. That repair fixed a stored column; this is a separate live calculation it never touched. Second wrong assumption, mine: I first reported this as a Site Report defect. It is shared — lot_dimensions.py and its three TypeScript twins feed five surfaces, which is why the symptom was everywhere.",
+    "prior_art": "The correct method already existed in this repo and was already in production: services/granny_flat.py::_compute_lot_area_m2 derives the latitude from the ring's own northing by inverse Mercator and applies cos^2 of it. That is why the granny-flat product was recorded as unaffected by the 08-10 area bug. It never reached the shared module because each consumer carried its own copy of the constant. This change ports that proven method rather than inventing one, and removes the duplication that stopped it propagating: the three TypeScript copies are replaced by one imported lib/geometry/mercator.ts.",
+    "new_vs_existing": "Applies to every future computation. Nothing historical is rewritten because nothing was stored.",
+    "user_failure_mode": "A customer outside Sydney reads a lot size that is wrong by up to ~10% and has no way to tell. Worse than the number itself: lot width carries half that error and gates SEPP minimum-frontage rules, so a Tweed Heads block genuinely 15.7 m wide measured ~14.9 m and failed a 15 m minimum — the report says a dual occupancy is not permitted when it is. In the other direction a Bega lot measured ~4.8% large could clear a minimum-area gate it does not actually meet, which is the expensive direction because the customer acts on it. The failure is silent at every step: the valuation cross-check only fires above 25% divergence so a 10% projection error never trips it, and where the Valuer General has no area for the parcel the distorted geometry figure is served labelled AUTHORITATIVE with no caveat. Nothing in the product, and nothing in the test suite, could have surfaced it.",
+    "external_source_error": "The only external source involved is the NSW Planning Portal lot endpoint, which returns EPSG:3857 rings. Its failure modes are unchanged by this work and already handled upstream: fetch_lot_geometry returns None on any exception or non-200, and intelligence_brief then yields a NOT_AVAILABLE DataField rather than substituting a value. What this change adds is a guard against a MALFORMED but non-empty payload — a ring whose northings are missing or non-numeric now falls back to the NSW-average constant instead of raising out of a geometry helper and failing the whole report for one field. Note the Portal itself is not the error source here: it was returning correct coordinates all along and we were interpreting them with the wrong latitude, so no amount of source validation would have caught this.",
+    "frontend_type": "No type or contract changes at any boundary. lot_area_m2 stays Optional[float] in Python and the LotDimensions shape is unchanged, so the API-to-component contract is identical and no component needs touching — only the numeric value moves. The one structural change is internal to TypeScript: three modules that each declared a private NSW_LATITUDE constant now import scaleFactorForRing from the new lib/geometry/mercator.ts, and PreciseSetbackCalculator loses its readonly scaleFactor field because it is computed per ring instead. Verified with tsc: zero errors in lib/geometry and 671 total against the 677 baseline, so the field removal left no dangling reference. The orphaned toRadians() helper, whose only caller was that constant, was removed with it."
+  },
+  "functions": [
+    {
+      "name": "_scale_factor_for_ring",
+      "file_line": "services/lot_dimensions.py:94",
+      "input": "An EPSG:3857 ring as a list of coordinate pairs",
+      "output": "The Mercator scale factor at that ring's own centroid latitude",
+      "if_none": "A ring with no usable numeric northing returns the NSW-average constant rather than raising, so a malformed payload degrades to the previous behaviour instead of breaking the request. Asserted in test_malformed_ring_falls_back_instead_of_raising."
+    },
+    {
+      "name": "_mercator_latitude",
+      "file_line": "services/lot_dimensions.py:55",
+      "input": "An EPSG:3857 northing in metres, taken from the centroid of the lot ring currently being measured rather than from any caller-supplied coordinate",
+      "output": "Latitude in radians for that northing, computed as the inverse spherical Mercator projection so no caller has to supply a coordinate of its own",
+      "if_none": "Total function over finite input. Round-trip against the forward projection is asserted to 1e-6 degrees at six NSW latitudes."
+    },
+    {
+      "name": "scaleFactorForRing",
+      "file_line": "frontend-nextjs/lib/geometry/mercator.ts:75",
+      "input": "An EPSG:3857 ring as number[][], the same Portal geometry shape the three TypeScript geometry modules already receive from their callers",
+      "output": "The Mercator scale factor at that ring's own centroid latitude",
+      "if_none": "Empty ring, non-finite northings, or a non-positive cosine all return the NSW-average fallback. Verified to agree with the Python implementation to 12 decimal places on the Bowral ring, including the fallback value."
+    },
+    {
+      "name": "_usable_ring",
+      "file_line": "services/lot_dimensions.py:75",
+      "input": "The outer ring straight off the Planning Portal payload, before any arithmetic touches it",
+      "output": "The same ring when every point is a finite (x, y) pair, or None when any coordinate is NaN, infinite, missing, non-numeric or boolean. The TypeScript twin usableRing at frontend-nextjs/lib/geometry/mercator.ts:53 is identical.",
+      "if_none": "calculate_lot_dimensions returns None and the TypeScript returns null, which every consumer already handles — the Site Report falls back to the valuation area. The setback calculator throws explicitly rather than computing on NaN points, because a silent NaN setback is worse than a failed one."
+    },
+    {
+      "name": "_is_finite_number",
+      "file_line": "services/lot_dimensions.py:65",
+      "input": "One coordinate component straight off the Portal payload, of entirely unknown type",
+      "output": "True only for a real finite number — bools are excluded explicitly and NaN/infinity are excluded by math.isfinite",
+      "if_none": "Anything else is False, which makes _usable_ring reject the whole ring. isinstance(True, int) is True in Python, so a bool would otherwise have passed a plain numeric check and been divided as a coordinate."
+    }
+  ],
+  "values": [
+    {
+      "value": "lot area and lot width from Portal geometry",
+      "read_at": "services/lot_dimensions.py:94",
+      "nullable": "no",
+      "guard_at": "services/lot_dimensions.py:69 — scale factor taken from this ring's latitude, not a state average",
+      "if_missing": "Measured before the change against the surveyed area on title over 577,081 single-part cadastre lots (median computed/surveyed): far north -28..-30 = 0.9021, mid north -30..-33 = 0.9708, Sydney -33..-35 = 1.0026, south -35..-37 = 1.0479. After the change every region lands within 0.4%. The geodesic control column read ~1.000 at every latitude, which is what establishes the comparison measures the projection and not noise in planlotarea."
+    }
+  ],
+  "queries": "N/A — no database query is added, removed or altered. The measurements quoted were read-only analysis against nsw_cadastre_lots with conn.set_session(readonly=True); no write was issued at any point.",
+  "break_it": [
+    {
+      "scenario": "A Portal ring arrives with a NaN, infinite or short coordinate",
+      "what_happens": "Before this change the fallback scale factor stopped the DIVISOR being NaN but not the coordinates. They were still divided, the shoelace area came out NaN, and `if area <= 0: return None` did not catch it because every comparison with NaN is False — so the function returned a LotDimensions whose area was NaN, into eligibility arithmetic",
+      "mitigated": true,
+      "how": "Raised by scripts/cross_review.py on the first push of this branch at 0.99 confidence and confirmed against the code rather than taken on trust: calculate_lot_dimensions returned area_m2=nan for a ring containing NaN. Both languages now reject the ring before any arithmetic. Note the isinstance trap the reviewer also implied: isinstance(True, int) is True in Python, so booleans passed the old numeric check; math.isfinite plus an explicit bool exclusion is what actually separates a coordinate from a non-coordinate. Five malformed shapes are asserted in each language, plus a positive case so the guard cannot become a kill switch",
+      "repro": "python -m pytest tests/test_lot_dimensions.py -k malformed -q; cd frontend-nextjs && npx jest --testPathPatterns=geometry"
+    },
+    {
+      "scenario": "Someone reinstates a single state-wide latitude constant, or copies the geometry module again and hardcodes one",
+      "what_happens": "Areas silently drift by up to ~10% at the state edges and nothing in the old suite objects",
+      "mitigated": true,
+      "how": "TestLatitudeCorrection asserts a known-size lot at six latitudes spanning the served set, and test_bowral_golden_rejects_the_sydney_constant fails specifically on 4188.6 m2 — the number the old constant produces — so the failure message names the cause",
+      "repro": "python -m pytest tests/test_lot_dimensions.py -q"
+    },
+    {
+      "scenario": "The test fixtures are rebuilt using the module's own scale factor again",
+      "what_happens": "The suite returns to passing at any latitude, including a wrong one, exactly as before this change",
+      "mitigated": true,
+      "how": "_to_3857 now takes an explicit latitude and positions the ring on that latitude's true northing, so no module constant participates in fixture construction. The docstring records that the previous helper was circular and that it was proven so by setting the constant to 0, 60 and -89 degrees and watching the suite stay green",
+      "repro": "python -m pytest tests/test_lot_dimensions.py::TestLatitudeCorrection -q"
+    },
+    {
+      "scenario": "Python and TypeScript drift apart, so a lot measures differently in the API than in the report",
+      "what_happens": "Two surfaces disagree about the same parcel and neither is obviously wrong",
+      "mitigated": true,
+      "how": "The three TypeScript copies were replaced by one shared lib/geometry/mercator.ts, and the two implementations were checked numerically on the Bowral ring: scale factor 1.213232964468 and latitude -34.488080084 in both, identical to 12 decimal places, fallback included",
+      "repro": "npx tsc frontend-nextjs/lib/geometry/mercator.ts --outDir <tmp> --module commonjs --target es2020, then compare against services.lot_dimensions._scale_factor_for_ring on the same ring"
+    },
+    {
+      "scenario": "A malformed Portal payload arrives with no usable northing",
+      "what_happens": "An exception in a geometry helper would fail a whole report rather than one field",
+      "mitigated": true,
+      "how": "Superseded by the entry above and strengthened: the fallback alone was NOT sufficient, which the cross-reviewer caught. The ring is now rejected outright and the fallback remains only for the scale factor itself.",
+      "repro": "python -m pytest tests/test_lot_dimensions.py::TestLatitudeCorrection::test_malformed_ring_falls_back_instead_of_raising"
+    },
+    {
+      "scenario": "The area correction is right but the reconciliation guard against the valuation area is now mis-tuned",
+      "what_happens": "A genuinely aggregated valuation parcel stops being flagged, or a correct one starts being flagged",
+      "mitigated": false,
+      "how": "NOT mitigated and deliberately out of scope. _reconcile_lot_area uses a 25% tolerance and the projection error it was absorbing was at most ~10%, so correcting the geometry makes the comparison more accurate rather than less. Re-tuning the tolerance is a separate judgement with no evidence behind it yet, and changing two things at once would make neither measurable",
+      "repro": "python -m pytest tests/test_lot_area_reconciliation.py -q"
+    },
+    {
+      "scenario": "The TypeScript fixtures stay circular, so the frontend half is unproven",
+      "what_happens": "The Python side is guarded while the TypeScript that actually renders the number keeps passing at any latitude, which is the state this change found",
+      "mitigated": true,
+      "how": "createGeometry in lot-shape-analysis.test.ts had the identical defect — it declared its own NSW_LATITUDE = -33.87, scaled by it, and left the ring at (0, 0), the equator — and is fixed the same way. A new mercator-latitude.test.ts asserts a known 600 m2 lot, its frontage and depth, and a 15 m minimum-frontage decision at six NSW latitudes, plus parity with the Python scale factor and the malformed-ring fallback. Verified able to fail: forcing scaleFactorForRing back to the state-wide constant turns 12 of 52 red. jest could not run at first because node_modules was missing @jest/core (pre-existing; package.json last changed in #924) — dependencies were reinstalled rather than the gate skipped, and the suite now runs: 3 suites, 52 tests, all green.",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=geometry"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — served lot areas outside Sydney change by up to ~10%. Nothing is stored, so there is nothing to backfill, but any screenshot, cached PDF or quoted figure produced for a non-Sydney property before this lands carries the old number."
+  }
+}
