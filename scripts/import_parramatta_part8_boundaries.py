@@ -87,6 +87,17 @@ SOURCE_EPSG = 28356                 # GDA94 / MGA Zone 56 — the shapefile's ow
 TARGET_EPSG = 4326                  # what dcp_precinct_boundaries stores
 EXTRACTION_METHOD = "council_supplied_shapefile"
 
+#: NOT cosmetic, and NOT NULL. frontend-nextjs/lib/precinct-service.ts resolves a
+#: boundary's council from this column first, and falls back to
+#: PRECINCT_ID_PATTERNS only when it is NULL — a fallback whose final default is
+#: 'Marrickville'. Parramatta's only patterns are /^parra/i and /^p_/i, so a
+#: dotted id like "8.1.1.1" matches nothing and every one of these 76 precincts
+#: would be attributed to Marrickville in the UI. The 13 rows loaded 2026-07-29
+#: set 'Parramatta' for exactly this reason; the first version of this script
+#: copied NULL from the Ku-ring-gai importer, which gets away with it because
+#: KRG ids DO match a pattern (/^14[A-O](_T\d)?$/i).
+FORMER_COUNCIL = "Parramatta"
+
 #: Supplied by the council's GIS team rather than traced from a PDF or inferred
 #: from an adjacent LEP layer, so the geometry IS the council's own. 1.0 refers
 #: to positional fidelity, NOT to whether the plan is still current — that is
@@ -254,7 +265,7 @@ INSERT INTO dcp_precinct_boundaries (
     source_document, extraction_method, confidence_score,
     area_sqm, perimeter_m
 ) VALUES (
-    %(precinct_id)s, %(precinct_name)s, %(lga)s, NULL,
+    %(precinct_id)s, %(precinct_name)s, %(lga)s, %(former_council)s,
     -- ST_Force2D is load-bearing: the shapefile's polygons carry a Z ordinate
     -- (all zero), and the column is 2D, so without it every insert fails with
     -- "Geometry has Z dimension but column does not". Dropping Z loses nothing
@@ -266,6 +277,7 @@ INSERT INTO dcp_precinct_boundaries (
 )
 ON CONFLICT (precinct_id, lga) DO UPDATE SET
     precinct_name     = EXCLUDED.precinct_name,
+    former_council    = EXCLUDED.former_council,
     boundary          = EXCLUDED.boundary,
     centroid          = EXCLUDED.centroid,
     source_document   = EXCLUDED.source_document,
@@ -337,6 +349,7 @@ def main() -> None:
         cur.execute(UPSERT, {
             **r,
             "lga": LGA,
+            "former_council": FORMER_COUNCIL,
             "extraction_method": EXTRACTION_METHOD,
             "confidence_score": CONFIDENCE,
         })

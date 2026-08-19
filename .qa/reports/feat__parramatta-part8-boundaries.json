@@ -3,7 +3,8 @@
   "justification": "Loads 76 precinct polygons that decide which DCP controls a Parramatta property is told apply to it. A boundary in the wrong place does not error — it silently attributes another precinct's controls to a site, which is the liability path the whole product rests on. The write itself is additive and reversible; the tier is set by what the data drives, not by the size of the diff.",
   "commit_hash": "340864e8",
   "files": [
-    "scripts/import_parramatta_part8_boundaries.py"
+    "scripts/import_parramatta_part8_boundaries.py",
+    "scripts/verify_precinct_boundaries.py"
   ],
   "falsifiable_check": {
     "command": "./venv_linux/Scripts/python.exe scripts/import_parramatta_part8_boundaries.py   # dry-run, then --commit",
@@ -55,6 +56,13 @@
   ],
   "break_it": [
     {
+      "scenario": "former_council is left NULL on the imported rows, as the Ku-ring-gai importer does.",
+      "what_happens": "frontend-nextjs/lib/precinct-service.ts resolveFormerCouncil reads that column FIRST and falls back to PRECINCT_ID_PATTERNS only when it is NULL. Parramatta's patterns are just /^parra/i and /^p_/i, so a dotted id like 8.1.1.1 matches nothing and the fallback hits its final default — 'Marrickville'. All 76 Parramatta precincts would have been attributed to an Inner West council in the UI, with no error anywhere.",
+      "mitigated": true,
+      "how": "Caught by reading the 2026-07-29 staged worklist, which warned about exactly this for the dotted 7.10.x/9 ids and set former_council='Parramatta' on all 13 rows for that reason. The 76 rows were corrected in place (scope verified at exactly 76 before the UPDATE, 0 remaining after) and the script now sets it on INSERT and on conflict-UPDATE. Ku-ring-gai gets away with NULL only because its ids DO match a pattern.",
+      "repro": "SELECT former_council FROM dcp_precinct_boundaries WHERE lga='City of Parramatta' — all 89 must read 'Parramatta'; any NULL resolves to Marrickville in the UI."
+    },
+    {
       "scenario": "The shapefile's eastings are loaded straight into a 4326 column without any reprojection step.",
       "what_happens": "EPSG:28356 coordinates are metres in the hundreds of thousands. Interpreted as degrees they place every Parramatta precinct off the coast of Africa. Every row inserts cleanly, the count is right, and every point-in-polygon lookup returns nothing forever.",
       "mitigated": true,
@@ -100,12 +108,18 @@
       "what_happens": "The stored boundaries keep being served as current. The council explicitly warned the data 'may be subject to future amendments'. Nothing here polls for changes, and a superseded boundary is indistinguishable from a live one at query time.",
       "mitigated": false,
       "repro": "Compare source_document's commenced date against the council's current Part 8 page: SELECT DISTINCT source_document FROM dcp_precinct_boundaries WHERE extraction_method='council_supplied_shapefile' — every row still reports the 2026-08-18 supply date however long ago that was."
+    },
+    {
+      "scenario": "get_precinct_for_point returns an arbitrary precinct where polygons legitimately nest.",
+      "what_happens": "The function is LIMIT 1 with no ORDER BY and no LGA filter, so for a point inside more than one polygon the answer is whichever row Postgres yields first. This import adds 34 overlapping pairs (10 against the pre-existing Parramatta rows, 24 among the new ones, the latter being legitimate DCP nesting — a special character area inside a neighbourhood precinct).",
+      "mitigated": false,
+      "repro": "SELECT a.precinct_id, b.precinct_id FROM dcp_precinct_boundaries a JOIN dcp_precinct_boundaries b ON a.id < b.id AND ST_Intersects(a.boundary, b.boundary) AND ST_Area(ST_Intersection(a.boundary,b.boundary)::geography) > 100 — returns 271 pairs, of which 237 predate this import (Sydney 122, Inner West 108, Waverley 5, Parramatta 2). Impact is bounded: the only caller is /api/spatial/brief, which uses the result as an amenity CACHE KEY, not to select planning controls, so a wrong pick costs a cache miss rather than a wrong control."
     }
   ],
   "post_merge": {
     "db_reset": "None required, and the write is already done: dcp_precinct_boundaries went from 274 to 350 rows, City of Parramatta from 13 to 89. Additive only — 0 of the 76 ids collided with the existing 7.10.* and 9, so no pre-existing row was updated or deleted. A full pre-write backup of all 274 rows including boundary WKT was taken to the session scratchpad. Rollback is one scoped statement: DELETE FROM dcp_precinct_boundaries WHERE lga='City of Parramatta' AND extraction_method='council_supplied_shapefile'.",
     "secrets": "None added or rotated. Credentials are read from the gitignored repo-root .env, and no value is printed by the script.",
     "other_repo": "None. The shapefile itself is NOT committed — it is council-supplied third-party data of unstated licence, and the repository is not the right place for it pending confirmation of terms. The script takes a --shapefile path so the import is reproducible from wherever the file is held.",
-    "manual_verify": "Point-in-polygon against real locations, not row counts: Epping station (151.0819, -33.7727) returns 8.1.1.1 Epping Central; Harris Park station (151.0086, -33.8244) returns 8.3.1 Harris Park; Bondi Beach returns nothing. Then confirm the payoff: 284 distinct current Parramatta provisions now join to a polygon, against 0 before."
+    "manual_verify": "scripts/verify_precinct_boundaries.py now carries two Parramatta Part 8 spot checks and passes: 0 failures, 22 of 22 spot checks green. It reports 10 warnings for centroids falling outside their boundary — geometrically correct for concave and multipart polygons, and harmless here because nothing in application code reads dcp_precinct_boundaries.centroid; the grep hits are all lot centroids. Point checks: Epping station returns 8.1.1.1, Harris Park station 8.3.1, Bondi Beach nothing. 284 distinct current Parramatta provisions now join to a polygon, against 0 before."
   }
 }
