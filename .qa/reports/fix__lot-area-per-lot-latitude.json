@@ -1,14 +1,16 @@
 {
   "tier": "critical",
   "justification": "Changes a number every app serves. Lot area and lot width are recomputed for the Site Report, the property API, the setbacks calculator, the upzoning/duplex check and the CDC calculator, and lot width gates SEPP minimum-frontage eligibility — so this alters yes/no answers, not only displayed figures. Critical rather than Standard because the directionality is CHOOSING A VALUE, not removing a false claim: per the repair-calibration rule, removing a claim cannot create a wrong one but selecting a number can. Every new value is therefore validated against an external reference (the cadastre) rather than against our own other implementation, which is precisely the mistake the old golden made.",
-  "commit_hash": "2b13cf99",
+  "commit_hash": "b2f1b524",
   "files": [
     "services/lot_dimensions.py",
     "frontend-nextjs/lib/geometry/mercator.ts",
     "frontend-nextjs/lib/geometry/lot-dimensions.ts",
     "frontend-nextjs/lib/geometry/lot-shape-analysis.ts",
     "frontend-nextjs/lib/geometry/calculator.ts",
-    "tests/test_lot_dimensions.py"
+    "tests/test_lot_dimensions.py",
+    "frontend-nextjs/lib/geometry/__tests__/mercator-latitude.test.ts",
+    "frontend-nextjs/lib/geometry/__tests__/lot-shape-analysis.test.ts"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_lot_dimensions.py -q",
@@ -95,10 +97,10 @@
       "repro": "python -m pytest tests/test_lot_area_reconciliation.py -q"
     },
     {
-      "scenario": "Frontend behaviour regressed but the local jest suite could not say so",
-      "what_happens": "A TypeScript defect ships because the check that would have caught it did not run",
-      "mitigated": false,
-      "how": "NOT mitigated locally and stated rather than hidden. frontend-nextjs/node_modules on this machine is missing @jest/core and has no jest binary, so jest cannot start — a pre-existing condition unrelated to this change (package.json was last touched by #924). CI installs dependencies fresh and will run the suite. Compensating evidence: tsc reports zero errors in lib/geometry and 671 total against the 677 baseline, and the shared module was verified numerically against the Python implementation",
+      "scenario": "The TypeScript fixtures stay circular, so the frontend half is unproven",
+      "what_happens": "The Python side is guarded while the TypeScript that actually renders the number keeps passing at any latitude, which is the state this change found",
+      "mitigated": true,
+      "how": "createGeometry in lot-shape-analysis.test.ts had the identical defect — it declared its own NSW_LATITUDE = -33.87, scaled by it, and left the ring at (0, 0), the equator — and is fixed the same way. A new mercator-latitude.test.ts asserts a known 600 m2 lot, its frontage and depth, and a 15 m minimum-frontage decision at six NSW latitudes, plus parity with the Python scale factor and the malformed-ring fallback. Verified able to fail: forcing scaleFactorForRing back to the state-wide constant turns 12 of 52 red. jest could not run at first because node_modules was missing @jest/core (pre-existing; package.json last changed in #924) — dependencies were reinstalled rather than the gate skipped, and the suite now runs: 3 suites, 52 tests, all green.",
       "repro": "cd frontend-nextjs && npx jest --testPathPatterns=geometry"
     }
   ],
