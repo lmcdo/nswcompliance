@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One marketing page following the existing /for/<audience> pattern, plus a footer link. No code path, no query, no data. Minor because nothing computes: it is copy and two links.",
-  "commit_hash": "5f0e7a2c",
+  "commit_hash": "0af0762a",
   "files": [
     "frontend-nextjs/app/for/students/page.tsx",
     "frontend-nextjs/components/marketing/SiteFooter.tsx"
