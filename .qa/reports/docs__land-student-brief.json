@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Inverts the docs/ ignore rule from a whitelist to a deny-list, lands the 109-line student brief that the whitelist had silently excluded, adds the six launch email drafts, and guards both directions with tests. No code path, no query, no served output, no number. Minor on blast radius, not importance: nothing a user sees changes, but the failure being fixed is silent loss of a committed-looking document, and the inversion is the durable form of that fix rather than a sixth hand-patched negation.",
-  "commit_hash": "01ffe912",
+  "commit_hash": "fb863798",
   "files": [
     ".gitignore",
     "docs/outreach/student-brief.md",
