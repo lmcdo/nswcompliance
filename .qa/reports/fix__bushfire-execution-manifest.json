@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds provenance to what a report row records; it does not change any value the report serves. Bushfire outputs, confidence, data_sources and compliance text are untouched — the only new content is an execution_manifest key inside the inputs envelope. Standard rather than Minor because it writes to a production table on every bushfire request and because it raises a ratchet baseline, which is an act that needs its reasoning on the record. Not Critical because the directionality is RECORDING WHAT HAPPENED rather than choosing a value: the manifest cannot make a served number wrong. The one way it could do harm is by describing a run that did not occur, which is why the cache path gets its own manifest and its own test.",
-  "commit_hash": "PENDING",
+  "commit_hash": "7adc89e2",
   "files": [
     "services/bushfire_prescreen.py",
     "tests/test_bushfire_prescreen.py",
