@@ -29,14 +29,20 @@ up in that probe, and the cost of finding out from a student is the whole cohort
 | Purpose | URL |
 |---|---|
 | The tool, cohort-tagged | `https://verify.plotdetect.com.au/assessment?cohort=<code>` |
-| Landing page | `https://canibuildit.com.au/for/students` — **see the warning below** |
+| Landing page | `https://verify.plotdetect.com.au/for/students` |
 
-**⚠ Domain warning.** The `/for/students` page is served only from `canibuildit.com.au`.
-`plotdetect.com.au/for/students` returns **404** (checked 2026-08-19; `/for/planners` 404s there
-too — every `/for/` page is on the old domain). Every draft below therefore links straight to the
-cohort URL on `verify.plotdetect.com.au` and does not mention the landing page. Sending academics
-to a domain you are retiring, under a different name from the one you sign off with, costs more
-than the page adds. Resolve the domain question before using the landing page in outreach.
+**On the domain, corrected 2026-08-20.** An earlier version of this file warned that the landing
+page was reachable only from `canibuildit.com.au`. That was wrong, and the error was testing the
+apex alone. `verify.plotdetect.com.au/for/students` returns 200 and serves the identical page —
+the app answers every path on all three of its subdomains, and only the root is host-routed.
+
+What is true: the bare `plotdetect.com.au/for/students` does 404. That is not a fault. Under the
+Option B split decided 2026-06-24, the apex is a **separate site in a different repository**
+(`lmcdo/website`), and `frontend-nextjs/app/sitemap.ts` already carries a note about it from
+2026-07-23. Putting the page on the apex would mean rebuilding it in that other repository.
+
+So use the `verify.` URL. It is a plotdetect address, it matches the signature, and it needs no
+work.
 
 **Cohort codes.** Lowercase, digits and dashes, 3–40 characters. Shorter than 3 is silently
 ignored — the link still works, the feedback is just untagged, and nobody sees an error.
@@ -97,6 +103,7 @@ it to the societies, and do not put it on the site.
 > *Attached: assurance position — what has been validated, what has not, and what cannot be.*
 >
 > Class link: `https://verify.plotdetect.com.au/assessment?cohort=uts-16658`
+> Background for students and lecturers: `https://verify.plotdetect.com.au/for/students`
 
 ---
 
@@ -130,6 +137,7 @@ it to the societies, and do not put it on the site.
 > *Attached: assurance position — what has been validated, what has not, and what cannot be.*
 >
 > Cohort link: `https://verify.plotdetect.com.au/assessment?cohort=unsw-planning`
+> Background for students and lecturers: `https://verify.plotdetect.com.au/for/students`
 
 ---
 
@@ -162,6 +170,7 @@ coverage is strongest.*
 > *Attached: assurance position — what has been validated, what has not, and what cannot be.*
 >
 > Cohort link: `https://verify.plotdetect.com.au/assessment?cohort=wsu-planning`
+> Background for students and lecturers: `https://verify.plotdetect.com.au/for/students`
 
 ---
 

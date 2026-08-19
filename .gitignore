@@ -411,15 +411,33 @@ debug_*.js
 # PRPs working directory
 PRPs/
 
-# Docs directory (large PDFs ignored, but allow markdown subdirs)
-docs/*
-!docs/screencasts/
-!docs/user-stories/
-!docs/intelligence-brief/
-!docs/intelligence-brief/**
-!docs/outreach/
-!docs/outreach/**
-!docs/*.md
+# Docs directory — DENY-LIST, not whitelist. Inverted 2026-08-20.
+#
+# This was `docs/*` plus a growing list of negations, which meant every NEW
+# subdirectory was hidden by default, with no error and no git status entry.
+# It cost two documents: PR #982's student brief (recovered) and PR #979's
+# docs/pitch/style.html (gone from disk as well as git). Two other folders,
+# docs/qa/ and docs/servicing/, had already been hand-patched after their own
+# incidents — the trap was being fixed one directory at a time.
+#
+# The stated intent was always "ignore the large binaries, keep the writing".
+# Measured 2026-08-20, `docs/*` was hiding 602 markdown files and 7 PDFs, which
+# is the opposite. So: name the heavy and generated directories, and let
+# documentation through by default.
+#
+# Adding a genuinely large directory here is now a deliberate line, and the
+# 2MB-per-file pre-commit gate catches individual big files loudly. Bulk that
+# slips past both is the residual risk, accepted knowingly.
+docs/adg/
+docs/history/
+docs/mutation-testing/
+docs/gephi/
+docs/gipa-requests/
+docs/*.pdf
+docs/**/*.pdf
+# Generated dependency graphs — dep-graph.svg is 1.2MB, under the 2MB per-file
+# gate, so nothing else would stop it being committed on a stray `git add -A`.
+docs/dep-graph*.svg
 
 # PDF page images (stored in cloud, not git)
 frontend-nextjs/public/pdf-pages/
@@ -709,13 +727,11 @@ latent-scope-data/
 
 # Sydney Water GSP servicing feature (migration 058) — track the pipeline, not the data blobs
 !scripts/ingest_sydney_water_gsp.py
-!docs/servicing/
-!docs/servicing/**
+# (docs/servicing/ likewise — the deny-list covers it.)
 
-# QA evidence docs — docs/ is whitelist-only (line 371), so a new file here is
-# silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
-!docs/qa/
-!docs/qa/**
+# (docs/qa/ needed an explicit negation while docs/ was whitelist-only. The
+# deny-list above covers it now, so the negation has gone rather than lingering
+# as a rule nobody can explain.)
 
 # Schema-contract gate — scripts/ is whitelist-only (line 402), so a new file here
 # is silently untracked unless named. Verify with: git ls-files --error-unmatch <path>

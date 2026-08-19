@@ -2,11 +2,16 @@
 
 WHY THIS EXISTS
 ---------------
-`.gitignore` carries `docs/*` with a short allow-list of exceptions. One of
-them is `!docs/*.md`, which re-includes markdown at the TOP level of `docs/`
-only. `docs/outreach/` is a subdirectory, and once `docs/*` excludes a
-directory git never descends into it, so nothing inside could be added — with
-no error, no warning, and no entry in `git status`.
+`.gitignore` USED TO carry `docs/*` with a short allow-list of exceptions. One
+was `!docs/*.md`, which re-includes markdown at the TOP level of `docs/` only.
+`docs/outreach/` is a subdirectory, and once `docs/*` excludes a directory git
+never descends into it, so nothing inside could be added — with no error, no
+warning, and no entry in `git status`.
+
+That rule was inverted to a deny-list on 2026-08-20: the heavy and generated
+directories are named, and documentation is allowed by default. Measured before
+the change, `docs/*` was hiding 602 markdown files and 7 PDFs — the opposite of
+its stated intent of "ignore the large binaries, keep the writing".
 
 PR #982, titled "A one-page brief for students testing the tool", merged
 exactly one file: its own 46-line QA report. The 109-line brief it was named
@@ -88,15 +93,47 @@ def test_a_new_outreach_document_would_not_be_ignored():
     )
 
 
-def test_the_docs_star_rule_still_applies_elsewhere():
-    """Control case: the fix must re-include one directory, not defeat the rule.
+@pytest.mark.parametrize(
+    "heavy",
+    [
+        "docs/adg/apartment-design-guide.pdf",   # 30MB of design guide
+        "docs/history/some-old-note.md",         # 595 archived files, 8.8MB
+        "docs/mutation-testing/cache.txt",       # generated
+        "docs/gephi/graph.gexf",                 # generated
+        "docs/dep-graph.svg",                    # generated, 1.2MB
+        "docs/anything/buried.pdf",              # binaries at any depth
+    ],
+)
+def test_the_heavy_directories_are_still_ignored(heavy):
+    """Control case: opening docs/ up must not drag the bulk in with it.
 
-    Without this, a change that simply deleted `docs/*` would make the test
-    above pass while dragging every ignored PDF and scratch file into the repo.
+    The rule was inverted on 2026-08-20 from a whitelist to a deny-list, so the
+    old control — "an unlisted docs subdirectory stays ignored" — is deliberately
+    no longer true. What must stay true is that the 42MB this directory exists to
+    keep out is still kept out. Without this, "fix the trap" quietly becomes
+    "commit the Apartment Design Guide".
+
+    dep-graph.svg is 1.2MB and would pass the 2MB per-file pre-commit gate, so
+    nothing else in the system would stop it.
     """
-    assert _check_ignore("docs/some-other-subdir/scratch.md"), (
-        "docs/* no longer ignores unlisted subdirectories. The outreach fix was "
-        "meant to re-include ONE directory, not disable the rule."
+    assert _check_ignore(heavy), (
+        f"{heavy} is no longer ignored. The docs deny-list was meant to admit "
+        "writing, not bulk and generated artefacts."
+    )
+
+
+def test_a_brand_new_docs_subdirectory_just_works():
+    """The whole point of the inversion.
+
+    Under the old whitelist every new subdirectory was hidden by default, with
+    no error and no git status entry, and was patched back in one folder at a
+    time — docs/qa/ and docs/servicing/ each after their own incident. A new
+    folder must now work without anyone editing .gitignore.
+    """
+    assert not _check_ignore("docs/a-folder-nobody-has-created-yet/note.md"), (
+        "docs/ is whitelist-only again. A document written to a new subdirectory "
+        "will be invisible to git, which is how PR #982 lost the student brief "
+        "and PR #979 lost docs/pitch/style.html."
     )
 
 

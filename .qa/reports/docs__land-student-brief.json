@@ -1,6 +1,6 @@
 {
   "tier": "minor",
-  "justification": "Re-includes docs/outreach/ in .gitignore, lands the 109-line student brief that was silently excluded by it, adds the six launch email drafts alongside it, and guards the rule. No code path, no query, no served output, no number. One substantive file by the gate's own definition (the test), inside the minor floor of three. Minor on blast radius, not on importance: nothing a user sees changes, but the failure being fixed is silent loss of a committed-looking document.",
+  "justification": "Inverts the docs/ ignore rule from a whitelist to a deny-list, lands the 109-line student brief that the whitelist had silently excluded, adds the six launch email drafts, and guards both directions with tests. No code path, no query, no served output, no number. Minor on blast radius, not importance: nothing a user sees changes, but the failure being fixed is silent loss of a committed-looking document, and the inversion is the durable form of that fix rather than a sixth hand-patched negation.",
   "commit_hash": "01ffe912",
   "files": [
     ".gitignore",
@@ -10,9 +10,9 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_outreach_docs_tracked.py -q",
-    "fails_when": "Not required at minor tier; supplied because it can genuinely fail, and did. The suite pins the RULE in both directions: a hypothetical new docs/outreach/*.md must NOT be ignored, and an unlisted docs/<other>/ path must STILL be ignored. Deleting the negations fails the first; deleting `docs/*` outright fails the second, so the fix cannot be widened into disabling the rule. Two further cases pin that the brief is tracked and is not a truncated stub.",
-    "observed_red": "Observed, not assumed. Run before `git add`, test_student_brief_is_tracked FAILED and the other three passed — the guard detected exactly the condition that lost the document in the first place. After staging, 4 passed. The control case was also checked by hand: `git check-ignore -q docs/some-subdir/thing.md` still exits 0, so docs/* continues to bite everywhere it did before.",
-    "external_authority": "Not self-referential. `git check-ignore` is git's own answer about its own rules, asked about a path that need not exist, so the test interrogates the ignore file rather than the repository's current contents. The -q flag is required rather than stylistic: with -v git exits 0 when the winning rule is a negation, which would make a re-included path read as ignored to any caller testing the exit code."
+    "fails_when": "The suite pins BOTH directions of the inversion. It fails if a brand-new docs subdirectory is ignored again, which is the trap itself; and equally if any of the heavy directories stops being ignored — docs/adg (30MB), docs/history (595 files, 8.8MB), docs/mutation-testing, docs/gephi, nested PDFs at any depth, and docs/dep-graph.svg at 1.2MB, which would pass the 2MB per-file pre-commit gate and so has nothing else stopping it. Without that second half, 'fix the trap' silently becomes 'commit the Apartment Design Guide'. Two further tests pin that every markdown file present in docs/outreach is tracked, and that the brief is not a stub.",
+    "observed_red": "Observed twice, both on real files rather than synthetic ones. Run before `git add`, test_student_brief_is_tracked FAILED while the others passed. Later, the folder-walking test failed and named docs/outreach/student-launch-emails.md the moment that file was written and not staged. After the inversion the effective rules were re-measured rather than assumed: the five heavy directories still ignored, five documentation directories including two brand-new ones now allowed, and `git status` over docs/ shows zero newly stageable files.",
+    "external_authority": "The deny-list membership was measured, not chosen by taste. `git ls-files --others --ignored` over docs/ returned 602 markdown files and 7 PDFs — the rule whose stated intent was 'large PDFs ignored, but allow markdown subdirs' was doing precisely the opposite. Directory sizes (du) put docs/adg at 30MB and docs/history at 8.8MB, which is what the rule is actually worth keeping. The two documents it cost are external facts: PR #982 and PR #979, both merged, both green, each having merged only its own QA report."
   },
   "break_it": [
     {
@@ -23,11 +23,11 @@
       "repro": "Delete the two negation lines, run pytest tests/test_outreach_docs_tracked.py — test_a_new_outreach_document_would_not_be_ignored fails."
     },
     {
-      "scenario": "Someone fixes the ignore problem by deleting the `docs/*` line entirely instead of adding a negation.",
-      "what_happens": "Every previously ignored artefact under docs/ — large PDFs, scratch files, extraction dumps — becomes stageable, and the first `git add -A` commits them. The outreach test would pass while the repository takes on the exact weight docs/* exists to keep out.",
+      "scenario": "Opening docs/ up drags the bulk in with it — someone deletes `docs/*` and stops there.",
+      "what_happens": "42MB of Apartment Design Guide, 595 archived history files and generated caches become stageable, and the first `git add -A` commits them. The trap is fixed and the repository is ruined. dep-graph.svg at 1.2MB is the sharpest case: it sits UNDER the 2MB per-file gate, so nothing else in the system objects.",
       "mitigated": true,
-      "how": "A control test asserts an unlisted subdirectory path is STILL ignored, so the rule surviving is pinned as tightly as the exception.",
-      "repro": "Remove `docs/*` from .gitignore, run the suite — test_the_docs_star_rule_still_applies_elsewhere fails."
+      "how": "Six parametrised control tests assert each heavy path is still ignored, so the inversion cannot be widened into simply removing the rule. Verified after the change: git status over docs/ reports zero newly stageable files.",
+      "repro": "Delete the deny-list entries and run pytest tests/test_outreach_docs_tracked.py — test_the_heavy_directories_are_still_ignored fails, once per path."
     },
     {
       "scenario": "The brief is committed as an empty or truncated file, or is later gutted.",
@@ -54,12 +54,19 @@
       "mitigated": true,
       "how": "test_every_outreach_document_on_disk_is_tracked walks docs/outreach/*.md and fails on any untracked file, naming it. This fired for real during this change: the emails draft was written, the test failed naming it, and it was staged.",
       "repro": "Write docs/outreach/anything.md without git add, run pytest tests/test_outreach_docs_tracked.py — it fails and names the file."
+    },
+    {
+      "scenario": "The drafts send academics to a domain the founder is retiring.",
+      "what_happens": "An earlier version of the emails warned that /for/students existed only on canibuildit.com.au and told the reader not to link it. That warning was WRONG, and the error was testing the apex alone: verify.plotdetect.com.au/for/students returns 200 and serves the identical page, because only the root path is host-routed. Six emails would have shipped omitting a usable page on the strength of one untested inference.",
+      "mitigated": true,
+      "how": "Corrected in place, with the mistake left visible in the document rather than quietly overwritten, and the landing page restored to the three academic emails. The societies keep a single link deliberately — two CTAs on a 'come and break this' invitation compete with each other.",
+      "repro": "curl -s -o /dev/null -w '%{http_code}' https://verify.plotdetect.com.au/for/students  # 200"
     }
   ],
   "post_merge": {
     "db_reset": "None. No schema, no migration, no data. A markdown handout, a .gitignore negation and a test.",
     "secrets": "None. Neither document contains credentials. Both were checked against .claude/rules/blog-content.md since they are external-facing: no internal pipeline names, no algorithm names, no table or function names. The liability scan on the emails returns two matches for 'should', both first-person framing ('I should be straight about what I am asking for'), neither a claim about a planning output.",
     "other_repo": "None. Single repo. The document is referenced by the feedback widget's cohort comment in PR #987, which currently states the brief is NOT on main; that comment becomes stale once this lands and should be trimmed when both are merged.",
-    "manual_verify": "After merge: `git show origin/main:docs/outreach/student-brief.md | wc -l` returns 109 and `git show origin/main:docs/outreach/student-launch-emails.md` resolves. Before this change the first returns 'fatal: path does not exist', which is the whole defect. Separately, the emails document records a live finding worth acting on: /for/students is served only from canibuildit.com.au and plotdetect.com.au/for/students returns 404, so the drafts deliberately link to the cohort URL on verify.plotdetect.com.au instead of the landing page."
+    "manual_verify": "After merge: `git show origin/main:docs/outreach/student-brief.md | wc -l` returns 109, where before this change the same command returned 'fatal: path does not exist'. Then confirm the inversion holds in both directions: `git check-ignore -q docs/a-new-folder/x.md` exits 1 (allowed) and `git check-ignore -q docs/adg/x.pdf` exits 0 (still ignored)."
   }
 }
