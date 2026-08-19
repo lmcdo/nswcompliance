@@ -511,7 +511,12 @@ def build_cache_manifest(cached: dict, lat: float, lng: float, prop_id) -> dict:
                 "source_run_date": (
                     run_date.isoformat() if hasattr(run_date, "isoformat") else run_date
                 ),
-                "source_data_sources": (cached or {}).get("data_sources") or [_DATA_SOURCE_RFS],
+                # NOT defaulted to the RFS source. A legacy row with a NULL
+                # data_sources genuinely does not record what it queried, and
+                # filling that gap with the likeliest answer would invent a
+                # fact inside the one structure whose whole job is to record
+                # what actually happened. Unknown is recorded as unknown.
+                "source_data_sources": (cached or {}).get("data_sources") or None,
             },
         },
         query_params={"lat": lat, "lng": lng},

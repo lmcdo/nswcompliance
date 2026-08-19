@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds provenance to what a report row records; it does not change any value the report serves. Bushfire outputs, confidence, data_sources and compliance text are untouched — the only new content is an execution_manifest key inside the inputs envelope. Standard rather than Minor because it writes to a production table on every bushfire request and because it raises a ratchet baseline, which is an act that needs its reasoning on the record. Not Critical because the directionality is RECORDING WHAT HAPPENED rather than choosing a value: the manifest cannot make a served number wrong. The one way it could do harm is by describing a run that did not occur, which is why the cache path gets its own manifest and its own test.",
-  "commit_hash": "7adc89e2",
+  "commit_hash": "315e61b3",
   "files": [
     "services/bushfire_prescreen.py",
     "tests/test_bushfire_prescreen.py",
@@ -34,7 +34,7 @@
       "file_line": "services/bushfire_prescreen.py:492",
       "input": "The cached row selected from property_reports, including its run_date, plus the current request's lat/lng/prop_id",
       "output": "A manifest recording served_from='cache', when the copied numbers were originally produced, and which sources the original run used",
-      "if_none": "A cache row with no run_date — possible for rows written before run_date was added to the SELECT — yields source_run_date=None rather than raising, so an old cache entry cannot break the write path. It deliberately omits rfs_bfpl and spatial_overlays entirely: naming sources this run never touched would be the false provenance the manifest exists to prevent."
+      "if_none": "A cache row with no run_date — possible for rows written before run_date was added to the SELECT — yields source_run_date=None rather than raising, so an old cache entry cannot break the write path. A row with no recorded data_sources yields None, NOT a default attribution. It deliberately omits rfs_bfpl and spatial_overlays entirely: naming sources this run never touched would be the false provenance the manifest exists to prevent."
     }
   ],
   "values": [
@@ -62,6 +62,13 @@
       "repro": "python -m pytest tests/test_bushfire_prescreen.py -k cache_manifest -q"
     },
     {
+      "scenario": "A legacy cached row records no data_sources and the manifest fills the gap with the likeliest answer",
+      "what_happens": "The manifest asserts NSW RFS was the source of a run nobody recorded — inventing a fact inside the one structure whose entire job is to record what actually happened, which is worse than false provenance anywhere else because a manifest is what a later reader trusts",
+      "mitigated": true,
+      "how": "Raised by scripts/cross_review.py at 0.97 confidence on the first push and correct. The first version wrote `or [_DATA_SOURCE_RFS]`; it now writes `or None`, so unknown is recorded as unknown. test_cache_manifest_does_not_invent_a_source_it_cannot_know covers NULL and empty-list rows and still asserts that a row which DOES record its sources reports them. Restoring the default turns it red",
+      "repro": "python -m pytest tests/test_bushfire_prescreen.py -k invent_a_source -q"
+    },
+    {
       "scenario": "The manifest is stored under a key the ratchet does not count",
       "what_happens": "The product looks like 0% coverage forever while actually writing manifests — the exact state solar-yield appears to be in until you read its code",
       "mitigated": true,
@@ -79,7 +86,7 @@
       "scenario": "The baseline was raised, so the ratchet has been quietly weakened",
       "what_happens": "A guard that fired correctly gets neutered and the regression it caught is buried",
       "mitigated": true,
-      "how": "The rise is real and permanent: 4 bushfire reports were written between 2026-08-17 and 08-19 while the pipeline had no manifest code, and a manifest cannot be backfilled. Raising 61 to 65 records that honestly. What makes this re-scoping rather than relaxing is that the CAUSE is fixed in the same change — every subsequent report carries one, so the number cannot rise again for this reason. Updating the baseline WITHOUT the code fix would have been the relaxation, and would have left the pipeline free to keep adding unprovenanced rows",
+      "how": "The rise is real and permanent: 4 bushfire reports were written between 2026-08-17 and 08-19 while the pipeline had no manifest code, and a manifest cannot be backfilled. Raising 61 to 65 records that honestly. What makes this re-scoping rather than relaxing is that the CAUSE is fixed in the same change — every subsequent report carries one, so the number cannot rise again for this reason. Updating the baseline WITHOUT the code fix would have been the relaxation, and would have left the pipeline free to keep adding unprovenanced rows The cross-reviewer objected to this at 0.99 confidence and the objection is recorded rather than dismissed: raising a shrink-only value does weaken the signal. Holding it at 61 was considered and rejected because the count can never fall, so the ratchet would fail every branch forever — the guard would stop being a signal and become noise to route around. The principled fix is the one CURRENT-AIM already records as an open decision: split the metric into new-reports versus all-time, so 'every NEW report carries a manifest' becomes directly measurable instead of being approximated by a frozen total. That is the owner's decision and deliberately not made here.",
       "repro": "python scripts/check_satellite_manifests.py --baseline"
     },
     {

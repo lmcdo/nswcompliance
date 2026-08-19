@@ -427,10 +427,27 @@ class TestExecutionManifest:
         assert prov["served_from"] == "cache"
         assert prov["served_from"] != "live_query"
         assert prov["source_run_date"] == "2026-05-01"
-        assert prov["source_data_sources"] == ["NSW RFS BFPL"]
+        assert prov["source_data_sources"] == ["NSW RFS BFPL"]  # recorded, so reported
         # It must NOT invent source identities it did not observe.
         assert "rfs_bfpl" not in m["inputs"]
         assert "spatial_overlays" not in m["inputs"]
+
+    def test_cache_manifest_does_not_invent_a_source_it_cannot_know(self):
+        """A legacy row with no recorded sources must say so, not guess.
+
+        Raised by scripts/cross_review.py at 0.97 and correct: the first
+        version defaulted a NULL data_sources to the RFS map, which asserts a
+        fact about a run nobody recorded — inside the one structure whose job
+        is to record what actually happened. False provenance in a manifest is
+        worse than false provenance anywhere else.
+        """
+        m = build_cache_manifest({"run_date": _date(2026, 5, 1)}, -33.0, 151.0, None)
+        assert m["inputs"]["provenance"]["source_data_sources"] is None
+        m2 = build_cache_manifest({"data_sources": []}, -33.0, 151.0, None)
+        assert m2["inputs"]["provenance"]["source_data_sources"] is None
+        # A row that DOES record its sources still reports them.
+        m3 = build_cache_manifest({"data_sources": ["NSW RFS BFPL"]}, -33.0, 151.0, None)
+        assert m3["inputs"]["provenance"]["source_data_sources"] == ["NSW RFS BFPL"]
 
     def test_cache_manifest_survives_a_missing_run_date(self):
         """A cache row from before run_date was selected must not crash the write."""
