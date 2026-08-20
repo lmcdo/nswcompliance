@@ -135,8 +135,13 @@ export async function POST(request: NextRequest) {
     if (precinct) {
       console.log(`[Constraints API] ✅ Precinct matching enabled - matched precinct:`, precinct);
 
+      // Identify the provisions by precinct + council, not by a concatenated
+      // document id. The old argument was `${council}_DCP_2011_${id}_${name}`,
+      // built in code and matching no stored document.
       const rawPrecinctControls = await getPrecinctControls(
-        precinct.documentId,
+        precinct.precinctId,
+        precinct.lga,
+        precinct.formerCouncil,
         ['height', 'setback', 'parking', 'fsr', 'open_space', 'heritage', 'vegetation']
       );
 
@@ -447,6 +452,24 @@ export async function POST(request: NextRequest) {
         sepp_overrides: seppResult.rows,
         permission_status: permissionStatus  // Add permission status to response
       },
+      // The precinct MUST reach the client. It was resolved here, logged, and
+      // then dropped from the response — so ProvisionsByTocStructure read
+      // `constraints?.precinctId`, got undefined, and never sent precinct_id to
+      // /api/provisions/for-property. The precinct layer therefore never
+      // filtered, in every council, however good the boundary polygons were.
+      precinct: precinct
+        ? {
+            precinctId: precinct.precinctId,
+            precinctNumber: precinct.precinctNumber,
+            precinctName: precinct.precinctName,
+            lga: precinct.lga,
+            formerCouncil: precinct.formerCouncil ?? null,
+            matchMethod: precinct.matchMethod ?? null,
+            confidenceScore: precinct.confidenceScore ?? null,
+          }
+        : null,
+      // Flat alias: the assessment page reads selectedProperty.constraints?.precinctId.
+      precinctId: precinct?.precinctId ?? null,
       metadata: {
         lga: lgaName,
         zone,
