@@ -49,6 +49,14 @@ KNOWN_POINTS = [
     (151.2067248368, -33.9048022299, "6.3.3", "904 Bourke St Zetland (also 2.5.8, 5.2)"),
     (151.2117495867, -33.8659150961, "6.3.24", "2 Chifley Sq Sydney (also 2.1.12, 5.1)"),
     (151.1890328271, -33.9074964885, "6.2.4", "18 Huntley St Alexandria (also 2.7.11)"),
+    # City of Parramatta — Part 8 precincts, council-supplied shapefile 2026-08-18.
+    # These are STATION coordinates, not SIX-geocoded addresses: they were the
+    # points used to confirm the import landed correctly, and they are recorded
+    # as what they are rather than dressed up as address geocodes. Both sit
+    # inside nested parents too (8.3.1 overlaps the 7.10.x heritage areas), and
+    # the check asserts membership only, so the nesting is not a failure.
+    (151.0819, -33.7727, "8.1.1.1", "Epping station (Strategic Centre - Epping Central)"),
+    (151.0086, -33.8244, "8.3.1",   "Harris Park station (Neighbourhood Precinct - Harris Park)"),
     # Ku-ring-gai (add once Part 14 provisions are extracted)
     # Waverley DCP 2022 Part E — coords geocoded via NSW Planning Portal lot
     # centroids 2026-07-28; expectations from adopted DCP figures (E1 Fig 1,
