@@ -1,0 +1,116 @@
+{
+  "tier": "critical",
+  "justification": "Changes which planning controls are served for a property. 22 of 89 City of Parramatta precincts currently serve NONE despite their controls existing, and the fix's failure direction — a precinct also taking its parent's controls — would serve a property controls it is not subject to. Both directions are liability, so the tier is set by what the code decides, not by the size of the diff.",
+  "commit_hash": "PENDING",
+  "files": [
+    "frontend-nextjs/lib/precinct-service.ts",
+    "frontend-nextjs/__tests__/lib/precinct-ancestor-key-sql.test.ts",
+    "tests/test_precinct_ancestor_resolution.py"
+  ],
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 ./venv_linux/Scripts/python.exe -m pytest tests/test_precinct_ancestor_resolution.py -q -o addopts=   &&   cd frontend-nextjs && npx jest --testPathPatterns=precinct",
+    "fails_when": "The pytest file runs the resolution against the REAL database and pins both directions. It fails if an Epping polygon stops inheriting 8.1.1 (the defect returning), and equally if 8.2.6 — which has its own controls — starts also taking 8.2's (the over-inclusion direction). Four parametrised cases fail if Ashfield 'Part 1', Marrickville '47_', Leichhardt 'G6' or Sydney '2.5.8' stop resolving to themselves, which is how the change would announce that it had stopped being contained to Parramatta. A synthetic '47_.1' case fails if the ancestor match is ever rewritten with LIKE, where the underscore is a wildcard. The jest file is a tripwire only — it catches deletion of the CTE and re-pins #992's one-query-per-council invariant; it asserts shape, which cannot tell you the rule is right.",
+    "observed_red": "Measured live against production before writing anything: precinct_id=8.1.1.1 returned 136 provisions with layer_4_precinct=0, identical to sending no precinct at all, while 8.2.6 returned 186 with layer_4_precinct=50. Four mutations were then run against an earlier JS implementation of the rule and all four were caught (unconditional inheritance 1 failed, furthest-ancestor 1 failed, ancestors-include-self 2 failed, return-nothing 6 failed) — but only AFTER the tests were rewritten to call the real function: the first suite reproduced the rule instead of importing it, and the unconditional-inheritance mutant left all 13 green. That version was discarded in favour of the SQL one; its lesson is why the current pytest file executes the served query rather than a copy of it. Two further errors of mine surfaced and were fixed: a mut() helper using `git checkout` wiped the uncommitted patch mid-run, and the first jest count assertion expected 1 query where the existing former-council fallback correctly issues 2.",
+    "external_authority": "Not self-referential. The behaviour is measured against the production database and against the live HTTP endpoint, not against other code in this repo. The requirement comes from the council's own documents: City of Parramatta maps Epping as fifteen polygons in its Part 8 GIS extract while writing those precincts' controls once, against 8.1.1, in the DCP text. The resolution encodes that relationship rather than inventing one."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_precinct_boundaries holds 350 rows across six LGAs: Sydney 145, City of Parramatta 89, Inner West 86, Woollahra 14, Ku-ring-gai 10, Waverley 6. Against current actionable provisions, 47 of the 89 Parramatta polygons match a v2_precinct_id exactly, 22 match only through an ancestor, and 20 have no provisions at any level. Every polygon in the other five LGAs matches exactly — 259 of 259 — which is what makes this change containable.",
+    "assumption_mismatch": "Three. First, I assumed #992 had already fixed this: its title is the same symptom, but it measured with 8.2.6, an exact-match precinct, so it could not have surfaced the coarser-key case — verified by re-measuring live after #992 merged and still getting layer_4_precinct=0. Second, I assumed a JS-side resolver was the natural place; it required a second query, which broke #992's one-query-per-council invariant and its mocks at the semantic level, not merely on call indices. Third, I assumed single-segment ancestors were a safe universal guard against catch-all keys; they are not — 'G6', 'Part 1' and '47_' are whole precinct ids in their own councils.",
+    "new_vs_existing": "No new module and no new query. Two CTEs added to the existing provisions query in getPrecinctProvisions, plus its WHERE clause repointed at them. The alternative — a separate DISTINCT lookup before the main query — was written first and abandoned specifically to preserve one query per council, which #992 established as an invariant because a union across councils would merge two councils' controls onto one property.",
+    "external_source_error": "The relationship being encoded is the council's, not ours: City of Parramatta maps Epping as fifteen polygons in the Part 8 GIS extract it supplied on 2026-08-18, while writing those precincts' controls once in the DCP text, against 8.1.1. If the council later re-keys its text to the finer ids, the exact-match branch simply starts winning and the ancestor branch stops being reached — no code change needed. If it re-keys the other way, more polygons inherit. Neither is detected automatically; nothing here polls the council for a re-keying, and that gap is the same one recorded for the boundaries themselves in #990.",
+    "frontend_type": "No type change and no component change. getPrecinctProvisions returns the same row shape from the same columns; only the set of rows widens for 22 Parramatta precincts. The resolved key is returned in each row's precinct_id field as before, so a caller displaying it will now show 8.1.1 for a property in Epping Central rather than 8.1.1.1 — the key the controls are written against, which is the correct citation, but a visible difference worth knowing about.",
+    "user_failure_mode": "Both directions are silent and neither raises. Too few controls renders as 'no precinct controls', which is identical to what a property genuinely outside any precinct shows — that is how 22 Parramatta precincts served nothing without a single complaint. Too many renders as a fuller, more authoritative-looking report, which is worse: a user acts on a control their site is not subject to. Because neither failure announces itself, the pinning tests run against the real database and assert both directions rather than one."
+  },
+  "functions": [
+    {
+      "name": "getPrecinctProvisions",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts",
+      "what": "Returns the precinct-layer provisions for one or more precinct ids, now resolving each id onto the key its controls are actually written against.",
+      "input": "a precinct id or comma-joined list, an LGA name, an optional former council, and an optional control-type filter",
+      "output": "provision rows for a single council, or an empty array when no council can be resolved or no key has text",
+      "if_none": "an empty array, which renders as 'no precinct controls' — the same as a property genuinely outside a precinct, which is precisely why this defect went unnoticed and why the fix had to be measured rather than eyeballed",
+      "edge_cases": "An id with no dots has no ancestors, so Ashfield 'Part 1', Marrickville '47_' and Leichhardt 'G6' resolve only to themselves. Ancestor matching uses left(id, length(k)+1) = k || '.' rather than LIKE, because an underscore in an id is a LIKE wildcard. The avail CTE carries is_current and v2_is_actionable so a superseded key can never be inherited. COALESCE puts the exact match first, so a precinct with its own controls never reaches the ancestor branch.",
+      "failure_mode": "Silent in both directions by nature — too few controls looks like an unregulated site, too many looks like a thorough report. Neither raises. That is why the pinning tests run against the real database and assert both directions."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Find which precinct keys this council actually holds current, actionable text for",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts",
+      "where_clause": "WHERE source_council = $2 AND is_current AND v2_is_actionable AND v2_precinct_id IS NOT NULL — scoped to one council, currency-filtered so a superseded key cannot be inherited"
+    },
+    {
+      "purpose": "Map each requested precinct id onto the key carrying its controls: itself, else the nearest ancestor",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts",
+      "where_clause": "COALESCE(exact match on a.k = r.id, nearest ancestor via left(r.id, length(a.k)+1) = a.k || '.' ORDER BY length(a.k) DESC LIMIT 1) — exact wins outright, so a precinct with its own controls never inherits"
+    },
+    {
+      "purpose": "Serve the provisions for the resolved keys",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts",
+      "where_clause": "WHERE rp.v2_precinct_id IN (SELECT k FROM precinct_keys WHERE k IS NOT NULL) AND rp.source_council = $2 AND rp.is_current AND rp.v2_is_actionable — unchanged except for the key source; still one council per query"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A precinct that has its own controls also inherits its parent's, so a property is served controls it is not subject to.",
+      "what_happens": "The report looks MORE complete, not less, which is why this is the dangerous direction. A user reading Melrose Park's controls would also see whatever is written against 8.2, with nothing distinguishing them.",
+      "mitigated": true,
+      "how": "COALESCE puts the exact match first and the ancestor branch is only reached when it returns nothing. Pinned by test_a_precinct_with_its_own_controls_does_not_also_take_its_parents against the real database, and the equivalent mutation on the earlier JS implementation failed a test.",
+      "repro": "PYTEST_REAL_DB=1 pytest tests/test_precinct_ancestor_resolution.py -k does_not_also_take"
+    },
+    {
+      "scenario": "The furthest ancestor is chosen instead of the nearest, so a sub-precinct picks up a broader statement than the one that governs it.",
+      "what_happens": "8.1.1.3.1 would resolve to '8' rather than '8.1.1' if a key that broad existed, serving the whole Part's controls to one street.",
+      "mitigated": true,
+      "how": "ORDER BY length(a.k) DESC LIMIT 1 takes the longest matching key, which is the most specific. The mutation reversing this failed a test on the earlier implementation.",
+      "repro": "Change DESC to ASC and run the pytest file: the Epping cases resolve to '8' and fail."
+    },
+    {
+      "scenario": "The ancestor match is rewritten with LIKE, and an id containing a LIKE wildcard matches the wrong parent.",
+      "what_happens": "Marrickville ids such as '47_' contain an underscore, which LIKE reads as any single character: the pattern '47_.%' would also match '470.1' or '471.1'. No such ids exist today, which is exactly why it would go unnoticed.",
+      "mitigated": true,
+      "how": "left(r.id, length(a.k) + 1) = a.k || '.' does a literal prefix comparison with no wildcard semantics. A jest assertion forbids LIKE against a.k, and a pytest case exercises a synthetic '47_.1'.",
+      "repro": "PYTEST_REAL_DB=1 pytest tests/test_precinct_ancestor_resolution.py -k underscore"
+    },
+    {
+      "scenario": "The change stops being contained and starts altering councils that already matched exactly.",
+      "what_happens": "Sydney, Inner West, Ku-ring-gai, Waverley and Woollahra hold 259 polygons that all match exactly today. If any began inheriting, a change measured as Parramatta-only would be silently reshaping five other councils' output.",
+      "mitigated": true,
+      "how": "Four parametrised pytest cases assert Ashfield 'Part 1', Marrickville '47_', Leichhardt 'G6' and Sydney '2.5.8' resolve to themselves. Containment was measured before the code was written, not assumed.",
+      "repro": "PYTEST_REAL_DB=1 pytest tests/test_precinct_ancestor_resolution.py -k resolve_to_themselves"
+    },
+    {
+      "scenario": "A superseded precinct key is inherited because the availability lookup omits the currency filters.",
+      "what_happens": "A precinct whose controls were replaced would keep serving the old key's text, and the row would look entirely normal.",
+      "mitigated": true,
+      "how": "The avail CTE carries is_current, v2_is_actionable and the council scope. A jest assertion slices the CTE out of the emitted SQL and requires all three.",
+      "repro": "Remove is_current from the avail CTE and run npx jest --testPathPatterns=precinct-ancestor-key-sql."
+    },
+    {
+      "scenario": "The resolution is moved out of the query into a second lookup, restoring one-query-per-council to two.",
+      "what_happens": "#992 established one query per council deliberately: 'inner_west' exists as a source_council alongside ashfield/leichhardt/marrickville, so two scopes in play is one data change away from merging two councils' controls onto one property.",
+      "mitigated": true,
+      "how": "A jest assertion pins exactly one query per council. This is not hypothetical — the first implementation here did exactly that and broke #992's tests at the semantic level, which is why the design changed.",
+      "repro": "npx jest --testPathPatterns=precinct-ancestor-key-sql -t 'ONE query per council'"
+    },
+    {
+      "scenario": "The 20 Parramatta polygons with no provisions at any level are made to inherit something rather than nothing.",
+      "what_happens": "Sixteen 8.5.13.* specific sites and 8.3.10 have no extracted text. Attaching a broader parent's controls to them would invent an answer where the honest one is silence.",
+      "mitigated": true,
+      "how": "k is NULL when neither the id nor any ancestor has provisions, and the WHERE clause filters NULL out. Pinned by test_no_provisions_at_any_level_resolves_to_nothing.",
+      "repro": "PYTEST_REAL_DB=1 pytest tests/test_precinct_ancestor_resolution.py -k no_provisions_at_any_level"
+    },
+    {
+      "scenario": "The behavioural tests never run, because they are opt-in and CI does not set PYTEST_REAL_DB.",
+      "what_happens": "NOT MITIGATED. conftest_mocks stubs psycopg2 by default, so these tests are deselected in CI and the only automated coverage that runs there is the jest tripwire, which asserts the SQL's shape rather than its behaviour. A change that keeps the CTE but breaks the rule would pass CI. Recorded rather than papered over; making DB tests run in CI is a separate piece of work.",
+      "mitigated": false,
+      "repro": "python -m pytest tests/test_precinct_ancestor_resolution.py -q  # 8 deselected, 0 selected"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No schema change, no migration, no write of any kind. The change is read-side only — two CTEs in a SELECT.",
+    "secrets": "None added, read or rotated.",
+    "other_repo": "None. Single repo. The behaviour change is confined to City of Parramatta by measurement: 22 polygons begin serving controls they already had, and the other five LGAs' 259 polygons resolve identically to before.",
+    "manual_verify": "After deploy, re-run the measurement that found this. curl the live endpoint with precinct_id=8.1.1.1 for City of Parramatta: layer_4_precinct must be greater than 0 where it was 0, and 8.2.6 must still return 50 rather than more. If 8.2.6 grows, the exact-match branch has stopped winning and the change is over-including."
+  }
+}
