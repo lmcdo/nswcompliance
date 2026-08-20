@@ -1,5 +1,5 @@
 /**
- * Sitemap index at /sitemap.xml.
+ * Sitemap index, served at /sitemap.xml via a beforeFiles rewrite (#929).
  *
  * Next 14's generateSitemaps() emits only the per-cluster files at
  * /sitemap/{id}.xml — it does NOT create an index, so the conventional

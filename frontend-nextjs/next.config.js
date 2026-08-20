@@ -26,17 +26,36 @@ const nextConfig = {
    ];
  },
  async rewrites() {
+   // #929: app/sitemap.ts uses generateSitemaps(), which registers the metadata
+   // route `/sitemap.xml[[...__metadata_id__]]`. A second handler sitting at
+   // app/sitemap.xml/ claimed the same URL, and `next dev` refuses to start on
+   // that collision while `next build` tolerates it — so a green build hid a
+   // dead dev server for 20 days.
+   //
+   // robots.txt advertises BOTH /sitemap.xml (the index) and /sitemap/{0..7}.xml
+   // (the clusters), so neither can simply be dropped. The index handler now
+   // lives at /sitemap-index.xml and this rewrite serves it at the conventional
+   // location. It must be `beforeFiles`: the default (afterFiles) runs only when
+   // no filesystem route matched, and the metadata route matches /sitemap.xml,
+   // so an afterFiles rewrite would never fire.
+   const sitemapIndex = [
+     { source: '/sitemap.xml', destination: '/sitemap-index.xml' },
+   ];
+
    // Only rewrite to R2 in production (Vercel sets VERCEL=1)
    if (process.env.VERCEL === '1') {
-     return [
-       {
-         source: '/pdf-pages/:path*',
-         destination: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/:path*',
-       },
-     ];
+     return {
+       beforeFiles: sitemapIndex,
+       afterFiles: [
+         {
+           source: '/pdf-pages/:path*',
+           destination: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/:path*',
+         },
+       ],
+     };
    }
-   // In development, serve from local public folder (default behavior)
-   return [];
+   // In development, serve pdf-pages from the local public folder (default).
+   return { beforeFiles: sitemapIndex };
  },
  reactStrictMode: process.env.NODE_ENV === 'production',
  swcMinify: process.env.NODE_ENV === 'production',

@@ -1,0 +1,94 @@
+{
+  "tier": "standard",
+  "justification": "Three files, no data touched and no query changed. Standard rather than Minor because it moves an SEO-critical URL that robots.txt advertises to crawlers, and because it flips a CI gate from advisory to blocking — both are changes whose failure is felt outside the codebase. Not Critical: nothing is read from or written to the database, and the change is directionally safe — it restores a server that would not start, and the URL contract at /sitemap.xml is preserved rather than altered.",
+  "commit_hash": "PENDING",
+  "files": [
+    "frontend-nextjs/next.config.js",
+    "frontend-nextjs/app/sitemap-index.xml/route.ts",
+    ".github/workflows/gates.yml"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/check_dev_server_boots.py --timeout 150",
+    "fails_when": "The dev server cannot start — which is what a route collision causes. The check starts a real server and waits for an HTTP 200, rather than trusting the log: Next prints its Local URL BEFORE it sorts routes, so a log-watching check passes on a broken app.",
+    "observed_red": "Before this change, on origin/main: 'Error: You cannot define a route with the same specificity as a optional catch-all route (\"/sitemap.xml\" and \"/sitemap.xml[[...__metadata_id__]]\")' — the server never reached Ready. After: 'BOOT CHECK: OK — dev server ready on :3111, HTTP 200'. The failure MODE changed, which is the evidence that matters: the fatal route error is gone.",
+    "local_caveat": "On the default port 3099 this machine still fails with EADDRINUSE on the IPv6 bind, with nothing listening on 3099 and the port absent from both the IPv4 and IPv6 netsh exclusion ranges. That is a machine-local artifact, not the defect: the same check passes on 3111, and the error is a bind failure rather than the route-collection error. CI runs on Linux and its green run is the proof this step's own comment asked for."
+  },
+  "pre_impl": {
+    "existing_data": "None. No table is read or written. The only state involved is the route manifest Next builds at startup.",
+    "assumption_mismatch": "I assumed one of the two sitemap handlers was redundant and could simply be deleted. Neither is: robots.txt advertises BOTH /sitemap.xml (the index) and /sitemap/{0..7}.xml (the clusters), so deleting the index handler restores the 404 that #799 was written to fix, and deleting sitemap.ts removes the clusters entirely. The fix therefore had to keep both and separate their URLs.",
+    "prior_art": "The collision was introduced by #799, which added app/sitemap.xml/route.ts to serve an index Next 14's generateSitemaps() does not emit. The reason it survived 20 days is recorded in the workflow itself: `next build` tolerates the collision and `next dev` refuses, so a green build hid a dead dev server, and nothing started one until scripts/check_dev_server_boots.py was added. That script already existed and already failed correctly — it was simply non-blocking by design until the defect it names was repaired.",
+    "new_vs_existing": "Forward-only, and the public URL contract is unchanged: /sitemap.xml still returns the sitemap index. Only the internal file path moved.",
+    "user_failure_mode": "Two audiences. For a developer: `npm run dev` exits immediately, so the app cannot be run or tested locally at all — which is why the precinct-provisions verification that prompted this work could not be done end-to-end. For a crawler: nothing, today. Production is served by `next build`, which tolerates the collision, so /sitemap.xml has been resolving in production throughout. The risk this closes is that the two behaviours had silently diverged, and a build that starts refusing the collision would have taken the sitemap down without warning.",
+    "external_source_error": "No external source is called. The handler emits a static XML document built from a constant cluster count.",
+    "frontend_type": "No type or component change. next.config.js rewrites() changes shape from an array to the {beforeFiles, afterFiles} object form, which is a documented Next signature rather than a behavioural change: the existing R2 pdf-pages rewrite keeps its exact source, destination and VERCEL=1 condition, and now sits under afterFiles, which is where a bare array was already being placed."
+  },
+  "functions": [
+    {
+      "name": "rewrites",
+      "file_line": "frontend-nextjs/next.config.js:28",
+      "input": "No arguments — Next calls it at startup to build the rewrite table for this environment",
+      "output": "An object carrying beforeFiles (the /sitemap.xml to /sitemap-index.xml rewrite, in every environment) and, under VERCEL=1 only, afterFiles carrying the unchanged R2 pdf-pages rewrite",
+      "if_none": "beforeFiles is required here rather than the default afterFiles: afterFiles runs only when no filesystem route matched, and the generateSitemaps metadata route DOES match /sitemap.xml, so an afterFiles rewrite would never fire and the index would 404."
+    },
+    {
+      "name": "GET",
+      "file_line": "frontend-nextjs/app/sitemap-index.xml/route.ts:19",
+      "input": "No arguments — a static route handler, force-static, serving the same document to every caller",
+      "output": "A sitemapindex XML document listing the eight cluster sitemaps, with Content-Type application/xml, unchanged from its previous location",
+      "if_none": "Total function; it builds from a constant and cannot fail on input. If the cluster count in app/sitemap.ts changes, CLUSTER_COUNT here must change with it — the existing comment says so and is retained."
+    }
+  ],
+  "values": [
+    {
+      "value": "process.env.VERCEL",
+      "read_at": "frontend-nextjs/next.config.js:47",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/next.config.js:47 — strict equality against '1', so any other value or an unset variable takes the development branch",
+      "if_missing": "Unset locally, which is correct: the R2 pdf-pages rewrite is skipped and files are served from the local public folder, exactly as before. The sitemap rewrite is deliberately OUTSIDE this condition, because the route collision it works around exists in every environment."
+    }
+  ],
+  "queries": "N/A — this change adds, removes and alters no database query. No table is read.",
+  "break_it": [
+    {
+      "scenario": "Someone adds another handler at app/sitemap.xml/ and reintroduces the collision",
+      "what_happens": "The dev server stops starting again, and a green `next build` hides it exactly as it did for the last 20 days",
+      "mitigated": true,
+      "how": "The Dev server boots step in gates.yml is now BLOCKING rather than continue-on-error. It starts a real server and requires an HTTP 200, so a collision fails the build instead of printing into a log nobody reads",
+      "repro": "python scripts/check_dev_server_boots.py --timeout 150"
+    },
+    {
+      "scenario": "The rewrite is placed in afterFiles, or reverted to the bare-array form",
+      "what_happens": "/sitemap.xml stops serving the index and falls through to the metadata route, returning the wrong document or a 404 — and robots.txt still advertises it to crawlers",
+      "mitigated": true,
+      "how": "Verified against a running server rather than reasoned about: /sitemap.xml returns 200 with the sitemapindex document, and /sitemap-index.xml returns 200 directly. The reason beforeFiles is required is recorded at the call site so the next reader does not simplify it back",
+      "repro": "curl -s localhost:3003/sitemap.xml | head -3"
+    },
+    {
+      "scenario": "The cluster count in app/sitemap.ts changes and the index keeps advertising eight",
+      "what_happens": "The index lists sitemaps that do not exist, or omits ones that do",
+      "mitigated": false,
+      "how": "NOT mitigated, and pre-existing rather than introduced here. CLUSTER_COUNT in the handler is a hand-maintained mirror of generateSitemaps() in app/sitemap.ts, with a comment saying so. Deriving one from the other would be the right fix and is out of scope for a change whose purpose is to restore the dev server",
+      "repro": "diff the id list in app/sitemap.ts generateSitemaps() against CLUSTER_COUNT in app/sitemap-index.xml/route.ts"
+    },
+    {
+      "scenario": "The cluster URLs the index and robots.txt advertise do not exist",
+      "what_happens": "Crawlers are pointed at eight 404s, which is a discovery failure of exactly the kind #799 set out to repair",
+      "mitigated": false,
+      "how": "NOT mitigated, and FOUND BY THIS WORK rather than caused by it — recorded here because it would otherwise be lost. With the dev server finally running, /sitemap/0.xml returns 404 while the clusters are served at /sitemap.xml/0. Both the index handler and app/robots.ts advertise the /sitemap/{i}.xml form. It is deliberately NOT changed here: Next 14 is known to serve generateSitemaps output at different paths under `next dev` and `next build`, so choosing a URL from dev behaviour alone could break the production sitemap, and no production evidence was gathered. It needs its own investigation against the deployed site",
+      "repro": "npm run dev, then curl -o /dev/null -w '%{http_code}' localhost:3003/sitemap/0.xml and localhost:3003/sitemap.xml/0"
+    },
+    {
+      "scenario": "Flipping the gate to blocking makes every branch fail on a machine-local port problem",
+      "what_happens": "A gate that blocks everything gets deleted, which is the failure its own comment warned about",
+      "mitigated": true,
+      "how": "The port artifact is local to this Windows machine — 3099 refuses an IPv6 bind with nothing listening and no netsh exclusion covering it, while 3111 works. CI runs on Linux runners where the default port is clean, and this PR's own gates run is the evidence the step's comment asked for. If CI does fail on the port rather than on a collision, the message names EADDRINUSE explicitly rather than reporting a route error",
+      "repro": "python scripts/check_dev_server_boots.py --port 3111 --timeout 200"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — confirm https://canibuildit.com.au/sitemap.xml still returns the sitemap index after deploy, since the file backing that URL moved. Separately, check whether the /sitemap/{i}.xml cluster URLs it advertises resolve in production; they do not in dev."
+  }
+}

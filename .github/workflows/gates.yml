@@ -291,12 +291,15 @@ jobs:
 
       - name: Dev server boots
         if: always()
-        # NON-BLOCKING until #929 is fixed. The check works — it fails on the
-        # live sitemap route collision, which is the whole point — but making it
-        # required today would block every merge on a defect this PR does not
-        # repair, and a gate that blocks everything gets deleted. Flip this to
-        # blocking in the PR that fixes #929; that PR's green run is the proof.
-        continue-on-error: true
+        # BLOCKING as of the PR that fixed #929. The instruction this replaces
+        # said to flip it in that PR, with that PR's green run as the proof —
+        # this is that flip. The collision was app/sitemap.xml/ claiming the URL
+        # the generateSitemaps() metadata route already owns; the index handler
+        # moved to /sitemap-index.xml behind a beforeFiles rewrite.
+        #
+        # Kept as a separate step rather than folded into the jest step: the
+        # failure it catches is a route-collection error that `next build`
+        # tolerates and `next dev` refuses, so no build-based check can see it.
         run: python scripts/check_dev_server_boots.py --timeout 150
 
   # pre-push [3/4] + [4/4]
