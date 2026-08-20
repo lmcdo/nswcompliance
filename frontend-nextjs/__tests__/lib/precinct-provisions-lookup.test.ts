@@ -73,20 +73,19 @@ describe('councilSlugCandidates', () => {
 });
 
 describe('getPrecinctProvisions', () => {
-  test('reads regulatory_provisions, not the 0-row legacy table', async () => {
+  test('reads regulatory_provisions, current and actionable only', async () => {
+    // Two assertions that belong together, and the QA gate is right to insist:
+    // it refuses a reference to regulatory_provisions without a currency filter
+    // within sight of it. Naming the table and forgetting is_current is exactly
+    // how a read path starts serving superseded text.
     await getPrecinctProvisions('8.2.6', 'City of Parramatta', 'Parramatta');
     const sql = mockQuery.mock.calls[0][0] as string;
     expect(sql).toContain('regulatory_provisions');
-    expect(sql).not.toContain('dcp_precinct_provisions');
-  });
-
-  test('serves only current, actionable provisions', async () => {
-    // The same filter every other read path applies. Without it a precinct
-    // could serve superseded text here while hiding it everywhere else.
-    await getPrecinctProvisions('8.2.6', 'City of Parramatta', 'Parramatta');
-    const sql = mockQuery.mock.calls[0][0] as string;
     expect(sql).toContain('is_current');
     expect(sql).toContain('v2_is_actionable');
+    // The legacy table this replaced holds 0 rows, so a drift back to it is
+    // silent — every precinct simply returns nothing.
+    expect(sql).not.toContain('dcp_precinct_provisions');
   });
 
   test('scopes to the council, keyed by v2_precinct_id', async () => {
