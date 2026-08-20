@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which regulatory provisions a property is shown. Precinct provisions went from never served to served, across every council with precinct boundaries — 418 precincts carry live provisions. Critical because the directionality is CHOOSING WHAT TO SHOW, not removing a false claim: serving a precinct's controls to the wrong property, or one council's controls under another council's name, would be a wrong regulatory answer rather than a missing one. The council scoping is therefore the thing most heavily guarded and tested here.",
-  "commit_hash": "PENDING",
+  "commit_hash": "d1cec27e",
   "files": [
     "frontend-nextjs/lib/precinct-service.ts",
     "frontend-nextjs/app/api/compliance/constraints/route.ts",
