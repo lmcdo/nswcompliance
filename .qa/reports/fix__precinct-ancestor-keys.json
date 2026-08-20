@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which planning controls are served for a property. 22 of 89 City of Parramatta precincts currently serve NONE despite their controls existing, and the fix's failure direction — a precinct also taking its parent's controls — would serve a property controls it is not subject to. Both directions are liability, so the tier is set by what the code decides, not by the size of the diff.",
-  "commit_hash": "PENDING",
+  "commit_hash": "5d99d7c5",
   "files": [
     "frontend-nextjs/lib/precinct-service.ts",
     "frontend-nextjs/__tests__/lib/precinct-ancestor-key-sql.test.ts",
