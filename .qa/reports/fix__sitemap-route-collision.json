@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Three files, no data touched and no query changed. Standard rather than Minor because it moves an SEO-critical URL that robots.txt advertises to crawlers, and because it flips a CI gate from advisory to blocking — both are changes whose failure is felt outside the codebase. Not Critical: nothing is read from or written to the database, and the change is directionally safe — it restores a server that would not start, and the URL contract at /sitemap.xml is preserved rather than altered.",
-  "commit_hash": "cdca49d7",
+  "commit_hash": "92607c52",
   "files": [
     "frontend-nextjs/next.config.js",
     "frontend-nextjs/app/sitemap-index.xml/route.ts",
