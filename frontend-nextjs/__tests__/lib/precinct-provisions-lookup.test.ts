@@ -88,12 +88,14 @@ describe('getPrecinctProvisions', () => {
     expect(sql).not.toContain('dcp_precinct_provisions');
   });
 
-  test('scopes to the council, keyed by v2_precinct_id', async () => {
+  test('scopes to ONE council, keyed by v2_precinct_id', async () => {
     await getPrecinctProvisions('8.2.6', 'City of Parramatta', 'Parramatta');
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('v2_precinct_id');
     expect(params[0]).toEqual(['8.2.6']);
-    expect(params[1]).toEqual(['parramatta', 'city_of_parramatta']);
+    // A single slug, not an ANY() over both candidates: unioning them would
+    // merge two councils' controls for one property if they shared an id.
+    expect(params[1]).toBe('parramatta');
   });
 
   test('splits the comma-joined id the PostGIS matcher builds for overlaps', async () => {
@@ -117,43 +119,68 @@ describe('getPrecinctProvisions', () => {
   });
 });
 
+describe('council scope is never unioned', () => {
+  test('falls back to the LGA slug only when the former council returns nothing', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 9, control_type: 'height' }] });
+    const out = await getPrecinctProvisions('Part 1', 'Inner West', 'Ashfield');
+    expect(out.map(r => r.id)).toEqual([9]);
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(mockQuery.mock.calls[0][1][1]).toBe('ashfield');
+    expect(mockQuery.mock.calls[1][1][1]).toBe('inner_west');
+  });
+
+  test('the preferred council wins outright, so the fallback never runs', async () => {
+    // The merge this prevents: 'inner_west' exists as a source_council (16
+    // rows) alongside ashfield/leichhardt/marrickville, so a shared precinct id
+    // would combine two councils' controls for one property.
+    mockQuery.mockResolvedValue({ rows: [{ id: 1, control_type: 'height' }] });
+    await getPrecinctProvisions('Part 1', 'Inner West', 'Ashfield');
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(mockQuery.mock.calls[0][1][1]).toBe('ashfield');
+  });
+});
+
 describe('getPrecinctControls', () => {
-  const rows = [
-    { id: 1, ref_number: 'a', control_type: 'height' },
-    { id: 2, ref_number: 'b', control_type: 'parking' },
-    { id: 3, ref_number: 'c', control_type: 'stormwater' },
-    { id: 4, ref_number: 'd', control_type: 'Open_Space' },
-    { id: 5, ref_number: 'e', control_type: null },
-  ];
+  const rows = [{ id: 1, ref_number: 'a', control_type: 'height' }];
 
   test('no longer returns [] unconditionally', async () => {
     // The whole defect: a stub that ignored its arguments and returned nothing,
     // so the constraints API had empty precinct controls for every address.
     mockQuery.mockResolvedValue({ rows });
     const out = await getPrecinctControls('8.2.6', 'City of Parramatta', 'Parramatta');
-    expect(out).toHaveLength(rows.length);
+    expect(out).toHaveLength(1);
   });
 
-  test('narrows to the control types the constraints API asks for', async () => {
+  test('narrows in SQL, not after the row cap', async () => {
+    // Raised by the cross-reviewer at 0.99: filtering the RESULT means a cap
+    // that binds can discard the very control the caller asked for, and the
+    // response still looks complete. The topics must reach the query.
     mockQuery.mockResolvedValue({ rows });
-    const out = await getPrecinctControls(
+    await getPrecinctControls(
       '8.2.6', 'City of Parramatta', 'Parramatta',
       ['height', 'setback', 'parking', 'fsr', 'open_space', 'heritage', 'vegetation'],
     );
-    expect(out.map(r => r.id)).toEqual([1, 2, 4]);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('LOWER(rp.v2_topic)');
+    expect(params[2]).toEqual([
+      'height', 'setback', 'parking', 'fsr', 'open_space', 'heritage', 'vegetation',
+    ]);
   });
 
-  test('matches control types case-insensitively', async () => {
-    // v2_topic casing is a convention, not a constraint — 'Open_Space' above.
+  test('lower-cases the topics it sends, so casing cannot miss a row', async () => {
+    // v2_topic casing is a convention, not a constraint.
     mockQuery.mockResolvedValue({ rows });
-    const out = await getPrecinctControls('8.2.6', 'City of Parramatta', 'Parramatta', ['OPEN_SPACE']);
-    expect(out.map(r => r.id)).toEqual([4]);
+    await getPrecinctControls('8.2.6', 'City of Parramatta', 'Parramatta', ['OPEN_SPACE']);
+    expect(mockQuery.mock.calls[0][1][2]).toEqual(['open_space']);
   });
 
-  test('a null control_type is excluded rather than crashing', async () => {
+  test('no topic list means no topic predicate, not an empty one', async () => {
+    // An absent filter must widen to every provision, never narrow to none.
     mockQuery.mockResolvedValue({ rows });
-    const out = await getPrecinctControls('8.2.6', 'City of Parramatta', 'Parramatta', ['height']);
-    expect(out.map(r => r.id)).toEqual([1]);
+    await getPrecinctControls('8.2.6', 'City of Parramatta', 'Parramatta');
+    expect(mockQuery.mock.calls[0][1][2]).toBeNull();
   });
 
   test('an unresolvable council still yields nothing', async () => {
