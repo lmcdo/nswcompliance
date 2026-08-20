@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Loads 76 precinct polygons that decide which DCP controls a Parramatta property is told apply to it. A boundary in the wrong place does not error — it silently attributes another precinct's controls to a site, which is the liability path the whole product rests on. The write itself is additive and reversible; the tier is set by what the data drives, not by the size of the diff.",
-  "commit_hash": "340864e8",
+  "commit_hash": "1255858c",
   "files": [
     "scripts/import_parramatta_part8_boundaries.py",
     "scripts/verify_precinct_boundaries.py"
