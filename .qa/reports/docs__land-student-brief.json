@@ -1,0 +1,72 @@
+{
+  "tier": "minor",
+  "justification": "Inverts the docs/ ignore rule from a whitelist to a deny-list, lands the 109-line student brief that the whitelist had silently excluded, adds the six launch email drafts, and guards both directions with tests. No code path, no query, no served output, no number. Minor on blast radius, not importance: nothing a user sees changes, but the failure being fixed is silent loss of a committed-looking document, and the inversion is the durable form of that fix rather than a sixth hand-patched negation.",
+  "commit_hash": "fb863798",
+  "files": [
+    ".gitignore",
+    "docs/outreach/student-brief.md",
+    "docs/outreach/student-launch-emails.md",
+    "tests/test_outreach_docs_tracked.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_outreach_docs_tracked.py -q",
+    "fails_when": "The suite pins BOTH directions of the inversion. It fails if a brand-new docs subdirectory is ignored again, which is the trap itself; and equally if any of the heavy directories stops being ignored — docs/adg (30MB), docs/history (595 files, 8.8MB), docs/mutation-testing, docs/gephi, nested PDFs at any depth, and docs/dep-graph.svg at 1.2MB, which would pass the 2MB per-file pre-commit gate and so has nothing else stopping it. Without that second half, 'fix the trap' silently becomes 'commit the Apartment Design Guide'. Two further tests pin that every markdown file present in docs/outreach is tracked, and that the brief is not a stub.",
+    "observed_red": "Observed twice, both on real files rather than synthetic ones. Run before `git add`, test_student_brief_is_tracked FAILED while the others passed. Later, the folder-walking test failed and named docs/outreach/student-launch-emails.md the moment that file was written and not staged. After the inversion the effective rules were re-measured rather than assumed: the five heavy directories still ignored, five documentation directories including two brand-new ones now allowed, and `git status` over docs/ shows zero newly stageable files.",
+    "external_authority": "The deny-list membership was measured, not chosen by taste. `git ls-files --others --ignored` over docs/ returned 602 markdown files and 7 PDFs — the rule whose stated intent was 'large PDFs ignored, but allow markdown subdirs' was doing precisely the opposite. Directory sizes (du) put docs/adg at 30MB and docs/history at 8.8MB, which is what the rule is actually worth keeping. The two documents it cost are external facts: PR #982 and PR #979, both merged, both green, each having merged only its own QA report."
+  },
+  "break_it": [
+    {
+      "scenario": "Someone removes the !docs/outreach/ negations while tidying .gitignore, and the brief is already tracked.",
+      "what_happens": "Git keeps tracking the existing brief regardless — .gitignore does not affect tracked files — so a test asserting 'the brief is tracked' would still pass. The next document written to docs/outreach/ then vanishes exactly as this one did, with the guard green.",
+      "mitigated": true,
+      "how": "The primary test asks git about a hypothetical path, docs/outreach/some-future-brief.md, which no tracking status can mask. It fails the moment the negation is gone.",
+      "repro": "Delete the two negation lines, run pytest tests/test_outreach_docs_tracked.py — test_a_new_outreach_document_would_not_be_ignored fails."
+    },
+    {
+      "scenario": "Opening docs/ up drags the bulk in with it — someone deletes `docs/*` and stops there.",
+      "what_happens": "42MB of Apartment Design Guide, 595 archived history files and generated caches become stageable, and the first `git add -A` commits them. The trap is fixed and the repository is ruined. dep-graph.svg at 1.2MB is the sharpest case: it sits UNDER the 2MB per-file gate, so nothing else in the system objects.",
+      "mitigated": true,
+      "how": "Six parametrised control tests assert each heavy path is still ignored, so the inversion cannot be widened into simply removing the rule. Verified after the change: git status over docs/ reports zero newly stageable files.",
+      "repro": "Delete the deny-list entries and run pytest tests/test_outreach_docs_tracked.py — test_the_heavy_directories_are_still_ignored fails, once per path."
+    },
+    {
+      "scenario": "The brief is committed as an empty or truncated file, or is later gutted.",
+      "what_happens": "Tracking and ignore checks both pass on a one-line file. A stub handout is worse than a missing one, because it still gets emailed to a cohort and burns the introduction.",
+      "mitigated": true,
+      "how": "A content test requires more than 50 lines and the presence of the two findings the launch plan calls worth the whole exercise.",
+      "repro": "Truncate docs/outreach/student-brief.md to 10 lines and run the suite."
+    },
+    {
+      "scenario": "The test shells out to git while running inside the pre-push hook.",
+      "what_happens": "Git exports GIT_DIR and GIT_INDEX_FILE to its hooks and both OVERRIDE cwd, so the subprocess reads whichever repository the hook was invoked for rather than the one under test — DQ-54, already recorded.",
+      "mitigated": true,
+      "how": "The test reuses scripts/qa_report_path.py's own git_env() rather than reimplementing the scrub, so it drops GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE/GIT_OBJECT_DIRECTORY while preserving the GIT_SSH* authentication variables.",
+      "repro": "GIT_DIR=/some/other/repo/.git python -m pytest tests/test_outreach_docs_tracked.py -q  # still reads this repo"
+    },
+    {
+      "scenario": "A future QA report again claims a file the commit does not contain.",
+      "what_happens": "NOT MITIGATED by this change, and recorded here rather than left implicit. scripts/qa_gate.py's check_diff_coverage only looks for changed files absent from the report, never for files the report claims that are absent from the change; it also filters .md out of the substantive set, so a docs-only commit skips the check entirely. That combination is why #982 passed while losing its only real file. Fixing the gate touches shared QA infrastructure and is deliberately left to its own change.",
+      "mitigated": false
+    },
+    {
+      "scenario": "A future outreach document is written into docs/outreach/ and never staged, on a machine where the ignore rule is already fixed.",
+      "what_happens": "It is no longer ignored, so git CAN see it — but nothing forces anyone to add it. It sits untracked, looks fine locally, and disappears when the worktree is removed. The ignore fix alone does not prevent the loss it was written for.",
+      "mitigated": true,
+      "how": "test_every_outreach_document_on_disk_is_tracked walks docs/outreach/*.md and fails on any untracked file, naming it. This fired for real during this change: the emails draft was written, the test failed naming it, and it was staged.",
+      "repro": "Write docs/outreach/anything.md without git add, run pytest tests/test_outreach_docs_tracked.py — it fails and names the file."
+    },
+    {
+      "scenario": "The drafts send academics to a domain the founder is retiring.",
+      "what_happens": "An earlier version of the emails warned that /for/students existed only on canibuildit.com.au and told the reader not to link it. That warning was WRONG, and the error was testing the apex alone: verify.plotdetect.com.au/for/students returns 200 and serves the identical page, because only the root path is host-routed. Six emails would have shipped omitting a usable page on the strength of one untested inference.",
+      "mitigated": true,
+      "how": "Corrected in place, with the mistake left visible in the document rather than quietly overwritten, and the landing page restored to the three academic emails. The societies keep a single link deliberately — two CTAs on a 'come and break this' invitation compete with each other.",
+      "repro": "curl -s -o /dev/null -w '%{http_code}' https://verify.plotdetect.com.au/for/students  # 200"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No schema, no migration, no data. A markdown handout, a .gitignore negation and a test.",
+    "secrets": "None. Neither document contains credentials. Both were checked against .claude/rules/blog-content.md since they are external-facing: no internal pipeline names, no algorithm names, no table or function names. The liability scan on the emails returns two matches for 'should', both first-person framing ('I should be straight about what I am asking for'), neither a claim about a planning output.",
+    "other_repo": "None. Single repo. The document is referenced by the feedback widget's cohort comment in PR #987, which currently states the brief is NOT on main; that comment becomes stale once this lands and should be trimmed when both are merged.",
+    "manual_verify": "After merge: `git show origin/main:docs/outreach/student-brief.md | wc -l` returns 109, where before this change the same command returned 'fatal: path does not exist'. Then confirm the inversion holds in both directions: `git check-ignore -q docs/a-new-folder/x.md` exits 1 (allowed) and `git check-ignore -q docs/adg/x.pdf` exits 0 (still ignored)."
+  }
+}
