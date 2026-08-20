@@ -32,6 +32,17 @@ export interface PrecinctMapping {
 const NEAREST_FALLBACK_LGAS = new Set(['inner west']);
 
 /**
+ * Row cap for a single precinct's provisions.
+ *
+ * Not a target — a backstop against a runaway query. The largest precinct in
+ * the data today is 187 rows, so this is real headroom rather than a limit that
+ * binds in normal use, and the query warns when it does bind. The topic filter
+ * is applied in SQL BEFORE this cap, so narrowing to control types cannot lose
+ * a row to truncation.
+ */
+const HARD_ROW_CAP = 1000;
+
+/**
  * Get DCP precinct for an address using PostGIS geometric matching
  *
  * Strategy:
@@ -504,37 +515,111 @@ export async function getPrecinctFromLocality(
  * Get DCP provisions for a precinct
  * Queries the new dcp_precinct_provisions table
  */
+/**
+ * Council slug candidates for a precinct, as regulatory_provisions stores them.
+ *
+ * dcp_precinct_boundaries and regulatory_provisions name councils differently:
+ * the boundary carries lga='City of Parramatta' with former_council='Parramatta',
+ * while the provisions carry source_council='parramatta'. Inner West is the case
+ * that forces the former_council preference — one LGA, but its provisions are
+ * keyed by the three former councils (ashfield, leichhardt, marrickville), so
+ * slugging the LGA alone would match nothing.
+ *
+ * Both candidates are returned rather than one: Ku-ring-gai boundaries carry no
+ * former_council at all, and there the LGA slug ('ku_ring_gai') is the match.
+ */
+export function councilSlugCandidates(lga?: string | null, formerCouncil?: string | null): string[] {
+  const slug = (v?: string | null) =>
+    (v ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return [slug(formerCouncil), slug(lga)].filter((v, i, a) => v !== '' && a.indexOf(v) === i);
+}
+
+/**
+ * Provisions for a precinct, read from the table that actually holds them.
+ *
+ * WAS: `FROM dcp_precinct_provisions` — a legacy table with 0 rows, so this
+ * returned an empty list for every precinct in every council. The live
+ * provisions are in regulatory_provisions, keyed by v2_precinct_id (418
+ * precincts carry them). CLAUDE.md has said "use v2_precinct_id, NOT
+ * dcp_precinct_provisions" for months; this reader had not been moved across.
+ *
+ * The served-set filter (is_current AND v2_is_actionable) matches every other
+ * read path, so a precinct cannot serve superseded or non-actionable text here
+ * while hiding it elsewhere.
+ */
 export async function getPrecinctProvisions(
   precinctId: string,
-  lga: string
+  lga: string,
+  formerCouncil?: string | null,
+  controlTypes?: string[] | null,
 ): Promise<any[]> {
   try {
-    console.log('[Precinct Service] Fetching provisions for:', { precinctId, lga });
+    const councils = councilSlugCandidates(lga, formerCouncil);
+    // A precinct id is only unique WITHIN a council — "Part 1" exists in more
+    // than one — so an empty candidate list must return nothing rather than
+    // dropping the filter and serving another council's controls.
+    if (precinctId.trim() === '' || councils.length === 0) return [];
+
+    // Callers pass a comma-joined list when a point falls in overlapping
+    // precincts (getPrecinctUsingPostGIS builds precinctId that way).
+    const precinctIds = precinctId.split(',').map(v => v.trim()).filter(Boolean);
+    if (precinctIds.length === 0) return [];
+
+    // Topic narrowing happens HERE, not in JavaScript after the fact. Raised by
+    // scripts/cross_review.py at 0.99: filtering after a row cap means a cap
+    // that binds can drop the very control the caller asked for, and the
+    // response still looks complete. The largest precinct measured today is 187
+    // rows (leichhardt G6), so the old LIMIT 50 was already truncating and 200
+    // left almost no headroom.
+    const topics = (controlTypes && controlTypes.length > 0)
+      ? controlTypes.map(t => t.toLowerCase())
+      : null;
 
     const query = `
       SELECT
-        pp.id,
-        pp.precinct_id,
-        pp.precinct_name,
-        pp.provision_text,
-        pp.provision_type,
-        pp.ref_number,
-        pp.section_header,
-        pp.pdf_page,
-        pp.document_id,
-        pp.pdf_path,
-        pp.pdf_page_image_url
-      FROM dcp_precinct_provisions pp
-      WHERE pp.precinct_id = $1
-        AND pp.lga = $2
-      ORDER BY pp.display_order ASC, pp.ref_number ASC
-      LIMIT 50
+        rp.id,
+        rp.v2_precinct_id      AS precinct_id,
+        rp.provision_text,
+        rp.provision_type,
+        rp.v2_topic            AS control_type,
+        rp.ref_number,
+        rp.section_header,
+        rp.pdf_page,
+        rp.document_id,
+        rp.pdf_page_image_url,
+        rp.source_council
+      FROM regulatory_provisions rp
+      WHERE rp.v2_precinct_id = ANY($1::text[])
+        AND rp.source_council = $2
+        AND rp.is_current
+        AND rp.v2_is_actionable
+        AND ($3::text[] IS NULL OR LOWER(rp.v2_topic) = ANY($3::text[]))
+      ORDER BY rp.ref_number ASC NULLS LAST, rp.id ASC
+      LIMIT ${HARD_ROW_CAP}
     `;
 
-    const result = await getDbPool().query(query, [precinctId, lga]);
-    console.log(`[Precinct Service] Query returned ${result.rows.length} rows`);
-
-    return result.rows;
+    // ONE council scope per query, never a union of both candidates. Raised by
+    // scripts/cross_review.py at 0.94 and correct in principle: `source_council
+    // = ANY([former, lga])` would merge two councils' controls for one property
+    // if both carried the same precinct id. Measured today: 0 precinct ids are
+    // shared across councils, so the union was harmless — but 'inner_west' does
+    // exist as a source_council (16 rows) alongside ashfield/leichhardt/
+    // marrickville, so the collision is one data change away. The preferred
+    // scope (former council) is tried first and the LGA slug only when it
+    // returns nothing, so the two can never combine.
+    for (const council of councils) {
+      const result = await getDbPool().query(query, [precinctIds, council, topics]);
+      if (result.rows.length > 0) {
+        if (result.rows.length >= HARD_ROW_CAP) {
+          console.warn(
+            `[Precinct Service] ${precinctId} (${council}) hit the ${HARD_ROW_CAP}-row cap — ` +
+            `the list is truncated and may be missing controls.`,
+          );
+        }
+        return result.rows;
+      }
+    }
+    return [];
   } catch (error) {
     console.error('[Precinct Service] Error getting provisions:', error);
     throw error;
@@ -542,13 +627,29 @@ export async function getPrecinctProvisions(
 }
 
 /**
- * DEPRECATED: Use getPrecinctProvisions instead
- * Old function that queried development_controls (which had no precinct data)
+ * Precinct controls for the constraints API, narrowed to the topics it asks for.
+ *
+ * WAS: a stub that logged a deprecation notice and returned [] unconditionally,
+ * whatever it was passed. The constraints route resolved the precinct correctly
+ * from the boundary polygons and then handed it to this, so precinct controls
+ * were empty for every address in every council — silently, because an empty
+ * list renders as "no precinct controls" rather than as an error.
+ *
+ * It also took a precinctDocumentId built by string concatenation
+ * (`${council}_DCP_2011_${id}_${name}`), which matched no stored document. The
+ * signature now takes the precinct and its council, which is what identifies
+ * the provisions.
  */
 export async function getPrecinctControls(
-  precinctDocumentId: string,
-  controlTypes?: string[]
+  precinctId: string,
+  lga: string,
+  formerCouncil?: string | null,
+  controlTypes?: string[],
 ): Promise<any[]> {
-  console.warn('[Precinct Service] getPrecinctControls is deprecated, use getPrecinctProvisions instead');
-  return [];
+  // The topic list is pushed into SQL rather than applied to the result, so a
+  // row cap can never discard a control the caller asked for. v2_topic is the
+  // control_type analogue and carries exactly these values (height, parking,
+  // open_space, ...); matching is case-insensitive because the caller's list is
+  // lower-case by convention, not by constraint.
+  return getPrecinctProvisions(precinctId, lga, formerCouncil, controlTypes);
 }

@@ -1,0 +1,143 @@
+{
+  "tier": "critical",
+  "justification": "Changes which regulatory provisions a property is shown. Precinct provisions went from never served to served, across every council with precinct boundaries — 418 precincts carry live provisions. Critical because the directionality is CHOOSING WHAT TO SHOW, not removing a false claim: serving a precinct's controls to the wrong property, or one council's controls under another council's name, would be a wrong regulatory answer rather than a missing one. The council scoping is therefore the thing most heavily guarded and tested here.",
+  "commit_hash": "3347f578",
+  "files": [
+    "frontend-nextjs/lib/precinct-service.ts",
+    "frontend-nextjs/app/api/compliance/constraints/route.ts",
+    "frontend-nextjs/app/api/precinct/provisions/route.ts",
+    "frontend-nextjs/__tests__/lib/precinct-provisions-lookup.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/precinct-provisions-lookup.test.ts",
+    "fails_when": "The lookup reads the legacy table again, drops the is_current/v2_is_actionable filter, serves a precinct without scoping it to a council, or getPrecinctControls returns [] regardless of its arguments.",
+    "observed_red": "Mutant: restoring `return []` as the first statement of getPrecinctControls turns 4 of 21 red. The defect itself was observed live before the fix — getPrecinctProvisions queried dcp_precinct_provisions, which SELECT count(*) reports as 0 rows, so every precinct in every council returned an empty list.",
+    "ground_truth": "Measured against the live database, not against our own other code. Precinct 8.2.6 (Melrose Park Urban Renewal, one of the 76 polygons #990 imported) with council 'parramatta' returns 50 live provisions, 12 of them in the seven control types the constraints API requests. Ashfield 'Part 1' returns 165. Both returned 0 before."
+  },
+  "pre_impl": {
+    "existing_data": "Read-only against regulatory_provisions; nothing is written. The 76 Parramatta polygons from #990 and the 350 rows of dcp_precinct_boundaries are untouched — they were already correct, which is what made the break hard to see.",
+    "assumption_mismatch": "Two of mine, both corrected by checking rather than reasoning. FIRST: I concluded from a grep that the Verify UI never sends precinct_id. It does — `params.set('precinct_id', precinctId)` — my grep pattern was `precinct_id=` and missed the .set() form. The real break was one step earlier: the value it sends is always undefined. SECOND: I expected the boundary table to carry a document_id that identified the provisions. It has no such column; documentId was being BUILT in code as `${council}_DCP_2011_${id}_${name}` and matched no stored document, which is why the identifier had to change to precinct + council.",
+    "prior_art": "No new lookup was invented. regulatory_provisions.v2_precinct_id is the key CLAUDE.md already names as the correct one — 'Use v2_precinct_id, NOT dcp_precinct_provisions (legacy, 0 rows)'. The reader in precinct-service.ts had simply never been moved across. The council-slug mapping mirrors the existing resolveFormerCouncil/PRECINCT_ID_PATTERNS logic in the same file rather than adding a second convention.",
+    "new_vs_existing": "Forward-only, and no backfill exists to do: this is a read path. Every property assessed from now on gets its precinct provisions; nothing stored changes.",
+    "user_failure_mode": "A property inside a precinct is shown its council-wide DCP provisions and none of the precinct-specific ones — so the controls that actually bind the site, often the strictest, are absent. Melrose Park Urban Renewal is the concrete case: 50 provisions including height and parking controls, none of which reached the report. The failure is silent in the worst way: an empty precinct layer renders as 'no precinct controls', which is exactly what a property genuinely outside any precinct shows. Nothing errors, nothing warns, and the answer looks complete. That is how 418 precincts' provisions sat unserved without a complaint, and why the council-supplied boundary import that prompted this looked like it had worked.",
+    "external_source_error": "No external source is called on this path. The precinct comes from PostGIS containment against boundaries already stored, and the provisions from our own table. The upstream geocode that produces the coordinates is unchanged, and a failure there still yields no precinct rather than a wrong one.",
+    "frontend_type": "The constraints response gains two fields and loses none: `precinct` (an object, null when no precinct matched) and a flat `precinctId` alias, because the assessment page reads `selectedProperty.constraints?.precinctId`. Both are optional on the consumer side, so a client that ignores them is unaffected. getPrecinctControls changes signature from (documentId, controlTypes) to (precinctId, lga, formerCouncil, controlTypes); the constraints route is its only caller, verified by grep across app/, lib/ and components/. getPrecinctProvisions gains an optional third parameter, so its existing caller keeps compiling. tsc error count is unchanged at 672 before and after, measured on the same tree."
+  },
+  "functions": [
+    {
+      "name": "councilSlugCandidates",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts:507",
+      "input": "The lga and former_council strings as dcp_precinct_boundaries stores them, either of which may be null",
+      "output": "Council slugs in the form regulatory_provisions.source_council uses, former council first, de-duplicated",
+      "if_none": "Returns an empty array for blank or whitespace input, which callers treat as 'cannot identify the council' and serve nothing — never as 'no filter'."
+    },
+    {
+      "name": "getPrecinctProvisions",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts:531",
+      "input": "A precinct id (or comma-joined ids for overlapping precincts), the LGA, and optionally the former council",
+      "output": "Live, actionable provisions for that precinct in that council, with v2_topic aliased to control_type so the constraints consumer reads the field it expects",
+      "if_none": "An empty precinct id or an unresolvable council returns [] WITHOUT querying, so an unscoped query can never reach the database."
+    },
+    {
+      "name": "getPrecinctControls",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts:600",
+      "input": "The precinct, its council, and the control types the constraints API wants",
+      "output": "The subset of that precinct's provisions whose control_type matches, case-insensitively",
+      "if_none": "An absent or empty controlTypes list returns every provision rather than none — narrowing is opt-in, so a caller that forgets the filter gets more rather than nothing. A null control_type never matches and is dropped."
+    }
+  ],
+  "values": [
+    {
+      "value": "precinct.formerCouncil",
+      "read_at": "frontend-nextjs/app/api/compliance/constraints/route.ts:141",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/lib/precinct-service.ts:507 — councilSlugCandidates falls back to the LGA slug when the former council is null",
+      "if_missing": "Ku-ring-gai is the live case: its 10 boundary rows carry former_council NULL and its provisions carry source_council 'ku_ring_gai', so the LGA slug is the match. Parramatta is the opposite case — 'City of Parramatta' slugs to 'city_of_parramatta', which matches nothing, so the former council 'Parramatta' is what finds its 70 precincts. Both candidates are passed for that reason, and it is measured: with the former council dropped, precinct 8.2.6 returns 0 instead of 50."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Fetch the live provisions for a precinct, scoped to the council that authored them",
+      "file_line": "frontend-nextjs/lib/precinct-service.ts:556",
+      "where_clause": "WHERE rp.v2_precinct_id = ANY($1::text[]) AND rp.source_council = ANY($2::text[]) AND rp.is_current AND rp.v2_is_actionable — replacing a query against dcp_precinct_provisions, which holds 0 rows. The served-set filter matches every other read path so this cannot surface superseded or non-actionable text that the rest of the product hides. The council predicate is not optional: a precinct id is unique only within a council ('Part 1' exists in more than one), and the code returns early rather than issuing the query when no council can be resolved. LIMIT 200 replaces the old LIMIT 50, since a real precinct can carry more than fifty provisions — 8.2.6 alone has 50 and Ashfield Part 1 has 165."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The council cannot be resolved and the filter is dropped so that something is returned",
+      "what_happens": "A property is shown another council's precinct controls under its own council's name — a wrong regulatory answer rather than a missing one, and the worst outcome available on this path",
+      "mitigated": true,
+      "how": "getPrecinctProvisions returns [] and never issues the query when councilSlugCandidates is empty. Asserted both ways: the result is empty AND the database was not called",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/precinct-provisions-lookup.test.ts -t 'dropping the council filter'"
+    },
+    {
+      "scenario": "The council filter matches both candidate slugs at once and merges two councils",
+      "what_happens": "One property is shown controls drawn from two different councils, which is a wrong regulatory answer rather than a missing one",
+      "mitigated": true,
+      "how": "Raised by scripts/cross_review.py at 0.94. The first version used source_council = ANY([former, lga]), which is exactly what my own comment warned against two lines above it. Measured: 0 precinct ids are currently shared across councils so nothing merged today, but 'inner_west' does exist as a source_council (16 rows) alongside ashfield/leichhardt/marrickville, so the collision was one data change away. The query now runs one council at a time, preferring the former council, and only tries the LGA slug when the preferred scope returns nothing",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/precinct-provisions-lookup.test.ts -t 'never unioned'"
+    },
+    {
+      "scenario": "getPrecinctControls is reverted to a stub, or otherwise stops consulting its arguments",
+      "what_happens": "Precinct controls silently return to empty for every address, rendering as 'no precinct controls' exactly as before",
+      "mitigated": true,
+      "how": "Four tests assert real rows come back and that the control-type narrowing works. Verified able to fail: inserting `return []` as the first statement turns 4 of 21 red",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/precinct-provisions-lookup.test.ts"
+    },
+    {
+      "scenario": "The lookup drifts back to the legacy table, or loses the served-set filter",
+      "what_happens": "Either every precinct returns nothing again, or precincts start serving superseded and non-actionable text the rest of the product suppresses",
+      "mitigated": true,
+      "how": "The SQL is asserted directly: it must contain regulatory_provisions, is_current and v2_is_actionable, and must NOT contain dcp_precinct_provisions",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/precinct-provisions-lookup.test.ts -t 'legacy table'"
+    },
+    {
+      "scenario": "A property sits inside two overlapping precincts, so the matcher joins both ids into one string",
+      "what_happens": "The comma-joined id the PostGIS matcher builds is treated as one literal id and matches nothing, so an overlap silently serves fewer provisions than a single-precinct site",
+      "mitigated": true,
+      "how": "The id is split on commas and passed as an array; asserted with '8.2.6, 8.2.7' including the whitespace the join produces",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/precinct-provisions-lookup.test.ts -t 'comma-joined'"
+    },
+    {
+      "scenario": "ENABLE_PRECINCT_MATCHING is not set to 'true' in production",
+      "what_happens": "None of this runs. The constraints route never calls getPrecinctForAddress, so the boundaries are never consulted and precinctId is null for every property — the same user-visible outcome as before this fix",
+      "mitigated": false,
+      "how": "NOT mitigated and NOT verifiable from here. The flag is read at constraints/route.ts:125 and is documented in .env.example and docs/CONFIGURATION.md as =true, but the deployed Vercel value cannot be read from this repository. Flagged as a post-merge check rather than assumed. Deliberately not defaulted to on: flipping a rollout flag is an operational decision, and doing it silently inside a code fix is how a change reaches production unannounced",
+      "repro": "Check ENABLE_PRECINCT_MATCHING in the Vercel project settings; then assess a Parramatta address inside precinct 8.2.6 and confirm precinct provisions appear"
+    },
+    {
+      "scenario": "The precinct reaches the response but the UI still does not send it",
+      "what_happens": "The precinct layer stays inert and the fix appears to have done nothing",
+      "mitigated": false,
+      "how": "PARTIALLY verified only. The chain was read end to end — constraints returns precinctId, assessment/page.tsx passes selectedProperty.constraints?.precinctId into ProvisionsByTocStructure, which sets precinct_id on the /api/provisions/for-property request, which filters on v2_precinct_id — and every step was confirmed in code and at the database. What has NOT been done is an HTTP request through a running app, because npm run dev did not start until the separate #929 fix (PR #991), which is not merged. This is the honest limit of the evidence and is repeated in post_merge",
+      "repro": "With PR #991 merged: npm run dev, then POST /api/compliance/constraints for an address inside 8.2.6 and confirm precinctId in the response and precinct provisions in the DCP tab"
+    },
+    {
+      "scenario": "A precinct carries more provisions than the row cap, and the topic filter runs after the cap",
+      "what_happens": "The cap discards rows before the caller's control types are matched, so the very control that was asked for can be dropped while the response still looks complete",
+      "mitigated": true,
+      "how": "Raised by scripts/cross_review.py at 0.99 and correct. The topic list is now applied in SQL, before the cap, rather than to the returned rows in JavaScript. The cap itself moved to 1000 against a measured maximum of 187 (leichhardt G6) and warns when it binds. The old LIMIT 50 was already truncating G6, Ashfield Part 1 (165) and three others",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/precinct-provisions-lookup.test.ts -t 'narrows in SQL'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes, two items. (1) Confirm ENABLE_PRECINCT_MATCHING is 'true' in the Vercel environment — if it is not, nothing on this path executes and the user-visible behaviour is unchanged. (2) After PR #991 lands and the dev server runs, assess an address inside Parramatta precinct 8.2.6 and confirm the response carries precinctId and the DCP tab shows its 50 precinct provisions. Neither could be done from here."
+  },
+  "cross_review_adjudication": {
+    "note": "Five findings from scripts/cross_review.py, each checked against the code or the live database rather than accepted or dismissed. This branch touches frontend-nextjs/app/api/, which is inside the reviewer's blocking scope, so these gated the first push.",
+    "real_and_fixed": [
+      "LIMIT truncates before the topic filter is applied (0.99) — topics moved into SQL, cap raised to 1000 against a measured maximum of 187, warns when it binds.",
+      "source_council = ANY([former, lga]) can merge two council scopes (0.94) — now one scope per query, preferred first, fallback only when empty."
+    ],
+    "wrong": [
+      "Missing `rp.is_active = TRUE` (0.97) — regulatory_provisions has NO column matching 'active' other than v2_is_actionable, which the query already applies. The reviewer generalised the repo's standing WHERE-clause rule to a table that does not carry that column.",
+      "getPrecinctProvisions swallows database errors and returns [] (0.96) — it does not. The catch block logs and rethrows, so a query failure propagates to the route rather than reading as an empty precinct."
+    ],
+    "not_a_defect": [
+      "precinct_name and pdf_path dropped from the returned shape (0.93) — neither column exists on regulatory_provisions, and no consumer of /api/precinct/provisions reads them. The grep hits are other routes (capacity/calculate, compliance/dcp-complete) running their own queries against their own tables."
+    ]
+  }
+}

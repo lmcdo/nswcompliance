@@ -57,6 +57,11 @@ export async function POST(request: NextRequest) {
 
     // Extract additional fields for compatibility
     const lga = body.lga ?? null;
+    // Inner West precincts are keyed by FORMER council in regulatory_provisions
+    // (ashfield / leichhardt / marrickville), so the LGA alone cannot identify
+    // them. Accept it from the caller when known; the lookup falls back to the
+    // LGA slug when it is absent, which is what Ku-ring-gai needs.
+    const formerCouncil = body.formerCouncil ?? body.former_council ?? null;
 
     // Require either precinctId or zone
     if (!precinctId && !zone) {
@@ -69,7 +74,7 @@ export async function POST(request: NextRequest) {
     console.log('[Precinct Provisions API] Request:', { precinctId, zone, lga, limit });
 
     // Get provisions for precinct
-    const provisions = await getPrecinctProvisions(precinctId || '', lga);
+    const provisions = await getPrecinctProvisions(precinctId || '', lga, formerCouncil);
 
     const processingTime = Date.now() - startTime;
 
