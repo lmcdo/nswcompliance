@@ -53,7 +53,13 @@ _PRE_PUSH = _ROOT / ".githooks" / "pre-push"
 # demoting one is a visible edit here rather than a silent change of policy.
 _DELIBERATELY_NON_BLOCKING = {
     "Output grounding (OBSERVATION ONLY — never fails the build)",
-    "Dev server boots",
+    # "Dev server boots" was here until #929 was fixed. It was non-blocking
+    # because the defect it names — two handlers claiming /sitemap.xml, which
+    # `next dev` refuses and `next build` tolerates — was live, and a gate that
+    # blocks every merge on an unrepaired defect gets deleted rather than
+    # obeyed. The step's own comment said to flip it in the PR that fixes #929;
+    # this is that PR, so the promotion is recorded here as the visible edit
+    # this list exists to force.
 }
 
 

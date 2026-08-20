@@ -1,11 +1,12 @@
 {
   "tier": "standard",
   "justification": "Three files, no data touched and no query changed. Standard rather than Minor because it moves an SEO-critical URL that robots.txt advertises to crawlers, and because it flips a CI gate from advisory to blocking — both are changes whose failure is felt outside the codebase. Not Critical: nothing is read from or written to the database, and the change is directionally safe — it restores a server that would not start, and the URL contract at /sitemap.xml is preserved rather than altered.",
-  "commit_hash": "3aa68dd0",
+  "commit_hash": "cdca49d7",
   "files": [
     "frontend-nextjs/next.config.js",
     "frontend-nextjs/app/sitemap-index.xml/route.ts",
-    ".github/workflows/gates.yml"
+    ".github/workflows/gates.yml",
+    "tests/test_checks_cannot_silently_not_run.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/check_dev_server_boots.py --timeout 150",
@@ -83,6 +84,13 @@
       "mitigated": true,
       "how": "The port artifact is local to this Windows machine — 3099 refuses an IPv6 bind with nothing listening and no netsh exclusion covering it, while 3111 works. CI runs on Linux runners where the default port is clean, and this PR's own gates run is the evidence the step's comment asked for. If CI does fail on the port rather than on a collision, the message names EADDRINUSE explicitly rather than reporting a route error",
       "repro": "python scripts/check_dev_server_boots.py --port 3111 --timeout 200"
+    },
+    {
+      "scenario": "A gate is promoted from observation-only to blocking without that policy change being visible",
+      "what_happens": "Merges start failing on a rule nobody agreed to, and the change is invisible in review because it is one deleted YAML key",
+      "mitigated": true,
+      "how": "tests/test_checks_cannot_silently_not_run.py pins every deliberately non-blocking step BY NAME and fails when one loses continue-on-error. It caught this change in CI: 'Dev server boots is listed as observation-only but no longer carries continue-on-error — it now blocks, silently'. My miss — I ran jest on this branch but not pytest, so the guard found it rather than I did. The step is removed from that list with the reason recorded in place, which is the visible edit the list exists to force",
+      "repro": "python -m pytest tests/test_checks_cannot_silently_not_run.py -q"
     }
   ],
   "post_merge": {
