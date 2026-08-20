@@ -1663,6 +1663,11 @@ def validate_report(
             errors.extend(validate_non_empty(post_merge.get(field, ""), f"Section 7 post_merge.{field}"))
 
     # --- Cross-cutting checks ---
+    # Deliberately NOT inside `if diff_files:` — both losses this catches
+    # were documentation commits, exactly the shape that skips the coverage
+    # check below.
+    errors.extend(check_claimed_files_reachable(files, project_dir))
+
     if diff_files:
         errors.extend(check_diff_coverage(files, diff_files))
 
@@ -1836,6 +1841,81 @@ def _git(args: list[str], project_dir: str) -> tuple[int, str]:
         # git absent, or not executable. Reported as "cannot determine" (128)
         # rather than silently as "fine" — the whole point of this section.
         return 128, ""
+
+
+def check_claimed_files_reachable(
+    report_files: list[str], project_dir: str | None
+) -> list[str]:
+    """Fail when the report CLAIMS a file git will never carry.
+
+    The mirror of check_diff_coverage, which only ever asked one question: "is a
+    changed file missing from the report?" Nothing asked the reverse — "is a file
+    the report claims missing from the change?" — and .md is filtered out of its
+    substantive set, so a documentation-only commit skipped it entirely.
+
+    Two documents were lost through that gap before it was closed:
+
+      * PR #982, "A one-page brief for students testing the tool", merged one
+        file: its own 46-line QA report. The 109-line brief was written to
+        docs/outreach/student-brief.md, matched `docs/*`, and never entered git.
+      * PR #979, "The stylesheet the README always referenced", merged its report
+        and docs/pitch/README.md. docs/pitch/style.html matched the same rule and
+        is now gone from disk as well as from git.
+
+    Both reports listed the missing file under `files`. Both gates passed.
+
+    WHY GITIGNORED, AND NOT "UNTRACKED"
+    -----------------------------------
+    Untracked is far too broad. Measured across all 64 reports in the repo, a
+    "must be tracked" rule fired on 6 of them and hundreds of paths, nearly all
+    legitimate: files DELETED by the change (correctly claimed, correctly absent
+    afterwards) and scratch scripts left in the working tree. Gitignored is the
+    precise signal, because an ignored path cannot be added at all — `git add`
+    exits 0 having done nothing, so the claim can never become true. On the same
+    64 reports the ignored rule fires exactly once, on the lost stylesheet.
+
+    Git does not report a TRACKED file as ignored, so a file already in the repo
+    passes whatever the patterns say, and a deletion passes because a deleted
+    path is not ignored either. Dot-prefixed paths are skipped, reusing this
+    module's own convention for non-substantive files, which exempts the local
+    markers (.claude/.pre-impl-done.json, .qa_report.json) that reports
+    legitimately mention.
+    """
+    errors: list[str] = []
+    if not report_files:
+        return errors
+    root = project_dir or "."
+
+    for raw in report_files:
+        if not isinstance(raw, str):
+            continue
+        rel = raw.replace("\\", "/").strip()
+        # Dot-prefixed: this module's existing definition of non-substantive.
+        # Empty and N/A: the report's own way of saying "nothing here".
+        if not rel or rel.startswith(".") or rel.upper().startswith("N/A"):
+            continue
+
+        # -q, never -v. With -v git exits 0 when the winning rule is a NEGATION,
+        # so a deliberately re-included path would read as ignored.
+        code, _ = _git(["check-ignore", "-q", "--", rel], root)
+        if code != 0:
+            # 1 = not ignored. 128 = git could not say, treated as not-ignored
+            # rather than as failure: a gate that breaks when git is unavailable
+            # is a gate that gets bypassed.
+            continue
+
+        _, which = _git(["check-ignore", "-v", "--", rel], root)
+        errors.append(
+            f"Report claims a GITIGNORED file, which can never reach CI: {rel}\n"
+            f"    matched by: {which or '(pattern unknown)'}\n"
+            "    `git add` on this path exits 0 and does nothing, so the commit "
+            "reports success while the file stays on your machine. Either add a "
+            "negation for its directory in .gitignore, or remove it from the "
+            "report's `files` — but do not leave a report claiming work the "
+            "repository does not contain. This is how PR #982 lost the student "
+            "brief and PR #979 lost the pitch stylesheet."
+        )
+    return errors
 
 
 def check_report_reachable(
