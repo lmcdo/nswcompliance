@@ -338,6 +338,10 @@ migrate_*.py
 # Temporary SQL files
 *.sql
 !migrations/*.sql
+# Frontend migrations are source-controlled schema history as well.  The global
+# rule above previously hid these files even though their README and project
+# documentation instruct operators to run them.
+!frontend-nextjs/migrations/*.sql
 
 # Working JSON files (not config)
 *_extracted.json
@@ -656,10 +660,11 @@ scripts/**/*.pdf
 # PRP checkpoint working files
 prp_checkpoints/*.py
 
-# Tool directories
-poppler/
-schemas/
-test_update/
+# Tool directories.  These are root-only: an unanchored `schemas/` also
+# ignored frontend-nextjs/lib/schemas/, leaving source files invisible to Git.
+/poppler/
+/schemas/
+/test_update/
 
 # Single-word junk files
 i

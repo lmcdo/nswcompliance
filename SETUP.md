@@ -4,9 +4,10 @@ Step-by-step for getting the project running from a clean clone.
 
 ## Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 20 LTS and npm (the lockfiles are committed)
 - Python 3.11+
 - Git
+- Linux build tools for geospatial/Python wheels: `build-essential gdal-bin libgdal-dev libgeos-dev libproj-dev`
 - Access to the Supabase project (database credentials)
 
 ## 1. Clone and configure git hooks
@@ -41,8 +42,9 @@ python -m venv venv
 source venv/bin/activate   # Linux/Mac
 # OR: venv\Scripts\activate  # Windows
 
-pip install -r requirements.txt
-pip install -r requirements-test.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-test.txt
 
 # Verify
 python -m pytest tests/ -x -q --tb=short
@@ -53,7 +55,7 @@ python -m pytest tests/ -x -q --tb=short
 
 ```bash
 cd frontend-nextjs
-npm install
+npm ci
 npm run dev   # Starts on http://localhost:3003
 ```
 

@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Standard: this change alters source-control visibility, Linux dependency selection, and the documented bootstrap path. It does not run a migration, touch production data, or change a served route. A failed clone would nevertheless leave an operator without documented migration history or required source, so Minor would understate the operational impact.",
+  "commit_hash": "d89e9684",
+  "files": [
+    ".gitignore",
+    "SETUP.md",
+    "requirements.txt",
+    "frontend-nextjs/lib/schemas/extracted-rule.ts",
+    "frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql",
+    "frontend-nextjs/migrations/add_display_priority.sql",
+    "frontend-nextjs/migrations/fix_descriptive_provisions.sql",
+    "docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md"
+  ],
+  "falsifiable_check": {
+    "command": "git check-ignore -q --no-index frontend-nextjs/lib/schemas/extracted-rule.ts; test $? -eq 1; git check-ignore -q --no-index frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql; test $? -eq 1",
+    "fails_when": "Either required source file is still ignored, which proves it cannot be added and would be absent from a fresh clone.",
+    "observed_red": "Before this change, git check-ignore reported .gitignore:661 schemas/ for extracted-rule.ts and .gitignore:339 *.sql for the frontend migration. After the change, each command returns Git's not-ignored status.",
+    "local_caveat": "This proves Git visibility, not that a live Supabase migration should be executed. Database operations remain separately guarded by DB_SCHEMA.md and scripts/db_safety_check.sh."
+  },
+  "pre_impl": {
+    "existing_data": "None. The change records source files and installation guidance; it does not read or write database rows.",
+    "assumption_mismatch": "The old root-level schemas/ rule was assumed to mean only the root schemas tool directory. Git treats an unanchored directory pattern as matching every schemas directory, including frontend-nextjs/lib/schemas.",
+    "new_vs_existing": "Forward-only source-control repair. Existing working copies keep their files; fresh clones now receive the previously hidden source and migration history after this commit is pushed.",
+    "external_source_error": "No external service is called by these changes. Package installation remains dependent on package registries and the pinned RAG-Anything Git revision.",
+    "frontend_type": "No served frontend route or existing type is altered. ExtractedRule types are restored as tracked source; the file was already present locally before this repair."
+  },
+  "functions": [
+    {
+      "name": "validateRulePlausibility",
+      "file_line": "frontend-nextjs/lib/schemas/extracted-rule.ts:167",
+      "input": "One ExtractedRule object from the deterministic extraction or LLM validation flow",
+      "output": "An array of human-readable plausibility errors for numeric ranges, conditional outcomes, and invalid min/max ordering",
+      "if_none": "The function receives a typed ExtractedRule rather than an optional value; malformed arrays are rejected by validateProvisionRules before plausibility checks run."
+    },
+    {
+      "name": "validateProvisionRules",
+      "file_line": "frontend-nextjs/lib/schemas/extracted-rule.ts:227",
+      "input": "An array of extracted rules associated with one regulatory provision",
+      "output": "An array of schema or plausibility errors, empty only when every supplied rule satisfies the contract",
+      "if_none": "An empty array is valid by the declared array schema and returns no errors; invalid or missing rule fields return schema errors instead of being silently accepted."
+    }
+  ],
+  "values": [
+    {
+      "value": "sys_platform marker",
+      "read_at": "requirements.txt:124, requirements.txt:131, requirements.txt:182",
+      "nullable": "no",
+      "guard_at": "PEP 508 markers select pyreadline3, pywin32, and win32_setctime only when sys_platform equals win32",
+      "if_missing": "On Linux the Windows-only packages are skipped, avoiding an unsatisfied Windows-wheel install; on Windows the prior pins remain selected."
+    }
+  ],
+  "queries": "N/A for execution. The three tracked SQL files contain historical schema/data migrations, but this change only makes them reviewable and clonable; it does not execute them.",
+  "break_it": [
+    {
+      "scenario": "A future developer imports the extracted-rule schema after a clean clone where the file remains ignored",
+      "what_happens": "The frontend build fails with a missing module or a developer recreates the contract locally, causing repository state to diverge between machines.",
+      "mitigated": true,
+      "how": ".gitignore anchors the intended root-only tool directory as /schemas/, so frontend-nextjs/lib/schemas/extracted-rule.ts is visible and staged for version control.",
+      "repro": "git check-ignore -v --no-index frontend-nextjs/lib/schemas/extracted-rule.ts; git status --short -- frontend-nextjs/lib/schemas/extracted-rule.ts"
+    },
+    {
+      "scenario": "A Linux bootstrap evaluates the previous requirements file and attempts to install Windows-only dependencies",
+      "what_happens": "pip can fail dependency resolution or binary installation before the project test suite and frontend setup are reached.",
+      "mitigated": true,
+      "how": "The three Windows-specific dependencies now carry PEP 508 sys_platform == win32 markers while preserving their exact Windows pins.",
+      "repro": "python -c \"from pathlib import Path; from packaging.requirements import Requirement; from packaging.markers import default_environment; e=default_environment(); e['sys_platform']='linux'; assert not [str(Requirement(x.strip())) for x in Path('requirements.txt').read_text().splitlines() if x.strip() and not x.startswith('#') and not x.startswith('raganything @') and Requirement(x.strip()).name.lower() in {'pywin32','pyreadline3','win32-setctime'} and (Requirement(x.strip()).marker is None or Requirement(x.strip()).marker.evaluate(e))]\""
+    },
+    {
+      "scenario": "An operator follows the documented frontend migration procedure from a fresh clone that lacks the SQL source files",
+      "what_happens": "The documented command references a missing migration and the operator cannot review or reproduce its schema history from the repository.",
+      "mitigated": true,
+      "how": ".gitignore explicitly re-includes frontend-nextjs/migrations/*.sql after the global temporary-SQL rule, making the three existing migration sources trackable.",
+      "repro": "git check-ignore -v --no-index frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql; git status --short -- frontend-nextjs/migrations"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — perform the clean Linux clone acceptance steps in docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md before relying on DeepSeek Harness for project changes."
+  }
+}
