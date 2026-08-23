@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft - the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim - it can only stop one. No logic, no data, no types touched: three JSX string literals.",
-  "commit_hash": "acb8f379",
+  "commit_hash": "b560177e",
   "files": [
     "frontend-nextjs/app/assessment/page.tsx",
     "frontend-nextjs/app/for/conveyancers/page.tsx",
