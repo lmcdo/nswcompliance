@@ -231,7 +231,7 @@ export function validateProvisionRules(rules: ExtractedRule[]): string[] {
   const parseResult = ProvisionExtractedRulesSchema.safeParse(rules);
   if (!parseResult.success) {
     errors.push(
-      ...parseResult.error.errors.map(
+      ...parseResult.error.issues.map(
         (e) => `Schema: ${e.path.join('.')}: ${e.message}`
       )
     );
