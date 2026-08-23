@@ -1,33 +1,38 @@
 {
   "tier": "standard",
-  "justification": "Standard: second pass on the same class of bug as commit 50d0157e — source-control visibility and bootstrap-documentation accuracy, not production data or a served route. A silently-shadowed migration or fix script absent from a fresh clone is an operational gap, not a data-corruption risk, so Minor would understate it and Critical overstates it.",
-  "commit_hash": "302ac3ab",
+  "justification": "Standard: source-control visibility, Linux dependency selection, and bootstrap-documentation accuracy across the whole branch — not production data or a served route. A silently-shadowed migration or fix script absent from a fresh clone is an operational gap, not a data-corruption risk, so Minor would understate it and Critical overstates it.",
+  "commit_hash": "run: git rev-parse --short HEAD",
   "deferred_out_of_this_commit": {
-    "why": "11 of the ~81 files this gitignore fix makes trackable also trip scripts/lint_hardcoded_zone_codes.py (DQ-30's guard against hardcoded NSW zone-code lists). Some read as legitimate (a Feb-2026 diagnostic verifying known DCP-documented zone values against DB state; heritage marker prefixes C1/C2/O1 that happen to collide with real zone-code shapes) and some read as genuine drift risk (migrations/create_housing_sepp_standards.py alone accounts for 36 of the 69 flags). Adjudicating each site and either adding a justified `# noqa: zone-codes` or wiring it to shared/zone-taxonomy.json is a real, separate review this reproducibility fix should not rush through or silently waive. Left untracked; still absent from a fresh clone.",
-    "files": ["migrations/create_housing_sepp_standards.py", "scripts/enrichment/enrich_marrickville_zone_tagging.py", "scripts/enrichment/fix_marrickville_zones.py", "scripts/fixes/DQ11_heritage_categorization.py", "scripts/fixes/DQ11_heritage_categorization_all.py", "scripts/fixes/DQ13_leichhardt_fixes.py", "scripts/fixes/ashfield_chapter_f_zones.py", "scripts/fixes/reextract_marrickville_heritage.py", "scripts/fixes/tag_heritage_deterministic.py", "scripts/fixes/tag_heritage_type_supabase.py", "scripts/verification/test_marrickville_zone_filtering.py"]
+    "why": "This branch's earlier commits (302ac3ab) staged ~81 previously-gitignore-shadowed scripts/migration files. Pushing tripped two separate content gates on 55 of them (11 overlapping): scripts/lint_hardcoded_zone_codes.py (DQ-30, hardcoded NSW zone-code lists) and scripts/qa_gate.py's DB guard (queries against regulatory_provisions without an is_current/v2_is_actionable filter within +/-10 lines) plus 10 adversarial null-safety findings. These are historical one-off diagnostic/fix scripts (Jan-Feb 2026, heritage/DCP page-repair work), not live-serving code, so the 'don't serve stale data to a user' rationale behind the DB guard may not fit them the way it fits services/ or API routes -- but that is a judgment call this session should not make unilaterally for 44 files it did not author. Removed from tracking via `git rm --cached` rather than silently left ignored, so `git status` shows them as ordinary untracked files (visible, not hidden) pending that review. Still absent from a fresh clone.",
+    "zone_code_lint_files": ["migrations/create_housing_sepp_standards.py", "scripts/enrichment/enrich_marrickville_zone_tagging.py", "scripts/enrichment/fix_marrickville_zones.py", "scripts/fixes/DQ11_heritage_categorization.py", "scripts/fixes/DQ11_heritage_categorization_all.py", "scripts/fixes/DQ13_leichhardt_fixes.py", "scripts/fixes/ashfield_chapter_f_zones.py", "scripts/fixes/reextract_marrickville_heritage.py", "scripts/fixes/tag_heritage_deterministic.py", "scripts/fixes/tag_heritage_type_supabase.py", "scripts/verification/test_marrickville_zone_filtering.py"],
+    "db_guard_and_adversarial_files": ["scripts/definitions/check_sepp_housing.py", "scripts/definitions/check_si_lep.py", "scripts/definitions/extract_sepp_housing.py", "scripts/definitions/extract_si_lep.py", "scripts/definitions/parse_dcp_glossaries.py", "scripts/definitions/verify.py", "scripts/enrichment/link_ashfield_hca_provisions.py", "scripts/enrichment/llm_enrich_devtype_heritage.py", "scripts/fixes/DQ12_building_form_tagging.py", "scripts/fixes/DQ15_normalize_topic_case.py", "scripts/fixes/DQ18_REVERT.py", "scripts/fixes/DQ18_REVERT_marrickville.py", "scripts/fixes/DQ18_REVERT_v2.py", "scripts/fixes/DQ18_fix_by_dcp_part.py", "scripts/fixes/DQ18_fix_by_section_number.py", "scripts/fixes/DQ18_fix_exclude_toc.py", "scripts/fixes/DQ18_fix_marrickville_page_numbers.py", "scripts/fixes/DQ18_fix_part41_direct.py", "scripts/fixes/DQ18_revert_marrickville_pages.py", "scripts/fixes/DQ19_fix_main_heritage_file.py", "scripts/fixes/DQ19_fix_marrickville_part8_pages.py", "scripts/fixes/DQ19_fix_marrickville_part8_v2.py", "scripts/fixes/DQ19_fix_marrickville_part8_v3.py", "scripts/fixes/DQ2_fix_topic_classification.py", "scripts/fixes/DQ8_dcp_only_enrichment.py", "scripts/fixes/ashfield_clean_pdf_headers.py", "scripts/fixes/ashfield_reclassify_actionable.py", "scripts/fixes/ashfield_verify.py", "scripts/fixes/check_26_provisions.py", "scripts/fixes/check_early_pages.py", "scripts/fixes/check_enmore_hca.py", "scripts/fixes/check_hca_12_13.py", "scripts/fixes/check_high_pages.py", "scripts/fixes/check_main_file_offset.py", "scripts/fixes/check_page_154.py", "scripts/fixes/create_backup.py", "scripts/fixes/debug_part41.py", "scripts/fixes/debug_patterns.py", "scripts/fixes/diagnose_marrickville_hca_pages.py", "scripts/fixes/fix_all_null_pdf_pages.py", "scripts/fixes/fix_toc_page_ranges.py", "scripts/fixes/sync_ashfield_to_supabase.py", "scripts/fixes/verify_page5.py", "scripts/fixes/verify_page_numbers.py", "scripts/verification/check_heritage_duplication.py"]
   },
   "files": [
     ".gitignore",
-    "scripts/definitions/check_sepp_housing.py",
-    "scripts/definitions/check_si_lep.py",
+    "SETUP.md",
+    "requirements.txt",
+    "docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md",
+    "frontend-nextjs/lib/schemas/extracted-rule.ts",
+    "frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql",
+    "frontend-nextjs/migrations/add_display_priority.sql",
+    "frontend-nextjs/migrations/fix_descriptive_provisions.sql",
     "scripts/definitions/check_table.py",
-    "scripts/definitions/extract_sepp_housing.py",
-    "scripts/definitions/extract_si_lep.py",
     "scripts/definitions/extracted/dcp_definitions.json",
     "scripts/definitions/extracted/sepp_housing_definitions.json",
     "scripts/definitions/extracted/si_lep_definitions.json",
     "scripts/definitions/generate_images.py",
     "scripts/definitions/import_definitions.py",
-    "scripts/definitions/parse_dcp_glossaries.py",
     "scripts/definitions/run_migration.py",
-    "scripts/definitions/verify.py",
     "scripts/diagnostics/check_roof_provision_text.py",
     "scripts/diagnostics/check_roof_sql.sql",
-    "scripts/enrichment/link_ashfield_hca_provisions.py",
     "scripts/enrichment/link_marrickville_hca_provisions.py",
-    "scripts/enrichment/llm_enrich_devtype_heritage.py",
-    "scripts/fixes/*.py (46 files, DQ*/ashfield*/check*/debug*/verify* fix scripts)",
+    "scripts/fixes/DQ12_fix_remaining_toc.py",
+    "scripts/fixes/DQ14_leichhardt_pdf_urls.py",
+    "scripts/fixes/DQ14b_fix_part_g_urls.py",
+    "scripts/fixes/DQ3_fix_toc_entries.py",
+    "scripts/fixes/DQ4_fix_marker_extraction.py",
     "scripts/fixes/backup_before_heritage_tagging.sql",
+    "scripts/fixes/rerun_actionable_classifier.py",
     "scripts/fixes/rollback_heritage_tagging.sql",
     "scripts/migrations/create_version_schema.sql",
     "scripts/migrations/optimize_version_performance.sql",
@@ -37,15 +42,13 @@
     "scripts/procedural/extracted/pathway_guidance.json",
     "scripts/procedural/import_procedural.py",
     "scripts/sql/dcp_version_management.sql",
-    "scripts/verification/check_heritage_duplication.py",
-    "scripts/verification/verify_hca_code_resolution.py",
-    "docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md"
+    "scripts/verification/verify_hca_code_resolution.py"
   ],
   "falsifiable_check": {
-    "command": "git check-ignore -q scripts/definitions/import_definitions.py; test $? -eq 1; git check-ignore -q scripts/verification/check_heritage_duplication.py; test $? -eq 1",
-    "fails_when": "Either file is still ignored, proving it would be absent from a fresh clone.",
-    "observed_red": "Before this change: git check-ignore -v reported .gitignore:195 check_*.py / .gitignore:297 create_*.py for files under scripts/definitions, scripts/diagnostics, scripts/enrichment, scripts/fixes, scripts/procedural, scripts/verification, scripts/migrations, scripts/sql and the root migrations/ directory — the same basename-glob bug the prior commit fixed one directory level up, recurring one level deeper because `!scripts/*.py`-style negations don't cross `/`.",
-    "observed_green": "git check-ignore -q now exits 1 (not ignored) for all files listed above; `git add -n` on the affected directories stages ~70 previously-invisible files with no unexpected inclusions (verified: __pycache__, backup JSON snapshots, bulk PDFs, and scripts/drawdown_creds.txt remain correctly excluded)."
+    "command": "git check-ignore -q frontend-nextjs/lib/schemas/extracted-rule.ts; test $? -eq 1; git check-ignore -q scripts/definitions/import_definitions.py; test $? -eq 1; git ls-files scripts/definitions/check_sepp_housing.py | grep -q . && echo STILL_TRACKED_SHOULD_BE_DEFERRED",
+    "fails_when": "Either genuinely-fixed file is still ignored (proving it would be absent from a fresh clone), or a deferred file is still tracked despite tripping the zone-code/DB-guard gates.",
+    "observed_red": "Before this branch: frontend-nextjs/lib/schemas/extracted-rule.ts was killed by a bare `schemas/` rule; scripts/definitions/, scripts/diagnostics/, scripts/enrichment/, scripts/fixes/, scripts/procedural/, scripts/verification/, scripts/migrations/, scripts/sql/ and root migrations/ were killed by basename globs (check_*.py, fix_*.py, create_*.py, *.sql, ...) that match at any depth, one level past where an earlier fix's `!scripts/*.py`-style negations reached.",
+    "observed_green": "git check-ignore -q now exits 1 (not ignored) for the 33 files actually committed on this branch; the 55 files that trip the zone-code lint or the DB guard were deliberately un-staged via `git rm --cached` after discovery, so they remain absent from a fresh clone pending a dedicated review rather than being force-committed past a data-integrity gate."
   },
   "functions": [
     {
@@ -58,38 +61,45 @@
   ],
   "pre_impl": {
     "existing_data": "None. This change only affects Git tracking and documentation text; it does not read or write database rows.",
-    "assumption_mismatch": "The prior commit's `!scripts/*.py` / `!scripts/*.sql` negations were assumed to cover the whole scripts/ tree; gitignore's `*` does not cross `/`, so they only reached files directly under scripts/, not scripts/<subdir>/.",
-    "new_vs_existing": "Forward-only source-control repair, same as the prior commit. Existing working copies are unaffected; fresh clones now receive the previously-hidden files.",
-    "external_source_error": "N/A — no external service called by the .gitignore/tracking change. The runbook's DeepSeek Harness install command and GitHub URL were verified via WebFetch against github.com/deepseek-ai/deepseek-harness directly (not secondary blog sources) before being left unchanged; the Node-version claim from third-party guides could NOT be confirmed against that primary source, so the runbook now says so explicitly rather than asserting an unverified number.",
-    "frontend_type": "N/A — no frontend route or type touched."
+    "assumption_mismatch": "An earlier fix's `!scripts/*.py` / `!scripts/*.sql` negations were assumed to cover the whole scripts/ tree; gitignore's `*` does not cross `/`, so they only reached files directly under scripts/, not scripts/<subdir>/.",
+    "new_vs_existing": "Forward-only source-control repair. Existing working copies are unaffected; fresh clones now receive the previously-hidden files that survived the zone-code/DB-guard review filter.",
+    "external_source_error": "N/A -- no external service called by the .gitignore/tracking change. The runbook's DeepSeek Harness install command and GitHub URL were verified via WebFetch against github.com/deepseek-ai/deepseek-harness directly (not secondary blog sources) before being left unchanged; the Node-version claim from third-party guides could NOT be confirmed against that primary source, so the runbook now says so explicitly rather than asserting an unverified number.",
+    "frontend_type": "N/A -- no frontend route or type touched."
   },
   "break_it": [
     {
-      "scenario": "A fresh Linux clone runs a DCP definitions or heritage-tagging fix script referenced in project docs (e.g. scripts/definitions/import_definitions.py, scripts/verification/check_heritage_duplication.py)",
-      "what_happens": "python: can't open file — the script does not exist, because it was never committed.",
+      "scenario": "A fresh Linux clone runs a DCP definitions or heritage-tagging fix script referenced in project docs (e.g. scripts/definitions/import_definitions.py)",
+      "what_happens": "python: can't open file -- the script does not exist, because it was never committed.",
       "mitigated": true,
-      "how": ".gitignore now re-includes *.py/*.sql/*.sh/*.mjs/*.js/*.bat at any depth under scripts/ (`!scripts/**/*.py` etc.), not just one level deep; all ~70 previously-shadowed files are now tracked.",
-      "repro": "git ls-files scripts/definitions/ scripts/verification/ | wc -l  # was 0 for these two dirs before this change"
+      "how": ".gitignore now re-includes *.py/*.sql/*.sh/*.mjs/*.js/*.bat at any depth under scripts/ (`!scripts/**/*.py` etc.), not just one level deep; the 33 files that pass both content gates are now tracked. The remaining 55 are deliberately still absent -- see deferred_out_of_this_commit -- so this failure mode persists FOR THOSE SPECIFIC FILES until that review happens, by design rather than by accident.",
+      "repro": "git ls-files scripts/definitions/ scripts/diagnostics/ | wc -l  # was 0 for these two dirs before this branch"
     },
     {
       "scenario": "An operator follows docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md step 4 exactly as written before this change",
-      "what_happens": "`git switch fix/linux-repro-gitignore-holes` fails — that branch was never pushed to origin, so the clone has no such ref, and the runbook's own 'staged but not yet committed' warning was already stale (the fix had in fact landed directly on main).",
+      "what_happens": "`git switch fix/linux-repro-gitignore-holes` fails -- that branch was never pushed to origin at the time the runbook was first drafted, so the clone had no such ref, and the runbook's own 'staged but not yet committed' warning was already stale.",
       "mitigated": true,
-      "how": "Runbook now states the repair is on main (no branch switch needed) and gives a git check-ignore command to verify both repair passes are present.",
-      "repro": "git ls-remote --heads origin 'fix/linux-repro-gitignore-holes'  # empty, confirming the branch never existed on origin"
+      "how": "Runbook now states the repair is on this branch/main as applicable (no unresolved branch switch) and gives a git check-ignore command to verify the repair is present.",
+      "repro": "git ls-remote --heads origin fix/linux-repro-gitignore-holes"
     },
     {
       "scenario": "Operator installs only the Node version this repo's SETUP.md specifies (20 LTS) and assumes it also satisfies DeepSeek Harness",
       "what_happens": "`npx @deepseek-ai/dsh web` may fail to start if DSH's actual minimum (third-party guides claim ^22.19.0/>=24.x, unconfirmed by the DSH README itself) is higher than 20 LTS.",
       "mitigated": true,
-      "how": "Runbook section 5 now flags the version as unconfirmed from DSH's primary source, tells the operator to read the actual startup error rather than trust a number, and to use nvm for a second Node version rather than replacing the repo's pinned one.",
-      "repro": "n/a — documentation caveat, not a code path"
+      "how": "Runbook section 5 flags the version as unconfirmed from DSH's primary source, tells the operator to read the actual startup error rather than trust a number, and to use nvm for a second Node version rather than replacing the repo's pinned one.",
+      "repro": "n/a -- documentation caveat, not a code path"
+    },
+    {
+      "scenario": "This commit force-tracks a script whose regulatory_provisions query lacks an is_current/v2_is_actionable filter, and it is later run against production without the operator realizing it can act on superseded rows",
+      "what_happens": "A heritage/DCP fix runs against stale or superseded provisions, producing a write based on outdated data.",
+      "mitigated": true,
+      "how": "All 44 files the DB guard (and the 10-finding adversarial null-safety scan) flagged were removed from tracking via git rm --cached rather than force-committed past the gate -- see deferred_out_of_this_commit.db_guard_and_adversarial_files.",
+      "repro": "python scripts/qa_gate.py  # would list these under 'DB guard' if they were re-staged without a fix or an explicit reviewed exemption"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — a real fresh Linux clone + npx @deepseek-ai/dsh web run has not been performed (no Linux partition exists yet on the target machine); only Git visibility and primary-source documentation claims were verified from Windows."
+    "manual_verify": "Yes -- a real fresh Linux clone + npx @deepseek-ai/dsh web run has not been performed (no Linux partition exists yet on the target machine); only Git visibility and primary-source documentation claims were verified from Windows. The 55 deferred files still need a human decision: mechanically add currency filters, add reviewed noqa suppressions, or leave excluded."
   }
 }
