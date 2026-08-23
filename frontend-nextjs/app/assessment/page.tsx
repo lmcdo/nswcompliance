@@ -181,7 +181,7 @@ export default function AssessmentPage() {
             Site Controls
           </h1>
           <p className="text-slate-400 text-xs hidden sm:block">
-            Every control cited to its clause and page — live NSW planning data
+            Every control cited to its clause — live NSW planning data
           </p>
         </div>
         {/* Quick Guide */}

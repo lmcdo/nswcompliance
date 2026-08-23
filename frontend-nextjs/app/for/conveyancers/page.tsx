@@ -84,7 +84,7 @@ export default function ConveyancersPage() {
             </h2>
           </div>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Every control in the report is traced to the published clause and page
+            Every control in the report is traced to the published clause
             it comes from &mdash; zoning and SEPP from the NSW Planning Portal, flood
             and hazard mapping from Spatial Services NSW and council flood studies,
             bushfire from the NSW Rural Fire Service. Figures are indicative and

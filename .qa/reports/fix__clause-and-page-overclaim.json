@@ -1,0 +1,40 @@
+{
+  "tier": "minor",
+  "justification": "Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft — the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim — it can only stop one. No logic, no data, no types touched: three JSX/string literals.",
+  "commit_hash": "PENDING",
+  "files": [
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/app/for/conveyancers/page.tsx",
+    "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "grep -rn \"clause and page\" frontend-nextjs/app frontend-nextjs/components frontend-nextjs/lib | grep -v node_modules; test $? -ne 0",
+    "fails_when": "Any user-facing surface re-introduces a page-level citation claim. Forced in both directions rather than assumed: with the three strings restored the grep returns 3 hits and the check exits non-zero; with the fix applied it returns none and exits zero. Verified before the fix (3 hits: assessment/page.tsx:184, for/conveyancers/page.tsx:87, widget-demo/[slug]/page.tsx:88) and after (0 hits).",
+    "not_guarded": "This is a manual grep, not a committed CI gate. Nothing in the test suite or CI currently fails if the phrase returns — the claim was re-introducible for the whole period between the 2026-08-23 doc correction and today, and would be again. A standing lint rule is the durable fix and is NOT in this change."
+  },
+  "measurements": [
+    {
+      "claim": "779 of 967 current not-needs-review controls carry no pdf_page (80.6%)",
+      "query": "SELECT count(*) AS rows_all_current, count(pdf_page) AS has_page, count(*)-count(pdf_page) AS no_page FROM dcp_setback_controls WHERE is_current AND (needs_review IS NULL OR needs_review=FALSE)",
+      "result": "967 | 188 | 779",
+      "measured": "2026-08-23"
+    },
+    {
+      "claim": "Every served control does carry its clause and its verbatim quote",
+      "query": "SELECT count(*) AS served, count(section_ref) AS has_clause, count(source_text) AS has_quote FROM dcp_setback_controls WHERE is_current AND (needs_review IS NULL OR needs_review=FALSE) AND lga <> 'nsw_statewide' AND lga <> 'inner_west'",
+      "result": "936 | 936 | 936",
+      "measured": "2026-08-23"
+    },
+    {
+      "claim": "The claim was live on the deployed page, not only in source",
+      "query": "Rendered https://verify.plotdetect.com.au/assessment in a browser; page header read 'Site Controls / Every control cited to its clause and page - live NSW planning data'",
+      "result": "confirmed live before the fix",
+      "measured": "2026-08-23"
+    }
+  ],
+  "not_covered": [
+    "app/for/students/page.tsx already said 'Every control cited to its clause' and was correct before this change — left untouched.",
+    "app/api/adg/separation-table/route.ts carries an internal code comment referring to 'PDF URL and page number'. It describes sepp_adg_requirements, a different table, and is not user-facing. Not verified and not changed.",
+    "No check was run on whether the 188 rows that DO carry a page render that page anywhere in the UI."
+  ]
+}
