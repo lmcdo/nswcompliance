@@ -1,16 +1,47 @@
 {
   "tier": "minor",
-  "justification": "Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft — the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim — it can only stop one. No logic, no data, no types touched: three JSX/string literals.",
+  "justification": "Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft - the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim - it can only stop one. No logic, no data, no types touched: three JSX string literals.",
   "commit_hash": "acb8f379",
   "files": [
     "frontend-nextjs/app/assessment/page.tsx",
     "frontend-nextjs/app/for/conveyancers/page.tsx",
     "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
   ],
-  "falsifiable_check": {
-    "command": "grep -rn \"clause and page\" frontend-nextjs/app frontend-nextjs/components frontend-nextjs/lib | grep -v node_modules; test $? -ne 0",
-    "fails_when": "Any user-facing surface re-introduces a page-level citation claim. Forced in both directions rather than assumed: with the three strings restored the grep returns 3 hits and the check exits non-zero; with the fix applied it returns none and exits zero. Verified before the fix (3 hits: assessment/page.tsx:184, for/conveyancers/page.tsx:87, widget-demo/[slug]/page.tsx:88) and after (0 hits).",
-    "not_guarded": "This is a manual grep, not a committed CI gate. Nothing in the test suite or CI currently fails if the phrase returns — the claim was re-introducible for the whole period between the 2026-08-23 doc correction and today, and would be again. A standing lint rule is the durable fix and is NOT in this change."
+  "break_it": [
+    {
+      "scenario": "Someone reads this change as 'the page data was fixed' and re-states a page-level citation claim somewhere else.",
+      "what_happens": "Nothing about the data changed. 748 of 936 served controls still carry no pdf_page, and effective_date_basis is still 0% filled. Only the promise moved. A later doc or deck saying 'cited to the page' would be exactly as false as the header was this morning.",
+      "mitigated": false,
+      "how": "NOT mitigated. This is a copy edit, not a data repair. The honest statement of the surface is: every served control carries its clause and its verbatim source sentence; roughly one in five also carries a page.",
+      "repro": "SELECT count(*), count(pdf_page) FROM dcp_setback_controls WHERE is_current AND (needs_review IS NULL OR needs_review=FALSE) AND lga <> 'nsw_statewide' AND lga <> 'inner_west'"
+    },
+    {
+      "scenario": "The phrase is re-introduced on a new surface, or restored on one of these three.",
+      "what_happens": "It ships. No test, lint or CI job fails on it. This claim already survived one documented correction: it was corrected in the GTM plan file on 2026-08-23 and the product kept serving it, because a plan file cannot fail a build.",
+      "mitigated": false,
+      "how": "NOT mitigated, and this is the real residual risk in this change. Per memory/feedback-incident-rule-machine.md a prose rule fails within hours and only a gated rule holds. A standing lint on the phrase is the durable fix and is deliberately NOT bundled here.",
+      "repro": "grep -rn 'clause and page' frontend-nextjs/app frontend-nextjs/components frontend-nextjs/lib | grep -v node_modules"
+    },
+    {
+      "scenario": "Removing 'and page' hides the page numbers on the 188 rows that legitimately have one.",
+      "what_happens": "It does not. Page rendering is conditional and independent of the header: ProvisionDisplay.tsx:232 renders the page span only when provision.pdfPage is truthy, so a page shows wherever one exists and nothing shows where it does not. The header was the only thing promising a page on every control.",
+      "mitigated": true,
+      "how": "Verified by reading the render path rather than assumed. The change aligns the header with behaviour the UI already had.",
+      "repro": "grep -rn 'pdfPage' frontend-nextjs/components/browse/ProvisionDisplay.tsx"
+    },
+    {
+      "scenario": "The two-line JSX text node in for/conveyancers/page.tsx breaks or reads wrong after the words are removed mid-sentence.",
+      "what_happens": "It renders as '...traced to the published clause it comes from - zoning and SEPP from the NSW Planning Portal...'. Grammatical, and the source list after the em-dash is unchanged.",
+      "mitigated": true,
+      "how": "JSX text node, line break preserved; tsc ran clean at 8 errors against a 677 baseline.",
+      "repro": "sed -n '84,92p' frontend-nextjs/app/for/conveyancers/page.tsx"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. No database access of any kind - three string literals. The database was read only to measure the claim (read-only session, set_session readonly), never written.",
+    "secrets": "No credentials read or written by this change. Noted separately and NOT addressed here: the live Supabase pooler password remains in git history across ~96 tracked files per memory/project-live-db-password-in-git-history-2026-08.md. That still needs rotation and is untouched by this commit.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes. After deploy, open https://verify.plotdetect.com.au/assessment and confirm the header sub-line reads 'Every control cited to its clause - live NSW planning data' with no page claim. The pre-fix string was confirmed live in a browser on 2026-08-23, so a source-only check is not sufficient - the deployed bundle is the authority, per the method used in ce-verified-capability-statement-2026-08.md section 3.1."
   },
   "measurements": [
     {
@@ -27,14 +58,14 @@
     },
     {
       "claim": "The claim was live on the deployed page, not only in source",
-      "query": "Rendered https://verify.plotdetect.com.au/assessment in a browser; page header read 'Site Controls / Every control cited to its clause and page - live NSW planning data'",
+      "query": "Rendered https://verify.plotdetect.com.au/assessment in a browser; header read 'Site Controls / Every control cited to its clause and page - live NSW planning data'",
       "result": "confirmed live before the fix",
       "measured": "2026-08-23"
     }
   ],
   "not_covered": [
-    "app/for/students/page.tsx already said 'Every control cited to its clause' and was correct before this change — left untouched.",
+    "app/for/students/page.tsx already said 'Every control cited to its clause' and was correct before this change - left untouched.",
     "app/api/adg/separation-table/route.ts carries an internal code comment referring to 'PDF URL and page number'. It describes sepp_adg_requirements, a different table, and is not user-facing. Not verified and not changed.",
-    "No check was run on whether the 188 rows that DO carry a page render that page anywhere in the UI."
+    "No standing lint or CI check was added. The phrase can return without failing anything."
   ]
 }
