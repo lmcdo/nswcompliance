@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: second pass on the same class of bug as commit 50d0157e — source-control visibility and bootstrap-documentation accuracy, not production data or a served route. A silently-shadowed migration or fix script absent from a fresh clone is an operational gap, not a data-corruption risk, so Minor would understate it and Critical overstates it.",
-  "commit_hash": "run: git rev-parse --short HEAD",
+  "commit_hash": "302ac3ab",
   "deferred_out_of_this_commit": {
     "why": "11 of the ~81 files this gitignore fix makes trackable also trip scripts/lint_hardcoded_zone_codes.py (DQ-30's guard against hardcoded NSW zone-code lists). Some read as legitimate (a Feb-2026 diagnostic verifying known DCP-documented zone values against DB state; heritage marker prefixes C1/C2/O1 that happen to collide with real zone-code shapes) and some read as genuine drift risk (migrations/create_housing_sepp_standards.py alone accounts for 36 of the 69 flags). Adjudicating each site and either adding a justified `# noqa: zone-codes` or wiring it to shared/zone-taxonomy.json is a real, separate review this reproducibility fix should not rush through or silently waive. Left untracked; still absent from a fresh clone.",
     "files": ["migrations/create_housing_sepp_standards.py", "scripts/enrichment/enrich_marrickville_zone_tagging.py", "scripts/enrichment/fix_marrickville_zones.py", "scripts/fixes/DQ11_heritage_categorization.py", "scripts/fixes/DQ11_heritage_categorization_all.py", "scripts/fixes/DQ13_leichhardt_fixes.py", "scripts/fixes/ashfield_chapter_f_zones.py", "scripts/fixes/reextract_marrickville_heritage.py", "scripts/fixes/tag_heritage_deterministic.py", "scripts/fixes/tag_heritage_type_supabase.py", "scripts/verification/test_marrickville_zone_filtering.py"]
@@ -23,8 +23,6 @@
     "scripts/definitions/verify.py",
     "scripts/diagnostics/check_roof_provision_text.py",
     "scripts/diagnostics/check_roof_sql.sql",
-    "scripts/enrichment/enrich_marrickville_zone_tagging.py",
-    "scripts/enrichment/fix_marrickville_zones.py",
     "scripts/enrichment/link_ashfield_hca_provisions.py",
     "scripts/enrichment/link_marrickville_hca_provisions.py",
     "scripts/enrichment/llm_enrich_devtype_heritage.py",
@@ -40,7 +38,6 @@
     "scripts/procedural/import_procedural.py",
     "scripts/sql/dcp_version_management.sql",
     "scripts/verification/check_heritage_duplication.py",
-    "scripts/verification/test_marrickville_zone_filtering.py",
     "scripts/verification/verify_hca_code_resolution.py",
     "docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md"
   ],
