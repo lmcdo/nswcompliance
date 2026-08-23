@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Closes the gap #993 shipped with: its behavioural tests were PYTEST_REAL_DB opt-in and never ran in CI, so a change keeping the CTE but breaking the rule would have passed on a shape assertion alone. Also rebinds those tests to the served SQL, which they previously only held a copy of. No production behaviour changes — this is coverage — but the thing being covered decides which planning controls a property is served, so a false green here is expensive.",
-  "commit_hash": "233cffee",
+  "commit_hash": "e7e49ca3",
   "files": [
     "tests/test_precinct_ancestor_resolution.py",
     ".github/workflows/gates.yml"
