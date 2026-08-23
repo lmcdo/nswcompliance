@@ -1,7 +1,7 @@
 {
   "tier": "minor",
-  "justification": "Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft - the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim - it can only stop one. No logic, no data, no types touched: three JSX string literals.",
-  "commit_hash": "b560177e",
+  "justification": "Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft - the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim - it can only stop one. No logic, no data, no types touched: three JSX string literals. SECOND CHANGE on this branch: the pre-push liability scan flagged both sentences this branch had just edited, and it was correct. Each claimed every control/figure is traced to a published CLAUSE while listing sources that have none - Spatial Services NSW mapping, council flood studies, the RFS bushfire layer. The 936/936 section_ref measurement covers dcp_setback_controls only and says nothing about mapping results, so the claim was broader than the evidence. Both sentences now split the two: a planning control carries its clause, a mapping result names its dataset. Same direction of travel - narrowing a claim to the subset that was measured.",
+  "commit_hash": "13a6a68a",
   "files": [
     "frontend-nextjs/app/assessment/page.tsx",
     "frontend-nextjs/app/for/conveyancers/page.tsx",
@@ -35,6 +35,13 @@
       "mitigated": true,
       "how": "JSX text node, line break preserved; tsc ran clean at 8 errors against a 677 baseline.",
       "repro": "sed -n '84,92p' frontend-nextjs/app/for/conveyancers/page.tsx"
+    },
+    {
+      "scenario": "A conveyancing report or widget result includes a flood, bushfire or hazard figure that came from mapping, not from a planning instrument.",
+      "what_happens": "Before this branch's second commit both surfaces told the reader that figure was 'traced to the published clause it comes from'. No such clause exists for a Spatial Services mapping result or an RFS bushfire layer, so the sentence overstated provenance to a conveyancer - the reader least equipped to catch it and the one whose reliance carries liability.",
+      "mitigated": true,
+      "how": "Both sentences now distinguish the two provenance kinds explicitly: a planning control carries the clause it was read from, a mapping result names its dataset. This was found by the repo's own pre-push liability scan rather than by review, and the scan's two findings were accepted rather than annotated away.",
+      "repro": "git show 13a6a68a --stat && grep -n 'names where it came from' frontend-nextjs/app/for/conveyancers/page.tsx"
     }
   ],
   "post_merge": {
@@ -66,6 +73,7 @@
   "not_covered": [
     "app/for/students/page.tsx already said 'Every control cited to its clause' and was correct before this change - left untouched.",
     "app/api/adg/separation-table/route.ts carries an internal code comment referring to 'PDF URL and page number'. It describes sepp_adg_requirements, a different table, and is not user-facing. Not verified and not changed.",
-    "No standing lint or CI check was added. The phrase can return without failing anything."
+    "No standing lint or CI check was added. The phrase can return without failing anything.",
+    "The clause-fill measurement (936/936 section_ref) covers dcp_setback_controls only. No equivalent provenance-fill measurement was run for zoning, SEPP, flood, bushfire or hazard mapping results - the copy now claims only that those name a dataset, which is weaker and was not separately verified per-field."
   ]
 }
