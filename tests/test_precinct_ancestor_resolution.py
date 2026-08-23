@@ -192,44 +192,62 @@ def test_underscore_ids_are_not_treated_as_wildcards(conn):
     )
 
 
-def test_nearest_ancestor_ordering_is_still_unobservable(conn):
-    """A canary, not a check — and it is here because the check is impossible.
+def test_the_nearest_ancestor_wins_over_a_further_one(conn):
+    """`ORDER BY length(a.k) DESC` — pinned, not assumed.
 
-    `ORDER BY length(a.k) DESC` in the resolution picks the NEAREST provisioned
-    ancestor. Mutating it to ASC changes nothing today: measured 2026-08-23,
-    every inheriting polygon in every council has exactly ONE provisioned
-    ancestor, so both orderings select the same key. The mutation survives, and
-    saying "covered" would be a lie.
+    This was recorded as untestable, on the grounds that every inheriting
+    POLYGON has exactly one provisioned ancestor. That was true and irrelevant:
+    the resolution takes the requested id as a parameter, so the test can ask
+    about any id it likes, and only needs two real KEYS in an ancestor chain.
 
-    So this asserts the PRECONDITION instead. The day a polygon gains a second
-    provisioned ancestor, the ordering starts deciding real output and this
-    fails — telling whoever is here that it has become testable and must be
-    pinned properly, rather than leaving a silent gap that nobody revisits.
+    City of Sydney has fifteen such pairs. '2.13.11' and '2.13' are both live
+    keys, so asking about a child of 2.13.11 separates the two rules: nearest
+    gives 2.13.11, furthest gives 2.13. The id itself need not exist — nothing
+    is written, and no polygon is invented.
     """
-    cur = conn.cursor()
-    cur.execute("SET statement_timeout='30s'")
-    cur.execute("""
-        WITH poly AS (
-          SELECT b.precinct_id,
-                 lower(coalesce(b.former_council, replace(b.lga, '-', '_'))) AS council
-          FROM dcp_precinct_boundaries b
-        ),
-        keys AS (
-          SELECT DISTINCT lower(source_council) AS council, v2_precinct_id AS k
-          FROM regulatory_provisions
-          WHERE is_current AND v2_is_actionable AND v2_precinct_id IS NOT NULL
-        )
-        SELECT p.precinct_id, string_agg(k.k, ', ' ORDER BY length(k.k) DESC)
-        FROM poly p
-        JOIN keys k ON k.council = p.council
-                   AND left(p.precinct_id, length(k.k) + 1) = k.k || '.'
-        GROUP BY p.precinct_id
-        HAVING count(*) > 1
-    """)
-    multi = cur.fetchall()
-    assert multi == [], (
-        "A polygon now has more than one provisioned ancestor, so nearest-vs-"
-        "furthest decides which controls are served and is no longer untestable:\n  "
-        + "\n  ".join(f"{pid} -> {anc}" for pid, anc in multi)
-        + "\nAdd a case pinning that the NEAREST is chosen, then delete this canary."
+    out = resolve(conn, ["2.13.11.99"], "city_of_sydney")
+    assert out == {"2.13.11"}, (
+        "the NEAREST provisioned ancestor must win. Resolving to 2.13 would "
+        "serve a whole village centre's controls to one sub-precinct."
+    )
+
+
+def test_a_non_actionable_key_is_never_inherited(conn):
+    """The v2_is_actionable half of the availability filter, on real data.
+
+    Parramatta's '8.4.1' — Special Character Areas, Sylvia Gardens — is a real
+    polygon in dcp_precinct_boundaries whose only provision row is
+    is_current=TRUE but v2_is_actionable=FALSE. So it is excluded by the
+    ACTIONABLE half specifically, and this test is named for that: an earlier
+    version called it "superseded", which was simply wrong about which filter
+    it was exercising.
+
+    Drop v2_is_actionable from the lookup and 8.4.1 becomes available, so a
+    property in Sylvia Gardens is served a non-actionable row that reads exactly
+    like a control.
+    """
+    out = resolve(conn, ["8.4.1"], "parramatta")
+    assert "8.4.1" not in out, (
+        "8.4.1 has no actionable provisions — resolving to it means the "
+        "availability lookup has lost its v2_is_actionable filter"
+    )
+
+
+def test_a_superseded_key_is_never_inherited(conn):
+    """The is_current half, which needed a different case entirely.
+
+    Ashfield's 'Ashfield East' is actionable but NOT current — superseded text
+    that still parses as a control. Asking about a child of it separates the two
+    behaviours: with the currency filter the key is unavailable and nothing is
+    inherited; without it, superseded controls are served and look current.
+
+    The child id is synthetic. It does not need to exist — the resolution takes
+    the requested id as a parameter, which is the same reframing that made the
+    nearest-ancestor ordering testable after it had been written off.
+    """
+    out = resolve(conn, ["Ashfield East.99"], "ashfield")
+    assert "Ashfield East" not in out, (
+        "'Ashfield East' is not current — resolving to it means the "
+        "availability lookup has lost its is_current filter and superseded "
+        "text is being served as live"
     )

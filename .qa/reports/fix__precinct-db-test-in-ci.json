@@ -9,12 +9,12 @@
   "falsifiable_check": {
     "command": "DATABASE_URL=... PYTEST_REAL_DB=1 python -m pytest tests/test_precinct_ancestor_resolution.py -q -o addopts=",
     "fails_when": "The suite now reads the resolution SQL OUT of frontend-nextjs/lib/precinct-service.ts and executes it, so it fails if the served query is removed, renamed or restructured (extraction raises with a message saying so), and if the rule itself is broken. Mutating the served source to drop the exact-match preference fails a test; reintroducing LIKE for the ancestor match fails the underscore test. It also fails if any of Ashfield 'Part 1', Marrickville '47_', Leichhardt 'G6' or Sydney '2.5.8' stops resolving to itself, which is how loss of containment would announce itself.",
-    "observed_red": "Four mutations applied to the SERVED source and measured, not reasoned about. Reintroducing LIKE: caught. Removing the exact-match preference: caught. Two were NOT caught, and both are recorded rather than hidden. Dropping is_current from the availability CTE passes, because no superseded key exists today that a live polygon would inherit. Reversing the nearest-ancestor ordering passes, because — measured — every inheriting polygon in every council has exactly ONE provisioned ancestor, so DESC and ASC select the same key. A first attempt at the harness ALSO masked the ordering mutation by re-deriving the mapping with its own ORDER BY length DESC; that was found by running the mutation, and the harness now reads precinct_keys directly.",
+    "observed_red": "Five mutations applied to the SERVED source and measured. All five are caught: nearest-ancestor ordering reversed, is_current dropped, v2_is_actionable dropped, LIKE reintroduced for the ancestor match, and the exact-match preference removed. Baseline 11 passed, restored clean after each. Two of those five were written up as UNTESTABLE in the first version of this report and were not: see assumption_mismatch. A first attempt at the harness also masked the ordering mutation by re-deriving the mapping with its own ORDER BY length DESC; that was found by running the mutation, and the harness now reads precinct_keys directly.",
     "external_authority": "Not self-referential in either direction that matters. The SQL under test is read from the file the application serves, not copied into the test, so the test cannot pass against source it does not exercise. The data is the production database. The CI wiring is verified by running the exact command CI runs, with DATABASE_URL set and every PG* variable stripped from the environment so the local .env fallback could not silently rescue a broken path."
   },
   "pre_impl": {
     "existing_data": "gates.yml already has a job with live database access: schema-contract runs four steps under secrets.DATABASE_URL (validate_schema_contract, validate_controls_provenance, validate_control_source_values, check_served_answer_quality). The credential and the pattern both existed; #993 simply did not use them. tests/conftest_mocks.py stubs psycopg2 unless PYTEST_REAL_DB=1, which is why the python-tests job cannot run database tests and why they were deselected.",
-    "assumption_mismatch": "Two, and both were mine. I recorded 'making DB tests run in CI is separate work' in #993 without checking — the job, the secret and three precedents were already there, and the wiring is ten lines. Separately, I described the test's SQL as 'kept verbatim rather than paraphrased', which is true and beside the point: a verbatim COPY still passes when the served query changes underneath it. That is the same self-referential trap that let an earlier mutation through in this work, appearing a second time in a different disguise.",
+    "assumption_mismatch": "Four, all mine. (1) I recorded 'making DB tests run in CI is separate work' in #993 without checking — the job, the secret and three precedents already existed and the wiring is ten lines. (2) I described the test's SQL as 'kept verbatim rather than paraphrased', which is true and beside the point: a verbatim COPY passes whatever the source does. (3) I wrote off the nearest-ancestor ordering as untestable because every inheriting POLYGON has exactly one provisioned ancestor. True, and irrelevant — the resolution takes the requested id as a PARAMETER, so the test can ask about any id and needs only two real KEYS in an ancestor chain. City of Sydney has fifteen such pairs. (4) I wrote off the currency filter the same way, then found '8.4.1' and 'Ashfield East' — and discovered on measuring that 8.4.1 is excluded by v2_is_actionable, not is_current, so the test I had written was pinning a different filter from the one its name claimed. Both halves are now pinned separately.",
     "new_vs_existing": "One CI step in the existing schema-contract job, reusing its existing secret. No new job, no new workflow, no new secret, no new dependency. The test file gains an extraction function and a DATABASE_URL branch; the assertions it already had are unchanged in intent."
   },
   "functions": [
@@ -53,22 +53,24 @@
     },
     {
       "scenario": "The nearest-ancestor ordering is reversed.",
-      "what_happens": "NOT CAUGHT, and it cannot be with today's data. Measured 2026-08-23: every inheriting polygon in every council has exactly one provisioned ancestor, so DESC and ASC choose the same key. The ORDER BY is defensive against a data shape that does not yet exist.",
-      "mitigated": false,
-      "repro": "Change DESC to ASC in precinct-service.ts and run the suite: 9 passed. The canary test explains why."
-    },
-    {
-      "scenario": "That precondition changes and nobody notices the ordering has become load-bearing.",
-      "what_happens": "The moment a polygon gains a second provisioned ancestor, nearest-vs-furthest starts deciding which controls are served — and the gap above would sit unexamined because it was written down once and forgotten.",
+      "what_happens": "A sub-precinct would take a broader statement than the one that governs it — City of Sydney 2.13.11.99 resolving to 2.13 serves a whole village centre's controls to one sub-precinct. Recorded as uncatchable in the first version of this report, on the grounds that no polygon has two provisioned ancestors. That was the wrong question.",
       "mitigated": true,
-      "how": "test_nearest_ancestor_ordering_is_still_unobservable asserts the precondition and fails with the offending polygons named and an instruction to pin the ordering properly and delete the canary.",
-      "repro": "PYTEST_REAL_DB=1 pytest tests/test_precinct_ancestor_resolution.py -k unobservable"
+      "repro": "Change DESC to ASC in precinct-service.ts and run the suite: the ordering test fails.",
+      "how": "test_the_nearest_ancestor_wins_over_a_further_one asks about a child of City of Sydney's 2.13.11, where 2.13.11 and 2.13 are both live keys, so nearest and furthest give different answers. Reversing the ORDER BY fails it. No writes, no synthetic data in the database — only a synthetic question."
     },
     {
-      "scenario": "The availability lookup loses its currency filter.",
-      "what_happens": "NOT CAUGHT. A superseded precinct key could be inherited, and no test data distinguishes it because no such key exists for a polygon that would inherit one. The jest tripwire in #993 asserts is_current appears in the CTE text, which is shape evidence, not behaviour.",
-      "mitigated": false,
-      "repro": "Replace `AND is_current` with `AND true` in the avail CTE: 9 passed."
+      "scenario": "The ordering guard is left as a canary rather than an actual test.",
+      "what_happens": "The first version shipped a canary asserting that no polygon has two provisioned ancestors, on the reasoning that the ordering could not be tested. A canary is a note to a future reader; it does not stop the rule being broken today.",
+      "mitigated": true,
+      "how": "The canary was deleted and replaced by a test that pins the ordering directly.",
+      "repro": "grep -c unobservable tests/test_precinct_ancestor_resolution.py  # 0"
+    },
+    {
+      "scenario": "The availability lookup loses either half of its currency/actionability filter.",
+      "what_happens": "Superseded or non-actionable text becomes inheritable and is served looking exactly like a current control. Also written off as uncatchable in the first version of this report; two real cases exist. Parramatta's 8.4.1 (Sylvia Gardens) is a live polygon whose only row is current but NOT actionable, and Ashfield's 'Ashfield East' is actionable but NOT current — so the two halves need different cases, which is how the first attempt came to be pinning v2_is_actionable while claiming to pin is_current.",
+      "mitigated": true,
+      "repro": "Replace either filter with `AND true` in the avail CTE and run the suite.",
+      "how": "Two separate tests, one per half, each named for the filter it actually exercises. Dropping is_current fails one; dropping v2_is_actionable fails the other."
     },
     {
       "scenario": "The CI step runs but silently uses the developer's .env instead of the CI secret.",
@@ -89,6 +91,6 @@
     "db_reset": "None. The test opens a read-only, autocommit connection and issues SELECTs only.",
     "secrets": "None added. It reuses secrets.DATABASE_URL, already consumed by four steps in the same job.",
     "other_repo": "None. Single repo. CI gains one step in an existing job; PR runtime grows by under a second.",
-    "manual_verify": "On the first run of this PR, confirm the schema-contract job shows 'Precinct ancestor-key resolution (behaviour, not shape)' with 9 passed. If it reports 9 deselected, PYTEST_REAL_DB did not reach pytest and the step is decorative — which is the exact failure mode this PR exists to remove."
+    "manual_verify": "On this PR's run, confirm the schema-contract job shows 'Precinct ancestor-key resolution (behaviour, not shape)' with 11 passed. If it reports 11 deselected, PYTEST_REAL_DB did not reach pytest and the step is decorative — the exact failure mode this PR exists to remove."
   }
 }
