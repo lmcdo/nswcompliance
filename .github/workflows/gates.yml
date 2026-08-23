@@ -615,6 +615,17 @@ jobs:
             "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_get_audit_closes_the_real_connection_even_on_a_genuine_query_error" \
             "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_drawdown_verify_audits_exists_with_the_expected_schema" \
             "tests/test_drawdown_verify_real_db.py::TestRealHttpLayer::test_real_http_request_on_audit_failure_returns_a_real_500_with_the_exact_expected_body"
+      # Behavioural cover for the precinct ancestor-key resolution (#993). It
+      # lives here because this is the job with live DB access, and because the
+      # alternative was leaving it PYTEST_REAL_DB-only: a change that kept the
+      # CTE but broke the rule would have passed CI on a shape assertion alone.
+      # The test EXTRACTS the SQL from precinct-service.ts rather than holding a
+      # copy, so it fails if the served query is altered or removed.
+      - name: Precinct ancestor-key resolution (behaviour, not shape)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTEST_REAL_DB: '1'
+        run: python -m pytest tests/test_precinct_ancestor_resolution.py -q -o addopts="" --tb=short
 
   # Closes the gap the schema-contract job's own comments above name: the
   # WRITE path (a real INSERT succeeding end-to-end through the real
