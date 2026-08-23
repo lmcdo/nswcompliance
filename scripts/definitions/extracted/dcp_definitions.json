@@ -1,0 +1,2747 @@
+[
+  {
+    "term": "Australian Rainfall & Runoff (AR&R)",
+    "term_normalized": "australian rainfall & runoff (ar&r)",
+    "definition_text": "a technical publication from the Institution of Engineers Australia providing guidance on current drainage design practice.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Average Recurrence Interval (ARI)",
+    "term_normalized": "average recurrence interval (ari)",
+    "definition_text": "a statistical likelihood of a storm event of at least a designated average rainfall intensity occurring. The probability is a long term average, and not a period between events (e.g. 10 years ARI indicates 10 events over 100 years).",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Boundary Adjustment",
+    "term_normalized": "boundary adjustment",
+    "definition_text": "the realignment of an existing Torrens lot boundary. While not creating an additional number of lots, it is considered subdivision for the purposes of assessment where a development application is required.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "setback"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Building Envelope Depth",
+    "term_normalized": "building envelope depth",
+    "definition_text": "the horizontal cross-section dimension of a building which generally includes the articulation zone (balconies, bay windows, shading devices, roof elements) measured from the outside extremity of any applicable element on one side of a building to the outside extremity of any applicable element on the other side of the building. In the commercial centres it is generally measured from street front to the back. Where buildings or parts of buildings are oriented differently, the depth will be measured on that orientation. Where buildings or parts of building are a tower type, with windows on multiple sides, the building envelope depth will be measured on the shorter axis.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Build To Line (BTL)",
+    "term_normalized": "build to line (btl)",
+    "definition_text": "a vertical plane at the street frontage of a property where a building can be constructed to. BTL controls are described as a percentage of the building street frontage that is constructed to this vertical plane, apart from private open space and windows located behind street frontage framing walls. For example a 100% BTL requires the building to be completely built to the street frontage vertical plane. An 80% BTL requires 80% of the building to be built to the street frontage vertical plane (e.g. 4 out of 5 levels or 2 bays 8m wide between a 4m recessed panel). A 50% BTL requires half of the building to be built to the street frontage vertical plane (e.g. In the case of a two-storey building, the ground floor could be built to the street alignment and the upper level set back from the street).",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "setback",
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Communal Open Space",
+    "term_normalized": "communal open space",
+    "definition_text": "usable community open space for the recreation and relaxation of residents which is under the control of a body corporate.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Development Application (DA)",
+    "term_normalized": "development application (da)",
+    "definition_text": "an application made under the Environmental Planning and Assessment Act 1979 for consent or permission to carry out development.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Engineer",
+    "term_normalized": "engineer",
+    "definition_text": "a qualified civil or hydraulic engineer who is listed under the Institution of Engineers, Australia “National Professional Engineers Register” (NPER).",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Hydrology & Hydraulic hydrology",
+    "term_normalized": "hydrology & hydraulic hydrology",
+    "definition_text": "the estimation of the runoff and flow rates of rainfall once on the ground. The term hydraulic refers to calculating the capacity or characteristics of flow control devices and conduits (pipes).",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Internal Plan Depth",
+    "term_normalized": "internal plan depth",
+    "definition_text": "the horizontal cross-section dimension of a building or part of a building measured from the glass line on one side of a building to the glass line on the other side of a building. In the commercial centres it is generally measured from street front to the back. Where buildings or parts of buildings are oriented differently, the depth will be measured on that orientation. Where buildings or parts of building are a tower type, with windows on multiple sides, the internal plan depth will be measured on the shorter axis.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Landscaped Area",
+    "term_normalized": "landscaped area",
+    "definition_text": "a part of a site used for growing plants, grasses and trees, but does not include any building, structure or hard paved area.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building",
+      "landscaping"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "On-site Detention (OSD)",
+    "term_normalized": "on-site detention (osd)",
+    "definition_text": "restricting the outflow of stormwater runoff from a site by draining collected surface flows from paved and roof areas through a storage detention system with an outflow control device.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Period Building",
+    "term_normalized": "period building",
+    "definition_text": "not a contemporary building and is a building which represents a historical period which is either substantially intact or with reversible alterations.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "heritage",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Principal Living Area",
+    "term_normalized": "principal living area",
+    "definition_text": "rooms with a high use including a lounge room, living room, dining room, kitchen, but not including bedrooms and non-habitable rooms such as laundries and bathrooms.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Principal Open Space Area",
+    "term_normalized": "principal open space area",
+    "definition_text": "that potion of level open space utilised by, or most likely to be utilised by, occupants for rest and recreation. NB For the assessment of overshadowing impacts, if this area is not readily identifiable, an area adjacent to the dwelling with a minimum width of 3 metres, will be used for assessment purposes.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Probable Maximum Flood (PMF)",
+    "term_normalized": "probable maximum flood (pmf)",
+    "definition_text": "calculated to be the maximum flood likely to occur.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Stormwater Drainage Concept Plan (SDCP)",
+    "term_normalized": "stormwater drainage concept plan (sdcp)",
+    "definition_text": "a site plan of a development demonstrating the feasibility of the proposed drainage systems within the site and connection to Council's system. The plan must include existing and proposed ground and floor levels, show surface flow path treatment, any easements required, on-site detention storages as well as details and sizes of internal piped systems. All levels shown on the plan must be to Australian Height Datum (AHD).",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "stormwater",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Streetscape",
+    "term_normalized": "streetscape",
+    "definition_text": "street attributes being the combination of elements within a street which create the urban form of that street. It includes building forms and styles, landscaping, street furniture, street trees, pavements and fencing; and properties adjoining and adjacent on either side of the subject site, fronting the same street, and the corresponding range of properties opposite. In most instances it is appropriate to consider up to ten allotments on either side of the subject site. In effect, properties located in the immediate vicinity of the subject site form part of the streetscape context.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building",
+      "landscaping"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Tree",
+    "term_normalized": "tree",
+    "definition_text": "a perennial plant not less than 1 metre high with at least one self-supporting woody stem which is a plant of a species, variety or cultivar, any of the members of which, if permitted to grow to maturity, would generally have a height in excess of 3 metres.",
+    "source_document": "Marrickville DCP 2011",
+    "source_clause": "Part 10.0 Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Marrickville",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Marrickville DCP 2011 - 10.0 Definitions\\Marrickville DCP 2011 - 10.0 Definitions_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Activity application",
+    "term_normalized": "activity application",
+    "definition_text": "an application made under section 68 of the Local Government Act 1993 for an activity listed in the ‘table’ in S68.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Amenity",
+    "term_normalized": "amenity",
+    "definition_text": "the enjoyment of the environment whether by the community or an individual arising from the day to day use of property including dwellings or publicly accessible land, community facilities or open space and includes, but is not limited to, the enjoyment of:",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "accessibility"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Aquifer",
+    "term_normalized": "aquifer",
+    "definition_text": "a groundwater system that can yield useful volumes of groundwater. This also implies that the water is of good enough quality to be used for purposes such as irrigating crops or for town or stock drinking water. Aquifers are not underground rivers or streams. (Refer NSW Office of Water)",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Australian Height Datum",
+    "term_normalized": "australian height datum",
+    "definition_text": "the level from which heights in Australia are measured and which is based on mean sea level having a value of 0.000m.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Australian qualification framework (AQF)",
+    "term_normalized": "australian qualification framework (aqf)",
+    "definition_text": "a quality assured national framework for education and training. This system provides nationally recognised and endorsed qualifications through a competency based training system.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Average recurrence interval (ARI)",
+    "term_normalized": "average recurrence interval (ari)",
+    "definition_text": "the long-term number of years between the occurrence of a flood or storm event that is equal to or larger than the selected event.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Catchment",
+    "term_normalized": "catchment",
+    "definition_text": "an area of land from which all runoff water flows to the same low point in a waterbody or drainage depression (creek, river, harbour, etc)",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Classified road",
+    "term_normalized": "classified road",
+    "definition_text": "any of the following:",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Compatibility",
+    "term_normalized": "compatibility",
+    "definition_text": "capable of existing together in harmony and is different from sameness.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Compost",
+    "term_normalized": "compost",
+    "definition_text": "vegetative material capable of being converted to humus by a biological decay process.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Contaminated land",
+    "term_normalized": "contaminated land",
+    "definition_text": "land in, on or under which any substance is present at a concentration above the concentration at which the substance is normally present in, on or under (respectively) land in the same locality, being a presence that presents a risk of harm to human health or any other aspect of the environment. (As defined in s145A Environmental Planning and Assessment Act 1979)",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Contributory item",
+    "term_normalized": "contributory item",
+    "definition_text": "a building in a Conservation Area that is not individually listed as a heritage item but by virtue of age, scale, materials, details, design style or intactness is consistent with the conservation area, and therefore reinforces its heritage significance. (As defined in Helou v Strathfield Municipal Council [2006] NSW LEC 66).",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "heritage",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Cultural significance",
+    "term_normalized": "cultural significance",
+    "definition_text": "aesthetic, historic, scientific, social or spiritual value for past, present or future generations. (As defined in the Burra Charter - The Australia ICOMOS Charter for Places of Cultural Significance).",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Daylight",
+    "term_normalized": "daylight",
+    "definition_text": "the diffused natural light of the day.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Dead tree",
+    "term_normalized": "dead tree",
+    "definition_text": "a tree with no remaining living foliage or vascular tissue that is incapable of photosynthesis.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Drainage easement",
+    "term_normalized": "drainage easement",
+    "definition_text": "a restriction on a parcel of land that benefits another parcel of land and gives it the legal rights to use part or all of the land for the purpose of draining water.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Dying tree",
+    "term_normalized": "dying tree",
+    "definition_text": "a Tree showing signs of significant, immediate and irreversible overall decline.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Encroachment",
+    "term_normalized": "encroachment",
+    "definition_text": "encroachment by overhang of any part as well as encroachment by intrusion of any part in or upon the land.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood certificate",
+    "term_normalized": "flood certificate",
+    "definition_text": "a certificate obtained from Council which provides flooding information for the area in the vicinity of a particular property including peak water levels, depths and flow rates for the 100 year ARI and peak water levels for the Probable Maximum Flood event.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood control lot",
+    "term_normalized": "flood control lot",
+    "definition_text": "a lot identified as a flood control lot on the maps in Appendix E of this Development Control Plan (DCP). Also referred to as: Flood Hazard Area as defined in the Building Code of Australia (BCA) Note: All flood control lots are also within flood hazard areas as defined by the BCA.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Floodplain",
+    "term_normalized": "floodplain",
+    "definition_text": "an area of land which is subject to inundation by floods up to and including the probable maximum flood event, that is, flood prone land.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood planning level",
+    "term_normalized": "flood planning level",
+    "definition_text": "the level of 1:100 ARI (average recurrent interval) flood event plus 0.5 metre freeboard. Also referred to as: Flood Hazard Level as defined in the Building Code of Australia.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood proofing",
+    "term_normalized": "flood proofing",
+    "definition_text": "a combination of measures incorporated in the design, construction and alteration of individual buildings or structures subject to flooding, to reduce or eliminate flood damage.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood risk",
+    "term_normalized": "flood risk",
+    "definition_text": "the potential danger to personal safety and potential damage to property resulting from flooding.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood risk management report",
+    "term_normalized": "flood risk management report",
+    "definition_text": "a report detailing the flood risks associated with a particular property or area, along with recommendations on measures to address those risks.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood storage areas",
+    "term_normalized": "flood storage areas",
+    "definition_text": "those parts of the floodplain that are important for the temporary storage of floodwaters during the passage of the flood. The loss of flood storage can increase the severity of flood impacts by reducing natural flood attenuation.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood study",
+    "term_normalized": "flood study",
+    "definition_text": "an analysis of local stormwater drainage catchment to determine the flood characteristics affecting a particular property or area.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood",
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Floodway area",
+    "term_normalized": "floodway area",
+    "definition_text": "those areas of the floodplain where a significant flow of water occurs during floods and they are often aligned with naturally defined channels. Floodways are areas that even if only partially blocked, would cause a significant redistribution of flood flow, or a significant increase in levels.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Foreshore planning level",
+    "term_normalized": "foreshore planning level",
+    "definition_text": "a combination of the tidal and wave levels generated during the designated storm event with a freeboard applied above.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Foreshore risk",
+    "term_normalized": "foreshore risk",
+    "definition_text": "the potential danger to personal safety and potential damage to property resulting from tidal levels and wave impacts.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Foreshore risk management report",
+    "term_normalized": "foreshore risk management report",
+    "definition_text": "a report detailing the foreshore risks associated with a particular property or area, along with recommendations on measures to address those risks.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Foreshore risk study",
+    "term_normalized": "foreshore risk study",
+    "definition_text": "an analysis of the tidal and wave characteristics of a water body such as Sydney Harbour to establish how they impact on a particular property or area.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Freeboard",
+    "term_normalized": "freeboard",
+    "definition_text": "a factor of safety typically used in relation to the setting of floor levels and is included in the Flood Planning levels and Estuarine Planning levels. Freeboard tends to compensate for factors such as wave action localised hydraulic effects, ‘greenhouse’ and climatic change, as well as sensitivity of flood modelling data.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Greywater",
+    "term_normalized": "greywater",
+    "definition_text": "waste water that does not contain human excreta, such as water from the laundry or from the bathroom (but not toilet).",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Gross pollutants",
+    "term_normalized": "gross pollutants",
+    "definition_text": "materials made up of litter and debris that is transported by urban runoff and that is not less than 5mm in diameter and/or is retained by a 5mm mesh screen.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Gross pollutant trap",
+    "term_normalized": "gross pollutant trap",
+    "definition_text": "a structure that acts as a water pollution control measure by intercepting and retaining gross pollutants",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Hazard",
+    "term_normalized": "hazard",
+    "definition_text": "a source of potential harm or a situation with a potential to cause loss. In relation to this Development Control Plan (DCP) the hazards are flooding, inundation or wave impacts which all have the potential to cause damage to the community.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Hazardous waste",
+    "term_normalized": "hazardous waste",
+    "definition_text": "any waste that:",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "High Hazard Category",
+    "term_normalized": "high hazard category",
+    "definition_text": "a hazard where there is potential danger to personal safety; evacuation by trucks is difficult; able-bodied adults would have difficulty in wading to safety; and there is potential for significant structural damage to buildings.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Hydraulics",
+    "term_normalized": "hydraulics",
+    "definition_text": "the term given to the study of water flow in stormwater drainage systems and waterways. In particular, it relates to the evaluation of flow parameters such as water level and velocity.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Hydrology",
+    "term_normalized": "hydrology",
+    "definition_text": "the term given to the study of the rainfall and runoff process. In particular, it relates to the evaluation of peak flows, flow volumes and the derivation of hydrographs for a range of floods.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood",
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Impermeable surfaces",
+    "term_normalized": "impermeable surfaces",
+    "definition_text": "those surfaces that are not readily penetrable by water.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Integrated water cycle plan",
+    "term_normalized": "integrated water cycle plan",
+    "definition_text": "a design, management and implementation plan for large-scale developments detailing the proposed stormwater management measures that are to be integrated into the development.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Inter allotment drainage",
+    "term_normalized": "inter allotment drainage",
+    "definition_text": "a private stormwater drainage system that carries stormwater from one property, or a number of properties, through other properties.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Invert",
+    "term_normalized": "invert",
+    "definition_text": "the lowest point of a channel or gutter, or the internal base of a pipe.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Landscape Significance",
+    "term_normalized": "landscape significance",
+    "definition_text": "a Tree that rates as 1, 2 or 3 when assessed against the criteria contained in the table in Appendix 5 of the Tree Management Technical Manual.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "landscaping"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Light well",
+    "term_normalized": "light well",
+    "definition_text": "unroofed space, bounded on all sides, which provides daylight to one or more storeys of a building and may provide ventilation.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Litter",
+    "term_normalized": "litter",
+    "definition_text": "all material of human origin that is capable of being mobilised by stormwater runoff.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Living areas",
+    "term_normalized": "living areas",
+    "definition_text": "living rooms, dining rooms and kitchens (excluding bedrooms, studies, bathrooms, laundries, parking facilities and the like).",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "parking"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Main living room",
+    "term_normalized": "main living room",
+    "definition_text": "a lounge room, family room, sitting room, TV room or rumpus room (but does not include kitchen or other utility rooms). The main living room within a dwelling is the main recreation area for the occupants. If the dwelling has more than one living room, preference shall be given to the room which is the main recreation area for the occupants by virtue of design, location and access to private open space.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Mechanical parking installations",
+    "term_normalized": "mechanical parking installations",
+    "definition_text": "mechanical car stackers, car lifts and turntables",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "parking"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Minor architectural details",
+    "term_normalized": "minor architectural details",
+    "definition_text": "and includes, but is not necessarily limited to eaves, brackets, window sills and frames, cornices, plinths, balustrades, signs and light fixtures but does not include a wall.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Minor encroachment",
+    "term_normalized": "minor encroachment",
+    "definition_text": "encroachment by a minor architectural detail and includes encroachment by overhang of any part as well as encroachment by intrusion of any part in or upon the land.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Natural water balance",
+    "term_normalized": "natural water balance",
+    "definition_text": "the relative balance between runoff, infiltration and evapotranspiration under natural (pre-development) conditions, so as to maintain appropriate groundwater, soil salinity and streamflow characteristics.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Nutrients",
+    "term_normalized": "nutrients",
+    "definition_text": "substances that provide nourishment to another organism. In the context of stormwater, they consist primarily of Total Phosphorous and Total Nitrogen.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "On site detention (OSD)",
+    "term_normalized": "on site detention (osd)",
+    "definition_text": "a facility used to temporarily store stormwater on site so that it can be released at a controlled discharge rate.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "On site retention (OSR)",
+    "term_normalized": "on site retention (osr)",
+    "definition_text": "a facility used to temporarily store stormwater on site so that peak and total volume discharges during and after storm events can be reduced by ensuring that water is reused on the site.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Orifice plate",
+    "term_normalized": "orifice plate",
+    "definition_text": "a thin sheet of stainless steel metal that has a hole with a set diameter to restrict the discharge of stormwater to a predetermined rate.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Overland flowpath",
+    "term_normalized": "overland flowpath",
+    "definition_text": "a section of land that carries stormwater or flood flows across the surface; usually those flows that cannot be contained in the piped drainage system.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood",
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Peak discharge",
+    "term_normalized": "peak discharge",
+    "definition_text": "the maximum discharge occurring during a flood or storm event.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Permissible site discharge (PSD)",
+    "term_normalized": "permissible site discharge (psd)",
+    "definition_text": "the maximum rate of stormwater discharge from a site, often controlled by the orifice plate in an on-site stormwater detention facility.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Pervious surface",
+    "term_normalized": "pervious surface",
+    "definition_text": "a surface that is penetrable by water.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Porous pavement",
+    "term_normalized": "porous pavement",
+    "definition_text": "a type of pavement that is designed to allow the infiltration of water to an underlying sub-base, thereby producing less surface runoff than conventional (non-porous) pavements. The permeability of porous pavement declines with time unless it is adequately maintained.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Probable maximum flood (PMF)",
+    "term_normalized": "probable maximum flood (pmf)",
+    "definition_text": "the largest flood that could conceivably occur at a particular location.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Public stormwater drainage system",
+    "term_normalized": "public stormwater drainage system",
+    "definition_text": "made up of minor and major drainage infrastructure; including kerb and gutter, dish gutters, pits and pipelines and open channels, with different components owned and managed by either Council or Sydney Water.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Public art",
+    "term_normalized": "public art",
+    "definition_text": "an artistic work that is located in or can be clearly seen from the public realm such as a street, park, urban plaza or public building. It may be temporary, freestanding or integrated into building exteriors and streetscapes and may take the form of unique functional objects such as a seat or gate but does not include architectural design, advertising signs or commercial branding and it may be temporary or ephemeral.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Rainwater Reuse",
+    "term_normalized": "rainwater reuse",
+    "definition_text": "the collection of water discharged from non-trafficable roof areas within a development site to use for purposes such as toilet flushing, laundry, garden irrigation and other household end uses.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Recognised Shopping Street",
+    "term_normalized": "recognised shopping street",
+    "definition_text": "are sections of: Norton and Marion Streets Leichhardt, Darling Street and Balmain Road Rozelle, Darling Street Balmain, Johnston and Booth Streets Annandale, Parramatta Road Leichhardt and Annandale (Refer to Maps in Part C, C1.6.7).",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Recyclable",
+    "term_normalized": "recyclable",
+    "definition_text": "capable of being reprocessed into useable material.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Reusable",
+    "term_normalized": "reusable",
+    "definition_text": "capable of being used more than once for the same or different purpose.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Scale",
+    "term_normalized": "scale",
+    "definition_text": "the relative size of two or more things.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Sediment",
+    "term_normalized": "sediment",
+    "definition_text": "solid material, either mineral or organic, that is in suspension, is being transported, or has been moved from its site of origin by air, wind, water or gravity.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Significant Tree",
+    "term_normalized": "significant tree",
+    "definition_text": "any ‘tree’ that is either, listed as a Heritage Item, located within a property that is listed as a Heritage Item and/or that is assessed as being significant against the criteria in Appendix 5 Tree Management Technical Manual – Trees on Private Property",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "heritage",
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Site facilities",
+    "term_normalized": "site facilities",
+    "definition_text": "something designed, built, installed, etc., to serve a specific function affording a convenience or service to that site.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Soft landscaping area",
+    "term_normalized": "soft landscaping area",
+    "definition_text": "an area containing deep soil zones to promote the healthy growth of gardens, lawns, shrubs or trees and is exclusive of any area taken up by swimming pools, pathways, planter boxes, non-porous paving or stormwater detention pits.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "stormwater",
+      "landscaping"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Special event",
+    "term_normalized": "special event",
+    "definition_text": "an event that lasts no more than 7 days (either consecutively, or over the course of one year).",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Special waste",
+    "term_normalized": "special waste",
+    "definition_text": "a waste that posed or is likely to pose an immediate or long-term risk to human health or the environment.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Stacked parking",
+    "term_normalized": "stacked parking",
+    "definition_text": "sharing a parking space vertically through use of a mechanical car stacker.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "parking"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Stem",
+    "term_normalized": "stem",
+    "definition_text": "the part of the Tree which supports branches, leaves, flowers and fruit and is also referred to as “the trunk”.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Stormwater",
+    "term_normalized": "stormwater",
+    "definition_text": "untreated rain water that runs off the land onto which it falls",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Stormwater Drainage Concept Plan",
+    "term_normalized": "stormwater drainage concept plan",
+    "definition_text": "a plan that shows how stormwater will be managed within a development site, in particular demonstrating how the measures required by this DCP will be implemented.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Stormwater Management",
+    "term_normalized": "stormwater management",
+    "definition_text": "the means by which stormwater is collected, conveyed, treated or utilised within a particular property or area.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Stormwater Reuse",
+    "term_normalized": "stormwater reuse",
+    "definition_text": "collection of water discharged from trafficable surfaces, including paved or ground surfaces, within a development site. When untreated, the water can be used for garden irrigation, and should not be applied to edible plants. When treated, the water can be used for purposes such as garden irrigation, toilet flushing and cold water washing machine supply, providing it meets the requirements set by NSW Health.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Structural root zone (SRZ)",
+    "term_normalized": "structural root zone (srz)",
+    "definition_text": "the portion of the root plate comprised primarily of structural woody roots (integral with the soil profile) providing the main mechanical support and anchorage of a Tree. See AS 4970:2009 Protection of trees on development sites for guidance on calculating an SRZ.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Sunlight",
+    "term_normalized": "sunlight",
+    "definition_text": "direct light from the sun.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Tandem parking",
+    "term_normalized": "tandem parking",
+    "definition_text": "two or more vehicles sharing a parking space at the same level configured nose to tail.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "parking"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Total nitrogen",
+    "term_normalized": "total nitrogen",
+    "definition_text": "the sum of nitrate (NO3), nitrite ( mathsf { N O } _ { 2 } ) , organic nitrogen and ammonia.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Total phosphorous",
+    "term_normalized": "total phosphorous",
+    "definition_text": "a nutrient essential to the growth of organisms, and is commonly the limiting factor in the primary productivity of surface water bodies. Total phosphorus includes the amount of phosphorus in solution (reactive) and in particle form.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Travel plan",
+    "term_normalized": "travel plan",
+    "definition_text": "a set of measures designed to reduce private car dependency for a development by encouraging use of more sustainable transport modes. Such a plan should contain a series of complementary measures which will act in unison to discourage private car dependency.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Tree",
+    "term_normalized": "tree",
+    "definition_text": "a woody, perennial and long lived plant that has a self-supporting trunk (or trunks) with lateral branching initiating at some distance from the ground and supporting a definitely formed canopy.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Tree protection zone (TPZ)",
+    "term_normalized": "tree protection zone (tpz)",
+    "definition_text": "a specified area at a given distance from the trunk set aside for the protection of a trees root system and canopy during land development works to ensure the long term viability and stability of a tree, calculated in accordance with AS 4970:2009",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Trunk drainage",
+    "term_normalized": "trunk drainage",
+    "definition_text": "a component of the public stormwater drainage system, owned by either Council or Sydney water,that includes pits and pipelines below the road, or passing through private property, culverts, open channels and Whites Creek, Johnston’s Creek and Hawthorne Canal.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Urban forest",
+    "term_normalized": "urban forest",
+    "definition_text": "the conglomerate of Trees growing within urban areas on public and privately owned lands, including those growing within parks, reserves, streets and institutional land.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Volume reduction equipment",
+    "term_normalized": "volume reduction equipment",
+    "definition_text": "devices, which reduce the volume of waste or recyclable material including compressing devices such as compactors and balers, and shredding, pulverising or crushing devices.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Walkable neighbourhood",
+    "term_normalized": "walkable neighbourhood",
+    "definition_text": "a built environment that encourages people to walk when living, shopping, visiting or spending time in an area. The built environment of a walkable neighbourhood includes connected streets, a mix of land uses, a variety of building types which are oriented to the public domain, streetscapes and other spaces which are distinctive, at human scale and which lead to places as well as links to public transport. Walkable neighbourhoods provide a safe means for pedestrians.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Waste chute",
+    "term_normalized": "waste chute",
+    "definition_text": "a duct in which the deposited material descends from one level to another within the building, due to gravity.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Waste collection area",
+    "term_normalized": "waste collection area",
+    "definition_text": "the location where garbage, compostable material or recyclable materials is transferred from a building’s storage containers to a collection vehicle for removal from the site.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "parking",
+      "waste",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Waste collection point",
+    "term_normalized": "waste collection point",
+    "definition_text": "the usual (or agreed) point on the footpath/roadway, or onsite, where the garbage and recyclables are loaded onto vehicles.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "parking",
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Waste management plan",
+    "term_normalized": "waste management plan",
+    "definition_text": "a checklist showing the volume and type of waste to be generated, storage of reusables, recyclables and waste and treatment on site, and how the residual is to be disposed of.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Wastewater sewage can be greywater or water that",
+    "term_normalized": "wastewater sewage can be greywater or water that",
+    "definition_text": "contaminated by human or commercial processes, and includes water from a domestic pool.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Waste storage and recycling area or room",
+    "term_normalized": "waste storage and recycling area or room",
+    "definition_text": "a designated area or room or combination of designated areas or rooms upon the site of a building for the housing of approved containers to store waste and recyclable material likely to be generated by the buildings occupants.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "waste",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Water management statement",
+    "term_normalized": "water management statement",
+    "definition_text": "a summary of the proposed stormwater management measures that are to be integrated into the development.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Water sensitive urban design",
+    "term_normalized": "water sensitive urban design",
+    "definition_text": "an integrated approach to urban planning and design to ensure that development is carefully designed, constructed and maintained so as to minimise impacts on the natural water cycle.",
+    "source_document": "Leichhardt DCP 2013",
+    "source_clause": "Appendix A Glossary",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Leichhardt",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments\\Leichhardt DCP 2013 - 13 - Appendix A Glossary - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Aperson",
+    "term_normalized": "aperson",
+    "definition_text": "Aresident thatis a property ownerortheirlegal representative,oran owner,employeeor Director of a company that owns the property,ora resident, contractor,consultant,or member ofthe public, corporation and a body corporate or politic.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Accessible",
+    "term_normalized": "accessible",
+    "definition_text": "Complying with the provisions of Australian Standard 1428 Parts 1and 4\"Design for Access & Mobility\"so that most people with disabilities can enter and use the premises and their facilities.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "accessibility"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Active streetfrontages",
+    "term_normalized": "active streetfrontages",
+    "definition_text": "Active frontage uses are defined as one of a combination of the following at street level:",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Adaption",
+    "term_normalized": "adaption",
+    "definition_text": "Modifying a place to suit proposed compatible uses.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Adaptable housing construction",
+    "term_normalized": "adaptable housing construction",
+    "definition_text": "The point where a dwelling contains allfixtures and apartment layouts which meets the relevant",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building",
+      "accessibility"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "stage",
+    "term_normalized": "stage",
+    "definition_text": "Australian Standard,and which suits the specific needs ofthe occupant, who is a person with disabilities.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Aesthetics",
+    "term_normalized": "aesthetics",
+    "definition_text": "Thoseconsiderationspertainingtothesensesparticularlytovisualqualitiesincludingbeauty atractiveness with regard to bilding.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Alter and Alteration",
+    "term_normalized": "alter and alteration",
+    "definition_text": "Means the making of structural changes to the outside of the building or work orthe making of non- structural changes to the detail,fabric,finish orappearance oftheoutside of the building orwork not",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Australian standard (as)",
+    "term_normalized": "australian standard (as)",
+    "definition_text": "Theminimumstandardforworkin industrydevelopedandwriten using industrypiereview, to produce best practice standards for that industry or profession,by the organisation Standards",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Arborist",
+    "term_normalized": "arborist",
+    "definition_text": "Australian Pty Ltd A person with a minimum training in the Australian Qualification framework (AQF)level 3 in",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Architectural cues",
+    "term_normalized": "architectural cues",
+    "definition_text": "Arboriculture that qualifies the person to carry out tree work Thecompositionofabuilding facadedisplaying an architectural dialogue withanotherbuilding, such",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Architectural townscape",
+    "term_normalized": "architectural townscape",
+    "definition_text": "Theexisting appearanceofbuildingswithintheTownCentrewhichfacethe MainStreeandtheir general compositional elements,",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Attic room",
+    "term_normalized": "attic room",
+    "definition_text": "A room contained above a \"maximum ceiling height\"but within the roof plane",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Clear finished dimensions",
+    "term_normalized": "clear finished dimensions",
+    "definition_text": "An uninterupted route to or within premises or buildings and providing access to allservices and facilities.Itshould not contain any step,stairway, turnstile,revolving door,escalator,hazardorother",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Climbing spikes",
+    "term_normalized": "climbing spikes",
+    "definition_text": "impediment which would prevent it being safely negotiated by people with disabilities. Spurs or crampons that are attached to boots that are Used by pushing the attached sharpened spur",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Coastalforeshore",
+    "term_normalized": "coastalforeshore",
+    "definition_text": "Means land with frontage toa beach,estuary,coastallake,headland,clifforrock platform.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Common areas",
+    "term_normalized": "common areas",
+    "definition_text": "Public areas such asaccess walkways,communal gardens,car parking areas,clothes drying areas.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "parking"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Conservation",
+    "term_normalized": "conservation",
+    "definition_text": "Means allthe processes oflooking aftera place so as to retain its culturalsignificance. It includes maintenance and may according to circumstance include preservation,restoration, reconstruction andadaption inanyone place and willbecommonlya combination of more thanone ofthese",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Continuous acessible path of travel",
+    "term_normalized": "continuous acessible path of travel",
+    "definition_text": "Means an uninterrupted route to or within premises or buildings and providing accessto allservices andfacilities.Itshould notcontainanystep,stairway,turnstile,revolvingdoor,escalator,hazardor other impediment which would prevent it being safely negotiated by people with disabilities.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Corporation",
+    "term_normalized": "corporation",
+    "definition_text": "A body,created bylaworunder authority of law, having continuous existence irrespective ofthat of its members,and powers and liabilities distinct from those of its members.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Damage",
+    "term_normalized": "damage",
+    "definition_text": "The deliberate injury of a tree",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Dead tree",
+    "term_normalized": "dead tree",
+    "definition_text": "A tree with no living (vascular) tissue",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Deadwood",
+    "term_normalized": "deadwood",
+    "definition_text": "A branch,root or part ofa tree with no living (vascular) tissue",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Deep soil planting area",
+    "term_normalized": "deep soil planting area",
+    "definition_text": "An area \"capable ofdeep planting\", which contains soil,is water permeable and there is no structure belowwithin3metresofthe natural groundsurfaceandwhich iscapableofsupportinglarge tree growth.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "landscaping"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Demolition",
+    "term_normalized": "demolition",
+    "definition_text": "Inrelatiotoabuildingorworkwithinaheritageconservationarea,means thedamaging,defacing, destruction,pulling down or removal of the building or work in whole orin part.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "heritage",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Destroy",
+    "term_normalized": "destroy",
+    "definition_text": "Any activity leading to the death, disfigurement or mutilation of a tree.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Distinctive qualities",
+    "term_normalized": "distinctive qualities",
+    "definition_text": "An explanation of the key historical elements or qualities of a Heritage Conservation Area.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Draft heritage item",
+    "term_normalized": "draft heritage item",
+    "definition_text": "Hasthe same meaning as in State Environmental Planing Policy(Exempt and Complying Development Codes)2008.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Drainage",
+    "term_normalized": "drainage",
+    "definition_text": "Means any activity that intentionall alters the hydrological regime ofany locality by facilitating the removalofsurfaceorgroundwater.Itmayinlude theconstruction,deepening,extendingning, installationorlaying ofanycanal,drain orpipe,eitheronthelandorinsucha manner asto encourage drainage of adjoining land.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "stormwater",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Fabric",
+    "term_normalized": "fabric",
+    "definition_text": "Means allthe physical materialofthe place.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Ground level dwelling",
+    "term_normalized": "ground level dwelling",
+    "definition_text": "A dwelling located within1.5 metres height from the stree footpath.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "High compositional standard",
+    "term_normalized": "high compositional standard",
+    "definition_text": "Abuildingdesign whichusesany\"abstract\"or\"modern/contemporary\"architecturallanguageand employs different building components and building materials as credible compositional elements, whose credibity isdemonstratedbyvisuallyapearing torelateto the \"whole building\"and giving",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "High standard of architectural composition",
+    "term_normalized": "high standard of architectural composition",
+    "definition_text": "Acomposition that exhibits a fundamental requirement for\"architectural grammar\"and has a high degree of organization of the parts of the building composition.\"Architectural grammar\" means the",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "House top addition",
+    "term_normalized": "house top addition",
+    "definition_text": "Additions made above the habitable ground floor of a dwelling house",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Keysites map",
+    "term_normalized": "keysites map",
+    "definition_text": "Means the Inner West LEP 2022 Key Sites Map.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Maximum ceiling height",
+    "term_normalized": "maximum ceiling height",
+    "definition_text": "The greatest vertical distance from the natural ground level surface ofthe site to the ceiling of the topmost floorofte building.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Non-conforming Building",
+    "term_normalized": "non-conforming building",
+    "definition_text": "Is a building that has replaced a building which was constructed in acordance with Stanton's original covenants.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "NSW coastal policy",
+    "term_normalized": "nsw coastal policy",
+    "definition_text": "Means the publication titled NSW Coastal Policy1997: A Sustainable Future forthe New South Wales Coast,published bythe Government.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Principal private area",
+    "term_normalized": "principal private area",
+    "definition_text": "Means an area of private open space which is directly accessible from the main living areas of the dwelling itserves, with an average sope no greaterthan 1in 5.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "accessibility"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Rear infill development",
+    "term_normalized": "rear infill development",
+    "definition_text": "Analterationoraddition to therearpart of an existing building,such asabuilding whichis a Heritage",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "heritage",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Stormwater flood level",
+    "term_normalized": "stormwater flood level",
+    "definition_text": "Item or within a Heritage Conservation Area. Thelevelrequiredabove naturalgroundlevelsoas tomakethe groundfloorclearfrom stormwater",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "heritage",
+      "flood",
+      "stormwater",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Street wall zone",
+    "term_normalized": "street wall zone",
+    "definition_text": "flooding. Achieve a strong and consistent definition of the public domain,establish the desired spatial",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "flood",
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Streetscape",
+    "term_normalized": "streetscape",
+    "definition_text": "proportions ofthe street and define the stree edge taking into account the maximum building heights specified in the Building Height Map forming part of Ashfield LEP 2013 The aesthetic values of groups of buildings,their contexts and their relationships as evident in the",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Structural alteration Structural walls",
+    "term_normalized": "structural alteration structural walls",
+    "definition_text": "Works that require ateration to load bearing components of a bulding. Walls which are load bearing and cannot be removed or altered.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Sympathetic",
+    "term_normalized": "sympathetic",
+    "definition_text": "Visuarelationsipsthatareaproprate,ssivnignestheticallyeasingimlying",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Townscape",
+    "term_normalized": "townscape",
+    "definition_text": "The appearance within a town centre of relationships of buildings and places along the main street, andincluding general compositional building design elements, such as:",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "tree",
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Traditional architectural",
+    "term_normalized": "traditional architectural",
+    "definition_text": "AnarchitecturalcompositionUsing long standing traditional architecturalcanons including:",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "composition",
+    "term_normalized": "composition",
+    "definition_text": "Basic tripartite arrangements to facades, employing symmetry and proportion",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Universal accessible design",
+    "term_normalized": "universal accessible design",
+    "definition_text": "A design that is usable by all people (especially people with disability and frail older people) by meeting the seven performance criteria of universal housing design, generally based on the Australian Network for Universal Housing Design, which are:",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "accessibility"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "wheelchair.",
+    "term_normalized": "wheelchair",
+    "definition_text": "bedroom, which have room areas large enough so that they can be used bya person in a",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "accessibility"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "usingawheelchair.",
+    "term_normalized": "usingawheelchair",
+    "definition_text": "Allrooms, when furnished orfitted out,allow foradequate circulation space fora person",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "accessibility"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "having a stairlift.",
+    "term_normalized": "having a stairlift",
+    "definition_text": "Doorfurniture,switches,controls and outlets are within reach of and can be used by all. There is potential for future adaptation to a dwelling with two or more levels for vertical access by a person using a wheelchair,such as having wider stairways that are capable of",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "accessibility"
+    ],
+    "extraction_confidence": 0.9
+  },
+  {
+    "term": "Visual height contained within a building.",
+    "term_normalized": "visual height contained within a building",
+    "definition_text": "Walls and ceilings are reinforced where assstive devices may be attached where access is required to another habitable level.",
+    "source_document": "Ashfield DCP 2016",
+    "source_clause": "Chapter G Definitions",
+    "legislation_type": "DCP",
+    "lga": "Inner West",
+    "former_council": "Ashfield",
+    "pdf_page": null,
+    "pdf_source_file": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\output\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments\\Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments_origin.pdf",
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 0.9
+  }
+]

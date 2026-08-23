@@ -1,0 +1,1216 @@
+[
+  {
+    "checklist_name": "CDC Application Checklist - Residential",
+    "pathway": "CDC",
+    "development_type": null,
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership and any encumbrances, easements, or covenants affecting the land.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Section 10.7 Planning Certificate",
+        "item_description": "Current Section 10.7 (parts 2 & 5) Planning Certificate from council showing zoning, constraints, and applicable planning instruments.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Site Survey / Site Plan",
+        "item_description": "Registered surveyor's plan showing lot boundaries, dimensions, existing structures, levels, trees, and services. Scale 1:100 or 1:200.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Architectural Floor Plans",
+        "item_description": "Detailed floor plans showing room layouts, dimensions, door and window locations. Scale 1:100.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Elevations",
+        "item_description": "All elevations (front, rear, both sides) showing external finishes, materials, heights, and natural ground level. Scale 1:100.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Section Drawings",
+        "item_description": "At least one cross-section through the building showing internal ceiling heights and relationship to natural ground level.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "BASIX Certificate",
+        "item_description": "Valid BASIX certificate demonstrating compliance with water, energy, and thermal performance requirements.",
+        "item_required": true,
+        "item_conditions": "Required for all new dwellings and alterations over $50,000"
+      },
+      {
+        "item_order": 8,
+        "item_name": "Structural Engineering Plans",
+        "item_description": "Structural drawings and specifications certified by a registered structural engineer.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 9,
+        "item_name": "Compliance Schedule",
+        "item_description": "Table demonstrating compliance with each applicable CDC standard including setbacks, height, site coverage, landscaping, parking.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "Stormwater Drainage Plan",
+        "item_description": "Plan showing how stormwater will be collected and disposed of, including connection to council drainage system.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 11,
+        "item_name": "Landscape Plan",
+        "item_description": "Plan showing proposed landscaping including species, sizes, and deep soil areas to demonstrate compliance with landscaping requirements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 12,
+        "item_name": "Bushfire Assessment Report",
+        "item_description": "BAL assessment and certification by an accredited bushfire consultant.",
+        "item_required": false,
+        "item_conditions": "Required only for bushfire prone land (BAL 12.5 - BAL 29)"
+      },
+      {
+        "item_order": 13,
+        "item_name": "Flood Assessment Report",
+        "item_description": "Flood impact assessment and certification demonstrating compliance with flood planning requirements.",
+        "item_required": false,
+        "item_conditions": "Required only for flood affected land"
+      },
+      {
+        "item_order": 14,
+        "item_name": "Geotechnical Report",
+        "item_description": "Site classification and foundation recommendations from a geotechnical engineer.",
+        "item_required": false,
+        "item_conditions": "Required for sloping sites, reactive soils, or sites with fill"
+      },
+      {
+        "item_order": 15,
+        "item_name": "Building Specifications",
+        "item_description": "Written specifications describing construction materials and methods.",
+        "item_required": true,
+        "item_conditions": null
+      }
+    ],
+    "source_document": "NSW Planning Portal",
+    "source_url": "https://www.planningportal.nsw.gov.au/onlinecdc"
+  },
+  {
+    "checklist_name": "DA Application Checklist - Residential",
+    "pathway": "DA",
+    "development_type": null,
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Development Application Form",
+        "item_description": "Completed DA form via NSW Planning Portal.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership and any encumbrances, easements, or covenants affecting the land.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Statement of Environmental Effects (SEE)",
+        "item_description": "Written statement addressing how the proposal complies with relevant planning controls (LEP, DCP, SEPP) and assessing environmental impacts.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Site Survey / Site Plan",
+        "item_description": "Registered surveyor's plan showing lot boundaries, dimensions, existing structures, levels, trees, and services. Scale 1:100 or 1:200.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Architectural Floor Plans",
+        "item_description": "Detailed floor plans showing room layouts, dimensions, door and window locations. Scale 1:100.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Elevations",
+        "item_description": "All elevations (front, rear, both sides) showing external finishes, materials, heights, and natural ground level. Scale 1:100.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "Section Drawings",
+        "item_description": "At least one cross-section through the building showing internal ceiling heights and relationship to natural ground level.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "BASIX Certificate",
+        "item_description": "Valid BASIX certificate demonstrating compliance with water, energy, and thermal performance requirements.",
+        "item_required": true,
+        "item_conditions": "Required for all new dwellings and alterations over $50,000"
+      },
+      {
+        "item_order": 9,
+        "item_name": "Stormwater Drainage Plan",
+        "item_description": "Plan showing how stormwater will be collected and disposed of, including connection to council drainage system.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "Landscape Plan",
+        "item_description": "Plan showing proposed landscaping including species, sizes, and deep soil areas.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 11,
+        "item_name": "Shadow Diagrams",
+        "item_description": "Diagrams showing shadow cast by the development at 9am, 12pm, and 3pm on June 21 (winter solstice).",
+        "item_required": false,
+        "item_conditions": "Required for two-storey development or where overshadowing of neighbors may occur"
+      },
+      {
+        "item_order": 12,
+        "item_name": "Schedule of External Finishes",
+        "item_description": "List of all external materials and colors with samples or manufacturer references.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 13,
+        "item_name": "Heritage Impact Statement",
+        "item_description": "Assessment of impact on heritage values prepared by a heritage consultant.",
+        "item_required": false,
+        "item_conditions": "Required for heritage items or properties in heritage conservation areas"
+      },
+      {
+        "item_order": 14,
+        "item_name": "Bushfire Assessment Report",
+        "item_description": "BAL assessment and bushfire protection measures prepared by an accredited bushfire consultant.",
+        "item_required": false,
+        "item_conditions": "Required for bushfire prone land"
+      },
+      {
+        "item_order": 15,
+        "item_name": "Flood Impact Assessment",
+        "item_description": "Assessment of flood risk and mitigation measures.",
+        "item_required": false,
+        "item_conditions": "Required for flood affected land"
+      },
+      {
+        "item_order": 16,
+        "item_name": "Traffic and Parking Study",
+        "item_description": "Assessment of traffic generation and parking adequacy.",
+        "item_required": false,
+        "item_conditions": "Required for developments generating significant traffic or parking demand"
+      },
+      {
+        "item_order": 17,
+        "item_name": "Arborist Report",
+        "item_description": "Assessment of trees on site by a qualified arborist.",
+        "item_required": false,
+        "item_conditions": "Required if trees are proposed for removal or may be impacted"
+      },
+      {
+        "item_order": 18,
+        "item_name": "Waste Management Plan",
+        "item_description": "Plan for waste minimization, storage, and collection during construction and ongoing operation.",
+        "item_required": false,
+        "item_conditions": "Required for multi-dwelling developments"
+      },
+      {
+        "item_order": 19,
+        "item_name": "Acoustic Report",
+        "item_description": "Assessment of noise impacts and mitigation measures.",
+        "item_required": false,
+        "item_conditions": "Required for sites near major roads, railways, or flight paths"
+      },
+      {
+        "item_order": 20,
+        "item_name": "Geotechnical Report",
+        "item_description": "Site classification and foundation recommendations from a geotechnical engineer.",
+        "item_required": false,
+        "item_conditions": "Required for sloping sites, reactive soils, or sites with fill"
+      },
+      {
+        "item_order": 21,
+        "item_name": "Contamination Assessment",
+        "item_description": "Preliminary site investigation for potential land contamination.",
+        "item_required": false,
+        "item_conditions": "Required for sites with previous industrial or commercial use"
+      },
+      {
+        "item_order": 22,
+        "item_name": "Cost of Works",
+        "item_description": "Estimated cost of the proposed development for fee calculation.",
+        "item_required": true,
+        "item_conditions": null
+      }
+    ],
+    "source_document": "NSW Planning Portal",
+    "source_url": "https://www.planning.nsw.gov.au/assess-and-regulate/development-assessment/your-guide-to-the-da-process"
+  },
+  {
+    "checklist_name": "CDC Application Checklist - Dual Occupancy",
+    "pathway": "CDC",
+    "development_type": "dual_occupancy",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership and any encumbrances, easements, or covenants affecting the land.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Section 10.7 Planning Certificate",
+        "item_description": "Current Section 10.7 (parts 2 & 5) Planning Certificate from council showing zoning permits dual occupancy.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Site Survey",
+        "item_description": "Registered surveyor's plan showing lot area, dimensions, and frontage to demonstrate compliance with minimum lot size and frontage requirements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Site Analysis Plan",
+        "item_description": "Plan showing site context including adjoining development, trees, solar orientation, and constraints.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Architectural Plans",
+        "item_description": "Floor plans, elevations, and sections for both dwellings. Scale 1:100.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "BASIX Certificate",
+        "item_description": "Separate BASIX certificates for each dwelling, or combined certificate covering both.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "Compliance Schedule - SEPP Housing",
+        "item_description": "Detailed compliance schedule demonstrating compliance with SEPP Housing 2021 Part 3 Division 1 standards.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "Structural Engineering Plans",
+        "item_description": "Structural drawings and specifications certified by a registered structural engineer.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 9,
+        "item_name": "Stormwater Drainage Plan",
+        "item_description": "Plan showing stormwater management for both dwellings including on-site detention if required.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "Landscape Plan",
+        "item_description": "Plan demonstrating compliance with minimum landscaped area and deep soil requirements per SEPP Housing.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 11,
+        "item_name": "Driveway and Parking Plan",
+        "item_description": "Plan showing vehicle access, parking spaces, and maneuverability for both dwellings.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 12,
+        "item_name": "Privacy Assessment",
+        "item_description": "Demonstration of compliance with visual privacy requirements including window locations and screening.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 13,
+        "item_name": "Solar Access Diagrams",
+        "item_description": "Shadow diagrams demonstrating compliance with solar access requirements for private open space.",
+        "item_required": true,
+        "item_conditions": null
+      }
+    ],
+    "source_document": "SEPP Housing 2021",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714"
+  },
+  {
+    "checklist_name": "CDC Application Checklist - Secondary Dwelling (Granny Flat)",
+    "pathway": "CDC",
+    "development_type": "secondary_dwelling",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing lot size meets minimum requirement (usually 450m²).",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Section 10.7 Planning Certificate",
+        "item_description": "Current Section 10.7 Planning Certificate showing secondary dwellings are permitted.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Site Survey",
+        "item_description": "Surveyor's plan showing existing dwelling and proposed secondary dwelling location.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Floor Plan",
+        "item_description": "Floor plan showing maximum 60m² gross floor area for secondary dwelling.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Elevations",
+        "item_description": "All elevations showing height compliance (typically 7.2m max for attached, 6m for detached).",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "BASIX Certificate",
+        "item_description": "Valid BASIX certificate for the secondary dwelling.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "Compliance Schedule",
+        "item_description": "Table demonstrating compliance with SEPP Housing secondary dwelling standards.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "Structural Engineering",
+        "item_description": "Structural drawings and specifications.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 9,
+        "item_name": "Stormwater Plan",
+        "item_description": "Stormwater drainage plan showing connection to existing system.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "Landscape Plan",
+        "item_description": "Plan showing compliance with landscaped area requirements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 11,
+        "item_name": "Parking Plan",
+        "item_description": "Demonstration of required parking (typically 1 space for secondary dwelling).",
+        "item_required": true,
+        "item_conditions": null
+      }
+    ],
+    "source_document": "SEPP Housing 2021",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714"
+  },
+  {
+    "checklist_name": "CDC Application Checklist - Two-Storey Addition",
+    "pathway": "CDC",
+    "development_type": "two_storey_addition",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership and any encumbrances affecting the land.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Section 10.7 Planning Certificate",
+        "item_description": "Current Section 10.7 (parts 2 & 5) Planning Certificate confirming site is not excluded from CDC.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Site Survey",
+        "item_description": "Registered surveyor's plan showing lot boundaries, existing dwelling, levels, and setbacks. Scale 1:100 or 1:200.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Existing and Proposed Floor Plans",
+        "item_description": "Floor plans of existing dwelling and proposed addition showing room layouts, dimensions, and connection points. Scale 1:100.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "All Elevations",
+        "item_description": "All elevations (front, rear, both sides) showing existing and proposed building heights, materials, and relationship to natural ground level.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Section Drawings",
+        "item_description": "Cross-sections showing internal ceiling heights, floor levels relative to existing dwelling, and relationship to natural ground.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "BASIX Certificate",
+        "item_description": "Valid BASIX certificate for the addition demonstrating compliance with water, energy, and thermal performance requirements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "Structural Engineering Plans",
+        "item_description": "Structural drawings showing how addition connects to existing structure, new footings, and load paths.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 9,
+        "item_name": "Compliance Schedule",
+        "item_description": "Table demonstrating compliance with CDC standards including height, setbacks, site coverage, and articulation zone requirements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "Shadow Diagrams",
+        "item_description": "Shadow diagrams for 9am, 12pm, and 3pm on June 21 showing impact on neighbouring properties and private open space.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 11,
+        "item_name": "Privacy Assessment",
+        "item_description": "Assessment showing compliance with visual privacy requirements including window locations, screening, and overlooking analysis.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 12,
+        "item_name": "Stormwater Drainage Plan",
+        "item_description": "Plan showing how additional roof area will be drained and connected to existing stormwater system.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 13,
+        "item_name": "Landscape Plan",
+        "item_description": "Plan showing any required landscaping changes and compliance with minimum landscaped area requirements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 14,
+        "item_name": "Building Specifications",
+        "item_description": "Written specifications describing construction materials, methods, and finishes for the addition.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 15,
+        "item_name": "Bushfire Assessment",
+        "item_description": "BAL assessment and certification by an accredited bushfire consultant.",
+        "item_required": false,
+        "item_conditions": "Required for bushfire prone land (BAL 12.5 - BAL 29)"
+      },
+      {
+        "item_order": 16,
+        "item_name": "Flood Assessment",
+        "item_description": "Flood impact assessment demonstrating compliance with flood planning requirements.",
+        "item_required": false,
+        "item_conditions": "Required for flood affected land"
+      },
+      {
+        "item_order": 17,
+        "item_name": "Geotechnical Report",
+        "item_description": "Site classification and foundation recommendations from a geotechnical engineer.",
+        "item_required": false,
+        "item_conditions": "Required for sloping sites or reactive soils"
+      },
+      {
+        "item_order": 18,
+        "item_name": "Dilapidation Report",
+        "item_description": "Photo record of existing dwelling condition prior to construction works.",
+        "item_required": false,
+        "item_conditions": "Recommended to document existing conditions"
+      }
+    ],
+    "source_document": "Codes SEPP",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572"
+  },
+  {
+    "checklist_name": "CDC Application Checklist - Swimming Pool",
+    "pathway": "CDC",
+    "development_type": "swimming_pool",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Section 10.7 Planning Certificate",
+        "item_description": "Current Planning Certificate confirming site is not excluded from CDC for swimming pools.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Site Plan",
+        "item_description": "Site plan showing pool location, setbacks from boundaries and buildings, and relationship to dwelling.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Pool Plans and Sections",
+        "item_description": "Pool shell plans showing dimensions, depths, and sections showing ground levels and coping heights.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Pool Fence/Barrier Details",
+        "item_description": "Plans and specifications for pool barrier/fence showing compliance with AS 1926.1 including heights, gaps, and gate specifications.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Compliance Schedule",
+        "item_description": "Table demonstrating compliance with CDC standards including setbacks, coping height above ground, and barrier requirements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "Structural Engineering",
+        "item_description": "Structural design for pool shell and any associated structures or retaining walls.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "Stormwater/Drainage Plan",
+        "item_description": "Plan showing backwash and overflow disposal and any necessary drainage modifications.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 9,
+        "item_name": "Equipment Location Plan",
+        "item_description": "Plan showing location of pool pump, filter, and equipment including setbacks and noise considerations.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "BASIX Certificate",
+        "item_description": "Valid BASIX certificate for pools exceeding 40,000 litres capacity.",
+        "item_required": false,
+        "item_conditions": "Required for pools over 40,000 litres"
+      },
+      {
+        "item_order": 11,
+        "item_name": "Geotechnical Report",
+        "item_description": "Site classification and recommendations for pool construction.",
+        "item_required": false,
+        "item_conditions": "Required for sloping sites, reactive soils, or high water table"
+      },
+      {
+        "item_order": 12,
+        "item_name": "Flood Assessment",
+        "item_description": "Assessment of flood impacts and compliance with flood planning requirements.",
+        "item_required": false,
+        "item_conditions": "Required for flood affected land"
+      }
+    ],
+    "source_document": "Codes SEPP - Swimming Pools",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572"
+  },
+  {
+    "checklist_name": "CDC Application Checklist - Garage/Carport",
+    "pathway": "CDC",
+    "development_type": "garage_carport",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Section 10.7 Planning Certificate",
+        "item_description": "Current Planning Certificate confirming site permits ancillary structures.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Site Plan",
+        "item_description": "Site plan showing garage/carport location, setbacks from boundaries, and relationship to dwelling.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Floor Plan",
+        "item_description": "Floor plan showing internal dimensions and any internal layout.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Elevations",
+        "item_description": "All elevations showing heights, materials, roof form, and relationship to natural ground level.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Compliance Schedule",
+        "item_description": "Table demonstrating compliance with CDC standards including maximum floor area, height, setbacks, and site coverage.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "Structural Engineering",
+        "item_description": "Structural design for footings and roof structure (if applicable based on size/design).",
+        "item_required": false,
+        "item_conditions": "Required for larger structures or attached garages"
+      },
+      {
+        "item_order": 8,
+        "item_name": "Stormwater Plan",
+        "item_description": "Plan showing roof drainage connection to existing stormwater system.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 9,
+        "item_name": "Driveway Layout",
+        "item_description": "Plan showing driveway access, gradients, and sight lines for vehicle manoeuvring.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "Building Specifications",
+        "item_description": "Written specifications describing construction materials and finishes.",
+        "item_required": true,
+        "item_conditions": null
+      }
+    ],
+    "source_document": "Codes SEPP",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572"
+  },
+  {
+    "checklist_name": "CDC Application Checklist - Deck/Pergola",
+    "pathway": "CDC",
+    "development_type": "deck_pergola",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Site Plan",
+        "item_description": "Site plan showing deck/pergola location, setbacks from boundaries, and relationship to dwelling.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Floor Plan",
+        "item_description": "Plan showing deck dimensions and relationship to internal areas of dwelling.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Elevations/Sections",
+        "item_description": "Elevation and section drawings showing deck height above ground, balustrade details, and pergola height if applicable.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Compliance Schedule",
+        "item_description": "Table demonstrating compliance with CDC standards including maximum height above ground, area, and setbacks.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Structural Engineering",
+        "item_description": "Structural design for deck substructure and connections.",
+        "item_required": false,
+        "item_conditions": "Required for decks over 1m above ground"
+      },
+      {
+        "item_order": 7,
+        "item_name": "Balustrade Details",
+        "item_description": "Details of balustrade design showing compliance with Building Code of Australia requirements.",
+        "item_required": false,
+        "item_conditions": "Required where deck is more than 1m above ground"
+      },
+      {
+        "item_order": 8,
+        "item_name": "Building Specifications",
+        "item_description": "Written specifications describing construction materials and finishes.",
+        "item_required": true,
+        "item_conditions": null
+      }
+    ],
+    "source_document": "Codes SEPP",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572"
+  },
+  {
+    "checklist_name": "DA Application Checklist - Commercial Fit-out",
+    "pathway": "DA",
+    "development_type": "commercial_fitout",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Development Application Form",
+        "item_description": "Completed DA form via NSW Planning Portal.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Certificate of Title / Lease Agreement",
+        "item_description": "Current certificate of title or evidence of lease/owner consent for the tenancy.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Statement of Environmental Effects",
+        "item_description": "Written statement addressing use permissibility, hours of operation, and compliance with relevant controls.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Floor Plans",
+        "item_description": "Detailed floor plans showing proposed fit-out layout, fixtures, and use of spaces. Scale 1:100.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Elevations/Sections",
+        "item_description": "Internal elevations and sections showing fit-out details, ceiling treatments, and any external signage.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Schedule of Finishes",
+        "item_description": "List of all internal finishes and materials.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "BCA Compliance Statement",
+        "item_description": "Assessment of Building Code of Australia compliance for the proposed use.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "Fire Safety Upgrade Report",
+        "item_description": "Assessment of fire safety requirements and any necessary upgrades.",
+        "item_required": false,
+        "item_conditions": "Required if changing building classification or increasing occupancy"
+      },
+      {
+        "item_order": 9,
+        "item_name": "Plan of Management",
+        "item_description": "Operational details including hours, staff numbers, deliveries, and waste management.",
+        "item_required": false,
+        "item_conditions": "Required for food premises, entertainment venues, or uses with potential amenity impacts"
+      },
+      {
+        "item_order": 10,
+        "item_name": "Mechanical Ventilation Plans",
+        "item_description": "Plans showing ventilation/air conditioning systems and compliance with relevant standards.",
+        "item_required": false,
+        "item_conditions": "Required for food premises and premises with mechanical ventilation"
+      },
+      {
+        "item_order": 11,
+        "item_name": "Acoustic Report",
+        "item_description": "Assessment of noise impacts and mitigation measures.",
+        "item_required": false,
+        "item_conditions": "Required for entertainment venues, gyms, or uses with potential noise impacts"
+      },
+      {
+        "item_order": 12,
+        "item_name": "Signage Details",
+        "item_description": "Details of any proposed signage including dimensions, illumination, and location.",
+        "item_required": false,
+        "item_conditions": "Required if external signage is proposed"
+      },
+      {
+        "item_order": 13,
+        "item_name": "Waste Management Plan",
+        "item_description": "Details of waste storage, collection, and recycling arrangements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 14,
+        "item_name": "Access Report",
+        "item_description": "Assessment of compliance with accessibility requirements under the Disability Discrimination Act.",
+        "item_required": false,
+        "item_conditions": "Required for public-facing premises or where accessibility provisions triggered"
+      },
+      {
+        "item_order": 15,
+        "item_name": "Cost of Works",
+        "item_description": "Estimated cost of the proposed fit-out for fee calculation.",
+        "item_required": true,
+        "item_conditions": null
+      }
+    ],
+    "source_document": "Council Commercial DA Guides",
+    "source_url": "https://www.planning.nsw.gov.au/assess-and-regulate/development-assessment"
+  },
+  {
+    "checklist_name": "DA Application Checklist - Heritage Item/Conservation Area",
+    "pathway": "DA",
+    "development_type": "heritage",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Development Application Form",
+        "item_description": "Completed DA form via NSW Planning Portal.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Heritage Impact Statement",
+        "item_description": "Comprehensive assessment of impacts on heritage significance prepared by a qualified heritage consultant.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Statement of Environmental Effects",
+        "item_description": "Written statement addressing heritage provisions in LEP and DCP, and compliance with all relevant controls.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Site Survey/Site Analysis",
+        "item_description": "Survey showing existing heritage fabric, curtilage, significant elements, and context.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Archival Recording",
+        "item_description": "Photographic archival recording of existing conditions per NSW Heritage Office guidelines.",
+        "item_required": false,
+        "item_conditions": "Required for significant alterations to heritage items"
+      },
+      {
+        "item_order": 7,
+        "item_name": "Architectural Plans",
+        "item_description": "Detailed plans clearly distinguishing existing fabric, fabric to be removed, and new work.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "Elevations with Heritage Annotations",
+        "item_description": "Elevations showing existing and proposed conditions with annotations of heritage fabric.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 9,
+        "item_name": "Materials and Finishes Schedule",
+        "item_description": "Detailed schedule of proposed materials and finishes demonstrating compatibility with heritage character.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "Conservation Management Plan",
+        "item_description": "CMP for the heritage item setting out conservation policies and guidelines.",
+        "item_required": false,
+        "item_conditions": "Required for State Heritage items or complex sites"
+      },
+      {
+        "item_order": 11,
+        "item_name": "Archaeological Assessment",
+        "item_description": "Assessment of potential archaeological significance and management recommendations.",
+        "item_required": false,
+        "item_conditions": "Required where ground disturbance proposed on sites with archaeological sensitivity"
+      },
+      {
+        "item_order": 12,
+        "item_name": "BASIX Certificate",
+        "item_description": "BASIX certificate with heritage exemptions noted where applicable.",
+        "item_required": true,
+        "item_conditions": "Required for new dwellings and alterations over $50,000"
+      }
+    ],
+    "source_document": "NSW Heritage Office Guidelines",
+    "source_url": "https://www.environment.nsw.gov.au/topics/heritage"
+  },
+  {
+    "checklist_name": "DA Application Checklist - Flood Zone",
+    "pathway": "DA",
+    "development_type": "flood_zone",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Development Application Form",
+        "item_description": "Completed DA form via NSW Planning Portal.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Flood Impact Assessment",
+        "item_description": "Comprehensive flood study prepared by a qualified flood engineer addressing flood behaviour, impacts, and compliance with council's flood policy.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "Statement of Environmental Effects",
+        "item_description": "Written statement addressing flood-related planning provisions and flood risk management.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Survey with Flood Levels",
+        "item_description": "Survey showing existing ground levels, proposed floor levels, and relationship to defined flood levels (1% AEP, PMF).",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Architectural Plans with Floor Levels",
+        "item_description": "Plans clearly showing proposed floor levels relative to flood planning levels.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "Sections Showing Flood Levels",
+        "item_description": "Cross-sections showing relationship of development to various flood levels and any proposed filling.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "Flood Emergency Response Plan",
+        "item_description": "Plan for flood warning, evacuation routes, and refuge areas during flood events.",
+        "item_required": false,
+        "item_conditions": "Required for developments with vulnerable uses or significant occupancy"
+      },
+      {
+        "item_order": 9,
+        "item_name": "Structural Engineering for Flood Loads",
+        "item_description": "Structural design addressing flood loads including hydrostatic and hydrodynamic forces.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "BASIX Certificate",
+        "item_description": "Valid BASIX certificate.",
+        "item_required": true,
+        "item_conditions": "Required for residential development"
+      }
+    ],
+    "source_document": "NSW Flood Prone Land Policy",
+    "source_url": "https://www.environment.nsw.gov.au/topics/water/floodplains"
+  },
+  {
+    "checklist_name": "DA Application Checklist - Bushfire Prone Land",
+    "pathway": "DA",
+    "development_type": "bushfire_prone",
+    "items": [
+      {
+        "item_order": 1,
+        "item_name": "Development Application Form",
+        "item_description": "Completed DA form via NSW Planning Portal.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 2,
+        "item_name": "Certificate of Title",
+        "item_description": "Current certificate of title showing ownership.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 3,
+        "item_name": "Bushfire Assessment Report",
+        "item_description": "Comprehensive bushfire assessment prepared by an accredited Level 3 BPAD consultant.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 4,
+        "item_name": "BAL Certificate",
+        "item_description": "Bushfire Attack Level (BAL) assessment certificate.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 5,
+        "item_name": "Statement of Environmental Effects",
+        "item_description": "Written statement addressing bushfire provisions in LEP, DCP, and Planning for Bush Fire Protection guidelines.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 6,
+        "item_name": "Site Plan with Vegetation Mapping",
+        "item_description": "Site plan showing vegetation types, classification, and management zones (APZs).",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 7,
+        "item_name": "Architectural Plans - Bushfire Construction",
+        "item_description": "Plans showing construction details to achieve required BAL construction standard.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 8,
+        "item_name": "Asset Protection Zone (APZ) Plan",
+        "item_description": "Plan showing proposed APZs, landscaping, and vegetation management requirements.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 9,
+        "item_name": "Access and Egress Plan",
+        "item_description": "Plan showing access routes for firefighting vehicles and evacuation routes.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 10,
+        "item_name": "Water Supply Details",
+        "item_description": "Details of water supply for firefighting including tanks, hydrants, or other provisions.",
+        "item_required": true,
+        "item_conditions": null
+      },
+      {
+        "item_order": 11,
+        "item_name": "Bushfire Emergency Management Plan",
+        "item_description": "Plan for bushfire emergency response including evacuation and shelter-in-place options.",
+        "item_required": false,
+        "item_conditions": "Required for special fire protection purpose developments or vulnerable uses"
+      },
+      {
+        "item_order": 12,
+        "item_name": "BASIX Certificate",
+        "item_description": "Valid BASIX certificate.",
+        "item_required": true,
+        "item_conditions": "Required for residential development"
+      }
+    ],
+    "source_document": "Planning for Bush Fire Protection 2019",
+    "source_url": "https://www.rfs.nsw.gov.au/plan-and-prepare/building-in-a-bush-fire-area/planning-for-bush-fire-protection"
+  }
+]

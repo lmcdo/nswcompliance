@@ -121,14 +121,14 @@ PyMuPDF==1.28.0
 pyparsing==3.3.2
 pypdf==6.14.2
 pypdfium2==5.12.1
-pyreadline3==3.5.6
+pyreadline3==3.5.6; sys_platform == "win32"
 PySocks==1.7.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-multipart==0.0.32
 pytz==2026.3.post1
 pyuca==1.2
-pywin32==312
+pywin32==312; sys_platform == "win32"
 PyYAML==6.0.3
 raganything @ git+https://github.com/HKUDS/RAG-Anything.git@362302276c10527d01e73263f4e4f531d6853b8c
 rapid-table==3.0.2
@@ -179,7 +179,7 @@ uvicorn==0.52.1
 wcwidth==0.8.2
 websocket-client==1.9.0
 websockets==16.1
-win32_setctime==1.2.0
+win32_setctime==1.2.0; sys_platform == "win32"
 wrapt==2.3.0
 xlsxwriter==3.2.9
 xmltodict==1.0.4

@@ -1,0 +1,760 @@
+[
+  {
+    "guide_id": "G1",
+    "title": "I Want to Build a Granny Flat",
+    "slug": "build-granny-flat",
+    "target_user": "Homeowner with existing dwelling",
+    "typical_timeline": "3-6 months",
+    "typical_cost_range": "$80,000-150,000 construction + $5,000-15,000 approvals",
+    "eligibility": {
+      "minimum_lot_size": "450sqm (may vary by LGA)",
+      "zones": ["R1", "R2", "R3", "R4", "RU5"],
+      "existing_dwelling_required": true,
+      "max_floor_area": "60sqm",
+      "heritage_restrictions": "Not available on heritage items without DA",
+      "flood_restrictions": "Limited in flood-prone areas"
+    },
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Check Your Eligibility",
+        "description": "Verify your property meets the basic requirements for a secondary dwelling (granny flat) under SEPP Housing 2021.",
+        "duration": "1-2 days",
+        "tasks": [
+          "Obtain a Section 10.7 Planning Certificate from your council",
+          "Check your lot size meets minimum requirements (typically 450sqm)",
+          "Verify your zoning allows secondary dwellings",
+          "Confirm no heritage, flood, or bushfire overlays that restrict CDC"
+        ],
+        "tips": [
+          "Use the NSW Planning Portal to check basic zoning",
+          "Your 10.7 certificate will list all constraints"
+        ]
+      },
+      {
+        "step_number": 2,
+        "title": "Understand the Rules",
+        "description": "Learn the key development standards that your granny flat must comply with to use the fast-track CDC pathway.",
+        "duration": "1-2 days",
+        "tasks": [
+          "Review SEPP Housing 2021 Division 2 requirements",
+          "Check your council's DCP for local requirements",
+          "Understand setback requirements (usually 3m rear, 0.9m side)",
+          "Note the maximum 60sqm floor area limit"
+        ],
+        "tips": [
+          "Private certifiers often provide free initial consultations",
+          "The 60sqm limit includes any covered outdoor areas"
+        ]
+      },
+      {
+        "step_number": 3,
+        "title": "Engage Professionals",
+        "description": "Assemble your project team including designer and certifier.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Engage a building designer or draftsperson for plans",
+          "Get quotes from 2-3 private certifiers",
+          "Consider a surveyor for accurate site measurements",
+          "Obtain a BASIX certificate (energy and water efficiency)"
+        ],
+        "tips": [
+          "Private certifiers are typically faster than council",
+          "Ask certifiers about their turnaround times upfront"
+        ]
+      },
+      {
+        "step_number": 4,
+        "title": "Prepare Documentation",
+        "description": "Compile all required documents and plans for your CDC application.",
+        "duration": "2-4 weeks",
+        "tasks": [
+          "Prepare architectural drawings (site plan, floor plans, elevations, sections)",
+          "Obtain BASIX certificate",
+          "Commission structural engineering if required",
+          "Prepare stormwater management plan",
+          "Compile specification documents"
+        ],
+        "tips": [
+          "Your certifier can provide a checklist of required documents",
+          "Incomplete applications are the #1 cause of delays"
+        ]
+      },
+      {
+        "step_number": 5,
+        "title": "Lodge CDC Application",
+        "description": "Submit your Complying Development Certificate application through the NSW Planning Portal.",
+        "duration": "10-20 business days",
+        "tasks": [
+          "Create NSW Planning Portal account",
+          "Upload all documentation",
+          "Pay application fees (typically $1,500-3,000)",
+          "Respond to any requests for information promptly"
+        ],
+        "tips": [
+          "Lodge via the NSW Planning Portal for faster processing",
+          "Keep copies of all submitted documents"
+        ]
+      },
+      {
+        "step_number": 6,
+        "title": "Construction Phase",
+        "description": "Build your granny flat with required inspections.",
+        "duration": "8-16 weeks",
+        "tasks": [
+          "Appoint a Principal Certifier (often same as your CDC certifier)",
+          "Notify council 2 days before construction starts",
+          "Complete mandatory inspections at each stage",
+          "Keep detailed records of all work"
+        ],
+        "tips": [
+          "Don't proceed past inspection stages without approval",
+          "Weather can significantly impact construction timelines"
+        ]
+      },
+      {
+        "step_number": 7,
+        "title": "Get Your Occupation Certificate",
+        "description": "Complete final inspection and obtain approval to occupy.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Request final inspection from Principal Certifier",
+          "Ensure all conditions of consent are met",
+          "Obtain Occupation Certificate",
+          "Notify council of completion"
+        ],
+        "tips": [
+          "You cannot legally occupy or rent without an OC",
+          "Keep your OC safe - you'll need it for insurance and sale"
+        ]
+      }
+    ],
+    "common_pitfalls": [
+      "Exceeding the 60sqm floor area limit (covered areas count)",
+      "Not checking for easements or sewer lines on site",
+      "Assuming CDC is available on heritage or flood-affected land",
+      "Starting work before CDC is issued",
+      "Not meeting minimum setback requirements",
+      "Forgetting to include car parking requirements"
+    ],
+    "related_qa_ids": ["Q1", "Q2", "Q3", "Q4", "Q6"],
+    "related_checklist_ids": ["CL3"],
+    "source_document": "SEPP Housing 2021 - Secondary Dwellings",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714",
+    "last_verified": "2026-01-20",
+    "display_order": 1,
+    "is_published": true
+  },
+  {
+    "guide_id": "G2",
+    "title": "I Want to Add a Second Storey",
+    "slug": "add-second-storey",
+    "target_user": "Homeowner wanting to extend upward",
+    "typical_timeline": "6-12 months",
+    "typical_cost_range": "$150,000-400,000 construction + $10,000-25,000 approvals",
+    "eligibility": {
+      "zones": ["R1", "R2", "R3", "R4"],
+      "height_limit_check": "Must comply with LEP height limits",
+      "fsr_check": "Must comply with FSR limits",
+      "heritage_check": "Additional requirements in heritage areas",
+      "existing_structure": "Structural assessment of existing building required"
+    },
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Assess Feasibility",
+        "description": "Determine if your property can accommodate a second storey under local planning controls.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Obtain Section 10.7 Planning Certificate",
+          "Check LEP height limits for your zone",
+          "Check Floor Space Ratio (FSR) limits",
+          "Engage structural engineer to assess existing foundations",
+          "Review any heritage or conservation area restrictions"
+        ],
+        "tips": [
+          "Height limits vary significantly between zones (often 8.5-9.5m in R2)",
+          "Existing FSR usage will limit how much you can add"
+        ]
+      },
+      {
+        "step_number": 2,
+        "title": "Choose Your Pathway",
+        "description": "Determine if CDC or DA is required based on your property constraints and design ambitions.",
+        "duration": "1-2 days",
+        "tasks": [
+          "Review Codes SEPP Part 3 Division 1 for CDC eligibility",
+          "Check if you meet all CDC standards (setbacks, height, privacy)",
+          "Assess if any Clause 4.6 variations will be needed",
+          "Consult with architect or certifier on recommended pathway"
+        ],
+        "tips": [
+          "CDC is faster but requires strict compliance with standards",
+          "DA allows more design flexibility but takes longer"
+        ]
+      },
+      {
+        "step_number": 3,
+        "title": "Engage Design Professionals",
+        "description": "Assemble your project team for design development.",
+        "duration": "2-4 weeks",
+        "tasks": [
+          "Engage an architect or building designer",
+          "Engage structural engineer for foundation assessment",
+          "Consider a town planner if DA pathway",
+          "Commission site survey if not recently done"
+        ],
+        "tips": [
+          "Architects can help maximize design within constraints",
+          "Get structural advice early - foundation upgrades can be costly"
+        ]
+      },
+      {
+        "step_number": 4,
+        "title": "Design Development",
+        "description": "Develop your design to comply with all relevant controls.",
+        "duration": "4-8 weeks",
+        "tasks": [
+          "Develop concept design within planning constraints",
+          "Prepare shadow diagrams showing impact on neighbours",
+          "Address privacy impacts with screening or setbacks",
+          "Ensure design meets BCA requirements",
+          "Obtain BASIX certificate"
+        ],
+        "tips": [
+          "Shadow diagrams are critical for neighbour amenity assessment",
+          "Consider early consultation with neighbours"
+        ]
+      },
+      {
+        "step_number": 5,
+        "title": "Prepare and Lodge Application",
+        "description": "Compile documentation and submit your application.",
+        "duration": "2-4 weeks preparation, then 20-60 days assessment",
+        "tasks": [
+          "Prepare full architectural drawing set",
+          "Prepare Statement of Environmental Effects (if DA)",
+          "Compile all specialist reports",
+          "Lodge via NSW Planning Portal",
+          "Pay application fees"
+        ],
+        "tips": [
+          "DA fees are based on estimated construction cost",
+          "Consider pre-lodgement meeting for complex designs"
+        ]
+      },
+      {
+        "step_number": 6,
+        "title": "Assessment and Approval",
+        "description": "Navigate the assessment process and respond to any requests.",
+        "duration": "CDC: 10-20 days, DA: 40-90 days",
+        "tasks": [
+          "Respond promptly to any requests for information",
+          "Address any objections through design amendments if needed",
+          "Review conditions of consent carefully",
+          "Accept any required modifications"
+        ],
+        "tips": [
+          "RFIs stop the assessment clock - respond quickly",
+          "Conditions may require changes to your design"
+        ]
+      },
+      {
+        "step_number": 7,
+        "title": "Construction and Completion",
+        "description": "Build your addition with required inspections.",
+        "duration": "16-32 weeks",
+        "tasks": [
+          "Appoint Principal Certifier",
+          "Notify council before starting",
+          "Complete all mandatory inspections",
+          "Obtain Construction Certificate before building work",
+          "Obtain Occupation Certificate upon completion"
+        ],
+        "tips": [
+          "Second storey work often requires temporary accommodation",
+          "Weather can significantly impact roof removal timing"
+        ]
+      }
+    ],
+    "common_pitfalls": [
+      "Not checking foundation capacity early enough",
+      "Exceeding height limits without realising",
+      "Underestimating neighbour privacy and shadow impacts",
+      "Not accounting for heritage area requirements",
+      "Forgetting to check FSR limits before designing",
+      "Starting work before Construction Certificate is issued"
+    ],
+    "related_qa_ids": ["Q1", "Q2", "Q5", "Q8", "Q10"],
+    "related_checklist_ids": ["CL1", "CL5"],
+    "source_document": "Codes SEPP 2008 - Alterations and Additions",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572",
+    "last_verified": "2026-01-20",
+    "display_order": 2,
+    "is_published": true
+  },
+  {
+    "guide_id": "G3",
+    "title": "I Want to Build a Duplex",
+    "slug": "build-duplex",
+    "target_user": "Investor or homeowner seeking dual occupancy",
+    "typical_timeline": "9-18 months",
+    "typical_cost_range": "$400,000-800,000 construction + $15,000-40,000 approvals",
+    "eligibility": {
+      "minimum_lot_size": "Usually 600sqm minimum (varies by LGA)",
+      "zones": ["R1", "R2", "R3", "R4"],
+      "dual_occ_permitted": "Check LEP land use table",
+      "subdivision_potential": "Torrens title requires minimum lot sizes per dwelling"
+    },
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Verify Dual Occupancy is Permitted",
+        "description": "Confirm dual occupancy development is allowed on your site under local planning controls.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Obtain Section 10.7 Planning Certificate",
+          "Check LEP land use table for your zone",
+          "Verify minimum lot size requirements are met",
+          "Identify whether attached or detached dual occupancy is allowed",
+          "Check for any site-specific restrictions"
+        ],
+        "tips": [
+          "Some R2 zones prohibit dual occupancy",
+          "Attached dual occ often has lower minimum lot size requirements"
+        ]
+      },
+      {
+        "step_number": 2,
+        "title": "Understand Development Standards",
+        "description": "Learn the key planning controls that will shape your duplex design.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Review height limits and Floor Space Ratio (FSR)",
+          "Check minimum setback requirements",
+          "Review landscaped area requirements",
+          "Understand car parking requirements (usually 1-2 per dwelling)",
+          "Check if the Affordable Rental Housing SEPP applies"
+        ],
+        "tips": [
+          "SEPP Housing 2021 may provide bonus FSR for dual occupancy",
+          "DCP controls often have minimum private open space requirements"
+        ]
+      },
+      {
+        "step_number": 3,
+        "title": "Plan Your Subdivision Strategy",
+        "description": "Decide whether to subdivide and what title type to pursue.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Decide: Torrens title, Strata title, or retain as single lot",
+          "Check minimum subdivision lot sizes in your LEP",
+          "Consult with surveyor about subdivision feasibility",
+          "Consider service connections for each lot"
+        ],
+        "tips": [
+          "Torrens title is more valuable but has stricter requirements",
+          "Strata subdivision can be done after construction"
+        ]
+      },
+      {
+        "step_number": 4,
+        "title": "Engage Professional Team",
+        "description": "Build your team of consultants for design and approvals.",
+        "duration": "2-4 weeks",
+        "tasks": [
+          "Engage architect experienced in dual occupancy",
+          "Engage town planner for DA preparation",
+          "Commission site survey",
+          "Engage geotech if site has slope or soil issues",
+          "Consider pre-DA consultation with council"
+        ],
+        "tips": [
+          "Town planners can significantly improve approval chances",
+          "Pre-DA meetings help identify issues early"
+        ]
+      },
+      {
+        "step_number": 5,
+        "title": "Design and Documentation",
+        "description": "Develop your design and prepare DA documentation.",
+        "duration": "6-12 weeks",
+        "tasks": [
+          "Develop dual occupancy design within controls",
+          "Prepare Statement of Environmental Effects",
+          "Complete BASIX certificates for both dwellings",
+          "Prepare shadow diagrams and privacy analysis",
+          "Address stormwater, landscaping, waste management"
+        ],
+        "tips": [
+          "Each dwelling needs its own BASIX certificate",
+          "Consider future residents' needs in unit mix"
+        ]
+      },
+      {
+        "step_number": 6,
+        "title": "Lodge and Assess DA",
+        "description": "Submit your Development Application and navigate assessment.",
+        "duration": "60-120 days",
+        "tasks": [
+          "Lodge DA via NSW Planning Portal",
+          "Pay application fees (based on construction value)",
+          "Respond to Requests for Information",
+          "Address any neighbour objections",
+          "Review and accept conditions of consent"
+        ],
+        "tips": [
+          "Dual occupancy DAs typically take longer than single dwelling",
+          "Be prepared to negotiate design changes"
+        ]
+      },
+      {
+        "step_number": 7,
+        "title": "Construction and Subdivision",
+        "description": "Build your duplex and complete any subdivision.",
+        "duration": "9-15 months",
+        "tasks": [
+          "Obtain Construction Certificate",
+          "Appoint Principal Certifier",
+          "Complete construction with all inspections",
+          "Apply for Occupation Certificate",
+          "Lodge subdivision application if proceeding with Torrens/Strata"
+        ],
+        "tips": [
+          "Subdivision can often be lodged during construction",
+          "Strata plans require registered surveyor"
+        ]
+      }
+    ],
+    "common_pitfalls": [
+      "Not verifying dual occupancy is permitted in your zone",
+      "Underestimating minimum lot size requirements for subdivision",
+      "Ignoring solar access requirements for southern dwelling",
+      "Not planning for separate service connections",
+      "Designing without considering future subdivision requirements",
+      "Forgetting about waste collection access requirements"
+    ],
+    "related_qa_ids": ["Q1", "Q2", "Q5", "Q7", "Q11"],
+    "related_checklist_ids": ["CL4"],
+    "source_document": "SEPP Housing 2021 - Dual Occupancies",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714",
+    "last_verified": "2026-01-20",
+    "display_order": 3,
+    "is_published": true
+  },
+  {
+    "guide_id": "G4",
+    "title": "I Want to Knock Down and Rebuild",
+    "slug": "knock-down-rebuild",
+    "target_user": "Homeowner or developer replacing existing dwelling",
+    "typical_timeline": "12-18 months",
+    "typical_cost_range": "$350,000-700,000 construction + $20,000-40,000 approvals and demolition",
+    "eligibility": {
+      "zones": ["R1", "R2", "R3", "R4"],
+      "heritage_restrictions": "Generally not permitted on heritage items",
+      "tree_preservation": "May require arborist report for significant trees",
+      "contamination": "May need assessment if previous industrial/commercial use"
+    },
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Site Assessment and Due Diligence",
+        "description": "Thoroughly assess your site constraints before committing to demolition.",
+        "duration": "2-4 weeks",
+        "tasks": [
+          "Obtain Section 10.7 Planning Certificate",
+          "Check for heritage listing or conservation area",
+          "Identify any protected trees on site",
+          "Check for contamination history",
+          "Review all easements and services locations"
+        ],
+        "tips": [
+          "Heritage items typically cannot be demolished",
+          "Tree removal often needs separate approval"
+        ]
+      },
+      {
+        "step_number": 2,
+        "title": "Understand Site Potential",
+        "description": "Determine what can be built on your cleared site.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Review LEP height and FSR controls",
+          "Check minimum setback requirements",
+          "Understand landscaped area requirements",
+          "Review garage/parking requirements",
+          "Consider future subdivision potential"
+        ],
+        "tips": [
+          "A cleared site often enables larger builds than additions",
+          "Corner lots may have additional setback requirements"
+        ]
+      },
+      {
+        "step_number": 3,
+        "title": "Choose Approval Pathway",
+        "description": "Decide between CDC (fast-track) or DA based on your design goals.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Review Codes SEPP requirements for CDC eligibility",
+          "Assess if your design can meet all CDC standards",
+          "Consider if any variations are needed (requires DA)",
+          "Evaluate heritage/conservation area implications"
+        ],
+        "tips": [
+          "CDC can save months but requires strict compliance",
+          "DA gives more flexibility for unique designs"
+        ]
+      },
+      {
+        "step_number": 4,
+        "title": "Engage Design Team",
+        "description": "Assemble your professional team for design and approvals.",
+        "duration": "2-4 weeks",
+        "tasks": [
+          "Engage architect or building designer",
+          "Commission detailed site survey",
+          "Engage geotechnical engineer if required",
+          "Engage arborist if significant trees present",
+          "Consider project builder for design-build approach"
+        ],
+        "tips": [
+          "Project home builders often include approvals in their package",
+          "Custom architects offer more design flexibility"
+        ]
+      },
+      {
+        "step_number": 5,
+        "title": "Design and Documentation",
+        "description": "Develop your new dwelling design and prepare approval documents.",
+        "duration": "6-12 weeks",
+        "tasks": [
+          "Develop architectural design within controls",
+          "Prepare all required drawings and specifications",
+          "Obtain BASIX certificate",
+          "Prepare stormwater management plan",
+          "Commission structural engineering"
+        ],
+        "tips": [
+          "Design for your lifestyle needs, not just maximum size",
+          "Consider future-proofing (accessibility, solar orientation)"
+        ]
+      },
+      {
+        "step_number": 6,
+        "title": "Obtain Approvals",
+        "description": "Submit and obtain necessary approvals for demolition and construction.",
+        "duration": "3-8 weeks (CDC) or 8-16 weeks (DA)",
+        "tasks": [
+          "Apply for demolition approval (often combined with construction)",
+          "Lodge CDC or DA via NSW Planning Portal",
+          "Pay application fees",
+          "Respond to any requests for information",
+          "Obtain approval before any demolition work"
+        ],
+        "tips": [
+          "Demolition of dwelling over 50 years may need assessment",
+          "Asbestos requires licensed removal contractor"
+        ]
+      },
+      {
+        "step_number": 7,
+        "title": "Demolition Phase",
+        "description": "Safely demolish existing structure.",
+        "duration": "1-3 weeks",
+        "tasks": [
+          "Engage licensed demolition contractor",
+          "Arrange asbestos testing and removal if required",
+          "Notify council before demolition starts",
+          "Disconnect all services safely",
+          "Ensure proper waste disposal and site clearing"
+        ],
+        "tips": [
+          "Asbestos removal is mandatory before demolition",
+          "Some materials may be recycled or salvaged"
+        ]
+      },
+      {
+        "step_number": 8,
+        "title": "Construction and Completion",
+        "description": "Build your new dwelling with required inspections.",
+        "duration": "6-12 months",
+        "tasks": [
+          "Obtain Construction Certificate",
+          "Appoint Principal Certifier",
+          "Complete all mandatory inspections",
+          "Obtain Occupation Certificate before moving in",
+          "Arrange final service connections"
+        ],
+        "tips": [
+          "Plan temporary accommodation during construction",
+          "Weather can significantly impact build timelines"
+        ]
+      }
+    ],
+    "common_pitfalls": [
+      "Not checking heritage status before purchasing",
+      "Underestimating asbestos removal costs",
+      "Assuming larger builds are always better",
+      "Not planning for temporary accommodation",
+      "Forgetting about existing mature trees",
+      "Demolishing before approvals are in place"
+    ],
+    "related_qa_ids": ["Q1", "Q2", "Q5", "Q8", "Q12"],
+    "related_checklist_ids": ["CL1", "CL2"],
+    "source_document": "EP&A Act - Demolition and Building Work",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/act-1979-203",
+    "last_verified": "2026-01-20",
+    "display_order": 4,
+    "is_published": true
+  },
+  {
+    "guide_id": "G5",
+    "title": "I Want to Subdivide My Property",
+    "slug": "subdivide-property",
+    "target_user": "Property owner seeking to create separate lots",
+    "typical_timeline": "6-18 months",
+    "typical_cost_range": "$30,000-80,000 for subdivision alone (excludes any building)",
+    "eligibility": {
+      "minimum_lot_size": "Varies by LEP - often 450-600sqm per lot",
+      "zones": ["R1", "R2", "R3", "R4", "R5"],
+      "frontage_requirements": "Each lot typically needs 12-15m frontage",
+      "access_requirements": "Each lot must have legal road access"
+    },
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Check Subdivision Potential",
+        "description": "Determine if your property can be legally subdivided under planning controls.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Obtain Section 10.7 Planning Certificate",
+          "Check LEP minimum lot size requirements",
+          "Verify minimum frontage requirements are achievable",
+          "Identify any restrictions (easements, covenants)",
+          "Check if heritage or conservation area applies"
+        ],
+        "tips": [
+          "Minimum lot sizes vary significantly between councils",
+          "Corner lots often have better subdivision potential"
+        ]
+      },
+      {
+        "step_number": 2,
+        "title": "Understand Subdivision Types",
+        "description": "Choose the right subdivision approach for your situation.",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Evaluate Torrens title subdivision (separate land titles)",
+          "Consider Strata subdivision (shared land, separate units)",
+          "Understand Community title (mix of private and common)",
+          "Assess battle-axe lot configuration if limited frontage",
+          "Consider staged subdivision options"
+        ],
+        "tips": [
+          "Torrens title is most valuable but has strictest requirements",
+          "Battle-axe lots have specific access handle requirements"
+        ]
+      },
+      {
+        "step_number": 3,
+        "title": "Engage Professional Team",
+        "description": "Build your subdivision team.",
+        "duration": "2-4 weeks",
+        "tasks": [
+          "Engage registered surveyor (mandatory for subdivision)",
+          "Engage town planner for DA preparation",
+          "Consult with civil engineer for services design",
+          "Check with utility providers about connection feasibility"
+        ],
+        "tips": [
+          "Surveyors handle the technical subdivision plan",
+          "Town planners improve approval prospects significantly"
+        ]
+      },
+      {
+        "step_number": 4,
+        "title": "Design the Subdivision",
+        "description": "Develop your subdivision layout and address technical requirements.",
+        "duration": "4-8 weeks",
+        "tasks": [
+          "Prepare draft subdivision plan showing proposed lots",
+          "Design access arrangements for each lot",
+          "Plan service connections (water, sewer, electricity, NBN)",
+          "Address stormwater management",
+          "Consider building envelopes for new lots"
+        ],
+        "tips": [
+          "Think about what can be built on each lot",
+          "Service connection costs can be significant"
+        ]
+      },
+      {
+        "step_number": 5,
+        "title": "Lodge Development Application",
+        "description": "Submit your subdivision DA for council assessment.",
+        "duration": "60-120 days",
+        "tasks": [
+          "Prepare Statement of Environmental Effects",
+          "Lodge DA via NSW Planning Portal",
+          "Pay application fees",
+          "Respond to Requests for Information",
+          "Address any neighbour submissions"
+        ],
+        "tips": [
+          "Subdivision DAs are assessed against LEP minimum lot standards",
+          "Council may require contributions for new lots"
+        ]
+      },
+      {
+        "step_number": 6,
+        "title": "Complete Subdivision Works",
+        "description": "Construct required infrastructure and satisfy conditions.",
+        "duration": "3-12 months",
+        "tasks": [
+          "Complete any required civil works",
+          "Install service connections to each lot",
+          "Construct any required access roads",
+          "Pay developer contributions (Section 7.11/7.12)",
+          "Satisfy all conditions of consent"
+        ],
+        "tips": [
+          "Some conditions can be satisfied at subdivision registration",
+          "Infrastructure costs can be substantial for larger subdivisions"
+        ]
+      },
+      {
+        "step_number": 7,
+        "title": "Register Subdivision",
+        "description": "Finalize the legal subdivision and create new titles.",
+        "duration": "4-8 weeks",
+        "tasks": [
+          "Surveyor prepares final subdivision plan",
+          "Obtain Section 88B instrument if needed (easements, restrictions)",
+          "Council issues Subdivision Certificate",
+          "Lodge plan at NSW Land Registry Services",
+          "Receive new Certificate(s) of Title"
+        ],
+        "tips": [
+          "Registration creates the new legal lots",
+          "Each new lot will have its own folio identifier"
+        ]
+      }
+    ],
+    "common_pitfalls": [
+      "Not checking minimum lot size requirements first",
+      "Underestimating service connection costs",
+      "Ignoring frontage requirements for battle-axe lots",
+      "Not accounting for access handle width requirements",
+      "Forgetting about Section 7.11/7.12 contributions",
+      "Assuming existing dwelling can remain in any location"
+    ],
+    "related_qa_ids": ["Q1", "Q2", "Q13", "Q14", "Q15"],
+    "related_checklist_ids": [],
+    "source_document": "EP&A Act - Subdivision",
+    "source_url": "https://legislation.nsw.gov.au/view/html/inforce/current/act-1979-203",
+    "last_verified": "2026-01-20",
+    "display_order": 5,
+    "is_published": true
+  }
+]

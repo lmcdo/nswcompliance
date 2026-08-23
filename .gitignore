@@ -338,6 +338,16 @@ migrate_*.py
 # Temporary SQL files
 *.sql
 !migrations/*.sql
+# Frontend migrations are source-controlled schema history as well.  The global
+# rule above previously hid these files even though their README and project
+# documentation instruct operators to run them.
+!frontend-nextjs/migrations/*.sql
+
+# The same "Temporary/working Python scripts" globs below (check_*.py,
+# create_*.py, etc.) apply repo-wide and were also hiding root-level migration
+# scripts, e.g. migrations/create_housing_sepp_standards.py — a real migration,
+# not scratch. Found 2026-08-23 alongside the scripts/ gap below.
+!migrations/*.py
 
 # Working JSON files (not config)
 *_extracted.json
@@ -488,6 +498,24 @@ scripts/*
 !scripts/*.mjs
 !scripts/*.js
 !scripts/*.bat
+# The four lines above only reach ONE level deep — `*` does not cross `/` in
+# gitignore, so scripts/definitions/, scripts/diagnostics/, scripts/fixes/,
+# scripts/migrations/, scripts/procedural/, scripts/verification/ and
+# scripts/sql/ were still being emptied by the basename globs in the
+# "Temporary/working Python scripts" and "Temporary SQL files" sections above
+# (check_*.py, fix_*.py, create_*.py, debug_*.py, *.sql, ...), which match at
+# any depth. Same bug class as the fix above this comment block, one directory
+# level deeper. Found 2026-08-23: scripts/definitions/import_definitions.py,
+# scripts/diagnostics/check_roof_provision_text.py,
+# scripts/procedural/import_procedural.py,
+# scripts/verification/check_heritage_duplication.py and others were
+# untracked and would not exist on a fresh clone.
+!scripts/**/*.py
+!scripts/**/*.sql
+!scripts/**/*.sh
+!scripts/**/*.mjs
+!scripts/**/*.js
+!scripts/**/*.bat
 # Generated, and bulk source documents (three PDFs here total ~50 MB).
 scripts/**/__pycache__/
 scripts/**/*.pyc
@@ -656,10 +684,11 @@ scripts/**/*.pdf
 # PRP checkpoint working files
 prp_checkpoints/*.py
 
-# Tool directories
-poppler/
-schemas/
-test_update/
+# Tool directories.  These are root-only: an unanchored `schemas/` also
+# ignored frontend-nextjs/lib/schemas/, leaving source files invisible to Git.
+/poppler/
+/schemas/
+/test_update/
 
 # Single-word junk files
 i
