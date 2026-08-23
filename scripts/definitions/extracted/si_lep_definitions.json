@@ -1,0 +1,4377 @@
+[
+  {
+    "term": "Aboriginal object",
+    "term_normalized": "aboriginal object",
+    "definition_text": "any deposit, object or other material evidence (not being a handicraft made for sale) relating to the Aboriginal habitation of an area of New South Wales, being habitation before or concurrent with (or both) the occupation of that area by persons of non-Aboriginal extraction, and includes Aboriginal remains.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 41,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Aboriginal place of heritage significance",
+    "term_normalized": "aboriginal place of heritage significance",
+    "definition_text": "an area of land, the general location of which is identified in an Aboriginal heritage study adopted by the Council after public exhibition and that may be shown on the Heritage Map, that is—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 41,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Acid Sulfate Soils Manual",
+    "term_normalized": "acid sulfate soils manual",
+    "definition_text": "the manual by that name published by the Acid Sulfate Soils Management Advisory Committee and made publicly available.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 242,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Acid Sulfate Soils Map",
+    "term_normalized": "acid sulfate soils map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Acid Sulfate Soils Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "acid sulfate soils",
+    "term_normalized": "acid sulfate soils",
+    "definition_text": "naturally occurring sediments and soils containing iron sulfides (principally pyrite) or their precursors or oxidation products, whose exposure to oxygen leads to the generation of sulfuric acid (for example, by drainage or excavation).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 242,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Additional Permitted Uses Map",
+    "term_normalized": "additional permitted uses map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Additional Permitted Uses Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 42,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "affordable housing",
+    "term_normalized": "affordable housing",
+    "definition_text": "a dwelling for the accommodation of a resident whose household has an income within the following ranges in State Environmental Planning Policy (Housing) 2021, section 13—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 26,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "agricultural produce industry",
+    "term_normalized": "agricultural produce industry",
+    "definition_text": "a building or place used for the handling, treating, processing or packing, for commercial purposes, of produce from agriculture (including dairy products, seeds, fruit, vegetables or other plant material), and includes wineries, flour mills, cotton seed oil plants, cotton gins, feed mills, cheese and butter factories, and juicing or canning plants, but does not include a livestock processing industry.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 242,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "agriculture",
+    "term_normalized": "agriculture",
+    "definition_text": "any of the following—\n(aaa) agritourism,\n(a) aquaculture,\n(b) extensive agriculture,\n(c) intensive livestock agriculture,\n(d) intensive plant agriculture.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "air transport facility",
+    "term_normalized": "air transport facility",
+    "definition_text": "an airport or a heliport that is not part of an airport, and includes associated communication and air traffic control facilities or structures.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 43,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "airport",
+    "term_normalized": "airport",
+    "definition_text": "a place that is used for the landing, taking off, parking, maintenance or repair of aeroplanes, and includes associated buildings, installations, facilities and movement areas and any heliport that is part of the airport.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 43,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "airstrip",
+    "term_normalized": "airstrip",
+    "definition_text": "a single runway for the landing, taking off or parking of aeroplanes for private aviation only, but does not include an airport, heliport or helipad.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 43,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "amusement centre",
+    "term_normalized": "amusement centre",
+    "definition_text": "a building or place (not being part of a pub or registered club) used principally for playing—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 243,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "ANEF contour",
+    "term_normalized": "anef contour",
+    "definition_text": "a noise exposure contour shown as an ANEF contour on the Noise Exposure Forecast Contour Map for the Kingsford Smith Airport prepared by the Commonwealth Department responsible for airports.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 67,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "animal boarding or training establishment",
+    "term_normalized": "animal boarding or training establishment",
+    "definition_text": "a building or place used for the breeding, boarding, training, keeping or caring of animals for commercial purposes (other than for the agistment of horses), and includes any associated riding school or ancillary veterinary hospital.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 243,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "aquaculture industry development plan",
+    "term_normalized": "aquaculture industry development plan",
+    "definition_text": "an aquaculture industry development plan published under Part 6 of the Fisheries Management Act 1994.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 56,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "archaeological site",
+    "term_normalized": "archaeological site",
+    "definition_text": "a place that contains one or more relics.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 43,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "artisan food and drink industry",
+    "term_normalized": "artisan food and drink industry",
+    "definition_text": "a building or place the principal purpose of which is the making or manufacture of boutique, artisan or craft food or drink products only. It must also include at least one of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 243,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "attached dwelling",
+    "term_normalized": "attached dwelling",
+    "definition_text": "a building containing 3 or more dwellings, where—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 44,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "attic",
+    "term_normalized": "attic",
+    "definition_text": "any habitable space, but not a separate dwelling, contained wholly within a roof above the ceiling line of the storey immediately below, except for minor elements such as dormer windows and the like.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 44,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "basement",
+    "term_normalized": "basement",
+    "definition_text": "the space of a building where the floor level of that space is predominantly below ground level (existing) and where the floor level of the storey immediately above is less than 1 metre above ground level (existing).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 244,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "bed and breakfast accommodation",
+    "term_normalized": "bed and breakfast accommodation",
+    "definition_text": "an existing dwelling in which temporary or short-term accommodation is provided on a commercial basis by the permanent residents of the dwelling and where—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 44,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "bee keeping",
+    "term_normalized": "bee keeping",
+    "definition_text": "a building or place used for the keeping and breeding of bees for commercial purposes.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 45,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "biodiversity or biological diversity",
+    "term_normalized": "biodiversity or biological diversity",
+    "definition_text": "the variety of living animal and plant life from all sources, and includes diversity within and between species and diversity of ecosystems.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 45,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "biosolids treatment facility",
+    "term_normalized": "biosolids treatment facility",
+    "definition_text": "a building or place used as a facility for the treatment of biosolids from a sewage treatment plant or from a water recycling facility.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 45,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "boat building and repair facility",
+    "term_normalized": "boat building and repair facility",
+    "definition_text": "any facility (including a building or other structure) used primarily for the construction, maintenance or repair of boats, whether or not including the storage, sale or hire of boats, but does not include a marina or boat shed.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 45,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "boat launching ramp",
+    "term_normalized": "boat launching ramp",
+    "definition_text": "a structure designed primarily for the launching of trailer borne recreational vessels, and includes associated car parking facilities.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 45,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "boat shed",
+    "term_normalized": "boat shed",
+    "definition_text": "a building or other structure used for the storage and routine maintenance of a boat or boats and that is associated with a private dwelling or non-profit organisation, and includes any skid used in connection with the building or other structure.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 245,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "building identification sign",
+    "term_normalized": "building identification sign",
+    "definition_text": "a sign that identifies or names a building and that may include the name of a building, the street name and number of a building, and a logo or other symbol but does not include general advertising of products, goods or services.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 46,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "building line or setback",
+    "term_normalized": "building line or setback",
+    "definition_text": "the horizontal distance between the property boundary or other stated boundary (measured at 90 degrees from the boundary) and—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 246,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "setback",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "bush fire risk management plan",
+    "term_normalized": "bush fire risk management plan",
+    "definition_text": "a plan prepared under Division 4 of Part 3 of the Rural Fires Act 1997 for the purpose referred to in section 54 of that Act.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 46,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "business identification sign",
+    "term_normalized": "business identification sign",
+    "definition_text": "a sign—(a) that indicates—(i) the name of the person or business, and (ii) the nature of the business carried on by the person at the premises or place at which the sign is displayed, and (b) that may include the address of the premises or place and a logo or other symbol that identifies the business, but that does not contain any advertising relating to a person who does not carry on business at the premises or place.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "business premises",
+    "term_normalized": "business premises",
+    "definition_text": "a building or place at or on which— (a) an occupation, profession or trade (other than an industry) is carried on for the provision of services directly to members of the public on a regular basis, or",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 47,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "camping ground",
+    "term_normalized": "camping ground",
+    "definition_text": "an area of land, with access to communal amenities, used for the short term placement of campervans, tents, annexes or other similar portable and lightweight temporary shelters for accommodation and includes a primitive camping ground but does not include—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 47,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "car park",
+    "term_normalized": "car park",
+    "definition_text": "a building or place primarily used for the purpose of parking motor vehicles, including any manoeuvring space and access thereto, whether operated for gain or not.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 247,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "caravan park",
+    "term_normalized": "caravan park",
+    "definition_text": "an area of land, with access to communal amenities, used for the installation or placement of caravans, or caravans and other moveable dwellings, but does not include farm stay accommodation.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 247,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "cellar door premises",
+    "term_normalized": "cellar door premises",
+    "definition_text": "a building or place that is used to sell wine by retail and that is situated on land on which there is a commercial vineyard, and where most of the wine offered for sale is produced in a winery situated on that land or is produced predominantly from grapes grown in the",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 47,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "cemetery",
+    "term_normalized": "cemetery",
+    "definition_text": "a building or place used primarily for the interment of deceased persons or pets or their ashes, whether or not it contains an associated building for conducting memorial services.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 248,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "charter and tourism boating facility",
+    "term_normalized": "charter and tourism boating facility",
+    "definition_text": "any facility (including a building or other structure) used for charter boating or tourism boating purposes, being a facility that is used only by the operators of the facility and that has a direct structural connection between the foreshore and the waterway, but does not include a marina.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 248,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Co-living housing",
+    "term_normalized": "co-living housing",
+    "definition_text": "a building or place that—\n(a) has at least 6 private rooms, some or all of which may have private kitchen and bathroom facilities, and\n(b) provides occupants with a principal place of residence for at least 3 months, and\n(c) has shared facilities, such as a communal living room, bathroom, kitchen or laundry, maintained by a managing agent, who provides management services 24 hours a day,\nbut does not include backpackers\"™ accommodation, a boarding house, a group home, hote",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "coastal lake",
+    "term_normalized": "coastal lake",
+    "definition_text": "a body of water identified in State Environmental Planning Policy (Resilience and Hazards) 2021, Schedule 1.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 49,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "flood",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "commercial farm",
+    "term_normalized": "commercial farm",
+    "definition_text": "a farm on which agriculture is undertaken that is—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 250,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "commercial premises",
+    "term_normalized": "commercial premises",
+    "definition_text": "any of the following—\n(a) business premises,\n(b) office premises,\n(c) retail premises.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "community facility",
+    "term_normalized": "community facility",
+    "definition_text": "a building or place—\n(a) owned or controlled by a public authority or non-profit community organisation, and\n(b) used for the physical, social, cultural or intellectual development or welfare of the community,\nbut does not include an educational establishment, hospital, retail premises, place of public worship or residential accommodation.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Considering Flooding in Land Use Planning Guideline",
+    "term_normalized": "considering flooding in land use planning guideline",
+    "definition_text": "the Considering Flooding in Land Use Planning Guideline published on the Department\"™s website on 14 July 2021.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 58,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Council",
+    "term_normalized": "council",
+    "definition_text": "the Inner West Council.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "creative industry",
+    "term_normalized": "creative industry",
+    "definition_text": "a building or place the principal purpose of which is to produce or demonstrate arts, crafts, design or other creative products, and includes artists\"™ studios, recording studios, and set design and production facilities.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 250,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "crematorium",
+    "term_normalized": "crematorium",
+    "definition_text": "a building or place in which deceased persons or pets are cremated or processed by alkaline hydrolysis, whether or not the building or place contains an associated building for conducting memorial services.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 251,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "data centre",
+    "term_normalized": "data centre",
+    "definition_text": "a building or place the principal purpose of which is to collect, distribute, process or store electronic data using information technology.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 1,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "depot",
+    "term_normalized": "depot",
+    "definition_text": "a building or place used for the storage (but not sale or hire) of plant, machinery or other goods (that support the operations of an existing undertaking) when not required for use, but does not include a farm building.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 251,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "drainage",
+    "term_normalized": "drainage",
+    "definition_text": "any activity that intentionally alters the hydrological regime of any locality by facilitating the removal of surface or ground water. It may include the construction, deepening, extending, opening, installation or laying of any canal, drain or pipe, either on the land or in such a manner as to encourage drainage of adjoining land.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 251,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "dual occupancy",
+    "term_normalized": "dual occupancy",
+    "definition_text": "a dual occupancy (attached) or a dual occupancy (detached). Note—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 1,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Dulwich Grove land",
+    "term_normalized": "dulwich grove land",
+    "definition_text": "the land identified as \"Area $1 4 ^ { \\prime \\prime }$ on the Key Sites Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 39,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "dwelling house",
+    "term_normalized": "dwelling house",
+    "definition_text": "a building containing only one dwelling. Note—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 252,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "dwelling",
+    "term_normalized": "dwelling",
+    "definition_text": "a room or suite of rooms occupied or used or so constructed or adapted as to be capable of being occupied or used as a separate domicile.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 2,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "early education and care facility",
+    "term_normalized": "early education and care facility",
+    "definition_text": "a building or place used for the education and care of children, and includes any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 252,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "eco-tourist facility",
+    "term_normalized": "eco-tourist facility",
+    "definition_text": "a building or place that— (a) provides temporary or short-term accommodation to visitors on a commercial basis, and (b) is located in or adjacent to an area with special ecological or cultural features, and (c) is sensitively designed and located so as to minimise bulk, scale and overall physical footprint and any ecological or visual impact.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 252,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "educational establishment",
+    "term_normalized": "educational establishment",
+    "definition_text": "a building or place used for education (including teaching), being—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 252,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "electricity generating works",
+    "term_normalized": "electricity generating works",
+    "definition_text": "a building or place used for the purpose of—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 3,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "emergency services facility",
+    "term_normalized": "emergency services facility",
+    "definition_text": "a building or place (including a helipad) used in connection with the provision of emergency services by an emergency services organisation.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 3,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "emergency services organisation",
+    "term_normalized": "emergency services organisation",
+    "definition_text": "any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 253,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "entertainment facility",
+    "term_normalized": "entertainment facility",
+    "definition_text": "a theatre, cinema, music hall, concert hall, dance hall and the like, but does not include a pub or registered club.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 253,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "environmental facility",
+    "term_normalized": "environmental facility",
+    "definition_text": "a building or place that provides for the recreational use or scientific study of natural systems, and includes walking tracks, seating, shelters, board walks, observation decks, bird hides or the like, and associated display structures.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 3,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "environmental protection works",
+    "term_normalized": "environmental protection works",
+    "definition_text": "works associated with the rehabilitation of land towards its natural state or any work to protect land from environmental degradation, and includes bush regeneration works, wetland protection works, erosion protection works, dune restoration works and the like, but does not include coastal protection works.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 253,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "flood",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "excavation",
+    "term_normalized": "excavation",
+    "definition_text": "the removal of soil or rock, whether moved to another part of the same site or to another site, but does not include garden landscaping that does not significantly alter the shape, natural form or drainage of the land.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 4,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "exhibition home",
+    "term_normalized": "exhibition home",
+    "definition_text": "a dwelling built for the purposes of the public exhibition and marketing of new dwellings, whether or not it is intended to be sold as a private dwelling after its use for those purposes is completed, and includes any associated sales or home finance office or place used for displays.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 254,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "exhibition village",
+    "term_normalized": "exhibition village",
+    "definition_text": "2 or more exhibition homes and associated buildings and places used for house and land sales, site offices, advisory services, car parking, food and drink sales and other associated purposes.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 254,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "extractive industry",
+    "term_normalized": "extractive industry",
+    "definition_text": "the winning or removal of extractive materials (otherwise than from a mine) by methods such as excavating, dredging, tunnelling or quarrying, including the storing, stockpiling or processing of extractive materials by methods such as recycling, washing, crushing, sawing or separating, but does not include turf farming.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 254,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "extractive material",
+    "term_normalized": "extractive material",
+    "definition_text": "sand, soil, gravel, rock or similar substances that are not minerals within the meaning of the Mining Act 1992.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 4,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "farm building",
+    "term_normalized": "farm building",
+    "definition_text": "a structure the use of which is ancillary to an agricultural use of the landholding on which it is situated and includes a hay shed, stock holding yard, machinery shed, shearing shed, silo, storage tank, outbuilding or the like, but does not include a dwelling.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 4,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "farm experience premises",
+    "term_normalized": "farm experience premises",
+    "definition_text": "a building or place— (a) on a commercial farm, and",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 254,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "farm stay accommodation",
+    "term_normalized": "farm stay accommodation",
+    "definition_text": "a building or place—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 255,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "feedlot",
+    "term_normalized": "feedlot",
+    "definition_text": "a confined or restricted area that is operated on a commercial basis to rear and fatten cattle, sheep or other animals, but does not include a poultry farm, dairy or pig farm.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 6,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "fill",
+    "term_normalized": "fill",
+    "definition_text": "the depositing of soil, rock or other similar extractive material obtained from the same or another site, but does not include—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 6,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "filming",
+    "term_normalized": "filming",
+    "definition_text": "recording images (whether on film or video tape or electronically or by other means) for exhibition or broadcast (such as by cinema, television or the internet or by other means), but does not include—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 6,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "flood mitigation work",
+    "term_normalized": "flood mitigation work",
+    "definition_text": "work designed and constructed for the express purpose of mitigating flood impacts. It involves changing the characteristics of flood behaviour to alter the level, location, volume, speed or timing of flood waters to mitigate flood impacts. Types of works may include excavation, construction or enlargement of any fill, wall, or levee that will alter riverine flood behaviour, local overland flooding, or tidal action so as to mitigate flood impacts.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "flood",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Flood Risk Management Manual",
+    "term_normalized": "flood risk management manual",
+    "definition_text": "the Flood Risk Management Manual, ISBN 978-1-923076-17-4, published by the NSW Government in June 2023.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 58,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "flood"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Floor Space Ratio Map",
+    "term_normalized": "floor space ratio map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Floor Space Ratio Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "food and drink premises",
+    "term_normalized": "food and drink premises",
+    "definition_text": "premises that are used for the preparation and retail sale of food or drink (or both) for immediate consumption on or off the premises, and includes any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "foreshore area",
+    "term_normalized": "foreshore area",
+    "definition_text": "land between the foreshore building line and the mean high water mark of the nearest natural waterbody shown on the Foreshore Building Line Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Foreshore Building Line Map",
+    "term_normalized": "foreshore building line map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Foreshore Building Line Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "foreshore building line",
+    "term_normalized": "foreshore building line",
+    "definition_text": "the line shown as the foreshore building line on the Foreshore Building Line Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "forestry",
+    "term_normalized": "forestry",
+    "definition_text": "forestry operations within the meaning of the Forestry Act 2012 or Part 5B of the Local Land Services Act 2013.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 257,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "freight transport facility",
+    "term_normalized": "freight transport facility",
+    "definition_text": "a facility used principally for the bulk handling of goods for transport by road, rail, air or sea, including any facility for the loading and unloading of vehicles, aircraft, vessels or containers used to transport those goods and for the parking, holding, servicing or repair of those vehicles, aircraft or vessels or for the engines or carriages involved.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "function centre",
+    "term_normalized": "function centre",
+    "definition_text": "a building or place used for the holding of events, functions, conferences and the like, and includes convention centres, exhibition centres and reception centres, but does not include an entertainment facility.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "funeral home",
+    "term_normalized": "funeral home",
+    "definition_text": "premises that are used to arrange, conduct and cater for funerals and memorial services, whether or not the premises include facilities for the short-term storage, dressing and viewing of bodies of deceased persons.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 7,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "garden centre",
+    "term_normalized": "garden centre",
+    "definition_text": "a building or place the principal purpose of which is the retail sale of plants and landscaping and gardening supplies and equipment. It may include a restaurant or cafe and the sale of any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 8,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "general industry",
+    "term_normalized": "general industry",
+    "definition_text": "a building or place (other than a heavy industry or light industry) that is used to carry out an industrial activity.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 8,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "goods repair and reuse premises",
+    "term_normalized": "goods repair and reuse premises",
+    "definition_text": "a building or place the principal purpose of which is to collect, repair or refurbish goods, including furniture and appliances, for the purposes of sale, hire or swap, and includes premises known as op shops.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 258,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "gross floor area",
+    "term_normalized": "gross floor area",
+    "definition_text": "the sum of the floor area of each floor of a building measured from the internal face of external walls, or from the internal face of walls separating the building from any other building, measured at a height of 1.4 metres above the floor, and includes—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 8,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "group home",
+    "term_normalized": "group home",
+    "definition_text": "a permanent group home or a transitional group home.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 9,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "hardware and building supplies",
+    "term_normalized": "hardware and building supplies",
+    "definition_text": "a building or place the principal purpose of which is the sale or hire of goods or materials, such as household fixtures, timber, tools, paint, wallpaper, plumbing supplies and the like, that are used in the construction and maintenance of buildings and adjacent outdoor areas.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 260,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "hazardous industry",
+    "term_normalized": "hazardous industry",
+    "definition_text": "a building or place used to carry out an industrial activity that would, when carried out and when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example, measures to isolate the activity from existing or likely future development on other land in the locality), pose a significant risk in the locality—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 260,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "hazardous storage establishment",
+    "term_normalized": "hazardous storage establishment",
+    "definition_text": "a building or place that is used for the storage of goods, materials or products and that would, when in operation and when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example, measures to isolate the building or place from existing or likely future development on other land in the locality), pose a significant risk in the locality—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 260,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "health care professional",
+    "term_normalized": "health care professional",
+    "definition_text": "any person registered under an Act for the purpose of providing health care.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 260,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "health consulting rooms",
+    "term_normalized": "health consulting rooms",
+    "definition_text": "premises comprising one or more rooms within (or within the curtilage of) a dwelling house used by not more than 3 health care professionals at any one time.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 10,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "health services facility",
+    "term_normalized": "health services facility",
+    "definition_text": "a building or place used to provide medical or other services relating to the maintenance or improvement of the health, or the restoration to health, of persons or the prevention of disease in or treatment of injury to persons, and includes any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 10,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "heavy industrial storage establishment",
+    "term_normalized": "heavy industrial storage establishment",
+    "definition_text": "a building or place used for the storage of goods, materials, plant or machinery for commercial purposes and that requires separation from other development because of the nature of the processes involved, or the goods, materials, plant or machinery stored, and includes any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 11,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "heavy industry",
+    "term_normalized": "heavy industry",
+    "definition_text": "a building or place used to carry out an industrial activity that requires separation from other development because of the nature of the processes involved, or the materials used, stored or produced, and includes—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 261,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Height of Buildings Map",
+    "term_normalized": "height of buildings map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Height of Buildings Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 261,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "helipad",
+    "term_normalized": "helipad",
+    "definition_text": "a place not open to the public used for the taking off and landing of helicopters.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 11,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "heliport",
+    "term_normalized": "heliport",
+    "definition_text": "a place open to the public that is used for the taking off and landing of helicopters, whether or not it includes—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 261,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "heritage conservation area",
+    "term_normalized": "heritage conservation area",
+    "definition_text": "an area of land of heritage significance— (a) shown on the Heritage Map as a heritage conservation area, and (b) the location and nature of which is described in Schedule 5, and includes any heritage items situated on or within that area.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 11,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "heritage conservation management plan",
+    "term_normalized": "heritage conservation management plan",
+    "definition_text": "a document prepared in accordance with guidelines prepared by the Public Service agency responsible to the Minister administering the Heritage Act 1977 that documents the heritage significance of an item, place or heritage conservation area and identifies conservation policies and management mechanisms that are appropriate to enable that significance to be retained.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 12,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "heritage impact statement",
+    "term_normalized": "heritage impact statement",
+    "definition_text": "a document consisting of—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 262,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "heritage item",
+    "term_normalized": "heritage item",
+    "definition_text": "a building, work, place, relic, tree, object or archaeological site the location and nature of which is described in Schedule 5.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 262,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Heritage Map",
+    "term_normalized": "heritage map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Heritage Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 262,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "heritage significance",
+    "term_normalized": "heritage significance",
+    "definition_text": "historical, scientific, cultural, social, archaeological, architectural, natural or aesthetic value.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 262,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "high technology industry",
+    "term_normalized": "high technology industry",
+    "definition_text": "a building or place predominantly used to carry out an industrial activity that involves any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 12,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "highway service centre",
+    "term_normalized": "highway service centre",
+    "definition_text": "a building or place used to provide refreshments and vehicle services to highway users. It may include any one or more of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 263,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "home business",
+    "term_normalized": "home business",
+    "definition_text": "a business, whether or not involving the sale of items online, carried on in a dwelling, or in a building ancillary to a dwelling, by 1 or more permanent residents of the dwelling and not involving the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 263,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "home industry",
+    "term_normalized": "home industry",
+    "definition_text": "an industrial activity, whether or not involving the sale of items online, carried on in a dwelling, or in a building ancillary to a dwelling, by 1 or more permanent residents of the dwelling and not involving the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 264,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "home occupation",
+    "term_normalized": "home occupation",
+    "definition_text": "an occupation that is carried on in a dwelling, or in a building ancillary to a dwelling, by one or more permanent residents of the dwelling and that does not involve—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 14,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "home-based child care",
+    "term_normalized": "home-based child care",
+    "definition_text": "a family day care residence (within the meaning of the Children (Education and Care Services) National Law (NSW)) at which the education and care service is provided at any one time to no more than 7 children (including any child of the person providing the service) all of whom are under the age of 13 years and no more than 4 of whom are children who do not ordinarily attend school.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 263,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "horticulture",
+    "term_normalized": "horticulture",
+    "definition_text": "the cultivation of fruits, vegetables, mushrooms, nuts, cut flowers and foliage and nursery products for commercial purposes, but does not include a plant nursery, turf farming or viticulture.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 265,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "hospital",
+    "term_normalized": "hospital",
+    "definition_text": "a building or place used for the purpose of providing professional health care services (such as preventative or convalescent care, diagnosis, medical or surgical treatment, psychiatric care or care for people with disabilities, or counselling services provided by health care professionals) to people admitted as in-patients (whether or not out-patients are also cared for or treated there), and includes ancillary facilities for (or that consist of) any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 15,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "hostel",
+    "term_normalized": "hostel",
+    "definition_text": "premises that are generally staffed by social workers or support providers and at which—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 265,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "hotel or motel accommodation",
+    "term_normalized": "hotel or motel accommodation",
+    "definition_text": "a building or place (whether or not licensed premises under the Liquor Act 2007) that provides temporary or shor...",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "independent living unit",
+    "term_normalized": "independent living unit",
+    "definition_text": "a dwelling or part of a building, whether or not attached to another dwelling—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 16,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "industrial activity",
+    "term_normalized": "industrial activity",
+    "definition_text": "the manufacturing, production, assembling, altering, formulating, repairing, renovating, ornamenting, finishing, cleaning, washing, dismantling, transforming, processing, recycling, adapting or servicing of, or the research and development of, any goods, substances, food, products or articles for commercial purposes, and includes any storage or transportation associated with any such activity.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 16,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "industrial retail outlet",
+    "term_normalized": "industrial retail outlet",
+    "definition_text": "a building or place that—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 16,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "industrial training facility",
+    "term_normalized": "industrial training facility",
+    "definition_text": "a building or place used in connection with vocational training in an activity (such as forklift or truck driving, welding or carpentry) that is associated with an industry, rural industry, extractive industry or mining, but does not include an educational establishment, business premises or retail premises.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 17,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "industrial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "industry",
+    "term_normalized": "industry",
+    "definition_text": "any of the following— (a) general industry, (b) heavy industry, (c) light industry, but does not include— (d) rural industry, or (e) extractive industry, or (f) mining.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 267,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "information and education facility",
+    "term_normalized": "information and education facility",
+    "definition_text": "a building or place used for providing information or education to visitors, and the exhibition or display of items, and includes an art gallery, museum, library, visitor information centre and the like.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 267,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "intensive livestock agriculture",
+    "term_normalized": "intensive livestock agriculture",
+    "definition_text": "the keeping or breeding, for commercial purposes, of cattle, poultry, pigs, goats, horses, sheep or other livestock, and includes any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 267,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "intensive plant agriculture",
+    "term_normalized": "intensive plant agriculture",
+    "definition_text": "any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 267,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "jetty",
+    "term_normalized": "jetty",
+    "definition_text": "a horizontal decked walkway providing access from the shore to the waterway and is generally constructed on a piered or piled foundation.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 268,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Key Sites Map",
+    "term_normalized": "key sites map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Key Sites Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 18,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "kiosk",
+    "term_normalized": "kiosk",
+    "definition_text": "premises that are used for the purposes of selling food, light refreshments and other small convenience items.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 18,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Land Application Map",
+    "term_normalized": "land application map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Land Application Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 18,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Land Reservation Acquisition Map",
+    "term_normalized": "land reservation acquisition map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Land Reservation Acquisition Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 268,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Land Zoning Map",
+    "term_normalized": "land zoning map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Land Zoning Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 268,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "landscaped area",
+    "term_normalized": "landscaped area",
+    "definition_text": "a part of a site used for growing plants, grasses and trees, but does not include any building, structure or hard paved area.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 268,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "landscaping material supplies",
+    "term_normalized": "landscaping material supplies",
+    "definition_text": "a building or place used for the storage and sale of landscaping supplies such as soil, gravel, potting mix, mulch, sand, railway sleepers, screenings, rock and the like.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 268,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "light industry",
+    "term_normalized": "light industry",
+    "definition_text": "a building or place used to carry out an industrial activity that does not interfere with the amenity of the neighbourhood by reason of noise, vibration, smell, fumes, smoke, vapour, steam, soot, ash, dust, waste water, waste products, grit or oil, or otherwise, and includes any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 268,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "liquid fuel depot",
+    "term_normalized": "liquid fuel depot",
+    "definition_text": "premises used for the bulk storage of petrol, oil, petroleum or othe inflammable liquid for wholesale distribution and at which no retail trade is conducted.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 269,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "livestock processing industry",
+    "term_normalized": "livestock processing industry",
+    "definition_text": "a building or place used for the commercial production of products derived from the slaughter of animals (including poultry) or the processing of skins or wool of animals and includes abattoirs, knackeries, tanneries, woolscours and rendering plants.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 19,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "local distribution premises",
+    "term_normalized": "local distribution premises",
+    "definition_text": "a building or place used for the storage or handling of items (whether goods or materials) pending their delivery to people and businesses in the local area, but from which no retail sales are made.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 269,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Lot Size Map",
+    "term_normalized": "lot size map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Lot Size Map.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 269,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "marina",
+    "term_normalized": "marina",
+    "definition_text": "a permanent boat storage facility (whether located wholly on land, wholly on a waterway or partly on land and partly on a waterway), and includes any of the following associated facilities—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 19,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "market",
+    "term_normalized": "market",
+    "definition_text": "an open-air area, or an existing building, that is used for the purpose of selling, exposing or offering goods, merchandise or materials for sale by independent stall holders, and includes temporary structures and existing permanent structures used for that purpose on an intermittent or occasional basis.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 269,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mean high water mark",
+    "term_normalized": "mean high water mark",
+    "definition_text": "the position where the plane of the mean high water level of all ordinary local high tides intersects the foreshore, being 1 . 4 4 m above the zero of Fort Denison Tide Gauge and 0.515m Australian Height Datum.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 270,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "medical centre",
+    "term_normalized": "medical centre",
+    "definition_text": "premises that are used for the purpose of providing health services (including preventative care, diagnosis, medical or surgical treatment, counselling or alternative therapies) to out-patients only, where such services are principally provided by health care professionals. It may include the ancillary provision of other health services.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 20,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mezzanine",
+    "term_normalized": "mezzanine",
+    "definition_text": "an intermediate floor within a room.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 20,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mine",
+    "term_normalized": "mine",
+    "definition_text": "any place (including any excavation) where an operation is carried on for mining of any mineral by any method and any place on which any mining related work is carried out, but does not include a place used only for extractive industry.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 20,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mine subsidence district",
+    "term_normalized": "mine subsidence district",
+    "definition_text": "a mine subsidence district proclaimed under section 15 of the Mine Subsidence Compensation Act 1961.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 270,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mining",
+    "term_normalized": "mining",
+    "definition_text": "mining carried out under the Mining Act 1992 or the recovery of minerals under the Offshore Minerals Act 1999",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mixed use development",
+    "term_normalized": "mixed use development",
+    "definition_text": "a building or place comprising 2 or more different land uses.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 270,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mooring",
+    "term_normalized": "mooring",
+    "definition_text": "a detached or freestanding apparatus located on or in a waterway and that is capable of securing a vessel, but does not include a mooring pen.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 20,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mooring pen",
+    "term_normalized": "mooring pen",
+    "definition_text": "an arrangement of freestanding piles or other restraining devices designed or used for the purpose of berthing a vessel.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 270,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "mortuary",
+    "term_normalized": "mortuary",
+    "definition_text": "premises that are used, or intended to be used, for the receiving, preparation, embalming and storage of bodies of deceased persons pending their interment or cremation.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 20,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "multi dwelling housing",
+    "term_normalized": "multi dwelling housing",
+    "definition_text": "3 or more dwellings (whether attached or detached) on one lot of land, each with access at ground level, but does not include a residential flat building.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 21,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "native fauna",
+    "term_normalized": "native fauna",
+    "definition_text": "any animal-life that is indigenous to New South Wales or is known to periodically or occasionally migrate to New South Wales, whether vertebrate (including fish) or invertebrate and in any stage of biological development, but does not include humans.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 21,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "native flora",
+    "term_normalized": "native flora",
+    "definition_text": "any plant-life that is indigenous to New South Wales, whether vascular or non-vascular and in any stage of biological development, and includes fungi and lichens, and marine vegetation within the meaning of Part 7A of the Fisheries Management Act 1994.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "navigable waterway",
+    "term_normalized": "navigable waterway",
+    "definition_text": "any waterway that is from time to time capable of navigation and is open to or used by the public for navigation, but does not include flood waters that have temporarily flowed over the established bank of a watercourse.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 271,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "flood",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "neighbourhood shop",
+    "term_normalized": "neighbourhood shop",
+    "definition_text": "premises used for the purposes of selling general merchandise such as foodstuffs, personal care products, newspapers and the like to provide for the day-to-day needs of people who live or work in the local area, but does not include neighbourhood supermarkets or restricted premises.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 271,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "neighbourhood supermarket",
+    "term_normalized": "neighbourhood supermarket",
+    "definition_text": "premises the principal purpose of which is the sale of groceries and foodstuffs to provide for the needs of people who live or work in the local area.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "nominated State heritage item",
+    "term_normalized": "nominated state heritage item",
+    "definition_text": "a heritage item that—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 21,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "non-potable water",
+    "term_normalized": "non-potable water",
+    "definition_text": "water that does not meet the standards or values for drinking water recommended from time to time by the National Health and Medical Research Council.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 271,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "NSW Oyster Industry Sustainable Aquaculture Strategy",
+    "term_normalized": "nsw oyster industry sustainable aquaculture strategy",
+    "definition_text": "the third edition of the publication of that title, as published in 2016 by the Department of Primary Industries (within the Department of Industry).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 56,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "offensive industry",
+    "term_normalized": "offensive industry",
+    "definition_text": "a building or place used to carry out an industrial activity that would, when carried out and when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example, measures to isolate the activity from existing or likely future development on other land in the locality), emit a polluting discharge (including, for example, noise) in a manner that would have a significant adverse impact in the locality or on existing or lik",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "offensive storage establishment",
+    "term_normalized": "offensive storage establishment",
+    "definition_text": "a building or place that is used for the storage of goods, materials or products and that would, when all measures proposed to reduce or minimise its impact on the locality have been employed (including, for example, measures to isolate the building or place from existing or likely future development on other land in the locality), emit a polluting discharge (including, for example, noise) in a manner that would have a significant adverse impact in the local",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "office premises",
+    "term_normalized": "office premises",
+    "definition_text": "a building or place used for the purpose of administrative, clerical, technical, professional or similar activities that do not include dealing with members of the public at the building or place on a direct and regular basis, except where such dealing is a minor activity (by appointment) that is ancillary to the main purpose for which the building or place is used.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 22,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "open cut mining",
+    "term_normalized": "open cut mining",
+    "definition_text": "mining carried out on, and by excavating, the earth\"™s surface, but does not include underground mining.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 272,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "oyster aquaculture",
+    "term_normalized": "oyster aquaculture",
+    "definition_text": "the cultivation of any species of edible oyster for a commercial purpose. Note—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 22,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "parking space",
+    "term_normalized": "parking space",
+    "definition_text": "a space dedicated for the parking of a motor vehicle, including any manoeuvring space and access to it, but does not include a car park.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 272,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "passenger transport facility",
+    "term_normalized": "passenger transport facility",
+    "definition_text": "a building or place used for the assembly or dispersal of passengers by any form of transport, including facilities required for parking, manoeuvring, storage or routine servicing of any vehicle that uses the building or place.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 22,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "people with a disability",
+    "term_normalized": "people with a disability",
+    "definition_text": "people of any age who, as a result of having an intellectual, psychiatric, sensory, physical or similar impairment, or a combination of such impairments, either permanently or for an extended period, have substantially limited opportunities to enjoy full and active lives.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 23,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "accessibility"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "pig farm",
+    "term_normalized": "pig farm",
+    "definition_text": "land that is used to keep or breed pigs for animal production, whether an indoor, outdoor, free-range or other type of operation.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 23,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "place of public worship",
+    "term_normalized": "place of public worship",
+    "definition_text": "a building or place used for the purpose of religious worship by a congregation or religious group, whether or not the building or place is also used for counselling, social events, instruction or religious training.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 273,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "plant nursery",
+    "term_normalized": "plant nursery",
+    "definition_text": "a building or place the principal purpose of which is the retail sale of plants that are grown or propagated on site or on an adjacent site. It may include the on-site sale of any such plants by wholesale and, if ancillary to the principal purpose for which the building or place is used, the sale of landscape and gardening supplies and equipment and the storage of these items.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 273,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "pond-based aquaculture",
+    "term_normalized": "pond-based aquaculture",
+    "definition_text": "aquaculture undertaken predominantly in ponds, raceways or dams (including any part of the aquaculture undertaken in tanks such as during the hatchery or depuration phases), but not including natural water-based aquaculture.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 273,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "port facilities",
+    "term_normalized": "port facilities",
+    "definition_text": "any of the following facilities at or in the vicinity of a designated port within the meaning of section 47 of the Ports and Maritime Administration Act 1995—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 273,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "potable water",
+    "term_normalized": "potable water",
+    "definition_text": "water that meets the standards or values for drinking water recommended from time to time by the National Health and Medical Research Council.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 23,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "poultry farm",
+    "term_normalized": "poultry farm",
+    "definition_text": "land that is used to keep or breed poultry for animal production, whether for meat or egg production (or both) and whether an indoor, outdoor, free-range or other type of operation.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 23,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "primitive camping ground",
+    "term_normalized": "primitive camping ground",
+    "definition_text": "a camping ground approved under the Local Government Act 1993, Chapter 7, Part 1 as a primitive camping ground.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 274,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "priority oyster aquaculture area",
+    "term_normalized": "priority oyster aquaculture area",
+    "definition_text": "an area identified as a priority oyster aquaculture area on a map referred to in Chapter 5.3 of the NSW Oyster Industry Sustainable Aquaculture Strategy, being a map a copy of which is held in the head office of the Department of Primary Industries (within the Department of Industry) and published on that Department\"™s website.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 6,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "private open space",
+    "term_normalized": "private open space",
+    "definition_text": "an area external to a building (including an area of land, terrace, balcony or deck) that is used for private outdoor purposes ancillary to the use of the building.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 24,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "private service provider",
+    "term_normalized": "private service provider",
+    "definition_text": "a person or body that has entered into an agreement that is in force with Fire and Rescue NSW to monitor fire alarm systems.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 49,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "pub",
+    "term_normalized": "pub",
+    "definition_text": "licensed premises under the Liquor Act 2007 the principal purpose of which is the retail sale of liquor for consumption on the premises, whether or not the premises include hotel or motel accommodation and whether or not food is sold or entertainment is provided on the premises.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 274,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "public administration building",
+    "term_normalized": "public administration building",
+    "definition_text": "a building used as offices or for administrative or other like purposes by the Crown, a statutory body, a council or an organisation established for public purposes, and includes a courthouse or a police station.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 274,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "public utility undertaking",
+    "term_normalized": "public utility undertaking",
+    "definition_text": "any of the following undertakings carried on or permitted to be carried on by or by authority of any Public Service agency or under the authority of or in pursuance of any Commonwealth or State Act—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 274,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "rainwater tank",
+    "term_normalized": "rainwater tank",
+    "definition_text": "a tank designed for the storage of rainwater gathered on the land on which the tank is situated.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 274,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "recreation area",
+    "term_normalized": "recreation area",
+    "definition_text": "a place used for outdoor recreation that is normally open to the public, and",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 24,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "registered club",
+    "term_normalized": "registered club",
+    "definition_text": "a club that holds a club licence under the Liquor Act 2007.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 275,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "relevant bonus floor space provisions",
+    "term_normalized": "relevant bonus floor space provisions",
+    "definition_text": "the requirements of State Environmental Planning Policy (Housing) 2021, section 87.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 27,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "relevant development control plan",
+    "term_normalized": "relevant development control plan",
+    "definition_text": "one of the following development control plans, as in force on the commencement of this clause, that applies to the land—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 68,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "relic",
+    "term_normalized": "relic",
+    "definition_text": "any deposit, artefact, object or material evidence that— (a) relates to the settlement of the area that comprises New South Wales, not being Aboriginal settlement, and",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 275,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "research station",
+    "term_normalized": "research station",
+    "definition_text": "a building or place operated by a public authority for the principal purpose of agricultural, environmental, fisheries, forestry, minerals or soil conservation research, and includes any associated facility for education, training, administration or accommodation.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 275,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "heritage",
+      "building",
+      "rural",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "residential accommodation",
+    "term_normalized": "residential accommodation",
+    "definition_text": "a building or place used predominantly as a place of residence,",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 25,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "residential care facility",
+    "term_normalized": "residential care facility",
+    "definition_text": "accommodation for seniors or people with a disability that includes—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 276,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "accessibility"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "residential flat building",
+    "term_normalized": "residential flat building",
+    "definition_text": "a building containing 3 or more dwellings, but does not include an attached dwelling, co-living housing or multi dwelling housing.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "resource recovery facility",
+    "term_normalized": "resource recovery facility",
+    "definition_text": "a building or place used for the recovery of resources from waste, including works or activities such as separating and sorting, processing or treating the waste, composting, temporary storage, transfer or sale of recovered resources, energy generation from gases and water treatment, but not including re-manufacture or disposal of the material by landfill or incineration.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 276,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "respite day care centre",
+    "term_normalized": "respite day care centre",
+    "definition_text": "a building or place that is used for the care of seniors or people who have a disability and that does not provide overnight accommodation for people other than those related to the owner or operator of the centre.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "accessibility",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "restaurant or cafe",
+    "term_normalized": "restaurant or cafe",
+    "definition_text": "a building or place the principal purpose of which is the preparation and serving, on a retail basis, of food and drink to people for consumption on the premises, whether or not liquor, take away meals and drinks or entertainment are also provided, but does not include the preparation and serving of food and drink to people that occurs as part of—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 27,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "restricted premises",
+    "term_normalized": "restricted premises",
+    "definition_text": "premises that, due to their nature, restrict access to patrons or customers over 18 years of age, and includes sex shops and similar premises, but does not include a pub, hotel or motel accommodation, home occupation (sex services) or sex services premises.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "restriction facilities",
+    "term_normalized": "restriction facilities",
+    "definition_text": "facilities where animals are constrained for management purposes, including milking sheds, pads, feed stalls, holding yards and paddocks where the number of livestock exceeds the ability of vegetation to recover from the effects of grazing in a normal growing season, but does not include facilities for drought or similar emergency relief.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 277,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "retail premises",
+    "term_normalized": "retail premises",
+    "definition_text": "a building or place used for the purpose of selling items by retail, or hiring or displaying items for the purpose of selling them or hiring them out, whether the items are goods or materials (or whether also sold by wholesale), and includes any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 277,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "road",
+    "term_normalized": "road",
+    "definition_text": "a public road or a private road within the meaning of the Roads Act 1993, and includes a classified road.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 28,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "roadside stall",
+    "term_normalized": "roadside stall",
+    "definition_text": "a place or temporary structure used for the retail sale of agricultural produce or hand crafted goods (or both) produced from the property on which the stall is situated or from an adjacent property.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 278,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "rural",
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "rural industry",
+    "term_normalized": "rural industry",
+    "definition_text": "the handling, treating, production, processing, storage or packing of animal or plant agricultural products for commercial purposes, and includes any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 278,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "rural supplies",
+    "term_normalized": "rural supplies",
+    "definition_text": "a building or place used for the display, sale or hire of stockfeeds, grains, seed, fertilizers, veterinary supplies and other goods or materials used in farming and primary industry production.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 28,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "sawmill or log processing works",
+    "term_normalized": "sawmill or log processing works",
+    "definition_text": "a building or place used for handling, cutting, chipping, pulping or otherwise processing logs, baulks, branches or stumps, principally derived from surrounding districts, into timber or other products derived from wood.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 279,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "school",
+    "term_normalized": "school",
+    "definition_text": "a government school or non-government school within the meaning of the Education Act 1990.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 279,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "school-based child care",
+    "term_normalized": "school-based child care",
+    "definition_text": "a building or place within a school that is used to provide out-ofschool-hours care (including vacation care) for school children only.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 279,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "secondary dwelling",
+    "term_normalized": "secondary dwelling",
+    "definition_text": "a self-contained dwelling that—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 29,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "self-storage units",
+    "term_normalized": "self-storage units",
+    "definition_text": "premises that consist of individual enclosed compartments for storing goods or materials (other than hazardous or offensive goods or materials).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 279,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "semi-detached dwelling",
+    "term_normalized": "semi-detached dwelling",
+    "definition_text": "a dwelling that is on its own lot of land and is attached to only one other dwelling.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 29,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "seniors housing",
+    "term_normalized": "seniors housing",
+    "definition_text": "a building or place that is—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 280,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "sensitive and hazardous development",
+    "term_normalized": "sensitive and hazardous development",
+    "definition_text": "development for the following purposes—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 59,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "service station",
+    "term_normalized": "service station",
+    "definition_text": "a building or place used for the sale by retail of fuels and lubricants for motor\nvehicles, whether or not the building or place is also used for any one or more of the following—\n(a) the ancillary sale by retail of spare parts and accessories for motor vehicles,\n(b) the cleaning of motor vehicles,\n(c) installation of accessories,\n(d) inspecting, repairing and servicing of motor vehicles (other than body building, panel beating,\nspray painting, or chassis restoration),\n(e)",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "serviced apartment",
+    "term_normalized": "serviced apartment",
+    "definition_text": "a building (or part of a building) providing self-contained accommodation\nto tourists or visitors on a commercial basis and that is regularly serviced or cleaned by the owner or\nmanager of the building or part of the building or the owner\"™s or manager\"™s agents.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "sewage reticulation system",
+    "term_normalized": "sewage reticulation system",
+    "definition_text": "a building or place used for the collection and transfer of\nsewage to a sewage treatment plant or water recycling facility for treatment, or transfer of the treated\nwaste for use or disposal, including associated—\n(a) pipelines and tunnels, and\n(b) pumping stations, and\n(c) dosing facilities, and\n(d) odour control works, and\n(e) sewage overflow structures, and\n(f) vent stacks.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "sewage treatment plant",
+    "term_normalized": "sewage treatment plant",
+    "definition_text": "a building or place used for the treatment and disposal of sewage,\nwhether or not the facility supplies recycled water for use as an alternative water supply.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "sewerage system",
+    "term_normalized": "sewerage system",
+    "definition_text": "any of the following—\n(a) biosolids treatment facility,\n(b) sewage reticulation system,\n(c) sewage treatment plant,\n(d) water recycling facility,\n(e) a building or place that is a combination of any of the things referred to in paragraphs (a)\"“(d).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "sex services",
+    "term_normalized": "sex services",
+    "definition_text": "sexual acts or sexual services in exchange for payment.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 281,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "sex services premises",
+    "term_normalized": "sex services premises",
+    "definition_text": "a brothel, but does not include home occupation (sex services).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 281,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "shop",
+    "term_normalized": "shop",
+    "definition_text": "premises that sell merchandise such as groceries, personal care products, clothing,\nmusic, homewares, stationery, electrical goods or the like or that hire any such merchandise, and\nincludes a neighbourhood shop and neighbourhood supermarket, but does not include food and drink\npremises or restricted premises.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "shop top housing",
+    "term_normalized": "shop top housing",
+    "definition_text": "one or more dwellings located above the ground floor of a building, where\nat least the ground floor is used for commercial premises or health services facilities.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "signage",
+    "term_normalized": "signage",
+    "definition_text": "any sign, notice, device, representation or advertisement that advertises or promotes\nany goods, services or events and any structure or vessel that is principally designed for, or that is\nused for, the display of signage, and includes any of the following—\n(a) an advertising structure,\n(b) a building identification sign,\n(c) a business identification sign,\nbut does not include a traffic sign or traffic control facilities.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "site area",
+    "term_normalized": "site area",
+    "definition_text": "the area of any land on which development is or is to be carried out. The land may\ninclude the whole or part of one lot, or more than one lot if they are contiguous to each other, but does\nnot include the area of any land on which development is not permitted to be carried out under this\nPlan.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "site coverage",
+    "term_normalized": "site coverage",
+    "definition_text": "the proportion of a site area covered by buildings. However, the following are\nnot included for the purpose of calculating site coverage—\n(a) any basement,\n(b) any part of an awning that is outside the outer walls of a building and that adjoins the street\nfrontage or other site boundary,\n(c) any eaves,\n(d) unenclosed balconies, decks, pergolas and the like.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "setback",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "small bar",
+    "term_normalized": "small bar",
+    "definition_text": "a small bar within the meaning of the Liquor Act 2007.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "Special Entertainment Precinct Map",
+    "term_normalized": "special entertainment precinct map",
+    "definition_text": "the Inner West Local Environmental Plan 2022 Special\nEntertainment Precinct Map—Enmore Road.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental",
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "specialised retail premises",
+    "term_normalized": "specialised retail premises",
+    "definition_text": "a building or place the principal purpose of which is the sale, hire\nor display of goods that are of a size, weight or quantity, that requires—\n(a) a large area for handling, display or storage, or\n(b) direct vehicular access to the site of the building or place by members",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "stock and sale yard",
+    "term_normalized": "stock and sale yard",
+    "definition_text": "a building or place that is used on a commercial basis for the purpose of",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 32,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "storage premises",
+    "term_normalized": "storage premises",
+    "definition_text": "a building or place used for the storage of goods, materials, plant or machinery for commercial purposes and where the storage is not ancillary to any industry, business premises or retail premises on the same parcel of land, and includes self-storage units, but does not include a heavy industrial storage establishment, local distribution premises or a warehouse or distribution centre.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 283,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "storey",
+    "term_normalized": "storey",
+    "definition_text": "a space within a building that is situated between one floor level and the floor level next above, or if there is no floor above, the ceiling or roof above, but does not include—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 33,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "take away food and drink premises",
+    "term_normalized": "take away food and drink premises",
+    "definition_text": "premises that are predominantly used for the preparation and retail sale of food or drink (or both) for immediate consumption away from the premises.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 33,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "tank-based aquaculture",
+    "term_normalized": "tank-based aquaculture",
+    "definition_text": "aquaculture undertaken exclusively in tanks, but not including natural water-based aquaculture.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 33,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "telecommunications network",
+    "term_normalized": "telecommunications network",
+    "definition_text": "a system, or series of systems, that carries, or is capable of carrying, communications by means of guided or unguided electromagnetic energy, or both.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 34,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "the Act",
+    "term_normalized": "the act",
+    "definition_text": "the Environmental Planning and Assessment Act 1979.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "timber yard",
+    "term_normalized": "timber yard",
+    "definition_text": "a building or place the principal purpose of which is the sale of sawn, dressed or treated timber, wood fibre boards or similar timber products. It may include the cutting of such timber, boards or products to order and the sale of hardware, paint, tools and materials used in conjunction with the use and treatment of timber.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "tourist and visitor accommodation",
+    "term_normalized": "tourist and visitor accommodation",
+    "definition_text": "a building or place that provides temporary or short-term accommodation on a commercial basis, and includes any of the following— (a) backpackers\"™ accommodation, (b) bed and breakfast accommodation, (c) farm stay accommodation, (d) hotel or motel accommodation, (e) serviced apartments, but does not include— (f) camping grounds, or (g) caravan parks, or (h) eco-tourist facilities.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "housing",
+      "building",
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "transport depot",
+    "term_normalized": "transport depot",
+    "definition_text": "a building or place used for the parking or servicing of motor powered or motor drawn vehicles used in connection with a business, industry, shop or passenger or freight transport undertaking.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 284,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "truck depot",
+    "term_normalized": "truck depot",
+    "definition_text": "a building or place used for the servicing and parking of trucks, earthmoving machinery and the like.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 34,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "turf farming",
+    "term_normalized": "turf farming",
+    "definition_text": "the commercial cultivation of turf for sale and the removal of turf for that purpose.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "vehicle body repair workshop",
+    "term_normalized": "vehicle body repair workshop",
+    "definition_text": "a building or place used for the repair of vehicles or agricultural machinery, involving body building, panel building, panel beating, spray painting or chassis restoration.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 35,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building",
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "vehicle repair station",
+    "term_normalized": "vehicle repair station",
+    "definition_text": "a building or place used for the purpose of carrying out repairs to, or the selling and fitting of accessories to, vehicles or agricultural machinery, but does not include a vehicle body repair workshop or vehicle sales or hire premises.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 35,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building",
+      "commercial",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "vehicle sales or hire premises",
+    "term_normalized": "vehicle sales or hire premises",
+    "definition_text": "a building or place used for the display, sale or hire of motor vehicles, caravans, boats, trailers, agricultural machinery and the like, whether or not accessories are sold or displayed there.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 35,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "parking",
+      "building",
+      "rural"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "veterinary hospital",
+    "term_normalized": "veterinary hospital",
+    "definition_text": "a building or place used for diagnosing or surgically or medically treating animals, whether or not animals are kept on the premises for the purpose of treatment.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 285,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "viticulture",
+    "term_normalized": "viticulture",
+    "definition_text": "the cultivation of grapes for use in the commercial production of fresh or dried fruit or wine.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 285,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "warehouse or distribution centre",
+    "term_normalized": "warehouse or distribution centre",
+    "definition_text": "a building or place used mainly or exclusively for storing or handling items (whether goods or materials) pending their sale, but from which no retail sales are made, but does not include local distribution pr...",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": null,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial",
+      "industrial"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "waste disposal facility",
+    "term_normalized": "waste disposal facility",
+    "definition_text": "a building or place used for the disposal of waste by landfill, incineration or other means, including such works or activities as recycling, resource recovery and other resource management activities, energy generation from gases, leachate management, odour control and the winning of extractive material to generate a void for disposal of waste or to cover waste after its disposal.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 35,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "waste or resource management facility",
+    "term_normalized": "waste or resource management facility",
+    "definition_text": "any of the following—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 285,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "waste or resource transfer station",
+    "term_normalized": "waste or resource transfer station",
+    "definition_text": "a building or place used for the collection and transfer of waste material or resources, including the receipt, sorting, compacting, temporary storage and distribution of waste or resources and the loading or unloading of waste or resources onto or from road or rail transport.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 36,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "water recreation structure",
+    "term_normalized": "water recreation structure",
+    "definition_text": "a structure used primarily for recreational purposes that has a direct structural connection between the shore and the waterway, and may include a pier, wharf, jetty or boat launching ramp.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 36,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "water recycling facility",
+    "term_normalized": "water recycling facility",
+    "definition_text": "a building or place used for the treatment of sewage effluent, stormwater or waste water for use as an alternative supply to mains water, groundwater or river water (including, in particular, sewer mining works), whether the facility stands alone or is associated with other development, and includes associated—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 286,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "water reticulation system",
+    "term_normalized": "water reticulation system",
+    "definition_text": "a building or place used for the transport of water, including pipes, tunnels, canals, pumping stations, related electricity infrastructure and dosing facilities.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 286,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "infrastructure"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "water storage facility",
+    "term_normalized": "water storage facility",
+    "definition_text": "a dam, weir or reservoir for the collection and storage of water, and includes associated monitoring or gauging equipment.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 36,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "water supply system",
+    "term_normalized": "water supply system",
+    "definition_text": "any of the following— (a) a water reticulation system, (b) a water storage facility, (c) a water treatment facility,",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 286,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "water treatment facility",
+    "term_normalized": "water treatment facility",
+    "definition_text": "a building or place used for the treatment of water (such as a desalination plant or a recycled or reclaimed water plant) whether the water produced is potable or not, and includes residuals treatment, storage and disposal facilities, but does not include a water recycling facility.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 37,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "waterbody",
+    "term_normalized": "waterbody",
+    "definition_text": "a waterbody (artificial) or waterbody (natural).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 37,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "watercourse",
+    "term_normalized": "watercourse",
+    "definition_text": "any river, creek, stream or chain of ponds, whether artificially modified or not, in which water usually flows, either continuously or intermittently, in a defined bed or channel, but does not include a waterbody (artificial).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 37,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "waterway",
+    "term_normalized": "waterway",
+    "definition_text": "the whole or any part of a watercourse, wetland, waterbody (artificial) or waterbody (natural).",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 37,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "environmental"
+    ],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "wharf or boating facilities",
+    "term_normalized": "wharf or boating facilities",
+    "definition_text": "a wharf or any of the following facilities associated with a wharf or boating that are not port facilities—",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 287,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [],
+    "extraction_confidence": 1.0
+  },
+  {
+    "term": "wholesale supplies",
+    "term_normalized": "wholesale supplies",
+    "definition_text": "a building or place used for the display, sale or hire of goods or materials by wholesale only to businesses that have an Australian Business Number registered under the A New Tax System (Australian Business Number) Act 1999 of the Commonwealth.",
+    "source_document": "Inner West LEP 2022 (Standard Instrument)",
+    "source_clause": "Dictionary",
+    "legislation_type": "SI_LEP",
+    "lga": "Inner West",
+    "former_council": null,
+    "pdf_page": 288,
+    "pdf_source_file": null,
+    "pdf_page_image_url": null,
+    "domain_tags": [
+      "building",
+      "commercial"
+    ],
+    "extraction_confidence": 1.0
+  }
+]

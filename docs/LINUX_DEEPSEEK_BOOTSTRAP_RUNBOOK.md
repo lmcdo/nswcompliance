@@ -14,19 +14,32 @@ Create a Linux dual-boot environment that can:
 
 ## Current repository warning
 
-At the time this document was written, the following Linux reproducibility
-repair is **staged but not yet committed** on branch
-`fix/linux-repro-gitignore-holes`:
+The first Linux reproducibility repair landed directly on `main` as commit
+`50d0157e` (2026-08-21) — it was never pushed as its own branch, so a
+`fix/linux-repro-gitignore-holes` branch does not exist on `origin`; a fresh
+clone gets this repair simply by being on `main`. That commit:
 
-- `.gitignore` no longer hides `frontend-nextjs/lib/schemas/*`;
-- the three documented SQL migrations under `frontend-nextjs/migrations/` are
+- stopped `.gitignore` hiding `frontend-nextjs/lib/schemas/*`;
+- made the three documented SQL migrations under `frontend-nextjs/migrations/`
   visible to Git;
-- Windows-only Python dependencies are selected only on Windows;
-- `SETUP.md` documents Linux packages and deterministic `npm ci` installs.
+- marked Windows-only Python dependencies so they're skipped on Linux;
+- updated `SETUP.md` with Linux packages and deterministic `npm ci` installs.
 
-Do not rely on this repair from a fresh Linux clone until it has been committed
-and pushed. Do not use `git commit --no-verify`; the normal repository checks
-must pass.
+A second pass (2026-08-23) found the same gitignore bug one directory level
+deeper — `scripts/definitions/`, `scripts/diagnostics/`, `scripts/fixes/`,
+`scripts/migrations/`, `scripts/procedural/`, `scripts/sql/`,
+`scripts/verification/`, and the root `migrations/` directory were still
+losing files to basename globs (`check_*.py`, `fix_*.py`, `*.sql`, ...) that
+match at any depth, one level past where the first repair's `!scripts/*.py`-
+style negations reach. That pass tracked roughly 70 previously-invisible
+files. Verify you're past both repairs before relying on a clone:
+
+```bash
+git log --oneline --all --grep="Linux clones reproducible" --grep="scripts.*gitignore" 2>/dev/null
+git check-ignore -q scripts/definitions/import_definitions.py && echo "STILL BROKEN" || echo "ok"
+```
+
+Do not use `git commit --no-verify`; the normal repository checks must pass.
 
 ## 1. Before changing any partition
 
@@ -92,14 +105,14 @@ mounted NTFS Windows partition.
 
 ## 4. Clone and bootstrap Compliance Engine
 
-After the reproducibility branch is committed and pushed:
+Both reproducibility repairs described above are on `main`; no branch switch
+is needed.
 
 ```bash
 mkdir -p ~/code
 cd ~/code
 git clone <YOUR-REPOSITORY-URL> compliance-engine
 cd compliance-engine
-git switch fix/linux-repro-gitignore-holes
 git config core.hooksPath .githooks
 ```
 
@@ -146,6 +159,15 @@ test the clone. Follow `DB_SCHEMA.md`, run `scripts/db_safety_check.sh`, and
 create a backup before any database operation.
 
 ## 5. Install and configure DeepSeek Harness
+
+**Node version caveat:** the DSH GitHub README does not state a minimum Node
+version at the time of writing. Third-party install guides (not DeepSeek's own
+docs) claim `^22.19.0` or `>=24.x`, which is newer than the Node 20 LTS
+installed in step 3 for this repository's frontend. Do not treat either number
+as confirmed — run `npx @deepseek-ai/dsh web` and read the actual error if it
+refuses to start, or check the README at the URL below before assuming Node 20
+is sufficient. If a second Node version is needed, use `nvm` rather than
+replacing the version this repository's `SETUP.md` specifies.
 
 The official quick launch is:
 

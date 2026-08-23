@@ -1,83 +1,98 @@
 {
   "tier": "standard",
-  "justification": "Standard: this change alters source-control visibility, Linux dependency selection, and the documented bootstrap path. It does not run a migration, touch production data, or change a served route. A failed clone would nevertheless leave an operator without documented migration history or required source, so Minor would understate the operational impact.",
-  "commit_hash": "d89e9684",
+  "justification": "Standard: second pass on the same class of bug as commit 50d0157e — source-control visibility and bootstrap-documentation accuracy, not production data or a served route. A silently-shadowed migration or fix script absent from a fresh clone is an operational gap, not a data-corruption risk, so Minor would understate it and Critical overstates it.",
+  "commit_hash": "run: git rev-parse --short HEAD",
+  "deferred_out_of_this_commit": {
+    "why": "11 of the ~81 files this gitignore fix makes trackable also trip scripts/lint_hardcoded_zone_codes.py (DQ-30's guard against hardcoded NSW zone-code lists). Some read as legitimate (a Feb-2026 diagnostic verifying known DCP-documented zone values against DB state; heritage marker prefixes C1/C2/O1 that happen to collide with real zone-code shapes) and some read as genuine drift risk (migrations/create_housing_sepp_standards.py alone accounts for 36 of the 69 flags). Adjudicating each site and either adding a justified `# noqa: zone-codes` or wiring it to shared/zone-taxonomy.json is a real, separate review this reproducibility fix should not rush through or silently waive. Left untracked; still absent from a fresh clone.",
+    "files": ["migrations/create_housing_sepp_standards.py", "scripts/enrichment/enrich_marrickville_zone_tagging.py", "scripts/enrichment/fix_marrickville_zones.py", "scripts/fixes/DQ11_heritage_categorization.py", "scripts/fixes/DQ11_heritage_categorization_all.py", "scripts/fixes/DQ13_leichhardt_fixes.py", "scripts/fixes/ashfield_chapter_f_zones.py", "scripts/fixes/reextract_marrickville_heritage.py", "scripts/fixes/tag_heritage_deterministic.py", "scripts/fixes/tag_heritage_type_supabase.py", "scripts/verification/test_marrickville_zone_filtering.py"]
+  },
   "files": [
     ".gitignore",
-    "SETUP.md",
-    "requirements.txt",
-    "frontend-nextjs/lib/schemas/extracted-rule.ts",
-    "frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql",
-    "frontend-nextjs/migrations/add_display_priority.sql",
-    "frontend-nextjs/migrations/fix_descriptive_provisions.sql",
+    "scripts/definitions/check_sepp_housing.py",
+    "scripts/definitions/check_si_lep.py",
+    "scripts/definitions/check_table.py",
+    "scripts/definitions/extract_sepp_housing.py",
+    "scripts/definitions/extract_si_lep.py",
+    "scripts/definitions/extracted/dcp_definitions.json",
+    "scripts/definitions/extracted/sepp_housing_definitions.json",
+    "scripts/definitions/extracted/si_lep_definitions.json",
+    "scripts/definitions/generate_images.py",
+    "scripts/definitions/import_definitions.py",
+    "scripts/definitions/parse_dcp_glossaries.py",
+    "scripts/definitions/run_migration.py",
+    "scripts/definitions/verify.py",
+    "scripts/diagnostics/check_roof_provision_text.py",
+    "scripts/diagnostics/check_roof_sql.sql",
+    "scripts/enrichment/enrich_marrickville_zone_tagging.py",
+    "scripts/enrichment/fix_marrickville_zones.py",
+    "scripts/enrichment/link_ashfield_hca_provisions.py",
+    "scripts/enrichment/link_marrickville_hca_provisions.py",
+    "scripts/enrichment/llm_enrich_devtype_heritage.py",
+    "scripts/fixes/*.py (46 files, DQ*/ashfield*/check*/debug*/verify* fix scripts)",
+    "scripts/fixes/backup_before_heritage_tagging.sql",
+    "scripts/fixes/rollback_heritage_tagging.sql",
+    "scripts/migrations/create_version_schema.sql",
+    "scripts/migrations/optimize_version_performance.sql",
+    "scripts/procedural/content-to-create.md",
+    "scripts/procedural/extracted/application_checklists.json",
+    "scripts/procedural/extracted/getting_started_guides.json",
+    "scripts/procedural/extracted/pathway_guidance.json",
+    "scripts/procedural/import_procedural.py",
+    "scripts/sql/dcp_version_management.sql",
+    "scripts/verification/check_heritage_duplication.py",
+    "scripts/verification/test_marrickville_zone_filtering.py",
+    "scripts/verification/verify_hca_code_resolution.py",
     "docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md"
   ],
   "falsifiable_check": {
-    "command": "git check-ignore -q --no-index frontend-nextjs/lib/schemas/extracted-rule.ts; test $? -eq 1; git check-ignore -q --no-index frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql; test $? -eq 1",
-    "fails_when": "Either required source file is still ignored, which proves it cannot be added and would be absent from a fresh clone.",
-    "observed_red": "Before this change, git check-ignore reported .gitignore:661 schemas/ for extracted-rule.ts and .gitignore:339 *.sql for the frontend migration. After the change, each command returns Git's not-ignored status.",
-    "local_caveat": "This proves Git visibility, not that a live Supabase migration should be executed. Database operations remain separately guarded by DB_SCHEMA.md and scripts/db_safety_check.sh."
-  },
-  "pre_impl": {
-    "existing_data": "None. The change records source files and installation guidance; it does not read or write database rows.",
-    "assumption_mismatch": "The old root-level schemas/ rule was assumed to mean only the root schemas tool directory. Git treats an unanchored directory pattern as matching every schemas directory, including frontend-nextjs/lib/schemas.",
-    "new_vs_existing": "Forward-only source-control repair. Existing working copies keep their files; fresh clones now receive the previously hidden source and migration history after this commit is pushed.",
-    "external_source_error": "No external service is called by these changes. Package installation remains dependent on package registries and the pinned RAG-Anything Git revision.",
-    "frontend_type": "No served frontend route or existing type is altered. ExtractedRule types are restored as tracked source; the file was already present locally before this repair."
+    "command": "git check-ignore -q scripts/definitions/import_definitions.py; test $? -eq 1; git check-ignore -q scripts/verification/check_heritage_duplication.py; test $? -eq 1",
+    "fails_when": "Either file is still ignored, proving it would be absent from a fresh clone.",
+    "observed_red": "Before this change: git check-ignore -v reported .gitignore:195 check_*.py / .gitignore:297 create_*.py for files under scripts/definitions, scripts/diagnostics, scripts/enrichment, scripts/fixes, scripts/procedural, scripts/verification, scripts/migrations, scripts/sql and the root migrations/ directory — the same basename-glob bug the prior commit fixed one directory level up, recurring one level deeper because `!scripts/*.py`-style negations don't cross `/`.",
+    "observed_green": "git check-ignore -q now exits 1 (not ignored) for all files listed above; `git add -n` on the affected directories stages ~70 previously-invisible files with no unexpected inclusions (verified: __pycache__, backup JSON snapshots, bulk PDFs, and scripts/drawdown_creds.txt remain correctly excluded)."
   },
   "functions": [
     {
-      "name": "validateRulePlausibility",
-      "file_line": "frontend-nextjs/lib/schemas/extracted-rule.ts:167",
-      "input": "One ExtractedRule object from the deterministic extraction or LLM validation flow",
-      "output": "An array of human-readable plausibility errors for numeric ranges, conditional outcomes, and invalid min/max ordering",
-      "if_none": "The function receives a typed ExtractedRule rather than an optional value; malformed arrays are rejected by validateProvisionRules before plausibility checks run."
-    },
-    {
-      "name": "validateProvisionRules",
-      "file_line": "frontend-nextjs/lib/schemas/extracted-rule.ts:227",
-      "input": "An array of extracted rules associated with one regulatory provision",
-      "output": "An array of schema or plausibility errors, empty only when every supplied rule satisfies the contract",
-      "if_none": "An empty array is valid by the declared array schema and returns no errors; invalid or missing rule fields return schema errors instead of being silently accepted."
+      "name": "load_definitions_from_json",
+      "file_line": "scripts/definitions/import_definitions.py:61",
+      "input": "json_path (pathlib.Path) to a definitions JSON file",
+      "output": "list[dict] of definitions, or [] if the path does not exist",
+      "if_none": "Missing file prints a [SKIP] line and returns an empty list rather than raising; this script itself (and the scripts/definitions/extracted/*.json it reads) now exist in Git for a fresh clone to run at all, which is the defect this change fixes."
     }
   ],
-  "values": [
-    {
-      "value": "sys_platform marker",
-      "read_at": "requirements.txt:124, requirements.txt:131, requirements.txt:182",
-      "nullable": "no",
-      "guard_at": "PEP 508 markers select pyreadline3, pywin32, and win32_setctime only when sys_platform equals win32",
-      "if_missing": "On Linux the Windows-only packages are skipped, avoiding an unsatisfied Windows-wheel install; on Windows the prior pins remain selected."
-    }
-  ],
-  "queries": "N/A for execution. The three tracked SQL files contain historical schema/data migrations, but this change only makes them reviewable and clonable; it does not execute them.",
+  "pre_impl": {
+    "existing_data": "None. This change only affects Git tracking and documentation text; it does not read or write database rows.",
+    "assumption_mismatch": "The prior commit's `!scripts/*.py` / `!scripts/*.sql` negations were assumed to cover the whole scripts/ tree; gitignore's `*` does not cross `/`, so they only reached files directly under scripts/, not scripts/<subdir>/.",
+    "new_vs_existing": "Forward-only source-control repair, same as the prior commit. Existing working copies are unaffected; fresh clones now receive the previously-hidden files.",
+    "external_source_error": "N/A — no external service called by the .gitignore/tracking change. The runbook's DeepSeek Harness install command and GitHub URL were verified via WebFetch against github.com/deepseek-ai/deepseek-harness directly (not secondary blog sources) before being left unchanged; the Node-version claim from third-party guides could NOT be confirmed against that primary source, so the runbook now says so explicitly rather than asserting an unverified number.",
+    "frontend_type": "N/A — no frontend route or type touched."
+  },
   "break_it": [
     {
-      "scenario": "A future developer imports the extracted-rule schema after a clean clone where the file remains ignored",
-      "what_happens": "The frontend build fails with a missing module or a developer recreates the contract locally, causing repository state to diverge between machines.",
+      "scenario": "A fresh Linux clone runs a DCP definitions or heritage-tagging fix script referenced in project docs (e.g. scripts/definitions/import_definitions.py, scripts/verification/check_heritage_duplication.py)",
+      "what_happens": "python: can't open file — the script does not exist, because it was never committed.",
       "mitigated": true,
-      "how": ".gitignore anchors the intended root-only tool directory as /schemas/, so frontend-nextjs/lib/schemas/extracted-rule.ts is visible and staged for version control.",
-      "repro": "git check-ignore -v --no-index frontend-nextjs/lib/schemas/extracted-rule.ts; git status --short -- frontend-nextjs/lib/schemas/extracted-rule.ts"
+      "how": ".gitignore now re-includes *.py/*.sql/*.sh/*.mjs/*.js/*.bat at any depth under scripts/ (`!scripts/**/*.py` etc.), not just one level deep; all ~70 previously-shadowed files are now tracked.",
+      "repro": "git ls-files scripts/definitions/ scripts/verification/ | wc -l  # was 0 for these two dirs before this change"
     },
     {
-      "scenario": "A Linux bootstrap evaluates the previous requirements file and attempts to install Windows-only dependencies",
-      "what_happens": "pip can fail dependency resolution or binary installation before the project test suite and frontend setup are reached.",
+      "scenario": "An operator follows docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md step 4 exactly as written before this change",
+      "what_happens": "`git switch fix/linux-repro-gitignore-holes` fails — that branch was never pushed to origin, so the clone has no such ref, and the runbook's own 'staged but not yet committed' warning was already stale (the fix had in fact landed directly on main).",
       "mitigated": true,
-      "how": "The three Windows-specific dependencies now carry PEP 508 sys_platform == win32 markers while preserving their exact Windows pins.",
-      "repro": "python -c \"from pathlib import Path; from packaging.requirements import Requirement; from packaging.markers import default_environment; e=default_environment(); e['sys_platform']='linux'; assert not [str(Requirement(x.strip())) for x in Path('requirements.txt').read_text().splitlines() if x.strip() and not x.startswith('#') and not x.startswith('raganything @') and Requirement(x.strip()).name.lower() in {'pywin32','pyreadline3','win32-setctime'} and (Requirement(x.strip()).marker is None or Requirement(x.strip()).marker.evaluate(e))]\""
+      "how": "Runbook now states the repair is on main (no branch switch needed) and gives a git check-ignore command to verify both repair passes are present.",
+      "repro": "git ls-remote --heads origin 'fix/linux-repro-gitignore-holes'  # empty, confirming the branch never existed on origin"
     },
     {
-      "scenario": "An operator follows the documented frontend migration procedure from a fresh clone that lacks the SQL source files",
-      "what_happens": "The documented command references a missing migration and the operator cannot review or reproduce its schema history from the repository.",
+      "scenario": "Operator installs only the Node version this repo's SETUP.md specifies (20 LTS) and assumes it also satisfies DeepSeek Harness",
+      "what_happens": "`npx @deepseek-ai/dsh web` may fail to start if DSH's actual minimum (third-party guides claim ^22.19.0/>=24.x, unconfirmed by the DSH README itself) is higher than 20 LTS.",
       "mitigated": true,
-      "how": ".gitignore explicitly re-includes frontend-nextjs/migrations/*.sql after the global temporary-SQL rule, making the three existing migration sources trackable.",
-      "repro": "git check-ignore -v --no-index frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql; git status --short -- frontend-nextjs/migrations"
+      "how": "Runbook section 5 now flags the version as unconfirmed from DSH's primary source, tells the operator to read the actual startup error rather than trust a number, and to use nvm for a second Node version rather than replacing the repo's pinned one.",
+      "repro": "n/a — documentation caveat, not a code path"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — perform the clean Linux clone acceptance steps in docs/LINUX_DEEPSEEK_BOOTSTRAP_RUNBOOK.md before relying on DeepSeek Harness for project changes."
+    "manual_verify": "Yes — a real fresh Linux clone + npx @deepseek-ai/dsh web run has not been performed (no Linux partition exists yet on the target machine); only Git visibility and primary-source documentation claims were verified from Windows."
   }
 }
