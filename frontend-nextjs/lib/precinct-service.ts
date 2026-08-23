@@ -575,7 +575,56 @@ export async function getPrecinctProvisions(
       ? controlTypes.map(t => t.toLowerCase())
       : null;
 
+    // A council can map its precincts more finely than it keys its text. City of
+    // Parramatta maps Epping as fifteen polygons — 8.1.1.1, 8.1.1.2, 8.1.1.3.1 —
+    // while every one of their controls is written once, against 8.1.1. Exact
+    // matching therefore returns NOTHING for a property in Epping Central, which
+    // renders exactly like a property outside any precinct. Measured live
+    // 2026-08-20, after #990 imported the boundaries and #992 wired the precinct
+    // through to the page:
+    //
+    //     precinct_id=8.2.6    layer_4_precinct = 50   correct
+    //     precinct_id=8.1.1.1  layer_4_precinct =  0   wrong
+    //     no precinct at all   layer_4_precinct =  0
+    //
+    // #992 could not have caught it: it measured with 8.2.6, an exact match.
+    //
+    // `avail` is the set of keys this council actually has text for. `resolved`
+    // maps each requested id onto the key that carries its controls: itself when
+    // it has its own, otherwise the NEAREST ancestor that does — longest key
+    // wins. A precinct with its own controls never also takes its parent's,
+    // because serving a property controls it is not subject to is worse than
+    // serving none, and it is the direction that looks like success.
+    //
+    // left(id, length(k)+1) = k || '.' rather than LIKE k || '.%': Marrickville
+    // ids such as '47_' contain an underscore, which LIKE reads as a wildcard.
+    //
+    // Contained by measurement, not by hope: 22 of 89 City of Parramatta
+    // polygons resolve only through an ancestor, and Sydney (145), Inner West
+    // (85), Ku-ring-gai (10), Waverley (5) and Woollahra (14) all match exactly,
+    // so nothing outside Parramatta changes.
     const query = `
+      WITH requested AS (
+        SELECT unnest($1::text[]) AS id
+      ),
+      avail AS (
+        SELECT DISTINCT v2_precinct_id AS k
+        FROM regulatory_provisions
+        WHERE source_council = $2
+          AND is_current
+          AND v2_is_actionable
+          AND v2_precinct_id IS NOT NULL
+      ),
+      precinct_keys AS (
+        SELECT DISTINCT COALESCE(
+          (SELECT a.k FROM avail a WHERE a.k = r.id),
+          (SELECT a.k FROM avail a
+            WHERE left(r.id, length(a.k) + 1) = a.k || '.'
+            ORDER BY length(a.k) DESC
+            LIMIT 1)
+        ) AS k
+        FROM requested r
+      )
       SELECT
         rp.id,
         rp.v2_precinct_id      AS precinct_id,
@@ -589,7 +638,7 @@ export async function getPrecinctProvisions(
         rp.pdf_page_image_url,
         rp.source_council
       FROM regulatory_provisions rp
-      WHERE rp.v2_precinct_id = ANY($1::text[])
+      WHERE rp.v2_precinct_id IN (SELECT k FROM precinct_keys WHERE k IS NOT NULL)
         AND rp.source_council = $2
         AND rp.is_current
         AND rp.v2_is_actionable
