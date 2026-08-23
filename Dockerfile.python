@@ -47,6 +47,15 @@ ENV PYTHONPATH=/app:/app/services:/app/scripts
 ENV HAWKESBURY_RASTER_DIR=/tmp/hawkesbury_rasters
 # Redbank Creek FS 2025 rasters — same pattern (224 MB compressed GeoTIFFs)
 ENV REDBANK_RASTER_DIR=/tmp/redbank_rasters
+# Tweed + Wollongong — same pattern. These two were MISSING until 2026-08-24, and
+# their absence was not inert: download_tweed_wollongong_rasters.py falls back to
+# /tmp/<study>_rasters while services/flood_truth.py falls back to
+# data/flood_studies/<study>, which is gitignored and never COPY'd into the image.
+# So the CMD below downloaded 1.6 GB on every cold start into two directories
+# nothing then read, and every Tweed/Wollongong 1% AEP answer came back
+# "not assessed". Writer and reader now agree because both are pinned here.
+ENV TWEED_RASTER_DIR=/tmp/tweed_rasters
+ENV WOLLONGONG_RASTER_DIR=/tmp/wollongong_rasters
 # NARCliM climate-projection NetCDFs downloaded to /tmp at startup (same pattern);
 # climate_risk_raster.py reads the same NARCLIM_DIR.
 ENV NARCLIM_DIR=/tmp/narclim

@@ -1,11 +1,20 @@
 {
   "tier": "minor",
-  "justification": "Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft - the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim - it can only stop one. No logic, no data, no types touched: three JSX string literals. SECOND CHANGE on this branch: the pre-push liability scan flagged both sentences this branch had just edited, and it was correct. Each claimed every control/figure is traced to a published CLAUSE while listing sources that have none - Spatial Services NSW mapping, council flood studies, the RFS bushfire layer. The 936/936 section_ref measurement covers dcp_setback_controls only and says nothing about mapping results, so the claim was broader than the evidence. Both sentences now split the two: a planning control carries its clause, a mapping result names its dataset. Same direction of travel - narrowing a claim to the subset that was measured.",
-  "commit_hash": "13a6a68a",
+  "justification": "Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft - the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim - it can only stop one. No logic, no data, no types touched: three JSX string literals. SECOND CHANGE on this branch: the pre-push liability scan flagged both sentences this branch had just edited, and it was correct. Each claimed every control/figure is traced to a published CLAUSE while listing sources that have none - Spatial Services NSW mapping, council flood studies, the RFS bushfire layer. The 936/936 section_ref measurement covers dcp_setback_controls only and says nothing about mapping results, so the claim was broader than the evidence. Both sentences now split the two: a planning control carries its clause, a mapping result names its dataset. Same direction of travel - narrowing a claim to the subset that was measured. THIRD CHANGE: an audit of all seven /for/ audience pages found five more claims of the same shape - a number from one layer of the coverage ladder attached to a capability from another. floodLgas:71 was documented as 'LGAs with modelled flood-depth coverage'; 71 is the flood OVERLAY council count (spatial_overlays layer_type='flood' -> 72) while services/flood_truth.py declares exactly FOUR council flood studies. lgasCovered:130 published more councils than NSW contains, on the homepage, in a file that already held totalNswCouncils:128. '25 LGAs' for front+side+rear setbacks: 24 councils hold all three. 'never a guess' and 'Always current' were absolutes that did not hold across the products they spanned. All fixed at the shared source lib/coverage.ts so every consumer moved at once - the blast radius was six surfaces for floodLgas, not one.",
+  "commit_hash": "e774a0cd",
   "files": [
     "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/app/blog/site-analysis-report-explained/page.tsx",
+    "frontend-nextjs/app/developers/page.tsx",
     "frontend-nextjs/app/for/conveyancers/page.tsx",
-    "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
+    "frontend-nextjs/app/for/councils/page.tsx",
+    "frontend-nextjs/app/for/homebuyers/page.tsx",
+    "frontend-nextjs/app/for/planners/page.tsx",
+    "frontend-nextjs/app/page.tsx",
+    "frontend-nextjs/app/what-you-get/CapabilityExplorer.tsx",
+    "frontend-nextjs/app/widget-demo/[slug]/page.tsx",
+    "frontend-nextjs/lib/coverage.ts",
+    "scripts/verify_coverage_stats.py"
   ],
   "break_it": [
     {
@@ -42,6 +51,20 @@
       "mitigated": true,
       "how": "Both sentences now distinguish the two provenance kinds explicitly: a planning control carries the clause it was read from, a mapping result names its dataset. This was found by the repo's own pre-push liability scan rather than by review, and the scan's two findings were accepted rather than annotated away.",
       "repro": "git show 13a6a68a --stat && grep -n 'names where it came from' frontend-nextjs/app/for/conveyancers/page.tsx"
+    },
+    {
+      "scenario": "A published coverage number drifts from, or was never equal to, the thing it names.",
+      "what_happens": "It ships and stays. scripts/verify_coverage_stats.py PASSED throughout this defect's life for two separate reasons: floodLgas and lgasCovered were classed 'editorial' and checked by NOTHING, and dcpNumericCouncils was validated against the SAME query that produces the omission it should catch. A guard whose shape looks right and which cannot fail on the live defect is the pattern in memory/feedback-detect-a-guard-by-forcing-its-failure.md.",
+      "mitigated": true,
+      "how": "Three checks added to the verifier and each FORCED TO FAIL on the exact historical wrong value before being trusted, not reasoned about: lgasCovered 130 -> DRIFT, dcpSetbackTripleCouncils 25 -> DRIFT, floodStudies 71 -> DRIFT. Plus a structural invariant that lgasCovered can never exceed totalNswCouncils. All four fire together and the script exits 1. Restored to correct values: all OK, exit 0. floodStudies is checked by parsing FLOOD_STUDIES out of services/flood_truth.py, so the published number is tied to the declaration rather than to an editor's memory.",
+      "repro": "python -c \"import io;p='frontend-nextjs/lib/coverage.ts';s=io.open(p,encoding='utf-8').read();io.open(p,'w',encoding='utf-8').write(s.replace('lgasCovered: 128','lgasCovered: 130'))\" && python scripts/verify_coverage_stats.py; git checkout -- frontend-nextjs/lib/coverage.ts"
+    },
+    {
+      "scenario": "A user in Tweed or Wollongong asks the flood question and expects the modelled depth the site advertises.",
+      "what_happens": "They get 'not assessed'. Dockerfile.python sets HAWKESBURY_RASTER_DIR and REDBANK_RASTER_DIR but NOT the Tweed/Wollongong pair, and the two sides disagree on that env var's fallback: download_tweed_wollongong_rasters.py:66 defaults to /tmp/tweed_rasters while flood_truth.py defaults to data/flood_studies/tweed, which is untracked and never copied into the container. The rasters download on every boot into a directory nothing reads.",
+      "mitigated": false,
+      "how": "NOT mitigated, and deliberately out of scope for a copy change - it is a production deploy change. It is NOT a false negative: flood_study_raster_availability() is consulted per run and #892 guarantees 'not assessed' rather than 'no', and _warn_on_absent_flood_studies() logs at import. The copy was written to describe behaviour ('where a council flood study has been ingested') rather than to promise a count, so it stays true either way. Fix is two ENV lines matching the Hawkesbury/Redbank pattern already in that Dockerfile.",
+      "repro": "git show origin/main:Dockerfile.python | grep -E 'RASTER_DIR|download_.*rasters'"
     }
   ],
   "post_merge": {
@@ -74,6 +97,8 @@
     "app/for/students/page.tsx already said 'Every control cited to its clause' and was correct before this change - left untouched.",
     "app/api/adg/separation-table/route.ts carries an internal code comment referring to 'PDF URL and page number'. It describes sepp_adg_requirements, a different table, and is not user-facing. Not verified and not changed.",
     "No standing lint or CI check was added. The phrase can return without failing anything.",
-    "The clause-fill measurement (936/936 section_ref) covers dcp_setback_controls only. No equivalent provenance-fill measurement was run for zoning, SEPP, flood, bushfire or hazard mapping results - the copy now claims only that those name a dataset, which is weaker and was not separately verified per-field."
+    "The clause-fill measurement (936/936 section_ref) covers dcp_setback_controls only. No equivalent provenance-fill measurement was run for zoning, SEPP, flood, bushfire or hazard mapping results - the copy now claims only that those name a dataset, which is weaker and was not separately verified per-field.",
+    "Whether the R2 download in download_tweed_wollongong_rasters.py succeeds in production was not observed - only that its destination and flood_truth.py's lookup path cannot agree while the env vars are unset.",
+    "Six of coverage.ts's fifteen fields remain unchecked by the verifier: dcpFullCouncils, seppStandards, adgCriteria, secondaryDwellingCouncils, riskLayers, govDataSources. Three were added this branch; these six were not audited."
   ]
 }
