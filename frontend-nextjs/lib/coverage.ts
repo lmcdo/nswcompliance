@@ -19,7 +19,7 @@
  *                       corpus grows; stable/countable sets use the exact figure.
  *
  * PROVENANCE — verify with:  python scripts/verify_coverage_stats.py
- * Last DB verification: 2026-07-26 (see per-field source query below).
+ * Last DB verification: 2026-08-24 (see per-field source query below).
  *
  *   provisionsTotal            SELECT COUNT(*) FROM regulatory_provisions
  *   dcpActionableProvisions    SELECT COUNT(*) FROM regulatory_provisions
@@ -31,6 +31,24 @@
  *                                  AND r.slug != 'nsw_statewide'
  *                                  AND r.parent_lga IS NULL
  *                                (identical to /api/dcp/coverage — the canonical list)
+ *                                ⚠ UNDERSTATES BY THREE. The parent_lga IS NULL filter drops
+ *                                Ashfield, Leichhardt and Marrickville, which carry
+ *                                parent_lga='inner_west' while the parent holds 0 is_current
+ *                                rows — so the three councils with the DEEPEST DCP integration
+ *                                are invisible here. Councils actually holding current,
+ *                                non-flagged controls: 28. Kept at 25 so this figure and the
+ *                                list the endpoint renders cannot disagree; the endpoint is
+ *                                the thing to fix, and it is not fixed here.
+ *   dcpSetbackTripleCouncils   Councils holding ALL THREE of front/side/rear setback — the
+ *                                claim the conveyancer page actually makes. Live:
+ *                                WITH t AS (SELECT lga,
+ *                                  count(*) FILTER (WHERE control_type='front_setback') f,
+ *                                  count(*) FILTER (WHERE control_type='side_setback')  s,
+ *                                  count(*) FILTER (WHERE control_type='rear_setback')  r
+ *                                FROM dcp_setback_controls WHERE is_current
+ *                                  AND (needs_review IS NULL OR needs_review=FALSE)
+ *                                  AND lga<>'nsw_statewide' AND lga<>'inner_west' GROUP BY lga)
+ *                                SELECT count(*) FILTER (WHERE f>0 AND s>0 AND r>0) FROM t; -> 24
  *   dcpSetbackRows             SELECT COUNT(*) FROM dcp_setback_controls   (all extracted rows)
  *   heritageAreas              SELECT COUNT(*) FROM heritage_conservation_areas
  *   regulatoryDefinitions      SELECT COUNT(*) FROM regulatory_definitions
@@ -41,9 +59,22 @@
  *                                (3 Inner West _tag_x methods + 4 in COUNCIL_CONFIGS)
  *   seppStandards / adgCriteria  SEPP (Housing) 2021 + Apartment Design Guide
  *   secondaryDwellingCouncils  councils in the Planning Portal open-data secondary-dwelling feed
- *   floodLgas                  LGAs with modelled flood-depth coverage
+ *   floodStudies               COUNCIL FLOOD STUDIES ingested (NOT an LGA count).
+ *                                services/flood_truth.py FLOOD_STUDIES holds exactly four:
+ *                                hawkesbury, tweed, wollongong, redbank. This was published
+ *                                as "71 LGAs of flood depth" until 2026-08-24 — 71 is the
+ *                                flood OVERLAY council count (SELECT count(DISTINCT lga_name)
+ *                                FROM spatial_overlays WHERE layer_type='flood' -> 72), i.e.
+ *                                the yes/no layer the depth claim explicitly said it was
+ *                                "not just". Depth exists ONLY where a study is ingested;
+ *                                elsewhere the answer is the mapped flood planning area, and
+ *                                flood_truth.py degrades to "not assessed", never to "no".
  *   totalNswCouncils           128 — count of NSW councils (external fact)
- *   lgasCovered                statewide portal/satellite layer coverage
+ *   lgasCovered                statewide portal/satellite layer coverage. MUST NOT EXCEED
+ *                                totalNswCouncils — it is the same population. Published as
+ *                                "130+" until 2026-08-24, i.e. more councils than NSW has.
+ *                                Live: SELECT count(DISTINCT lga_name) FROM spatial_overlays
+ *                                WHERE layer_type='zone' -> 128, and the CDC record -> 128.
  *   riskLayers / govDataSources  named on the homepage
  */
 
@@ -52,6 +83,7 @@ export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
   dcpNumericCouncils: 25,
+  dcpSetbackTripleCouncils: 24,
   dcpFullCouncils: 7,
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
@@ -59,9 +91,9 @@ export const COVERAGE = {
   seppStandards: 33,
   adgCriteria: 23,
   secondaryDwellingCouncils: 102,
-  floodLgas: 71,
+  floodStudies: 4,
   totalNswCouncils: 128,
-  lgasCovered: 130,
+  lgasCovered: 128,
   riskLayers: 8,
   govDataSources: 7,
 } as const;
@@ -74,6 +106,7 @@ export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
   dcpNumericCouncils: '25',
+  dcpSetbackTripleCouncils: '24',
   dcpFullCouncils: '7',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
@@ -81,9 +114,9 @@ export const COVERAGE_DISPLAY = {
   seppStandards: '33',
   adgCriteria: '23',
   secondaryDwellingCouncils: '102',
-  floodLgas: '71',
+  floodStudies: '4',
   totalNswCouncils: '128',
-  lgasCovered: '130+',
+  lgasCovered: '128',
   riskLayers: '8',
   govDataSources: '7',
 } as const;

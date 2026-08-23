@@ -64,7 +64,47 @@ QUERIES: dict[str, tuple[str, str]] = {
         "Regulatory definitions",
         "SELECT COUNT(*) FROM regulatory_definitions",
     ),
+    # Added 2026-08-24. Both were classed "editorial" and therefore checked by
+    # NOTHING, which is how "130+ LGAs covered" -- more councils than NSW has --
+    # sat on the homepage. An editorial exemption is not a reason a number cannot
+    # be verified; it is only a reason nobody wrote the query.
+    "lgasCovered": (
+        "LGAs covered (statewide layer)",
+        "SELECT COUNT(DISTINCT lga_name) FROM spatial_overlays WHERE layer_type = 'zone'",
+    ),
+    "dcpSetbackTripleCouncils": (
+        "Councils w/ front+side+rear setback",
+        "WITH t AS (SELECT lga, "
+        "  COUNT(*) FILTER (WHERE control_type = 'front_setback') AS f, "
+        "  COUNT(*) FILTER (WHERE control_type = 'side_setback')  AS s, "
+        "  COUNT(*) FILTER (WHERE control_type = 'rear_setback')  AS r "
+        "FROM dcp_setback_controls WHERE is_current "
+        "  AND (needs_review IS NULL OR needs_review = FALSE) "
+        "  AND lga <> 'nsw_statewide' AND lga <> 'inner_west' GROUP BY lga) "
+        "SELECT COUNT(*) FROM t WHERE f > 0 AND s > 0 AND r > 0",
+    ),
 }
+
+FLOOD_TRUTH_PY = os.path.join(REPO_ROOT, "services", "flood_truth.py")
+
+
+def live_flood_study_count() -> int:
+    """How many council flood studies FLOOD_STUDIES actually declares.
+
+    Not a DB fact, which is exactly why it went unchecked: floodStudies was
+    published as `floodLgas: 71` and described as "LGAs with modelled flood-depth
+    coverage". 71 is the flood OVERLAY council count -- the yes/no layer the depth
+    claim explicitly said it was "not just". The real figure is the length of this
+    dict, and it is four.
+    """
+    with open(FLOOD_TRUTH_PY, encoding="utf-8") as fh:
+        text = fh.read()
+    start = text.find("FLOOD_STUDIES: dict[str, dict] = {")
+    if start == -1:
+        raise RuntimeError("FLOOD_STUDIES not found in services/flood_truth.py")
+    end = text.find(chr(10) + "}" + chr(10), start)
+    block = text[start:end]
+    return len(re.findall(r"^\s{4}[\"']\w+[\"']\s*:\s*\{", block, re.M))
 
 # Growing counts are published rounded DOWN (e.g. 53,716 -> "53,000+"). A live
 # value ABOVE the stored integer is fine (the "+" still holds); only a live value
@@ -147,6 +187,31 @@ def main() -> int:
         if not ok:
             drift.append(f"{key}: published {want:,} vs live {live:,}")
         print(f"  {label:<34}{want:>11,}{live:>10,}   {status}")
+
+    # --- non-DB invariants -------------------------------------------------
+    # floodStudies: parsed from services/flood_truth.py, not the database.
+    want_fs = published.get("floodStudies")
+    try:
+        live_fs = live_flood_study_count()
+    except Exception as exc:  # noqa: BLE001
+        print(f"  {'Council flood studies':<34}{'—':>11}{'—':>10}   UNREADABLE ({exc})")
+        drift.append(f"floodStudies: cannot read FLOOD_STUDIES ({exc})")
+    else:
+        ok = want_fs == live_fs
+        print(f"  {'Council flood studies':<34}{want_fs if want_fs is not None else '—':>11}"
+              f"{live_fs:>10}   {'OK' if ok else 'DRIFT'}")
+        if not ok:
+            drift.append(f"floodStudies: published {want_fs} vs FLOOD_STUDIES {live_fs}")
+
+    # lgasCovered can never exceed the number of councils in NSW. This is the
+    # check that "130+" needed and did not have.
+    total = published.get("totalNswCouncils")
+    covered = published.get("lgasCovered")
+    if total is not None and covered is not None and covered > total:
+        drift.append(
+            f"lgasCovered: {covered} exceeds totalNswCouncils {total} — "
+            "claims more councils than NSW has"
+        )
 
     conn.close()
     print()

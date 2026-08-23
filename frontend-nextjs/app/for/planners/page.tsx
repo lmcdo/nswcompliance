@@ -57,7 +57,7 @@ const TIME_SAVINGS = [
     task: 'Flood depth + bushfire BAL',
     before: '20–30 min (if available)',
     after: 'Instant',
-    description: `Modelled flood depth at ARI return periods (${COVERAGE_DISPLAY.floodLgas} LGAs). Bush Fire Prone Land category and estimated BAL band.`,
+    description: `Modelled flood depth at ARI return periods where a council flood study has been ingested (${COVERAGE_DISPLAY.floodStudies} studies); the mapped flood planning area elsewhere. Bush Fire Prone Land category and estimated BAL band.`,
   },
 ];
 

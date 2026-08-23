@@ -44,7 +44,7 @@ export default function ConveyancersPage() {
               icon: Droplets,
               iconColor: 'text-blue-600',
               title: 'Flood depth modelling',
-              description: `Not just "flood zone" — modelled depth at ARI return periods from council flood studies. ${COVERAGE_DISPLAY.floodLgas} LGA coverage.`,
+              description: `Not just "flood zone" — modelled depth at ARI return periods where a council flood study has been ingested (${COVERAGE_DISPLAY.floodStudies} studies: Hawkesbury, Tweed, Wollongong, Redbank). Elsewhere, the mapped flood planning area.`,
             },
             {
               icon: Flame,
@@ -56,7 +56,7 @@ export default function ConveyancersPage() {
               icon: ShieldCheck,
               iconColor: 'text-teal-600',
               title: 'DCP setback controls',
-              description: `Front, side, and rear setbacks from the applicable DCP — with clause citations. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs covered.`,
+              description: `Front, side, and rear setbacks from the applicable DCP — with clause citations. ${COVERAGE_DISPLAY.dcpSetbackTripleCouncils} councils hold all three.`,
             },
             {
               icon: FileCheck,

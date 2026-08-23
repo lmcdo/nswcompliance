@@ -127,8 +127,9 @@ export default function HomebuyersPage() {
           </h1>
           <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed mb-8">
             Does it flood? Is it bushfire-prone? What can you actually build? What is
-            being built next door? Ask any NSW address — every answer traced to the
-            government source, never a guess. Free checks; detailed reports from $39.
+            being built next door? Ask any NSW address — every answer names the source it
+            came from, and where a source could not be consulted it says so rather than
+            answering. Free checks; detailed reports from $39.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
