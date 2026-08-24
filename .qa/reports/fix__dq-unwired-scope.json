@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what a blocking CI gate SCANS, so a wrong scoping fails silently in both directions: too wide and the gate is red on every machine and gets stepped over, too narrow and a genuinely orphaned check ships unnoticed. Not critical: no database, no production data path, no user-facing surface. Not minor: this is gate logic, and the pre-change version was wrong in both directions at once.",
-  "commit_hash": "e3f613ea",
+  "commit_hash": "01145586",
   "files": [
     "scripts/dq_check.py",
     "tests/test_dq_check.py"
