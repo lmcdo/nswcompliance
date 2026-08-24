@@ -341,6 +341,7 @@ def test_the_three_ratchets_measure_different_sets(dq):
 
 import os
 import subprocess
+import sys
 
 
 def _git(args, cwd):
@@ -423,4 +424,35 @@ def test_an_untracked_file_cannot_launder_a_tracked_orphan(dq, repo):
     """
     assert "check_orphan.py" in dq.unwired_checks(repo), (
         "scripts/_launder.py is untracked; it cannot wire anything"
+    )
+
+
+def test_a_foreign_qa_report_path_is_refused(dq, repo, tmp_path, monkeypatch):
+    """The scrub has to come from THIS repo's qa_report_path, not any other.
+
+    dq_check.py APPENDS scripts/ to sys.path, and append means every earlier
+    entry wins. A same-named module elsewhere would then decide how GIT_* is
+    scrubbed here, and one that let GIT_DIR through would point `git ls-files`
+    at a different repository: no check would look tracked, and the gate would
+    report nothing at all. Silent green.
+
+    Forced red by deleting the provenance comparison in _tracked_paths — this
+    then returns a populated set built from the foreign env instead of None.
+    """
+    foreign = tmp_path / "foreign"
+    foreign.mkdir()
+    (foreign / "qa_report_path.py").write_text(
+        "import os" + os.linesep
+        + "def git_env():" + os.linesep
+        + "    return dict(os.environ)  # scrubs nothing" + os.linesep,
+        encoding="utf-8",
+    )
+    spec = importlib.util.spec_from_file_location(
+        "qa_report_path", foreign / "qa_report_path.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    monkeypatch.setitem(sys.modules, "qa_report_path", mod)
+
+    assert dq._tracked_paths(repo) is None, (
+        "a qa_report_path from outside this repository was trusted to scrub GIT_*"
     )

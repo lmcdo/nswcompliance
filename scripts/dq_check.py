@@ -61,6 +61,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import re
 import subprocess
@@ -85,12 +86,14 @@ _ROOT = Path(__file__).resolve().parents[1]
 # helper below imports from qa_report_path, so without this it resolves one way
 # in production and the other way under pytest -- and the failing direction is a
 # silent fallback, not an ImportError anyone sees. Appended, not inserted, so
-# nothing in scripts/ can shadow a stdlib module.
+# nothing in scripts/ can shadow a stdlib module; _tracked_paths then confirms
+# the module it got actually came from here, which is the risk append carries.
 if str(_ROOT / "scripts") not in sys.path:
     sys.path.append(str(_ROOT / "scripts"))
 
 _LEDGER = _ROOT / ".claude" / "DATA_QUALITY_TRACKER.md"
 _CHECKS = _ROOT / ".claude" / "dq_checks.json"
+
 
 #: The separator `git ls-files -z` writes between paths. Named rather than
 #: inlined so it survives every layer that rewrites backslash escapes on the way
@@ -351,6 +354,15 @@ def _tracked_paths(root: Path) -> set[str] | None:
     try:
         from qa_report_path import git_env
     except ImportError:  # pragma: no cover - scripts/ is appended to sys.path
+        return None
+    # sys.path.append means every EARLIER entry wins, so confirm the module we
+    # got is THIS repository's before trusting its scrub. A foreign git_env()
+    # that let GIT_DIR through would point the call below at another repository,
+    # none of this repo's checks would look tracked, and the gate would report
+    # nothing -- silent green, the one direction this file exists to refuse.
+    # No such module exists in this tree today; this removes the possibility
+    # rather than fixing a sighting. Raised by cross-review, 2026-08-24.
+    if Path(inspect.getfile(git_env)).resolve() != (_ROOT / "scripts" / "qa_report_path.py"):
         return None
     try:
         proc = subprocess.run(
