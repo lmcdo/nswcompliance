@@ -1501,6 +1501,65 @@ class TestConfirmAndCalculate:
         assert resp.granny_flat_buildable is False
         assert any("MULTIPLE_SECONDARY_STRUCTURES" in w for w in resp.warnings), resp.warnings
 
+    def test_the_block_does_not_claim_a_scan_that_never_ran(self, monkeypatch):
+        """The production path: no detector, so nothing was 'detected'.
+
+        MODAL_STRUCTURES_URL is unset in production, so _detect_structures_samgeo
+        never runs and there is no detect row. The cl 53(1) gate then falls back
+        to req.confirmed_structure_count — a number the CUSTOMER confirmed
+        against the aerial tile — and the warning still read "Two or more
+        secondary structures were detected on this lot."
+
+        Nothing was detected. docs/FEATURES_CAPABILITIES.md already records that
+        structure detection is NOT a capability (recall 0.368 against a
+        pre-committed 0.70 floor); this was the served sentence that still
+        claimed it, and it reaches the customer inside the PDF.
+
+        The three tests above all seed a detect row, so they cover the case
+        where "detected" is TRUE and none of them could catch this.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = None          # no detect row — the prod path
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=3,       # the USER counted three
+            confirmed_count_source="unrecorded",
+        ))
+
+        assert resp.granny_flat_buildable is False
+        warning = next(w for w in resp.warnings
+                       if w.startswith("MULTIPLE_SECONDARY_STRUCTURES"))
+        assert "detected" not in warning.lower(), (
+            "the report claims a scan found these structures, but no detect row "
+            f"exists and the count came from the request: {warning}"
+        )
+        # The prefix is load-bearing: lib/pdf/granny-flat-report.tsx matches on
+        # startsWith('MULTIPLE_SECONDARY_STRUCTURES') in three places.
+        assert warning.startswith("MULTIPLE_SECONDARY_STRUCTURES:")
+        # And the rule it cites must survive the rewording.
+        assert "cl 53(1)" in warning
+
+    def test_the_block_still_says_detected_when_a_scan_did_run(self, monkeypatch):
+        """The other direction: with a real detect row, "detected" is accurate.
+
+        Without this, the fix above could be satisfied by deleting the word
+        everywhere, which would understate a genuine detection.
+        """
+        conn = _stub_confirm_all(monkeypatch, rental_data=500.0)
+        _capture_json(monkeypatch)
+        conn._cursor._fetchone = (None, None, [
+            {"index": 0, "is_main_dwelling": True},
+            {"index": 1, "is_main_dwelling": False},
+            {"index": 2, "is_main_dwelling": False},
+        ])
+        resp = gf.confirm_and_calculate(_make_confirm_req(
+            confirmed_structure_count=3,
+            confirmed_count_source="machine_default",
+        ))
+        warning = next(w for w in resp.warnings
+                       if w.startswith("MULTIPLE_SECONDARY_STRUCTURES"))
+        assert "detected" in warning.lower(), warning
+
     def test_an_unmatched_detect_row_is_surfaced_like_a_failed_one(self, monkeypatch):
         """Sol round-13: warning on the exception, not on the outcome.
 
