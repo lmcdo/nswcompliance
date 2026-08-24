@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Deletes two API routes, a seed migration, a database client method and a UI chip. Nothing a user sees changes, because every one of them read a table with 0 rows — but deletion is irreversible in review terms and touches the DCP tab's render path, so the burden is to prove each was genuinely dead rather than merely quiet. Not critical: no data written, no schema changed, no served value altered. Not minor: five files and a prop-type change across three components.",
-  "commit_hash": "c56750ac",
+  "commit_hash": "dae49fc8",
   "files": [
     "frontend-nextjs/app/api/setbacks/reference/route.ts",
     "frontend-nextjs/app/api/setbacks/adg/route.ts",
