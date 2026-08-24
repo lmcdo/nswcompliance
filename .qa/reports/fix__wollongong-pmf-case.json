@@ -1,0 +1,103 @@
+{
+  "tier": "standard",
+  "justification": "A declared capability that cannot be delivered on the only host that matters. Wollongong's PMF grid was unreadable in production and every guard reported the study healthy, because both check the 1% AEP file specifically. Not critical: the sample-time path is fail-safe, so the served verdict degrades to 'not assessed' rather than a false 'no', and no stored report carries a wrong answer because of it. Not minor: it changes a filename production opens, and it adds a guard.",
+  "commit_hash": "680c0fe3",
+  "files": [
+    "services/flood_truth.py",
+    "tests/test_flood_study_filenames.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_flood_study_filenames.py -q",
+    "fails_when": "Any path FLOOD_STUDIES will open for tweed or wollongong is absent from the key list download_tweed_wollongong_rasters.py fetches, compared case-sensitively; or the downloader fetches a file the config never opens. Both directions are asserted, so a rename on either side goes red whichever side moved.",
+    "observed_red": "Run against unfixed origin/main it printed: 'wollongong: FLOOD_STUDIES will open 2 path(s) the downloader never writes: [design/Wollongong_pmf_d_Max.asc, design/Wollongong_pmf_h_Max.asc]' and, from the other direction, 'the downloader fetches 2 file(s) FLOOD_STUDIES never opens: [design/Wollongong_PMF_d_Max.asc, design/Wollongong_PMF_h_Max.asc]'. 2 failed, 2 passed — tweed passed both, so the test is discriminating rather than failing on everything."
+  },
+  "pre_impl": {
+    "existing_data": "No database. The authority is the live Cloudflare R2 bucket nsw-planning-pdfs, listed read-only on 2026-08-24: wollongong-rasters/ holds 12 objects and tweed-rasters/ holds 18, which is exactly what the downloader requests, 0 missing on either. The 12 wollongong keys are design/Wollongong_{20pct,10pct,5pct,2pct,1pct,PMF}_{d,h}_Max.asc — PMF uppercase.",
+    "assumption_mismatch": "The assumption that broke was that a filename which opens locally will open in the container. It does not: this repo is developed on Windows, where NTFS is case-insensitive, and the deployed host is Linux. The local dev copy of the file is even named lowercase, so nothing on a developer machine can surface the mismatch — only the bucket can, which is why it was listed rather than trusted.",
+    "new_vs_existing": "Applies to every flood run on the next deploy; nothing is backfilled. Stored reports are unaffected because the sample-time path already recorded the grid as absent and served 'not assessed'. No previously served answer becomes wrong or right retroactively."
+  },
+  "functions": [
+    {
+      "name": "flood_study_raster_availability",
+      "file_line": "services/flood_truth.py:383",
+      "input": "FLOOD_STUDIES plus the filesystem of the host it runs on",
+      "output": "study_key -> bool, consumed at flood_truth.py and by the import-time warning",
+      "if_none": "It checks the 1% AEP template SPECIFICALLY and nothing else, which is correct for the question it answers and is exactly why it reported wollongong PRESENT while the PMF grid was unreadable. Not widened here — widening it would conflate 'cannot answer the 1% question' with 'is missing some grid', and the 1% answer is the one the verdict turns on. The new test covers the rest."
+    },
+    {
+      "name": "_expected_paths",
+      "file_line": "tests/test_flood_study_filenames.py:60",
+      "input": "one FLOOD_STUDIES config dict for a single study, its design and historical template blocks",
+      "output": "set of every relative path that config can ever open, both {type} expansions",
+      "if_none": "A study with no design and no historical block yields an empty set and trivially passes. That is correct: it declares no files, so there is nothing to drift. Such a study is already caught by flood_study_raster_availability(), which returns False when the 1pct template is None."
+    }
+  ],
+  "values": [
+    {
+      "value": "FLOOD_STUDIES['wollongong']['design']['pmf']",
+      "read_at": "services/flood_truth.py:338",
+      "nullable": "no",
+      "guard_at": "tests/test_flood_study_filenames.py — compared against the downloader's key list, case-sensitively, in both directions",
+      "if_missing": "Sample time appends the study to absent_studies and the verdict becomes 'not assessed'. Fail-safe, never a false 'no' — which is precisely why it survived undetected."
+    },
+    {
+      "value": "downloader.STUDIES",
+      "read_at": "tests/test_flood_study_filenames.py:85",
+      "nullable": "no",
+      "guard_at": "the test asserts study_key is present before indexing",
+      "if_missing": "A study in FLOOD_STUDIES that the downloader does not fetch reaches no container at all; the test names that case separately rather than raising KeyError."
+    },
+    {
+      "value": "cfg['design'] / cfg['historical']",
+      "read_at": "tests/test_flood_study_filenames.py:68",
+      "nullable": "historical is {} for wollongong",
+      "guard_at": "tests/test_flood_study_filenames.py:68 — (cfg.get(group) or {})",
+      "if_missing": "An absent or empty group contributes no paths instead of raising, so a study with no calibration runs is not a test error."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Establish which filenames actually exist, rather than trusting either constant",
+      "file_line": "scripts/download_tweed_wollongong_rasters.py:66",
+      "where_clause": "S3 list_objects_v2 over bucket nsw-planning-pdfs, prefixes tweed-rasters/ and wollongong-rasters/, read-only",
+      "if_zero": "An empty prefix would mean the rasters never reached R2 and #996 could not work once merged. Measured 18 and 12, 0 missing against what the downloader requests, so the objects and credentials do resolve.",
+      "if_wrong": "Reading the case from the local dev copy would have given the OPPOSITE answer: the local file is lowercase Wollongong_pmf_d_Max.asc, matching the old config, on a filesystem where case does not matter. The bucket is what the container downloads from, so the bucket is the authority."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A raster filename differs only in CASE between what is written and what is read.",
+      "what_happens": "Opens on Windows, does not exist on the Linux container. Wollongong's PMF grid could never be sampled in production, and every existing guard reported the study healthy because they check the 1% AEP file specifically.",
+      "mitigated": true,
+      "how": "services/flood_truth.py:338 now names PMF as R2 holds it, and tests/test_flood_study_filenames.py compares every template against the downloader's key list case-sensitively.",
+      "repro": "Revert :338 to lowercase pmf and run python -m pytest tests/test_flood_study_filenames.py -q — 2 failed, 2 passed"
+    },
+    {
+      "scenario": "The guard is written so it can only see drift on the read side.",
+      "what_happens": "Renaming an object in R2 and updating the downloader to match would leave the config stale and the test green, because nothing asserts the downloader's files are all opened.",
+      "mitigated": true,
+      "how": "tests/test_flood_study_filenames.py asserts BOTH directions — config-not-fetched and fetched-not-read — so a rename goes red whichever side moved. The second direction also surfaces bytes pulled on every cold start that nothing opens, the same waste #996 fixed.",
+      "repro": "Both directions went red on the real defect simultaneously, naming the lowercase and uppercase pairs respectively"
+    },
+    {
+      "scenario": "A study is wired into FLOOD_STUDIES from a directory that holds no raster grids.",
+      "what_happens": "The study is DECLARED, so the host is expected to answer for it, and it reports absent on every host forever — a capability promised and permanently undeliverable.",
+      "mitigated": true,
+      "how": "services/flood_truth.py:246 records the inventory of all eleven directories and why the other seven are not wired: four are empty, campbelltown and cooks_river hold extent SHAPEFILES rather than grids, and georges_river holds two unextracted zips. Extent polygons belong in spatial_overlays, not here.",
+      "repro": "find data/flood_studies/<dir> -type f | wc -l gives 0 for greendale, narellan, south_creek, south_creek_hc"
+    },
+    {
+      "scenario": "The test needs the rasters, the network or a database to run.",
+      "what_happens": "It would skip in CI and enforce nothing, which is how the mismatch survived — no Linux machine in the loop ever opened the file.",
+      "mitigated": true,
+      "how": "tests/test_flood_study_filenames.py is pure string comparison over two module-level constants. It loads both modules by path and touches no filesystem beyond that, so it runs everywhere the suite runs.",
+      "repro": "python -m pytest tests/test_flood_study_filenames.py -q completes in 0.54s with no DATABASE_URL and no rasters present"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — after the next deploy, confirm the import-time FLOOD STUDY CONFIG/DATA MISMATCH warning is absent from the Railway logs. Note this fix alone does NOT make Tweed and Wollongong answer: PR #996, which pins TWEED_RASTER_DIR and WOLLONGONG_RASTER_DIR in Dockerfile.python, is still unmerged, and without it the reader looks in data/flood_studies/ which is never copied into the image."
+  }
+}
