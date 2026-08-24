@@ -1,0 +1,104 @@
+{
+  "tier": "standard",
+  "justification": "Rewrites the copy that sells a paid product, on the specific question of where its numbers come from. The page credited three sources the product never queries, omitted the one it does, and described a processing pipeline that does not exist. Not critical: no served number changes, no data path is touched, and the estimate itself was always Google's. Not minor: it is a provenance claim on a commercial surface, it adds a guard, and getting the correction wrong in the other direction would misattribute our own loss adjustment to Google.",
+  "commit_hash": "c56750ac",
+  "files": [
+    "frontend-nextjs/components/reports/landing/data/solar.ts",
+    "frontend-nextjs/app/reports/solar-yield/page.tsx",
+    "tests/test_solar_relay_labelling.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_solar_relay_labelling.py -q",
+    "fails_when": "The served copy names a source solar does not query (Bureau of Meteorology, NSW Government building footprints or property boundaries), OR stops naming Google, OR stops attributing the PVWatts loss adjustment to us. All three directions are asserted, so the fix cannot be satisfied by deleting words.",
+    "observed_red": "Against the copy on origin/main: 6 failed, 1 passed. The four source assertions fired on 'Bureau of Meteorology', 'Bureau of Met', 'NSW Government building footprint' and 'NSW Government property boundary'; test_the_copy_names_the_source_it_does_use fired because Google appeared nowhere in either file; test_the_loss_adjustment_is_still_claimed_as_ours fired because PVWatts was never mentioned. After the rewrite: 7 passed. The one test that passes on both is the premise check that solar_yield.py still makes exactly one outbound call."
+  },
+  "pre_impl": {
+    "existing_data": "No database and no stored data. Read services/solar_yield.py to establish what is actually called: GOOGLE_SOLAR_API buildingInsights:findClosest, exactly one requests.get, DATA_SOURCES = ['Google Solar API'], plus a local heritage overlay point-in-polygon and the PVWATTS_DEFAULT_SYSTEM_LOSS / inverter reduction applied to Google's DC figure.",
+    "assumption_mismatch": "The copy encoded an assumption that this product derives roof geometry from NSW footprints and irradiance from Bureau of Meteorology records. It does neither. Had I corrected it by simply deleting the false sources, the delivered kWh figure would have read as entirely Google's — but the DC-to-delivered reduction IS ours, so the honest version has to name both, and a test now pins that direction too.",
+    "new_vs_existing": "Copy only; nothing is backfilled or recomputed and no served number moves. It applies to the landing page and the page metadata as soon as it deploys. Reports already generated are unaffected because the corrected text lives on the marketing surface, not in the report body."
+  },
+  "functions": [
+    {
+      "name": "_copy",
+      "file_line": "tests/test_solar_relay_labelling.py:57",
+      "input": "the two served TypeScript files, landing data and the page metadata",
+      "output": "their text with // comment lines removed",
+      "if_none": "Comments are stripped deliberately. The source files carry a note explaining that the Bureau of Meteorology is never queried, and without the strip the test would fail on its own explanation — punishing the documentation that stops the defect returning."
+    }
+  ],
+  "values": [
+    {
+      "value": "DATA_SOURCES in services/solar_yield.py",
+      "read_at": "tests/test_solar_relay_labelling.py — the premise test",
+      "nullable": "no",
+      "guard_at": "asserted equal to ['Google Solar API'] before the copy assertions are trusted",
+      "if_missing": "If solar gains a genuine second source, this test fails first and tells the reader to re-derive what the copy may claim, rather than silently forbidding a statement that has become true."
+    },
+    {
+      "value": "the outbound call count",
+      "read_at": "tests/test_solar_relay_labelling.py — counts requests.get/post lines in the service",
+      "nullable": "no",
+      "guard_at": "asserted == 1",
+      "if_missing": "A second call added without updating the copy is exactly how the original defect would recur; this makes the premise visible instead of assumed."
+    },
+    {
+      "value": "PVWATTS_DEFAULT_SYSTEM_LOSS",
+      "read_at": "services/solar_yield.py:177",
+      "nullable": "no",
+      "guard_at": "the copy must mention PVWatts, asserted",
+      "if_missing": "The delivered kWh figure would read as Google's when we computed it, which is the same provenance defect pointing the other way."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Establish every external source this product actually consults, before writing anything about them",
+      "file_line": "services/solar_yield.py:380",
+      "where_clause": "requests.get(GOOGLE_SOLAR_API, params=params, timeout=15) — the only outbound call in the module",
+      "if_zero": "Zero outbound calls would mean the product is not relaying anything and every source claim is false. Not the case: exactly one.",
+      "if_wrong": "Trusting the landing copy instead of the service would have produced the opposite conclusion — that NSW footprints and BoM records feed the estimate — and I would have 'verified' the page against itself."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A commercial surface credits data sources the product never queries.",
+      "what_happens": "A buyer chooses the product believing the yield rests on NSW Government footprints and Bureau of Meteorology climate records. It rests on one Google API call. This is DQ-50's defect — a credit for a source never called — one layer further out, on the surface that takes the money.",
+      "mitigated": true,
+      "how": "The strip now names Google Solar API, NREL PVWatts and the NSW heritage overlay, which is what runs, and four parametrised assertions forbid the sources that do not.",
+      "repro": "git stash && python -m pytest tests/test_solar_relay_labelling.py -q — 6 failed, 1 passed"
+    },
+    {
+      "scenario": "The methodology paragraph describes a pipeline that does not exist.",
+      "what_happens": "It claimed footprint matching, pitch derived from footprint geometry, and irradiance calculated from BoM records. None of those steps run, so a customer disputing a figure would be arguing about a method nobody executed — and the paragraph is the most authoritative-looking text on the page.",
+      "mitigated": true,
+      "how": "Replaced with what the call actually does: address to Google's Solar API, values relayed as reported, one PVWatts reduction of ours, heritage flag from overlay data. Both kWh figures are stated to appear on the report so the difference is visible.",
+      "repro": "The old paragraph is in git history at c56750ac; the four forbidden phrases are asserted absent"
+    },
+    {
+      "scenario": "The correction over-swings and attributes everything to Google.",
+      "what_happens": "The delivered kWh figure is NOT Google's — it is Google's DC value reduced by NREL PVWatts defaults, 14.08% system losses plus inverter efficiency, which is arithmetic we perform. Calling it Google's would be a fresh misattribution in the opposite direction.",
+      "mitigated": true,
+      "how": "The copy states which number is Google's and which adjustment is ours, and test_the_loss_adjustment_is_still_claimed_as_ours fails if PVWatts disappears from the copy.",
+      "repro": "Remove 'PVWatts' from solar.ts and that test fails"
+    },
+    {
+      "scenario": "The guard is written in a language that cannot see the claim.",
+      "what_happens": "scripts/dq_probe_pvlib_claim.py exists for precisely this defect — 'we do not name a method we do not run' — and reported CLEAN throughout, because it walks base.rglob('*.py'). The false methodology is TypeScript. The guard was not wrong, it was blind.",
+      "mitigated": true,
+      "how": "This test reads the TypeScript surfaces as text from pytest, the same technique the probe uses on Python, so the claim is checked in the language it is written in.",
+      "repro": "grep -n 'rglob' scripts/dq_probe_pvlib_claim.py shows *.py only"
+    },
+    {
+      "scenario": "Solar legitimately gains a second data source later and the test forbids saying so.",
+      "what_happens": "A true statement gets blocked, the test looks wrong, and someone deletes it — losing the guard entirely.",
+      "mitigated": true,
+      "how": "The premise is asserted separately: DATA_SOURCES must still equal ['Google Solar API'] and the module must still make exactly one outbound call. That test fails first, with a message telling the reader to re-derive what the copy may claim.",
+      "repro": "Add a second requests.get to solar_yield.py and test_the_service_still_makes_exactly_one_external_call fails before any copy assertion"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

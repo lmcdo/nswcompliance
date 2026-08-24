@@ -14,29 +14,34 @@ export const solarConfig: ProductLandingConfig = {
     { value: "60s", label: "Analysis time" },
   ],
 
+  // SOURCES AS QUERIED, not as imagined. This strip previously credited NSW Gov
+  // building footprints, Bureau of Meteorology climate records and Heritage NSW,
+  // and did not name Google at all. The service makes exactly ONE external call
+  // — Google's Solar API buildingInsights — plus a local heritage overlay check.
+  // The Bureau of Meteorology is never queried by this product.
   dataSources: [
-    { icon: Building2, name: "NSW Gov", description: "Building footprints" },
-    { icon: Sun, name: "Bureau of Met", description: "Climate records" },
-    { icon: Landmark, name: "Heritage NSW", description: "Conservation areas" },
+    { icon: Sun, name: "Google Solar API", description: "Roof geometry and annual yield" },
+    { icon: Building2, name: "NREL PVWatts", description: "Published system loss factors" },
+    { icon: Landmark, name: "NSW heritage overlay", description: "Conservation areas" },
   ],
 
   featuresTitle: "What This Report Checks",
-  featuresSubtitle: "Satellite-derived roof geometry combined with local irradiance data.",
+  featuresSubtitle: "Roof geometry and annual generation figures relayed from Google's Solar API, with published system losses applied.",
   features: [
     {
       icon: Compass,
       title: "Roof Geometry and Orientation",
-      description: "Roof area, pitch angle, and compass orientation derived from NSW Government building footprint data. The best-performing roof plane is identified automatically.",
+      description: "Roof area, pitch angle and compass orientation as returned by Google's Solar API for the building nearest your address. The best-performing roof plane is identified from that response — we do not derive the geometry ourselves.",
     },
     {
       icon: Sun,
-      title: "Local Solar Irradiance",
-      description: "Annual sunshine hours and irradiance for your location, sourced from Bureau of Meteorology climate records. Accounts for latitude, cloud cover, and local climate patterns.",
+      title: "Annual Sunshine Hours",
+      description: "Sunshine hours for the building, as reported by Google's Solar API alongside the roof geometry. Not a separate climate lookup.",
     },
     {
       icon: Building2,
       title: "Annual Generation Estimate",
-      description: "Estimated kWh output per year based on the roof geometry and local irradiance. Graded A through F — A-grade roofs have optimal north-facing orientation and minimal shading.",
+      description: "Google's annual DC figure for the roof, then reduced by NREL PVWatts published defaults — 14.08% system losses plus inverter efficiency — to give a delivered figure. Graded A through F. The estimate is Google's; the loss adjustment is ours and is stated on the report.",
     },
     {
       icon: Landmark,
@@ -59,5 +64,12 @@ export const solarConfig: ProductLandingConfig = {
     { name: "Payback period", free: false, paid: true },
     { name: "Downloadable PDF report", free: false, paid: true },
   ],
-  methodology: "Building footprints are matched to your address using NSW Government property boundary and structure data. Roof orientation and pitch are derived from the footprint geometry. Annual irradiance is calculated from Bureau of Meteorology climate records for your location. The generation estimate applies standard panel efficiency and system loss factors to the usable roof area and irradiance.",
+  // The previous text described a method this product does not run: matching NSW
+  // Government footprints, deriving pitch from footprint geometry, and computing
+  // irradiance from Bureau of Meteorology records. None of that happens. One
+  // call goes to Google; the only arithmetic of ours is the PVWatts loss
+  // reduction. Describing a pipeline we do not execute is the defect
+  // scripts/dq_probe_pvlib_claim.py exists to catch, and it could not see this
+  // one because it scans *.py only and this file is TypeScript.
+  methodology: "Your address is sent to Google's Solar API, which returns the nearest building's roof segments, usable area, pitch, compass orientation, sunshine hours and an annual DC generation figure. Those values are relayed as Google reports them — we do not model the roof or the irradiance. The one adjustment we make is to reduce Google's DC figure by NREL PVWatts published defaults, 14.08% system losses and inverter efficiency, to give a delivered figure; both numbers appear on the report so the difference is visible. A heritage flag is added from NSW heritage overlay data.",
 }
