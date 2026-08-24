@@ -221,6 +221,28 @@ _DATA_SOURCE_DEM = "NSW Spatial Services 5m DEM (SIX Maps ImageServer)"
 
 _FLOOD_STUDIES_BASE = os.path.join(os.path.dirname(__file__), "..", "data", "flood_studies")
 
+# WHY ONLY FOUR, when data/flood_studies/ holds ELEVEN directories.
+#
+# Asked and answered 2026-08-24 by inventorying every directory, because "a
+# study on disk that nothing reads" is the same waste that put 1.6 GB per cold
+# start into a directory nothing read. None of the other seven is a wireable
+# study: this table wants per-AEP raster grids, and they do not have any.
+#
+#   greendale, narellan, south_creek, south_creek_hc  -- EMPTY. 0 files, 0 bytes.
+#   campbelltown   -- 57 files, 0 rasters, 52 MB: ESRI shapefiles of flood
+#                     EXTENT polygons (.shp/.dbf/.prj/.MAP). An extent answers
+#                     "in or out", not the depth/level question this samples.
+#   cooks_river    -- 5 files, 0 rasters, 743 KB: one study-database shapefile.
+#   georges_river  -- 2 files, 0 rasters, 653 MB: two UNEXTRACTED .zip payloads.
+#
+# So there is nothing to wire without first extracting, converting and
+# validating grids that may not exist inside those packages at all. Wiring any
+# of them as-is would DECLARE a capability that cannot be delivered, which is
+# exactly what flood_study_raster_availability() below exists to catch, and it
+# would report the study absent on every host forever.
+#
+# The shapefile sets are a different product shape (extent polygons) and belong
+# in spatial_overlays with the rest of the flood extents, not here.
 FLOOD_STUDIES: dict[str, dict] = {
     "hawkesbury": {
         "name": "Hawkesbury FRMSP 2025",
@@ -300,7 +322,20 @@ FLOOD_STUDIES: dict[str, dict] = {
             "5pct":   "design/Wollongong_5pct_{type}_Max.asc",
             "2pct":   "design/Wollongong_2pct_{type}_Max.asc",
             "1pct":   "design/Wollongong_1pct_{type}_Max.asc",
-            "pmf":    "design/Wollongong_pmf_{type}_Max.asc",
+            # PMF, not pmf. R2 holds design/Wollongong_PMF_{d,h}_Max.asc and
+            # download_tweed_wollongong_rasters.py writes that name verbatim
+            # (verified against the live bucket 2026-08-24: 12 of 12 objects
+            # present, uppercase). This read lowercase, which opens fine on the
+            # Windows filesystem this repo is developed on and does not exist on
+            # the Linux container -- so Wollongong's PMF grid could never be
+            # sampled in production. Neither guard covered it:
+            # flood_study_raster_availability() checks the 1% AEP file
+            # specifically, and the import-time warning is built from that same
+            # 1%-only signal, so the study reported PRESENT throughout.
+            # Now pinned by tests/test_flood_study_filenames.py, which compares
+            # these templates against the downloader's key list in both
+            # directions.
+            "pmf":    "design/Wollongong_PMF_{type}_Max.asc",
         },
         "historical": {},
     },
