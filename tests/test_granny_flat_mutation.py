@@ -1533,6 +1533,12 @@ class TestConfirmAndCalculate:
             "the report claims a scan found these structures, but no detect row "
             f"exists and the count came from the request: {warning}"
         )
+        # Nor may it claim the customer CLASSIFIED them. Without a detect row
+        # effective_secondary is None and the gate fires on a TOTAL of >= 3;
+        # the "1 main + 2 secondary" split is this code's inference, not
+        # something the customer stated. Cross-review finding, 2026-08-25.
+        assert "confirmed two or more secondary" not in warning.lower(), warning
+        assert "You reported 3 structures" in warning, warning
         # The prefix is load-bearing: lib/pdf/granny-flat-report.tsx matches on
         # startsWith('MULTIPLE_SECONDARY_STRUCTURES') in three places.
         assert warning.startswith("MULTIPLE_SECONDARY_STRUCTURES:")
