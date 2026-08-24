@@ -1,0 +1,50 @@
+{
+  "tier": "minor",
+  "justification": "Documentation only. One file, COMPONENT_MAP.md, no code path and no data path changes. It replaces claims that were wrong with counts taken from a running server, so the risk it carries is that a future reader trusts a number here instead of re-running it — which is why every figure is stamped with its address, date and endpoint.",
+  "commit_hash": "fa8fb425",
+  "files": [
+    "frontend-nextjs/COMPONENT_MAP.md"
+  ],
+  "falsifiable_check": {
+    "command": "curl -s 'http://localhost:3003/api/setbacks/reference?zone=R2&lga=Ashfield'",
+    "fails_when": "It returns anything other than {\"data\":null}. The doc claims setback_rules is empty and this endpoint can never answer; a populated response falsifies that claim directly. Same for the counts: re-running /api/provisions/for-property for the stated address and counting clause_label would falsify the 0% if it ever becomes populated.",
+    "observed_red": "The claims this replaces were the red. COMPONENT_MAP.md said the LEP tab used 'Different endpoint' and the polygon came from /api/property/profile; the running app calls /api/property, and /api/property/profile returns no constraints and no planningLayers at all — measured by fetching both. It also implied pdf_printed_page drives the page number; it is null on 2,623 of 2,623 provisions. And setback_rules returned 0 rows against production while six surfaces read it."
+  },
+  "pre_impl": {
+    "existing_data": "Read-only. Live dev server on port 3003 against the production database and Planning Portal, for 100 Ramsay Street Haberfield NSW 2045: /api/property, /api/provisions/for-property, /api/dcp/structured-controls, /api/setbacks/reference. Plus two read-only SQL counts on setback_rules (0 rows) and dcp_setback_controls (967 live rows).",
+    "assumption_mismatch": "The assumption being corrected is that COMPONENT_MAP.md and the TypeScript interfaces describe what is served. They do not: clause_label, pdf_printed_page, relevance_level and relevance_reason are all declared on the provision type and all null on every row measured. Reading the interface would have produced a confident, wrong answer about clause-level coverage.",
+    "new_vs_existing": "Documentation only; nothing is applied to any row. Every figure is stamped with the address, date and endpoint that produced it so a later reader re-runs rather than quotes, which is the standing rule in CLAUDE.md."
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A reader quotes these counts later as current fact.",
+      "what_happens": "The numbers are property-specific and time-specific — 2,623 provisions and 8 numeric controls are for ONE address in ONE council — so quoting them as coverage figures would repeat the exact defect the ledger keeps catching.",
+      "mitigated": true,
+      "how": "Every figure in the new section carries its address, its date and the endpoint that produced it, and the section opens with 'Re-run rather than quote'.",
+      "repro": "Re-run the four endpoints for a different address and the counts change; that is expected and stated."
+    },
+    {
+      "scenario": "The setback_rules finding is read as 'setbacks are broken everywhere'.",
+      "what_happens": "Over-claiming. /api/setbacks/reference is definitively dead, but the other five readers of that table may degrade safely and were not tested.",
+      "mitigated": true,
+      "how": "The doc states exactly that: the endpoint is verified dead across five council/zone combinations, and for the other readers it says only that the table they read is empty, explicitly noting their behaviour is NOT established here.",
+      "repro": "curl the endpoint for R2/Ashfield, R2/Waverley, R2/Marrickville, R2/Leichhardt, R2/Ku-ring-gai — all {\"data\":null}"
+    },
+    {
+      "scenario": "The DCP provisions tab and the structured numeric controls get conflated when describing what we hold.",
+      "what_happens": "A claim like 'thousands of DCP controls with clause and page' would be built from the 2,623 text provisions, when only 3.8% carry a numeric value and the real numeric controls are 8 for this council and dev type from a different endpoint.",
+      "mitigated": true,
+      "how": "The two are documented as separate surfaces with separate endpoints and separate components, with an explicit instruction not to conflate them when describing coverage.",
+      "repro": "/api/provisions/for-property returns 2,623 rows; /api/dcp/structured-controls returns 8 controls for the same council"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
