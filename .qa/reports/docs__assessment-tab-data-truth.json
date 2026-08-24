@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Documentation only. One file, COMPONENT_MAP.md, no code path and no data path changes. It replaces claims that were wrong with counts taken from a running server, so the risk it carries is that a future reader trusts a number here instead of re-running it — which is why every figure is stamped with its address, date and endpoint.",
-  "commit_hash": "adc04f0f",
+  "commit_hash": "fa8fb425",
   "files": [
     "frontend-nextjs/COMPONENT_MAP.md"
   ],
