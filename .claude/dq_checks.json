@@ -76,16 +76,28 @@
       "note": "Scoped to non-test source deliberately. tests/test_shadow_calibration.py DOES import pvlib, legitimately — it is the external reference the calibration measures against. A repo-wide grep would false-fail on exactly the test that proves the fix."
     },
     "DQ-57": {
-      "declared": "open",
+      "declared": "fixed",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
         "--id",
         "DQ-57"
       ],
-      "passes_when": "exit 0 - every flood report that ran an SES lookup got a council name back",
-      "red_when": "A flood report ran the SES study lookup and the council name came back null, so the flood three-state fix's council scoping has nothing to scope by.",
-      "note": "'needs a decision about what rate counts as fixed' was a dodge: for an OPEN row the check only has to fail while the defect exists, and >0 does that. ses_study_lga is NOT a column - it is nested inside property_reports.outputs, which is why earlier attempts found no table. Measured 2026-08-12: 668 flood reports carry the lookup, 346 (52%) came back null, against 151/109 (72%) recorded earlier - the volume grew and the rate improved."
+      "passes_when": "exit 0 - no flood report whose point the height layer CAN resolve carries a null council, and at least one report carries a council at all",
+      "red_when": "A flood report sits inside the height layer and still has no address_council, so lookup_lga was not called or did not answer where it could have. Or no report carries a council at all, which means the lookup stopped running rather than started failing.",
+      "note": "FIXED BY #897 (merged 2026-08-10), which added _query_address_council() and wired it into the flood query pool; flood_truth.py:1608 reads address_council first and falls back to ses_study_lga. The row stayed 'open' for 14 days because its CHECK MEASURED THE WRONG FIELD: it counted ses_study_lga nulls, and ses_study_lga is the LGA of a MATCHED study, null by design when no study matched, so the old query could never reach 0 and this row could never close whatever was repaired. Measured live 2026-08-24: 533 flood reports have run the lookup, 431 (81%) carry a council, 102 (19%) do not, and 0 of those 102 sit inside the height layer - every one is the coverage gap now tracked as DQ-85. Before the fix: 109 of 151 queried rows (72%) had no council, and 109 pre-#897 reports that never ran the lookup DO sit inside the layer, which is the value this check was forced red on."
+    },
+    "DQ-85": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-85"
+      ],
+      "passes_when": "exit 0 - every stored flood report whose council came back null sits somewhere the height layer can actually resolve",
+      "red_when": "A flood report's address falls in a council with no polygon in spatial_overlays layer_type='height', so no lookup can name it and the flood three-state scoping cannot fire for that address.",
+      "note": "The residual DQ-57 leaves behind, split off because the remedies differ: DQ-57 is a code path, this is ingesting boundaries. The height layer holds 75 distinct lga_name against 128 NSW councils (measured 2026-08-24), so 53 councils cannot be resolved at all. Both the DQ-57 ledger row and ce-satellite-repair-PROMPT.md call this lookup 'statewide'; services/lga_lookup.py's own docstring has said 'covers 75 LGAs' since it was written. Measured 102 of 533 reports that ran the lookup; 39 are still resolved by the ses_study_lga fallback, leaving 63 with no council from any source. Not a false clear - flood_truth.py:1616 reports the absent study as unconsulted when the council is unknown."
     },
     "DQ-53": {
       "declared": "partial",
