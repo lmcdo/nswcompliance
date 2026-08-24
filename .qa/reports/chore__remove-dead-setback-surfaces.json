@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Deletes two API routes, a seed migration, a database client method and a UI chip. Nothing a user sees changes, because every one of them read a table with 0 rows — but deletion is irreversible in review terms and touches the DCP tab's render path, so the burden is to prove each was genuinely dead rather than merely quiet. Not critical: no data written, no schema changed, no served value altered. Not minor: five files and a prop-type change across three components.",
-  "commit_hash": "dae49fc8",
+  "commit_hash": "e32bc5fe",
   "files": [
     "frontend-nextjs/app/api/setbacks/reference/route.ts",
     "frontend-nextjs/app/api/setbacks/adg/route.ts",
@@ -14,7 +14,7 @@
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx tsc --noEmit && npx jest --ci --silent",
     "fails_when": "Any surviving reference to the deleted route module, the SetbackReference type or the removed lepReference.setbacks field fails to compile, or a component test asserts on the removed chip. Both were run against this branch AND against origin/main so the pre-existing error count could be compared rather than assumed.",
-    "observed_red": "Not red — and the honest reason matters. tsc reports 8 errors on this branch and the SAME 8 on origin/main (all react-map-gl imports in reports pages, untouched here), so the deletion added none; grepping the error list for the changed files and for setback/lepReference returns NONE. jest is 88 suites / 1181 tests green. The evidence that these surfaces were dead is not the test run, it is the live measurement: setback_rules returns 0 rows in production, /api/setbacks/reference returned {\"data\":null} for R2 and E1 across Ashfield, Waverley, Marrickville, Leichhardt and Ku-ring-gai, and /api/setbacks/adg had no caller anywhere in the frontend."
+    "observed_red": "Not red — and the honest reason matters. tsc reports 8 errors on this branch and the SAME 8 on origin/main (all react-map-gl imports in reports pages, untouched here), so the deletion added none; grepping the error list for the changed files and for setback/lepReference returns NONE. jest is 88 suites / 1181 tests green. The evidence that these surfaces were dead is not the test run, it is the live measurement: setback_rules returns 0 rows in production, /api/setbacks/reference returned {\"data\":null} for R2 and E1 across Ashfield, Waverley, Marrickville, Leichhardt and Ku-ring-gai, and /api/setbacks/adg had no caller anywhere in the frontend. Cross-review then correctly objected that the ADG route's applicability branch runs before any query, so table-emptiness cannot justify deleting it; re-swept the whole repository for callers and found none outside January design docs, which is the claim that actually carries it."
   },
   "pre_impl": {
     "existing_data": "Two production tables, both read-only here. setback_rules: exists, 29 columns, 0 rows. zone_setback_rules: to_regclass returns NULL, i.e. the table does not exist at all, yet lib/database/client.ts still queried it. dcp_setback_controls (967 live rows) is untouched and remains the source for /api/dcp/structured-controls.",
@@ -104,6 +104,13 @@
       "mitigated": true,
       "how": "The count was taken through scripts/dq_db.py, which resolves the main checkout's .env from a worktree via git rev-parse --git-common-dir with GIT_* scrubbed, and pins the session read-only. The same session returned 967 live rows for dcp_setback_controls in the same run, which is a non-empty control proving the connection reaches real data rather than an empty schema.",
       "repro": "The identical session returned setback_rules=0 AND dcp_setback_controls=967; an empty or wrong database would have returned 0 for both."
+    },
+    {
+      "scenario": "A deleted route has a code path that works WITHOUT the database, so 'the table is empty' does not establish the route is dead.",
+      "what_happens": "GET /api/setbacks/adg?building_height=10&development_type=detached_dwelling returned HTTP 200 with applies:false and a reason BEFORE any query ran. After deletion it 404s. If anything consumed that applicability answer, deleting the route on table-emptiness grounds would have removed working behaviour.",
+      "mitigated": true,
+      "how": "Raised by cross-review, and the justification was wrong even though the outcome is not. The claim that carries this deletion is ZERO CALLERS, established across the whole repository and every file type - .ts, .tsx, .py, .md, .json, .js - not across the frontend alone. Every surviving mention sits in .claude/docs/history/2026-01-implementation/, design documents describing a fetch that was never written into any component.",
+      "repro": "grep -rn 'setbacks/adg' over the repo returns only .claude/docs/history/2026-01-implementation/ADG_DISPLAY_CONDITIONS.md and ADG_UX_INTEGRATION.md"
     }
   ],
   "post_merge": {
