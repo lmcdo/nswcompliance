@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Rewrites the copy that sells a paid product, on the specific question of where its numbers come from. The page credited three sources the product never queries, omitted the one it does, and described a processing pipeline that does not exist. Not critical: no served number changes, no data path is touched, and the estimate itself was always Google's. Not minor: it is a provenance claim on a commercial surface, it adds a guard, and getting the correction wrong in the other direction would misattribute our own loss adjustment to Google.",
-  "commit_hash": "c56750ac",
+  "commit_hash": "4e46a1ef",
   "files": [
     "frontend-nextjs/components/reports/landing/data/solar.ts",
     "frontend-nextjs/app/reports/solar-yield/page.tsx",
