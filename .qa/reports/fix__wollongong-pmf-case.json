@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A declared capability that cannot be delivered on the only host that matters. Wollongong's PMF grid was unreadable in production and every guard reported the study healthy, because both check the 1% AEP file specifically. Not critical: the sample-time path is fail-safe, so the served verdict degrades to 'not assessed' rather than a false 'no', and no stored report carries a wrong answer because of it. Not minor: it changes a filename production opens, and it adds a guard.",
-  "commit_hash": "680c0fe3",
+  "commit_hash": "4b71a6b7",
   "files": [
     "services/flood_truth.py",
     "tests/test_flood_study_filenames.py"
