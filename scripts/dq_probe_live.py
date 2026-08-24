@@ -417,28 +417,172 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "the tag fails this check.",
     ),
     "DQ-57": (
-        "Flood reports whose SES study lookup returned no council name",
-        # ses_study_lga is NOT a column anywhere -- it is nested inside
-        # property_reports.outputs, which is why an earlier attempt to check
-        # this looked for a flood_assessments table and found nothing. Use
-        # jsonb_path_* rather than a LIKE: no '%' to mis-escape when psycopg2
-        # is also given params, and it reads the nested key directly.
+        "Flood reports the council lookup could have resolved and did not",
+        # WAS: count of reports whose ses_study_lga is null. That measured the
+        # WRONG FIELD, and it measured it for twelve days after the defect was
+        # fixed.
         #
-        # "needs a decision about what rate counts as fixed" was the stated
-        # reason this row had no check for weeks. That was a dodge: for a row
-        # declared OPEN the check only has to FAIL while the defect exists,
-        # and > 0 does that. A target rate is needed to declare it fixed, not
-        # to measure it.
-        "SELECT count(*) FROM property_reports "
-        "WHERE jsonb_path_exists(outputs::jsonb, '$.**.ses_study_lga') "
-        "AND jsonb_path_query_first(outputs::jsonb, '$.**.ses_study_lga') = 'null'::jsonb",
+        # ses_study_lga is the LGA of a MATCHED flood study. It is null exactly
+        # when no study matched, BY DESIGN, so the old query could never reach
+        # 0 and DQ-57 could never close no matter what was repaired. Worse, the
+        # fix it was supposed to be watching -- #897, merged 2026-08-10 --
+        # deliberately STOPPED scoping on that field: flood_truth.py:1608 reads
+        # address_council first and falls back to ses_study_lga only if it is
+        # absent. So the probe watched the field the fix abandoned.
+        #
+        # This asks the question the row is actually about: when the council
+        # lookup COULD have answered, did it? A point inside the height layer
+        # is one lookup_lga can resolve, so a null council there is a real
+        # failure. A point outside it is the coverage gap recorded as its own
+        # row -- not this defect, and counting it here would make this row
+        # unclosable all over again for a second, different wrong reason.
+        #
+        # DELIBERATELY NOT COUNTED, and the two places it went instead:
+        #   - a point OUTSIDE the height layer            -> DQ-85 (53 councils)
+        #   - a report with NO address_council key at all -> DQ-86 (81 servable)
+        # The second was raised by cross-review as a hole in this probe, and the
+        # exclusion is real: the population here is "key present AND null", so a
+        # report predating #897 is not counted. Folding it back in would reopen
+        # DQ-57 for rows written before its fix existed, which is how it became
+        # unclosable the first time. Different remedy, different row.
+        #
+        # The second term is not decoration. Without it, address_council
+        # vanishing from the outputs empties the population and the probe goes
+        # CLEAN on a pipeline that stopped looking up councils entirely: a
+        # check that passes hardest exactly when the thing it guards is gone.
+        #
+        # The third term exists because ST_Contains(geom, NULL) is NULL, not
+        # false. A report with no coordinates therefore satisfies neither this
+        # probe's EXISTS nor its negation cleanly: it would drop silently out of
+        # term 1 and reappear inside DQ-85, reading as a coverage gap when it is
+        # really a report the lookup was never given anything to resolve. 0 of
+        # 102 today, and 0 rows in the whole table lack coordinates, so this is
+        # a hole being closed rather than one being patched -- but the direction
+        # it fails in is silent-green, which is the one worth spending a term on.
+        #
+        # Measured 2026-08-24, all live: 533 flood reports have run the lookup,
+        # 431 carry a council and 102 do not; 0 of those 102 sit inside the
+        # height layer and 102 sit outside it. The 109 pre-#897 reports that
+        # never ran the lookup at all and DO sit inside the layer are the
+        # historical value this query was forced red on.
+        "SELECT ("
+        "  SELECT count(*) FROM property_reports p"
+        "   WHERE jsonb_path_exists(p.outputs::jsonb, '$.**.address_council')"
+        "     AND jsonb_path_query_first(p.outputs::jsonb, '$.**.address_council')"
+        "         = 'null'::jsonb"
+        "     AND EXISTS (SELECT 1 FROM spatial_overlays s"
+        "                  WHERE s.layer_type = 'height'"
+        "                    AND ST_Contains(s.geom,"
+        "                          ST_SetSRID(ST_MakePoint(p.lng, p.lat), 4326)))"
+        ") + ("
+        "  CASE WHEN (SELECT count(*) FROM property_reports"
+        "              WHERE jsonb_path_exists(outputs::jsonb, '$.**.address_council')"
+        "                AND jsonb_path_query_first(outputs::jsonb,"
+        "                      '$.**.address_council') <> 'null'::jsonb) = 0"
+        "       THEN 1 ELSE 0 END"
+        ") + ("
+        "  SELECT count(*) FROM property_reports p"
+        "   WHERE jsonb_path_exists(p.outputs::jsonb, '$.**.address_council')"
+        "     AND jsonb_path_query_first(p.outputs::jsonb, '$.**.address_council')"
+        "         = 'null'::jsonb"
+        "     AND (p.lat IS NULL OR p.lng IS NULL)"
+        ")",
         (),
-        "The flood three-state fix scopes its answer by council, and this "
-        "counts the reports where it had no council to scope by. Measured "
-        "2026-08-12: 346 of 668 flood reports carrying an SES lookup (52%), "
-        "against 109 of 151 (72%) recorded earlier -- the volume grew and the "
-        "rate improved. Both figures now carry their query; the earlier one "
-        "did not.",
+        "A flood report sits inside the height layer -- a point "
+        "lga_lookup.lookup_lga CAN resolve -- and still carries no council, so "
+        "the three-state scoping at flood_truth.py:1608 has nothing to scope "
+        "by where it should have had something. Or, the second term, no report "
+        "carries a council at all, which means the lookup stopped running "
+        "rather than started failing. NOT counted here: the 102 reports whose "
+        "point falls outside the height layer, because no council polygon "
+        "exists there to find. That is a coverage gap, it is real, and it has "
+        "its own row -- see DQ-85.",
+    ),
+    "DQ-85": (
+        "NSW councils lookup_lga cannot resolve, because it reads a partial layer",
+        # The residual DQ-57 leaves behind, split off rather than folded in.
+        # DQ-57 is "did the lookup answer where it could". This is "where can it
+        # not answer at all", and the two have different remedies. Folding them
+        # together is how DQ-57 got a check that could never reach 0 first time.
+        #
+        # lga_lookup.lookup_lga reads spatial_overlays WHERE layer_type =
+        # 'height'. Both the DQ-57 ledger row and ce-satellite-repair-PROMPT.md
+        # describe that as resolving LGA "statewide". It does not, and the
+        # module's own docstring has said "covers 75 LGAs" the whole time.
+        #
+        # THE BOUNDARIES ARE NOT MISSING. The SAME TABLE holds a 'zone' layer
+        # covering 128 distinct lga_name -- every NSW council -- against
+        # height's 75 (measured 2026-08-24). So this is not an ingestion
+        # backlog, it is a lookup reading the narrower of two layers that sit
+        # side by side. 80 of the 102 unresolved flood reports fall inside a
+        # zone polygon and would resolve today.
+        #
+        # Counted as COUNCILS, not reports. The first version of this probe
+        # counted the 102 affected reports, and cross-review was right that
+        # such a count reaches 0 when those rows age out of the cache while all
+        # 53 councils stay exactly as unresolvable -- a check passing because
+        # the evidence expired. The council count is derived from the zone
+        # layer inside the same table, so NSW's 128 is measured, never
+        # hardcoded, and it falls to 0 only when a council actually becomes
+        # resolvable.
+        "SELECT count(*) FROM ("
+        "  SELECT DISTINCT lga_name FROM spatial_overlays"
+        "   WHERE layer_type = 'zone' AND lga_name IS NOT NULL"
+        "  EXCEPT"
+        "  SELECT DISTINCT lga_name FROM spatial_overlays"
+        "   WHERE layer_type = 'height' AND lga_name IS NOT NULL"
+        ") missing_from_height",
+        (),
+        "Each row is an NSW council that spatial_overlays can already draw "
+        "(it has zone polygons) but which lga_lookup.lookup_lga will never "
+        "name, because that function reads only the 'height' layer. Every "
+        "satellite product that scopes by council is blind in these councils, "
+        "not only flood. Measured 53 of 128 on 2026-08-24, with height at 75. "
+        "The flood exposure this causes does NOT serve a false clear: "
+        "flood_truth.py:1616 reports an absent study as unconsulted when the "
+        "council is unknown, which under-reports deliberately. Remedy is a "
+        "lookup change, not an ingestion: 80 of the 102 affected reports fall "
+        "inside a zone polygon today.",
+    ),
+    "DQ-86": (
+        "Servable cached flood reports written before the council lookup existed",
+        # Raised by cross-review of the DQ-57 probe, and it was right: that
+        # probe's population is "the address_council key is PRESENT and null",
+        # so a report predating #897 carries no key at all and is excluded. It
+        # is not counted by DQ-57 and it is not the DQ-85 coverage gap either --
+        # these points sit INSIDE the height layer, so the lookup would answer
+        # for every one of them if it were ever asked.
+        #
+        # Given its own row rather than folded into DQ-57, deliberately. DQ-57's
+        # remedy was "call the real lookup", and that is done and verified;
+        # reopening it for rows written before the fix existed would make it
+        # unclosable for a second time, which is the exact failure being
+        # repaired here. This row's remedy is different in kind: regenerate, or
+        # wait for the cache window.
+        #
+        # Scoped to the 90-day cache window because that is the exposure. The
+        # same query without the window returns 109; those older rows exist but
+        # cannot be served, and counting them would make the number look worse
+        # than the risk while moving for reasons nobody can act on. Same scoping
+        # choice, same reason, as DQ-50-window.
+        "SELECT count(*) FROM property_reports p"
+        " WHERE jsonb_path_exists(p.outputs::jsonb, '$.**.ses_in_flood_planning_area')"
+        "   AND NOT jsonb_path_exists(p.outputs::jsonb, '$.**.address_council')"
+        "   AND p.run_date > NOW() - INTERVAL '90 days'"
+        "   AND p.lat IS NOT NULL AND p.lng IS NOT NULL"
+        "   AND EXISTS (SELECT 1 FROM spatial_overlays s"
+        "                WHERE s.layer_type = 'height'"
+        "                  AND ST_Contains(s.geom,"
+        "                        ST_SetSRID(ST_MakePoint(p.lng, p.lat), 4326)))",
+        (),
+        "Each row is a flood report a user can still be served from cache "
+        "today, written before #897 added the council lookup, at an address "
+        "the lookup CAN resolve. The three-state scoping at "
+        "flood_truth.py:1608 has no council for these, so an absent study is "
+        "reported as unconsulted rather than scoped -- honest, but weaker than "
+        "the answer a regenerated report would give. Measured 81 of 109 on "
+        "2026-08-24; the other 28 are outside the cache window and cannot be "
+        "served. Falls to 0 as the window rolls or on regeneration.",
     ),
     "DQ-30": (
         "SERVED provisions still tagged with a zone code NSW retired in 2022",

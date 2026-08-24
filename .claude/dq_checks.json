@@ -76,16 +76,28 @@
       "note": "Scoped to non-test source deliberately. tests/test_shadow_calibration.py DOES import pvlib, legitimately — it is the external reference the calibration measures against. A repo-wide grep would false-fail on exactly the test that proves the fix."
     },
     "DQ-57": {
-      "declared": "open",
+      "declared": "fixed",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
         "--id",
         "DQ-57"
       ],
-      "passes_when": "exit 0 - every flood report that ran an SES lookup got a council name back",
-      "red_when": "A flood report ran the SES study lookup and the council name came back null, so the flood three-state fix's council scoping has nothing to scope by.",
-      "note": "'needs a decision about what rate counts as fixed' was a dodge: for an OPEN row the check only has to fail while the defect exists, and >0 does that. ses_study_lga is NOT a column - it is nested inside property_reports.outputs, which is why earlier attempts found no table. Measured 2026-08-12: 668 flood reports carry the lookup, 346 (52%) came back null, against 151/109 (72%) recorded earlier - the volume grew and the rate improved."
+      "passes_when": "exit 0 - no flood report whose point the height layer CAN resolve carries a null council, and at least one report carries a council at all",
+      "red_when": "A flood report sits inside the height layer and still has no address_council, so lookup_lga was not called or did not answer where it could have. Or no report carries a council at all, which means the lookup stopped running rather than started failing.",
+      "note": "FIXED BY #897 (merged 2026-08-10), which added _query_address_council() and wired it into the flood query pool; flood_truth.py:1608 reads address_council first and falls back to ses_study_lga. The row stayed 'open' for 14 days because its CHECK MEASURED THE WRONG FIELD: it counted ses_study_lga nulls, and ses_study_lga is the LGA of a MATCHED study, null by design when no study matched, so the old query could never reach 0 and this row could never close whatever was repaired. Measured live 2026-08-24: 533 flood reports have run the lookup, 431 (81%) carry a council, 102 (19%) do not, and 0 of those 102 sit inside the height layer - every one is the coverage gap now tracked as DQ-85. Before the fix: 109 of 151 queried rows (72%) had no council, and 109 pre-#897 reports that never ran the lookup DO sit inside the layer, which is the value this check was forced red on."
+    },
+    "DQ-85": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-85"
+      ],
+      "passes_when": "exit 0 - every council spatial_overlays can draw is one lga_lookup.lookup_lga can name",
+      "red_when": "A council has zone polygons in spatial_overlays but no height polygons, so lookup_lga - which reads only the height layer - returns None for every address in it, blinding every satellite product that scopes by council.",
+      "note": "The residual DQ-57 leaves behind, kept separate because the remedy differs. THE BOUNDARIES ARE NOT MISSING: the same table's 'zone' layer covers 128 distinct lga_name - every NSW council - against height's 75 (measured 2026-08-24), so this is a lookup reading the narrower of two layers sitting side by side, not an ingestion backlog. 80 of the 102 unresolved flood reports fall inside a zone polygon and would resolve today. Counted as COUNCILS, not affected reports: cross-review of the first version was right that a report count reaches 0 when those rows age out of the 90-day cache while all 53 councils stay exactly as unresolvable - a check passing because its evidence expired. Deriving 128 from the zone layer means NSW's council count is measured here, never hardcoded. Both the DQ-57 row and ce-satellite-repair-PROMPT.md called this lookup 'statewide'; services/lga_lookup.py's docstring has said 'covers 75 LGAs' all along."
     },
     "DQ-53": {
       "declared": "partial",
@@ -747,6 +759,18 @@
       "passes_when": "exit 0 - every checkable extracted rule stores a length equal to the number and unit in the text it was matched from. 0 is the correct floor and the current value.",
       "red_when": "a served rule stores a length its own quoted text contradicts, out by exactly a unit factor - the #968 shape, where two of seventeen patterns listed `m` before `mm` so '600 mm' recorded 600 METRES. This is a value the product does ARITHMETIC with, not one it merely displays, so a thousandfold error propagates into every derived figure.",
       "note": "OPENS CLEAN AT 0, AND WHAT IT DID NOT FIND IS THE POINT. #968 recorded as out of scope: 'values already persisted in v2_extracted_rules by the broken alternation are NOT re-derived here, so they stay wrong until a re-extraction runs.' Measured 2026-08-17 across EVERY version: 1,101 rules carry both a length value and the text it came from and all 1,101 agree, 0 misreads. The 21 known bad values were in dcp_setback_controls and were repaired there; this column either never took them or was already re-derived. So the re-derivation that sentence implies would have rewritten 19,957 rows to fix nothing, and is not being done. CURRENT-AIM's 'sixth instance of: right check, scoped to one slice' is now closed by scope rather than by repair - validate_control_source_values.py does this for dcp_setback_controls (1,069 rows) and this does it for v2_extracted_rules. THE FIRST VERSION OF THIS CHECK WAS WRONG AND IT IS RECORDED IN THE SCRIPT: comparing the stored UNIT against the unit in the text flagged 29 rows and every one was a legitimate conversion ('350mm wide' stored as 0.35 m). A flag list where most entries are fine trains you to ignore it, which is the failure validate_control_source_values.py's own docstring warns about. The discriminating test is arithmetic - convert both sides to metres - so a conversion agrees and a misread cannot. COVERAGE IS STATED, NOT IMPLIED: only 432 of 8,340 served rules carry both a value and a raw_match and are checkable at all; the rest are not evidence of correctness and the run prints the denominator so a future run over zero rows cannot read as a pass."
+    },
+    "DQ-86": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-86"
+      ],
+      "passes_when": "exit 0 - no flood report inside the 90-day cache window predates the council lookup at an address that lookup can resolve",
+      "red_when": "A cached flood report a user can still be served was written before #897 added _query_address_council, at a point inside the height layer, so it carries no council even though one was resolvable.",
+      "note": "Raised by cross-review of the new DQ-57 probe, and correctly: that probe's population is 'address_council key PRESENT and null', so a report predating #897 carries no key and is excluded. Not DQ-85 either - these points sit INSIDE the height layer. Kept out of DQ-57 deliberately: DQ-57's remedy was 'call the real lookup' and that is done and verified, so reopening it for rows written before the fix existed would make it unclosable a second time, which is the failure being repaired. Measured 81 of 109 on 2026-08-24 - the other 28 are outside the cache window and cannot be served, and counting them would overstate the risk. Same window scoping, same reason, as DQ-50-window."
     }
   }
 }

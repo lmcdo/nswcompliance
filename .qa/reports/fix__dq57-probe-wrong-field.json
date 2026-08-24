@@ -1,0 +1,132 @@
+{
+  "tier": "standard",
+  "justification": "Changes what the defect ledger MEASURES and what it declares, which is the layer every other correctness claim is enforced through. A wrong probe here fails silently in the worst direction: the old one could never reach 0, so DQ-57 could never close however well it was repaired, and it sat Open for 14 days after the fix shipped. Not critical: no production code path, no user-facing surface, no database write, and the flood pipeline itself is untouched. Not minor: it flips a declared status and adds a row. Two cross-review findings were accepted and changed the shape of the work: DQ-85 was recounted from reports to councils, and DQ-86 was opened for a cohort the new DQ-57 probe excludes by construction.",
+  "commit_hash": "cc1721e1",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py",
+    "fails_when": "DQ-57 is declared open in both the ledger and dq_checks.json while its check passes, or DQ-85 is declared fixed while its check fails. Both were run. The ratchet runs both ways, so either direction is red, and the disagreement guard fires first if only one of the two files is edited.",
+    "observed_red": "A: DQ-57 forced to open in BOTH files printed 'RED DQ-57: declared OPEN but the check PASSES - it appears to be fixed and the ledger never caught up', exit 1 - which is precisely the state that existed for 14 days and which the OLD probe could not produce. B: DQ-85 forced to fixed in both files printed 'RED DQ-85: declared FIXED but the check FAILS - a regression, or a fix that never held', exit 1. Editing only dq_checks.json gave 'DQ-CHECK: FAILED - the ledger and the check file declare different statuses' instead, so the two-sources guard fires before the ratchet. The probe's own terms were forced separately: term 1 against the stored pre-#897 state returns 109, term 2 pointed at a vanished key returns 1, term 2 as it stands returns 0. After reshaping: DQ-85 returns 53 and reaches 0 when zone is substituted for height on both sides; DQ-86 returns 81 and reaches 0 when the cache window is drained to 0 days. Both open rows can therefore fall as well as rise."
+  },
+  "pre_impl": {
+    "existing_data": "property_reports.outputs (jsonb, 679 flood rows) read through jsonb_path_exists/jsonb_path_query_first on the nested address_council and ses_study_lga keys, and spatial_overlays WHERE layer_type='height' (40,094 rows, 75 distinct lga_name) joined by ST_Contains on property_reports.lat/lng. Read-only throughout, via dq_db which pins readonly plus a 30s statement timeout.",
+    "assumption_mismatch": "The load-bearing assumption was that lookup_lga resolves councils statewide, which BOTH the DQ-57 ledger row and ce-satellite-repair-PROMPT.md assert. It does not: the height layer holds 75 distinct lga_name against NSW's 128 councils, and services/lga_lookup.py's own docstring has said 'covers 75 LGAs' the whole time. Had that gone unchecked, the 102 residual reports would have been read as a lookup failure and DQ-57 would have been reopened to chase a defect that is really missing boundary data. Measured before writing either probe.",
+    "new_vs_existing": "Applies to every stored flood report on the next run, not only new ones; nothing is backfilled and no row is written. The cohort is defined by whether outputs carries the address_council key at all, which is the only reliable signal that a row ran post-#897 code: created_at is useless here because reports are regenerated in place, and it splits 13/666 where key presence splits 533/146."
+  },
+  "functions": [
+    {
+      "name": "run",
+      "file_line": "scripts/dq_probe_live.py:1088",
+      "input": "dq_id str from --id, indexing the PROBES table this change edits",
+      "output": "exit 0 when the count is 0, 1 when it is non-zero, 2 when the database is unreachable",
+      "if_none": "An unreachable database returns 2, and dq_check reports UNVERIFIED rather than clean. Both new probes inherit this, so neither can report a green verdict it did not measure."
+    }
+  ],
+  "values": [
+    {
+      "value": "count (DQ-57, three summed terms)",
+      "read_at": "scripts/dq_probe_live.py:1100",
+      "nullable": "no",
+      "guard_at": "scripts/dq_probe_live.py:1110 - any non-zero exits 1",
+      "if_missing": "0 is the only clean value. Term 1 is the defect, term 2 catches address_council disappearing entirely, term 3 catches reports with no coordinates. Measured 0 on 2026-08-24."
+    },
+    {
+      "value": "count (DQ-85)",
+      "read_at": "scripts/dq_probe_live.py:1100",
+      "nullable": "no",
+      "guard_at": "scripts/dq_probe_live.py:1110 - declared open, so non-zero is the expected state",
+      "if_missing": "0 would mean the height layer now covers every stored report's address, and the ratchet would flag the row as silently fixed rather than let it sit stale."
+    },
+    {
+      "value": "p.lat / p.lng",
+      "read_at": "scripts/dq_probe_live.py:474 and :572",
+      "nullable": "yes in principle, 0 rows today",
+      "guard_at": "DQ-57 term 3 counts them; DQ-85 excludes them with lat IS NOT NULL AND lng IS NOT NULL",
+      "if_missing": "ST_Contains(geom, NULL) is NULL rather than false, so an uncoordinated report satisfies neither the EXISTS nor its negation cleanly. It would drop out of DQ-57 silently and reappear in DQ-85 as a coverage gap, misattributing a pipeline defect to missing boundary data."
+    },
+    {
+      "value": "count (DQ-86)",
+      "read_at": "scripts/dq_probe_live.py:1100",
+      "nullable": "no",
+      "guard_at": "scripts/dq_probe_live.py:1110 - declared open, so non-zero is the expected state",
+      "if_missing": "0 means the cache window has rolled past every pre-#897 report, or they were regenerated. The ratchet then reports the row as silently fixed rather than letting it sit."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-57: flood reports the council lookup COULD have resolved and did not",
+      "file_line": "scripts/dq_probe_live.py:468",
+      "where_clause": "address_council key present AND its value = 'null'::jsonb AND EXISTS(height polygon containing the point); plus a term for no report carrying a council at all; plus a term for null coordinates",
+      "if_zero": "Clean, and that is the measured state: 533 reports ran the lookup, 431 carry a council, 102 do not, and 0 of those 102 sit inside the height layer.",
+      "if_wrong": "The previous version counted ses_study_lga nulls, a field that is null BY DESIGN when no study matched and that #897 deliberately stopped scoping on. It could never reach 0, so the row could never close. That is the defect this change repairs, and it is why the population is keyed on address_council instead."
+    },
+    {
+      "purpose": "DQ-85: NSW councils lookup_lga cannot resolve, because it reads a partial layer",
+      "file_line": "scripts/dq_probe_live.py:528",
+      "where_clause": "DISTINCT lga_name WHERE layer_type='zone' EXCEPT DISTINCT lga_name WHERE layer_type='height', both from spatial_overlays",
+      "if_zero": "Every council spatial_overlays can draw is one lookup_lga can name, i.e. the lookup was pointed at a layer covering all of them. Verified reachable: substituting zone for height on both sides returns 0.",
+      "if_wrong": "The first version counted the 102 AFFECTED REPORTS. Cross-review was right that such a count reaches 0 when those rows age out of the 90-day cache while all 53 councils stay exactly as unresolvable - a check passing because its evidence expired. Counting councils, derived from the zone layer, also means NSW's 128 is measured rather than hardcoded."
+    },
+    {
+      "purpose": "DQ-86: servable cached flood reports written before the council lookup existed",
+      "file_line": "scripts/dq_probe_live.py:568",
+      "where_clause": "flood outputs present AND NOT jsonb_path_exists(address_council) AND run_date > NOW() - INTERVAL '90 days' AND lat/lng NOT NULL AND EXISTS(height polygon containing the point)",
+      "if_zero": "No cache-servable flood report predates the lookup at an address it can resolve. Verified reachable: draining the window to 0 days returns 0.",
+      "if_wrong": "Without the 90-day window it returns 109 rather than 81, counting rows that exist but cannot be served - worse-looking than the risk, and moving for reasons nobody can act on. Same scoping choice, same reason, as DQ-50-window."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A probe measures a field the fix it watches deliberately stopped using.",
+      "what_happens": "The check can never reach 0, so the row can never close. DQ-57 read Open for 14 days after #897 fixed it, and the ledger's own status ratchet could not see it because the check never passed.",
+      "mitigated": true,
+      "how": "scripts/dq_probe_live.py:435 keys the population on address_council, the field flood_truth.py:1608 actually scopes by, rather than ses_study_lga, which is the LGA of a MATCHED study and null by design when none matched.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-57 returns 0 and CLEAN; the previous query returns 356 and can never return 0"
+    },
+    {
+      "scenario": "address_council stops being written to outputs at all - the pipeline stops looking councils up rather than starting to fail at it.",
+      "what_happens": "The population defined by 'key present AND value null' empties, the count goes to 0, and the probe reports CLEAN on a pipeline that no longer does the thing being checked. The check would pass hardest exactly when what it guards is gone.",
+      "mitigated": true,
+      "how": "scripts/dq_probe_live.py:445, second term: 1 when no report carries a non-null address_council, so the probe goes red instead of clean.",
+      "repro": "Point the second term at a key no report carries ('$.**.address_council_GONE') and it returns 1 - run and confirmed 2026-08-24"
+    },
+    {
+      "scenario": "A flood report is stored with no lat/lng.",
+      "what_happens": "ST_Contains(geom, NULL) is NULL, not false, so the row satisfies neither the EXISTS in DQ-57 nor cleanly the NOT EXISTS in DQ-85. It vanishes from the defect count and surfaces in the coverage row, reading as missing boundary data when it is a report the lookup was never given anything to resolve.",
+      "mitigated": true,
+      "how": "scripts/dq_probe_live.py:449 third term counts null-coordinate rows into DQ-57, and scripts/dq_probe_live.py:505 excludes them from DQ-85, so the two partition rather than overlap.",
+      "repro": "0 of the 102 null-council reports lack coordinates and 0 rows in property_reports lack them, so this is a closed hole rather than a live one; 0 + 102 = 102 confirms the partition"
+    },
+    {
+      "scenario": "DQ-57 is closed and the reports its probe does not count are simply dropped.",
+      "what_happens": "Two distinct, measured exposures vanish at the moment the row closes: 53 councils no lookup can name, and 81 cache-servable reports written before the lookup existed. The second was found by cross-review, not by me - the probe's population is 'key PRESENT and null', so a report predating #897 is excluded by construction.",
+      "mitigated": true,
+      "how": "DQ-85 tracks the councils and DQ-86 the stale cache, each with its own probe and its own remedy. Neither was folded back into DQ-57: its remedy was 'call the real lookup', which is done and verified, and reopening it for rows written before its own fix existed would make it unclosable a second time - the exact failure being repaired.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-85 returns 53; --id DQ-86 returns 81"
+    },
+    {
+      "scenario": "Only one of dq_checks.json and DATA_QUALITY_TRACKER.md is updated when a status flips.",
+      "what_happens": "Two sources of truth for the same fact, which is how DQ-54 read 'Open - report-only' for hours after it was merged.",
+      "mitigated": true,
+      "how": "scripts/dq_check.py status_disagreements() fails the run before the status ratchet is even reached - observed while forcing this change red, and it is why both files were edited together.",
+      "repro": "Set declared=open in dq_checks.json alone: 'DQ-CHECK: FAILED - the ledger and the check file declare different statuses'"
+    },
+    {
+      "scenario": "An open row is measured by a count that can fall to 0 without the defect being fixed.",
+      "what_happens": "DQ-85's first version counted the 102 affected flood reports. Those rows age out of the 90-day cache, the count reaches 0, and the status ratchet reports the row as silently fixed while all 53 councils remain exactly as unresolvable. The check would pass because its evidence expired.",
+      "mitigated": true,
+      "how": "scripts/dq_probe_live.py:528 counts COUNCILS via zone EXCEPT height, which is a property of the data rather than of the cache. It cannot move because reports came or went.",
+      "repro": "Raised by scripts/cross_review.py --pr 998 at 0.96 confidence; the council form was verified reachable-0 by substituting zone for height on both sides"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
