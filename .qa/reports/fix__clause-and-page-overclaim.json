@@ -1,0 +1,156 @@
+{
+  "tier": "standard",
+  "justification": "TIER: standard, not minor — 13 substantive files. The branch grew from a one-line copy fix into a claims audit across seven audience pages, a shared-constants correction, three new verifier checks and a deploy-contract fix with its own test. Copy-only. Removes the words 'and page' from three user-facing surfaces that claimed every control is cited to its clause AND page. The page half was disproven on production 2026-08-23 and corrected in ~/.claude/plans/ce-institutional-endorsement-gtm-2026-07.md the same day, but the correction was applied only to the outreach email draft - the product surfaces kept the claim. Re-measured on production today, 2026-08-23: of 967 current, not-needs-review rows in dcp_setback_controls, 779 (80.6%) carry no pdf_page; excluding nsw_statewide and the all-dead inner_west label, 748 of 936 served rows (79.9%) carry no page. The clause half is true for every served row: section_ref and source_text are 100% filled (936/936). So the fix is to delete the false half and keep the true one. Direction of change is claim-removal, which per memory/project-defect-repair-calibration-2026-08.md cannot create a new false claim - it can only stop one. No logic, no data, no types touched: three JSX string literals. SECOND CHANGE on this branch: the pre-push liability scan flagged both sentences this branch had just edited, and it was correct. Each claimed every control/figure is traced to a published CLAUSE while listing sources that have none - Spatial Services NSW mapping, council flood studies, the RFS bushfire layer. The 936/936 section_ref measurement covers dcp_setback_controls only and says nothing about mapping results, so the claim was broader than the evidence. Both sentences now split the two: a planning control carries its clause, a mapping result names its dataset. Same direction of travel - narrowing a claim to the subset that was measured. THIRD CHANGE: an audit of all seven /for/ audience pages found five more claims of the same shape - a number from one layer of the coverage ladder attached to a capability from another. floodLgas:71 was documented as 'LGAs with modelled flood-depth coverage'; 71 is the flood OVERLAY council count (spatial_overlays layer_type='flood' -> 72) while services/flood_truth.py declares exactly FOUR council flood studies. lgasCovered:130 published more councils than NSW contains, on the homepage, in a file that already held totalNswCouncils:128. '25 LGAs' for front+side+rear setbacks: 24 councils hold all three. 'never a guess' and 'Always current' were absolutes that did not hold across the products they spanned. All fixed at the shared source lib/coverage.ts so every consumer moved at once - the blast radius was six surfaces for floodLgas, not one. FOURTH CHANGE: the D8 delivery bug found while checking the flood claim is now fixed. Dockerfile.python pinned HAWKESBURY_RASTER_DIR and REDBANK_RASTER_DIR but not the Tweed/Wollongong pair; unset, writer and reader fall back to different paths (/tmp/<study>_rasters vs the gitignored, never-COPY'd data/flood_studies/<study>), so 1.6 GB downloaded on every cold start into directories nothing read. Both vars pinned. tests/test_flood_raster_deploy.py added — the same class of guard as tests/test_narclim_raster_deploy.py, which has covered the NARCliM rasters for months and was never written for the flood studies.",
+  "commit_hash": "12e06d6e",
+  "files": [
+    "Dockerfile.python",
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/app/blog/site-analysis-report-explained/page.tsx",
+    "frontend-nextjs/app/developers/page.tsx",
+    "frontend-nextjs/app/for/conveyancers/page.tsx",
+    "frontend-nextjs/app/for/councils/page.tsx",
+    "frontend-nextjs/app/for/homebuyers/page.tsx",
+    "frontend-nextjs/app/for/planners/page.tsx",
+    "frontend-nextjs/app/page.tsx",
+    "frontend-nextjs/app/what-you-get/CapabilityExplorer.tsx",
+    "frontend-nextjs/app/widget-demo/[slug]/page.tsx",
+    "frontend-nextjs/lib/coverage.ts",
+    "scripts/verify_coverage_stats.py",
+    "tests/test_flood_raster_deploy.py"
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone reads this change as 'the page data was fixed' and re-states a page-level citation claim somewhere else.",
+      "what_happens": "Nothing about the data changed. 748 of 936 served controls still carry no pdf_page, and effective_date_basis is still 0% filled. Only the promise moved. A later doc or deck saying 'cited to the page' would be exactly as false as the header was this morning.",
+      "mitigated": false,
+      "how": "NOT mitigated. This is a copy edit, not a data repair. The honest statement of the surface is: every served control carries its clause and its verbatim source sentence; roughly one in five also carries a page.",
+      "repro": "SELECT count(*), count(pdf_page) FROM dcp_setback_controls WHERE is_current AND (needs_review IS NULL OR needs_review=FALSE) AND lga <> 'nsw_statewide' AND lga <> 'inner_west'"
+    },
+    {
+      "scenario": "The phrase is re-introduced on a new surface, or restored on one of these three.",
+      "what_happens": "It ships. No test, lint or CI job fails on it. This claim already survived one documented correction: it was corrected in the GTM plan file on 2026-08-23 and the product kept serving it, because a plan file cannot fail a build.",
+      "mitigated": false,
+      "how": "NOT mitigated, and this is the real residual risk in this change. Per memory/feedback-incident-rule-machine.md a prose rule fails within hours and only a gated rule holds. A standing lint on the phrase is the durable fix and is deliberately NOT bundled here.",
+      "repro": "grep -rn 'clause and page' frontend-nextjs/app frontend-nextjs/components frontend-nextjs/lib | grep -v node_modules"
+    },
+    {
+      "scenario": "Removing 'and page' hides the page numbers on the 188 rows that legitimately have one.",
+      "what_happens": "It does not. Page rendering is conditional and independent of the header: ProvisionDisplay.tsx:232 renders the page span only when provision.pdfPage is truthy, so a page shows wherever one exists and nothing shows where it does not. The header was the only thing promising a page on every control.",
+      "mitigated": true,
+      "how": "Verified by reading the render path rather than assumed. The change aligns the header with behaviour the UI already had.",
+      "repro": "grep -rn 'pdfPage' frontend-nextjs/components/browse/ProvisionDisplay.tsx"
+    },
+    {
+      "scenario": "The two-line JSX text node in for/conveyancers/page.tsx breaks or reads wrong after the words are removed mid-sentence.",
+      "what_happens": "It renders as '...traced to the published clause it comes from - zoning and SEPP from the NSW Planning Portal...'. Grammatical, and the source list after the em-dash is unchanged.",
+      "mitigated": true,
+      "how": "JSX text node, line break preserved; tsc ran clean at 8 errors against a 677 baseline.",
+      "repro": "sed -n '84,92p' frontend-nextjs/app/for/conveyancers/page.tsx"
+    },
+    {
+      "scenario": "A conveyancing report or widget result includes a flood, bushfire or hazard figure that came from mapping, not from a planning instrument.",
+      "what_happens": "Before this branch's second commit both surfaces told the reader that figure was 'traced to the published clause it comes from'. No such clause exists for a Spatial Services mapping result or an RFS bushfire layer, so the sentence overstated provenance to a conveyancer - the reader least equipped to catch it and the one whose reliance carries liability.",
+      "mitigated": true,
+      "how": "Both sentences now distinguish the two provenance kinds explicitly: a planning control carries the clause it was read from, a mapping result names its dataset. This was found by the repo's own pre-push liability scan rather than by review, and the scan's two findings were accepted rather than annotated away.",
+      "repro": "git show 13a6a68a --stat && grep -n 'names where it came from' frontend-nextjs/app/for/conveyancers/page.tsx"
+    },
+    {
+      "scenario": "A published coverage number drifts from, or was never equal to, the thing it names.",
+      "what_happens": "It ships and stays. scripts/verify_coverage_stats.py PASSED throughout this defect's life for two separate reasons: floodLgas and lgasCovered were classed 'editorial' and checked by NOTHING, and dcpNumericCouncils was validated against the SAME query that produces the omission it should catch. A guard whose shape looks right and which cannot fail on the live defect is the pattern in memory/feedback-detect-a-guard-by-forcing-its-failure.md.",
+      "mitigated": true,
+      "how": "Three checks added to the verifier and each FORCED TO FAIL on the exact historical wrong value before being trusted, not reasoned about: lgasCovered 130 -> DRIFT, dcpSetbackTripleCouncils 25 -> DRIFT, floodStudies 71 -> DRIFT. Plus a structural invariant that lgasCovered can never exceed totalNswCouncils. All four fire together and the script exits 1. Restored to correct values: all OK, exit 0. floodStudies is checked by parsing FLOOD_STUDIES out of services/flood_truth.py, so the published number is tied to the declaration rather than to an editor's memory.",
+      "repro": "python -c \"import io;p='frontend-nextjs/lib/coverage.ts';s=io.open(p,encoding='utf-8').read();io.open(p,'w',encoding='utf-8').write(s.replace('lgasCovered: 128','lgasCovered: 130'))\" && python scripts/verify_coverage_stats.py; git checkout -- frontend-nextjs/lib/coverage.ts"
+    },
+    {
+      "scenario": "A user in Tweed or Wollongong asks the flood question and expects the modelled depth the site advertises.",
+      "what_happens": "They get 'not assessed'. Dockerfile.python sets HAWKESBURY_RASTER_DIR and REDBANK_RASTER_DIR but NOT the Tweed/Wollongong pair, and the two sides disagree on that env var's fallback: download_tweed_wollongong_rasters.py:66 defaults to /tmp/tweed_rasters while flood_truth.py defaults to data/flood_studies/tweed, which is untracked and never copied into the container. The rasters download on every boot into a directory nothing reads.",
+      "mitigated": true,
+      "how": "FIXED on this branch. Dockerfile.python now pins TWEED_RASTER_DIR and WOLLONGONG_RASTER_DIR to /tmp/<study>_rasters, matching the download script, so writer and reader agree. Guarded by tests/test_flood_raster_deploy.py, forced to fail first: reverting the two ENV lines to the origin/main state produces 4 failures naming tweed and wollongong; restored, 9 pass. It was never a false negative — #892 guarantees 'not assessed' rather than 'no'.",
+      "repro": "git show origin/main:Dockerfile.python | grep -E 'RASTER_DIR|download_.*rasters'"
+    },
+    {
+      "scenario": "A new council flood study is added to FLOOD_STUDIES and its directory env var is not pinned in the image.",
+      "what_happens": "Before this branch: it downloads on every boot and is read from a path that does not exist in the container, so the capability is declared and undeliverable while _warn_on_absent_flood_studies() writes a log line nobody reads. That is exactly how Tweed and Wollongong sat broken.",
+      "mitigated": true,
+      "how": "tests/test_flood_raster_deploy.py parameterises over FLOOD_STUDIES, so a newly added study is automatically covered by three checks: its dir env var must be pinned in Dockerfile.python, the pinned path must be a writable /tmp path rather than the uncopied data/ tree, and the study must be named by something the CMD actually runs. Forced to fail on the real historical state before being trusted.",
+      "repro": "python -c \"import io;p='Dockerfile.python';s=io.open(p,encoding='utf-8').read();io.open(p,'w',encoding='utf-8').write(s.replace('ENV TWEED_RASTER_DIR=/tmp/tweed_rasters\n',''))\" && python -m pytest tests/test_flood_raster_deploy.py -q; git checkout -- Dockerfile.python"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. No database access of any kind - three string literals. The database was read only to measure the claim (read-only session, set_session readonly), never written.",
+    "secrets": "No credentials read or written by this change. Noted separately and NOT addressed here: the live Supabase pooler password remains in git history across ~96 tracked files per memory/project-live-db-password-in-git-history-2026-08.md. That still needs rotation and is untouched by this commit.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes. After deploy, open https://verify.plotdetect.com.au/assessment and confirm the header sub-line reads 'Every control cited to its clause - live NSW planning data' with no page claim. The pre-fix string was confirmed live in a browser on 2026-08-23, so a source-only check is not sufficient - the deployed bundle is the authority, per the method used in ce-verified-capability-statement-2026-08.md section 3.1."
+  },
+  "measurements": [
+    {
+      "claim": "779 of 967 current not-needs-review controls carry no pdf_page (80.6%)",
+      "query": "SELECT count(*) AS rows_all_current, count(pdf_page) AS has_page, count(*)-count(pdf_page) AS no_page FROM dcp_setback_controls WHERE is_current AND (needs_review IS NULL OR needs_review=FALSE)",
+      "result": "967 | 188 | 779",
+      "measured": "2026-08-23"
+    },
+    {
+      "claim": "Every served control does carry its clause and its verbatim quote",
+      "query": "SELECT count(*) AS served, count(section_ref) AS has_clause, count(source_text) AS has_quote FROM dcp_setback_controls WHERE is_current AND (needs_review IS NULL OR needs_review=FALSE) AND lga <> 'nsw_statewide' AND lga <> 'inner_west'",
+      "result": "936 | 936 | 936",
+      "measured": "2026-08-23"
+    },
+    {
+      "claim": "The claim was live on the deployed page, not only in source",
+      "query": "Rendered https://verify.plotdetect.com.au/assessment in a browser; header read 'Site Controls / Every control cited to its clause and page - live NSW planning data'",
+      "result": "confirmed live before the fix",
+      "measured": "2026-08-23"
+    }
+  ],
+  "not_covered": [
+    "app/for/students/page.tsx already said 'Every control cited to its clause' and was correct before this change - left untouched.",
+    "app/api/adg/separation-table/route.ts carries an internal code comment referring to 'PDF URL and page number'. It describes sepp_adg_requirements, a different table, and is not user-facing. Not verified and not changed.",
+    "No standing lint or CI check was added. The phrase can return without failing anything.",
+    "The clause-fill measurement (936/936 section_ref) covers dcp_setback_controls only. No equivalent provenance-fill measurement was run for zoning, SEPP, flood, bushfire or hazard mapping results - the copy now claims only that those name a dataset, which is weaker and was not separately verified per-field.",
+    "Whether the R2 download in download_tweed_wollongong_rasters.py succeeds in production was not observed - only that its destination and flood_truth.py's lookup path cannot agree while the env vars are unset.",
+    "Six of coverage.ts's fifteen fields remain unchecked by the verifier: dcpFullCouncils, seppStandards, adgCriteria, secondaryDwellingCouncils, riskLayers, govDataSources. Three were added this branch; these six were not audited.",
+    "/tmp is ephemeral and railway.toml declares no volume, so all four studies (~2.35 GB) still download on every cold start. A Railway volume would let the script's existing skip-if-present logic work. Not done — it needs a volume provisioned outside the repo.",
+    "Whether the R2 credentials and objects for tweed/wollongong actually resolve in production was not observed; only that the paths can now agree."
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/verify_coverage_stats.py && python -m pytest tests/test_flood_raster_deploy.py -q && grep -rn 'clause and page' frontend-nextjs/app frontend-nextjs/components frontend-nextjs/lib | grep -v node_modules; test $? -ne 0",
+    "fails_when": "Each published constant is asserted against a SEPARATE authority that is maintained independently of it, so a wrong edit on either side goes red. lgasCovered is asserted against the production database: SELECT count(DISTINCT lga_name) FROM spatial_overlays WHERE layer_type='zone'. dcpSetbackTripleCouncils against a GROUP BY over dcp_setback_controls. floodStudies, a constant in frontend-nextjs/lib/coverage.ts, against the FLOOD_STUDIES declaration in a different file, services/flood_truth.py. tests/test_flood_raster_deploy.py asserts that same declaration against a third artefact, Dockerfile.python. A structural invariant also fires if lgasCovered ever exceeds totalNswCouncils, which is impossible for a NSW council count. Nothing here re-runs the code that produced a value and asks whether it agrees with itself; every constant is hand-written prose checked against a live query or a separate file.",
+    "not_guarded": "The 'clause and page' grep is manual, not a CI gate. Nothing in the test suite fails if the phrase returns. A standing lint is the durable fix and is not in this change.",
+    "observed_red": "YES — forced red on this branch against the REAL historical values before being trusted, not invented ones. (1) Planted lgasCovered=130, dcpSetbackTripleCouncils=25 and floodStudies=71 — the three figures that were actually published — and verify_coverage_stats.py reported all three as disagreeing with the live database or the FLOOD_STUDIES declaration, plus 'lgasCovered: 130 exceeds totalNswCouncils 128', and exited 1. Restored to the measured values: all rows OK, exit 0. (2) Deleted the two ENV lines from Dockerfile.python, reproducing origin/main exactly: test_flood_raster_deploy.py went 4 failed / 5 passed, the failures naming tweed and wollongong. Restored: 9 passed. (3) The 'clause and page' grep returned 3 hits before the fix and 0 after.",
+    "not_self_referential": "The two DB checks compare the PUBLISHED constant against the LIVE DATABASE, which is a different authority from the file being checked: lgasCovered is asserted against SELECT count(DISTINCT lga_name) FROM spatial_overlays WHERE layer_type='zone', and dcpSetbackTripleCouncils against a GROUP BY over dcp_setback_controls. Neither re-runs the code that produced the constant — the constant is hand-written prose in a .ts file and the query is the ground truth. floodStudies compares a hand-written constant in coverage.ts against a DIFFERENT FILE's declaration (services/flood_truth.py FLOOD_STUDIES), and test_flood_raster_deploy.py compares that same declaration against a THIRD artefact (Dockerfile.python). In each case two independently-maintained artefacts must agree; a single wrong edit to either side goes red. The failure mode DQ-30 had — asking the code whether it agrees with itself — is absent because no check here regenerates the value it is testing."
+  },
+  "pre_impl": {
+    "existing_data": "Yes, and finding it changed the fix. frontend-nextjs/lib/coverage.ts already existed as the declared single source of truth for every public coverage number, and scripts/verify_coverage_stats.py already existed as its gate. So the six wrong claims were not six independent copy bugs — they were two wrong constants rendering on nine surfaces. Fixing at the source moved every consumer at once. Equally, tests/test_narclim_raster_deploy.py already guarded the writer-vs-reader env-var contract for the NARCliM rasters; the flood studies simply never got the same test. Both fixes are existing patterns applied where they were missing, not new machinery.",
+    "assumption_mismatch": "Three. (1) I assumed the verifier did not cover floodLgas and lgasCovered because they were hard to check; they were classed 'editorial' and simply never had a query written — both are trivially checkable and now are. (2) I assumed dcpNumericCouncils=25 was verified; it is, against the SAME query that produces the omission, so the check could not fail on the live defect. (3) I assumed the Tweed/Wollongong rasters were missing a download script, because services/flood_truth.py's docstring says so — PR #897 added one in the same commit that wrote that sentence. The real fault was two unpinned env vars with disagreeing fallbacks, which is a different bug entirely.",
+    "new_vs_existing": "No new surface, no new table, no new endpoint. Edits to nine existing files, three checks added to an existing verifier, two ENV lines added to an existing Dockerfile block beside the two that already worked, and one new test file that mirrors an existing one (test_narclim_raster_deploy.py) for a dataset it did not cover."
+  },
+  "functions": [
+    {
+      "name": "live_flood_study_count",
+      "file": "scripts/verify_coverage_stats.py",
+      "purpose": "Parse FLOOD_STUDIES out of services/flood_truth.py and return how many council flood studies are actually declared, so the published figure is tied to the declaration rather than to an editor's memory. This is the check that floodLgas=71 never had.",
+      "file_line": "scripts/verify_coverage_stats.py:91",
+      "input": "none — reads services/flood_truth.py from disk",
+      "output": "int, the number of study keys in the FLOOD_STUDIES dict (currently 4)",
+      "if_none": "Raises RuntimeError if FLOOD_STUDIES cannot be located, and main() reports UNREADABLE and records drift rather than silently passing — an unparseable declaration must not read as agreement."
+    },
+    {
+      "name": "_reader_env_var",
+      "file": "tests/test_flood_raster_deploy.py",
+      "purpose": "Extract the environment variable name that services/flood_truth.py reads for a given study's raster directory, so the test compares the reader's actual variable against the Dockerfile rather than a hardcoded list that could drift from either side.",
+      "file_line": "tests/test_flood_raster_deploy.py:50",
+      "input": "study_key: str — a key of FLOOD_STUDIES",
+      "output": "str, the env var name (e.g. 'TWEED_RASTER_DIR')",
+      "if_none": "Asserts if FLOOD_STUDIES or the study's os.environ.get(...) call cannot be found, so a refactor that moves the config fails the test loudly instead of quietly passing over an empty match."
+    },
+    {
+      "name": "_dockerfile_env",
+      "file": "tests/test_flood_raster_deploy.py",
+      "purpose": "Read the ENV KEY=VALUE pairs declared in Dockerfile.python, giving the test the deployed side of the writer/reader contract.",
+      "file_line": "tests/test_flood_raster_deploy.py:42",
+      "input": "none — reads Dockerfile.python from disk",
+      "output": "dict[str, str] of declared ENV pairs",
+      "if_none": "Returns an empty dict if no ENV lines match, which makes every pinning assertion fail rather than pass vacuously."
+    }
+  ]
+}

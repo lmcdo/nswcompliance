@@ -218,7 +218,8 @@ export default function HomePage() {
           <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
             What can you build? What could stop you? What are you actually buying?
             What&apos;s it worth? What&apos;s happening around it? Instant checks for any
-            NSW address — every figure from the source data, never a guess.
+            NSW address — every figure names the source it came from, and where a source
+            could not be consulted it says so rather than answering.
             Free checks; detailed reports from $39.
           </p>
 

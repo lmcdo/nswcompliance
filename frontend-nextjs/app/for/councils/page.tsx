@@ -48,8 +48,8 @@ export default function CouncilsPage() {
               description: 'PlotDetect queries the NSW Planning Portal directly. No council data is stored, exported, or shared. All data sources are public government datasets.',
             },
             {
-              title: 'Always current',
-              description: 'Planning controls are queried live from the NSW Planning Portal. DCP provisions are extracted from the published instrument. No manual database maintenance.',
+              title: 'Queried live, or dated',
+              description: 'Zone, height, FSR and overlay controls are queried live from the NSW Planning Portal on every request. DCP provisions are extracted from the published instrument and carry the version and date they were read from, so what is a live lookup and what is a dated extract is never in doubt. No manual database maintenance.',
             },
           ].map(({ title, description }) => (
             <div key={title} className="rounded-xl border border-gray-200 p-5">

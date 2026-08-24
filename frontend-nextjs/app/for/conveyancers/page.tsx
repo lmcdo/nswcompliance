@@ -44,7 +44,7 @@ export default function ConveyancersPage() {
               icon: Droplets,
               iconColor: 'text-blue-600',
               title: 'Flood depth modelling',
-              description: `Not just "flood zone" — modelled depth at ARI return periods from council flood studies. ${COVERAGE_DISPLAY.floodLgas} LGA coverage.`,
+              description: `Not just "flood zone" — modelled depth at ARI return periods where a council flood study has been ingested (${COVERAGE_DISPLAY.floodStudies} studies: Hawkesbury, Tweed, Wollongong, Redbank). Elsewhere, the mapped flood planning area.`,
             },
             {
               icon: Flame,
@@ -56,7 +56,7 @@ export default function ConveyancersPage() {
               icon: ShieldCheck,
               iconColor: 'text-teal-600',
               title: 'DCP setback controls',
-              description: `Front, side, and rear setbacks from the applicable DCP — with clause citations. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs covered.`,
+              description: `Front, side, and rear setbacks from the applicable DCP — with clause citations. ${COVERAGE_DISPLAY.dcpSetbackTripleCouncils} councils hold all three.`,
             },
             {
               icon: FileCheck,
@@ -84,8 +84,9 @@ export default function ConveyancersPage() {
             </h2>
           </div>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Every control in the report is traced to the published clause and page
-            it comes from &mdash; zoning and SEPP from the NSW Planning Portal, flood
+            Every figure in the report names where it came from &mdash; a council
+            planning control carries the clause it was read from, and a mapping result
+            names its dataset: zoning and SEPP from the NSW Planning Portal, flood
             and hazard mapping from Spatial Services NSW and council flood studies,
             bushfire from the NSW Rural Fire Service. Figures are indicative and
             computed from published planning controls, not advice &mdash; the report
