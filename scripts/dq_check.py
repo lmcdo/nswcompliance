@@ -362,7 +362,15 @@ def _tracked_paths(root: Path) -> set[str] | None:
     # nothing -- silent green, the one direction this file exists to refuse.
     # No such module exists in this tree today; this removes the possibility
     # rather than fixing a sighting. Raised by cross-review, 2026-08-24.
-    if Path(inspect.getfile(git_env)).resolve() != (_ROOT / "scripts" / "qa_report_path.py"):
+    # getfile() raises TypeError for a builtin or a callable OBJECT, which is
+    # exactly what a hostile or merely odd module might expose. Anything without
+    # an inspectable source file is treated as foreign rather than allowed to
+    # abort the whole gate with a traceback.
+    try:
+        origin = Path(inspect.getfile(git_env)).resolve()
+    except (TypeError, OSError):
+        return None
+    if origin != _ROOT / "scripts" / "qa_report_path.py":
         return None
     try:
         proc = subprocess.run(

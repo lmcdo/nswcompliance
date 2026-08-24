@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what a blocking CI gate SCANS, so a wrong scoping fails silently in both directions: too wide and the gate is red on every machine and gets stepped over, too narrow and a genuinely orphaned check ships unnoticed. Not critical: no database, no production data path, no user-facing surface. Not minor: this is gate logic, and the pre-change version was wrong in both directions at once.",
-  "commit_hash": "01145586",
+  "commit_hash": "82b8d262",
   "files": [
     "scripts/dq_check.py",
     "tests/test_dq_check.py"
@@ -9,7 +9,7 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_dq_check.py tests/test_git_env_ratchet.py -q",
     "fails_when": "dq._tracked_paths is stubbed to return None, which is byte-for-byte the pre-change filesystem glob. Measured 2026-08-24: test_an_untracked_scratch_check_is_not_reported goes red because check_scratch is reported, and test_an_untracked_file_cannot_launder_a_tracked_orphan goes red because check_orphan is NOT reported, having been laundered by an untracked file. test_git_actually_answers goes red if git stops answering at all, so the other two cannot pass by silently falling back.",
-    "observed_red": "Ran the fixed unwired_checks() against a fixture repo with _tracked_paths stubbed to return None, which is the pre-change filesystem glob. It printed: unwired under OLD behaviour: ['check_scratch'] -- the untracked scratch check reported, and the tracked orphan ABSENT because an untracked file had named it. So both assertions go red on the old code. Against the real primary working tree the same guard went from 114 names to 0, and python scripts/dq_check.py went from exit 1 to exit 0 with DQ-CHECK: PASSED. Separately, deleting the two-line provenance guard at scripts/dq_check.py:365 makes test_a_foreign_qa_report_path_is_refused print an AssertionError naming the fixture's five tracked paths where None was expected -- the foreign, unscrubbing git_env was trusted. And the first attempt at this change replaced env=git_env() with a local variable, which turned DQ-54 RED in the ledger (tests/test_git_env_ratchet.py, dq_check.py line 382); that idiom was restored rather than worked around."
+    "observed_red": "Ran the fixed unwired_checks() against a fixture repo with _tracked_paths stubbed to return None, which is the pre-change filesystem glob. It printed: unwired under OLD behaviour: ['check_scratch'] -- the untracked scratch check reported, and the tracked orphan ABSENT because an untracked file had named it. So both assertions go red on the old code. Against the real primary working tree the same guard went from 114 names to 0, and python scripts/dq_check.py went from exit 1 to exit 0 with DQ-CHECK: PASSED. Separately, deleting the two-line provenance guard at scripts/dq_check.py:365 makes test_a_foreign_qa_report_path_is_refused print an AssertionError naming the fixture's five tracked paths where None was expected -- the foreign, unscrubbing git_env was trusted. And the first attempt at this change replaced env=git_env() with a local variable, which turned DQ-54 RED in the ledger (tests/test_git_env_ratchet.py, dq_check.py line 382); that idiom was restored rather than worked around. Removing the except clause at scripts/dq_check.py:371 makes test_an_uninspectable_git_env_is_refused_not_raised error with TypeError: module, class, method, function, traceback, frame, or code object was expected, got Callable."
   },
   "pre_impl": {
     "existing_data": "No database and no table. The state read is git's own index via git ls-files -z --cached (5,129 tracked paths in this repo, measured 2026-08-24) plus the files in scripts/, .githooks/, .github/workflows/ and .claude/dq_checks.json.",
@@ -26,14 +26,14 @@
     },
     {
       "name": "unwired_checks",
-      "file_line": "scripts/dq_check.py:379",
+      "file_line": "scripts/dq_check.py:387",
       "input": "optional Path root (defaults to this file's repository); reads scripts/*.py, .githooks/*, .github/workflows/*.yml and .claude/dq_checks.json",
       "output": "list[str] of check filenames nothing runs, printed by main() which then returns exit 1",
       "if_none": "root=None resolves to Path(__file__).resolve().parent.parent, which is the pre-change behaviour; the parameter exists only so tests can point it at a fixture repository."
     },
     {
       "name": "carried",
-      "file_line": "scripts/dq_check.py:414",
+      "file_line": "scripts/dq_check.py:422",
       "input": "Path f, a candidate file, closing over the tracked set",
       "output": "bool: will a clean checkout of this repository have this file",
       "if_none": "tracked is None means git could not answer and every file is treated as carried, the strict direction. A path outside root raises ValueError and is also treated as carried rather than silently dropped."
@@ -42,30 +42,30 @@
   "values": [
     {
       "value": "tracked",
-      "read_at": "scripts/dq_check.py:412",
+      "read_at": "scripts/dq_check.py:420",
       "nullable": "yes",
-      "guard_at": "scripts/dq_check.py:416, if tracked is None return True",
+      "guard_at": "scripts/dq_check.py:424, if tracked is None return True",
       "if_missing": "The gate reports the pre-change superset, including untracked local scratch. Visibly noisy, never silently green."
     },
     {
       "value": "proc.returncode",
-      "read_at": "scripts/dq_check.py:374",
+      "read_at": "scripts/dq_check.py:382",
       "nullable": "no",
-      "guard_at": "scripts/dq_check.py:374, non-zero returns None rather than parsing partial stdout",
+      "guard_at": "scripts/dq_check.py:382, non-zero returns None rather than parsing partial stdout",
       "if_missing": "A git that exits non-zero but wrote some stdout would yield a TRUNCATED tracked set, and every path missing from it would read as untracked and be dropped from the scan: the silent-green failure. Checked explicitly instead."
     },
     {
       "value": "f.relative_to(root)",
-      "read_at": "scripts/dq_check.py:419",
+      "read_at": "scripts/dq_check.py:427",
       "nullable": "no, but raises",
-      "guard_at": "scripts/dq_check.py:420, except ValueError",
+      "guard_at": "scripts/dq_check.py:428, except ValueError",
       "if_missing": "A file resolving outside the repository root would abort the whole gate with a traceback instead of reporting its findings."
     }
   ],
   "queries": [
     {
       "purpose": "Enumerate the files git carries, which is exactly the set a clean CI checkout will have",
-      "file_line": "scripts/dq_check.py:369",
+      "file_line": "scripts/dq_check.py:377",
       "where_clause": "git ls-files -z --cached, run with cwd=root and env=git_env()",
       "if_zero": "An empty set makes every check look untracked and the gate reports nothing, the silent-green case. It cannot arise from a real repository: a git that fails returns non-zero and is handled as None, the strict fallback, rather than as an empty set.",
       "if_wrong": "GIT_DIR exported by a git hook OVERRIDES cwd, so without env=git_env() this answers about the HOOK's repository. That is DQ-54, and it would report this repo's tracked checks as untracked, silently and confidently."
@@ -76,21 +76,21 @@
       "scenario": "A git hook invokes dq_check.py with GIT_DIR exported, so git ls-files answers about the hook's repository instead of this one.",
       "what_happens": "Every tracked check in this repo is absent from the returned set, so all of them are treated as untracked and skipped. The gate goes green while enforcing nothing.",
       "mitigated": true,
-      "how": "scripts/dq_check.py:370, env=git_env() from qa_report_path scrubs GIT_* and keeps only GIT_ASKPASS/GIT_SSH/GIT_SSH_COMMAND. Same scrub, same reason, as _last_lowered() already carries in this file.",
+      "how": "scripts/dq_check.py:378, env=git_env() from qa_report_path scrubs GIT_* and keeps only GIT_ASKPASS/GIT_SSH/GIT_SSH_COMMAND. Same scrub, same reason, as _last_lowered() already carries in this file.",
       "repro": "GIT_DIR=/some/other/repo/.git python scripts/dq_check.py"
     },
     {
       "scenario": "An untracked local scratch file in scripts/ mentions a tracked check that nothing runs.",
       "what_happens": "Under the pre-change haystack the scratch file vouched for it, so a genuinely orphaned check that DOES ship was reported as wired: the guard reading looser than it looks.",
       "mitigated": true,
-      "how": "scripts/dq_check.py:433, the haystack only ingests files carried() accepts, so a file that never ships cannot wire anything.",
+      "how": "scripts/dq_check.py:441, the haystack only ingests files carried() accepts, so a file that never ships cannot wire anything.",
       "repro": "python -m pytest tests/test_dq_check.py -q -k launder, whose fixture writes an untracked _launder script naming the tracked orphan"
     },
     {
       "scenario": "git is unavailable, or the subprocess fails, on the machine running the gate.",
       "what_happens": "No tracked set, so the scope of the scan is unknown.",
       "mitigated": true,
-      "how": "scripts/dq_check.py:376, returns None on OSError, SubprocessError or non-zero exit, and carried() then admits everything. That is the pre-change filesystem glob, a superset, so the failure direction is a noisier gate rather than a blinder one.",
+      "how": "scripts/dq_check.py:384, returns None on OSError, SubprocessError or non-zero exit, and carried() then admits everything. That is the pre-change filesystem glob, a superset, so the failure direction is a noisier gate rather than a blinder one.",
       "repro": "Stub dq._tracked_paths to return None and run dq.unwired_checks(fixture): check_scratch reappears in the output"
     },
     {
@@ -104,7 +104,7 @@
       "scenario": "Appending _ROOT/scripts to sys.path means every EARLIER sys.path entry wins, so a same-named qa_report_path module elsewhere would supply git_env() here.",
       "what_happens": "A foreign git_env() that does not scrub GIT_* lets a hook's GIT_DIR through, git ls-files answers about that other repository, none of this repo's checks look tracked, and the gate reports nothing at all. Silent green.",
       "mitigated": true,
-      "how": "scripts/dq_check.py:365 compares inspect.getfile(git_env) against _ROOT/scripts/qa_report_path.py and returns None on mismatch, which falls back to the filesystem glob rather than trusting it. No such module exists in this tree today (find . -name qa_report_path* returns one file); this removes the possibility rather than fixing a sighting. Raised by cross-review 2026-08-24.",
+      "how": "scripts/dq_check.py:373 compares inspect.getfile(git_env) against _ROOT/scripts/qa_report_path.py and returns None on mismatch, which falls back to the filesystem glob rather than trusting it. No such module exists in this tree today (find . -name qa_report_path* returns one file); this removes the possibility rather than fixing a sighting. Raised by cross-review 2026-08-24.",
       "repro": "python -m pytest tests/test_dq_check.py -q -k foreign — injects an unscrubbing qa_report_path into sys.modules; deleting the two-line guard makes it return the populated set instead of None"
     },
     {
@@ -113,6 +113,13 @@
       "mitigated": true,
       "how": "scripts/dq_check.py:91 uses sys.path.append rather than sys.path.insert(0, ...), so every existing entry keeps priority and only a name nothing else provides can resolve there.",
       "repro": "python -m pytest tests/ -q gave 4,901 passed and 2 skipped on 2026-08-24 with the append in place"
+    },
+    {
+      "scenario": "A foreign qa_report_path exposes git_env as a builtin or a callable OBJECT rather than a plain function.",
+      "what_happens": "inspect.getfile() raises TypeError, and the provenance check aborts the entire ledger run with a traceback instead of falling back — every row goes unreported, including the ones that were about to go red.",
+      "mitigated": true,
+      "how": "scripts/dq_check.py:371 catches TypeError and OSError around the getfile call and returns None, so anything without an inspectable source file is treated as foreign and the scan falls back to the filesystem glob.",
+      "repro": "python -m pytest tests/test_dq_check.py -q -k uninspectable — removing the except clause makes it error with 'TypeError: module, class, method, function, traceback, frame, or code object was expected, got Callable'"
     }
   ],
   "post_merge": {

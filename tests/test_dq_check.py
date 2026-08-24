@@ -342,6 +342,7 @@ def test_the_three_ratchets_measure_different_sets(dq):
 import os
 import subprocess
 import sys
+import types
 
 
 def _git(args, cwd):
@@ -456,3 +457,22 @@ def test_a_foreign_qa_report_path_is_refused(dq, repo, tmp_path, monkeypatch):
     assert dq._tracked_paths(repo) is None, (
         "a qa_report_path from outside this repository was trusted to scrub GIT_*"
     )
+
+
+def test_an_uninspectable_git_env_is_refused_not_raised(dq, repo, monkeypatch):
+    """A git_env with no source file must fall back, not abort the gate.
+
+    inspect.getfile() raises TypeError for a builtin or a callable OBJECT — the
+    shape a foreign module is most likely to expose. Without the except clause
+    the whole ledger run dies on a traceback instead of reporting its rows.
+    Forced red by removing that clause: this test then errors with TypeError.
+    """
+    class Callable:  # no __code__, so getfile() cannot answer
+        def __call__(self):
+            return {}
+
+    module = types.ModuleType("qa_report_path")
+    module.git_env = Callable()
+    monkeypatch.setitem(sys.modules, "qa_report_path", module)
+
+    assert dq._tracked_paths(repo) is None
