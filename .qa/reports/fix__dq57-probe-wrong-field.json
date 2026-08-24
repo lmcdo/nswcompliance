@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes what the defect ledger MEASURES and what it declares, which is the layer every other correctness claim is enforced through. A wrong probe here fails silently in the worst direction: the old one could never reach 0, so DQ-57 could never close however well it was repaired, and it sat Open for 14 days after the fix shipped. Not critical: no production code path, no user-facing surface, no database write, and the flood pipeline itself is untouched. Not minor: it flips a declared status and adds a row. Two cross-review findings were accepted and changed the shape of the work: DQ-85 was recounted from reports to councils, and DQ-86 was opened for a cohort the new DQ-57 probe excludes by construction.",
-  "commit_hash": "0edb5f47",
+  "commit_hash": "cc1721e1",
   "files": [
     "scripts/dq_probe_live.py",
     ".claude/dq_checks.json",
