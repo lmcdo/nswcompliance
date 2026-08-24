@@ -1,0 +1,115 @@
+{
+  "tier": "standard",
+  "justification": "Deletes two API routes, a seed migration, a database client method and a UI chip. Nothing a user sees changes, because every one of them read a table with 0 rows — but deletion is irreversible in review terms and touches the DCP tab's render path, so the burden is to prove each was genuinely dead rather than merely quiet. Not critical: no data written, no schema changed, no served value altered. Not minor: five files and a prop-type change across three components.",
+  "commit_hash": "c56750ac",
+  "files": [
+    "frontend-nextjs/app/api/setbacks/reference/route.ts",
+    "frontend-nextjs/app/api/setbacks/adg/route.ts",
+    "frontend-nextjs/lib/database/client.ts",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+    "frontend-nextjs/components/compliance/DcpProvisionList.tsx",
+    "migrations/seed_setback_rules_inner_west.sql"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx tsc --noEmit && npx jest --ci --silent",
+    "fails_when": "Any surviving reference to the deleted route module, the SetbackReference type or the removed lepReference.setbacks field fails to compile, or a component test asserts on the removed chip. Both were run against this branch AND against origin/main so the pre-existing error count could be compared rather than assumed.",
+    "observed_red": "Not red — and the honest reason matters. tsc reports 8 errors on this branch and the SAME 8 on origin/main (all react-map-gl imports in reports pages, untouched here), so the deletion added none; grepping the error list for the changed files and for setback/lepReference returns NONE. jest is 88 suites / 1181 tests green. The evidence that these surfaces were dead is not the test run, it is the live measurement: setback_rules returns 0 rows in production, /api/setbacks/reference returned {\"data\":null} for R2 and E1 across Ashfield, Waverley, Marrickville, Leichhardt and Ku-ring-gai, and /api/setbacks/adg had no caller anywhere in the frontend."
+  },
+  "pre_impl": {
+    "existing_data": "Two production tables, both read-only here. setback_rules: exists, 29 columns, 0 rows. zone_setback_rules: to_regclass returns NULL, i.e. the table does not exist at all, yet lib/database/client.ts still queried it. dcp_setback_controls (967 live rows) is untouched and remains the source for /api/dcp/structured-controls.",
+    "assumption_mismatch": "The thing that would have made this deletion wrong is the table being populated somewhere I did not look, or a caller I missed. Both were checked rather than assumed: SELECT count(*) against production returned 0, and every reference to setback_rules, zone_setback_rules, SetbackReference and getZoneSetbackRules was enumerated across app, components and lib before anything was removed. Four of the six references turned out to be stale comments about the already-dropped zone_setback_rules table, not live readers.",
+    "new_vs_existing": "No rows are written, migrated or backfilled, and the empty setback_rules TABLE is deliberately left in place — dropping a table needs explicit confirmation under the database-safety rule, and an empty table costs nothing. This removes only code that read it."
+  },
+  "functions": [
+    {
+      "name": "getZoneSetbackRules",
+      "file_line": "frontend-nextjs/lib/database/client.ts:217",
+      "input": "zone, optional council, minConfidence — never supplied by anything",
+      "output": "removed; it selected from zone_setback_rules, a table to_regclass reports as non-existent",
+      "if_none": "It had exactly one definition and zero callers in app, components or lib. Had anything called it, it would have thrown at runtime rather than returned empty, because the relation is absent — a latent crash, not a quiet empty list."
+    },
+    {
+      "name": "generateSetbackExplanation",
+      "file_line": "frontend-nextjs/lib/database/client.ts:216",
+      "input": "a row from the query above",
+      "output": "removed as orphaned BY this change, not pre-existing dead code",
+      "if_none": "Its only caller was getZoneSetbackRules. Left behind it would have been unreachable private code referencing columns of a table that does not exist."
+    }
+  ],
+  "values": [
+    {
+      "value": "setbackData",
+      "read_at": "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx (removed)",
+      "nullable": "always null in practice",
+      "guard_at": "was guarded by optional chaining on setbackData?.data",
+      "if_missing": "Nothing rendered. The chip was already invisible on every property, so removing it changes no pixel — which is exactly why it survived unnoticed."
+    },
+    {
+      "value": "lepReference.height / lepReference.fsr",
+      "read_at": "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+      "nullable": "yes",
+      "guard_at": "the gating condition, narrowed from (height || fsr || setbacks) to (height || fsr)",
+      "if_missing": "DELIBERATELY PRESERVED. These come from lepClauseData, which is live and unrelated to setback_rules. Dropping the third disjunct cannot hide them: the only case it changes is height and fsr both absent AND setbacks present, and setbacks was never present."
+    },
+    {
+      "value": "lepReference.setbacks",
+      "read_at": "removed from the prop type in both DcpProvisionList.tsx and PageGroupedProvisions.tsx",
+      "nullable": "was optional",
+      "guard_at": "N/A — the field no longer exists",
+      "if_missing": "Removed from both ends of the prop chain in the same change, so no component declares a field its parent never passes."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Establish that setback_rules is empty and zone_setback_rules is gone, before deleting anything that reads them",
+      "file_line": "verified via scripts/dq_db.py read-only session",
+      "where_clause": "SELECT count(*) FROM setback_rules; SELECT to_regclass('public.zone_setback_rules'), to_regclass('public.setback_rules')",
+      "if_zero": "0 rows is the finding, not a failure. It is what makes every reader dead.",
+      "if_wrong": "Had setback_rules held rows, the correct action would have been the opposite — fix the /api/setbacks/reference lga vocabulary and ship the chip. That was checked first precisely because the two conclusions are opposite."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A surface removed here was actually live for some council or zone I did not sample.",
+      "what_happens": "A working feature disappears silently for that council.",
+      "mitigated": true,
+      "how": "The emptiness is a property of the TABLE, not of the query: setback_rules has 0 rows, so no zone, council or parameter combination can return anything. That is stronger than sampling, and the sampling agreed — {\"data\":null} for R2 and E1 across five councils.",
+      "repro": "SELECT count(*) FROM setback_rules returns 0"
+    },
+    {
+      "scenario": "The seed migration is deleted and with it the only record of the intended reference values.",
+      "what_happens": "The only written record of the intended Inner West reference values is lost from the working tree, and with it the context for why they were never shipped.",
+      "mitigated": true,
+      "how": "It remains in git history and the commit message names it. It was also never safe to run: 11 hand-written setback values with manual_verified=false, which .claude/rules/regulatory-data.md forbids shipping — 'NEVER hardcode NSW planning regulatory data ... no setbacks'. Keeping it invited someone to run it.",
+      "repro": "git show c56750ac:migrations/seed_setback_rules_inner_west.sql"
+    },
+    {
+      "scenario": "Removing lepReference.setbacks also removes the height and FSR chips.",
+      "what_happens": "A real, populated LEP reference disappears from the DCP tab — a genuine regression hiding inside a dead-code deletion.",
+      "mitigated": true,
+      "how": "The gating condition kept both live disjuncts: (lepClauseData?.height_limit || lepClauseData?.fsr). Only the setbacks term was dropped, and only the 'setbacks' branch of the chip switch was removed; the height and FSR branches are untouched.",
+      "repro": "grep lepReference in PageGroupedProvisions.tsx — the LEP max height and LEP max FSR chips remain"
+    },
+    {
+      "scenario": "A deleted type or module is still imported somewhere and the app fails to build.",
+      "what_happens": "The Next.js build fails and the deploy is broken, or worse it compiles and a page throws at runtime on a module that no longer exists.",
+      "mitigated": true,
+      "how": "tsc --noEmit reports the same 8 errors here as on origin/main, all pre-existing react-map-gl imports, and none in any changed file. ReferencedLegislationAccordion.tsx declares its OWN local SetbackReference interface with a different shape and imports nothing from the deleted route — checked rather than assumed on a name collision.",
+      "repro": "cd frontend-nextjs && npx tsc --noEmit; 8 errors on both branches, none matching setback or lepReference"
+    },
+    {
+      "scenario": "The emptiness check is run against the wrong database, so 'setback_rules has 0 rows' is measured somewhere that is not production.",
+      "what_happens": "Live surfaces get deleted on the strength of a count taken from an empty local or test database, removing a feature that actually works for users.",
+      "mitigated": true,
+      "how": "The count was taken through scripts/dq_db.py, which resolves the main checkout's .env from a worktree via git rev-parse --git-common-dir with GIT_* scrubbed, and pins the session read-only. The same session returned 967 live rows for dcp_setback_controls in the same run, which is a non-empty control proving the connection reaches real data rather than an empty schema.",
+      "repro": "The identical session returned setback_rules=0 AND dcp_setback_controls=967; an empty or wrong database would have returned 0 for both."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

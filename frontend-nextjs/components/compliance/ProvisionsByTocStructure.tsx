@@ -37,7 +37,6 @@ import { DCPInterestForm } from './DCPInterestForm';
 import { DcpStructuredControls } from './DcpStructuredControls';
 import { DcpFilterBar } from './DcpFilterBar';
 import { DcpProvisionList } from './DcpProvisionList';
-import type { SetbackReference } from '@/app/api/setbacks/reference/route';
 import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
 
@@ -398,13 +397,14 @@ export function ProvisionsByTocStructure({
     shouldRetryOnError: true, // Enable retry on error
   });
 
-  // Setback reference data — fetched once per zone/lga, used for inline chips
-  const setbackApiUrl = (zone && formerCouncil)
-    ? `/api/setbacks/reference?zone=${encodeURIComponent(zone)}&lga=${encodeURIComponent(formerCouncil)}`
-    : null;
-  const { data: setbackData } = useSWR<{ data: SetbackReference | null }>(
-    setbackApiUrl, fetcher, { revalidateOnFocus: false, revalidateOnMount: true }
-  );
+  // Setback reference chips REMOVED. /api/setbacks/reference read `setback_rules`,
+  // which has 0 rows in production and never had any — the only thing that would
+  // have filled it was migrations/seed_setback_rules_inner_west.sql, 11 hand-written
+  // values marked manual_verified=false, which was never run and which
+  // .claude/rules/regulatory-data.md forbids shipping. The endpoint returned
+  // {"data":null} for every zone and council, so the chip never rendered.
+  // The verified numbers live in dcp_setback_controls and are served by
+  // /api/dcp/structured-controls -> DcpStructuredControls.tsx.
 
   // LEP permissibility — fetched once per zone/lga to auto-populate scope exclusions.
   // Only fires in DA mode and only when both zone and lga are known.
@@ -2422,20 +2422,10 @@ export function ProvisionsByTocStructure({
           onToggleSuppressedInDA={() => setShowSuppressedInDA(v => !v)}
           numericCheckValues={numericCheckValues}
           lepReference={
-            (lepClauseData?.height_limit || lepClauseData?.fsr || setbackData?.data)
+            (lepClauseData?.height_limit || lepClauseData?.fsr)
               ? {
                   height: lepClauseData?.height_limit ?? null,
                   fsr: lepClauseData?.fsr ?? null,
-                  setbacks: setbackData?.data
-                    ? {
-                        side: setbackData.data.side
-                          ? { ground: setbackData.data.side.ground, upper: setbackData.data.side.upper, document: setbackData.data.side.document }
-                          : undefined,
-                        rear: setbackData.data.rear
-                          ? { value: setbackData.data.rear.value, document: setbackData.data.rear.document }
-                          : undefined,
-                      }
-                    : null,
                 }
               : null
           }

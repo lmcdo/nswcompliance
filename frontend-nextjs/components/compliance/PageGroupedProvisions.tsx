@@ -293,10 +293,6 @@ interface PageGroupedProvisionsProps {
   lepReference?: {
     height?: string | null;
     fsr?: string | null;
-    setbacks?: {
-      side?: { ground?: number; upper?: number; document: string };
-      rear?: { value: number; document: string };
-    } | null;
   } | null;
   // Pagination control
   hideShowMoreButton?: boolean;   // Hide the "Show more" button (for custom button layout)
@@ -1266,27 +1262,10 @@ export function PageGroupedProvisions({
                           );
                         }
 
-                        if (cat === 'setbacks' && lepReference.setbacks) {
-                          const { side, rear } = lepReference.setbacks;
-                          const parts: string[] = [];
-                          if (side?.ground != null) parts.push(`side ≥${side.ground}m`);
-                          if (side?.upper != null && side.upper !== side.ground) parts.push(`(≥${side.upper}m upper)`);
-                          if (rear?.value != null) parts.push(`rear ≥${rear.value}m`);
-                          if (parts.length === 0) return null;
-                          const doc = side?.document || rear?.document || 'DCP';
-                          return (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex items-center text-xs px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200 font-medium mb-1 cursor-default">
-                                  DCP: {parts.join(' · ')}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="max-w-xs">
-                                Setback reference from {doc}. Reference only — not assessed by this tool. Front setbacks are qualitative in this DCP.
-                              </TooltipContent>
-                            </Tooltip>
-                          );
-                        }
+                        // The 'setbacks' branch was removed with /api/setbacks/reference.
+                        // It read `setback_rules`, a table with 0 rows in production that
+                        // never had any, so this chip could never render. Verified setback
+                        // numbers are served by /api/dcp/structured-controls instead.
 
                         return null;
                       })()}
