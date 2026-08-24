@@ -79,8 +79,24 @@ if callable(_reconfigure):  # a replaced stdout (io.StringIO) has no reconfigure
     _reconfigure(encoding="utf-8", errors="replace")
 
 _ROOT = Path(__file__).resolve().parents[1]
+
+# scripts/ is sys.path[0] when this file is RUN, and is absent from sys.path
+# when a test loads it through importlib.util.spec_from_file_location. The git
+# helper below imports from qa_report_path, so without this it resolves one way
+# in production and the other way under pytest -- and the failing direction is a
+# silent fallback, not an ImportError anyone sees. Appended, not inserted, so
+# nothing in scripts/ can shadow a stdlib module.
+if str(_ROOT / "scripts") not in sys.path:
+    sys.path.append(str(_ROOT / "scripts"))
+
 _LEDGER = _ROOT / ".claude" / "DATA_QUALITY_TRACKER.md"
 _CHECKS = _ROOT / ".claude" / "dq_checks.json"
+
+#: The separator `git ls-files -z` writes between paths. Named rather than
+#: inlined so it survives every layer that rewrites backslash escapes on the way
+#: into this file; an editor that collapses "\0" to a real NUL turns the module
+#: into something Python refuses to compile at all.
+_NUL = chr(0)
 
 #: Only these two declared states carry an enforceable expectation. "partial",
 #: "backlog", "accepted" and friends are genuinely ambiguous -- a partial fix
@@ -320,7 +336,35 @@ _UNWIRED_OK = {
 }
 
 
-def unwired_checks() -> list[str]:
+def _tracked_paths(root: Path) -> set[str] | None:
+    """Repo-relative POSIX paths git carries, or None when git cannot answer.
+
+    None is the STRICT direction on purpose. unwired_checks() then falls back to
+    globbing the filesystem, which is a SUPERSET of the tracked set, so a git
+    that cannot answer makes the guard noisier -- never blinder.
+
+    env=git_env() is not optional. A git hook exports GIT_DIR, and GIT_DIR
+    OVERRIDES cwd, so without the scrub this answers about the HOOK's repository
+    rather than the one it was pointed at -- silently, and confidently. That is
+    DQ-54, and this is the second place in this file that has had to say so.
+    """
+    try:
+        from qa_report_path import git_env
+    except ImportError:  # pragma: no cover - scripts/ is appended to sys.path
+        return None
+    try:
+        proc = subprocess.run(
+            ["git", "ls-files", "-z", "--cached"],
+            cwd=root, env=git_env(), capture_output=True, text=True, timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    return {part for part in proc.stdout.split(_NUL) if part}
+
+
+def unwired_checks(root: Path | None = None) -> list[str]:
     """Scripts that look like checks but nothing runs.
 
     The recurring failure this exists to stop: a check gets written, reviewed
@@ -338,10 +382,31 @@ def unwired_checks() -> list[str]:
     the repo when main's HEAD has no successful run. Three levels, then it
     stops.
     """
-    root = Path(__file__).resolve().parent.parent
+    root = Path(root) if root is not None else Path(__file__).resolve().parent.parent
     scripts = root / "scripts"
     if not scripts.is_dir():
         return []
+
+    # Only what git CARRIES. The set of files a workflow, a hook or another
+    # script can ever run is the set that survives a clean checkout, and this
+    # function read the FILESYSTEM instead. On 2026-08-24 it named 114 orphaned
+    # checks in a working tree while gates.yml on main @05d3d413 was green --
+    # every one of the 114 untracked local scratch. A gate that is red on every
+    # developer's machine for a reason CI cannot see is a gate everyone learns
+    # to step over, which is the exact decay this function exists to stop.
+    #
+    # Nothing leaves the guard's reach: a check is scanned the moment it is
+    # `git add`ed, which is before it can be committed or pushed.
+    tracked = _tracked_paths(root)
+
+    def carried(f: Path) -> bool:
+        """Will a clean checkout of this repository have this file?"""
+        if tracked is None:
+            return True
+        try:
+            return f.relative_to(root).as_posix() in tracked
+        except ValueError:  # outside the repo; not this guard's to judge
+            return True
 
     # Every place a check can legitimately be invoked from. The earlier
     # hand-sweep read gates.yml and pre-push only, missed .githooks/pre-commit,
@@ -353,11 +418,15 @@ def unwired_checks() -> list[str]:
                    (root / ".claude", "dq_checks.json")):
         if d.is_dir():
             for f in sorted(d.glob(pat)):
-                if f.is_file():
+                if f.is_file() and carried(f):
                     haystack.append(f.read_text(encoding="utf-8", errors="replace"))
-    # A check invoked by another check is wired, transitively.
+    # A check invoked by another check is wired, transitively -- but only by a
+    # script that SHIPS. An untracked scratch file naming check_foo.py used to
+    # vouch for it: the same filesystem/git divergence read the other way round,
+    # making the guard looser than it looks in the direction nobody checks.
     for f in sorted(scripts.glob("*.py")):
-        haystack.append(f.read_text(encoding="utf-8", errors="replace"))
+        if carried(f):
+            haystack.append(f.read_text(encoding="utf-8", errors="replace"))
     blob = "\n".join(haystack)
 
     out = []
@@ -366,6 +435,8 @@ def unwired_checks() -> list[str]:
         if not n.startswith(("check_", "lint_", "verify_", "dq_")):
             continue
         if n in _UNWIRED_OK:
+            continue
+        if not carried(f):
             continue
         # Its own file is in the blob, so require a mention from somewhere else.
         others = blob.replace(f.read_text(encoding="utf-8", errors="replace"), "")
@@ -827,6 +898,9 @@ def main() -> int:
         print("  to _UNWIRED_OK in this file with a reason that is a MECHANISM.")
         print("  Origin: campaign items 2-5 shipped in #874/#876 and were invoked by")
         print("  nothing for nine days, so they could never earn blocking status.")
+        print("  Only files git TRACKS are scanned. Untracked scratch is not reported")
+        print("  here, and cannot vouch for one that is -- so every name above is a")
+        print("  file that ships. Deleting local scratch will not clear this.")
         return 1
 
     disagree = status_disagreements(checks, ids)

@@ -323,3 +323,104 @@ def test_the_three_ratchets_measure_different_sets(dq):
     # The two sub-counts are disjoint, and together they cannot exceed the total.
     assert not set(unresolved_null) & set(fixed_null)
     assert len(unresolved_null) + len(fixed_null) <= len(all_null)
+
+
+# ── unwired_checks() must police what git carries, not what is on disk ───────
+#
+# The guard exists to stop a check shipping with nothing to run it. It read the
+# FILESYSTEM (`scripts.glob("*.py")`), and the set that can ever be run by a
+# workflow, a hook or another script is the set git CARRIES. In a working tree
+# holding local scratch the two diverge, and on 2026-08-24 they diverged badly:
+# `scripts/dq_check.py` named 114 orphaned checks and every one of them was
+# untracked, while gates.yml on main @05d3d413 was green. A gate that is red on
+# every developer's machine for a reason CI cannot see is a gate everyone learns
+# to step over, which is the exact failure `unwired_checks` was written to end.
+#
+# Scoping to tracked files removes nothing from the guard's reach: a check is
+# scanned the moment it is `git add`ed, which is before it can be pushed.
+
+import os
+import subprocess
+
+
+def _git(args, cwd):
+    """git, with GIT_* scrubbed.
+
+    Not optional: a git hook exports GIT_DIR, and GIT_DIR OVERRIDES cwd. Run
+    under .githooks/pre-push without this, these tests build their fixture in
+    the temp directory and then ask THIS repository about it.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    return subprocess.run(
+        ["git", *args], cwd=cwd, env=env,
+        capture_output=True, text=True, timeout=60, check=True,
+    )
+
+
+@pytest.fixture
+def repo(tmp_path):
+    """A miniature repo: one wired check, one orphan, both tracked; plus scratch.
+
+    ``check_scratch.py`` is untracked and orphaned — a clean checkout will not
+    have it. ``_launder.py`` is untracked and NAMES the tracked orphan, which is
+    how an unwired check can be made to look wired by a file that never ships.
+    """
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".githooks").mkdir()
+    (tmp_path / ".claude").mkdir()
+
+    (tmp_path / ".claude" / "dq_checks.json").write_text("{}", encoding="utf-8")
+    (tmp_path / ".githooks" / "pre-commit").write_text("#!/bin/sh\n", encoding="utf-8")
+    (tmp_path / ".github" / "workflows" / "gates.yml").write_text(
+        "jobs:\n  x:\n    steps:\n      - run: python scripts/check_wired.py\n",
+        encoding="utf-8",
+    )
+    for name in ("check_wired.py", "check_orphan.py", "check_scratch.py"):
+        (tmp_path / "scripts" / name).write_text("print('x')\n", encoding="utf-8")
+
+    _git(["init", "-q"], tmp_path)
+    _git(["add", "scripts/check_wired.py", "scripts/check_orphan.py",
+          ".github/workflows/gates.yml", ".githooks/pre-commit",
+          ".claude/dq_checks.json"], tmp_path)
+    _git(["-c", "user.email=t@t", "-c", "user.name=t",
+          "commit", "-q", "--no-verify", "-m", "fixture"], tmp_path)
+
+    # Untracked, and it names the tracked orphan.
+    (tmp_path / "scripts" / "_launder.py").write_text(
+        "# see scripts/check_orphan.py for the query\n", encoding="utf-8")
+    return tmp_path
+
+
+def test_git_actually_answers(dq, repo):
+    """The scoping must come from git, not from a silent fallback.
+
+    Without this the two tests below pass for the wrong reason the moment the
+    ``git ls-files`` call breaks: the fallback scans everything, so the orphan
+    is still found and the scratch file is simply mis-reported again.
+    """
+    assert dq._tracked_paths(repo) is not None, (
+        "git ls-files did not answer, so unwired_checks fell back to globbing "
+        "the filesystem and these tests prove nothing"
+    )
+
+
+def test_a_tracked_orphan_is_still_reported(dq, repo):
+    """The guard must not lose a single file it already caught."""
+    assert "check_orphan.py" in dq.unwired_checks(repo)
+
+
+def test_an_untracked_scratch_check_is_not_reported(dq, repo):
+    """114 of these made the gate red on every machine and green in CI."""
+    assert "check_scratch.py" not in dq.unwired_checks(repo)
+
+
+def test_an_untracked_file_cannot_launder_a_tracked_orphan(dq, repo):
+    """A mention from a file that never ships is not wiring.
+
+    The haystack globbed scripts/*.py too, so scratch could vouch for an orphan
+    — the guard reading looser than it looks, in the direction nobody checks.
+    """
+    assert "check_orphan.py" in dq.unwired_checks(repo), (
+        "scripts/_launder.py is untracked; it cannot wire anything"
+    )
