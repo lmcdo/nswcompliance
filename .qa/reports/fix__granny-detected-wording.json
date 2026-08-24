@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes a sentence that reaches a paying customer inside a PDF, and the thing it changes is a PROVENANCE claim — the report said a scan detected structures when in production no scan runs. Not critical: the eligibility outcome is unchanged, the gate still blocks, no stored data moves and no number differs. Not minor: it is served copy on a liability-sensitive surface, the branch it adds has two live paths, and it touches services/.",
-  "commit_hash": "c56750ac",
+  "commit_hash": "0b17699c",
   "files": [
     "services/granny_flat.py",
     "tests/test_granny_flat_mutation.py"
