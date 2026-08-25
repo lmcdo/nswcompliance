@@ -94,37 +94,43 @@ describe('notifyOperator never costs the submitter their feedback', () => {
     else process.env.RESEND_API_KEY = KEY;
   });
 
-  it('sends when a key is configured, and reports the dispatch', () => {
-    mockSend.mockReturnValue(Promise.resolve({}));
-    expect(notifyOperator(BASE)).toBe(true);
+  it('sends when a key is configured, and reports acceptance', async () => {
+    mockSend.mockResolvedValue({});
+    await expect(notifyOperator(BASE)).resolves.toBe(true);
     expect(mockSend).toHaveBeenCalledTimes(1);
     const arg = mockSend.mock.calls[0][0];
     expect(arg.to).not.toMatch(/@plotdetect\.com\.au$/);  // self-send quarantine
   });
 
-  it('does not throw when the Resend constructor throws', () => {
+  it('AWAITS the send, so a frozen instance cannot cancel it', async () => {
+    // The original implementation did not await. On serverless the instance can
+    // be frozen the moment the response returns, cancelling the in-flight
+    // request: the insert commits and the alert never goes, which looks exactly
+    // like the bug this feature exists to fix. Asserting the promise has settled
+    // by the time notifyOperator resolves is what pins the await in place.
+    let settled = false;
+    mockSend.mockImplementation(
+      () => new Promise((r) => setTimeout(() => { settled = true; r({}); }, 10)),
+    );
+    await notifyOperator(BASE);
+    expect(settled).toBe(true);
+  });
+
+  it('does not reject when the Resend constructor throws', async () => {
     (Resend as unknown as jest.Mock).mockImplementationOnce(() => {
       throw new Error('malformed API key');
     });
-    let result: boolean | undefined;
-    expect(() => { result = notifyOperator(BASE); }).not.toThrow();
-    expect(result).toBe(false);   // reports the failure rather than claiming a send
+    await expect(notifyOperator(BASE)).resolves.toBe(false);
   });
 
-  it('reports true when the send is dispatched, even if it later rejects', () => {
-    // The send is deliberately not awaited, so a later rejection cannot change
-    // the answer. Dispatched is the most this function can honestly claim.
-    mockSend.mockReturnValue(Promise.reject(new Error('resend 503')));
-    let result: boolean | undefined;
-    expect(() => { result = notifyOperator(BASE); }).not.toThrow();
-    expect(result).toBe(true);
+  it('does not reject when the send rejects, and reports the failure', async () => {
+    mockSend.mockRejectedValue(new Error('resend 503'));
+    await expect(notifyOperator(BASE)).resolves.toBe(false);
   });
 
-  it('is a no-op without a key, and says so rather than erroring', () => {
+  it('is a no-op without a key, and says so rather than erroring', async () => {
     delete process.env.RESEND_API_KEY;
-    let result: boolean | undefined;
-    expect(() => { result = notifyOperator(BASE); }).not.toThrow();
-    expect(result).toBe(false);
+    await expect(notifyOperator(BASE)).resolves.toBe(false);
     expect(mockSend).not.toHaveBeenCalled();
   });
 });

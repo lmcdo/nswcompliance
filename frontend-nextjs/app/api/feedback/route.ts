@@ -97,34 +97,38 @@ export function buildFeedbackAlert(fields: FeedbackAlertFields): {
 /**
  * Tell the operator that feedback arrived. Never throws.
  *
- * Returns whether a send was DISPATCHED - not whether it was delivered, which
- * this cannot know: the send is deliberately not awaited, and the Workspace
- * self-domain quarantine fails after Resend has already reported success.
+ * AWAITED, deliberately. An unawaited send is not safe here: a serverless
+ * instance can be frozen the moment the response is returned, cancelling the
+ * in-flight request. The insert would still commit and the alert would simply
+ * never go - which is indistinguishable from the bug this exists to fix, and
+ * would be believed to be working.
  *
- * The caller ignores the result. It exists so the outcome is inspectable and
- * testable rather than vanishing into a void return, and so each failure path
- * says which one it took instead of only writing to a log nobody reads.
+ * Next 14 has no `after()` (Next 15+), so awaiting is the mechanism available.
+ * It costs one Resend round trip on a feedback submission, which is not a
+ * latency-sensitive path.
+ *
+ * Returns whether Resend ACCEPTED the send. Still not proof of delivery: the
+ * Workspace self-domain quarantine rejects after Resend has reported success.
+ * Only an end-to-end send to a real inbox settles that.
  */
-export function notifyOperator(fields: FeedbackAlertFields): boolean {
+export async function notifyOperator(fields: FeedbackAlertFields): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false;
 
   const { subject, text } = buildFeedbackAlert(fields);
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    resend.emails
-      .send({
-        from: 'PlotDetect <info@plotdetect.com.au>',
-        to: NOTIFY_EMAIL,
-        subject,
-        text,
-      })
-      .catch((err) => console.error('[feedback] resend error:', err));
+    await resend.emails.send({
+      from: 'PlotDetect <info@plotdetect.com.au>',
+      to: NOTIFY_EMAIL,
+      subject,
+      text,
+    });
     return true;
   } catch (err) {
-    // Resend's constructor throws on a malformed key. Swallowed for the same
-    // reason as the .catch above - the feedback row has already committed, so
-    // a mail problem must never become a 500 for the person who sent it.
+    // Covers both a Resend constructor throw on a malformed key and a rejected
+    // send. Swallowed because the feedback row has already committed, so a mail
+    // problem must never become a 500 for the person who sent it.
     console.error('[feedback] notify failed:', err);
     return false;
   }
@@ -198,7 +202,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Feedback submitted: ID ${result.rows[0].id}, Type: ${feedbackType}, User: ${userType}`);
 
-    notifyOperator({
+    await notifyOperator({
       id: result.rows[0].id,
       feedbackType,
       severity,

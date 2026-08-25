@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an outbound side effect to a live API route. The route already committed the submitter's feedback before this runs, so every failure path in the new code has to be swallowed or a mail outage becomes a 500 on a submission that was already saved.",
-  "commit_hash": "3f68594e",
+  "commit_hash": "c6f6adf3",
   "files": [
     "frontend-nextjs/app/api/feedback/route.ts",
     "frontend-nextjs/__tests__/api/feedback-notification.test.ts"
@@ -9,7 +9,7 @@
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/api/feedback-notification.test.ts",
     "fails_when": "The alert stops carrying the complaint text, the cohort tag, or the missing-contact marker; or notifyOperator stops swallowing a Resend constructor throw, a rejected send, or an absent API key.",
-    "observed_red": "Three separate mutations, each killing exactly one test and leaving nine passing: swallow removed -> 1 failed/9 passed; cohort tag dropped from the subject -> 1 failed/9 passed; missing-contact marker silenced -> 1 failed/9 passed. Baseline and restored both 10 passed."
+    "observed_red": "Removing the await (the exact defect Sol found): the rejected send becomes an unhandled rejection that CRASHES the node process - the suite cannot report at all, let alone pass. Reporting a swallowed failure as success: 2 failed, 9 passed. Earlier mutations, each killing exactly one test: swallow removed, cohort tag dropped, missing-contact marker silenced. Baseline and restored both 11 passed."
   },
   "pre_impl": {
     "existing_data": "user_feedback, written by this route. The widget already collects type, severity, user role, property address, section, free text, an optional submitter contact address and a cohort/class code in context_data. All of it was already stored; none of it was ever announced.",
@@ -27,10 +27,10 @@
     },
     {
       "name": "notifyOperator",
-      "file_line": "frontend-nextjs/app/api/feedback/route.ts:100",
+      "file_line": "frontend-nextjs/app/api/feedback/route.ts:114",
       "input": "The same FeedbackAlertFields, plus process.env.RESEND_API_KEY and process.env.NOTIFY_EMAIL read at call time.",
-      "output": "boolean - whether a send was DISPATCHED. Not whether it was delivered, which it cannot know: the send is not awaited, and the Workspace self-domain quarantine fails after Resend has reported success. The caller ignores the result; it exists so the outcome is inspectable and each failure path says which one it took.",
-      "if_none": "No RESEND_API_KEY returns false without sending. A throwing Resend constructor is caught and returns false. A rejecting send still returns true, because dispatch already happened and is the most the function can honestly claim. All three are silent to the submitter by design - the feedback row committed before this ran.",
+      "output": "Promise<boolean> - whether Resend ACCEPTED the send. Awaited by the route. Not proof of delivery: the Workspace self-domain quarantine rejects after Resend has reported success, so only an end-to-end send to a real inbox settles that.",
+      "if_none": "No RESEND_API_KEY resolves false without sending. A throwing constructor and a rejected send both resolve false. None reject, because the feedback row committed before this ran and a mail problem must not become a 500.",
       "why": "The sender. Every failure path is swallowed so a mail problem cannot turn a saved submission into a 500."
     }
   ],
@@ -45,6 +45,13 @@
   ],
   "queries": [],
   "break_it": [
+    {
+      "scenario": "The serverless instance is frozen the moment the response returns, while the send is still in flight.",
+      "what_happens": "With an unawaited send the request is cancelled: the insert commits, no alert goes, and nothing reports a problem. That is indistinguishable from the defect this feature exists to fix, and would be believed to be working - the worst possible outcome for a notification. Found by Sol cross-review, not by me.",
+      "mitigated": true,
+      "how": "The send is awaited and the route awaits notifyOperator. Next 14 has no after() (Next 15+), so awaiting is the mechanism available; it costs one Resend round trip on a path that is not latency-sensitive.",
+      "repro": "Remove the await -> the rejected send becomes an unhandled rejection that crashes the node process; the suite cannot pass"
+    },
     {
       "scenario": "Resend is down, rate-limited, or the API key is malformed when someone submits feedback.",
       "what_happens": "Without swallowing, the throw propagates out of the POST handler and the submitter gets 'Failed to save feedback' - for feedback that was already committed to the database one line earlier. They would likely resubmit, duplicating the row, or give up.",
@@ -84,7 +91,7 @@
   "post_merge": {
     "db_reset": "No",
     "secrets": "No - RESEND_API_KEY and NOTIFY_EMAIL already exist in the environment for the six routes that already notify.",
-    "other_repo": "No",
+    "other_repo": "No. But NOTE: the six pre-existing routes that notify (dcp-interest, canibuildit/lead, verify-interest, satellite/granny-flat, satellite/solar-coverage-interest, satellite/threat-radar) all fire-and-forget with .catch() and carry this SAME serverless-cancellation defect. Not touched here - out of scope for this change - but they are alerts that may already be silently not arriving.",
     "manual_verify": "Yes - submit one piece of feedback through the live widget and confirm the alert arrives. The self-domain quarantine failure mode reports success at the API and still never delivers, so an end-to-end send is the only way to know."
   }
 }
