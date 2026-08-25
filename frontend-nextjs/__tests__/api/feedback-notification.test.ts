@@ -94,9 +94,9 @@ describe('notifyOperator never costs the submitter their feedback', () => {
     else process.env.RESEND_API_KEY = KEY;
   });
 
-  it('sends when a key is configured', () => {
+  it('sends when a key is configured, and reports the dispatch', () => {
     mockSend.mockReturnValue(Promise.resolve({}));
-    notifyOperator(BASE);
+    expect(notifyOperator(BASE)).toBe(true);
     expect(mockSend).toHaveBeenCalledTimes(1);
     const arg = mockSend.mock.calls[0][0];
     expect(arg.to).not.toMatch(/@plotdetect\.com\.au$/);  // self-send quarantine
@@ -106,17 +106,25 @@ describe('notifyOperator never costs the submitter their feedback', () => {
     (Resend as unknown as jest.Mock).mockImplementationOnce(() => {
       throw new Error('malformed API key');
     });
-    expect(() => notifyOperator(BASE)).not.toThrow();
+    let result: boolean | undefined;
+    expect(() => { result = notifyOperator(BASE); }).not.toThrow();
+    expect(result).toBe(false);   // reports the failure rather than claiming a send
   });
 
-  it('does not throw when the send rejects', () => {
+  it('reports true when the send is dispatched, even if it later rejects', () => {
+    // The send is deliberately not awaited, so a later rejection cannot change
+    // the answer. Dispatched is the most this function can honestly claim.
     mockSend.mockReturnValue(Promise.reject(new Error('resend 503')));
-    expect(() => notifyOperator(BASE)).not.toThrow();
+    let result: boolean | undefined;
+    expect(() => { result = notifyOperator(BASE); }).not.toThrow();
+    expect(result).toBe(true);
   });
 
-  it('is a no-op without a key, rather than an error', () => {
+  it('is a no-op without a key, and says so rather than erroring', () => {
     delete process.env.RESEND_API_KEY;
-    expect(() => notifyOperator(BASE)).not.toThrow();
+    let result: boolean | undefined;
+    expect(() => { result = notifyOperator(BASE); }).not.toThrow();
+    expect(result).toBe(false);
     expect(mockSend).not.toHaveBeenCalled();
   });
 });

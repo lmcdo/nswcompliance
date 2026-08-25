@@ -96,9 +96,17 @@ export function buildFeedbackAlert(fields: FeedbackAlertFields): {
 
 /**
  * Tell the operator that feedback arrived. Never throws.
+ *
+ * Returns whether a send was DISPATCHED - not whether it was delivered, which
+ * this cannot know: the send is deliberately not awaited, and the Workspace
+ * self-domain quarantine fails after Resend has already reported success.
+ *
+ * The caller ignores the result. It exists so the outcome is inspectable and
+ * testable rather than vanishing into a void return, and so each failure path
+ * says which one it took instead of only writing to a log nobody reads.
  */
-export function notifyOperator(fields: FeedbackAlertFields): void {
-  if (!process.env.RESEND_API_KEY) return;
+export function notifyOperator(fields: FeedbackAlertFields): boolean {
+  if (!process.env.RESEND_API_KEY) return false;
 
   const { subject, text } = buildFeedbackAlert(fields);
 
@@ -112,11 +120,13 @@ export function notifyOperator(fields: FeedbackAlertFields): void {
         text,
       })
       .catch((err) => console.error('[feedback] resend error:', err));
+    return true;
   } catch (err) {
-    // Resend's constructor throws on a malformed key. Swallow it for the same
-    // reason as the .catch above - the feedback is already stored, and a mail
-    // problem must never become a 500 for the person who sent it.
+    // Resend's constructor throws on a malformed key. Swallowed for the same
+    // reason as the .catch above - the feedback row has already committed, so
+    // a mail problem must never become a 500 for the person who sent it.
     console.error('[feedback] notify failed:', err);
+    return false;
   }
 }
 

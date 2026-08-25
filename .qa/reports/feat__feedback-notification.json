@@ -29,8 +29,8 @@
       "name": "notifyOperator",
       "file_line": "frontend-nextjs/app/api/feedback/route.ts:100",
       "input": "The same FeedbackAlertFields, plus process.env.RESEND_API_KEY and process.env.NOTIFY_EMAIL read at call time.",
-      "output": "void. Fires a Resend send and does not await it.",
-      "if_none": "No RESEND_API_KEY returns immediately without sending and without error. A throwing Resend constructor is caught and logged. A rejecting send is caught on the promise. All three paths are silent to the submitter by design, because the feedback row committed before this ran.",
+      "output": "boolean - whether a send was DISPATCHED. Not whether it was delivered, which it cannot know: the send is not awaited, and the Workspace self-domain quarantine fails after Resend has reported success. The caller ignores the result; it exists so the outcome is inspectable and each failure path says which one it took.",
+      "if_none": "No RESEND_API_KEY returns false without sending. A throwing Resend constructor is caught and returns false. A rejecting send still returns true, because dispatch already happened and is the most the function can honestly claim. All three are silent to the submitter by design - the feedback row committed before this ran.",
       "why": "The sender. Every failure path is swallowed so a mail problem cannot turn a saved submission into a 500."
     }
   ],
@@ -72,6 +72,13 @@
       "mitigated": true,
       "how": "Renders '(no contact address)' explicitly; a test asserts the string 'undefined' never appears.",
       "repro": "Replace the marker with an empty string -> 1 failed, 9 passed"
+    },
+    {
+      "scenario": "The notifier reports success it cannot actually know.",
+      "what_happens": "The send is not awaited and Workspace quarantines a same-domain send AFTER Resend reports delivered. A function claiming 'sent' would be asserting something unobservable, and the tests would enshrine it.",
+      "mitigated": true,
+      "how": "The return value means DISPATCHED, not delivered, and both the docstring and the test name say so. A rejected send still returns true because dispatch did occur; only an absent key or a throwing constructor return false.",
+      "repro": "The 'reports true when the send is dispatched, even if it later rejects' test pins this distinction"
     }
   ],
   "post_merge": {
