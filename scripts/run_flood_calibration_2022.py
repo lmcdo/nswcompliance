@@ -384,8 +384,19 @@ executed = 0
 t0 = time.time()
 for i, (act, aoi, lat, lng, council) in enumerate(pts, 1):
     try:
+        # persist=False. Every point here ran the real pipeline AND wrote two
+        # production rows: a property_reports row addressed "calibration
+        # EMSR567/AOI03" and a report_audit_trail row beside it. At N=150 that
+        # is 300 synthetic rows, and it also moves the denominators the DQ-57,
+        # DQ-85 and DQ-86 probes count flood reports with — measuring the
+        # product would have corrupted the measurements OF the product.
+        #
+        # It suppresses the WRITE ONLY. Every source is still queried and the
+        # full answer still computed, so what is scored below is exactly what a
+        # customer would have been served (tests/test_flood_no_persist.py pins
+        # that the answer is identical either way).
         r = run_flood(FloodRequest(address=f"calibration {act}/{aoi}", lat=lat, lng=lng,
-                                   report_id=str(uuid.uuid4())))
+                                   report_id=str(uuid.uuid4()), persist=False))
         # CONTRACT CHECK BEFORE COUNTING AN EXECUTION.
         #
         # `(r or {}).get("outputs") or {}` turned a None or malformed response

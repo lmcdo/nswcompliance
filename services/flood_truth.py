@@ -1954,6 +1954,24 @@ class FloodRequest(BaseModel):
     lat: float
     lng: float
     report_id: str
+    #: Write the run to `property_reports` and `report_audit_trail`, or not.
+    #:
+    #: DEFAULTS TO TRUE so every existing caller — the API route, the batch
+    #: path, the PDF flow — is unchanged. Only a caller that opts out skips.
+    #:
+    #: Exists for calibration. scripts/run_flood_calibration_2022.py runs the
+    #: real pipeline over N=150 sampled points to measure recall, and each run
+    #: was landing TWO synthetic production rows: a property_reports row
+    #: addressed "calibration EMSR567/AOI03" and a report_audit_trail row. 300
+    #: rows per run, and they move the denominators the DQ-57, DQ-85 and DQ-86
+    #: probes count flood reports with — so measuring the product would have
+    #: corrupted the measurements OF the product.
+    #:
+    #: It suppresses PERSISTENCE ONLY. Every source is still queried and the
+    #: full answer still computed and returned, so a calibration run scores
+    #: exactly what a customer would have been served. A flag that changed the
+    #: computation would make the calibration measure something else.
+    persist: bool = True
 
 
 class FloodBatchRequest(BaseModel):
@@ -2050,6 +2068,35 @@ def run_flood(req: FloodRequest):
                + SES council flood studies (PostGIS) + DEA WOfS (WCS).
     SAR analysis is batch-only (Phase 3B).
     """
+    # PERSISTENCE, bound once (see FloodRequest.persist). Every write in this
+    # function goes through these two names instead of _write_report and
+    # log_audit_trail directly, so persist=False suppresses all of them —
+    # including the cache-copy write and the "still write for audit trail"
+    # write on the refuse-to-serve branch, which a happy-path-only guard would
+    # have missed. A write added here later inherits the flag by using the
+    # same names, rather than needing its own `if`.
+    #
+    # Bound rather than wrapped in `if` blocks on purpose: wrapping re-indents
+    # the existing call bodies, and the bracket-access lint reads re-indented
+    # lines as newly added unsafe dict access. The guard should not force a
+    # cosmetic rewrite of code it is not changing.
+    # getattr with a True default, NOT req.persist. run_flood is called with
+    # duck-typed request objects as well as real FloodRequests — a
+    # types.SimpleNamespace in tests/test_execution_manifests.py, and anything
+    # else that grew a request shape without this field. Reading the attribute
+    # directly raised AttributeError there, which the pre-push suite caught:
+    # a flag meant to suppress a side effect had become a hard requirement on
+    # every caller's type.
+    #
+    # The default is True, which is the safe direction twice over: an object
+    # that does not know about persistence gets the behaviour it had before
+    # this change, and the failure mode of a typo in the field name is
+    # "writes anyway", never "silently stops recording customer reports".
+    _noop = lambda *a, **kw: None                      # noqa: E731
+    _persist = getattr(req, "persist", True)
+    write_report = _write_report if _persist else _noop
+    audit_trail = log_audit_trail if _persist else _noop
+
     # Units/CRS entry check (campaign item 4): a swapped or projected
     # coordinate reproduces identically on every recompute — this is the only
     # defence. Typed unavailable, never a screening from wrong-CRS input.
@@ -2096,7 +2143,7 @@ def run_flood(req: FloodRequest):
             # exactly like run_date: this row is a COPY of an older
             # computation, and a re-derived manifest would claim inputs the
             # cached numbers never came from (campaign item 4 cache rule).
-            _write_report(
+            write_report(
                 req.report_id, req.address, req.lat, req.lng,
                 req.prop_id,
                 cached.get("inputs") or {
@@ -2111,7 +2158,7 @@ def run_flood(req: FloodRequest):
                 cached["outputs"] or {},
                 run_date=cached.get("run_date"),
             )
-            log_audit_trail(
+            audit_trail(
                 report_id=req.report_id,
                 pipeline_name="flood",
                 input_params={"address": req.address, "lat": req.lat, "lng": req.lng},
@@ -2243,7 +2290,7 @@ def run_flood(req: FloodRequest):
     if available_count < _MIN_SOURCES_FOR_SCREENING:
         # Still write report for audit trail
         try:
-            _write_report(
+            write_report(
                 req.report_id, req.address, req.lat, req.lng,
                 req.prop_id, inputs, internal_outputs,
             )
@@ -2264,7 +2311,7 @@ def run_flood(req: FloodRequest):
         }
 
     try:
-        _write_report(
+        write_report(
             req.report_id, req.address, req.lat, req.lng,
             req.prop_id, inputs, internal_outputs,
         )
@@ -2274,7 +2321,7 @@ def run_flood(req: FloodRequest):
 
     # Audit trail (non-blocking — won't prevent report delivery on failure)
     outputs = _normalise_outputs(internal_outputs)
-    log_audit_trail(
+    audit_trail(
         report_id=req.report_id,
         pipeline_name="flood",
         input_params=inputs,
