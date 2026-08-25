@@ -83,6 +83,11 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/for/buyers-agents`, priority: 0.7, changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/for/councils`,    priority: 0.7,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/for/planners`,    priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
+        // Live since it was built and absent from all 8 sitemap chunks until
+        // 2026-08-25 — the page existed, nothing linked search engines to it.
+        // __tests__/sitemap-covers-for-pages.test.ts now fails if a /for/ page
+        // is added to disk without being listed here.
+        { url: `${base}/for/students`,    priority: 0.7,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/developers`,      priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/pricing`,         priority: 0.7,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/how-it-works`,    priority: 0.7,  changeFrequency: 'monthly', lastModified: now },

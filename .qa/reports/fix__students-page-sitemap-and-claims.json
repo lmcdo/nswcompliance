@@ -1,0 +1,44 @@
+{
+  "tier": "minor",
+  "justification": "One URL added to the sitemap plus a test that reads the filesystem to stop the omission recurring. No component, API, query or served value changes. Not minor-by-size alone: the accompanying claims audit of the page found nothing to correct, so the diff really is two files.",
+  "commit_hash": "b53b915f",
+  "files": [
+    "frontend-nextjs/app/sitemap.ts",
+    "frontend-nextjs/__tests__/sitemap-covers-for-pages.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/sitemap-covers-for-pages.test.ts",
+    "fails_when": "A directory under app/for/ contains a page.tsx whose route is absent from app/sitemap.ts. It reads the FILESYSTEM rather than a second hardcoded list, because a hardcoded list would drift from the first one in exactly the way that caused this.",
+    "observed_red": "Deleting the /for/students line from sitemap.ts: 1 failed, 7 passed. The seven that pass are the other audiences, so the test discriminates rather than failing wholesale. With the line present: 8 passed."
+  },
+  "pre_impl": {
+    "existing_data": "No database. Two filesystem sources: the directories under frontend-nextjs/app/for/ that contain a page.tsx, and the URL list in frontend-nextjs/app/sitemap.ts. Seven audience pages exist on disk; six were listed.",
+    "assumption_mismatch": "The assumption worth testing was the page's own numbers, since the email being drafted rests on them. Both hold: '28 councils have numeric controls' — 28 actual councils (29 counting nsw_statewide, which is not a council); 'roughly one citation in thirteen does not resolve to a clause' — 75 of 967 refs carry no digit locator, 1 in 12.9. Nothing on the page needed correcting, so nothing was changed.",
+    "new_vs_existing": "Applies at the next build; sitemaps are generated per request from this list. Nothing is backfilled. The page itself is untouched and has been live throughout."
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A /for/ audience page ships and is never added to the sitemap.",
+      "what_happens": "The page is live and no search engine is told it exists. /for/students sat in none of the 8 sitemap chunks from the day it was built. Six of seven pages being listed made the omission look exactly like a complete list.",
+      "mitigated": true,
+      "how": "frontend-nextjs/__tests__/sitemap-covers-for-pages.test.ts enumerates app/for/*/page.tsx from disk and asserts each route string appears in sitemap.ts.",
+      "repro": "Delete the /for/students line and run the test: 1 failed, 7 passed"
+    },
+    {
+      "scenario": "The guard stops finding pages and passes vacuously.",
+      "what_happens": "A directory rename or a move of app/for/ would make the enumeration empty, every parametrised assertion would vanish, and the suite would go green while checking nothing — the exact shape of a check that quietly stops checking.",
+      "mitigated": true,
+      "how": "A separate assertion requires the discovered audience list to be non-empty before the per-audience checks are trusted.",
+      "repro": "Point FOR_DIR at an empty directory and the 'finds the audience pages at all' test fails first"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
