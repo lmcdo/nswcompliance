@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One URL added to the sitemap plus a test that reads the filesystem to stop the omission recurring. No component, API, query or served value changes. Not minor-by-size alone: the accompanying claims audit of the page found nothing to correct, so the diff really is two files.",
-  "commit_hash": "08d4f222",
+  "commit_hash": "b53b915f",
   "files": [
     "frontend-nextjs/app/sitemap.ts",
     "frontend-nextjs/__tests__/sitemap-covers-for-pages.test.ts"
