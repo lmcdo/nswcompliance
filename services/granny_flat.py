@@ -1840,9 +1840,37 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         and existing_secondary_dwelling is None
     ):
         granny_flat_buildable = False
+        # PROVENANCE, not phrasing. In production MODAL_STRUCTURES_URL is unset,
+        # so _detect_structures_samgeo never runs, there is no detect row, and
+        # this gate fires on req.confirmed_structure_count -- a number the
+        # CUSTOMER confirmed against the aerial tile. Saying "were detected"
+        # there tells them a scan found something when nothing ran.
+        # docs/FEATURES_CAPABILITIES.md already records that structure detection
+        # is NOT a capability (recall 0.368 on 56 lots against a pre-committed
+        # 0.70 floor, failing in all four councils tested); this was the served
+        # sentence that still claimed it, and it reaches the customer in the PDF.
+        # The MULTIPLE_SECONDARY_STRUCTURES: prefix is load-bearing --
+        # lib/pdf/granny-flat-report.tsx matches it with startsWith in three
+        # places -- so it stays exactly as it is.
+        _counted_by_scan = bool(
+            isinstance(detected_structures_carry, list) and detected_structures_carry
+        )
+        # The no-scan branch must not claim SECONDARY structures either. Without
+        # a detect row effective_secondary is None and the gate fires on
+        # effective_count >= 3, a TOTAL. "You confirmed two or more secondary
+        # structures" asserts a classification the customer never made -- they
+        # gave a count, and the "1 main + 2 secondary" split is this code's
+        # inference, not their statement. Saying the count back to them and
+        # naming the inference separately is the only version that is true.
+        # (Cross-review finding, 2026-08-25 — the same defect as the one above,
+        # one step further in.)
         warnings.append(
-            "MULTIPLE_SECONDARY_STRUCTURES: Two or more secondary structures were detected on "
-            "this lot. SEPP Housing 2021 (cl 53(1)) permits only one secondary dwelling per lot. "
+            "MULTIPLE_SECONDARY_STRUCTURES: "
+            + ("Two or more secondary structures were detected on this lot. "
+               if _counted_by_scan else
+               f"You reported {effective_count} structures on this lot. "
+               "Counting the principal dwelling, that leaves two or more others. ")
+            + "SEPP Housing 2021 (cl 53(1)) permits only one secondary dwelling per lot. "
             "Eligibility cannot be confirmed without knowing whether either existing structure is "
             "already classified as a secondary dwelling. A town planner or private certifier can "
             "confirm the current status before you proceed."

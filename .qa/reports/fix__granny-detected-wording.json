@@ -1,0 +1,131 @@
+{
+  "tier": "standard",
+  "justification": "Changes a sentence that reaches a paying customer inside a PDF, and the thing it changes is a PROVENANCE claim — the report said a scan detected structures when in production no scan runs. Not critical: the eligibility outcome is unchanged, the gate still blocks, no stored data moves and no number differs. Not minor: it is served copy on a liability-sensitive surface, the branch it adds has two live paths, and it touches services/.",
+  "commit_hash": "0ac9b09a",
+  "files": [
+    "services/granny_flat.py",
+    "tests/test_granny_flat_mutation.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_granny_flat_mutation.py -q -k \"claim_a_scan or still_says_detected\"",
+    "fails_when": "The cl 53(1) warning contains the word 'detected' when no detect row exists, OR omits it when one does. Both directions are asserted so the fix cannot be satisfied by deleting the word everywhere, which would understate a genuine detection.",
+    "observed_red": "Against unfixed origin/main: 1 failed, 1 passed. The failure printed the served sentence in full — 'MULTIPLE_SECONDARY_STRUCTURES: Two or more secondary structures were detected on this lot.' — with no detect row present and confirmed_structure_count=3 supplied by the request. The control test (detect row seeded) passed unchanged, so the pair discriminates rather than failing on everything. After the fix: 186 passed in the file, 4,918 passed and 2 skipped across the suite. Cross-review then found the fix carried the same defect inward: the no-scan branch said the customer 'confirmed two or more secondary structures' when they had supplied only a total. Corrected and pinned by the same test. A second, HIGH-confidence finding was rejected on the code — user answers cannot add structures, only remove them — and is recorded above so it is not re-raised."
+  },
+  "pre_impl": {
+    "existing_data": "No schema change, no new query and no write. The data path was traced instead: with MODAL_STRUCTURES_URL unset — which is production, and which docs/CONFIGURATION.md and services/CLAUDE.md both record as the intended state — _detect_structures_samgeo raises, _fetch_detect_row returns nothing, _effective_secondary_count returns None, and _effective_structure_count falls back to req.confirmed_structure_count, a figure the customer confirmed against the aerial tile.",
+    "assumption_mismatch": "The assumption the old sentence encoded is that this gate fires on detector output. It does not in production, and has not since the detection layer was killed on the 0.368 recall measurement. Had that gone unchecked the obvious 'fix' would have been to delete the warning as detector residue — which would have removed a cl 53(1) block that is CORRECT and still firing, just on a different and better source.",
+    "new_vs_existing": "Applies to every granny-flat report generated after deploy. Nothing is backfilled: reports already stored keep the old sentence, and re-running one regenerates it. No eligibility verdict changes in either direction — granny_flat_buildable is still set False on exactly the same condition."
+  },
+  "functions": [
+    {
+      "name": "confirm_and_calculate",
+      "file_line": "services/granny_flat.py:1616",
+      "input": "GrannyFlatConfirmRequest — carries confirmed_structure_count, confirmed_count_source and structure_types from the client",
+      "output": "response with granny_flat_buildable and warnings[], the latter rendered into the customer PDF",
+      "if_none": "detected_structures_carry is None or empty whenever no detect row matched, which is the production path; the warning now says 'You confirmed' on that branch instead of 'were detected'."
+    },
+    {
+      "name": "_effective_structure_count",
+      "file_line": "services/granny_flat.py:854",
+      "input": "structure_types and detected_structures from the detect row, plus the submitted_count from the request",
+      "output": "int — the count the SEPP cl 53(1) gate uses",
+      "if_none": "With no detect row it returns submitted_count, an int, so the gate cannot crash on a None comparison — and that is precisely why the block still fires in production and why its wording mattered."
+    },
+    {
+      "name": "_effective_secondary_count",
+      "file_line": "services/granny_flat.py:889",
+      "input": "structure_types from the request plus detected_structures from the detect row",
+      "output": "int, or None when there is no detect row",
+      "if_none": "None makes the gate fall back to the total-based test on effective_count. Untouched here; only the sentence that reports the outcome changed."
+    }
+  ],
+  "values": [
+    {
+      "value": "detected_structures_carry",
+      "read_at": "services/granny_flat.py — the new _counted_by_scan guard at the warning site",
+      "nullable": "yes, and None is the production case",
+      "guard_at": "isinstance(..., list) and truthiness, so None and [] both take the 'You confirmed' branch",
+      "if_missing": "The warning attributes the count to the customer rather than to a scan. That is the honest reading when no detect row exists."
+    },
+    {
+      "value": "req.confirmed_structure_count",
+      "read_at": "services/granny_flat.py:1707 via _effective_structure_count",
+      "nullable": "no — a required int on the request model",
+      "guard_at": "unchanged by this PR",
+      "if_missing": "N/A. Named here because it is the actual source of the number in production, which is the whole finding."
+    },
+    {
+      "value": "the MULTIPLE_SECONDARY_STRUCTURES: prefix",
+      "read_at": "frontend-nextjs/lib/pdf/granny-flat-report.tsx lines 268, 374 and 393",
+      "nullable": "no",
+      "guard_at": "preserved verbatim; a test asserts warning.startswith('MULTIPLE_SECONDARY_STRUCTURES:')",
+      "if_missing": "All three startsWith matches in the PDF break at once: the multi-structure block would stop rendering and the raw warning would leak into the general warnings list it is deliberately filtered out of."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Establish that the detector does not run in production, so the count cannot be detector-derived",
+      "file_line": "services/granny_flat.py:554",
+      "where_clause": "os.environ.get('MODAL_STRUCTURES_URL', '').strip() — empty in production, raising RuntimeError before any inference call",
+      "if_zero": "Unset is the intended and documented state. docs/CONFIGURATION.md records the three-state UNKNOWN behaviour and docs/FEATURES_CAPABILITIES.md records why: recall 0.368 on 56 lots against a pre-committed 0.70 floor, failing in all four councils tested.",
+      "if_wrong": "If it were ever set, the detector runs, detected_structures_carry is populated, and the sentence correctly reads 'were detected' — which is why the wording branches rather than being replaced outright."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A served sentence claims a provenance the pipeline does not have.",
+      "what_happens": "The customer is told 'two or more secondary structures were detected on this lot' when no scan ran and the number is the one they entered themselves against an aerial image. It appears in a PDF, attached to an eligibility block, on the exact capability the repo has already documented as not a capability.",
+      "mitigated": true,
+      "how": "The sentence now branches on whether a detect row exists, and a test asserts the word 'detected' is absent when it does not.",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -k claim_a_scan against origin/main — fails, printing the full served sentence"
+    },
+    {
+      "scenario": "The fix is applied by deleting the word 'detected' everywhere.",
+      "what_happens": "A genuine detection — when MODAL_STRUCTURES_URL is set, as it is in a dev or evaluation environment — would be described as a customer confirmation, understating what actually happened and misattributing the machine's output to the user.",
+      "mitigated": true,
+      "how": "test_the_block_still_says_detected_when_a_scan_did_run seeds a real detect row and asserts 'detected' IS present. The two tests pin opposite directions.",
+      "repro": "Replace the branch with the unconditional 'You confirmed' string and that second test fails"
+    },
+    {
+      "scenario": "The reworded string breaks the PDF's warning matching.",
+      "what_happens": "lib/pdf/granny-flat-report.tsx matches startsWith('MULTIPLE_SECONDARY_STRUCTURES') in three places — two to render the multi-structure block, one to filter it out of the general warnings list. A changed prefix silently drops the block AND duplicates the raw text elsewhere.",
+      "mitigated": true,
+      "how": "The prefix is emitted as its own literal ahead of the branch and is asserted by test with startswith('MULTIPLE_SECONDARY_STRUCTURES:').",
+      "repro": "grep -n MULTIPLE_SECONDARY_STRUCTURES frontend-nextjs/lib/pdf/granny-flat-report.tsx returns lines 268, 374, 393"
+    },
+    {
+      "scenario": "The warning is mistaken for detector residue and deleted during the detection-layer cleanup.",
+      "what_happens": "A correct and still-firing SEPP cl 53(1) eligibility block disappears, and lots with two or more secondary structures start returning buildable without human verification.",
+      "mitigated": true,
+      "how": "The comment at the warning site states that the gate fires on req.confirmed_structure_count in production and is therefore NOT detector residue, and three pre-existing tests assert the block fires. This PR changes only the sentence.",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -k MULTIPLE or eligibility_gate — the block is asserted by four tests now"
+    },
+    {
+      "scenario": "The cleanup touches stored construction_change_* fields.",
+      "what_happens": "DQ-52 records that adjacent-lot was a PAID feature and those fields are deliberately kept as evidence; clearing them destroys the record of what a customer was sold.",
+      "mitigated": true,
+      "how": "Not touched. This PR changes one string literal and adds two tests; no column, row or stored field is read or written.",
+      "repro": "git diff --stat shows services/granny_flat.py and tests/test_granny_flat_mutation.py only"
+    },
+    {
+      "scenario": "The corrected sentence claims the customer CLASSIFIED structures when they only supplied a total.",
+      "what_happens": "Without a detect row effective_secondary is None and the gate fires on effective_count >= 3, a TOTAL count. The first fix said 'You confirmed two or more secondary structures', which asserts a classification the customer never made — the 1-main-plus-2-secondary split is this code's own inference. Same defect as the one being fixed, one step further in, and the very next sentence then admits the status of those structures is unknown.",
+      "mitigated": true,
+      "how": "The no-scan branch now reports the number actually submitted and names the inference separately: 'You reported N structures on this lot. Counting the principal dwelling, that leaves two or more others.' Asserted by the test, which requires the submitted count to appear and forbids the secondary-structure phrasing.",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -q -k claim_a_scan — asserts 'You reported 3 structures' present and 'confirmed two or more secondary' absent"
+    },
+    {
+      "scenario": "REJECTED cross-review finding, recorded so it is not re-raised: user answers override the detector, so a non-empty detect row does not prove the count is detector-derived.",
+      "what_happens": "Claimed a stale detect row holding one main structure plus user structure_types naming two more would fire the gate on user data while the PDF says 'were detected'.",
+      "mitigated": true,
+      "how": "NOT VALID, and the code is the reason. Answers can only SUBTRACT: _NON_STRUCTURE_ANSWERS is {'part_of_main','rejected'}, _effective_structure_count returns max(0, detected_total - not_separate), and _effective_secondary_count iterates _structure_identity(detected_structures) alone. Neither can add a structure the detector did not produce, so with a non-empty detect row every counted structure WAS detected and the scan wording is accurate. Scenario unreachable.",
+      "repro": "grep -n '_NON_STRUCTURE_ANSWERS\\|max(0, detected_total' services/granny_flat.py — subtraction only, on both counters"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
