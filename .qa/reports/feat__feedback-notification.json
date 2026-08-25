@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an outbound side effect to a live API route. The route already committed the submitter's feedback before this runs, so every failure path in the new code has to be swallowed or a mail outage becomes a 500 on a submission that was already saved.",
-  "commit_hash": "53dfa664",
+  "commit_hash": "77677d87",
   "files": [
     "frontend-nextjs/app/api/feedback/route.ts",
     "frontend-nextjs/__tests__/api/feedback-notification.test.ts"
