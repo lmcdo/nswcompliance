@@ -53,10 +53,6 @@ interface DcpProvisionListProps {
   lepReference?: {
     height?: string | null;
     fsr?: string | null;
-    setbacks?: {
-      side?: { ground?: number; upper?: number; document: string };
-      rear?: { value: number; document: string };
-    } | null;
   } | null;
 }
 
