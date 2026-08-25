@@ -771,6 +771,16 @@
       "passes_when": "exit 0 - no flood report inside the 90-day cache window predates the council lookup at an address that lookup can resolve",
       "red_when": "A cached flood report a user can still be served was written before #897 added _query_address_council, at a point inside the height layer, so it carries no council even though one was resolvable.",
       "note": "Raised by cross-review of the new DQ-57 probe, and correctly: that probe's population is 'address_council key PRESENT and null', so a report predating #897 carries no key and is excluded. Not DQ-85 either - these points sit INSIDE the height layer. Kept out of DQ-57 deliberately: DQ-57's remedy was 'call the real lookup' and that is done and verified, so reopening it for rows written before the fix existed would make it unclosable a second time, which is the failure being repaired. Measured 81 of 109 on 2026-08-24 - the other 28 are outside the cache window and cannot be served, and counting them would overstate the risk. Same window scoping, same reason, as DQ-50-window."
+    },
+    "DQ-87": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_flood_calibration.py"
+      ],
+      "passes_when": "exit 0 - the floor of the governing cluster interval clears the 0.90 pass mark, i.e. recall is ESTABLISHED rather than merely measured",
+      "red_when": "The cluster 95% CI straddles the pass mark, so the flood screen's recall is not established and every customer-facing surface must keep saying flood is uncalibrated.",
+      "note": "Opened 2026-08-25 after re-running scripts/run_flood_calibration_2022.py at N=150 draws. There was NO ledger row for flood calibration before this - the status lived only in ce-product-assurance-position-2026-08.md, i.e. as prose. Result: recall 0.919 over 37 in-scope points, cluster 95% CI 0.727-1.000 across 7 council clusters, against a 0.90 mark committed before the first run. Up from N=7 / recall 0.857 / Wilson 0.487-0.974. 150 DRAWS yield only 37 scorable points because EMSR567 mapped NSW and south-east Queensland both, and the script refuses to score Brisbane as NSW recall - so the prompt's '~150 points would settle it' does not hold. The binding constraint is CLUSTER DIVERSITY, not sample size: 7 councils cannot produce a tight interval however many points are drawn from them. The probe deliberately does NOT pin the recall figure - a rerun moving it is a remeasurement, not a regression - it pins the CONCLUSION, cluster_lo >= pass_mark. Still NO specificity figure of any kind. This run wrote nothing to production: persist=False (#1005) verified, flood rows 166 before and 166 after."
     }
   }
 }
