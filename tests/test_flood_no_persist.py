@@ -140,3 +140,32 @@ def test_the_answer_is_identical_with_and_without_persistence(monkeypatch, write
     assert _outputs(persisted) == _outputs(measured), (
         "persist=False changed the served answer — it must suppress the write only"
     )
+
+
+def test_a_duck_typed_request_without_the_field_still_persists(monkeypatch, writes):
+    """run_flood is called with objects that are not FloodRequest.
+
+    tests/test_execution_manifests.py passes a types.SimpleNamespace, and the
+    first version of the binding read `req.persist` directly — turning a flag
+    meant to suppress a side effect into a hard type requirement on every
+    caller. The pre-push suite caught it with AttributeError; this pins it.
+
+    The default is True, so an object that knows nothing about persistence
+    behaves exactly as it did before the flag existed.
+    """
+    import types
+
+    _stub_all_sources(monkeypatch, _VIABLE_OVERRIDES)
+    _stub_db(monkeypatch, cache_row=None)
+    writes["report"] = writes["audit"] = 0
+    monkeypatch.setattr(ft, "_write_report",
+                        lambda *a, **kw: writes.__setitem__("report", writes["report"] + 1))
+
+    legacy = types.SimpleNamespace(
+        address="somewhere", prop_id=None, lat=-33.8, lng=151.2,
+        report_id="00000000-0000-0000-0000-000000000002",
+    )
+    run_flood(legacy)                      # must not raise AttributeError
+    assert writes["report"] >= 1, (
+        "a request without the persist field stopped writing — the default must be True"
+    )

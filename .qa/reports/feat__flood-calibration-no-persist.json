@@ -10,7 +10,7 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_flood_no_persist.py -q",
     "fails_when": "Any of the five write call sites fires while persist=False, OR the default stops being True, OR the normal path stops writing at all, OR suppressing the write changes the returned answer. Four directions, because the obvious wrong fixes are 'guard only the happy path' and 'delete the writes'.",
-    "observed_red": "Reverting services/flood_truth.py to origin/main and re-running: 3 failed, 2 passed. test_normal_completion_writes_nothing reported {'report': 1, 'audit': 1}; test_too_few_sources_writes_nothing reported a write on the refuse-to-serve branch; test_persist_defaults_to_true raised AttributeError because the field did not exist. With the guards in place: 5 passed, and 431 passed across the four flood suites. The first implementation guarded with `if req.persist:` blocks and was REJECTED by the pre-commit bracket-access lint, because re-indenting the call bodies made pre-existing cached[\"outputs\"] reads look newly added. Rebinding at function entry avoids moving any existing line."
+    "observed_red": "Reverting services/flood_truth.py to origin/main and re-running: 3 failed, 2 passed. test_normal_completion_writes_nothing reported {'report': 1, 'audit': 1}; test_too_few_sources_writes_nothing reported a write on the refuse-to-serve branch; test_persist_defaults_to_true raised AttributeError because the field did not exist. With the guards in place: 5 passed, and 431 passed across the four flood suites. The first implementation guarded with `if req.persist:` blocks and was REJECTED by the pre-commit bracket-access lint, because re-indenting the call bodies made pre-existing cached[\"outputs\"] reads look newly added. Rebinding at function entry avoids moving any existing line. The pre-push suite then caught a regression the four flood suites had missed entirely: test_flood_wrong_crs_is_typed_422 raised AttributeError because it passes a types.SimpleNamespace, not a FloodRequest — 1 failed, 1960 passed. Reading the attribute with getattr(..., True) fixed it, and a new test pins the duck-typed path."
   },
   "pre_impl": {
     "existing_data": "Two production tables, both WRITTEN by the flood pipeline: property_reports via _write_report (3 call sites) and report_audit_trail via log_audit_trail (2 call sites). Established by grepping every call site rather than assuming the report table was the only one — the audit write is on a different function and would have been missed by a property_reports-only guard.",
@@ -114,6 +114,13 @@
       "mitigated": true,
       "how": "That is exactly what happened on the first attempt: the commit was blocked by 'Bracket access lint FAILED — new unsafe dict access in staged changes'. Rebinding at function entry changes only the five call NAMES, so no existing line moves and the lint sees nothing new. 39 insertions, 5 deletions.",
       "repro": "git diff --stat services/flood_truth.py — 5 deletions, one per rebound call site, no re-indented block"
+    },
+    {
+      "scenario": "run_flood is called with a duck-typed request object that has no `persist` field.",
+      "what_happens": "Reading req.persist directly raises AttributeError and the whole flood run dies — a flag meant to suppress a side effect becomes a hard type requirement on every caller. tests/test_execution_manifests.py passes a types.SimpleNamespace, and any internal caller that grew a request shape without this field would break the same way.",
+      "mitigated": true,
+      "how": "getattr(req, 'persist', True) rather than req.persist. The default is safe twice over: an object that knows nothing about persistence behaves exactly as before the flag existed, and a typo in the field name fails to 'writes anyway' rather than 'silently stops recording customer reports'.",
+      "repro": "The pre-push suite caught it: test_flood_wrong_crs_is_typed_422 failed with AttributeError, 1 failed / 1960 passed. Now pinned by test_a_duck_typed_request_without_the_field_still_persists."
     }
   ],
   "post_merge": {

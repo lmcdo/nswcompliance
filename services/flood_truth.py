@@ -2080,9 +2080,22 @@ def run_flood(req: FloodRequest):
     # the existing call bodies, and the bracket-access lint reads re-indented
     # lines as newly added unsafe dict access. The guard should not force a
     # cosmetic rewrite of code it is not changing.
+    # getattr with a True default, NOT req.persist. run_flood is called with
+    # duck-typed request objects as well as real FloodRequests — a
+    # types.SimpleNamespace in tests/test_execution_manifests.py, and anything
+    # else that grew a request shape without this field. Reading the attribute
+    # directly raised AttributeError there, which the pre-push suite caught:
+    # a flag meant to suppress a side effect had become a hard requirement on
+    # every caller's type.
+    #
+    # The default is True, which is the safe direction twice over: an object
+    # that does not know about persistence gets the behaviour it had before
+    # this change, and the failure mode of a typo in the field name is
+    # "writes anyway", never "silently stops recording customer reports".
     _noop = lambda *a, **kw: None                      # noqa: E731
-    write_report = _write_report if req.persist else _noop
-    audit_trail = log_audit_trail if req.persist else _noop
+    _persist = getattr(req, "persist", True)
+    write_report = _write_report if _persist else _noop
+    audit_trail = log_audit_trail if _persist else _noop
 
     # Units/CRS entry check (campaign item 4): a swapped or projected
     # coordinate reproduces identically on every recompute — this is the only
