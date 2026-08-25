@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Adds an outbound side effect to a live API route. The route already committed the submitter's feedback before this runs, so every failure path in the new code has to be swallowed or a mail outage becomes a 500 on a submission that was already saved.",
+  "commit_hash": "08d4f222",
+  "files": [
+    "frontend-nextjs/app/api/feedback/route.ts",
+    "frontend-nextjs/__tests__/api/feedback-notification.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/feedback-notification.test.ts",
+    "fails_when": "The alert stops carrying the complaint text, the cohort tag, or the missing-contact marker; or notifyOperator stops swallowing a Resend constructor throw, a rejected send, or an absent API key.",
+    "observed_red": "Three separate mutations, each killing exactly one test and leaving nine passing: swallow removed -> 1 failed/9 passed; cohort tag dropped from the subject -> 1 failed/9 passed; missing-contact marker silenced -> 1 failed/9 passed. Baseline and restored both 10 passed."
+  },
+  "pre_impl": {
+    "existing_data": "user_feedback, written by this route. The widget already collects type, severity, user role, property address, section, free text, an optional submitter contact address and a cohort/class code in context_data. All of it was already stored; none of it was ever announced.",
+    "assumption_mismatch": "The route has an `email` field and it looks like a notification address. It is not - it is the SUBMITTER's `contact_email`. Nothing in the repo watched the table, and no scheduled digest existed. The gap was invisible precisely because the field that would carry an alert already had a plausible-looking value in it.",
+    "new_vs_existing": "Applies to new submissions only. Existing rows are not replayed - anything already in user_feedback stays unannounced and must be read directly."
+  },
+  "functions": [
+    {
+      "name": "buildFeedbackAlert",
+      "file_line": "frontend-nextjs/app/api/feedback/route.ts:70",
+      "input": "FeedbackAlertFields: the row id, feedbackType, severity, userType, address, section, the free-text complaint, contactEmail (nullable) and cohort (nullable).",
+      "output": "{ subject, text }. Subject is `Feedback[<cohort>]: <type> - <address>`, with the bracketed tag omitted entirely when cohort is null. Text is the metadata block, a blank line, the complaint verbatim, and the row id.",
+      "if_none": "It cannot receive nothing - it is only called after a successful insert, so id and the required strings exist. The two nullable fields each have an explicit rendering: a null cohort drops both the subject tag and the body line, and a null contactEmail renders '(no contact address)' rather than interpolating undefined.",
+      "why": "Pure message construction, split from the sender so the wording is testable without sending anything."
+    },
+    {
+      "name": "notifyOperator",
+      "file_line": "frontend-nextjs/app/api/feedback/route.ts:100",
+      "input": "The same FeedbackAlertFields, plus process.env.RESEND_API_KEY and process.env.NOTIFY_EMAIL read at call time.",
+      "output": "void. Fires a Resend send and does not await it.",
+      "if_none": "No RESEND_API_KEY returns immediately without sending and without error. A throwing Resend constructor is caught and logged. A rejecting send is caught on the promise. All three paths are silent to the submitter by design, because the feedback row committed before this ran.",
+      "why": "The sender. Every failure path is swallowed so a mail problem cannot turn a saved submission into a 500."
+    }
+  ],
+  "values": [
+    {
+      "name": "NOTIFY_EMAIL",
+      "value": "process.env.NOTIFY_EMAIL || 'lawrence.mcdonell@gmail.com'",
+      "read_at": "Module load of frontend-nextjs/app/api/feedback/route.ts, from the process environment. Same constant, same default and same reasoning as the six existing routes that already notify.",
+      "if_missing": "Falls back to the hardcoded off-domain gmail address, so the alert still arrives rather than silently going nowhere. A test asserts the recipient never ends in @plotdetect.com.au.",
+      "why": "Must NOT be @plotdetect.com.au. Sending from info@plotdetect.com.au to the same domain via Resend is quarantined by Google Workspace as self-domain spoofing - Resend reports 'delivered' and it never arrives."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Resend is down, rate-limited, or the API key is malformed when someone submits feedback.",
+      "what_happens": "Without swallowing, the throw propagates out of the POST handler and the submitter gets 'Failed to save feedback' - for feedback that was already committed to the database one line earlier. They would likely resubmit, duplicating the row, or give up.",
+      "mitigated": true,
+      "how": "notifyOperator returns early with no key, wraps the constructor in try/catch, and attaches .catch to the send promise. It is called after the insert has succeeded and its result is not awaited.",
+      "repro": "Replace the catch body with `throw err;` -> 1 failed, 9 passed"
+    },
+    {
+      "scenario": "An alert arrives saying only that feedback exists.",
+      "what_happens": "Every alert then costs a database round trip to action, which is the same delay the change exists to remove. The operator learns to ignore them.",
+      "mitigated": true,
+      "how": "The body carries the complaint text, the address, the section, the severity and the submitter's contact address; the subject carries the type and address.",
+      "repro": "Drop `fields.text` from the body -> the 'carries the actual complaint' test fails"
+    },
+    {
+      "scenario": "A whole class submits feedback and it cannot be told apart from public traffic.",
+      "what_happens": "Cohort feedback is the entire point of the class-code link. Without the tag in the subject it cannot be filtered or grouped in an inbox, so a teaching-period trial produces an undifferentiated pile.",
+      "mitigated": true,
+      "how": "The cohort is read from context and rendered as a bracketed subject tag plus a body line, and omitted entirely when absent so public feedback carries no empty marker.",
+      "repro": "Remove ${cohortTag} from the subject -> 1 failed, 9 passed"
+    },
+    {
+      "scenario": "The submitter left no contact address.",
+      "what_happens": "Naive interpolation renders 'undefined' where an address belongs, which reads as a broken address rather than an absent one, and invites a reply to nobody.",
+      "mitigated": true,
+      "how": "Renders '(no contact address)' explicitly; a test asserts the string 'undefined' never appears.",
+      "repro": "Replace the marker with an empty string -> 1 failed, 9 passed"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No - RESEND_API_KEY and NOTIFY_EMAIL already exist in the environment for the six routes that already notify.",
+    "other_repo": "No",
+    "manual_verify": "Yes - submit one piece of feedback through the live widget and confirm the alert arrives. The self-domain quarantine failure mode reports success at the API and still never delivers, so an end-to-end send is the only way to know."
+  }
+}

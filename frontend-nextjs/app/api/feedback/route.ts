@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { Resend } from 'resend';
 
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,93 @@ const getSeverity = (feedbackType: string): string => {
   if (mediumSeverity.includes(feedbackType)) return 'medium';
   return 'low';
 };
+
+// Internal alert recipient. Must NOT be @plotdetect.com.au: sending from
+// info@plotdetect.com.au to the same domain via Resend is quarantined by
+// Google Workspace as self-domain spoofing (Resend reports "delivered" but it
+// never reaches the inbox). Route to an off-domain inbox instead.
+const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || 'lawrence.mcdonell@gmail.com';
+
+/**
+ * Tell the operator that feedback arrived.
+ *
+ * Until 2026-08-26 nothing did. Feedback was written to user_feedback and sat
+ * there; the `email` field on this route is the SUBMITTER's contact address,
+ * not an alert. Every outreach email asks people to report wrong controls, so
+ * an unwatched table turns the whole campaign into silence nobody sees.
+ *
+ * Deliberately fire-and-forget, and deliberately called only AFTER the insert
+ * has succeeded: the feedback is already durable by then, so a Resend outage,
+ * a missing API key or a malformed address must never turn a stored submission
+ * into a 500 for the person who sent it.
+ */
+export interface FeedbackAlertFields {
+  id: number | string;
+  feedbackType: string;
+  severity: string;
+  userType: string;
+  address: string;
+  section: string;
+  text: string;
+  contactEmail: string | null;
+  cohort: string | null;
+}
+
+/**
+ * Build the operator alert. Pure, so the wording is testable without sending.
+ */
+export function buildFeedbackAlert(fields: FeedbackAlertFields): {
+  subject: string;
+  text: string;
+} {
+  const cohortTag = fields.cohort ? ` [${fields.cohort}]` : '';
+  const text = [
+    `Type:     ${fields.feedbackType} (severity ${fields.severity})`,
+    `From:     ${fields.userType}${
+      fields.contactEmail ? ` <${fields.contactEmail}>` : ' (no contact address)'
+    }`,
+    fields.cohort ? `Cohort:   ${fields.cohort}` : null,
+    `Address:  ${fields.address}`,
+    `Section:  ${fields.section}`,
+    '',
+    fields.text,
+    '',
+    `Feedback id ${fields.id}.`,
+  ]
+    .filter((line) => line !== null)
+    .join('\n');
+
+  return {
+    subject: `Feedback${cohortTag}: ${fields.feedbackType} - ${fields.address}`,
+    text,
+  };
+}
+
+/**
+ * Tell the operator that feedback arrived. Never throws.
+ */
+export function notifyOperator(fields: FeedbackAlertFields): void {
+  if (!process.env.RESEND_API_KEY) return;
+
+  const { subject, text } = buildFeedbackAlert(fields);
+
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    resend.emails
+      .send({
+        from: 'PlotDetect <info@plotdetect.com.au>',
+        to: NOTIFY_EMAIL,
+        subject,
+        text,
+      })
+      .catch((err) => console.error('[feedback] resend error:', err));
+  } catch (err) {
+    // Resend's constructor throws on a malformed key. Swallow it for the same
+    // reason as the .catch above - the feedback is already stored, and a mail
+    // problem must never become a 500 for the person who sent it.
+    console.error('[feedback] notify failed:', err);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -99,6 +187,18 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(query, values);
 
     console.log(`✅ Feedback submitted: ID ${result.rows[0].id}, Type: ${feedbackType}, User: ${userType}`);
+
+    notifyOperator({
+      id: result.rows[0].id,
+      feedbackType,
+      severity,
+      userType: userType || 'other',
+      address: context?.propertyAddress || 'Not specified',
+      section: context?.provisionContext?.title || context?.page || 'General',
+      text: feedbackText,
+      contactEmail: email || null,
+      cohort: context?.cohort || null,
+    });
 
     return NextResponse.json(
       {
