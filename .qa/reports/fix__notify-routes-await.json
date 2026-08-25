@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Three live API routes were losing outbound email to serverless cancellation. One of them emails customers their result. Behaviour change in production request paths, plus a guard that reads the route files to stop it recurring.",
-  "commit_hash": "7b222132",
+  "commit_hash": "8aa1ac6f",
   "files": [
     "frontend-nextjs/app/api/dcp-interest/route.ts",
     "frontend-nextjs/app/api/verify-interest/route.ts",
