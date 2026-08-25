@@ -568,7 +568,12 @@ export async function POST(request: NextRequest) {
     // Attach ePlanning history — never blocks the confirm result
     result.eplanning_history = ePlanningHistory;
 
-    // Send results email — fire-and-forget, never blocks the response
+    // Send results email. AWAITED: this was fire-and-forget, and on serverless
+    // the instance can be frozen at the response 27 lines below, cancelling the
+    // in-flight send. This one goes to the CUSTOMER with their report link, so a
+    // cancelled send means someone who asked for a result never got told it was
+    // ready. Failure is still swallowed - the report is already computed and
+    // stored, and is reachable at the URL regardless.
     if (notification_email && process.env.RESEND_API_KEY) {
       const eligible: boolean = result.granny_flat_buildable ?? false;
       const maxArea: number | null = result.max_floor_area_m2 ?? null;
@@ -583,7 +588,7 @@ export async function POST(request: NextRequest) {
         ? `Max floor area: <strong>${maxArea ?? '—'} m²</strong> (CDC pathway)`
         : result.confidence_reason ?? 'Does not meet SEPP Housing 2021 criteria.';
 
-      resend.emails.send({
+      await resend.emails.send({
         from: 'Can I Build It <info@plotdetect.com.au>',
         to: [notification_email],
         subject: `Your granny flat result — ${reportAddress}`,

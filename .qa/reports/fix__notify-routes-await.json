@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "Three live API routes were losing outbound email to serverless cancellation. One of them emails customers their result. Behaviour change in production request paths, plus a guard that reads the route files to stop it recurring.",
+  "commit_hash": "7b222132",
+  "files": [
+    "frontend-nextjs/app/api/dcp-interest/route.ts",
+    "frontend-nextjs/app/api/verify-interest/route.ts",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/__tests__/api/notify-sends-are-awaited.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/notify-sends-are-awaited.test.ts",
+    "fails_when": "Any route.ts under app/api contains a .emails.send( call that is not preceded by await. It walks app/api from disk and strips comments first, so a commented-out example cannot fail it and a new route cannot escape it by not being on a list.",
+    "observed_red": "Reverting dcp-interest to its unawaited form: 1 failed, 8 passed. Reverting satellite/granny-flat: 1 failed, 8 passed. Each kills exactly one parametrised case and leaves the other routes passing, so it discriminates rather than failing wholesale. Baseline and restored both 9 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Eight route.ts files call Resend. Measured rather than assumed: five already awaited (canibuildit/lead, feedback, satellite/solar-coverage-interest, satellite/threat-radar/run-checks, stripe/webhook) and three did not.",
+    "assumption_mismatch": "I had claimed in PR #1007 that SIX sibling routes shared this defect. That was wrong - it came from grepping which routes import Resend and assuming a shared pattern, without checking each call site. The real number is three. The correction matters because two of the five I accused were already correct, and a false count would have sent someone to fix working code.",
+    "new_vs_existing": "Applies to new requests only. Any alert or customer email already lost to a cancelled send is gone and is not recoverable - there is no outbox and no retry. The rows those routes wrote are still in the database, so what was lost is the notification, not the data."
+  },
+  "functions": [
+    {
+      "name": "routeFiles",
+      "file_line": "frontend-nextjs/__tests__/api/notify-sends-are-awaited.test.ts:26",
+      "input": "A directory path. Called with frontend-nextjs/app/api.",
+      "output": "Absolute paths of every route.ts found by walking that directory recursively.",
+      "if_none": "Returns an empty array. That is the vacuous-pass hazard, so a separate assertion requires the result to be non-empty before any per-route check is trusted - otherwise a directory move would turn the whole guard green while checking nothing.",
+      "why": "The population is read from disk rather than from a list, because a list would drift from the routes exactly as the routes drifted from each other."
+    },
+    {
+      "name": "stripComments",
+      "file_line": "frontend-nextjs/__tests__/api/notify-sends-are-awaited.test.ts:36",
+      "input": "The full text of one route.ts file, read from disk by the caller before matching.",
+      "output": "The same source with block comments and whole-line // comments removed.",
+      "if_none": "An empty or comment-only file yields an empty string, which contains no send and so is simply not in the sender subset.",
+      "why": "Without it a commented-out example send would fail the check. A guard with false positives teaches people it is noisy, which is how a guard gets bypassed instead of fixed."
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A customer requests a granny flat result and the instance is frozen at the response while their email is still in flight.",
+      "what_happens": "The report is computed and stored, and the customer is never told it is ready. They asked for something, it silently never arrived, and no error exists anywhere. This is the most damaging of the three because it is customer-facing, not an internal alert - and the code carried a comment stating the fire-and-forget as deliberate.",
+      "mitigated": true,
+      "how": "The send is awaited. The failure is still swallowed, correctly: the report is already stored and reachable at its URL, so a mail problem must not fail the request.",
+      "repro": "Remove the await from satellite/granny-flat -> 1 failed, 8 passed"
+    },
+    {
+      "scenario": "A new route is added that sends email without awaiting.",
+      "what_happens": "The defect returns silently. It already reached three of eight routes by copying an idiom that looked correct, and nothing flagged it for as long as those routes have existed.",
+      "mitigated": true,
+      "how": "The guard walks app/api from disk for route.ts files, so a new route is covered the moment it exists rather than when someone remembers to list it.",
+      "repro": "Revert any awaited send -> that route's case fails"
+    },
+    {
+      "scenario": "The guard stops finding routes and passes vacuously.",
+      "what_happens": "A directory move or a rename of route.ts would empty the enumeration, every parametrised case would vanish, and the suite would go green while checking nothing.",
+      "mitigated": true,
+      "how": "A separate assertion requires both the route list and the subset that send to be non-empty before the per-route checks are trusted.",
+      "repro": "Point API_DIR at an empty directory -> the guards-the-guard test fails first"
+    },
+    {
+      "scenario": "A commented-out send fails the check.",
+      "what_happens": "A false positive teaches people the guard is noisy, which is how a guard gets bypassed rather than fixed.",
+      "mitigated": true,
+      "how": "Line and block comments are stripped before matching.",
+      "repro": "Add a commented-out unawaited send to any route -> still passes"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - worth checking how many lead and interest alerts you actually recall receiving against the row counts in the tables dcp-interest and verify-interest write to. A large gap would indicate how long these have been failing."
+  }
+}
