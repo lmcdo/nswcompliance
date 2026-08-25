@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Commits a measurement of a live product's accuracy and makes the conclusion drawn from it executable. The risk is not the code — it is that a reader takes 0.919 as a pass, or that a later rerun which moves recall looks like a regression. Both are addressed by what the probe asserts and refuses to assert. Not critical: no served value changes, no schema, no production write. Not minor: it adds a ledger row, a probe, and a committed result that other documents will cite.",
-  "commit_hash": "08d4f222",
+  "justification": "Commits a measurement of a live product's accuracy and makes the conclusion drawn from it executable. The risk is not the code — it is that a reader takes 0.946 as a pass, or that a later rerun which moves recall looks like a regression. Both are addressed by what the probe asserts and refuses to assert. Not critical: no served value changes, no schema, no production write. Not minor: it adds a ledger row, a probe, and a committed result that other documents will cite. CORRECTION 2026-09-01: this report originally cited 0.919, which was itself an unstable rerun result contradicting the repo's own published 0.946 — see the DQ-87 correction in .claude/DATA_QUALITY_TRACKER.md.",
+  "commit_hash": "5eb4d117",
   "files": [
     "docs/qa/flood-calibration-2022-result.json",
     "scripts/dq_probe_flood_calibration.py",
@@ -61,7 +61,7 @@
   ],
   "break_it": [
     {
-      "scenario": "A reader sees recall 0.919 against a 0.90 mark and records it as a pass.",
+      "scenario": "A reader sees recall 0.946 against a 0.90 mark and records it as a pass.",
       "what_happens": "A live product's accuracy claim gets upgraded on a point estimate. The governing cluster interval is 0.727-1.000 — it straddles the mark — because 37 points from 7 councils are not 37 independent trials.",
       "mitigated": true,
       "how": "The probe compares cluster_lo, not recall, and exits 1. The ledger row and the probe output both state that the interval straddles and that Wilson reads narrower because it assumes independence the data does not have.",

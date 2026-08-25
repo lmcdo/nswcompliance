@@ -5,13 +5,13 @@
   "n_scope_unresolved": 0,
   "n_sampled": 37,
   "n_scored": 37,
-  "hits": 34,
+  "hits": 35,
   "n_executed": 37,
   "n_errored": 0,
   "dropped_groups": {},
-  "recall": 0.918918918918919,
-  "wilson_lo": 0.7869900750149847,
-  "wilson_hi": 0.9720399336036787,
+  "recall": 0.9459459459459459,
+  "wilson_lo": 0.822950349364601,
+  "wilson_hi": 0.9850493372294601,
   "cluster_lo": 0.7272727272727273,
   "cluster_hi": 1.0,
   "n_clusters": 7,
@@ -35,7 +35,7 @@
     },
     "HAWKESBURY": {
       "n": 15,
-      "hits": 14
+      "hits": 15
     },
     "RICHMOND VALLEY": {
       "n": 2,
@@ -70,7 +70,7 @@
       "lat": -33.515099,
       "lng": 150.914417,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -125,7 +125,7 @@
       "lat": -33.549184,
       "lng": 150.892324,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -136,7 +136,7 @@
       "lat": -33.472465,
       "lng": 150.8991,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -191,7 +191,7 @@
       "lat": -33.575622,
       "lng": 150.730037,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -202,7 +202,7 @@
       "lat": -33.516529,
       "lng": 150.83705,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -235,7 +235,7 @@
       "lat": -33.662923,
       "lng": 150.665153,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -268,7 +268,7 @@
       "lat": -33.517785,
       "lng": 150.898211,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -301,7 +301,7 @@
       "lat": -33.496629,
       "lng": 150.895837,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -334,7 +334,7 @@
       "lat": -33.442722,
       "lng": 150.883034,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -367,7 +367,7 @@
       "lat": -33.612074,
       "lng": 150.700004,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -378,7 +378,7 @@
       "lat": -33.472262,
       "lng": 150.897936,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -411,7 +411,7 @@
       "lat": -33.496582,
       "lng": 150.884154,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -444,7 +444,7 @@
       "lat": -33.560625,
       "lng": 150.848626,
       "flood_signal": "elevated",
-      "in_100yr": true,
+      "in_100yr": null,
       "ses": true,
       "hit": true
     },
@@ -454,10 +454,10 @@
       "council": "HAWKESBURY",
       "lat": -33.428696,
       "lng": 150.811802,
-      "flood_signal": "unavailable",
+      "flood_signal": "moderate",
       "in_100yr": null,
       "ses": false,
-      "hit": false
+      "hit": true
     }
   ]
 }
