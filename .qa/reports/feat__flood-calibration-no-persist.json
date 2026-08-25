@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a flag that suppresses production writes on the flood pipeline — the paid product's main path. The danger is asymmetric: getting the default wrong stops recording every real customer report, silently, and nobody would notice until someone went looking for a report that was never saved. Not critical: no schema change, no data migration, no served value altered, and the flag is opt-in. Not minor: it rebinds five write call sites across three branches in services/, on the paid product's main path.",
-  "commit_hash": "21b380f9",
+  "commit_hash": "57c7855d",
   "files": [
     "services/flood_truth.py",
     "scripts/run_flood_calibration_2022.py",
