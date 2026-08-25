@@ -1,0 +1,125 @@
+{
+  "tier": "standard",
+  "justification": "Adds a flag that suppresses production writes on the flood pipeline — the paid product's main path. The danger is asymmetric: getting the default wrong stops recording every real customer report, silently, and nobody would notice until someone went looking for a report that was never saved. Not critical: no schema change, no data migration, no served value altered, and the flag is opt-in. Not minor: it rebinds five write call sites across three branches in services/, on the paid product's main path.",
+  "commit_hash": "21b380f9",
+  "files": [
+    "services/flood_truth.py",
+    "scripts/run_flood_calibration_2022.py",
+    "tests/test_flood_no_persist.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_flood_no_persist.py -q",
+    "fails_when": "Any of the five write call sites fires while persist=False, OR the default stops being True, OR the normal path stops writing at all, OR suppressing the write changes the returned answer. Four directions, because the obvious wrong fixes are 'guard only the happy path' and 'delete the writes'.",
+    "observed_red": "Reverting services/flood_truth.py to origin/main and re-running: 3 failed, 2 passed. test_normal_completion_writes_nothing reported {'report': 1, 'audit': 1}; test_too_few_sources_writes_nothing reported a write on the refuse-to-serve branch; test_persist_defaults_to_true raised AttributeError because the field did not exist. With the guards in place: 5 passed, and 431 passed across the four flood suites. The first implementation guarded with `if req.persist:` blocks and was REJECTED by the pre-commit bracket-access lint, because re-indenting the call bodies made pre-existing cached[\"outputs\"] reads look newly added. Rebinding at function entry avoids moving any existing line."
+  },
+  "pre_impl": {
+    "existing_data": "Two production tables, both WRITTEN by the flood pipeline: property_reports via _write_report (3 call sites) and report_audit_trail via log_audit_trail (2 call sites). Established by grepping every call site rather than assuming the report table was the only one — the audit write is on a different function and would have been missed by a property_reports-only guard.",
+    "assumption_mismatch": "The assumption worth checking was that one guard would do. It would not: the five sites sit on three different branches — cache hit, too-few-sources refusal, and normal completion — and a happy-path-only guard would have left the calibration writing on any point that hit the cache or fell below the source threshold. Each branch is now exercised by its own test.",
+    "new_vs_existing": "persist defaults to True, so every existing caller — the API route, the batch path, the PDF flow — is byte-for-byte unchanged and keeps writing. Only a caller that explicitly opts out skips. Nothing is backfilled and no existing row is touched."
+  },
+  "functions": [
+    {
+      "name": "run_flood",
+      "file_line": "services/flood_truth.py:2064",
+      "input": "FloodRequest, now carrying persist: bool = True",
+      "output": "the same response dict as before on every path; only the side effects change",
+      "if_none": "persist is not Optional — it defaults to True, so a request that omits it behaves exactly as it did before this change."
+    },
+    {
+      "name": "_write_report",
+      "file_line": "services/flood_truth.py:1916",
+      "input": "report_id, address, lat, lng, prop_id, inputs, internal_outputs, optional run_date",
+      "output": "an INSERT into property_reports; unchanged, but now called only when persist is True",
+      "if_none": "Not called at all under persist=False. The function itself is untouched, so the write path a customer takes is the same code it always was."
+    },
+    {
+      "name": "log_audit_trail",
+      "file_line": "services/audit_trail.py:116",
+      "input": "report_id, pipeline_name, input_params, data_sources, output_summary, disclaimer_version",
+      "output": "an INSERT into report_audit_trail; unchanged, now guarded at both flood call sites",
+      "if_none": "Skipped under persist=False. Guarding the report write alone would have left an audit row per calibration point — the defect half-fixed and harder to notice."
+    }
+  ],
+  "values": [
+    {
+      "value": "req.persist",
+      "read_at": "services/flood_truth.py — read once at run_flood entry to bind write_report and audit_trail",
+      "nullable": "no; pydantic default True",
+      "guard_at": "the binding itself; all five call sites use the bound names, so one read covers three branches",
+      "if_missing": "Cannot be missing. If the field were dropped, test_persist_defaults_to_true raises AttributeError, which is exactly what it did when run against origin/main."
+    },
+    {
+      "value": "outputs = _normalise_outputs(internal_outputs)",
+      "read_at": "services/flood_truth.py, immediately above the final audit call",
+      "nullable": "no",
+      "guard_at": "deliberately OUTSIDE the persist guard",
+      "if_missing": "This line is the returned answer, not a side effect. Pulling it inside the guard would make persist=False return a different response — the one thing the flag must never do."
+    },
+    {
+      "value": "the cached row copy",
+      "read_at": "services/flood_truth.py, the cache-hit branch",
+      "nullable": "yes",
+      "guard_at": "the cache branch's write and audit calls both use the bound names",
+      "if_missing": "The cached answer is still RETURNED; only the copy row and its audit row are skipped. That copy exists so PDF generation can find the new report_id, and a calibration run never generates a PDF."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Establish every production write the flood pipeline performs, before guarding any of them",
+      "file_line": "services/flood_truth.py:1925 and services/audit_trail.py:144",
+      "where_clause": "INSERT INTO property_reports ... ON CONFLICT (id) DO UPDATE; INSERT INTO report_audit_trail",
+      "if_zero": "No writes would mean nothing to suppress and no defect. Not the case: five call sites across two tables.",
+      "if_wrong": "Guarding property_reports alone would leave report_audit_trail writing one row per calibration point — a half-fix that still pollutes production and looks done."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The guard is applied to the happy path only.",
+      "what_happens": "A calibration point that hits the 90-day cache, or falls below the minimum-sources threshold, still writes. At N=150 an unknown fraction leaks through, and the leak is invisible because the run reports recall, not row counts.",
+      "mitigated": true,
+      "how": "All five call sites across all three branches use the bound names, so none can be missed by oversight — and each branch still has its own test: test_normal_completion_writes_nothing and test_too_few_sources_writes_nothing exercise different branches.",
+      "repro": "Revert flood_truth.py and run the file: the refuse-to-serve test fails independently of the normal-path one"
+    },
+    {
+      "scenario": "The writes are removed rather than guarded.",
+      "what_happens": "Every real customer flood report silently stops being recorded. A test asserting only 'persist=False writes nothing' passes perfectly against that, which is what makes it the dangerous fix.",
+      "mitigated": true,
+      "how": "test_the_default_path_still_writes asserts a write DOES happen with persist=True, and test_persist_defaults_to_true asserts the default. Deleting the writes fails both.",
+      "repro": "Delete the _write_report call and test_the_default_path_still_writes fails"
+    },
+    {
+      "scenario": "persist=False also changes the computed answer.",
+      "what_happens": "The calibration would score something other than what customers are served, so its recall figure would not describe the product — the same class of defect as calibrating against a different pipeline entirely.",
+      "mitigated": true,
+      "how": "The flag gates only the two write functions; every source query and all normalisation run unchanged, and `outputs` is computed outside the guard. test_the_answer_is_identical_with_and_without_persistence compares the full response dict both ways.",
+      "repro": "Move the outputs = _normalise_outputs(...) line inside the guard and that test fails"
+    },
+    {
+      "scenario": "Someone runs the calibration before this lands.",
+      "what_happens": "150 rows addressed 'calibration EMSR567/AOI03' enter property_reports, plus 150 audit rows, and the DQ-57 / DQ-85 / DQ-86 denominators move from 679 flood reports to ~829 — the probes added on 2026-08-24 would silently start measuring a population that is 18% synthetic.",
+      "mitigated": true,
+      "how": "The calibration script now passes persist=False at its only run_flood call site, and the reason is written at that line rather than left in a commit message.",
+      "repro": "grep -n 'persist=False' scripts/run_flood_calibration_2022.py"
+    },
+    {
+      "scenario": "A sixth write is added to the flood pipeline later and misses the guard.",
+      "what_happens": "Calibration silently resumes polluting production through the new path, and nothing fails.",
+      "mitigated": true,
+      "how": "run_flood binds write_report and audit_trail once at entry, and every one of the five call sites uses those names rather than _write_report / log_audit_trail directly. A write added inside run_flood that follows the surrounding style inherits the flag with no `if` of its own. Not absolute — a new call that reaches past the bindings to the module names still escapes — but the local names are what the function now reads like.",
+      "repro": "grep -n 'write_report(\\|audit_trail(' services/flood_truth.py — inside run_flood every call uses the bound name"
+    },
+    {
+      "scenario": "Guarding by wrapping the calls in `if req.persist:` blocks.",
+      "what_happens": "Wrapping re-indents the existing call bodies, and the bracket-access pre-commit lint reads a re-indented `cached[\"outputs\"]` as NEWLY ADDED unsafe dict access. The commit is rejected, and the tempting fix is to sprinkle `# noqa: bracket-access` on pre-existing lines this change never touched — suppressing a real lint on code that is not yours.",
+      "mitigated": true,
+      "how": "That is exactly what happened on the first attempt: the commit was blocked by 'Bracket access lint FAILED — new unsafe dict access in staged changes'. Rebinding at function entry changes only the five call NAMES, so no existing line moves and the lint sees nothing new. 39 insertions, 5 deletions.",
+      "repro": "git diff --stat services/flood_truth.py — 5 deletions, one per rebound call site, no re-indented block"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No — but note the calibration itself is still UNRUN. This change only makes running it safe; the run is a separate decision."
+  }
+}
