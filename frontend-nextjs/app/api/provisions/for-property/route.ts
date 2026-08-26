@@ -461,7 +461,8 @@ export async function GET(request: NextRequest) {
       if (filters.former_council) {
         const councilSlug = filters.former_council.toLowerCase();
         const registryResult = await client.query(
-          `SELECT chapter_key, r2_public_pdf_url, council_url, chapter_label, needs_extraction
+          `SELECT chapter_key, r2_public_pdf_url, council_url, council_page_url,
+                  chapter_label, needs_extraction
            FROM dcp_chapter_registry
            WHERE council = $1 AND is_active = TRUE`,
           [councilSlug]
@@ -478,7 +479,15 @@ export async function GET(request: NextRequest) {
           // Bankstown showed exactly ONE linked citation out of twenty - parking
           // has an R2 copy and the two setback chapters do not, though both carry
           // a council URL.
-          const chapterUrl = row.r2_public_pdf_url || row.council_url;
+          // Ordered by how precisely each identifies the source, best first.
+          // Measured 2026-08-26 across served controls, cumulative:
+          //   r2_public_pdf_url alone            39.9%
+          //   + council_url                      49.2%
+          //   + council_page_url                 78.7%   <- largest single gain
+          // council_page_url is already COALESCEd elsewhere in this codebase, so
+          // the data and the idiom both existed; only this lookup ignored them.
+          const chapterUrl =
+            row.r2_public_pdf_url || row.council_url || row.council_page_url;
           if (chapterUrl) chapterPdfUrls[row.chapter_key] = chapterUrl;
           if (row.chapter_label) chapterLabels[row.chapter_key] = row.chapter_label;
           if (row.needs_extraction) amendmentPending = true;

@@ -3,19 +3,20 @@
   "justification": "Two live user-facing defects on the DCP tab: the page contradicted itself about whether a council was processed, and 19 of 20 citations rendered as dead grey text because the URL lookup ignored half the data available to it.",
   "commit_hash": "859be5f7",
   "files": [
-    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
-    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
-    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/__tests__/dcp-citation-links.test.ts",
     "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
-    "frontend-nextjs/__tests__/dcp-citation-links.test.ts"
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "scripts/conveyancing_db.py"
   ],
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/dcp-citation-links.test.ts",
-    "fails_when": "The interest form is rendered as a sibling of the controls card rather than as its fallback; the registry query stops selecting or falling back to council_url; or a page anchor is appended to a URL that is not our own paginated copy.",
-    "observed_red": "Dropping the council_url fallback: 1 failed, 5 passed. Anchoring a page onto a council PDF: 1 failed, 5 passed. Restoring the both-rendered contradiction: 1 failed, 5 passed. Each kills exactly one test. Baseline and restored both 6 passed."
+    "fails_when": "The interest form is rendered as a sibling of the controls card rather than as its fallback; the registry query stops selecting or falling back to council_url; or a page anchor is appended to a URL that is not our own paginated copy. Also fails if the Python path (scripts/conveyancing_db.py) reverts to selecting r2_public_pdf_url alone - the identical defect existed in two places and fixing one would have left the conveyancing report showing dead refs.",
+    "observed_red": "Dropping council_page_url from the TS chain: 1 failed, 6 passed. Reverting the Python query to the bare R2 select: 1 failed, 6 passed. Dropping the council_url fallback, anchoring a page onto a council PDF, and restoring the both-rendered contradiction each kill exactly one test as well. Baseline and restored both 7 passed."
   },
   "pre_impl": {
-    "existing_data": "1,084 served controls. Measured against production: 88.6% name a chapter_key that exists in dcp_chapter_registry; of all served controls 39.9% have r2_public_pdf_url and 49.2% have council_url. Every row with an R2 copy ALSO has a council URL, so the fallback moves coverage from 39.9% to 49.2% and no further.",
+    "existing_data": "1,084 served controls. Measured against production: 88.6% name a chapter_key that exists in dcp_chapter_registry; of all served controls 39.9% have r2_public_pdf_url and 49.2% have council_url. Every row with an R2 copy ALSO has a council URL, so the fallback moves coverage from 39.9% to 49.2% and no further. Cumulative link coverage measured across 1,084 served controls: r2_public_pdf_url alone 39.9%; +council_url 49.2%; +council_page_url 78.7%; +Planning Portal plan url 91.2%. council_page_url is the largest single gain and was already COALESCEd at line 406 of conveyancing_db.py, so both the data and the idiom existed in the same file that ignored them.",
     "assumption_mismatch": "I first reported the fallback would take citations to 100%. It does not, and the overlap is why. I also described the unmatched 11.4% as chapters 'nobody listed', which was wrong: the citation is present on every control. Marrickville alone carries SEVEN key formats for one council (part4_s2_mdh_rfb, part4-s1-low-density, s4.1-low-density-residential, ...) while its registry rows use unrelated names. Of the 122 unmatched, 61 are state instruments - ADG and Codes SEPP - being looked up in a DCP CHAPTER registry that structurally cannot hold them, though instrument_registry already stores legislation_url for all 26 instruments.",
     "new_vs_existing": "Applies on next deploy to every property view. No data is rewritten. Controls whose chapter key does not match the registry stay unlinked until the key normalisation and the state-instrument routing are done separately."
   },
@@ -75,6 +76,6 @@
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "This raises document-level citation links from 39.9% to 49.2%, not to 100%. Three separate jobs remain and none requires re-extraction: route the 61 state-instrument controls to instrument_registry.legislation_url; normalise chapter keys for the 61 council controls whose format does not match; and add a URL to the 34 registry rows across 16 councils that hold neither, which alone covers 427 controls. Clause-level linking then needs pdf_page, held for only 17.4% today - but 98.8% carry the council's verbatim sentence, so the page can be found by searching each PDF for that quote rather than recorded by hand."
+    "manual_verify": "Raises document-level citation links from 39.9% to 78.7%. The remaining 21.3% needs work that is NOT re-extraction: 34 registry rows across 16 councils hold no URL of any kind and are not derivable from the database - documents has 1 source_url in 182 DCP rows - so those are 34 council website lookups. A Planning Portal plan-level fallback would add a further 12.5 points but cites a plan rather than a chapter, so it is a deliberate decision rather than a free win. 61 controls are state instruments: Codes SEPP and council LEPs resolve via instrument_registry.legislation_url, but the ADG has NO url in any table and one must be sourced before it can link. Clause-level linking then needs pdf_page, held for 17.4%, recoverable for the 98.8% that carry the council's verbatim sentence by searching each PDF for that quote."
   }
 }

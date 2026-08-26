@@ -57,8 +57,25 @@ describe('citation links', () => {
     expect(registryRoute).toMatch(/r2_public_pdf_url,\s*council_url/);
   });
 
-  it('falls back to the council URL so the citation still links', () => {
-    expect(registryRoute).toContain('row.r2_public_pdf_url || row.council_url');
+  it('falls back through council URL then council page URL', () => {
+    // Cumulative coverage measured 2026-08-26 across served controls:
+    //   r2 alone 39.9% -> +council_url 49.2% -> +council_page_url 78.7%.
+    // The last step is the largest single gain and was the one nobody used.
+    expect(registryRoute).toContain(
+      'row.r2_public_pdf_url || row.council_url || row.council_page_url',
+    );
+    expect(registryRoute).toContain('council_page_url,');   // and it is SELECTed
+  });
+
+  it('the python path uses the same chain, not just the R2 copy', () => {
+    // The identical defect existed twice. Fixing only the TS route would have
+    // left the conveyancing report still showing dead refs.
+    const py = fs.readFileSync(
+      path.join(ROOT, '..', 'scripts', 'conveyancing_db.py'), 'utf8',
+    );
+    expect(py).toContain('COALESCE(r2_public_pdf_url, council_url, council_page_url)');
+    // The old form selected the R2 column bare; assert that exact shape is gone.
+    expect(py).not.toContain('SELECT chapter_key, r2_public_pdf_url');
   });
 
   it('only anchors a page onto our OWN paginated copy', () => {
