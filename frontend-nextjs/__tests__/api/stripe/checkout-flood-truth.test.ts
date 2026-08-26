@@ -28,6 +28,14 @@ function makeReq(body: unknown): NextRequest {
   });
 }
 
+// The route now resolves its Stripe client lazily via getStripe(), which
+// returns null (skipping the checkout entirely) when STRIPE_SECRET_KEY is
+// unset. Next.js never loads .env.local under NODE_ENV=test, so this must be
+// set explicitly for the mocked Stripe constructor to ever be reached.
+beforeAll(() => {
+  process.env.STRIPE_SECRET_KEY = 'test-stripe-key';
+});
+
 const VALID_REPORT_ID = 'flood-uuid-1234-5678-abcd';
 const VALID_ADDRESS   = '23 Flood St Lismore NSW 2480';
 

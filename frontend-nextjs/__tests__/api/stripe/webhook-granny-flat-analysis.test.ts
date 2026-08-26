@@ -72,6 +72,12 @@ beforeEach(() => {
   jest.clearAllMocks();
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
   process.env.NEXT_PUBLIC_SITE_URL = 'https://plotdetect.com.au';
+  // The route now resolves Stripe/Resend lazily via getStripe()/getResend(),
+  // which return null (skipping the operation) when the key is unset. Next.js
+  // never loads .env.local under NODE_ENV=test, so these must be set explicitly
+  // for the mocked constructors to ever be reached.
+  process.env.STRIPE_SECRET_KEY = 'test-stripe-key';
+  process.env.RESEND_API_KEY = 'test-key';
 });
 
 // ---------------------------------------------------------------------------

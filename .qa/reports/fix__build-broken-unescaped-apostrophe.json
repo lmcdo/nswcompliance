@@ -1,17 +1,33 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "9ea0f23e",
+  "commit_hash": "693b098a",
   "files": [
     ".githooks/pre-push",
     ".github/workflows/gates.yml",
     "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-bushfire.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-flood-truth.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-granny-flat.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-shadow.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-solar-yield.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/webhook-granny-flat-analysis.test.ts",
     "frontend-nextjs/app/api/canibuildit/lead/route.ts",
     "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
     "frontend-nextjs/app/api/satellite/solar-coverage-interest/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/bushfire/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/conveyancing/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/flood-truth/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/granny-flat/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/pre-da-history/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/shadow/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/solar-yield/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/threat-radar-monitor/route.ts",
+    "frontend-nextjs/app/api/stripe/webhook/route.ts",
     "frontend-nextjs/app/reports/solar-yield/page.tsx",
     "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
     "frontend-nextjs/lib/resend-client.ts",
+    "frontend-nextjs/lib/stripe-client.ts",
     "scripts/baselines/doc-claim-baseline.json"
   ],
   "falsifiable_check": {
@@ -116,6 +132,13 @@
       "mitigated": true,
       "how": "Kept the no-throw behaviour deliberately (the alternative -- throwing on a missing key -- would 500 the entire customer request for a config problem the caller didn't cause, reintroducing the exact 'one failure crashes unrelated business logic' pattern fixed earlier today in #1007/#1008). Added a console.error inside getResend() so a missing key is visible in server logs while the request still succeeds. This deliberately diverges from notifyOperator, which does not log on a missing key -- documented in the function's own docstring, with the reasoning for the divergence.",
       "repro": "Sol's own finding names the exact scenario; verified no regression by re-running the full suite (94/94 suites, 1268/1268 tests) and npm run build after adding the log line."
+    },
+    {
+      "scenario": "The same import-time-crash defect existed for Stripe, in NINE more files, and was missed in the earlier Resend-only fix.",
+      "what_happens": "The build gate's own CI run (after re-registering the offline self-hosted runner) failed with 'Neither apiKey nor config.authenticator provided' / 'Failed to collect page data for /api/stripe/checkout/flood-truth' -- the identical class of bug as the Resend one, but STRIPE_SECRET_KEY, across all 8 checkout routes AND the webhook route (which ALSO had its own separate module-scope Resend instance, a tenth instance of the original bug missed when only three routes were searched).",
+      "mitigated": true,
+      "how": "Added frontend-nextjs/lib/stripe-client.ts (getStripe(), same lazy-null pattern as getResend()) and repointed all 9 Stripe call sites. Unlike Resend, Stripe IS the purpose of these routes, so every checkout route now checks `if (!stripe) return NextResponse.json({error:'Payment not configured'}, {status:500})` -- reusing the EXACT existing convention already in each file for a missing priceId, rather than inventing a new response shape. The webhook cannot verify a signature at all without Stripe, so it checks BEFORE attempting verification and returns 500 (tells Stripe to retry) rather than 400 (Stripe treats as permanent rejection, would be wrong -- the signature might be fine, we just can't check it). The webhook's Resend instance was migrated to the shared getResend() helper with optional chaining at all 6 send call sites, matching its existing swallow-and-log convention.",
+      "repro": "CI run 33007401045: Jest job failed post-Jest-pass on 'Failed to collect page data for /api/stripe/checkout/flood-truth', 'Error: Neither apiKey nor config.authenticator provided'. Fixed and re-verified: full local build succeeds, full jest suite 94/94 suites, 1268/1268 tests."
     }
   ],
   "post_merge": {
