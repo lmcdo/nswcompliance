@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New customer-facing lead-capture path (duplex-result interest_type) and a new email product case that ships served content (subject + HTML body) to a real inbox. Rebased through 12 merged PRs from the same day, requiring a hand-resolved merge conflict against a deliberate UI redesign and a security-relevant escaping fix already on main.",
-  "commit_hash": "331be441",
+  "commit_hash": "02eba847",
   "files": [
     "frontend-nextjs/app/api/canibuildit/lead/route.ts",
     "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts",
