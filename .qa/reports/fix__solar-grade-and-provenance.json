@@ -1,0 +1,36 @@
+{
+  "tier": "minor",
+  "justification": "One new documentation file. No code, no query, no served value. The branch predates the per-branch QA report requirement, which is why CI reported the report absent rather than the change being unsafe.",
+  "commit_hash": "560fa687",
+  "files": [
+    "docs/qa/solar-grade-precommitment-2026-08-07.md"
+  ],
+  "falsifiable_check": {
+    "command": "git diff --stat origin/main...HEAD -- ':!.qa'",
+    "fails_when": "The branch touches anything other than the single documentation file it claims to add. A docs-only claim is falsifiable by the diff itself, and that is the only claim being made.",
+    "observed_red": "Verified today: the diff against origin/main is exactly 1 file, 72 insertions, 0 deletions. Adding any second path would make the diff list more than that one file."
+  },
+  "pre_impl": {
+    "existing_data": "None read or written. The file records a decision rule for solar A-F grading, written before the investigation that would apply it.",
+    "assumption_mismatch": "The branch looked abandoned during the audit. It is not - it is a pre-commitment record, and its value depends entirely on having been written BEFORE the analysis. Landing it late preserves the commit date in git history, which is the part that matters; rewriting it now would destroy the property it exists to have.",
+    "new_vs_existing": "Adds a file. Nothing is modified or removed, so nothing can regress. Note the branch is three weeks old, but its diff is one file - merging it cannot revert any doc changed on main since."
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Grade thresholds are chosen after seeing which side of them the answer falls on.",
+      "what_happens": "The grade stops being a measurement and becomes a presentation choice, while still reading as a measurement. Nothing in the output would reveal it.",
+      "mitigated": true,
+      "how": "This document fixes the rule in git before the analysis exists. Its commit date is the evidence, which is why it is landed rather than rewritten.",
+      "repro": "git log -1 --format=%cI 560fa687 predates any solar grade result"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
