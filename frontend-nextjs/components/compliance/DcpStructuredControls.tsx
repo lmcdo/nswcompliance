@@ -40,6 +40,10 @@ interface ControlCategory {
 }
 
 interface StructuredControlsResponse {
+  /** Dev types this council DOES have controls for. Present when the requested
+   *  type returned nothing, and the only field that answers the COUNCIL-level
+   *  question - has_controls is scoped to the requested dev_type alone. */
+  available_dev_types?: string[];
   council: string;
   dev_type: string;
   has_controls: boolean;
@@ -153,9 +157,27 @@ export function DcpStructuredControls({
     );
   }
 
-  // Nothing extracted for this council: show the caller's fallback rather than
-  // nothing, so the caller never has to guess and render both.
-  if (!data?.has_controls) return <>{fallback}</>;
+  if (!data?.has_controls) {
+    // has_controls is scoped to the REQUESTED dev type. A council with controls
+    // for dual_occupancy but none for dwelling_house returns false here, and
+    // showing the "not yet processed" fallback would repeat the contradiction
+    // this component was just changed to remove - in a narrower case. Only an
+    // empty available_dev_types means the council genuinely has nothing.
+    const otherTypes = data?.available_dev_types ?? [];
+    if (otherTypes.length > 0) {
+      return (
+        <div className="mb-4 border border-gray-200 rounded-lg p-4 bg-gray-50/60">
+          <p className="text-sm text-gray-700">
+            No numeric controls extracted for this development type yet.
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            This council has controls for: {otherTypes.join(', ').replace(/_/g, ' ')}.
+          </p>
+        </div>
+      );
+    }
+    return <>{fallback}</>;
+  }
 
   const totalControls = data.categories.reduce((sum, cat) => sum + cat.controls.length, 0);
 

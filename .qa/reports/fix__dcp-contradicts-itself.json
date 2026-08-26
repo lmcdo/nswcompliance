@@ -1,8 +1,9 @@
 {
   "tier": "standard",
   "justification": "Two live user-facing defects on the DCP tab: the page contradicted itself about whether a council was processed, and 19 of 20 citations rendered as dead grey text because the URL lookup ignored half the data available to it.",
-  "commit_hash": "c449c11e",
+  "commit_hash": "339c7dfb",
   "files": [
+    "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
     "frontend-nextjs/__tests__/dcp-citation-links.test.ts",
     "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
@@ -70,6 +71,20 @@
       "mitigated": true,
       "how": "The anchor is appended only when the URL matches our own paginated copies.",
       "repro": "Anchor unconditionally -> 1 failed, 5 passed"
+    },
+    {
+      "scenario": "A processed council has controls for dual_occupancy but none for the requested dwelling_house.",
+      "what_happens": "has_controls is scoped to the REQUESTED dev type, so it returns false and the interest form appears — telling the reader the council DCP is not processed when it demonstrably is. The same contradiction this change removes, in a narrower case. Found by Sol cross-review, not by me, on the very commit that fixed the wider version.",
+      "mitigated": true,
+      "how": "available_dev_types, already returned by the API, answers the council-level question. A non-empty list renders a type-scoped empty state naming the types that DO have controls; only an empty list reaches the fallback.",
+      "repro": "Remove the dev-type case -> 1 failed, 7 passed"
+    },
+    {
+      "scenario": "A URL contains the R2 host as a path segment, e.g. https://example.com/evil/.r2.dev/x.pdf.",
+      "what_happens": "A substring match accepts it, so a page anchor measured against our copy is appended to a document we never paginated — precisely the confidently-wrong link the guard exists to prevent.",
+      "mitigated": true,
+      "how": "The URL is parsed and the HOSTNAME tested; an unparseable URL never anchors.",
+      "repro": "Replace the parse with url.includes(...) -> 1 failed, 7 passed"
     }
   ],
   "post_merge": {

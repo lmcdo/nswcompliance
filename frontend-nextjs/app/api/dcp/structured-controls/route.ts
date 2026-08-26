@@ -44,7 +44,28 @@ function getLgaSlugs(council: string): string[] {
  * Our own paginated copies live on Cloudflare R2. Only these can carry a
  * #page anchor, because pdf_page was measured against them.
  */
-const IS_OWN_COPY = /\.r2\.dev\/|\/pdf-pages\//;
+const OWN_PDF_HOST_SUFFIX = '.r2.dev';
+const OWN_PDF_PATH_PREFIX = '/pdf-pages/';
+
+/**
+ * True only for a PDF we paginated ourselves.
+ *
+ * Parses the URL and tests the HOSTNAME. A substring match would accept
+ * https://example.com/evil/.r2.dev/x.pdf, i.e. a page anchor could be attached
+ * to a document we never paginated - the precise-and-wrong case this guard
+ * exists to prevent.
+ */
+function isOwnCopy(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      u.hostname.endsWith(OWN_PDF_HOST_SUFFIX) ||
+      u.pathname.startsWith(OWN_PDF_PATH_PREFIX)
+    );
+  } catch {
+    return false;   // unparseable: never anchor
+  }
+}
 
 const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
   front_setback: { label: 'Setbacks', order: 1 },
@@ -222,7 +243,7 @@ export async function GET(request: NextRequest) {
       // at a confidently WRONG page. An unanchored link to the right document
       // beats a precise link to the wrong page.
       let pdfUrl: string | null = row.__pdfBase;
-      if (pdfUrl && row.pdf_page && IS_OWN_COPY.test(pdfUrl)) {
+      if (pdfUrl && row.pdf_page && isOwnCopy(pdfUrl)) {
         pdfUrl = `${pdfUrl}#page=${row.pdf_page}`;
       }
 

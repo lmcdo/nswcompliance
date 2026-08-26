@@ -43,8 +43,14 @@ describe('the DCP tab does not contradict itself', () => {
   });
 
   it('the controls card renders the fallback when a council has none', () => {
+    // Asserts the BEHAVIOUR, not the exact line. The first version of this test
+    // pinned a one-line `if (...) return <>{fallback}</>;` and broke the moment
+    // that branch correctly gained a dev-type case - a test pinned to shape
+    // fails on a good change as readily as a bad one.
     expect(child).toContain('fallback');
-    expect(child).toMatch(/if \(!data\?\.has_controls\) return <>\{fallback\}<\/>;/);
+    const branch = child.slice(child.indexOf('if (!data?.has_controls)'));
+    expect(branch.slice(0, branch.indexOf('}'))).not.toBe('');
+    expect(branch).toContain('return <>{fallback}</>;');
   });
 });
 
@@ -81,17 +87,28 @@ describe('citation links', () => {
   it('only anchors a page onto our OWN paginated copy', () => {
     // pdf_page was measured against our R2 copy. Appending it to the council's
     // own PDF would point confidently at the wrong page - worse than no anchor.
-    expect(controlsRoute).toContain('IS_OWN_COPY');
-    expect(controlsRoute).toMatch(/row\.pdf_page && IS_OWN_COPY\.test\(pdfUrl\)/);
+    expect(controlsRoute).toContain('isOwnCopy');
+    expect(controlsRoute).toContain('row.pdf_page && isOwnCopy(pdfUrl)');
   });
 
-  it('the own-copy pattern actually matches an R2 url and rejects a council one', () => {
-    const m = controlsRoute.match(/const IS_OWN_COPY = (\/.+\/);/);
-    expect(m).not.toBeNull();
-    // eslint-disable-next-line no-eval
-    const re: RegExp = eval(m![1]);
-    expect(re.test('https://pub-abc123.r2.dev/dcp/chapter-3-2-parking.pdf')).toBe(true);
-    expect(re.test('https://verify.plotdetect.com.au/pdf-pages/x.pdf')).toBe(true);
-    expect(re.test('https://www.cbcity.nsw.gov.au/dcp/chapter5.pdf')).toBe(false);
+  it('tests the HOSTNAME, not a substring anywhere in the url', () => {
+    // Sol, 2026-08-26: a substring match accepts
+    // https://example.com/evil/.r2.dev/x.pdf, so a page anchor could be
+    // attached to a document we never paginated.
+    expect(controlsRoute).toContain('new URL(url)');
+    expect(controlsRoute).toContain('u.hostname.endsWith');
+    expect(controlsRoute).not.toContain('IS_OWN_COPY.test');
+  });
+
+  it('the council-level empty state is not decided by a dev-type-scoped flag', () => {
+    // Sol, 2026-08-26: has_controls is scoped to the REQUESTED dev type, so a
+    // council with controls for dual_occupancy but none for dwelling_house
+    // would have been told its DCP was not processed — the same contradiction
+    // in a narrower case.
+    const card = read('components/compliance/DcpStructuredControls.tsx');
+    expect(card).toContain('available_dev_types');
+    const branch = card.slice(card.indexOf('if (!data?.has_controls)'));
+    const scoped = branch.slice(0, branch.indexOf('return <>{fallback}</>;'));
+    expect(scoped).toContain('otherTypes.length > 0');
   });
 });
