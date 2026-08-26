@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as dns } from 'dns';
 import { z } from 'zod';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import { getResend } from '@/lib/resend-client';
 import { checkRateLimit, createRateLimitHeaders, getClientIdentifier } from '@/lib/rate-limit';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Service role client — bypasses RLS, server-only, never exposed to browser.
 const getSupabase = () =>
@@ -211,7 +209,7 @@ export async function POST(req: NextRequest) {
           footerUrl: 'https://canibuildit.com.au',
         };
   try {
-    await resend.emails.send({
+    await getResend()?.emails.send({
       from: fromLine,
       ...(replyTo ? { replyTo } : {}),
       to: [cleanEmail],

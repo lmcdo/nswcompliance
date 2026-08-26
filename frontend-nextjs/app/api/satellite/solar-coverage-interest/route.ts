@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import { getResend } from '@/lib/resend-client';
 import { z } from 'zod';
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const schema = z.object({
   email: z.string().email(),
@@ -58,7 +56,7 @@ export async function POST(req: NextRequest) {
   // Send confirmation email via Resend
   const suburbLabel = suburb ?? 'your area';
   try {
-    await resend.emails.send({
+    await getResend()?.emails.send({
       from: 'PlotDetect <info@plotdetect.com.au>',
       to: [email],
       subject: `We'll notify you when full solar analysis reaches ${suburbLabel}`,

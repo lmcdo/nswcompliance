@@ -1,12 +1,16 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "8672b224",
+  "commit_hash": "73f6fccd",
   "files": [
     ".githooks/pre-push",
     ".github/workflows/gates.yml",
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/app/api/satellite/solar-coverage-interest/route.ts",
     "frontend-nextjs/app/reports/solar-yield/page.tsx",
     "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "frontend-nextjs/lib/resend-client.ts",
     "scripts/baselines/doc-claim-baseline.json"
   ],
   "falsifiable_check": {
@@ -90,6 +94,13 @@
       "mitigated": true,
       "how": "Both new blocks use VAR=0 then COMMAND || VAR=$?, which makes the command part of a compound that set -e does not trip. Simulated under set -e: survived with R=2 and passed.",
       "repro": "bash -c \"set -e; python scripts/doc_claims.py --compare --strict; echo unreachable\" prints nothing after the tool"
+    },
+    {
+      "scenario": "The build gate added in this same commit runs in CI, where RESEND_API_KEY is unset.",
+      "what_happens": "Three routes constructed `new Resend(process.env.RESEND_API_KEY)` at MODULE scope. `new Resend(undefined)` throws \"Missing API key\" immediately, and Next imports every route to collect page data during `next build` — so importing any of the three failed the WHOLE production build. CI's first run of the new build gate failed on exactly this, in canibuildit/lead. Local and Vercel builds never caught it because both environments have the key in .env / project settings.",
+      "mitigated": true,
+      "how": "Extracted a lazy getResend() helper in frontend-nextjs/lib/resend-client.ts that returns null when the key is absent instead of throwing. All three call sites changed to `await getResend()?.emails.send(...)`, which resolves to undefined and sends nothing when the key is missing — the same 'do not send' behaviour the routes already wanted.",
+      "repro": "RESEND_API_KEY unset + npm run build -> 'Failed to collect page data for /api/canibuildit/lead', 'Missing API key'. This was CI's own first real signal from the new build gate — the gate caught a bug older than the gate itself."
     }
   ],
   "post_merge": {
