@@ -1,0 +1,157 @@
+{
+  "tier": "critical",
+  "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
+  "commit_hash": "4398049c",
+  "files": [
+    ".githooks/pre-push",
+    ".github/workflows/gates.yml",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-bushfire.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-flood-truth.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-granny-flat.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-shadow.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-solar-yield.test.ts",
+    "frontend-nextjs/__tests__/api/stripe/webhook-granny-flat-analysis.test.ts",
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/app/api/satellite/solar-coverage-interest/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/bushfire/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/conveyancing/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/flood-truth/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/granny-flat/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/pre-da-history/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/shadow/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/solar-yield/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/threat-radar-monitor/route.ts",
+    "frontend-nextjs/app/api/stripe/webhook/route.ts",
+    "frontend-nextjs/app/reports/solar-yield/page.tsx",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "frontend-nextjs/lib/resend-client.ts",
+    "frontend-nextjs/lib/stripe-client.ts",
+    "scripts/baselines/doc-claim-baseline.json"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npm run build",
+    "fails_when": "The Next production build fails to compile or typecheck. Unlike the existing type-check gate this is pass/fail, not a count against a baseline.",
+    "observed_red": "Reintroducing the apostrophe defect from #1003: BUILD_EXIT=1, 'x Expected'. Reintroducing the duplicate key from #1012: BUILD_EXIT=1, \"Duplicate identifier 'available_dev_types'\". Restored: BUILD_EXIT=0, 591 static pages generated. Both historical defects verified caught by the new gate."
+  },
+  "pre_impl": {
+    "existing_data": "Vercel deployment history: every deploy from #1003 (2026-08-25) through #1012 (today) shows Error. The last successful production deploy is f462b87, #1002. Fifteen PRs merged into an unbuildable main.",
+    "assumption_mismatch": "I first reported that NOTHING in CI runs a build. A grep found 'next build' in gates.yml and I corrected myself to say a build step existed - then checked the actual run: steps and found the matches were COMMENTS discussing why next build and next dev differ. The original claim was right; the correction was wrong. Listing executable steps rather than grepping the file settled it.",
+    "new_vs_existing": "The two source fixes restore deployability immediately. The gate applies to future PRs only - it cannot retroactively catch what already merged, which is why a day of deploys was lost silently.",
+    "external_source_error": "The external system here is Vercel, and its failure mode is the whole finding: a failed build does not take the site down. Vercel keeps serving the last good deployment, so visitors see a working site and the operator sees nothing wrong. There is no alert on a failed deploy. The only signal was the Deployments list reading Error thirteen times in a row, which someone has to look at. That is why it ran for a day.",
+    "frontend_type": "Both defects are frontend-only and neither is detectable at runtime, because neither file ever executes. The apostrophe is inside a Next `metadata` export parsed by SWC at build time; the duplicate key is a TypeScript interface erased before execution. Nothing a test renders or a server serves can reach them - only a compile can.",
+    "user_failure_mode": "Silent and total, but invisible. Every fix merged in the last day - the feedback alert, three cancelled-email routes, 26 dead links, the sitemap 404s, the battleaxe false positive, the DCP contradiction - stayed unreachable to users while appearing shipped. A user reporting a bug fixed yesterday would be right, and I would have told them it was fixed. The triangular-lot owner is still being shown a SEPP failure that does not exist."
+  },
+  "functions": [
+    {
+      "name": "DcpStructuredControls",
+      "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:119",
+      "input": "formerCouncil, optional devType, optional fallback node. Its StructuredControlsResponse interface is what carried the duplicate key.",
+      "output": "The controls card, a dev-type-scoped empty state, an unknown state, or the caller's fallback.",
+      "if_none": "Unchanged by this fix - the three-state handling from the previous PR is intact. This commit only removes a duplicated declaration of available_dev_types; the surviving one keeps the explanatory comment.",
+      "why": "The duplicate was introduced by my own previous fix and made the whole app unbuildable, so a purely additive-looking interface edit took production offline for everything downstream of it."
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A syntax or type error reaches main and every later deploy fails.",
+      "what_happens": "Every subsequent deploy fails. The site keeps serving the last good build, so nothing appears broken to a visitor and nothing alerts the operator - work simply stops reaching production. It ran for a day before being noticed by eye in the Vercel dashboard.",
+      "mitigated": true,
+      "how": "A production build now runs on every PR and on push to main.",
+      "repro": "Reintroduce either historical defect -> BUILD_EXIT=1"
+    },
+    {
+      "scenario": "The type-check gate is trusted to catch compile errors.",
+      "what_happens": "It cannot. It counts errors against a baseline of 677 and passed while reporting 8 - a fatal error inside the allowance is indistinguishable from the pre-existing debt it was set up to tolerate. A counting gate answers 'is this getting worse', never 'is this broken'.",
+      "mitigated": true,
+      "how": "The build gate is pass/fail and independent of the baseline.",
+      "repro": "The two defects both passed the type-check gate and both fail the build gate"
+    },
+    {
+      "scenario": "The build gate is treated as covering what the dev-server check covers.",
+      "what_happens": "They catch opposite failures. The existing check exists because next dev refuses route collisions that next build tolerates - #929 was a dev server dead for 20 days behind a green build. Dropping either leaves a class uncovered.",
+      "mitigated": true,
+      "how": "Added as a separate step, with a comment on each explaining why the other cannot replace it.",
+      "repro": "#929 was invisible to a build; these two were invisible to the dev-server check"
+    },
+    {
+      "scenario": "The build gate is added but the workflow YAML is malformed, so CI skips the step.",
+      "what_happens": "The gate appears present in the file and never runs. That is the same class of failure as the defect it guards - green checks over an unverified state - and would be harder to spot because someone has read the YAML and seen the step.",
+      "mitigated": true,
+      "how": "The workflow was parsed with yaml.safe_load and the step located by name in the parsed structure, not by grepping the text.",
+      "repro": "Break the indentation and the parse assertion fails before commit"
+    },
+    {
+      "scenario": "Someone raises the type-check baseline so a new error 'passes'.",
+      "what_happens": "Exactly what happened here: the counting gate reported 'passed: 8 errors (baseline 677)' while the build was fatally broken. Raising the baseline makes that gap wider and is indistinguishable from cleaning up debt.",
+      "mitigated": true,
+      "how": "The build gate is pass/fail and independent of any baseline, so no counting threshold can absorb a fatal error.",
+      "repro": "Both defects passed the counting gate and both fail the build gate"
+    },
+    {
+      "scenario": "The new pre-push build step is present but never actually fires on any push.",
+      "what_happens": "It first referenced MERGE_BASE, a variable this hook defines THIRTY LINES LATER for the cross-review step. It would have expanded to empty, the diff would error, the changed-file count would be 0, and the gate would report a skip on every push while looking installed. That is the same shape as the defect it exists to catch: a check reporting green over an unverified state.",
+      "mitigated": true,
+      "how": "The merge base is computed locally in the block, with a comment recording why. Verified on this branch: the step detects 2 changed frontend files, so it runs rather than skipping.",
+      "repro": "git diff --name-only \"\" HEAD errors and yields 0 changed files, so the else-branch never executes"
+    },
+    {
+      "scenario": "A check is built with a baseline and a strict mode and then wired into nothing at all.",
+      "what_happens": "scripts/doc_claims.py had --init, --compare and --strict for weeks. Its own docstring said: \"Reports; blocks nothing. --strict exists but is wired into no hook and no CI.\" It ran inside qa_gate as advisory observations, printed, and stopped nothing — so 13 new violations accumulated in the fortnight after the last baseline. A check that reports is indistinguishable from one that passes.",
+      "mitigated": true,
+      "how": "Wired into pre-push and gates.yml as a ratchet. Blocks on exit 1 (new claims that do not hold) and not on exit 2 (scan gaps), because 43 unmappable test imports make exit 2 permanent and a gate that always fires is a gate that gets removed.",
+      "repro": "Append a line to any tracked doc naming a python file under services/ that does not exist -> exit 1, with the path named in the output; remove the line -> exit 2, zero new. NOTE: the example path is described rather than written out here, because this report is itself scanned by the ratchet and spelling it literally made the check block this very commit — which is the check working, on its first run, against its own author."
+    },
+    {
+      "scenario": "A new pre-push block reads a command status while set -e is active.",
+      "what_happens": "set -e is on at line 26 of this hook. A bare command returning non-zero kills the script BEFORE the next line captures its status, so the block prints its header and nothing else, and the push fails with no message. Worse for the doc-claim tool, whose CLEAN result is exit 2 — a good outcome silently aborted the push twice before I found it.",
+      "mitigated": true,
+      "how": "Both new blocks use VAR=0 then COMMAND || VAR=$?, which makes the command part of a compound that set -e does not trip. Simulated under set -e: survived with R=2 and passed.",
+      "repro": "bash -c \"set -e; python scripts/doc_claims.py --compare --strict; echo unreachable\" prints nothing after the tool"
+    },
+    {
+      "scenario": "The build gate added in this same commit runs in CI, where RESEND_API_KEY is unset.",
+      "what_happens": "Three routes constructed `new Resend(process.env.RESEND_API_KEY)` at MODULE scope. `new Resend(undefined)` throws \"Missing API key\" immediately, and Next imports every route to collect page data during `next build` — so importing any of the three failed the WHOLE production build. CI's first run of the new build gate failed on exactly this, in canibuildit/lead. Local and Vercel builds never caught it because both environments have the key in .env / project settings.",
+      "mitigated": true,
+      "how": "Extracted a lazy getResend() helper in frontend-nextjs/lib/resend-client.ts that returns null when the key is absent instead of throwing. All three call sites changed to `await getResend()?.emails.send(...)`, which resolves to undefined and sends nothing when the key is missing — the same 'do not send' behaviour the routes already wanted.",
+      "repro": "RESEND_API_KEY unset + npm run build -> 'Failed to collect page data for /api/canibuildit/lead', 'Missing API key'. This was CI's own first real signal from the new build gate — the gate caught a bug older than the gate itself."
+    },
+    {
+      "scenario": "The lazy getResend() fix itself broke an existing test suite.",
+      "what_happens": "Next.js does not load .env.local under NODE_ENV=test (documented behaviour). RESEND_API_KEY lives only in frontend-nextjs/.env.local locally, so it was never visible to Jest even before this change -- but the OLD code called `new Resend(anything)` unconditionally, and since 'resend' is jest-mocked, the mock didn't care what key value it received. My fix correctly short-circuits on a falsy key BEFORE constructing anything, so in the test environment it now always returns null and the mocked constructor is never reached -- 5 tests in lead-abuse.test.ts failed asserting the mocked send was called.",
+      "mitigated": true,
+      "how": "Added `beforeAll(() => { process.env.RESEND_API_KEY = 'test-key'; })` to lead-abuse.test.ts, matching the pattern already used in feedback-notification.test.ts. Checked the other two suites that also mock 'resend' (lead-email.test.ts, webhook-granny-flat-analysis.test.ts) -- neither exercises the send path, so neither needed the same change. Full suite re-run: 94/94 suites, 1268/1268 tests passing.",
+      "repro": "git stash the beforeAll addition -> lead-abuse.test.ts: 5 failed, 'Expected number of calls: 1, Received number of calls: 0' on emailSendMock"
+    },
+    {
+      "scenario": "RESEND_API_KEY is accidentally absent or misconfigured in a real production deploy.",
+      "what_happens": "Sol cross-review [HIGH, confidence 0.99] on the previous commit: getResend() returning null makes lead capture, granny-flat results and solar-interest emails silently no-op forever with zero signal anywhere -- the request succeeds, the customer is never emailed, and nobody would know. Distinct from notifyOperator's sibling case (an internal alert on already-committed feedback) because these three are CUSTOMER-facing promises, not internal notifications.",
+      "mitigated": true,
+      "how": "Kept the no-throw behaviour deliberately (the alternative -- throwing on a missing key -- would 500 the entire customer request for a config problem the caller didn't cause, reintroducing the exact 'one failure crashes unrelated business logic' pattern fixed earlier today in #1007/#1008). Added a console.error inside getResend() so a missing key is visible in server logs while the request still succeeds. This deliberately diverges from notifyOperator, which does not log on a missing key -- documented in the function's own docstring, with the reasoning for the divergence.",
+      "repro": "Sol's own finding names the exact scenario; verified no regression by re-running the full suite (94/94 suites, 1268/1268 tests) and npm run build after adding the log line."
+    },
+    {
+      "scenario": "The same import-time-crash defect existed for Stripe, in NINE more files, and was missed in the earlier Resend-only fix.",
+      "what_happens": "The build gate's own CI run (after re-registering the offline self-hosted runner) failed with 'Neither apiKey nor config.authenticator provided' / 'Failed to collect page data for /api/stripe/checkout/flood-truth' -- the identical class of bug as the Resend one, but STRIPE_SECRET_KEY, across all 8 checkout routes AND the webhook route (which ALSO had its own separate module-scope Resend instance, a tenth instance of the original bug missed when only three routes were searched).",
+      "mitigated": true,
+      "how": "Added frontend-nextjs/lib/stripe-client.ts (getStripe(), same lazy-null pattern as getResend()) and repointed all 9 Stripe call sites. Unlike Resend, Stripe IS the purpose of these routes, so every checkout route now checks `if (!stripe) return NextResponse.json({error:'Payment not configured'}, {status:500})` -- reusing the EXACT existing convention already in each file for a missing priceId, rather than inventing a new response shape. The webhook cannot verify a signature at all without Stripe, so it checks BEFORE attempting verification and returns 500 (tells Stripe to retry) rather than 400 (Stripe treats as permanent rejection, would be wrong -- the signature might be fine, we just can't check it). The webhook's Resend instance was migrated to the shared getResend() helper with optional chaining at all 6 send call sites, matching its existing swallow-and-log convention.",
+      "repro": "CI run 33007401045: Jest job failed post-Jest-pass on 'Failed to collect page data for /api/stripe/checkout/flood-truth', 'Error: Neither apiKey nor config.authenticator provided'. Fixed and re-verified: full local build succeeds, full jest suite 94/94 suites, 1268/1268 tests."
+    },
+    {
+      "scenario": "Sol cross-review [HIGH] on the Stripe commit: RESEND_API_KEY absent inside the webhook's own email-producing handlers.",
+      "what_happens": "`await getResend()?.emails.send(...)` resolved to undefined with NO exception when the key was absent -- skipping the handler's existing try/catch entirely. For 4 of 6 handlers (handleGrannyFlatReport, handleSatelliteReport x4 products, handleConveyancingReport, handlePreDAHistoryReport) the email IS the only delivery mechanism for an already-generated, already-paid-for PDF: the customer paid, the PDF was generated, and they would never receive it, with zero signal anywhere, while the webhook still told Stripe `received: true` (no retry).",
+      "mitigated": true,
+      "how": "Each of the 6 send sites now resolves getResend() explicitly and throws inside the try block if null, funnelling a missing key into the SAME already-deliberate catch path this file already uses for a genuine Resend error -- logged via the existing console.error, response stays 200/received. This preserves the file's own documented design ('Email failure is logged but we return 200 -- PDF was generated, retry would re-charge') rather than fighting it with a new response-code decision. Proven with a dedicated test: deletes RESEND_API_KEY, asserts the handler's own catch fires with the specific error message (not just getResend()'s generic log), and forced RED by reverting one call site to the vulnerable `?.` pattern first -- confirmed it fails on the missing specific-error assertion, then restored and reconfirmed green.",
+      "repro": "frontend-nextjs/__tests__/api/stripe/webhook-granny-flat-analysis.test.ts: 'a missing RESEND_API_KEY is logged, not silently swallowed'. Reverting the fix at one call site: 1 failed, 6 passed in that suite."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - confirm the Vercel production deploy for this merge reports Ready, not Error. A day of merged work goes live with it, so the deployed site will change substantially in one step."
+  }
+}

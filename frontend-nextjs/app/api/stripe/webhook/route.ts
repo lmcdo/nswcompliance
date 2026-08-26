@@ -13,13 +13,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { Resend } from 'resend';
+import { getStripe } from '@/lib/stripe-client';
+import { getResend } from '@/lib/resend-client';
 // Stripe requires the raw body for signature verification — disable body parsing
 export const dynamic = 'force-dynamic';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -27,6 +24,17 @@ export async function POST(req: NextRequest) {
 
   if (!sig || !webhookSecret) {
     return NextResponse.json({ error: 'Missing signature or webhook secret' }, { status: 400 });
+  }
+
+  // Unlike the checkout routes (config error -> 400/500 to the caller who can
+  // retry after fixing config), a webhook that can't verify because Stripe
+  // itself is unconfigured must NOT be told "signature invalid" — that is
+  // misleading, and Stripe will retry a 400 as a permanent rejection. A 500
+  // here tells Stripe to retry, which is correct once STRIPE_SECRET_KEY is set.
+  const stripe = getStripe();
+  if (!stripe) {
+    console.error('[stripe/webhook] STRIPE_SECRET_KEY not set — cannot verify webhook');
+    return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
   }
 
   let event: Stripe.Event;
@@ -118,6 +126,16 @@ async function handleThreatRadarMonitor(
 
   // Send confirmation email
   try {
+    // Sol [HIGH]: getResend()?.emails.send(...) let a missing key resolve
+    // to undefined with NO exception — skipping this catch entirely, so a
+    // paid customer whose PDF was already generated would silently never
+    // receive it, with the webhook still telling Stripe 'received: true'
+    // (no retry). Throwing here funnels a missing key into the SAME
+    // already-deliberate path as a genuine Resend error below — logged,
+    // 200 returned (see the retry-would-re-charge comment on this file),
+    // rather than a silent no-op with no signal at all.
+    const resend = getResend();
+    if (!resend) throw new Error('RESEND_API_KEY not configured');
     await resend.emails.send({
       from: 'PlotDetect <info@plotdetect.com.au>',
       replyTo: 'hello@plotdetect.com.au',
@@ -175,6 +193,16 @@ async function handleGrannyFlatAnalysis(
   const resultsUrl = `${baseUrl}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}`;
 
   try {
+    // Sol [HIGH]: getResend()?.emails.send(...) let a missing key resolve
+    // to undefined with NO exception — skipping this catch entirely, so a
+    // paid customer whose PDF was already generated would silently never
+    // receive it, with the webhook still telling Stripe 'received: true'
+    // (no retry). Throwing here funnels a missing key into the SAME
+    // already-deliberate path as a genuine Resend error below — logged,
+    // 200 returned (see the retry-would-re-charge comment on this file),
+    // rather than a silent no-op with no signal at all.
+    const resend = getResend();
+    if (!resend) throw new Error('RESEND_API_KEY not configured');
     await resend.emails.send({
       from: 'PlotDetect <info@plotdetect.com.au>',
       replyTo: 'hello@plotdetect.com.au',
@@ -256,6 +284,16 @@ async function handleGrannyFlatReport(
   const filename = `granny-flat-report-${report_id.slice(0, 8)}.pdf`;
 
   try {
+    // Sol [HIGH]: getResend()?.emails.send(...) let a missing key resolve
+    // to undefined with NO exception — skipping this catch entirely, so a
+    // paid customer whose PDF was already generated would silently never
+    // receive it, with the webhook still telling Stripe 'received: true'
+    // (no retry). Throwing here funnels a missing key into the SAME
+    // already-deliberate path as a genuine Resend error below — logged,
+    // 200 returned (see the retry-would-re-charge comment on this file),
+    // rather than a silent no-op with no signal at all.
+    const resend = getResend();
+    if (!resend) throw new Error('RESEND_API_KEY not configured');
     await resend.emails.send({
       from: 'PlotDetect <info@plotdetect.com.au>',
       replyTo: 'hello@plotdetect.com.au',
@@ -367,6 +405,16 @@ async function handleSatelliteReport(
   const filename = `${cfg.filePrefix}-${report_id.slice(0, 8)}.pdf`;
 
   try {
+    // Sol [HIGH]: getResend()?.emails.send(...) let a missing key resolve
+    // to undefined with NO exception — skipping this catch entirely, so a
+    // paid customer whose PDF was already generated would silently never
+    // receive it, with the webhook still telling Stripe 'received: true'
+    // (no retry). Throwing here funnels a missing key into the SAME
+    // already-deliberate path as a genuine Resend error below — logged,
+    // 200 returned (see the retry-would-re-charge comment on this file),
+    // rather than a silent no-op with no signal at all.
+    const resend = getResend();
+    if (!resend) throw new Error('RESEND_API_KEY not configured');
     await resend.emails.send({
       from: 'PlotDetect <info@plotdetect.com.au>',
       replyTo: 'hello@plotdetect.com.au',
@@ -456,6 +504,16 @@ async function handleConveyancingReport(
   const filename = `conveyancing-report-${report_id.slice(0, 8)}.pdf`;
 
   try {
+    // Sol [HIGH]: getResend()?.emails.send(...) let a missing key resolve
+    // to undefined with NO exception — skipping this catch entirely, so a
+    // paid customer whose PDF was already generated would silently never
+    // receive it, with the webhook still telling Stripe 'received: true'
+    // (no retry). Throwing here funnels a missing key into the SAME
+    // already-deliberate path as a genuine Resend error below — logged,
+    // 200 returned (see the retry-would-re-charge comment on this file),
+    // rather than a silent no-op with no signal at all.
+    const resend = getResend();
+    if (!resend) throw new Error('RESEND_API_KEY not configured');
     await resend.emails.send({
       from: 'PlotDetect <info@plotdetect.com.au>',
       replyTo: 'hello@plotdetect.com.au',
@@ -528,6 +586,16 @@ async function handlePreDAHistoryReport(
   const filename = `pre-da-history-${report_id.slice(0, 8)}.pdf`;
 
   try {
+    // Sol [HIGH]: getResend()?.emails.send(...) let a missing key resolve
+    // to undefined with NO exception — skipping this catch entirely, so a
+    // paid customer whose PDF was already generated would silently never
+    // receive it, with the webhook still telling Stripe 'received: true'
+    // (no retry). Throwing here funnels a missing key into the SAME
+    // already-deliberate path as a genuine Resend error below — logged,
+    // 200 returned (see the retry-would-re-charge comment on this file),
+    // rather than a silent no-op with no signal at all.
+    const resend = getResend();
+    if (!resend) throw new Error('RESEND_API_KEY not configured');
     await resend.emails.send({
       from: 'PlotDetect <info@plotdetect.com.au>',
       replyTo: 'hello@plotdetect.com.au',

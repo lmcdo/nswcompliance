@@ -40,14 +40,15 @@ interface ControlCategory {
 }
 
 interface StructuredControlsResponse {
-  /** Dev types this council DOES have controls for. Present when the requested
-   *  type returned nothing, and the only field that answers the COUNCIL-level
-   *  question - has_controls is scoped to the requested dev_type alone. */
-  available_dev_types?: string[];
   council: string;
   dev_type: string;
   has_controls: boolean;
   dcp_name: string | null;
+  /** Dev types this council DOES have controls for. The only field that answers
+   *  the COUNCIL-level question — has_controls is scoped to the REQUESTED
+   *  dev_type alone, so it cannot distinguish "this council has nothing" from
+   *  "nothing for this type". Absent is not the same as empty: see the
+   *  undefined branch below. */
   available_dev_types?: string[];
   categories: ControlCategory[];
 }

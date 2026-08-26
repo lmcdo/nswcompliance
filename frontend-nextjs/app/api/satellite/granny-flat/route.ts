@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import { getResend } from '@/lib/resend-client';
 import { createClient } from '@supabase/supabase-js';
 import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
 import {
@@ -14,7 +14,6 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // NSW Standard Instrument zone names (source: Standard Instrument (Local Environmental Plans) Order 2006)
 // These are official zone identifiers, not regulatory controls — safe to keep as a display lookup.
@@ -588,7 +587,7 @@ export async function POST(request: NextRequest) {
         ? `Max floor area: <strong>${maxArea ?? '—'} m²</strong> (CDC pathway)`
         : result.confidence_reason ?? 'Does not meet SEPP Housing 2021 criteria.';
 
-      await resend.emails.send({
+      await getResend()?.emails.send({
         from: 'Can I Build It <info@plotdetect.com.au>',
         to: [notification_email],
         subject: `Your granny flat result — ${reportAddress}`,
