@@ -21,6 +21,16 @@ const nextConfig = {
      { source: '/solar-yield', destination: '/reports/solar-yield', permanent: false },
      { source: '/shadow-check', destination: '/reports/shadow', permanent: false },
      { source: '/threat-radar', destination: '/reports/threat-radar', permanent: false },
+     // app/sitemap.ts advertises /shadow and /solar-potential, but the clean
+     // URLs above are /shadow-check and /solar-yield - different slugs, so the
+     // two the sitemap names 404'd. Measured 2026-08-26: both direct 404, while
+     // /flood-risk and /threat-radar 307 correctly. A sitemap entry that 404s is
+     // worse than an absent one: it spends crawl budget and reports a soft 404.
+     // Redirecting rather than delisting keeps any value already accrued on the
+     // advertised URL. __tests__/sitemap-urls-resolve.test.ts now fails if a
+     // static sitemap URL has neither a page nor a redirect.
+     { source: '/shadow', destination: '/reports/shadow', permanent: false },
+     { source: '/solar-potential', destination: '/reports/solar-yield', permanent: false },
      // /partner retired — embed program moved to /for/builders
      { source: '/partner', destination: '/for/builders', permanent: true },
    ];
