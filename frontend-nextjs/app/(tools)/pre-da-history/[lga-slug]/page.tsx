@@ -26,7 +26,7 @@ export function generateMetadata(
     openGraph: {
       title: `Pre-DA Site History in ${lga.name} — Free NSW Property Check`,
       description: `Satellite change detection + DA history for any ${lga.name} address. Unapproved works, vegetation clearing, flood/fire events. No login required.`,
-      url: `https://plotdetect.com.au/pre-da-history/${lga.slug}`,
+      url: `https://verify.plotdetect.com.au/pre-da-history/${lga.slug}`,
       siteName: 'plotdetect.com.au',
       type: 'website',
     },

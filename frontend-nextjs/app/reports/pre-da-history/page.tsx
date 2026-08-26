@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Prior Development Activity — Satellite change detection for any NSW address',
     description: 'Eight years of satellite imagery analysed for physical changes, cross-referenced with DA records, heritage overlays, and natural disaster events. Free to run.',
-    url: 'https://plotdetect.com.au/reports/pre-da-history',
+    url: 'https://verify.plotdetect.com.au/reports/pre-da-history',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },

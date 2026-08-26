@@ -1,0 +1,96 @@
+{
+  "tier": "standard",
+  "justification": "26 links across 23 files pointed app routes at a domain that does not serve them. One is emailed to customers, one is a JSON-LD logo, and several are canonical URLs that tell search engines where the real page lives.",
+  "commit_hash": "9f1225b3",
+  "files": [
+    "frontend-nextjs/__tests__/app-links-use-verify-subdomain.test.ts",
+    "frontend-nextjs/app/(tools)/bushfire/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/pre-da-history/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/app/embed/flood/page.tsx",
+    "frontend-nextjs/app/embed/granny-flat/page.tsx",
+    "frontend-nextjs/app/embed/shadow/page.tsx",
+    "frontend-nextjs/app/embed/solar-yield/page.tsx",
+    "frontend-nextjs/app/embed/threat-radar/page.tsx",
+    "frontend-nextjs/app/for/builders/page.tsx",
+    "frontend-nextjs/app/glossary/page.tsx",
+    "frontend-nextjs/app/layout.tsx",
+    "frontend-nextjs/app/partner/page.tsx",
+    "frontend-nextjs/app/planning-standards/page.tsx",
+    "frontend-nextjs/app/reports/bushfire/[id]/page.tsx",
+    "frontend-nextjs/app/reports/bushfire/page.tsx",
+    "frontend-nextjs/app/reports/conveyancing/page.tsx",
+    "frontend-nextjs/app/reports/flood/page.tsx",
+    "frontend-nextjs/app/reports/pre-da-history/page.tsx",
+    "frontend-nextjs/app/reports/shadow/page.tsx",
+    "frontend-nextjs/app/reports/solar-yield/page.tsx",
+    "frontend-nextjs/app/reports/threat-radar/page.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/app-links-use-verify-subdomain.test.ts",
+    "fails_when": "Any tracked source file contains https://plotdetect.com.au/ followed by a path, OR a JSON-LD identity url names the app subdomain. It reads the file list from git rather than the filesystem, so build output and scratch files are out of scope.",
+    "observed_red": "Reintroducing the granny-flat customer link: 1 failed, 3 passed. Over-correcting one JSON-LD identity url to the app subdomain: 1 failed, 3 passed. Baseline and restored both 4 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured live on 2026-08-26, both domains, every distinct path: 19 paths tested. Every one 404s on the apex. 13 return 200 on verify.plotdetect.com.au. /bushfire/ and /pre-da-history/ are prefixes that 404 bare but return 200 with a slug appended. The middleware was read to confirm it does not gate routes per host - all domains share one build and only '/' is rewritten - so the 404s are not host restrictions.",
+    "assumption_mismatch": "Two assumptions were wrong and both were caught by measuring. First, I concluded from the apex 404ing that the app lives on canibuildit.com.au; it does serve the app and returns 200, which made the wrong answer look confirmed. The domain doc already said to use the subdomains. Second, I assumed the rule was 'replace the host everywhere' - but layout.tsx uses the bare apex as the JSON-LD Organization url, which is correct and would have been destroyed by a blanket replace. The rule is host-plus-path, not host.",
+    "new_vs_existing": "Applies at next deploy. Emails and reports already sent carry the dead link and cannot be corrected. Canonical URLs already crawled will re-resolve on the next crawl."
+  },
+  "functions": [
+    {
+      "name": "trackedFiles",
+      "file_line": "frontend-nextjs/__tests__/app-links-use-verify-subdomain.test.ts:26",
+      "input": "No arguments. Runs git ls-files over frontend-nextjs, services and scripts, with every GIT_* variable stripped from the environment.",
+      "output": "Repo-relative paths of tracked .ts, .tsx, .py and .md files.",
+      "if_none": "An empty list would make the offender scan pass vacuously, so a separate assertion requires it to be non-empty before the scan is trusted.",
+      "why": "git is the population that ships. Scanning the filesystem would sweep in build output and untracked scratch files, and a guard was already burned once this month by policing a different population from the one that mattered. GIT_* is stripped because hooks export GIT_DIR, which overrides cwd."
+    }
+  ],
+  "values": [
+    {
+      "name": "APEX_WITH_PATH",
+      "value": "/https:\\/\\/plotdetect\\.com\\.au\\/(?=[A-Za-z0-9])/",
+      "read_at": "Module load of the test file.",
+      "if_missing": "Not applicable - a literal.",
+      "why": "The lookahead is the whole point. A bare https://plotdetect.com.au is the organisation's own site and is a true statement in the JSON-LD identity block; the same host followed by a path is an app route the apex does not serve. Matching the host alone would have deleted a correct claim."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A customer is emailed their granny flat result.",
+      "what_happens": "The link went to the apex, which 404s. They were told the result was ready and sent nowhere. Combined with the unawaited send fixed in #1008, this product had two independent ways to fail the same customer.",
+      "mitigated": true,
+      "how": "The link now points at verify.plotdetect.com.au, measured 200.",
+      "repro": "Reintroduce the apex link -> 1 failed, 3 passed"
+    },
+    {
+      "scenario": "Search engines are told where a page lives.",
+      "what_happens": "Canonical URLs and the JSON-LD SearchAction named the apex. That is worse than a dead click - it actively tells a crawler the real page is at an address that 404s.",
+      "mitigated": true,
+      "how": "All canonical and structured-data app URLs now use the app subdomain.",
+      "repro": "Same guard covers every tracked file, not just the route"
+    },
+    {
+      "scenario": "The fix over-reaches and rewrites the organisation identity.",
+      "what_happens": "layout.tsx names the bare apex as the Organization url, which is correct - that IS the company's website. A blanket host replace would have turned a true statement false.",
+      "mitigated": true,
+      "how": "The pattern requires a path after the host, and a test asserts no identity url names the app subdomain.",
+      "repro": "Point one identity url at verify -> 1 failed, 3 passed"
+    },
+    {
+      "scenario": "The guard sees only half of what it guards.",
+      "what_happens": "The first version asserted merely that SOME bare org url survived. layout.tsx has TWO, so mutating one still passed - the guard could not detect the damage it existed to prevent.",
+      "mitigated": true,
+      "how": "Found by forcing the mutation and getting an unexpected pass. The assertion now inspects every identity line rather than looking for one survivor.",
+      "repro": "Documented above - the weak version passed MUT-B, the current one fails it"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Two paths are broken independently of domain and are NOT fixed here: /shadow-detector is not a route at all, and /solar-potential 404s on both domains despite the route folder existing. Both are also listed in the sitemap, so the sitemap currently advertises dead pages. Separate issue, needs its own look."
+  }
+}

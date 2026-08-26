@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'NSW Bushfire Pre-Screen — Free for any address',
     description: 'BFPL category, BAL band estimate, and development implications. Takes 15 seconds. No login required.',
-    url: 'https://plotdetect.com.au/reports/bushfire',
+    url: 'https://verify.plotdetect.com.au/reports/bushfire',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },

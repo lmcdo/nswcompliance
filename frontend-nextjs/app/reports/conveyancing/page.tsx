@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'NSW Conveyancing Planning Disclosure — Live Government Data',
     description: 'LEP zone, height, FSR, environmental overlays, heritage, SEPP overlays, development feasibility, and DCP setback controls — queried live from the NSW Planning Portal for any address.',
-    url: 'https://plotdetect.com.au/reports/conveyancing',
+    url: 'https://verify.plotdetect.com.au/reports/conveyancing',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },
