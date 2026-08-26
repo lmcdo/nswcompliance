@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "b7cf8c3f",
+  "commit_hash": "2b5fffe9",
   "files": [
     ".githooks/pre-push",
     ".github/workflows/gates.yml",
@@ -139,6 +139,13 @@
       "mitigated": true,
       "how": "Added frontend-nextjs/lib/stripe-client.ts (getStripe(), same lazy-null pattern as getResend()) and repointed all 9 Stripe call sites. Unlike Resend, Stripe IS the purpose of these routes, so every checkout route now checks `if (!stripe) return NextResponse.json({error:'Payment not configured'}, {status:500})` -- reusing the EXACT existing convention already in each file for a missing priceId, rather than inventing a new response shape. The webhook cannot verify a signature at all without Stripe, so it checks BEFORE attempting verification and returns 500 (tells Stripe to retry) rather than 400 (Stripe treats as permanent rejection, would be wrong -- the signature might be fine, we just can't check it). The webhook's Resend instance was migrated to the shared getResend() helper with optional chaining at all 6 send call sites, matching its existing swallow-and-log convention.",
       "repro": "CI run 33007401045: Jest job failed post-Jest-pass on 'Failed to collect page data for /api/stripe/checkout/flood-truth', 'Error: Neither apiKey nor config.authenticator provided'. Fixed and re-verified: full local build succeeds, full jest suite 94/94 suites, 1268/1268 tests."
+    },
+    {
+      "scenario": "Sol cross-review [HIGH] on the Stripe commit: RESEND_API_KEY absent inside the webhook's own email-producing handlers.",
+      "what_happens": "`await getResend()?.emails.send(...)` resolved to undefined with NO exception when the key was absent -- skipping the handler's existing try/catch entirely. For 4 of 6 handlers (handleGrannyFlatReport, handleSatelliteReport x4 products, handleConveyancingReport, handlePreDAHistoryReport) the email IS the only delivery mechanism for an already-generated, already-paid-for PDF: the customer paid, the PDF was generated, and they would never receive it, with zero signal anywhere, while the webhook still told Stripe `received: true` (no retry).",
+      "mitigated": true,
+      "how": "Each of the 6 send sites now resolves getResend() explicitly and throws inside the try block if null, funnelling a missing key into the SAME already-deliberate catch path this file already uses for a genuine Resend error -- logged via the existing console.error, response stays 200/received. This preserves the file's own documented design ('Email failure is logged but we return 200 -- PDF was generated, retry would re-charge') rather than fighting it with a new response-code decision. Proven with a dedicated test: deletes RESEND_API_KEY, asserts the handler's own catch fires with the specific error message (not just getResend()'s generic log), and forced RED by reverting one call site to the vulnerable `?.` pattern first -- confirmed it fails on the missing specific-error assertion, then restored and reconfirmed green.",
+      "repro": "frontend-nextjs/__tests__/api/stripe/webhook-granny-flat-analysis.test.ts: 'a missing RESEND_API_KEY is logged, not silently swallowed'. Reverting the fix at one call site: 1 failed, 6 passed in that suite."
     }
   ],
   "post_merge": {

@@ -180,4 +180,39 @@ describe('webhook granny-flat-analysis product', () => {
     expect(pdfCalls).toHaveLength(0);
     fetchSpy.mockRestore();
   });
+
+  it('a missing RESEND_API_KEY is logged, not silently swallowed (Sol HIGH)', async () => {
+    // Before this fix, `getResend()?.emails.send(...)` resolved to undefined
+    // with NO exception when the key was absent, skipping the handler's own
+    // catch block entirely: a paid customer's already-generated PDF would
+    // never be emailed, with zero signal anywhere, while the webhook still
+    // told Stripe the event was handled (no retry). The fix funnels a missing
+    // key into the SAME catch path as a real Resend error, so it is logged.
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const savedKey = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+
+    mockConstructEvent.mockReturnValueOnce(
+      buildEvent({
+        product: 'granny-flat-analysis',
+        job_id: 'job-uuid-999',
+        address: '1 Test St Sydney NSW 2000',
+        email: 'test@test.com',
+      })
+    );
+    const res = await POST(makeWebhookReq({}));
+
+    // Matches this file's own established convention (see the
+    // retry-would-re-charge comment in the route): a delivery failure is
+    // logged, not retried, so the response stays 200/received.
+    expect(res.status).toBe(200);
+    expect(mockSendEmail).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('granny-flat-analysis email error'),
+      expect.objectContaining({ message: 'RESEND_API_KEY not configured' }),
+    );
+
+    process.env.RESEND_API_KEY = savedKey;
+    errorSpy.mockRestore();
+  });
 });
