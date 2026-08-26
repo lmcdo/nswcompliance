@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "c34d472d",
+  "commit_hash": "23e657b1",
   "files": [
     ".githooks/pre-push",
     ".github/workflows/gates.yml",
@@ -82,7 +82,7 @@
       "what_happens": "scripts/doc_claims.py had --init, --compare and --strict for weeks. Its own docstring said: \"Reports; blocks nothing. --strict exists but is wired into no hook and no CI.\" It ran inside qa_gate as advisory observations, printed, and stopped nothing — so 13 new violations accumulated in the fortnight after the last baseline. A check that reports is indistinguishable from one that passes.",
       "mitigated": true,
       "how": "Wired into pre-push and gates.yml as a ratchet. Blocks on exit 1 (new claims that do not hold) and not on exit 2 (scan gaps), because 43 unmappable test imports make exit 2 permanent and a gate that always fires is a gate that gets removed.",
-      "repro": "Add a doc line naming services/this_file_does_not_exist.py -> exit 1, named in the output; remove it -> exit 2"
+      "repro": "Append a line to any tracked doc naming a python file under services/ that does not exist -> exit 1, with the path named in the output; remove the line -> exit 2, zero new. NOTE: the example path is described rather than written out here, because this report is itself scanned by the ratchet and spelling it literally made the check block this very commit — which is the check working, on its first run, against its own author."
     }
   ],
   "post_merge": {
