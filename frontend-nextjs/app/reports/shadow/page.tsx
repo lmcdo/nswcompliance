@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Overshadowing Check — Will that development overshadow your home?',
     description: 'Winter solstice shadow analysis for any NSW address. Check the impact of a proposed building before you object.',
-    url: 'https://plotdetect.com.au/reports/shadow',
+    url: 'https://verify.plotdetect.com.au/reports/shadow',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },

@@ -310,7 +310,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
           </p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
             Your upzoning result stays available — run it again any time at
-            <a href="https://plotdetect.com.au/tools/upzoning-check" style="color: #0d9488;">plotdetect.com.au/tools/upzoning-check</a>.
+            <a href="https://verify.plotdetect.com.au/tools/upzoning-check" style="color: #0d9488;">plotdetect.com.au/tools/upzoning-check</a>.
           </p>
           <p style="color: #999; font-size: 12px; line-height: 1.6;">
             PlotDetect may receive a referral fee from the builder. Your details are

@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `Bushfire Pre-Screen — ${address}`,
       description: `BFPL status, BAL band estimate, and development implications for ${address}.`,
-      url: `https://plotdetect.com.au/reports/bushfire/${id}`,
+      url: `https://verify.plotdetect.com.au/reports/bushfire/${id}`,
       siteName: 'plotdetect.com.au',
       type: 'website',
     },

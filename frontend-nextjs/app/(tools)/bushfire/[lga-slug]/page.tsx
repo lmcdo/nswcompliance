@@ -26,7 +26,7 @@ export function generateMetadata(
     openGraph: {
       title: `Bushfire Risk in ${lga.name} — Free NSW Property Check`,
       description: `Check bush fire prone land status, BAL band, and RFS referral requirements for any ${lga.name} address. No login required.`,
-      url: `https://plotdetect.com.au/bushfire/${lga.slug}`,
+      url: `https://verify.plotdetect.com.au/bushfire/${lga.slug}`,
       siteName: 'plotdetect.com.au',
       type: 'website',
     },

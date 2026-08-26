@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Rooftop Solar Potential — Free for any NSW address',
     description: 'Google's roof geometry and annual yield figure for your address, with published system losses applied. Takes 60 seconds.',
-    url: 'https://plotdetect.com.au/reports/solar-yield',
+    url: 'https://verify.plotdetect.com.au/reports/solar-yield',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },

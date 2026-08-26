@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'What\'s being built near you in NSW?',
     description: 'Active DAs and CDCs within 500m of your address. Free check + $9.99/month monitoring alerts.',
-    url: 'https://plotdetect.com.au/reports/threat-radar',
+    url: 'https://verify.plotdetect.com.au/reports/threat-radar',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },

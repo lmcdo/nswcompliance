@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     title: 'NSW Planning Glossary — Regulatory Definitions',
     description:
       'Definitions of NSW planning terms from LEPs, DCPs, and SEPPs with source citations.',
-    url: 'https://plotdetect.com.au/glossary',
+    url: 'https://verify.plotdetect.com.au/glossary',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },
@@ -116,11 +116,11 @@ export default async function GlossaryPage() {
               '@type': 'DefinedTerm',
               name: d.term,
               description: d.definition_summary || d.definition_text,
-              url: `https://plotdetect.com.au/glossary#term-${d.id}`,
+              url: `https://verify.plotdetect.com.au/glossary#term-${d.id}`,
               inDefinedTermSet: {
                 '@type': 'DefinedTermSet',
                 name: 'NSW Planning Glossary',
-                url: 'https://plotdetect.com.au/glossary',
+                url: 'https://verify.plotdetect.com.au/glossary',
               },
             }),
           }}

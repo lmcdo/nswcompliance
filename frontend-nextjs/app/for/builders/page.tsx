@@ -126,7 +126,7 @@ export default function BuildersPage() {
                 <p className="text-xs font-medium text-gray-500 mb-1.5">Copy this snippet:</p>
                 <pre className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-700 overflow-x-auto leading-relaxed whitespace-pre-wrap break-all">
 {`<iframe
-  src="https://plotdetect.com.au/embed/${tool.slug}?ref=YOUR_REF"
+  src="https://verify.plotdetect.com.au/embed/${tool.slug}?ref=YOUR_REF"
   width="100%"
   height="600"
   frameborder="0"

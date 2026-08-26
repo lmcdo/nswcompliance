@@ -66,7 +66,7 @@ export default function RootLayout({
        '@type': 'Organization',
        name: 'PlotDetect',
        url: 'https://plotdetect.com.au',
-       logo: 'https://plotdetect.com.au/plotdetect-logo.png',
+       logo: 'https://verify.plotdetect.com.au/plotdetect-logo.png',
        description: 'NSW property intelligence platform. Planning controls, flood risk, bushfire screening, climate risk, and compliance verification from live government data.',
        areaServed: {
          '@type': 'State',
@@ -88,7 +88,7 @@ export default function RootLayout({
          '@type': 'SearchAction',
          target: {
            '@type': 'EntryPoint',
-           urlTemplate: 'https://plotdetect.com.au/reports/flood?address={search_term_string}',
+           urlTemplate: 'https://verify.plotdetect.com.au/reports/flood?address={search_term_string}',
          },
          'query-input': 'required name=search_term_string',
        },

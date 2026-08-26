@@ -580,7 +580,7 @@ export async function POST(request: NextRequest) {
       const rent: number | null = result.estimated_weekly_rent_aud ?? null;
       const reportAddress: string = result.address ?? address ?? '';
       const addressParam = encodeURIComponent(reportAddress);
-      const reportUrl = `https://plotdetect.com.au/reports/granny-flat?jobId=${detect_id}&address=${addressParam}`;
+      const reportUrl = `https://verify.plotdetect.com.au/reports/granny-flat?jobId=${detect_id}&address=${addressParam}`;
 
       const verdictColor = eligible ? '#0f766e' : '#dc2626';
       const verdictLabel = eligible ? 'Eligible' : 'Not eligible';
