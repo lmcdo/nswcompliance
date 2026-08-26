@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "A false positive in lot-shape detection fed a regulatory eligibility test, so a triangular lot was shown a SEPP Housing failure based on an access way that does not exist.",
+  "commit_hash": "48837b02",
+  "files": [
+    "services/lot_dimensions.py",
+    "tests/test_battleaxe_confusable_shapes.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_battleaxe_confusable_shapes.py -q",
+    "fails_when": "A triangle or a wedge is reported as a battleaxe, or a genuine battleaxe (parallel handle, or a handle tapering 5.0m to 4.5m) stops being detected.",
+    "observed_red": "Removing the taper check: 2 failed, 3 passed - both confusable shapes come back. Tightening the threshold to 0.95: 1 failed, 4 passed - the irregular real handle is rejected. Bounded from both sides. Baseline and restored both 5 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Reproduced synthetically rather than against one property, so the finding does not depend on a single cadastre. A 60x60 triangle was detected as a battleaxe with a 1.5m x 24m access way. Measured min/max width within the narrow run: triangle 0.07, real 4m parallel handle 1.00, handle tapering 5.0m to 4.5m 0.91.",
+    "assumption_mismatch": "The detector was assumed to identify a handle. It identifies NARROWNESS, and a triangle's pointed end is narrow. Every existing criterion passed on a triangle - below the width threshold, consecutive, a minority of lot length - because all of them measure the same single property from different angles. Adding more of those tests would never have caught it.",
+    "new_vs_existing": "Detection is computed per request from geometry; nothing is stored, so no backfill is needed and previously mislabelled lots correct themselves on next view."
+  },
+  "functions": [
+    {
+      "name": "_detect_battleaxe",
+      "file_line": "services/lot_dimensions.py:325",
+      "input": "Polygon points in real metres.",
+      "output": "Handle and head dimensions, or None when the lot is not a battleaxe. Now returns None for a taper.",
+      "if_none": "None means not a battleaxe, and callers fall back to cadastral frontage. That path was already exercised; the change only widens which shapes reach it.",
+      "why": "Adds a parallelism test on the narrow run, so a handle must be roughly constant-width rather than merely narrow."
+    }
+  ],
+  "values": [
+    {
+      "name": "_MIN_HANDLE_PARALLELISM",
+      "value": "0.50",
+      "read_at": "Module constant in services/lot_dimensions.py, applied to min/max width within the narrow run.",
+      "if_missing": "Not applicable - a literal. Chosen to sit clear of both measured sides rather than tuned to one case.",
+      "why": "Measured separation is 0.07 for a triangle against 0.91 for the least parallel real handle tested. 0.50 is roughly midway in ratio terms, and the test suite fails if it is moved to 0.95, so its upper bound is pinned rather than assumed."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A triangular or wedge-shaped lot is assessed.",
+      "what_happens": "Its tapering end is reported as an access handle. The report showed 'Battleaxe Lot / Flag Lot / Below CDC Min' and 'Access way width 2.6m is below minimum 3m', so the owner is told their lot fails SEPP Housing 2021 because of a feature it does not have. A manufactured regulatory failure is worse than a missing one: it is specific, quantified and wrong.",
+      "mitigated": true,
+      "how": "The narrow run must be roughly parallel-sided.",
+      "repro": "Remove the taper check -> 2 failed, 3 passed"
+    },
+    {
+      "scenario": "The taper check is too strict and throws out real battleaxes.",
+      "what_happens": "A genuine flag lot loses its handle-aware width, and width-gated eligibility silently reverts to cadastral frontage - the exact defect eligibility_lot_width exists to prevent.",
+      "mitigated": true,
+      "how": "A real handle tapering 5.0m to 4.5m is a required positive in the suite.",
+      "repro": "Set the threshold to 0.95 -> 1 failed, 4 passed"
+    },
+    {
+      "scenario": "The detector or the shape builder breaks so nothing is ever a battleaxe.",
+      "what_happens": "Every rejection test passes while proving nothing - the classic vacuous green.",
+      "mitigated": true,
+      "how": "One test asserts a positive and a negative together, so both directions must hold.",
+      "repro": "Make _detect_battleaxe return None unconditionally -> that test fails"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Re-open 42-44 Albert St Belmore and confirm the battleaxe panel and the SEPP access-way warning are gone. The synthetic reproduction is what pins the behaviour; that address is the report it was found in."
+  }
+}
