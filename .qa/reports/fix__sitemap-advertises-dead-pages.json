@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The sitemap advertised two URLs that returned 404, and nothing checked. Adds redirects plus a guard covering all 44 static sitemap entries.",
-  "commit_hash": "a6e693c4",
+  "commit_hash": "58c0be1e",
   "files": [
     "frontend-nextjs/next.config.js",
     "frontend-nextjs/__tests__/sitemap-urls-resolve.test.ts"
