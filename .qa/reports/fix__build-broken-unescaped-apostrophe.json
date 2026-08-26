@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "ae796a2f",
+  "commit_hash": "02950cc5",
   "files": [
     ".githooks/pre-push",
     ".github/workflows/gates.yml",
@@ -109,6 +109,13 @@
       "mitigated": true,
       "how": "Added `beforeAll(() => { process.env.RESEND_API_KEY = 'test-key'; })` to lead-abuse.test.ts, matching the pattern already used in feedback-notification.test.ts. Checked the other two suites that also mock 'resend' (lead-email.test.ts, webhook-granny-flat-analysis.test.ts) -- neither exercises the send path, so neither needed the same change. Full suite re-run: 94/94 suites, 1268/1268 tests passing.",
       "repro": "git stash the beforeAll addition -> lead-abuse.test.ts: 5 failed, 'Expected number of calls: 1, Received number of calls: 0' on emailSendMock"
+    },
+    {
+      "scenario": "RESEND_API_KEY is accidentally absent or misconfigured in a real production deploy.",
+      "what_happens": "Sol cross-review [HIGH, confidence 0.99] on the previous commit: getResend() returning null makes lead capture, granny-flat results and solar-interest emails silently no-op forever with zero signal anywhere -- the request succeeds, the customer is never emailed, and nobody would know. Distinct from notifyOperator's sibling case (an internal alert on already-committed feedback) because these three are CUSTOMER-facing promises, not internal notifications.",
+      "mitigated": true,
+      "how": "Kept the no-throw behaviour deliberately (the alternative -- throwing on a missing key -- would 500 the entire customer request for a config problem the caller didn't cause, reintroducing the exact 'one failure crashes unrelated business logic' pattern fixed earlier today in #1007/#1008). Added a console.error inside getResend() so a missing key is visible in server logs while the request still succeeds. This deliberately diverges from notifyOperator, which does not log on a missing key -- documented in the function's own docstring, with the reasoning for the divergence.",
+      "repro": "Sol's own finding names the exact scenario; verified no regression by re-running the full suite (94/94 suites, 1268/1268 tests) and npm run build after adding the log line."
     }
   ],
   "post_merge": {
