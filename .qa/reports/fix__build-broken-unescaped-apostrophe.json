@@ -1,10 +1,11 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "1ae7defc",
+  "commit_hash": "1c031120",
   "files": [
     ".githooks/pre-push",
     ".github/workflows/gates.yml",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
     "frontend-nextjs/app/api/canibuildit/lead/route.ts",
     "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
     "frontend-nextjs/app/api/satellite/solar-coverage-interest/route.ts",
@@ -101,6 +102,13 @@
       "mitigated": true,
       "how": "Extracted a lazy getResend() helper in frontend-nextjs/lib/resend-client.ts that returns null when the key is absent instead of throwing. All three call sites changed to `await getResend()?.emails.send(...)`, which resolves to undefined and sends nothing when the key is missing — the same 'do not send' behaviour the routes already wanted.",
       "repro": "RESEND_API_KEY unset + npm run build -> 'Failed to collect page data for /api/canibuildit/lead', 'Missing API key'. This was CI's own first real signal from the new build gate — the gate caught a bug older than the gate itself."
+    },
+    {
+      "scenario": "The lazy getResend() fix itself broke an existing test suite.",
+      "what_happens": "Next.js does not load .env.local under NODE_ENV=test (documented behaviour). RESEND_API_KEY lives only in frontend-nextjs/.env.local locally, so it was never visible to Jest even before this change -- but the OLD code called `new Resend(anything)` unconditionally, and since 'resend' is jest-mocked, the mock didn't care what key value it received. My fix correctly short-circuits on a falsy key BEFORE constructing anything, so in the test environment it now always returns null and the mocked constructor is never reached -- 5 tests in lead-abuse.test.ts failed asserting the mocked send was called.",
+      "mitigated": true,
+      "how": "Added `beforeAll(() => { process.env.RESEND_API_KEY = 'test-key'; })` to lead-abuse.test.ts, matching the pattern already used in feedback-notification.test.ts. Checked the other two suites that also mock 'resend' (lead-email.test.ts, webhook-granny-flat-analysis.test.ts) -- neither exercises the send path, so neither needed the same change. Full suite re-run: 94/94 suites, 1268/1268 tests passing.",
+      "repro": "git stash the beforeAll addition -> lead-abuse.test.ts: 5 failed, 'Expected number of calls: 1, Received number of calls: 0' on emailSendMock"
     }
   ],
   "post_merge": {
