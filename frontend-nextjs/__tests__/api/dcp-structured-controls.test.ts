@@ -55,7 +55,13 @@ function proxyResult(rows: unknown[], overrides: Record<string, unknown> = {}) {
     available: true,
     lga: 'waverley',
     dcp_name: 'Waverley DCP 2022',
-    registry_pdf_urls: { 'part-b-s2': 'https://r2.example/waverley.pdf' },
+    // Real R2 URLs are https://pub-<hash>.r2.dev/... — verified against
+    // production 2026-08-26. 'r2.example' was never a shape this system
+    // produces, and the page anchor is now restricted to our own copies
+    // because pdf_page is measured against the PDF we paginated.
+    registry_pdf_urls: {
+      'part-b-s2': 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/waverley.pdf',
+    },
     as_at: { date: '2022-01-01', precision: 'year', kind: 'effective', basis: 'stated_in_document' },
     as_at_line: 'In force from 2022 (date stated in the plan document)',
     rows,
@@ -79,9 +85,30 @@ describe('GET /api/dcp/structured-controls', () => {
       (c: { controls: { pdf_url: string | null }[] }) => c.controls,
     );
     expect(served).toHaveLength(1); // dev_type filter applied
-    expect(served[0].pdf_url).toBe('https://r2.example/waverley.pdf#page=12');
+    expect(served[0].pdf_url).toBe(
+      'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/waverley.pdf#page=12',
+    );
     expect(data.dcp_name).toBe('Waverley DCP 2022');
     expect(data.as_at_line).toMatch(/In force from 2022/);
+  });
+
+  test('does NOT anchor a page onto a council-hosted PDF', async () => {
+    // pdf_page is a page number in OUR paginated copy. The council's published
+    // PDF may be a different split or edition, so carrying the anchor across
+    // would point confidently at the wrong page - worse than no anchor, because
+    // the reader has no reason to doubt it.
+    mockFetchDcpControls.mockResolvedValueOnce(
+      proxyResult([proxyRow()], {
+        registry_pdf_urls: { 'part-b-s2': 'https://www.waverley.nsw.gov.au/dcp.pdf' },
+      }),
+    );
+    const res = await GET(req('council=waverley&dev_type=dwelling_house'));
+    const body = await res.json();
+    const served = body.categories.flatMap(
+      (c: { controls: { pdf_url: string | null }[] }) => c.controls,
+    );
+    expect(served[0].pdf_url).toBe('https://www.waverley.nsw.gov.au/dcp.pdf');
+    expect(served[0].pdf_url).not.toContain('#page=');
   });
 
   test('under_review can never be emitted — flagged rows are excluded at the source', async () => {
