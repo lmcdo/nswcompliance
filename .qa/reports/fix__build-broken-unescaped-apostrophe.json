@@ -1,0 +1,78 @@
+{
+  "tier": "critical",
+  "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
+  "commit_hash": "188ac741",
+  "files": [
+    "frontend-nextjs/app/reports/solar-yield/page.tsx",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    ".github/workflows/gates.yml"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npm run build",
+    "fails_when": "The Next production build fails to compile or typecheck. Unlike the existing type-check gate this is pass/fail, not a count against a baseline.",
+    "observed_red": "Reintroducing the apostrophe defect from #1003: BUILD_EXIT=1, 'x Expected'. Reintroducing the duplicate key from #1012: BUILD_EXIT=1, \"Duplicate identifier 'available_dev_types'\". Restored: BUILD_EXIT=0, 591 static pages generated. Both historical defects verified caught by the new gate."
+  },
+  "pre_impl": {
+    "existing_data": "Vercel deployment history: every deploy from #1003 (2026-08-25) through #1012 (today) shows Error. The last successful production deploy is f462b87, #1002. Fifteen PRs merged into an unbuildable main.",
+    "assumption_mismatch": "I first reported that NOTHING in CI runs a build. A grep found 'next build' in gates.yml and I corrected myself to say a build step existed - then checked the actual run: steps and found the matches were COMMENTS discussing why next build and next dev differ. The original claim was right; the correction was wrong. Listing executable steps rather than grepping the file settled it.",
+    "new_vs_existing": "The two source fixes restore deployability immediately. The gate applies to future PRs only - it cannot retroactively catch what already merged, which is why a day of deploys was lost silently.",
+    "external_source_error": "The external system here is Vercel, and its failure mode is the whole finding: a failed build does not take the site down. Vercel keeps serving the last good deployment, so visitors see a working site and the operator sees nothing wrong. There is no alert on a failed deploy. The only signal was the Deployments list reading Error thirteen times in a row, which someone has to look at. That is why it ran for a day.",
+    "frontend_type": "Both defects are frontend-only and neither is detectable at runtime, because neither file ever executes. The apostrophe is inside a Next `metadata` export parsed by SWC at build time; the duplicate key is a TypeScript interface erased before execution. Nothing a test renders or a server serves can reach them - only a compile can.",
+    "user_failure_mode": "Silent and total, but invisible. Every fix merged in the last day - the feedback alert, three cancelled-email routes, 26 dead links, the sitemap 404s, the battleaxe false positive, the DCP contradiction - stayed unreachable to users while appearing shipped. A user reporting a bug fixed yesterday would be right, and I would have told them it was fixed. The triangular-lot owner is still being shown a SEPP failure that does not exist."
+  },
+  "functions": [
+    {
+      "name": "DcpStructuredControls",
+      "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:119",
+      "input": "formerCouncil, optional devType, optional fallback node. Its StructuredControlsResponse interface is what carried the duplicate key.",
+      "output": "The controls card, a dev-type-scoped empty state, an unknown state, or the caller's fallback.",
+      "if_none": "Unchanged by this fix - the three-state handling from the previous PR is intact. This commit only removes a duplicated declaration of available_dev_types; the surviving one keeps the explanatory comment.",
+      "why": "The duplicate was introduced by my own previous fix and made the whole app unbuildable, so a purely additive-looking interface edit took production offline for everything downstream of it."
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A syntax or type error reaches main and every later deploy fails.",
+      "what_happens": "Every subsequent deploy fails. The site keeps serving the last good build, so nothing appears broken to a visitor and nothing alerts the operator - work simply stops reaching production. It ran for a day before being noticed by eye in the Vercel dashboard.",
+      "mitigated": true,
+      "how": "A production build now runs on every PR and on push to main.",
+      "repro": "Reintroduce either historical defect -> BUILD_EXIT=1"
+    },
+    {
+      "scenario": "The type-check gate is trusted to catch compile errors.",
+      "what_happens": "It cannot. It counts errors against a baseline of 677 and passed while reporting 8 - a fatal error inside the allowance is indistinguishable from the pre-existing debt it was set up to tolerate. A counting gate answers 'is this getting worse', never 'is this broken'.",
+      "mitigated": true,
+      "how": "The build gate is pass/fail and independent of the baseline.",
+      "repro": "The two defects both passed the type-check gate and both fail the build gate"
+    },
+    {
+      "scenario": "The build gate is treated as covering what the dev-server check covers.",
+      "what_happens": "They catch opposite failures. The existing check exists because next dev refuses route collisions that next build tolerates - #929 was a dev server dead for 20 days behind a green build. Dropping either leaves a class uncovered.",
+      "mitigated": true,
+      "how": "Added as a separate step, with a comment on each explaining why the other cannot replace it.",
+      "repro": "#929 was invisible to a build; these two were invisible to the dev-server check"
+    },
+    {
+      "scenario": "The build gate is added but the workflow YAML is malformed, so CI skips the step.",
+      "what_happens": "The gate appears present in the file and never runs. That is the same class of failure as the defect it guards - green checks over an unverified state - and would be harder to spot because someone has read the YAML and seen the step.",
+      "mitigated": true,
+      "how": "The workflow was parsed with yaml.safe_load and the step located by name in the parsed structure, not by grepping the text.",
+      "repro": "Break the indentation and the parse assertion fails before commit"
+    },
+    {
+      "scenario": "Someone raises the type-check baseline so a new error 'passes'.",
+      "what_happens": "Exactly what happened here: the counting gate reported 'passed: 8 errors (baseline 677)' while the build was fatally broken. Raising the baseline makes that gap wider and is indistinguishable from cleaning up debt.",
+      "mitigated": true,
+      "how": "The build gate is pass/fail and independent of any baseline, so no counting threshold can absorb a fatal error.",
+      "repro": "Both defects passed the counting gate and both fail the build gate"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - confirm the Vercel production deploy for this merge reports Ready, not Error. A day of merged work goes live with it, so the deployed site will change substantially in one step."
+  }
+}
