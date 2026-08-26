@@ -1,11 +1,31 @@
 {
   "tier": "standard",
   "justification": "26 links across 23 files pointed app routes at a domain that does not serve them. One is emailed to customers, one is a JSON-LD logo, and several are canonical URLs that tell search engines where the real page lives.",
-  "commit_hash": "deb1c2fb",
+  "commit_hash": "7de4ece6",
   "files": [
+    "frontend-nextjs/__tests__/app-links-use-verify-subdomain.test.ts",
+    "frontend-nextjs/app/(tools)/bushfire/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/pre-da-history/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
     "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/app/embed/flood/page.tsx",
+    "frontend-nextjs/app/embed/granny-flat/page.tsx",
+    "frontend-nextjs/app/embed/shadow/page.tsx",
+    "frontend-nextjs/app/embed/solar-yield/page.tsx",
+    "frontend-nextjs/app/embed/threat-radar/page.tsx",
+    "frontend-nextjs/app/for/builders/page.tsx",
+    "frontend-nextjs/app/glossary/page.tsx",
     "frontend-nextjs/app/layout.tsx",
-    "frontend-nextjs/__tests__/app-links-use-verify-subdomain.test.ts"
+    "frontend-nextjs/app/partner/page.tsx",
+    "frontend-nextjs/app/planning-standards/page.tsx",
+    "frontend-nextjs/app/reports/bushfire/[id]/page.tsx",
+    "frontend-nextjs/app/reports/bushfire/page.tsx",
+    "frontend-nextjs/app/reports/conveyancing/page.tsx",
+    "frontend-nextjs/app/reports/flood/page.tsx",
+    "frontend-nextjs/app/reports/pre-da-history/page.tsx",
+    "frontend-nextjs/app/reports/shadow/page.tsx",
+    "frontend-nextjs/app/reports/solar-yield/page.tsx",
+    "frontend-nextjs/app/reports/threat-radar/page.tsx"
   ],
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/app-links-use-verify-subdomain.test.ts",
