@@ -91,13 +91,26 @@ describe('citation links', () => {
     expect(controlsRoute).toContain('row.pdf_page && isOwnCopy(pdfUrl)');
   });
 
-  it('tests the HOSTNAME, not a substring anywhere in the url', () => {
-    // Sol, 2026-08-26: a substring match accepts
-    // https://example.com/evil/.r2.dev/x.pdf, so a page anchor could be
-    // attached to a document we never paginated.
+  it('allowlists the EXACT host, not a *.r2.dev suffix', () => {
+    // Sol [HIGH], 2026-08-26: r2.dev is a SHARED Cloudflare domain. A suffix
+    // test trusts attacker.r2.dev, so a page anchor measured against our copy
+    // could be attached to a stranger's document.
     expect(controlsRoute).toContain('new URL(url)');
-    expect(controlsRoute).toContain('u.hostname.endsWith');
-    expect(controlsRoute).not.toContain('IS_OWN_COPY.test');
+    expect(controlsRoute).toContain('OWN_PDF_HOSTS.has(u.hostname)');
+    expect(controlsRoute).not.toContain("endsWith(OWN_PDF_HOST_SUFFIX)");
+    expect(controlsRoute).toContain('pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev');
+  });
+
+  it('treats an ABSENT available_dev_types as unknown, not as empty', () => {
+    // Sol [HIGH], 2026-08-26: `?? []` reads a missing field as proof the
+    // council has nothing, so a deployment mismatch or a failed query would
+    // tell users the DCP is not processed.
+    const card = read('components/compliance/DcpStructuredControls.tsx');
+    expect(card).toContain('otherTypes === undefined');
+    expect(card).not.toContain('available_dev_types ?? []');
+    const branch = card.slice(card.indexOf('if (!data?.has_controls)'));
+    expect(branch.indexOf('otherTypes === undefined'))
+      .toBeLessThan(branch.indexOf('return <>{fallback}</>;'));
   });
 
   it('the council-level empty state is not decided by a dev-type-scoped flag', () => {

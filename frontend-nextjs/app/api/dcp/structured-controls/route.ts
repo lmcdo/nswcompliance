@@ -44,7 +44,18 @@ function getLgaSlugs(council: string): string[] {
  * Our own paginated copies live on Cloudflare R2. Only these can carry a
  * #page anchor, because pdf_page was measured against them.
  */
-const OWN_PDF_HOST_SUFFIX = '.r2.dev';
+/**
+ * The exact hosts that serve PDFs we paginated ourselves.
+ *
+ * NOT a *.r2.dev suffix: r2.dev is a SHARED Cloudflare domain, so anyone can
+ * publish a bucket under it and a suffix test would trust attacker.r2.dev.
+ * One bucket host is in use — verified against dcp_chapter_registry
+ * 2026-08-26, which holds exactly one distinct r2 origin.
+ */
+const OWN_PDF_HOSTS = new Set([
+  'pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev',
+  'verify.plotdetect.com.au',
+]);
 const OWN_PDF_PATH_PREFIX = '/pdf-pages/';
 
 /**
@@ -58,8 +69,11 @@ const OWN_PDF_PATH_PREFIX = '/pdf-pages/';
 function isOwnCopy(url: string): boolean {
   try {
     const u = new URL(url);
+    if (!OWN_PDF_HOSTS.has(u.hostname)) return false;
+    // /pdf-pages/ only means ours when served from our own host, so the host
+    // check gates it rather than standing as an alternative to it.
     return (
-      u.hostname.endsWith(OWN_PDF_HOST_SUFFIX) ||
+      u.hostname !== 'verify.plotdetect.com.au' ||
       u.pathname.startsWith(OWN_PDF_PATH_PREFIX)
     );
   } catch {

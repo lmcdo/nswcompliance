@@ -85,6 +85,20 @@
       "mitigated": true,
       "how": "The URL is parsed and the HOSTNAME tested; an unparseable URL never anchors.",
       "repro": "Replace the parse with url.includes(...) -> 1 failed, 7 passed"
+    },
+    {
+      "scenario": "A citation URL is hosted on some OTHER bucket under the shared r2.dev domain, or on /pdf-pages/ of a foreign host.",
+      "what_happens": "A *.r2.dev suffix test trusts attacker.r2.dev, so a page number measured against OUR copy is appended to a stranger document and presented as a precise citation. Sol [HIGH], confidence 0.99.",
+      "mitigated": true,
+      "how": "An exact host allowlist, not a suffix. r2.dev is a shared Cloudflare domain; production holds exactly one distinct r2 origin, verified against dcp_chapter_registry. /pdf-pages/ is gated by the host rather than standing as an alternative to it.",
+      "repro": "Revert to endsWith(.r2.dev) -> 1 failed, 8 passed"
+    },
+    {
+      "scenario": "The API returns {has_controls:false} with no available_dev_types at all - an older deployment, or a query that failed.",
+      "what_happens": "A nullish-coalescing to an empty array reads an ABSENT field as a confirmed empty list, so the UI concludes the council has nothing and shows the not-processed form. Absence is not evidence. Sol [HIGH], confidence 0.96.",
+      "mitigated": true,
+      "how": "Three states. undefined renders an explicit could-not-be-established message; only an explicitly empty array reaches the fallback.",
+      "repro": "Restore the nullish-coalescing to an empty array -> 1 failed, 8 passed"
     }
   ],
   "post_merge": {

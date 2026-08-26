@@ -163,7 +163,25 @@ export function DcpStructuredControls({
     // showing the "not yet processed" fallback would repeat the contradiction
     // this component was just changed to remove - in a narrower case. Only an
     // empty available_dev_types means the council genuinely has nothing.
-    const otherTypes = data?.available_dev_types ?? [];
+    // Three states, not two. ABSENT is not EMPTY: an older deployment or a
+    // failed query returns {has_controls:false} with no available_dev_types at
+    // all, and `?? []` would read that as "this council definitely has nothing"
+    // and show the not-processed form. Only an explicitly empty array is
+    // evidence of that.
+    const otherTypes = data?.available_dev_types;
+    if (otherTypes === undefined) {
+      return (
+        <div className="mb-4 border border-gray-200 rounded-lg p-4 bg-gray-50/60">
+          <p className="text-sm text-gray-700">
+            No numeric controls returned for this development type.
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Whether this council has controls for other types could not be
+            established.
+          </p>
+        </div>
+      );
+    }
     if (otherTypes.length > 0) {
       return (
         <div className="mb-4 border border-gray-200 rounded-lg p-4 bg-gray-50/60">
