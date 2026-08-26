@@ -240,6 +240,46 @@ else
 fi
 echo ""
 
+# ── 2b. Production build (only when frontend files changed) ─────────────────
+#
+# Added 2026-08-26 after a full DAY of failed Vercel deploys. Two fatal defects
+# reached main — an unescaped apostrophe in a metadata string, and a duplicate
+# interface key — and BOTH passed jest, the QA gate and cross-review, because
+# neither file ever executes: one is parsed by SWC at build time, the other is
+# a type erased before runtime. Only a compile can see them.
+#
+# Gated on the diff. A production build costs ~2 minutes and most pushes here
+# touch no frontend file at all; charging every push for a check that cannot
+# apply is how a hook gets bypassed rather than fixed.
+
+echo "=== [2b/4] Production build ==="
+# MERGE_BASE is computed later in this file, for the cross-review step. Using
+# it here would silently expand to empty, the diff would error, CHANGED_FE
+# would be 0, and this gate would skip on EVERY push while appearing to run.
+# That is the same shape as the defect it exists to catch, so it is computed
+# locally instead.
+BUILD_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
+CHANGED_FE=$(git diff --name-only "$BUILD_BASE" HEAD 2>/dev/null | grep -c '^frontend-nextjs/' || true)
+if [ ! -d frontend-nextjs/node_modules ]; then
+  echo "⏭  Skipped: frontend-nextjs/node_modules absent (bare worktree)."
+elif [ "${CHANGED_FE:-0}" -eq 0 ]; then
+  echo "⏭  Skipped: no frontend-nextjs/ files in this push."
+else
+  echo "   $CHANGED_FE frontend file(s) changed — building."
+  (cd frontend-nextjs && npm run build 2>&1 | tail -25)
+  BUILD_RESULT=${PIPESTATUS[0]}
+  if [ "$BUILD_RESULT" -ne 0 ]; then
+    echo ""
+    echo "Production build FAILED. Push blocked."
+    echo "A failed build does NOT take the site down — Vercel keeps serving the"
+    echo "last good deploy — so nothing would alert you. It is invisible until"
+    echo "someone opens the Deployments list."
+    echo "Run: cd frontend-nextjs && npm run build"
+    exit 1
+  fi
+fi
+echo ""
+
 # ── 3. QA report validation ──────────────────────────────────────────────────
 
 echo "=== [3/4] Validating QA report ==="

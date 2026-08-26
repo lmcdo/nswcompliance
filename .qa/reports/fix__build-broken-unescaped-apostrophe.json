@@ -1,11 +1,12 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "188ac741",
+  "commit_hash": "cab90990",
   "files": [
+    ".githooks/pre-push",
+    ".github/workflows/gates.yml",
     "frontend-nextjs/app/reports/solar-yield/page.tsx",
-    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
-    ".github/workflows/gates.yml"
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx"
   ],
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npm run build",
@@ -67,6 +68,13 @@
       "mitigated": true,
       "how": "The build gate is pass/fail and independent of any baseline, so no counting threshold can absorb a fatal error.",
       "repro": "Both defects passed the counting gate and both fail the build gate"
+    },
+    {
+      "scenario": "The new pre-push build step is present but never actually fires on any push.",
+      "what_happens": "It first referenced MERGE_BASE, a variable this hook defines THIRTY LINES LATER for the cross-review step. It would have expanded to empty, the diff would error, the changed-file count would be 0, and the gate would report a skip on every push while looking installed. That is the same shape as the defect it exists to catch: a check reporting green over an unverified state.",
+      "mitigated": true,
+      "how": "The merge base is computed locally in the block, with a comment recording why. Verified on this branch: the step detects 2 changed frontend files, so it runs rather than skipping.",
+      "repro": "git diff --name-only \"\" HEAD errors and yields 0 changed files, so the else-branch never executes"
     }
   ],
   "post_merge": {
