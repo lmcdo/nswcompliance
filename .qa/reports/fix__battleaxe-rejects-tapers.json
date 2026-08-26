@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A false positive in lot-shape detection fed a regulatory eligibility test, so a triangular lot was shown a SEPP Housing failure based on an access way that does not exist.",
-  "commit_hash": "48837b02",
+  "commit_hash": "14d4e1d3",
   "files": [
     "services/lot_dimensions.py",
     "tests/test_battleaxe_confusable_shapes.py"
