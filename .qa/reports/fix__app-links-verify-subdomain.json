@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "26 links across 23 files pointed app routes at a domain that does not serve them. One is emailed to customers, one is a JSON-LD logo, and several are canonical URLs that tell search engines where the real page lives.",
-  "commit_hash": "a6e693c4",
+  "commit_hash": "deb1c2fb",
   "files": [
     "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
     "frontend-nextjs/app/layout.tsx",
