@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "73f6fccd",
+  "commit_hash": "1ae7defc",
   "files": [
     ".githooks/pre-push",
     ".github/workflows/gates.yml",
