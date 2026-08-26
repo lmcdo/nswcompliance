@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Production deploys have failed for a full day. Every merged change since #1003 is on main and none is live, while every gate reported green. This restores deployability and adds the check whose absence allowed it.",
-  "commit_hash": "23e657b1",
+  "commit_hash": "8672b224",
   "files": [
     ".githooks/pre-push",
     ".github/workflows/gates.yml",
@@ -83,6 +83,13 @@
       "mitigated": true,
       "how": "Wired into pre-push and gates.yml as a ratchet. Blocks on exit 1 (new claims that do not hold) and not on exit 2 (scan gaps), because 43 unmappable test imports make exit 2 permanent and a gate that always fires is a gate that gets removed.",
       "repro": "Append a line to any tracked doc naming a python file under services/ that does not exist -> exit 1, with the path named in the output; remove the line -> exit 2, zero new. NOTE: the example path is described rather than written out here, because this report is itself scanned by the ratchet and spelling it literally made the check block this very commit — which is the check working, on its first run, against its own author."
+    },
+    {
+      "scenario": "A new pre-push block reads a command status while set -e is active.",
+      "what_happens": "set -e is on at line 26 of this hook. A bare command returning non-zero kills the script BEFORE the next line captures its status, so the block prints its header and nothing else, and the push fails with no message. Worse for the doc-claim tool, whose CLEAN result is exit 2 — a good outcome silently aborted the push twice before I found it.",
+      "mitigated": true,
+      "how": "Both new blocks use VAR=0 then COMMAND || VAR=$?, which makes the command part of a compound that set -e does not trip. Simulated under set -e: survived with R=2 and passed.",
+      "repro": "bash -c \"set -e; python scripts/doc_claims.py --compare --strict; echo unreachable\" prints nothing after the tool"
     }
   ],
   "post_merge": {

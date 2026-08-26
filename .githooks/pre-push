@@ -266,8 +266,11 @@ elif [ "${CHANGED_FE:-0}" -eq 0 ]; then
   echo "⏭  Skipped: no frontend-nextjs/ files in this push."
 else
   echo "   $CHANGED_FE frontend file(s) changed — building."
-  (cd frontend-nextjs && npm run build 2>&1 | tail -25)
-  BUILD_RESULT=${PIPESTATUS[0]}
+  # `set -e` is on (line 26), so a bare failing command kills the hook before
+  # the next line reads its status — the block's own message would never print.
+  # `|| VAR=$?` makes it part of a compound command, which set -e does not trip.
+  BUILD_RESULT=0
+  (cd frontend-nextjs && npm run build 2>&1 | tail -25) || BUILD_RESULT=$?
   if [ "$BUILD_RESULT" -ne 0 ]; then
     echo ""
     echo "Production build FAILED. Push blocked."
@@ -293,8 +296,12 @@ echo ""
 # make it permanent, and a gate that always fires is a gate that gets removed.
 
 echo "=== [2c/4] Doc-claim ratchet ==="
-python scripts/doc_claims.py --compare --strict > /tmp/doc_claims_push.log 2>&1
-DOC_CLAIM_RESULT=$?
+# Same `set -e` trap as the build block above, and worse here: this tool exits
+# 2 on a CLEAN run that had scan gaps, so under set -e a perfectly good result
+# killed the hook silently. The push failed with no message at all — the header
+# printed and nothing followed.
+DOC_CLAIM_RESULT=0
+python scripts/doc_claims.py --compare --strict > /tmp/doc_claims_push.log 2>&1   || DOC_CLAIM_RESULT=$?
 if [ "$DOC_CLAIM_RESULT" -eq 1 ]; then
   grep -E "^  - \[" /tmp/doc_claims_push.log | head -20
   echo ""
