@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Two live user-facing defects on the DCP tab: the page contradicted itself about whether a council was processed, and 19 of 20 citations rendered as dead grey text because the URL lookup ignored half the data available to it.",
-  "commit_hash": "273eba63",
+  "commit_hash": "c449c11e",
   "files": [
     "frontend-nextjs/__tests__/dcp-citation-links.test.ts",
     "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
