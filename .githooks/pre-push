@@ -280,6 +280,38 @@ else
 fi
 echo ""
 
+# ── 2c. Doc-claim ratchet ───────────────────────────────────────────────────
+#
+# scripts/doc_claims.py has existed with a baseline, --compare and --strict for
+# weeks, and its own docstring said: "Reports; blocks nothing. --strict exists
+# but is wired into no hook and no CI." So it ran, printed, and stopped nothing —
+# and 13 new violations accumulated in the fortnight after the last baseline.
+#
+# Exit contract: 1 = NEW claims that do not hold, 2 = the scan had gaps it could
+# not resolve, 0 = clean. Only 1 blocks. Exit 2 is deliberate in that tool ("a
+# scan that could not run is not a clean scan") but 43 unmappable test imports
+# make it permanent, and a gate that always fires is a gate that gets removed.
+
+echo "=== [2c/4] Doc-claim ratchet ==="
+python scripts/doc_claims.py --compare --strict > /tmp/doc_claims_push.log 2>&1
+DOC_CLAIM_RESULT=$?
+if [ "$DOC_CLAIM_RESULT" -eq 1 ]; then
+  grep -E "^  - \[" /tmp/doc_claims_push.log | head -20
+  echo ""
+  echo "NEW doc claims that do not hold. Push blocked."
+  echo "A doc naming a file that does not exist is a claim about the codebase"
+  echo "that nothing else checks."
+  echo "Run: python scripts/doc_claims.py --compare --strict"
+  echo "If the claim is right and the baseline is stale:"
+  echo "  python scripts/doc_claims.py --init"
+  exit 1
+elif [ "$DOC_CLAIM_RESULT" -eq 2 ]; then
+  echo "   0 new claims. (scan gaps present — see --compare output)"
+else
+  echo "   0 new claims."
+fi
+echo ""
+
 # ── 3. QA report validation ──────────────────────────────────────────────────
 
 echo "=== [3/4] Validating QA report ==="
