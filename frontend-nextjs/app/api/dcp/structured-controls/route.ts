@@ -40,6 +40,12 @@ function getLgaSlugs(council: string): string[] {
 }
 
 // Group control_type values into display categories
+/**
+ * Our own paginated copies live on Cloudflare R2. Only these can carry a
+ * #page anchor, because pdf_page was measured against them.
+ */
+const IS_OWN_COPY = /\.r2\.dev\/|\/pdf-pages\//;
+
 const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
   front_setback: { label: 'Setbacks', order: 1 },
   secondary_street_setback: { label: 'Setbacks', order: 1 },
@@ -209,8 +215,14 @@ export async function GET(request: NextRequest) {
 
       // Build PDF URL with page anchor if available — resolved from the
       // row's OWN council's map at collection time (never cross-council).
+      //
+      // The page anchor is only appended to OUR OWN R2 copy. pdf_page is a page
+      // number in the PDF we paginated; the council's own published PDF may be
+      // a different split or edition, so carrying the anchor across would point
+      // at a confidently WRONG page. An unanchored link to the right document
+      // beats a precise link to the wrong page.
       let pdfUrl: string | null = row.__pdfBase;
-      if (pdfUrl && row.pdf_page) {
+      if (pdfUrl && row.pdf_page && IS_OWN_COPY.test(pdfUrl)) {
         pdfUrl = `${pdfUrl}#page=${row.pdf_page}`;
       }
 

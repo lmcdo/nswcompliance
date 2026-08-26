@@ -461,14 +461,25 @@ export async function GET(request: NextRequest) {
       if (filters.former_council) {
         const councilSlug = filters.former_council.toLowerCase();
         const registryResult = await client.query(
-          `SELECT chapter_key, r2_public_pdf_url, chapter_label, needs_extraction
+          `SELECT chapter_key, r2_public_pdf_url, council_url, chapter_label, needs_extraction
            FROM dcp_chapter_registry
            WHERE council = $1 AND is_active = TRUE`,
           [councilSlug]
         );
         let amendmentPending = false;
         for (const row of registryResult.rows) {
-          if (row.r2_public_pdf_url) chapterPdfUrls[row.chapter_key] = row.r2_public_pdf_url;
+          // Prefer our own R2 copy: it is stable, and the page anchor built by the
+          // caller is only meaningful against the PDF we paginated. Fall back to
+          // the council's own URL rather than leaving the citation unlinked.
+          //
+          // Measured 2026-08-26, across served controls: chapter_key matches the
+          // registry for 88.6%, but only 39.9% have an r2_public_pdf_url while
+          // 49.2% have a council_url. Ignoring the fallback is why Canterbury-
+          // Bankstown showed exactly ONE linked citation out of twenty - parking
+          // has an R2 copy and the two setback chapters do not, though both carry
+          // a council URL.
+          const chapterUrl = row.r2_public_pdf_url || row.council_url;
+          if (chapterUrl) chapterPdfUrls[row.chapter_key] = chapterUrl;
           if (row.chapter_label) chapterLabels[row.chapter_key] = row.chapter_label;
           if (row.needs_extraction) amendmentPending = true;
         }

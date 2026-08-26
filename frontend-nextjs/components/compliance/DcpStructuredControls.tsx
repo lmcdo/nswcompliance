@@ -8,7 +8,7 @@
  * landscaping %, site coverage) with formal DCP citations.
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import useSWR from 'swr';
 import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, LayoutGrid, FileText, ExternalLink, Sun, Eye, Home, AlertCircle, MinusCircle } from 'lucide-react';
 
@@ -51,6 +51,16 @@ interface StructuredControlsResponse {
 interface DcpStructuredControlsProps {
   formerCouncil: string;
   devType?: string;
+  /**
+   * Rendered INSTEAD of this card when the council has no extracted controls.
+   *
+   * The caller cannot decide this for itself: has_controls is only known after
+   * this component's own fetch resolves. Before this existed the caller rendered
+   * a "DCP not yet processed" form alongside the controls, so a council with 20
+   * extracted controls was told its DCP was not processed - on the same screen
+   * that listed them, with the source plan named.
+   */
+  fallback?: React.ReactNode;
 }
 
 const fetcher = async (url: string) => {
@@ -116,7 +126,11 @@ function formatCitation(control: StructuredControl): string {
   return parts.join(', ');
 }
 
-export function DcpStructuredControls({ formerCouncil, devType = 'dwelling_house' }: DcpStructuredControlsProps) {
+export function DcpStructuredControls({
+  formerCouncil,
+  devType = 'dwelling_house',
+  fallback = null,
+}: DcpStructuredControlsProps) {
   const [expanded, setExpanded] = useState(true);
   const [expandedSource, setExpandedSource] = useState<string | null>(null);
 
@@ -139,9 +153,21 @@ export function DcpStructuredControls({ formerCouncil, devType = 'dwelling_house
     );
   }
 
-  if (!data?.has_controls) return null;
+  // Nothing extracted for this council: show the caller's fallback rather than
+  // nothing, so the caller never has to guess and render both.
+  if (!data?.has_controls) return <>{fallback}</>;
 
   const totalControls = data.categories.reduce((sum, cat) => sum + cat.controls.length, 0);
+
+  // Shown BELOW the controls. Says what is present and what is not, without
+  // offering to notify the reader about a council whose controls they are
+  // currently reading - which is what the old interest form did here.
+  const textNotLoadedNote = (
+    <p className="mt-3 text-xs text-gray-500">
+      These are the measurable controls extracted from the published plan. The
+      full chapter text for this council is not loaded yet.
+    </p>
+  );
 
   return (
     <div className="mb-4 border border-teal-200 rounded-lg overflow-hidden bg-white">
@@ -280,6 +306,7 @@ export function DcpStructuredControls({ formerCouncil, devType = 'dwelling_house
           <p className="text-xs text-gray-400">
             Structured values extracted from the published DCP. Deterministic — same property, same result every time.
           </p>
+          {textNotLoadedNote}
         </div>
       )}
     </div>

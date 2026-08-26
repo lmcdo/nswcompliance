@@ -1,0 +1,80 @@
+{
+  "tier": "standard",
+  "justification": "Two live user-facing defects on the DCP tab: the page contradicted itself about whether a council was processed, and 19 of 20 citations rendered as dead grey text because the URL lookup ignored half the data available to it.",
+  "commit_hash": "48837b02",
+  "files": [
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+    "frontend-nextjs/__tests__/dcp-citation-links.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/dcp-citation-links.test.ts",
+    "fails_when": "The interest form is rendered as a sibling of the controls card rather than as its fallback; the registry query stops selecting or falling back to council_url; or a page anchor is appended to a URL that is not our own paginated copy.",
+    "observed_red": "Dropping the council_url fallback: 1 failed, 5 passed. Anchoring a page onto a council PDF: 1 failed, 5 passed. Restoring the both-rendered contradiction: 1 failed, 5 passed. Each kills exactly one test. Baseline and restored both 6 passed."
+  },
+  "pre_impl": {
+    "existing_data": "1,084 served controls. Measured against production: 88.6% name a chapter_key that exists in dcp_chapter_registry; of all served controls 39.9% have r2_public_pdf_url and 49.2% have council_url. Every row with an R2 copy ALSO has a council URL, so the fallback moves coverage from 39.9% to 49.2% and no further.",
+    "assumption_mismatch": "I first reported the fallback would take citations to 100%. It does not, and the overlap is why. I also described the unmatched 11.4% as chapters 'nobody listed', which was wrong: the citation is present on every control. Marrickville alone carries SEVEN key formats for one council (part4_s2_mdh_rfb, part4-s1-low-density, s4.1-low-density-residential, ...) while its registry rows use unrelated names. Of the 122 unmatched, 61 are state instruments - ADG and Codes SEPP - being looked up in a DCP CHAPTER registry that structurally cannot hold them, though instrument_registry already stores legislation_url for all 26 instruments.",
+    "new_vs_existing": "Applies on next deploy to every property view. No data is rewritten. Controls whose chapter key does not match the registry stay unlinked until the key normalisation and the state-instrument routing are done separately."
+  },
+  "functions": [
+    {
+      "name": "DcpStructuredControls",
+      "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:119",
+      "input": "formerCouncil, an optional devType, and now an optional fallback ReactNode rendered when the council has no extracted controls.",
+      "output": "The controls card, or the caller's fallback, or null when no fallback was supplied.",
+      "if_none": "Returns the fallback rather than null. The caller cannot make this decision itself: has_controls is only known after this component's own fetch resolves, which is exactly why the caller previously rendered both the card and a contradictory 'not yet processed' form side by side.",
+      "why": "Moves the empty-state decision to where the data actually arrives, so the caller's long-standing comment saying 'show structured controls if available, otherwise interest form' is finally what the code does."
+    }
+  ],
+  "values": [
+    {
+      "name": "IS_OWN_COPY",
+      "value": "/\\.r2\\.dev\\/|\\/pdf-pages\\//",
+      "read_at": "Module load of app/api/dcp/structured-controls/route.ts.",
+      "if_missing": "Not applicable - a literal. If it failed to match our own URLs, links would lose their page anchor and degrade to document level rather than becoming wrong.",
+      "why": "pdf_page is a page number measured against the copy WE paginated. The council's published PDF may be a different split or edition, so carrying the anchor across would point confidently at the wrong page. A test asserts the pattern matches an r2.dev and a /pdf-pages/ URL and rejects a council domain."
+    }
+  ],
+  "queries": [
+    {
+      "name": "chapter registry lookup",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:462",
+      "purpose": "Resolve each DCP chapter key to the address of the PDF it came from, so a control's section reference can render as a link to its source document instead of dead grey text.",
+      "where_clause": "council = $1 AND is_active = TRUE — scoped to the property's own council so a chapter key can never resolve against another council's document, and excluding superseded registry rows.",
+      "filters": "council = $1 AND is_active = TRUE",
+      "why": "Now selects council_url alongside r2_public_pdf_url. Selecting only the R2 column was the entire defect - the fallback URL sat in the same row and was never read."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council has extracted controls but no full chapter text.",
+      "what_happens": "The page listed '20 controls extracted / Source: Canterbury-Bankstown DCP 2023' and directly beneath it a form offering to notify the reader when that council's DCP went live. Two contradictory claims about one council on one screen, in front of the user.",
+      "mitigated": true,
+      "how": "The interest form is passed as the controls card's fallback and renders only when the controls fetch returns nothing. The card now also states plainly that the full chapter text is not loaded, so the case is explained rather than silent.",
+      "repro": "Render both as siblings again -> 1 failed, 5 passed"
+    },
+    {
+      "scenario": "A chapter has no R2 copy but does have a council URL.",
+      "what_happens": "The citation rendered as dead grey text although a usable link sat in the same registry row. For Canterbury-Bankstown that was 19 of 20 citations - parking has an R2 copy and the two setback chapters do not.",
+      "mitigated": true,
+      "how": "The query selects council_url and falls back to it.",
+      "repro": "Remove the fallback -> 1 failed, 5 passed"
+    },
+    {
+      "scenario": "The page anchor is carried onto a council's own PDF.",
+      "what_happens": "A link that looks precise and lands on the wrong page. Strictly worse than an unanchored link, because the reader has no reason to doubt it and would conclude the control was misquoted.",
+      "mitigated": true,
+      "how": "The anchor is appended only when the URL matches our own paginated copies.",
+      "repro": "Anchor unconditionally -> 1 failed, 5 passed"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "This raises document-level citation links from 39.9% to 49.2%, not to 100%. Three separate jobs remain and none requires re-extraction: route the 61 state-instrument controls to instrument_registry.legislation_url; normalise chapter keys for the 61 council controls whose format does not match; and add a URL to the 34 registry rows across 16 councils that hold neither, which alone covers 427 controls. Clause-level linking then needs pdf_page, held for only 17.4% today - but 98.8% carry the council's verbatim sentence, so the page can be found by searching each PDF for that quote rather than recorded by hand."
+  }
+}
