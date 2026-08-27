@@ -341,6 +341,101 @@ def _plan_as_at(cur, lga_slug: str) -> Optional[dict]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Chapter-key aliases — stale/renamed source_chapter_key values on
+# dcp_setback_controls that no longer match dcp_chapter_registry.chapter_key
+# for the same council, even though the registry row (and its URL) still
+# exists under a different key.
+#
+# Measured 2026-08-27: 234 of 967 served setback controls (24.2%) had no
+# working citation URL. Of the 112 rows behind that with a non-null
+# source_chapter_key and no registry match, ~31 are '_external_adg' /
+# '_external_lep' / an LEP-slug sentinel — deliberately NOT a DCP chapter
+# reference, out of scope here. Of the remaining ~81, this map recovers the
+# ones manually verified as an unambiguous rename of ONE specific registry
+# chapter (same part/section number or letter, no competing candidate under
+# that identifier). It deliberately does NOT cover:
+#   - councils whose registry is simply thin (the_hills: 1 registered chapter
+#     against 4+ referenced; camden's 'parking-controls' has no registry
+#     counterpart at all) — that's missing data, not a rename, and needs a
+#     real council URL, not a guess.
+#   - ambiguous multi-candidate cases (canterbury_bankstown 'cb-dcp-2023-ch5'
+#     could mean ch5-1-bankstown OR ch5-2-canterbury; ku_ring_gai's bare
+#     'section-a' spans 10+ registered parts) — attaching either guess risks
+#     exactly the wrong-document defect this same council (Canterbury-
+#     Bankstown) already shipped once, per dcp-citation-links.test.ts.
+#   - precinct-specific splits with no registry counterpart (leichhardt's
+#     part_c_section_2_balmain / _birchgrove against one general
+#     part-c-s2-urban-character registry row).
+# Do NOT add an entry without confirming BOTH sides against a live query —
+# see the census in ce-citation-wiring-and-cleanup-PROMPT.md follow-up.
+CHAPTER_KEY_ALIASES: dict[str, dict[str, str]] = {
+    "ashfield": {
+        "ashfield-chapter-a-miscellaneous": "chapter-a-miscellaneous",
+        "ashfield-dcp-2016-chapter-a": "chapter-a-miscellaneous",
+        "chapter_e2_haberfield": "chapter-e2-haberfield",
+        "chapter-f-development-category": "chapter-f-dev-category",
+    },
+    "blacktown": {
+        "blacktown-dcp-2015-residential": "blacktown-dcp-2015-part-c",
+        "part-c-development-residential": "blacktown-dcp-2015-part-c",
+    },
+    "camden": {
+        "camden-dcp-s4-residential": "part-4-residential",
+        "part-4-residential-dwelling-controls": "part-4-residential",
+    },
+    "campbelltown": {
+        "campbelltown-dcp-part4-rfb-mixed-use": "part-4-rfb-mixed-use",
+    },
+    "city_of_sydney": {
+        "section-4-dcp-2012": "section-4-development-types",
+        "sydney-dcp-2012-section4": "section-4-development-types",
+    },
+    "fairfield": {
+        "fairfield-dcp-2013-residential": "chapter-5-dwelling-houses",
+    },
+    "hornsby": {
+        "hornsby-dcp-2024-part1-general": "part-1-general",
+        "hornsby-dcp-2024-part3": "hornsby-dcp-2024-part3-residential",
+    },
+    "leichhardt": {
+        "leichhardt-dcp-2013-part-b": "part-b-connections",
+        "leichhardt-dcp-2013-part-c-s3": "part-c-s3-residential",
+        "leichhardt-dcp-2013-part-g-s1": "part-g-s1-site-specific",
+        "leichhardt-part-c-section-1": "part-c-s1-general",
+    },
+    "marrickville": {
+        "marrickville-part-2-10-parking": "part2-s10-parking",
+        "part4_s2_mdh_rfb": "part4-s2-multi-dwelling",
+        
+        "s4.1-low-density-residential": "part4-s1-low-density",
+    },
+    "randwick": {
+        "part-c1-low-density-residential": "randwick-dcp-c1-low-density",
+    },
+    "ryde": {
+        "part-3.3-dwelling-houses": "part-3-3-dwelling-houses",
+    },
+    "woollahra": {
+        "woollahra-dcp-2015-chapter-c3": "chapter-c3-watsons-bay-hca",
+    },
+}
+
+
+def apply_chapter_key_aliases(registry_pdf_urls: dict, lga_slug: str) -> dict:
+    """Extend a {chapter_key: url} map with verified aliases for lga_slug.
+
+    Pure function, no DB access — kept separate from fetch_dcp_setbacks so the
+    merge rule (never overwrite a key the registry already resolved directly)
+    is unit-testable without a live connection. See CHAPTER_KEY_ALIASES.
+    """
+    result = dict(registry_pdf_urls)
+    for alias, canonical in CHAPTER_KEY_ALIASES.get(lga_slug, {}).items():
+        if canonical in result and alias not in result:
+            result[alias] = result[canonical]
+    return result
+
+
 # prior-art-checked: same function, additive kwarg only — the proxy endpoint
 # needs failure distinguishable from checked-none; no new capability.
 def fetch_dcp_setbacks(
@@ -438,6 +533,10 @@ def fetch_dcp_setbacks(
                     (lga_slug,),
                 )
                 registry_pdf_urls = {k: u for k, u in (cur.fetchall() or []) if k}
+                # A control's source_chapter_key can be a stale/renamed alias
+                # of a registry chapter that still has a URL under its
+                # canonical key — see CHAPTER_KEY_ALIASES above.
+                registry_pdf_urls = apply_chapter_key_aliases(registry_pdf_urls, lga_slug)
                 cur.execute("RELEASE SAVEPOINT pdf_map_probe")
             except Exception as e:
                 logger.warning("fetch_dcp_setbacks registry pdf map: %s", e)
