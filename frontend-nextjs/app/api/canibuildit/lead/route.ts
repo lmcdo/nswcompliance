@@ -59,7 +59,11 @@ const leadRateLimiter = redis
 // INPUT SCHEMA
 // ============================================================================
 
-const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief'] as const;
+// Union of two independent additions to this list, both added since the base
+// commit this branch forked from: 'intelligence-brief' (Site Report product)
+// and 'duplex-result' (this branch's email-my-result feature). Neither
+// supersedes the other.
+const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief', 'duplex-result'] as const;
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),
@@ -189,7 +193,7 @@ export async function POST(req: NextRequest) {
 
   // --- 7. Send confirmation email ---
   const addressLabel = cleanAddress ?? 'your property';
-  const { subject, body: emailBody } = buildEmailContent(interest_type ?? 'granny-flat', addressLabel);
+  const { subject, body: emailBody } = buildEmailContent(interest_type ?? 'granny-flat', addressLabel, eligible ?? null);
   // Sender brand follows the product, not one hardcoded consumer identity —
   // intelligence-brief is the PlotDetect (verify./brief. subdomain) product,
   // distinct from the canibuildit.com.au consumer tools every other
@@ -243,7 +247,7 @@ function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
-export function buildEmailContent(product: string, address: string): { subject: string; body: string } {
+export function buildEmailContent(product: string, address: string, eligible: boolean | null = null): { subject: string; body: string } {
   // address is user-submitted (Zod bounds length only, not character set) and
   // gets interpolated into an HTML email body across every case below —
   // escape once here rather than per-case. Subjects use the raw `address`
@@ -251,6 +255,37 @@ export function buildEmailContent(product: string, address: string): { subject: 
   // "&amp;" etc. for a genuine address containing "&").
   const safeAddress = escapeHtml(address);
   switch (product) {
+    case 'duplex-result': {
+      const verdictLine =
+        eligible === true
+          ? 'This block meets the mapped Housing SEPP lot standards for a dual occupancy — you can apply to build a duplex here, with consent, through a development application.'
+          : eligible === false
+            ? 'This block does not meet the mapped duplex standard.'
+            : 'Your duplex check has been run for this address.';
+      return {
+        subject: `Your duplex check result — ${address}`,
+        body: `
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your result, saved.</p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            <strong>${safeAddress}</strong><br/>${verdictLine}
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Keep this email, forward it to whoever needs it, or run the check
+            again any time at
+            <a href="https://canibuildit.com.au/duplex-check" style="color: #0d9488;">canibuildit.com.au/duplex-check</a>.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Thinking about what it would cost to build? Reply to this email and
+            we&rsquo;ll introduce you to a builder who does dual occupancies in
+            your area. PlotDetect may receive a referral fee.
+          </p>
+          <p style="color: #999; font-size: 12px; line-height: 1.6;">
+            This is mapped planning data, not planning advice — development
+            consent depends on a development application and site-specific
+            assessment by the council.
+          </p>`,
+      };
+    }
     case 'flood':
     case 'flood-truth':
       return {

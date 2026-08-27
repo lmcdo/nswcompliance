@@ -1,0 +1,62 @@
+{
+  "tier": "standard",
+  "justification": "New customer-facing lead-capture path (duplex-result interest_type) and a new email product case that ships served content (subject + HTML body) to a real inbox. Rebased through 12 merged PRs from the same day, requiring a hand-resolved merge conflict against a deliberate UI redesign and a security-relevant escaping fix already on main.",
+  "commit_hash": "02eba847",
+  "files": [
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts",
+    "frontend-nextjs/app/duplex-check/page.tsx",
+    "frontend-nextjs/components/reports/PostResultEmailStrip.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/canibuildit/ __tests__/components/tools/BuilderReferralCard.test.tsx",
+    "fails_when": "The duplex-result email case regresses (wrong verdict line for eligible=true/false/null), the address is not HTML-escaped in the duplex-result body, or the multi-step BuilderReferralCard qualifier stops working end to end (consent gating, submit, error/success states, funnel events).",
+    "observed_red": "This branch (bb598396, before rebase) was written against a SINGLE-STEP version of BuilderReferralCard that no longer exists on main -- main redesigned it into a 3-step qualifier (evidence-based, cited to ce-lead-qualifier-research-2026-07.md) after this branch diverged. The old branch's own tests asserted a button named 'Match me with a builder' via fireEvent.submit on a form lookup that does not exist post-redesign -- those specific assertions are the observed-red evidence that a naive resolution (keeping the old branch's UI) would have shipped a broken component. Verified post-resolution: 94/94 suites, 1273/1273 tests (4 more than main's 1269 -- the duplex-result suite plus one added escaping-regression case), tsc clean, npm run build succeeds."
+  },
+  "pre_impl": {
+    "existing_data": "No database. duplex-check/page.tsx already stores an UpzoningResult client-side from an existing API; this branch adds a POST to the existing /api/canibuildit/lead endpoint with a new interest_type value, using the schema and DB insert path already shipped and unchanged by this branch.",
+    "assumption_mismatch": "The branch (2026-07-19) predates main's HTML-escaping fix for buildEmailContent (address is user-submitted; every other product case escapes it into the body) and predates the intelligence-brief sender-branding logic. The rebase conflict was resolved by MERGING both changes rather than picking a side: the new duplex-result case gained the eligible parameter this branch added AND the safeAddress escaping main added -- the source line still read raw ${address} in the duplex-result body until this rebase fixed it, which would have been the one served case missing the security fix main introduced everywhere else.",
+    "new_vs_existing": "Applies to new duplex-check submissions only. No backfill; no prior duplex-result leads exist to correct."
+  },
+  "functions": [
+    {
+      "name": "buildEmailContent",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:255",
+      "input": "product: string, address: string, eligible: boolean | null = null. The eligible parameter is new on this branch; product='duplex-result' is the new case.",
+      "output": "{ subject, body }. For duplex-result: subject uses raw address (plain text, matches every other case); body uses escapeHtml(address) and a verdict line keyed off eligible (true/false/null), matching the already-established per-case pattern in this switch.",
+      "if_none": "eligible defaults to null, which renders the neutral 'has been run' line rather than a false positive or negative -- the null branch is a required, tested case, not a fallthrough.",
+      "why": "The three-way eligible branch was this PR's actual new logic; the escaping fix was main's. Both had to survive the merge, and the switch's own existing per-case convention (subject raw, body escaped) is what proved which one was missing."
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "An attacker-controlled address string reaches the duplex-result email body.",
+      "what_happens": "Before this rebase's fix, the duplex-result case was the one path in buildEmailContent still interpolating raw address into HTML, while every sibling case (flood, solar-yield, shadow, threat-radar, dual-occ-referral, granny-flat) already escaped it -- an inconsistency introduced by resolving the merge naively rather than checking every case against the established convention.",
+      "mitigated": true,
+      "how": "duplex-result now uses safeAddress like every other case. Added to the file's own regression-test array (PRODUCTS_WITH_ADDRESS_IN_BODY) so it is covered by the same adversarial test the other six cases already share, rather than a one-off assertion that could silently stop being run.",
+      "repro": "it.each(PRODUCTS_WITH_ADDRESS_IN_BODY) in lead-email.test.ts includes 'duplex-result'; reverting safeAddress to address in that case reintroduces the unescaped anchor tag and fails that parametrised test."
+    },
+    {
+      "scenario": "The merge conflict on BuilderReferralCard.tsx is resolved by keeping the OLDER branch's single-step UI instead of main's redesign.",
+      "what_happens": "main's qualify-first, evidence-based redesign (cited research: qualifying before asking for contact details lifts conversion ~20% with no quality loss) would be silently reverted for every visitor to this page, and the old branch's own tests (asserting a 'Match me with a builder' button and a bare form-submit) would then pass while testing a UI that no longer matches the product's current, deliberate design everywhere else it's used.",
+      "mitigated": true,
+      "how": "Resolved in favour of main's component entirely -- verified it is a strict superset (main's submit test additionally asserts the qualification payload the old branch's version never captured), and confirmed no function referenced only by the discarded branch (handleSubmit) was left orphaned anywhere in the file.",
+      "repro": "grep handleSubmit frontend-nextjs/components/tools/BuilderReferralCard.tsx returns zero matches post-resolution; the two files' net diff against origin/main's HEAD is empty, i.e. this rebase changed nothing there because main was already correct."
+    },
+    {
+      "scenario": "Two independent features add different values to the same INTEREST_TYPES array in the same merge.",
+      "what_happens": "A resolution that picks one side loses either the intelligence-brief Site Report product (main) or the duplex-result capture this branch adds -- both are live, unrelated features that happened to touch the same line.",
+      "mitigated": true,
+      "how": "Both values kept; a comment on the line records why (union, not override) so a future conflict here is resolved the same way rather than re-litigated.",
+      "repro": "z.enum(INTEREST_TYPES) accepts both 'intelligence-brief' and 'duplex-result' -- removing either from the array would 400 valid requests for that product."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
