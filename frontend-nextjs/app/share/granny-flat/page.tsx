@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
 
 /**
  * /share/granny-flat?address=...

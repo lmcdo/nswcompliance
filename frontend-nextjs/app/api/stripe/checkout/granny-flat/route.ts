@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Payment not configured' }, { status: 500 });
   }
 
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
 
   try {
     const session = await stripe.checkout.sessions.create({
