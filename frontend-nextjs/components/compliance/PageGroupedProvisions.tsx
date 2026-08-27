@@ -28,6 +28,7 @@ import { DAResponseCapture } from './DAResponseCapture';
 import { SectionResponseCapture } from './SectionResponseCapture';
 import type { DaResponse, SectionResponse } from '@/hooks/useDASession';
 import { buildSectionKey, parseSectionKey } from '@/lib/see/sectionKey';
+import { resolveCitationUrl } from '@/lib/citation-instrument-urls';
 import type { NumericCheckValues } from './NumericChecker';
 
 
@@ -188,6 +189,9 @@ export interface Provision {
   source_chapter_key?: string;
   // Clause reference parsed from ref_number (e.g. "2.6 C3", "C2.2.1.1")
   clause_label?: string | null;
+  // Present on the raw DB row (rp.document_id) but not previously typed here —
+  // needed as the key for the instrument_registry citation fallback.
+  document_id?: string;
 }
 
 interface PageGroup {
@@ -877,16 +881,16 @@ export function PageGroupedProvisions({
                                 <p>{getLayerTooltip(layer)}</p>
                               </TooltipContent>
                             </Tooltip>
-                            {/* PDF link for individual provision — image URL first, R2 chapter URL fallback */}
+                            {/* PDF/citation link for individual provision — image URL, then R2
+                                chapter URL, then the instrument_registry-derived whole-of-instrument
+                                link (see lib/citation-instrument-urls.ts). */}
                             {(() => {
-                              const imageUrl = provision.pdf_page_image_url;
-                              const chapterUrl = !imageUrl && provision.pdf_page && provision.source_chapter_key
-                                ? chapterPdfUrls?.[provision.source_chapter_key]
-                                : null;
-                              if (imageUrl) {
+                              const resolved = resolveCitationUrl(provision, chapterPdfUrls);
+                              if (!resolved) return null;
+                              if (resolved.kind === 'image') {
                                 return (
                                   <button
-                                    onClick={() => onViewPdf(imageUrl, provision.pdf_printed_page || provision.pdf_page || 0)}
+                                    onClick={() => onViewPdf(resolved.url, provision.pdf_printed_page || provision.pdf_page || 0)}
                                     className="p-0.5 rounded hover:bg-teal-100 shrink-0"
                                     title={`PDF page ${provision.pdf_printed_page || provision.pdf_page}`}
                                   >
@@ -894,10 +898,10 @@ export function PageGroupedProvisions({
                                   </button>
                                 );
                               }
-                              if (chapterUrl) {
+                              if (resolved.kind === 'chapter') {
                                 return (
                                   <button
-                                    onClick={() => onViewPdf(`${chapterUrl}#page=${provision.pdf_page}`, provision.pdf_page || 0)}
+                                    onClick={() => onViewPdf(`${resolved.url}#page=${provision.pdf_page}`, provision.pdf_page || 0)}
                                     className="p-0.5 rounded hover:bg-teal-100 shrink-0"
                                     title={`PDF page ${provision.pdf_page}`}
                                   >
@@ -905,7 +909,20 @@ export function PageGroupedProvisions({
                                   </button>
                                 );
                               }
-                              return null;
+                              // 'instrument' — a plain external link, not routed through onViewPdf:
+                              // this is an HTML legislation.nsw.gov.au page, not a PDF, and some
+                              // parents override onViewPdf with a PDF-only viewer.
+                              return (
+                                <a
+                                  href={resolved.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-0.5 rounded hover:bg-teal-100 shrink-0"
+                                  title="View on legislation.nsw.gov.au"
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700" />
+                                </a>
+                              );
                             })()}
                           </div>
 
