@@ -19,7 +19,7 @@
  *                       corpus grows; stable/countable sets use the exact figure.
  *
  * PROVENANCE — verify with:  python scripts/verify_coverage_stats.py
- * Last DB verification: 2026-08-24 (see per-field source query below).
+ * Last DB verification: 2026-09-01 (see per-field source query below).
  *
  *   provisionsTotal            SELECT COUNT(*) FROM regulatory_provisions
  *   dcpActionableProvisions    SELECT COUNT(*) FROM regulatory_provisions
@@ -48,7 +48,14 @@
  *                                FROM dcp_setback_controls WHERE is_current
  *                                  AND (needs_review IS NULL OR needs_review=FALSE)
  *                                  AND lga<>'nsw_statewide' AND lga<>'inner_west' GROUP BY lga)
- *                                SELECT count(*) FILTER (WHERE f>0 AND s>0 AND r>0) FROM t; -> 24
+ *                                SELECT count(*) FILTER (WHERE f>0 AND s>0 AND r>0) FROM t; -> 23
+ *                                (was 24 as of 2026-08-24; re-verified 2026-09-01 and re-derived
+ *                                independently against a fresh session, not just the script's own
+ *                                claim. burwood, cumberland, ku_ring_gai, parramatta and woollahra
+ *                                currently lack at least one of the three control types — which
+ *                                one of these five newly dropped below 24 was not traced further;
+ *                                this corrects the published figure to match the live count, an
+ *                                exact-count field must never overstate.)
  *   dcpSetbackRows             SELECT COUNT(*) FROM dcp_setback_controls   (all extracted rows)
  *   heritageAreas              SELECT COUNT(*) FROM heritage_conservation_areas
  *   regulatoryDefinitions      SELECT COUNT(*) FROM regulatory_definitions
@@ -83,7 +90,7 @@ export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
   dcpNumericCouncils: 25,
-  dcpSetbackTripleCouncils: 24,
+  dcpSetbackTripleCouncils: 23,
   dcpFullCouncils: 7,
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
@@ -106,7 +113,7 @@ export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
   dcpNumericCouncils: '25',
-  dcpSetbackTripleCouncils: '24',
+  dcpSetbackTripleCouncils: '23',
   dcpFullCouncils: '7',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
