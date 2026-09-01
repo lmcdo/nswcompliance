@@ -247,6 +247,28 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "(PCO 403 / AustLII Cloudflare) and belongs in notes, not in a retry "
         "loop; a residual of 26 means the monitor is not running.",
     ),
+    "DQ-88": (
+        "SEPP/LEP instruments flagged needs_review with nobody having cleared it",
+        # Split out of DQ-69, deliberately: this does NOT check whether the
+        # monitor runs (DQ-69 already does, and it does run) -- it checks
+        # whether a HUMAN has looked at what the monitor flagged. A count-only
+        # check cannot tell "correctly cleared" from "flag flipped without
+        # reading the change", so it does not try -- it only tracks whether the
+        # backlog is growing, shrinking, or static, which is real signal on
+        # its own: static for 3+ weeks on high-traffic instruments (SEPP
+        # Housing 2021 alone backs 241 served provisions) means the review
+        # step is not happening, whatever the reason.
+        "SELECT count(*) FROM instrument_registry "
+        "WHERE is_active AND needs_review",
+        (),
+        "Each row is a SEPP or LEP the monitor detected a change on and "
+        "deliberately did not auto-apply, waiting for a human to read it. "
+        "Measured 7 on both 2026-08-14 and 2026-09-01, unchanged across 3+ "
+        "weeks and 3 monitor runs in between -- the monitor is correctly "
+        "refusing to guess; nobody has done the reading. This can rise "
+        "legitimately as new changes are detected; it should never sit static "
+        "for weeks while the underlying instruments keep serving.",
+    ),
     "DQ-70": (
         "Served provisions whose source PDF has CHANGED since they were extracted",
         # THE OUTCOME SIGNAL, not a mechanism one. Every other gate in this file
