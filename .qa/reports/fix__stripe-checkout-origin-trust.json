@@ -1,0 +1,84 @@
+{
+  "tier": "critical",
+  "justification": "Payments (Stripe Checkout redirect construction) — Critical per CLAUDE.md's own QA tier table. The defect: pre-da-history/route.ts built its Stripe success_url/cancel_url from the raw, attacker-controlled request Origin header instead of the server-side NEXT_PUBLIC_SITE_URL env var every sibling checkout route already uses. An attacker hosting their own page could POST to this route and have Stripe's post-payment redirect point at their own domain -- a customer completing a real $49 payment would be sent to the attacker's site instead of PlotDetect's. Also fixed the same dead-apex fallback default (plotdetect.com.au -> verify.plotdetect.com.au) that #1009/786fb4a7 already fixed on every other route, since this file predates that fix and still carried it on main.",
+  "commit_hash": "e4c4d66f",
+  "files": [
+    "frontend-nextjs/app/api/stripe/checkout/pre-da-history/route.ts",
+    "frontend-nextjs/__tests__/api/stripe/checkout-pre-da-history.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/stripe/checkout-pre-da-history.test.ts",
+    "fails_when": "success_url or cancel_url is built from the request Origin header (or any other client-supplied value) rather than exclusively from process.env.NEXT_PUBLIC_SITE_URL, or the fallback default reverts to the dead bare apex.",
+    "observed_red": "Forced red by reverting only route.ts (git stash) with the test file present: 3 of 9 tests failed -- 'ignores an attacker-controlled Origin header entirely' failed because success_url contained a URL built from https://plotdetect.com.au (the OLD code path) rather than rejecting the attacker Origin outright, and the two fallback tests failed on the dead-apex string, matching exactly what the fix closes. Restored: 9/9 green. Full jest suite: 95 suites / 1282 tests green. tsc clean."
+  },
+  "pre_impl": {
+    "existing_data": "process.env.NEXT_PUBLIC_SITE_URL is the single source of truth for this value across all 13 sibling stripe checkout routes and the webhook (grepped: none of them read req.headers.get('origin') at all). pre-da-history/route.ts was the sole outlier -- confirmed by grepping the full frontend-nextjs/app/api tree for headers.get('origin'): only this file and app/api/ai/chat-honeypot/route.ts matched, and chat-honeypot only logs the value for bot-detection telemetry, never uses it to build a URL.",
+    "assumption_mismatch": "Assumed initially (from Sol's first-round finding) that this pattern was duplicated 'across all similarly changed checkout routes' -- verified false by reading each of the other 13 files directly. The blast radius is exactly one file, not the whole payment surface.",
+    "new_vs_existing": "Existing rows (past Stripe sessions already created with the old, vulnerable origin) are unaffected -- Stripe checkout sessions and their redirect URLs are generated once at session-creation time and are not retroactively alterable by this code change. This only changes what a NEW checkout session gets as its success/cancel URL.",
+    "external_source_error": "N/A for this change -- no external call changes shape. getStripe() and stripe.checkout.sessions.create() are unchanged calls; only the string fed into success_url/cancel_url changes, and Stripe itself returns the same session object either way.",
+    "frontend_type": "No. The response shape ({ checkout_url }) is unchanged; only the value's content (which domain the redirect points at) differs, and no frontend type reads that content directly.",
+    "user_failure_mode": "None new, and the fix closes an existing silent one. Before the fix, a customer arriving via an attacker's link would complete a real payment and be redirected to the attacker's site post-payment with no visible error at all -- the silent failure this fix closes. After the fix, every customer is redirected to plotdetect's own verify subdomain regardless of what page or link they arrived from; if NEXT_PUBLIC_SITE_URL is ever unset, the fallback is now the live app domain, not a 404."
+  },
+  "functions": [
+    {
+      "name": "POST",
+      "file_line": "frontend-nextjs/app/api/stripe/checkout/pre-da-history/route.ts:15",
+      "input": "NextRequest with JSON body { report_id, email, firm_name? } and arbitrary request headers, including an attacker-settable Origin",
+      "output": "NextResponse — 200 with { checkout_url }, or 400/500 with { error }",
+      "if_none": "Origin header absent or attacker-controlled: no longer read at all; origin is now derived exclusively from process.env.NEXT_PUBLIC_SITE_URL, falling back to the correct https://verify.plotdetect.com.au default if that env var is unset"
+    }
+  ],
+  "values": [
+    {
+      "value": "origin",
+      "read_at": "frontend-nextjs/app/api/stripe/checkout/pre-da-history/route.ts:56",
+      "nullable": "NEXT_PUBLIC_SITE_URL may be unset in some environments (e.g. a misconfigured preview deploy)",
+      "guard_at": "the ?? fallback default on the same line",
+      "if_missing": "falls back to https://verify.plotdetect.com.au — the live, correct app domain — never a dead or attacker-supplied value"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "An attacker hosts a page at https://attacker.example that POSTs to this route with a customer's browser, using a real report_id and email the attacker phished or guessed.",
+      "what_happens": "Before the fix: the browser's Origin header (https://attacker.example, truthfully sent — a browser cannot lie about its own origin) becomes the base of success_url/cancel_url. The customer pays PlotDetect $49 via a real Stripe session, then Stripe redirects them to https://attacker.example/reports/pre-da-history?payment=success&report_id=... after payment, where the attacker controls the page the customer lands on immediately post-payment.",
+      "mitigated": true,
+      "how": "origin is now read exclusively from the server-side NEXT_PUBLIC_SITE_URL env var; the request object's headers are never consulted for this value.",
+      "repro": "checkout-pre-da-history.test.ts: 'ignores an attacker-controlled Origin header entirely' — forced red on the pre-fix code, confirmed green after"
+    },
+    {
+      "scenario": "No Origin header is sent at all (a server-to-server call, curl, or a browser configuration that omits it).",
+      "what_happens": "Before the fix: fell back to the dead bare apex (https://plotdetect.com.au), which 404s on every app route per 786fb4a7's own live-curl evidence. Same defect class as the 14-file fix already merged elsewhere, just never applied to this file.",
+      "mitigated": true,
+      "how": "The fallback default is now https://verify.plotdetect.com.au, the live app domain, matching every sibling checkout route.",
+      "repro": "checkout-pre-da-history.test.ts: 'uses NEXT_PUBLIC_SITE_URL when no Origin header is present at all'"
+    },
+    {
+      "scenario": "NEXT_PUBLIC_SITE_URL is unset in a given deploy environment (e.g. a misconfigured preview branch).",
+      "what_happens": "success_url/cancel_url would silently point at whatever the fallback string is.",
+      "mitigated": true,
+      "how": "Fallback is hardcoded to the correct, live verify.plotdetect.com.au, not the dead apex, not an empty string.",
+      "repro": "checkout-pre-da-history.test.ts: 'falls back to the verify subdomain, never the dead bare apex, when the env var is unset'"
+    },
+    {
+      "scenario": "The fix is applied inconsistently, leaving some other sibling route with the same origin-header-trust pattern undiscovered.",
+      "what_happens": "A false sense that the whole payment surface is now safe when one route still isn't.",
+      "mitigated": true,
+      "how": "Grepped the entire frontend-nextjs/app/api tree for headers.get('origin') before concluding scope — only this file and the unrelated chat-honeypot route matched. Not asserted from memory of what 786fb4a7 touched; independently re-verified against the current tree.",
+      "repro": "grep -rln \"headers.get('origin')\" frontend-nextjs/app/api --include=*.ts"
+    },
+    {
+      "scenario": "The fix breaks the happy path for a legitimate customer on the real domain.",
+      "what_happens": "Checkout would fail to redirect anywhere useful post-payment.",
+      "mitigated": true,
+      "how": "Existing happy-path tests (200 + checkout_url, success_url shape, metadata) all still pass unmodified — the fix changes only where the origin value comes from, not the URL-building logic downstream.",
+      "repro": "checkout-pre-da-history.test.ts happy-path describe block, 2/2 green"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No — no database interaction in this route.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Recommended but not performed here: submit a real (test-mode) pre-DA history checkout from the live app and confirm the Stripe session's success_url/cancel_url both resolve to verify.plotdetect.com.au, matching what the other checkout products already do in production."
+  }
+}
