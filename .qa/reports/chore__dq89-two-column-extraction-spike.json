@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Registers a genuinely new, sizeable data-quality finding (31 chapters flagged suspect, 29 of them new today) as a tracked ledger row with a real query-backed check, rather than leaving it in conversation only. Standard tier because it adds a new probe to scripts/dq_probe_live.py, not just prose.",
-  "commit_hash": "f24f8bf0",
+  "commit_hash": "8c8095c0",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -44,7 +44,7 @@
   ],
   "queries": [
     {
-      "purpose": "confirm the 31-count, its two-population split, and that no served content is affected, before writing the tracker row or the probe",
+      "purpose": "count the active suspect-flagged chapters and confirm served content is unaffected before writing the tracker row or the probe",
       "file_line": "ad-hoc read-only queries via scripts/dq_db.py, then codified as the DQ-89 probe",
       "where_clause": "dcp_chapter_registry WHERE is_active AND needs_extraction AND last_suspect_alert_key IS NOT NULL, grouped by council for the breakdown, filtered by council for the Canterbury-Bankstown/Waverley checks",
       "if_zero": "would mean the spike had already cleared itself -- not the case, 31 confirmed live moments before writing this report",
