@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Single published-stat correction (dcpSetbackTripleCouncils: 24 -> 23) in frontend-nextjs/lib/coverage.ts, the project's own designated single source of truth for public-facing coverage numbers. No served logic changes, no schema, no query changes -- corrects an exact-count field that had drifted from the live database, caught by the project's own data-watch workflow.",
-  "commit_hash": "PENDING",
+  "commit_hash": "3fa9427e",
   "files": [
     "frontend-nextjs/lib/coverage.ts"
   ],
