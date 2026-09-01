@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Payments (Stripe Checkout redirect construction) — Critical per CLAUDE.md's own QA tier table. The defect: pre-da-history/route.ts built its Stripe success_url/cancel_url from the raw, attacker-controlled request Origin header instead of the server-side NEXT_PUBLIC_SITE_URL env var every sibling checkout route already uses. An attacker hosting their own page could POST to this route and have Stripe's post-payment redirect point at their own domain -- a customer completing a real $49 payment would be sent to the attacker's site instead of PlotDetect's. Also fixed the same dead-apex fallback default (plotdetect.com.au -> verify.plotdetect.com.au) that #1009/786fb4a7 already fixed on every other route, since this file predates that fix and still carried it on main.",
-  "commit_hash": "PENDING",
+  "commit_hash": "e4c4d66f",
   "files": [
     "frontend-nextjs/app/api/stripe/checkout/pre-da-history/route.ts",
     "frontend-nextjs/__tests__/api/stripe/checkout-pre-da-history.test.ts"
