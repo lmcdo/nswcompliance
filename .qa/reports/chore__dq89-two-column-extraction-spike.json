@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Registers a genuinely new, sizeable data-quality finding (31 chapters flagged suspect, 29 of them new today) as a tracked ledger row with a real query-backed check, rather than leaving it in conversation only. Standard tier because it adds a new probe to scripts/dq_probe_live.py, not just prose.",
-  "commit_hash": "f37715dc",
+  "commit_hash": "03b0d6ea",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
