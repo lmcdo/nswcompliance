@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Properly scopes a previously-vague 374/371-chapter finding into a precise, evidence-backed defect count (97) with a real query-backed check, and surfaces that 54 of the 97 are a single council (Canterbury-Bankstown) whose entire substantive DCP text corpus is empty despite the source PDFs being on hand for ~4 months. Standard tier: adds a new probe to scripts/dq_probe_live.py, and the underlying finding materially affects what can be honestly claimed about council coverage.",
-  "commit_hash": "dddc8b40",
+  "commit_hash": "b93c6f29",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
