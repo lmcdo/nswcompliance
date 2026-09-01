@@ -1117,6 +1117,54 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "and not merely suspected. NEVER clears by re-fetching the portal, "
         "which is the stale source.",
     ),
+    "DQ-89": (
+        "Active chapters flagged suspect (needs_extraction), most but not all with no served-data impact",
+        # A backlog-SIZE check, deliberately not a correctness check -- see
+        # DQ-78's own hard lesson: some rows near a suspect boundary carry
+        # real controls interleaved with garbage, so a script that bulk-clears
+        # this flag would risk hiding a live control, the exact liability
+        # direction this project refuses to take. Clearing it needs a human
+        # to read the flagged chapter.
+        #
+        # is_active stays TRUE while needs_extraction is TRUE -- that is the
+        # review queue working as designed (hold last-known-good, do not
+        # commit the suspect re-extraction) for chapters that HAVE a prior
+        # accepted extraction. Sol cross-review caught that this probe's first
+        # version asserted "no served-data impact" for the whole count without
+        # checking that premise: is_active means "registered", not "serving
+        # content" -- one of the 31 (hornsby/part-1-general) has
+        # last_extracted_at IS NULL and zero currently-served provisions, i.e.
+        # it has never had a successful extraction at all. This probe still
+        # counts the whole backlog (that number is real and worth tracking
+        # together), but no longer claims blanket safety for it.
+        #
+        # NOT fixed here, and deliberately not turned into a new sweeping row:
+        # the same live check that found hornsby's gap also found 374 active
+        # chapters registry-wide with last_extracted_at IS NULL (371 serving
+        # zero current provisions) -- far larger and pre-existing, and almost
+        # certainly a mix of genuine gaps and chapters (site-specific DCPs,
+        # administrative parts) that legitimately need no provision
+        # extraction. That population needs its own investigation to tell the
+        # two apart before it can be honestly scoped as a defect count -- the
+        # exact DQ-74/DQ-56 lesson about not turning an unadjudicated
+        # population into a backlog number by assertion.
+        "SELECT count(*) FROM dcp_chapter_registry "
+        "WHERE is_active AND needs_extraction "
+        "AND last_suspect_alert_key IS NOT NULL",
+        (),
+        "Each row is an active chapter the extraction pipeline flagged as "
+        "suspect (two-column interleave, a schema failure, or a count drop "
+        "against baseline) and refused to auto-commit. Measured 31 on "
+        "2026-09-01/02: 29 new that day (woollahra 22, ku_ring_gai 7, all "
+        "timestamped 2026-09-01 03:31 UTC, immediately after Woollahra's "
+        "council host migrated every chapter's URL) plus 2 pre-existing and "
+        "unrelated (city_of_sydney/section-3-general-provisions, "
+        "hornsby/part-1-general, timestamped 2026-08-15, recurring since "
+        "2026-08-03). 30 of the 31 have is_active=True AND a currently-served "
+        "provision -- genuinely no served-content impact. hornsby/part-1-general "
+        "is the exception: never successfully extracted, zero served "
+        "provisions -- a real gap, not a stale-but-fine copy.",
+    ),
 }
 
 
