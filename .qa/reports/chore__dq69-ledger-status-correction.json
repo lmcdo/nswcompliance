@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Corrects DQ-69's tracker headline (which said '67 days blind, schedule not repaired' three weeks after both root causes were actually fixed) and splits out a genuinely separate, still-open defect (7 SEPP/LEP instruments unactioned on needs_review) as a new row, DQ-88, with its own real probe. Standard tier because it adds a new query-backed check to scripts/dq_probe_live.py, not just prose -- Minor would undersell that.",
-  "commit_hash": "PENDING",
+  "commit_hash": "1779ba7a",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
