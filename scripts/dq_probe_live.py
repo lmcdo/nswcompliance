@@ -1184,11 +1184,29 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # NOT a correctness check on served content quality (that is DQ-78's
         # job for what IS extracted) -- this is coverage-completeness only:
         # does a currently-served provision exist at all for this chapter.
+        #
+        # The NOT EXISTS join is scoped on p.source_council = r.council, not
+        # chapter_key alone -- chapter_key is NOT unique across councils (e.g.
+        # 'landscaping-controls' is reused by 5 councils; sampled and confirmed
+        # 2026-09-02, Sol cross-review). Verified live this scoping does not
+        # currently change the count (97 either way) but the unscoped join was
+        # a latent false-negative risk -- a served chapter in one council could
+        # silently mask an unserved chapter with the same key in another.
+        #
+        # 97 is derived from the 371-count base ("active chapters serving zero
+        # current provisions"), NOT the 374-count base ("active chapters never
+        # extracted", i.e. last_extracted_at IS NULL) -- the two are close but
+        # not identical: 3 chapters have last_extracted_at IS NULL yet DO carry
+        # a current provision (consistent with the chapter_key alias-map
+        # recovery, PR ad1249a3), so 374-247-24-3=100 while 371-247-24-3=97.
+        # Quoting 97 as "of the 374" conflates the two bases -- it is "of the
+        # 371".
         "SELECT count(*) FROM dcp_chapter_registry r "
         "WHERE r.is_active AND NOT r.is_spatial AND NOT r.is_inert "
         "AND NOT r.needs_extraction "
         "AND NOT EXISTS (SELECT 1 FROM regulatory_provisions p "
         "                WHERE p.source_chapter_key = r.chapter_key "
+        "                AND p.source_council = r.council "
         "                AND p.is_current)",
         (),
         "Each row is a registered, substantive DCP chapter (not a map sheet, "
@@ -1204,9 +1222,11 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "dcp_setback_controls (a separate numeric-controls table) DOES have "
         "67 current rows for this council, so only the DCP text/TOC corpus "
         "is empty, not every surface. The remaining 43 are thin 1-3-chapter "
-        "gaps scattered across 15 other councils -- consistent with the "
-        "normal stragglers a multi-council pipeline carries, not "
-        "individually investigated here.",
+        "gaps scattered across 20 other councils/instruments (2 filed "
+        "under council='state' -- Apartment Design Guide chapters, not "
+        "a data error) -- consistent with the normal stragglers a "
+        "multi-council pipeline carries, not individually investigated "
+        "here.",
     ),
 }
 
