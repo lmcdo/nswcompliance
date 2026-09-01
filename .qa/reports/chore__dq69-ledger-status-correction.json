@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Corrects DQ-69's tracker headline (which said '67 days blind, schedule not repaired' three weeks after both root causes were actually fixed) and splits out a genuinely separate, still-open defect (7 SEPP/LEP instruments unactioned on needs_review) as a new row, DQ-88, with its own real probe. Standard tier because it adds a new query-backed check to scripts/dq_probe_live.py, not just prose -- Minor would undersell that.",
+  "commit_hash": "05f415db",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "scripts/dq_probe_live.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py && python scripts/dq_probe_live.py --id DQ-69 && python scripts/dq_probe_live.py --id DQ-88",
+    "fails_when": "the tracker's declared status disagrees with dq_checks.json's declared field for either row (dq_check.py's own cross-source check), or either probe's count regresses from what this commit measured (DQ-69: 1, DQ-88: 7).",
+    "observed_red": "Forced red twice while building this: (1) added DQ-88 with check:[] -> 'a row was added without a check that can fail', cap ratchets correctly refused it; (2) wrote DQ-69's tracker status as an unqualified checkmark while dq_checks.json still declared it open -> 'the ledger and the check file declare different statuses', dq_check.py's own cross-source consistency check caught it. Both fixed by writing a real DQ-88 probe and matching DQ-69's status-column convention to its actual declared state (open, with a named residual) rather than a bare checkmark. Final state: dq_check.py PASSED, 45 checks/93 rows/0 red."
+  },
+  "pre_impl": {
+    "existing_data": "instrument_registry (26 active rows) -- read-only throughout, verified via dq_db.py's read-only session before writing anything. DQ-69's query and DQ-88's query were both re-run live against production before being written into either the tracker or the probe file.",
+    "assumption_mismatch": "Assumed initially that DQ-69's own probe (dq_checks.json note) and the DATA_QUALITY_TRACKER.md headline would agree once re-measured -- they did not: the JSON note already recorded both root causes fixed and predicted a floor of 1, dated from whenever the fix landed, while the tracker's human-facing headline was never updated and still described the pre-fix state. This is the exact 'check knew, prose didn't' pattern this branch's own earlier DQ-79 fix (same session) described.",
+    "new_vs_existing": "DQ-69's declared status is left as 'open' (not flipped to 'fixed') because its probe is a strict count==0 test and will never pass while Wingecarribee lacks a pco_instrument_id -- declaring it fixed would immediately recreate the declared-fixed-but-red mismatch this exact commit is correcting elsewhere. DQ-88 is a wholly new row, not a rename of anything existing."
+  },
+  "functions": [
+    {
+      "name": "PROBES['DQ-88'] (registered in scripts/dq_probe_live.py, dispatched by main())",
+      "file_line": "scripts/dq_probe_live.py, DQ-88 entry",
+      "input": "no CLI args beyond --id DQ-88; reads instrument_registry via the shared read-only dq_db session",
+      "output": "prints count + query + explanation to stdout, exits 1 if count > 0 else 0 -- same dispatch shape as every other entry in PROBES, unmodified",
+      "if_none": "if instrument_registry.needs_review is somehow NULL rather than a boolean, the WHERE clause's implicit boolean-true test simply excludes it -- schema declares the column boolean not-null, so this is not a live path"
+    }
+  ],
+  "values": [
+    {
+      "value": "instrument_registry.needs_review",
+      "read_at": "scripts/dq_probe_live.py DQ-88 entry",
+      "nullable": "no, boolean not-null per schema",
+      "guard_at": "WHERE is_active AND needs_review, no null-handling needed",
+      "if_missing": "n/a"
+    },
+    {
+      "value": "instrument_registry.last_checked",
+      "read_at": "scripts/dq_probe_live.py DQ-69 entry (pre-existing, unchanged by this commit)",
+      "nullable": "yes -- NULL means never checked, handled explicitly in the WHERE clause",
+      "guard_at": "WHERE ... last_checked IS NULL OR last_checked < NOW() - INTERVAL '14 days'",
+      "if_missing": "counted as stale (correct -- never-checked is the worst case, not an exemption)"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "confirm DQ-69's residual is unchanged (still exactly the documented floor) and identify DQ-88's 7 instruments by name before writing either row",
+      "file_line": "ad-hoc read-only queries via scripts/dq_db.py, mirroring dq_probe_live.py's own DQ-69/DQ-88 SQL",
+      "where_clause": "instrument_registry WHERE is_active AND (last_checked IS NULL OR needs_review), ordered by needs_review DESC, last_checked NULLS FIRST",
+      "if_zero": "would mean both defects had already cleared themselves -- not the case, 8 rows returned (1 never-checked + 7 needs_review)",
+      "if_wrong": "cross-checked against the ops Telegram alert log's independent timestamps (14/08, 21/08, 28/08 runs) and against dq_checks.json's own pre-existing note, which already predicted a floor of 1 for DQ-69 -- three independent sources agree"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "DQ-88's check is read as proof that the 7 flagged instruments are current, when it only proves the backlog count.",
+      "what_happens": "A green DQ-88 run could be misread as 'all SEPP/LEP data is verified', when someone could have cleared a flag without reading the underlying change.",
+      "mitigated": true,
+      "how": "The dq_checks.json note explicitly states this limitation: 'this check counts the backlog, not correctness ... a green run here is not proof any given instrument is current, only that the visible backlog is empty.'",
+      "repro": "read the note field directly; no code enforces this since it is a documentation limitation, not a technical one"
+    },
+    {
+      "scenario": "DQ-69's residual (1, Wingecarribee) is mistaken for a new defect on a future re-read, triggering wasted investigation.",
+      "what_happens": "Someone re-derives 'why is this 1 and not 0' from scratch instead of reading the already-recorded reason.",
+      "mitigated": true,
+      "how": "Both the tracker row and dq_checks.json's passes_when field state explicitly that 1 is the documented, expected floor (wingecarribee_lep_2010 has no pco_instrument_id) and that 0 requires giving it one -- a deliberate follow-up, not a mystery.",
+      "repro": "grep DQ-69 in either file"
+    },
+    {
+      "scenario": "DQ-88 double-counts or overlaps with DQ-69, corrupting the DQ-CHECK row/check totals.",
+      "what_happens": "The two rows measure genuinely different populations and neither's fix affects the other.",
+      "mitigated": true,
+      "how": "DQ-69 counts by last_checked staleness; DQ-88 counts by needs_review flag. Verified they are disjoint concerns: all 7 needs_review rows in this measurement have check_failures=0 and were checked at the same recent timestamp as the healthy majority -- none of them are also stale by DQ-69's definition.",
+      "repro": "instrument_registry WHERE needs_review AND (last_checked IS NULL OR last_checked < NOW() - INTERVAL '14 days') returns 0"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- read-only throughout.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "The actual substantive follow-up (opening each of the 7 needs_review instruments and clearing or applying what the monitor flagged) is explicitly NOT done here -- it is judgement work per instrument, tracked as the open DQ-88 backlog this commit creates, not resolved by it."
+  }
+}
