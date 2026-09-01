@@ -1,0 +1,112 @@
+{
+  "tier": "standard",
+  "justification": "Commits a measurement of a live product's accuracy and makes the conclusion drawn from it executable. The risk is not the code — it is that a reader takes 0.946 as a pass, or that a later rerun which moves recall looks like a regression. Both are addressed by what the probe asserts and refuses to assert. Not critical: no served value changes, no schema, no production write. Not minor: it adds a ledger row, a probe, and a committed result that other documents will cite. CORRECTION 2026-09-01: this report originally cited 0.919, which was itself an unstable rerun result contradicting the repo's own published 0.946 — see the DQ-87 correction in .claude/DATA_QUALITY_TRACKER.md.",
+  "commit_hash": "0f266f0d",
+  "files": [
+    "docs/qa/flood-calibration-2022-result.json",
+    "scripts/dq_probe_flood_calibration.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py",
+    "fails_when": "DQ-87 is declared fixed while the cluster interval still straddles the pass mark, or declared open once it clears it. The ratchet runs both ways, and the two ledger files must agree or the disagreement guard fires first.",
+    "observed_red": "Forced by declaring DQ-87 fixed in BOTH files: 'RED DQ-87: declared FIXED but the check FAILS - the cluster 95% CI straddles the pass mark, so the flood screen's recall is not established', DQ-CHECK: FAILED. Restored: DQ-CHECK PASSED across 92 rows. The probe itself exits 1 on the real data — 0.727 >= 0.9 is False — which is the correct state for an open row."
+  },
+  "pre_impl": {
+    "existing_data": "docs/qa/flood-calibration-2022-result.json, produced by scripts/run_flood_calibration_2022.py against 47 hash-verified Copernicus EMS reference archives with seed 20220228. No database read or written by the probe; it reads one committed JSON file.",
+    "assumption_mismatch": "The assumption that failed was the repair prompt's: '~150 points would settle it'. 150 DRAWS yield 37 scorable points, because EMSR567 mapped NSW and south-east Queensland and the script refuses to score Brisbane as NSW recall. Had that gone unchecked I would have reported N=150 and a settled result. The real constraint is cluster diversity — 7 councils cannot produce a tight interval however many points come from them — so more draws is the wrong remedy.",
+    "new_vs_existing": "Adds a row rather than editing one: there was NO ledger entry for flood calibration before this. The status existed only as prose in ce-product-assurance-position-2026-08.md, which is precisely the decay this ledger exists to stop. Nothing is backfilled and no prior measurement is overwritten — the earlier N=7 figure stays in the plan file as history."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/dq_probe_flood_calibration.py:57",
+      "input": "docs/qa/flood-calibration-2022-result.json, read from disk at the repo root",
+      "output": "exit 0 when cluster_lo >= pass_mark, 1 when the interval straddles it, 2 when the file is missing or unreadable",
+      "if_none": "A missing or malformed result file exits 2, not 0. UNKNOWN is never reported as clean — a calibration whose result cannot be read is not a calibration that passed."
+    }
+  ],
+  "values": [
+    {
+      "value": "cluster_lo",
+      "read_at": "scripts/dq_probe_flood_calibration.py — the governing comparison",
+      "nullable": "checked explicitly; None exits 2",
+      "guard_at": "the per-key None check before any arithmetic",
+      "if_missing": "Exit 2 rather than a comparison against None, which would raise and look like a crash rather than an unknown."
+    },
+    {
+      "value": "recall",
+      "read_at": "printed, never asserted on",
+      "nullable": "checked; None exits 2",
+      "guard_at": "deliberately NOT part of the pass condition",
+      "if_missing": "Pinning recall would make an honest rerun that moves it look like a regression. The probe asserts the CONCLUSION — does the interval clear the mark — not the number."
+    },
+    {
+      "value": "pass_mark",
+      "read_at": "read from the result file, not hardcoded in the probe",
+      "nullable": "checked; None exits 2",
+      "guard_at": "compared against cluster_lo",
+      "if_missing": "Hardcoding 0.90 in the probe would let the mark drift in the result file while the check kept testing the old one. The mark travels with the measurement that was taken against it."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Establish whether the run polluted production, given that is what the previous runs did",
+      "file_line": "verified via scripts/dq_db.py read-only session",
+      "where_clause": "SELECT count(*) FROM property_reports WHERE address LIKE 'calibration %'; SELECT count(*) FROM property_reports WHERE product='flood'",
+      "if_zero": "0 calibration rows and 166 flood rows both before and after the run — which is the whole point of persist=False (#1005), verified against production rather than assumed.",
+      "if_wrong": "The previous runs on 2026-08-08..10 left 520 rows, 75.8% of all flood reports. Those were backed up and deleted before this run so the baseline was real."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A reader sees recall 0.946 against a 0.90 mark and records it as a pass.",
+      "what_happens": "A live product's accuracy claim gets upgraded on a point estimate. The governing cluster interval is 0.727-1.000 — it straddles the mark — because 37 points from 7 councils are not 37 independent trials.",
+      "mitigated": true,
+      "how": "The probe compares cluster_lo, not recall, and exits 1. The ledger row and the probe output both state that the interval straddles and that Wilson reads narrower because it assumes independence the data does not have.",
+      "repro": "python scripts/dq_probe_flood_calibration.py — prints '0.727 >= 0.9 is False' and exits 1"
+    },
+    {
+      "scenario": "A later rerun moves recall and the check reads it as a regression.",
+      "what_happens": "An honest remeasurement — more councils, a corrected reference — would look like a defect, and the pressure would be to not rerun it.",
+      "mitigated": true,
+      "how": "Recall is printed and never asserted on. Only cluster_lo >= pass_mark decides, so a rerun that lowers recall while widening coverage is not punished, and one that genuinely settles the question closes the row.",
+      "repro": "Edit recall in the result file: the probe's verdict does not change"
+    },
+    {
+      "scenario": "Someone closes this by drawing more points from the same reference set.",
+      "what_happens": "Wasted runs. 150 draws already yield only 37 in-scope points, and every one comes from the same 7 council clusters, so the cluster interval barely moves.",
+      "mitigated": true,
+      "how": "Both the ledger row and the probe output say the binding constraint is cluster diversity, not sample size, and that the row closes when flood events in MORE COUNCILS enter the reference set.",
+      "repro": "n_raw_draws 150 vs n_in_scope 37 vs n_clusters 7 in the committed result file"
+    },
+    {
+      "scenario": "The pass mark is edited to fit the result.",
+      "what_happens": "The row closes without anything improving — the classic way a committed mark stops meaning anything.",
+      "mitigated": true,
+      "how": "The mark is read FROM the result file, which the calibration script writes from its own pre-committed constant, and the ledger row records that 0.90 was committed before the first run. Moving it is visible in the diff of a committed artefact rather than in a probe nobody reads.",
+      "repro": "git diff docs/qa/flood-calibration-2022-result.json would show any change to pass_mark"
+    },
+    {
+      "scenario": "Recall is mistaken for the whole accuracy question.",
+      "what_happens": "Recall says the screen finds real floods. It says nothing about how often it flags floods that are not there, and a screening product that cries wolf is unusable in a different way.",
+      "mitigated": true,
+      "how": "The probe's output and the ledger row both end with the explicit note that NO specificity figure exists at all.",
+      "repro": "grep specificity in scripts/dq_probe_flood_calibration.py"
+    },
+    {
+      "scenario": "The calibration run has polluted production, the way every previous run did.",
+      "what_happens": "Runs on 2026-08-08..10 polluted production with 520 synthetic rows addressed 'calibration EMSR<id>/AOI<nn>' in property_reports plus 520 audit rows — 75.8% of all flood reports and 40% of the whole audit trail. Every flood-row count taken afterwards, including the DQ-57, DQ-85 and DQ-86 probes, was reading a mostly-synthetic population without saying so.",
+      "mitigated": true,
+      "how": "persist=False (#1005) suppresses both writes on all three branches, and it was verified against production rather than assumed: 166 flood rows and 0 calibration rows both BEFORE and AFTER this run. The 520 historical rows were backed up to scripts/backups/calibration_rows_backup_20260825_134710.json — written and re-read before any delete — and removed, so this run measured against a real baseline.",
+      "repro": "SELECT count(*) FROM property_reports WHERE address LIKE 'calibration %' returns 0; product='flood' returns 166, unchanged across the run"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

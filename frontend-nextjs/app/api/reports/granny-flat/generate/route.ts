@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
       is_paid: true, // UUID access = sufficient guard; always render paid sections for DB-fetched reports
     };
 
-    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
     const shareable_url = `${origin}/reports/granny-flat/${report_id}`;
     data.shareable_url = shareable_url;
     data.qr_b64 = await generateQRBase64(shareable_url);

@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
   const shareable_url = body.report_id ? `${origin}/reports/flood/${body.report_id}` : null;
 
   const [tile_b64, logo_b64, qr_b64] = await Promise.all([
