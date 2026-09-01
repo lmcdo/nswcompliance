@@ -40,6 +40,47 @@ function getLgaSlugs(council: string): string[] {
 }
 
 // Group control_type values into display categories
+/**
+ * Our own paginated copies live on Cloudflare R2. Only these can carry a
+ * #page anchor, because pdf_page was measured against them.
+ */
+/**
+ * The exact hosts that serve PDFs we paginated ourselves.
+ *
+ * NOT a *.r2.dev suffix: r2.dev is a SHARED Cloudflare domain, so anyone can
+ * publish a bucket under it and a suffix test would trust attacker.r2.dev.
+ * One bucket host is in use — verified against dcp_chapter_registry
+ * 2026-08-26, which holds exactly one distinct r2 origin.
+ */
+const OWN_PDF_HOSTS = new Set([
+  'pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev',
+  'verify.plotdetect.com.au',
+]);
+const OWN_PDF_PATH_PREFIX = '/pdf-pages/';
+
+/**
+ * True only for a PDF we paginated ourselves.
+ *
+ * Parses the URL and tests the HOSTNAME. A substring match would accept
+ * https://example.com/evil/.r2.dev/x.pdf, i.e. a page anchor could be attached
+ * to a document we never paginated - the precise-and-wrong case this guard
+ * exists to prevent.
+ */
+function isOwnCopy(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (!OWN_PDF_HOSTS.has(u.hostname)) return false;
+    // /pdf-pages/ only means ours when served from our own host, so the host
+    // check gates it rather than standing as an alternative to it.
+    return (
+      u.hostname !== 'verify.plotdetect.com.au' ||
+      u.pathname.startsWith(OWN_PDF_PATH_PREFIX)
+    );
+  } catch {
+    return false;   // unparseable: never anchor
+  }
+}
+
 const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
   front_setback: { label: 'Setbacks', order: 1 },
   secondary_street_setback: { label: 'Setbacks', order: 1 },
@@ -209,8 +250,14 @@ export async function GET(request: NextRequest) {
 
       // Build PDF URL with page anchor if available — resolved from the
       // row's OWN council's map at collection time (never cross-council).
+      //
+      // The page anchor is only appended to OUR OWN R2 copy. pdf_page is a page
+      // number in the PDF we paginated; the council's own published PDF may be
+      // a different split or edition, so carrying the anchor across would point
+      // at a confidently WRONG page. An unanchored link to the right document
+      // beats a precise link to the wrong page.
       let pdfUrl: string | null = row.__pdfBase;
-      if (pdfUrl && row.pdf_page) {
+      if (pdfUrl && row.pdf_page && isOwnCopy(pdfUrl)) {
         pdfUrl = `${pdfUrl}#page=${row.pdf_page}`;
       }
 

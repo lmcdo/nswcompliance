@@ -1520,15 +1520,27 @@ export function ProvisionsByTocStructure({
     );
   }
 
-  // No DCP data — council processed but returned empty. Show register-interest UI.
-  // No DCP provision text — show structured controls if available, otherwise interest form.
+  // No DCP provision TEXT for this council. That is not the same as having no
+  // DCP data: the numeric controls come from a different table and may well be
+  // present. This used to render the controls AND the "not yet processed"
+  // interest form together, so Canterbury-Bankstown showed 20 controls sourced
+  // from "Canterbury-Bankstown DCP 2023" directly above a form offering to
+  // notify the user when that council's DCP went live.
+  //
+  // The interest form is now the FALLBACK, shown only when the controls fetch
+  // comes back empty - which is what the old comment claimed and the old code
+  // did not do.
   if (!data?.data?.by_toc || Object.keys(tocStructure).length === 0) {
     return (
       <div className="space-y-4">
-        <DcpStructuredControls formerCouncil={formerCouncil} />
-        <DCPInterestForm
-          councilName={lga || formerCouncil || 'your council'}
-          address={address || ''}
+        <DcpStructuredControls
+          formerCouncil={formerCouncil}
+          fallback={
+            <DCPInterestForm
+              councilName={lga || formerCouncil || 'your council'}
+              address={address || ''}
+            />
+          }
         />
       </div>
     );

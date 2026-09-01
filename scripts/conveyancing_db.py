@@ -423,10 +423,17 @@ def fetch_dcp_setbacks(
             try:
                 cur.execute(
                     """
-                    SELECT chapter_key, r2_public_pdf_url
+                    -- Same fallback chain as the TS route: an unlinked
+                    -- citation is a dead grey ref in front of the reader, and
+                    -- the fallback URLs sit in the very same row. Requiring
+                    -- r2_public_pdf_url IS NOT NULL discarded 60% of them.
+                    -- Line 406 of this file already COALESCEs these two.
+                    SELECT chapter_key,
+                           COALESCE(r2_public_pdf_url, council_url, council_page_url)
                     FROM dcp_chapter_registry
                     WHERE council = %s AND is_active = TRUE
-                      AND r2_public_pdf_url IS NOT NULL
+                      AND COALESCE(r2_public_pdf_url, council_url,
+                                   council_page_url) IS NOT NULL
                     """,
                     (lga_slug,),
                 )

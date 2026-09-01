@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     title: 'NSW Housing SEPP Standards — Numeric Requirements',
     description:
       'Structured numeric standards from SEPP Housing 2021 and the ADG with clause references.',
-    url: 'https://plotdetect.com.au/planning-standards',
+    url: 'https://verify.plotdetect.com.au/planning-standards',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },
@@ -162,7 +162,7 @@ export default async function PlanningStandardsPage() {
       <DatasetJsonLd
         name="NSW Housing SEPP Numeric Standards"
         description="Structured numeric development standards from SEPP (Housing) 2021 and the NSW Apartment Design Guide. Includes height limits, lot sizes, floor areas, site coverage, parking rates, and setbacks by development type."
-        url="https://plotdetect.com.au/planning-standards"
+        url="https://verify.plotdetect.com.au/planning-standards"
         spatialCoverage="New South Wales, Australia"
         variableMeasured={[
           'Maximum building height',

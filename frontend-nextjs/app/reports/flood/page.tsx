@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'NSW Flood Risk Check — Free for any address',
     description: 'Government overlays, satellite detection, river gauges, and council flood model depths — cross-referenced for any NSW address. No login required.',
-    url: 'https://plotdetect.com.au/reports/flood',
+    url: 'https://verify.plotdetect.com.au/reports/flood',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },

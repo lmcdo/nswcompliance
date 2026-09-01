@@ -1,0 +1,53 @@
+{
+  "tier": "minor",
+  "justification": "Corrects a declared status in two ledger files (DATA_QUALITY_TRACKER.md, dq_checks.json) from 'fixed' to 'open' to match the live check's actual result. No code path, no schema, no served value, no production write -- documentation-and-declaration only, verified against a live read-only check.",
+  "commit_hash": "c68d4ba3",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py",
+    "fails_when": "DQ-79 is declared 'fixed' while dq_probe_live.py --id DQ-79 returns nonzero (the exact mismatch that was blocking every open PR's gate today), or declared 'open' while the probe returns 0 (which would hide a real fix behind a stale open status).",
+    "observed_red": "Before this change: 'RED DQ-79: declared FIXED but the check FAILS', 'DQ-CHECK: FAILED', 1 red of 91 rows. After: '0 red', 'DQ-CHECK: PASSED' -- same live database state, only the declared status changed, confirming the ratchet was reacting to the declaration/reality mismatch specifically, not to the underlying data problem (which remains genuinely open)."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry id 257 (ku_ring_gai/section-a-part-8-mixed-use), url_content_length=1, checked 2026-09-01 02:04 UTC. Read-only: queried via scripts/dq_db.py's read-only session, no write to this or any other row.",
+    "assumption_mismatch": "Assumed initially this might be the same Hornsby row from the 08-15 fix, reoccurring as a regression. Verified false by querying the live row directly -- it is a different council and chapter entirely, and the 08-15 code fix (Content-Range parsing in head_request()) is confirmed still present and correctly working against this new row's URL.",
+    "new_vs_existing": "Applies only to the DQ-79 ledger entry's declared status; no other row's status touched."
+  },
+  "functions": [],
+  "values": [
+    {
+      "value": "dq_checks.json['DQ-79']['declared']",
+      "read_at": "scripts/dq_check.py",
+      "nullable": "no, always one of a small enum (fixed/open/etc)",
+      "guard_at": "dq_check.py's own comparison against the probe's live exit code",
+      "if_missing": "n/a -- this commit sets it explicitly, does not remove it"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "identify which specific row is currently failing DQ-79's probe, and confirm it is not the row the 08-15 fix addressed",
+      "file_line": "ad-hoc read-only query via scripts/dq_db.py, mirroring dq_probe_live.py's own DQ-79 SQL",
+      "where_clause": "dcp_chapter_registry WHERE is_active AND url_content_length IS NOT NULL AND url_content_length < 1000",
+      "if_zero": "would mean the probe should already be green -- it was not, confirming a real row was failing",
+      "if_wrong": "returned exactly 1 row (id 257), matching the probe's own reported count of 1"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The ledger correction is used to permanently paper over a live data defect instead of tracking it.",
+      "what_happens": "DQ-79 would sit 'open' forever with nobody acting on the underlying Ku-ring-gai row.",
+      "mitigated": true,
+      "how": "The note explicitly states the row will likely self-correct on the chapter monitor's next scheduled run now that runners are back online, and flags a manual investigation as the fallback if it does not -- this is a status correction, not a closure.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-79 remains the live source of truth; re-run it after the monitor's next cycle to confirm it returns to 0"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Re-run python scripts/dq_probe_live.py --id DQ-79 after the chapter monitor's next scheduled cycle to confirm the Ku-ring-gai row self-corrected; if not, that is a genuine follow-up (a backed-up, WHERE-scoped UPDATE on dcp_chapter_registry id 257, or investigation into why the monitor isn't rechecking it)."
+  }
+}

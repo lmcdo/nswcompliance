@@ -6,11 +6,11 @@ import { ProductJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
   title: 'Rooftop Solar Potential Estimate — PlotDetect',
-  description: 'How much solar can this NSW roof generate? Roof geometry and an annual kWh estimate relayed from Google's Solar API — free for any address.',
+  description: "How much solar can this NSW roof generate? Roof geometry and an annual kWh estimate relayed from Google's Solar API — free for any address.",
   openGraph: {
     title: 'Rooftop Solar Potential — Free for any NSW address',
-    description: 'Google's roof geometry and annual yield figure for your address, with published system losses applied. Takes 60 seconds.',
-    url: 'https://plotdetect.com.au/reports/solar-yield',
+    description: "Google's roof geometry and annual yield figure for your address, with published system losses applied. Takes 60 seconds.",
+    url: 'https://verify.plotdetect.com.au/reports/solar-yield',
     siteName: 'plotdetect.com.au',
     type: 'website',
   },

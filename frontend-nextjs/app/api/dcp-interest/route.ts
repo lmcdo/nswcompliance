@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Notify — fire and forget, don't fail the request
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
-      resend.emails.send({
+      await resend.emails.send({
         from: 'PlotDetect <info@plotdetect.com.au>',
         to: NOTIFY_EMAIL,
         subject: `DCP interest: ${council_name}`,

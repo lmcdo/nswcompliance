@@ -145,6 +145,7 @@ describe('buildEmailContent', () => {
     const MALICIOUS = '14 Street</strong><a href="https://evil.example">click</a><strong>';
     const PRODUCTS_WITH_ADDRESS_IN_BODY = [
       'flood', 'solar-yield', 'shadow', 'threat-radar', 'dual-occ-referral', 'granny-flat',
+      'duplex-result',
     ];
 
     it.each(PRODUCTS_WITH_ADDRESS_IN_BODY)('%s: escapes an attacker-controlled address in the body', (product) => {
@@ -157,6 +158,26 @@ describe('buildEmailContent', () => {
       const { body } = buildEmailContent('lga-request', MALICIOUS);
       expect(body).not.toContain(MALICIOUS);
       expect(body).not.toContain('evil.example');
+    });
+  });
+
+  describe('duplex-result', () => {
+    it('eligible=true email states the apply-to-build verdict', () => {
+      const { subject, body } = buildEmailContent('duplex-result', ADDR, true);
+      expect(subject).toContain(ADDR);
+      expect(body).toMatch(/can apply to build a duplex/i);
+      expect(body).toMatch(/development application/i);
+    });
+
+    it('eligible=false email states the standard is not met, never a yes', () => {
+      const { body } = buildEmailContent('duplex-result', ADDR, false);
+      expect(body).toMatch(/does not meet/i);
+      expect(body).not.toMatch(/can apply to build/i);
+    });
+
+    it('null eligible stays neutral', () => {
+      const { body } = buildEmailContent('duplex-result', ADDR, null);
+      expect(body).not.toMatch(/can apply to build|does not meet/i);
     });
   });
 

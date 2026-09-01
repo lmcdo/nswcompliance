@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "The sitemap advertised two URLs that returned 404, and nothing checked. Adds redirects plus a guard covering all 44 static sitemap entries.",
+  "commit_hash": "17e6bdf3",
+  "files": [
+    "frontend-nextjs/next.config.js",
+    "frontend-nextjs/__tests__/sitemap-urls-resolve.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/sitemap-urls-resolve.test.ts",
+    "fails_when": "A static ${base}/path entry in sitemap.ts has neither a page.tsx that maps to it (route groups resolved) nor a matching redirect source in next.config.js.",
+    "observed_red": "Removing the /shadow redirect: 1 failed, 44 passed. Removing the /solar-potential redirect: 1 failed, 44 passed. Renaming a sitemap entry to a route that does not exist: 1 failed, 44 passed. Each kills exactly one case. Baseline and restored both 45 passed."
+  },
+  "pre_impl": {
+    "existing_data": "44 static sitemap entries in chunk 0. Measured live on verify.plotdetect.com.au WITHOUT following redirects, which is the distinction that mattered: /flood-risk and /threat-radar return 307 and were fine; /shadow and /solar-potential returned a direct 404. Following redirects had earlier made /flood-risk look identical to a working page and hid the difference.",
+    "assumption_mismatch": "I assumed the two dead pages needed building. They did not - next.config.js already had clean-URL redirects for the same tools under DIFFERENT slugs, /shadow-check and /solar-yield. The sitemap named /shadow and /solar-potential. Nothing reconciled the two lists, so the mismatch was invisible. The fix is two lines, not two pages.",
+    "new_vs_existing": "Applies at next deploy. Crawlers that already recorded a 404 for these URLs will re-resolve on the next crawl."
+  },
+  "functions": [
+    {
+      "name": "routeExists",
+      "file_line": "frontend-nextjs/__tests__/sitemap-urls-resolve.test.ts:43",
+      "input": "A URL path such as /reports/flood, taken from a static sitemap entry.",
+      "output": "True if some page.tsx maps to that path. Descends into (group) folders without consuming a path segment, since a route group does not appear in the URL.",
+      "if_none": "Returns false. A resolver that always returned false would make every case fail and a broken one that always returned true would make the guard useless, so a separate test pins both directions against a known-good and a known-bad path.",
+      "why": "Route groups are why a naive directory check is wrong here: /shadow lives at app/(tools)/shadow, so the (tools) segment must be skipped rather than matched."
+    },
+    {
+      "name": "staticSitemapPaths",
+      "file_line": "frontend-nextjs/__tests__/sitemap-urls-resolve.test.ts:25",
+      "input": "No arguments. Reads app/sitemap.ts and matches ${base}/path template literals.",
+      "output": "Sorted unique static paths, excluding '/' and any entry containing an interpolation.",
+      "if_none": "An empty list would pass every case vacuously, so a separate assertion requires more than ten entries before the per-path checks are trusted.",
+      "why": "Only the hand-typed entries can drift. The LGA chunks map a slug array onto a [lga-slug] route, so their shape is guaranteed by construction."
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A sitemap entry names a page that does not exist.",
+      "what_happens": "Crawl budget is spent on a URL that returns 404, and the sitemap is reported back as containing errors. It is worse than never listing the page, and it persisted here because a sitemap is never opened by a human.",
+      "mitigated": true,
+      "how": "Every static entry is checked against the route tree and the redirect table.",
+      "repro": "Rename a sitemap entry to a nonexistent route -> 1 failed, 44 passed"
+    },
+    {
+      "scenario": "A clean URL is added under one slug while the sitemap advertises another.",
+      "what_happens": "Exactly what happened: redirects existed for /shadow-check and /solar-yield while the sitemap said /shadow and /solar-potential. Both lists looked correct in isolation.",
+      "mitigated": true,
+      "how": "The guard reads BOTH files and requires the sitemap's own slug to resolve, so the two can no longer disagree silently.",
+      "repro": "Remove either redirect -> 1 failed, 44 passed"
+    },
+    {
+      "scenario": "The resolver breaks and reports everything as fine.",
+      "what_happens": "A guard that always returns true is worse than none, because it certifies the thing it stopped checking.",
+      "mitigated": true,
+      "how": "A test asserts routeExists('/assessment') is true AND routeExists('/definitely-not-a-route') is false, pinning both directions.",
+      "repro": "Make routeExists return true unconditionally -> the known-bad assertion fails"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "After deploy, confirm /shadow and /solar-potential return 307 rather than 404. The redirect only takes effect at build time, so the current 404 persists until then."
+  }
+}

@@ -1,21 +1,21 @@
 {
-  "generated_against": "9d6fba3d",
+  "generated_against": "c34d472d",
   "mode": "observation",
   "excluded_from_baseline": [
     ".qa/reports/",
     ".qa_report.json"
   ],
   "counts": {
-    "path": 133,
-    "version": 1,
+    "path": 122,
+    "version": 2,
     "dependency": 7
   },
-  "excluded_report_findings": 2,
-  "docs_scanned": 124,
+  "excluded_report_findings": 0,
+  "docs_scanned": 141,
   "notes": [
     "unknowable: 1 version identifier(s) hold different values in different modules, so a doc naming one of the OTHER module's values is accepted without being verified: [\"methodology_version=['1.1', '2.0']\"]",
     "unknowable: 2 requirements file(s) were matched to an installer by BASENAME only, because another tracked file shares that name -- whether the installer means this one cannot be decided from the install line: ['deploy/flyio-legislation-monitor/requirements.txt', 'services/requirements.txt']",
-    "unknowable: 36 test import(s) could not be mapped to a declared distribution and were NOT checked: ['ai_extractor', 'authoritative_compliance_api', 'brief_contract_drift', 'brief_field_coverage_ratchet', 'comprehensive_extraction_pipeline', 'constraint_arithmetic', 'conveyancing', 'conveyancing_db', 'dcp_commit_approved', 'dcp_extract_changed']"
+    "unknowable: 43 test import(s) could not be mapped to a declared distribution and were NOT checked: ['ai_extractor', 'brief_contract_drift', 'brief_field_coverage_ratchet', 'check_control_subject_mismatch', 'check_extracted_rule_units', 'comprehensive_extraction_pipeline', 'constraint_arithmetic', 'conveyancing', 'conveyancing_db', 'db_config']"
   ],
   "fingerprints": [
     "dependency|requirements-latentscope.txt|requirements-latentscope.txt",
@@ -27,8 +27,6 @@
     "dependency|tests/test_shadow_calibration.py|pandas",
     "path|.claude/DATA_QUALITY_TRACKER.md|.github/workflows/dcp-monitor.yml",
     "path|.claude/DATA_QUALITY_TRACKER.md|.github/workflows/satellite-freshness-monitor.yml",
-    "path|.claude/DATA_QUALITY_TRACKER.md|DQ14_leichhardt_pdf_urls.py",
-    "path|.claude/DATA_QUALITY_TRACKER.md|DQ14b_fix_part_g_urls.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ18_fix_by_section_number.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ18_fix_exclude_toc.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|DQ18_fix_marrickville_page_numbers.py",
@@ -41,14 +39,12 @@
     "path|.claude/DATA_QUALITY_TRACKER.md|extract_missing_part_g.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|extract_missing_pdf_pages.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|landing/data/shadow.ts:57",
+    "path|.claude/DATA_QUALITY_TRACKER.md|pages/api/development-types.ts",
+    "path|.claude/DATA_QUALITY_TRACKER.md|pages/api/development-types.ts",
     "path|.claude/DATA_QUALITY_TRACKER.md|scripts/fix_marrickville_latex.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|scripts/fixes/DQ11_heritage_categorization.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|scripts/fixes/DQ13_leichhardt_fixes.py",
-    "path|.claude/DATA_QUALITY_TRACKER.md|scripts/fixes/DQ14_leichhardt_pdf_urls.py",
-    "path|.claude/DATA_QUALITY_TRACKER.md|scripts/fixes/DQ14b_fix_part_g_urls.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|scripts/fixes/DQ15_normalize_topic_case.py",
-    "path|.claude/DATA_QUALITY_TRACKER.md|scripts/fixes/DQ2_fix_topic_classification.py",
-    "path|.claude/DATA_QUALITY_TRACKER.md|scripts/fixes/DQ3_fix_toc_entries.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|scripts/generate_zone_taxonomy.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|services/sentinel2.py",
     "path|.claude/DATA_QUALITY_TRACKER.md|test_comprehensive_professional.py",
@@ -65,20 +61,9 @@
     "path|docs/ARCHITECTURE-LGA-EXPANSION.md|scripts/validate-configs.ts",
     "path|docs/ARCHITECTURE-LGA-EXPANSION.md|validation.test.ts",
     "path|docs/DCP_CHANGE_DETECTION_WORKED_EXAMPLE.md|reviews/ku_ring_gai_20260608_1842.txt",
-    "path|docs/DCP_MONITORING.md|.github/workflows/dcp-extract.yml",
-    "path|docs/DCP_MONITORING.md|.github/workflows/dcp-monitor.yml",
-    "path|docs/DCP_MONITORING.md|dcp-extract.yml",
-    "path|docs/DCP_MONITORING.md|dcp-extract.yml",
-    "path|docs/DCP_MONITORING.md|dcp-monitor.yml",
     "path|docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md|dcp-commit.yml",
     "path|docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md|dcp-extract.yml",
     "path|docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md|pdfplumber/pdf.js",
-    "path|docs/DCP_UPDATE_GOVERNANCE.md|dcp-commit.yml",
-    "path|docs/DCP_UPDATE_GOVERNANCE.md|dcp-extract.yml",
-    "path|docs/DCP_UPDATE_GOVERNANCE.md|dcp-extract.yml",
-    "path|docs/DCP_UPDATE_GOVERNANCE.md|dcp-monitor.yml",
-    "path|docs/DCP_UPDATE_GOVERNANCE.md|dcp-monitor.yml",
-    "path|docs/DCP_UPDATE_GOVERNANCE.md|dcp-watchdog.yml",
     "path|docs/ENRICHMENT_PROCESS.md|analyze_heritage_structure.py",
     "path|docs/ENRICHMENT_PROCESS.md|analyze_heritage_structure.py",
     "path|docs/ENRICHMENT_PROCESS.md|apply_dcp_metadata_fixes.py",
@@ -93,8 +78,6 @@
     "path|docs/ENRICHMENT_PROCESS.md|frontend-nextjs/run_heritage_data_quality_fixes.mjs",
     "path|docs/ENRICHMENT_PROCESS.md|frontend-nextjs/run_heritage_data_quality_fixes.mjs",
     "path|docs/ENRICHMENT_PROCESS.md|run_display_priority_migration.mjs",
-    "path|docs/ENRICHMENT_PROCESS.md|scripts/extract_dcp_toc.py",
-    "path|docs/ENRICHMENT_PROCESS.md|scripts/extract_pages.py",
     "path|docs/ENRICHMENT_PROCESS.md|show_enrichment_comparison.py",
     "path|docs/ENRICHMENT_PROCESS.md|show_enrichment_comparison.py",
     "path|docs/ENRICHMENT_PROCESS.md|show_enrichment_comparison.py",
@@ -102,16 +85,12 @@
     "path|docs/HOUSING-CODE-EXTRACTION-RESULTS.md|scripts/extract_housing_code_provisions.py",
     "path|docs/PATTERN-BOOK-NEXT-STEPS.md|Check-exclusions.ts",
     "path|docs/PATTERN-BOOK-NEXT-STEPS.md|extract_housing_code_provisions.py",
-    "path|docs/PATTERN-BOOK-NEXT-STEPS.md|frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql",
-    "path|docs/QA-DATA-PROVENANCE.md|.github/workflows/satellite-freshness-monitor.yml",
-    "path|docs/QA-DATA-PROVENANCE.md|satellite-freshness-monitor.yml",
     "path|docs/RAILWAY_MONITORS.md|dcp-commit.yml",
     "path|docs/RAILWAY_MONITORS.md|dependabot-automerge.yml",
     "path|docs/RAILWAY_MONITORS.md|mutation-gate.yml",
     "path|docs/RAILWAY_MONITORS.md|mutation-weekly.yml",
     "path|docs/RAILWAY_MONITORS.md|notify-failure.yml",
     "path|docs/RAILWAY_MONITORS.md|python-tests.yml",
-    "path|docs/RAILWAY_MONITORS.md|scripts/dcp_post_commit_check.py",
     "path|docs/RAILWAY_MONITORS.md|security.yml",
     "path|docs/RAILWAY_MONITORS.md|security.yml",
     "path|docs/RAILWAY_MONITORS.md|stats-refresh.yml",
@@ -133,6 +112,13 @@
     "path|docs/intelligence-brief/QA_ANALYSIS.md|scripts/ingest_cadastre_lots.py",
     "path|docs/intelligence-brief/QA_ANALYSIS.md|scripts/ingest_vg_values.py",
     "path|docs/intelligence-brief/QA_ANALYSIS.md|scripts/precompute_lot_overlays.py",
+    "path|docs/pitch/demo-runbook.md|add.py",
+    "path|docs/pitch/demo-runbook.md|add.py",
+    "path|docs/pitch/demo-runbook.md|add.py",
+    "path|docs/pitch/demo-runbook.md|add.py",
+    "path|docs/pitch/demo-runbook.md|add.py",
+    "path|docs/pitch/demo-runbook.md|demo.py",
+    "path|docs/pitch/demo-runbook.md|demo.py",
     "path|docs/qa/INDEX.md|../../.github/workflows/satellite-freshness-monitor.yml",
     "path|docs/qa/INDEX.md|../../frontend-nextjs/components/tools/FloodTruthTool.tsx",
     "path|docs/qa/INDEX.md|../../frontend-nextjs/components/tools/ShadowDetectorTool.tsx",
@@ -147,6 +133,9 @@
     "path|docs/qa/INDEX.md|frontend-nextjs/lib/pdf/pre-da-report.tsx",
     "path|docs/qa/INDEX.md|frontend-nextjs/lib/pdf/solar-report.tsx",
     "path|docs/qa/architecture-overview.md|report_image.py",
+    "path|docs/qa/codebase-scan-2026-05-23.md|pages/api/development-types.ts",
+    "path|docs/qa/codebase-scan-2026-05-23.md|pages/api/development-types.ts",
+    "path|docs/qa/codebase-scan-2026-05-23.md|pages/api/development-types.ts",
     "path|docs/qa/codebase-scan-2026-05-23.md|services/version_aware_query.py",
     "path|docs/qa/granny_flat_validation.md|granny-fat-report.tsx",
     "path|docs/servicing/gsp-smoketest-findings.md|scripts/smoketest_gsp_servicing.py",
@@ -158,6 +147,7 @@
     "path|services/CLAUDE.md|gee_client.py",
     "path|services/CLAUDE.md|gee_client.py",
     "path|services/CLAUDE.md|services/sentinel2.py",
+    "version|docs/CLIMATE_RISK_METHODOLOGY.md|methodology_version = 1.0",
     "version|docs/CLIMATE_RISK_METHODOLOGY.md|methodology_version = 1.2"
   ],
   "findings": [
@@ -213,217 +203,189 @@
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 14,
+      "line": 55,
       "claim": ".github/workflows/dcp-monitor.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 14,
+      "line": 55,
       "claim": ".github/workflows/satellite-freshness-monitor.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1718,
-      "claim": "DQ14_leichhardt_pdf_urls.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1720,
-      "claim": "DQ14b_fix_part_g_urls.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1901,
+      "line": 1946,
       "claim": "DQ18_fix_by_section_number.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1902,
+      "line": 1947,
       "claim": "DQ18_fix_exclude_toc.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1888,
+      "line": 1933,
       "claim": "DQ18_fix_marrickville_page_numbers.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1903,
+      "line": 1948,
       "claim": "DQ18_fix_part41_direct.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1890,
+      "line": 1935,
       "claim": "DQ18_revert_marrickville_pages.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 14,
+      "line": 55,
       "claim": "dcp-commit.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 14,
+      "line": 55,
       "claim": "dcp-extract.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 14,
+      "line": 55,
       "claim": "dcp-extract.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 14,
+      "line": 55,
       "claim": "dcp-watchdog.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1721,
+      "line": 1766,
       "claim": "extract_missing_part_g.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1719,
+      "line": 1764,
       "claim": "extract_missing_pdf_pages.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 17,
+      "line": 59,
       "claim": "landing/data/shadow.ts:57",
       "detail": "frontend-nextjs/components/reports/landing/data/shadow.ts has only 55 lines -- the cited line does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 2013,
+      "line": 28,
+      "claim": "pages/api/development-types.ts",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 1006,
+      "claim": "pages/api/development-types.ts",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": ".claude/DATA_QUALITY_TRACKER.md",
+      "line": 2058,
       "claim": "scripts/fix_marrickville_latex.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+      "detail": "exists on this machine but is NOT tracked -- a fresh clone would not have it, so the doc instructs people to use a file they will not receive"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1682,
+      "line": 1727,
       "claim": "scripts/fixes/DQ11_heritage_categorization.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+      "detail": "exists on this machine but is NOT tracked -- a fresh clone would not have it, so the doc instructs people to use a file they will not receive"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1704,
+      "line": 1749,
       "claim": "scripts/fixes/DQ13_leichhardt_fixes.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+      "detail": "exists on this machine but is NOT tracked -- a fresh clone would not have it, so the doc instructs people to use a file they will not receive"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1734,
-      "claim": "scripts/fixes/DQ14_leichhardt_pdf_urls.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1734,
-      "claim": "scripts/fixes/DQ14b_fix_part_g_urls.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1753,
+      "line": 1798,
       "claim": "scripts/fixes/DQ15_normalize_topic_case.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+      "detail": "exists on this machine but is NOT tracked -- a fresh clone would not have it, so the doc instructs people to use a file they will not receive"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1372,
-      "claim": "scripts/fixes/DQ2_fix_topic_classification.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1381,
-      "claim": "scripts/fixes/DQ3_fix_toc_entries.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 983,
+      "line": 1028,
       "claim": "scripts/generate_zone_taxonomy.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 17,
+      "line": 59,
       "claim": "services/sentinel2.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1606,
+      "line": 1651,
       "claim": "test_comprehensive_professional.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1606,
+      "line": 1651,
       "claim": "test_tailored_filters.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1443,
+      "line": 1488,
       "claim": "test_workflow_quality.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1454,
+      "line": 1499,
       "claim": "test_workflow_quality.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
       "kind": "path",
       "doc": ".claude/DATA_QUALITY_TRACKER.md",
-      "line": 1464,
+      "line": 1509,
       "claim": "test_workflow_quality.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
@@ -488,42 +450,7 @@
       "doc": "docs/DCP_CHANGE_DETECTION_WORKED_EXAMPLE.md",
       "line": 105,
       "claim": "reviews/ku_ring_gai_20260608_1842.txt",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_MONITORING.md",
-      "line": 27,
-      "claim": ".github/workflows/dcp-extract.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_MONITORING.md",
-      "line": 26,
-      "claim": ".github/workflows/dcp-monitor.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_MONITORING.md",
-      "line": 101,
-      "claim": "dcp-extract.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_MONITORING.md",
-      "line": 166,
-      "claim": "dcp-extract.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_MONITORING.md",
-      "line": 98,
-      "claim": "dcp-monitor.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+      "detail": "exists on this machine but is NOT tracked -- a fresh clone would not have it, so the doc instructs people to use a file they will not receive"
     },
     {
       "kind": "path",
@@ -544,48 +471,6 @@
       "doc": "docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md",
       "line": 140,
       "claim": "pdfplumber/pdf.js",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_UPDATE_GOVERNANCE.md",
-      "line": 156,
-      "claim": "dcp-commit.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_UPDATE_GOVERNANCE.md",
-      "line": 37,
-      "claim": "dcp-extract.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_UPDATE_GOVERNANCE.md",
-      "line": 155,
-      "claim": "dcp-extract.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_UPDATE_GOVERNANCE.md",
-      "line": 31,
-      "claim": "dcp-monitor.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_UPDATE_GOVERNANCE.md",
-      "line": 154,
-      "claim": "dcp-monitor.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/DCP_UPDATE_GOVERNANCE.md",
-      "line": 157,
-      "claim": "dcp-watchdog.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
@@ -689,20 +574,6 @@
     {
       "kind": "path",
       "doc": "docs/ENRICHMENT_PROCESS.md",
-      "line": 18,
-      "claim": "scripts/extract_dcp_toc.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/ENRICHMENT_PROCESS.md",
-      "line": 18,
-      "claim": "scripts/extract_pages.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/ENRICHMENT_PROCESS.md",
       "line": 257,
       "claim": "show_enrichment_comparison.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
@@ -726,14 +597,14 @@
       "doc": "docs/HOUSING-CODE-EXTRACTION-RESULTS.md",
       "line": 93,
       "claim": "scripts/extract_housing_code_provisions.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+      "detail": "exists on this machine but is NOT tracked -- a fresh clone would not have it, so the doc instructs people to use a file they will not receive"
     },
     {
       "kind": "path",
       "doc": "docs/HOUSING-CODE-EXTRACTION-RESULTS.md",
       "line": 175,
       "claim": "scripts/extract_housing_code_provisions.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+      "detail": "exists on this machine but is NOT tracked -- a fresh clone would not have it, so the doc instructs people to use a file they will not receive"
     },
     {
       "kind": "path",
@@ -747,27 +618,6 @@
       "doc": "docs/PATTERN-BOOK-NEXT-STEPS.md",
       "line": 90,
       "claim": "extract_housing_code_provisions.py",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/PATTERN-BOOK-NEXT-STEPS.md",
-      "line": 192,
-      "claim": "frontend-nextjs/migrations/001_create_sepp_structured_requirements.sql",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/QA-DATA-PROVENANCE.md",
-      "line": 312,
-      "claim": ".github/workflows/satellite-freshness-monitor.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/QA-DATA-PROVENANCE.md",
-      "line": 255,
-      "claim": "satellite-freshness-monitor.yml",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
@@ -810,13 +660,6 @@
       "doc": "docs/RAILWAY_MONITORS.md",
       "line": 83,
       "claim": "python-tests.yml",
-      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
-    },
-    {
-      "kind": "path",
-      "doc": "docs/RAILWAY_MONITORS.md",
-      "line": 135,
-      "claim": "scripts/dcp_post_commit_check.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
     {
@@ -968,6 +811,55 @@
     },
     {
       "kind": "path",
+      "doc": "docs/pitch/demo-runbook.md",
+      "line": 32,
+      "claim": "add.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/pitch/demo-runbook.md",
+      "line": 49,
+      "claim": "add.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/pitch/demo-runbook.md",
+      "line": 115,
+      "claim": "add.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/pitch/demo-runbook.md",
+      "line": 115,
+      "claim": "add.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/pitch/demo-runbook.md",
+      "line": 116,
+      "claim": "add.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/pitch/demo-runbook.md",
+      "line": 44,
+      "claim": "demo.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/pitch/demo-runbook.md",
+      "line": 78,
+      "claim": "demo.py",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
       "doc": "docs/qa/INDEX.md",
       "line": 73,
       "claim": "../../.github/workflows/satellite-freshness-monitor.yml",
@@ -1067,6 +959,27 @@
     {
       "kind": "path",
       "doc": "docs/qa/codebase-scan-2026-05-23.md",
+      "line": 204,
+      "claim": "pages/api/development-types.ts",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/qa/codebase-scan-2026-05-23.md",
+      "line": 231,
+      "claim": "pages/api/development-types.ts",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/qa/codebase-scan-2026-05-23.md",
+      "line": 260,
+      "claim": "pages/api/development-types.ts",
+      "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
+    },
+    {
+      "kind": "path",
+      "doc": "docs/qa/codebase-scan-2026-05-23.md",
       "line": 50,
       "claim": "services/version_aware_query.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
@@ -1130,7 +1043,7 @@
     {
       "kind": "path",
       "doc": "services/CLAUDE.md",
-      "line": 44,
+      "line": 55,
       "claim": "gee_client.py",
       "detail": "no such file is tracked or on disk -- the doc names something that does not exist"
     },
@@ -1144,7 +1057,14 @@
     {
       "kind": "version",
       "doc": "docs/CLIMATE_RISK_METHODOLOGY.md",
-      "line": 9,
+      "line": 22,
+      "claim": "methodology_version = 1.0",
+      "detail": "no code assignment holds 1.0; the values actually in code are ['1.1', '2.0']"
+    },
+    {
+      "kind": "version",
+      "doc": "docs/CLIMATE_RISK_METHODOLOGY.md",
+      "line": 10,
       "claim": "methodology_version = 1.2",
       "detail": "no code assignment holds 1.2; the values actually in code are ['1.1', '2.0']"
     }

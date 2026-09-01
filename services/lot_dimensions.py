@@ -309,6 +309,17 @@ _MAX_NARROW_PERCENTAGE = 0.65      # handle is a minority of lot length
 _MIN_WIDTH_RATIO = 0.65            # min/max width contrast required
 _NUM_SLICES = 20
 _MIN_CONSECUTIVE_NARROW = 3
+# A real access handle is roughly PARALLEL-SIDED. A triangular or wedge-shaped
+# lot tapers continuously to a point, and its narrow end satisfies every other
+# test here — narrow, consecutive, a small fraction of the head width — so it
+# was reported as a battleaxe with an access way that does not exist.
+#
+# Measured 2026-08-26, min/max width WITHIN the narrow run:
+#   plain triangle (no handle at all)   0.07
+#   real battleaxe, 4m parallel handle  1.00
+#   irregular handle, 5.0m -> 4.5m      0.91
+# 0.50 sits well clear of both sides.
+_MIN_HANDLE_PARALLELISM = 0.50
 
 
 def _detect_battleaxe(points: list[tuple[float, float]]) -> Optional[dict]:
@@ -357,12 +368,24 @@ def _detect_battleaxe(points: list[tuple[float, float]]) -> Optional[dict]:
             has_consecutive = True
             break
 
+    # Reject a taper: the narrow run must be of roughly constant width, or it is
+    # the pointed end of a wedge rather than an access handle. Without this a
+    # triangular lot was told its 1.5m "access way" failed the SEPP Housing 3m
+    # minimum — an eligibility failure invented from a handle that is not there.
+    narrow_widths = [w for w, is_n in zip(widths, narrow) if is_n]
+    handle_parallelism = (
+        min(narrow_widths) / max(narrow_widths)
+        if narrow_widths and max(narrow_widths) > 0
+        else 0.0
+    )
+
     is_battleaxe = (
         0 < min_w < narrow_threshold
         and max_w >= _MIN_HEAD_WIDTH
         and (min_w / max_w) < _MIN_WIDTH_RATIO
         and narrow_pct < _MAX_NARROW_PERCENTAGE
         and has_consecutive
+        and handle_parallelism >= _MIN_HANDLE_PARALLELISM
     )
     if not is_battleaxe:
         return None

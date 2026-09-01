@@ -97,6 +97,15 @@ function makeRequest(body: unknown): NextRequest {
   });
 }
 
+// The route now resolves its Resend client lazily via getResend(), which
+// returns null (skipping the send) when RESEND_API_KEY is unset. Next.js
+// never loads .env.local under NODE_ENV=test, so the key that IS present
+// locally (frontend-nextjs/.env.local) is invisible here — this must be set
+// explicitly for the mocked `resend` constructor to ever be reached.
+beforeAll(() => {
+  process.env.RESEND_API_KEY = 'test-key';
+});
+
 // ============================================================================
 // HAPPY PATH
 // ============================================================================

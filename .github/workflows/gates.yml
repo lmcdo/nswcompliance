@@ -261,6 +261,27 @@ jobs:
         working-directory: frontend-nextjs
       - run: npx jest --ci --silent
         working-directory: frontend-nextjs
+      # PRODUCTION BUILD. Nothing ran one until 2026-08-26, and the cost was a
+      # DAY of frozen deploys: every Vercel deployment from #1003 onward failed
+      # while every gate reported green.
+      #
+      # Two build-breaking defects shipped through the full stack of checks:
+      #   · an unescaped apostrophe in `Google's` inside a single-quoted string
+      #     (#1003) — SWC refuses it, and it reached production main
+      #   · a duplicate `available_dev_types` key in one interface (#1012)
+      #
+      # Neither was caught, because the type-check gate COUNTS errors against a
+      # baseline of 677 and reported "passed: 8 errors". A counting gate cannot
+      # fail on a fatal error that happens to be inside the allowance. Jest,
+      # QA gate and cross-review were all green too.
+      #
+      # The dev-server check below is NOT a substitute and vice versa: its own
+      # comment records that `next dev` catches route collisions `next build`
+      # tolerates. This catches the reverse — compile and type errors that only
+      # a production build refuses. Both are needed.
+      - name: Production build must succeed
+        run: npm run build
+        working-directory: frontend-nextjs
       # `next build` and `next dev` are NOT interchangeable. #929 is a route
       # collision that build tolerates and dev refuses, so a green build hid a
       # dev server that had been dead for 20 days — nobody noticed because
@@ -288,6 +309,19 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/dq_check.py
+
+      # Doc-claim ratchet. Built weeks ago with a baseline, --compare and
+      # --strict, and wired into NOTHING — its own docstring said so. Thirteen
+      # new violations accumulated in the fortnight after the last baseline.
+      # Exit 1 = new claims that do not hold (blocks); 2 = scan gaps (does not).
+      - name: Doc claims must not regress
+        run: |
+          set +e
+          python scripts/doc_claims.py --compare --strict
+          rc=$?
+          set -e
+          if [ "$rc" -eq 1 ]; then exit 1; fi
+          exit 0
 
       - name: Dev server boots
         if: always()
