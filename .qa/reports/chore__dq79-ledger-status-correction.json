@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Corrects a declared status in two ledger files (DATA_QUALITY_TRACKER.md, dq_checks.json) from 'fixed' to 'open' to match the live check's actual result. No code path, no schema, no served value, no production write -- documentation-and-declaration only, verified against a live read-only check.",
-  "commit_hash": "PENDING",
+  "commit_hash": "c68d4ba3",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json"
