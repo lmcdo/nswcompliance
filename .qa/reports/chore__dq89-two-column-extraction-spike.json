@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Registers a genuinely new, sizeable data-quality finding (31 chapters flagged suspect, 29 of them new today) as a tracked ledger row with a real query-backed check, rather than leaving it in conversation only. Standard tier because it adds a new probe to scripts/dq_probe_live.py, not just prose.",
-  "commit_hash": "dcd3d799",
+  "commit_hash": "98a9e431",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -72,6 +72,13 @@
       "mitigated": true,
       "how": "The probe's own note explicitly separates the two by timestamp and names both council pairs distinctly.",
       "repro": "grep DQ-89 in dq_probe_live.py or DATA_QUALITY_TRACKER.md -- both state the split"
+    },
+    {
+      "scenario": "The probe's count silently under- or over-counts because last_suspect_alert_key gets set/cleared by a path this query does not anticipate (e.g. a future extractor version stamps the key without also setting needs_extraction, or clears needs_extraction without clearing the key).",
+      "what_happens": "DQ-89 would report a count that no longer means 'flagged AND unactioned', desynchronising the ledger from the actual review queue state.",
+      "mitigated": true,
+      "how": "Verified live, independently of the probe, that the three fields move together for all 31 current rows: every row with last_suspect_alert_key set also has needs_extraction=True and is_active=True, and the per-council breakdown from that independent query (woollahra 22, ku_ring_gai 7, city_of_sydney 1, hornsby 1) matches the probe's own count exactly.",
+      "repro": "SELECT count(*) FROM dcp_chapter_registry WHERE last_suspect_alert_key IS NOT NULL AND NOT (is_active AND needs_extraction) -- returns 0 today, meaning the three fields are currently consistent; this query is worth re-running if the count ever looks surprising"
     }
   ],
   "post_merge": {
