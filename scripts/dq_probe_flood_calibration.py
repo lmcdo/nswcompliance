@@ -29,8 +29,11 @@ a regression.
 It asserts the thing that would make the "uncalibrated" claim WRONG: that the
 governing interval clears the pass mark. The cluster interval governs, not
 Wilson, because the sampled points are not independent — they come from a
-handful of council clusters, and Wilson assumes otherwise. Measured 2026-08-25:
-recall 0.919 over 37 in-scope points in 7 clusters, cluster 95% CI
+handful of council clusters, and Wilson assumes otherwise. Measured 2026-08-25,
+corrected 2026-09-01 (see DQ-87 in DATA_QUALITY_TRACKER.md — the script's own
+live network calls to maps.six.nsw.gov.au and www.bom.gov.au are not stable
+run-to-run):
+recall 0.946 over 37 in-scope points in 7 clusters, cluster 95% CI
 0.727-1.000, mark 0.90 committed before the first run. The interval straddles
 the mark, so the row is OPEN and this exits non-zero.
 

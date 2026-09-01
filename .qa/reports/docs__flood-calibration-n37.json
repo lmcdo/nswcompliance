@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Commits a measurement of a live product's accuracy and makes the conclusion drawn from it executable. The risk is not the code — it is that a reader takes 0.946 as a pass, or that a later rerun which moves recall looks like a regression. Both are addressed by what the probe asserts and refuses to assert. Not critical: no served value changes, no schema, no production write. Not minor: it adds a ledger row, a probe, and a committed result that other documents will cite. CORRECTION 2026-09-01: this report originally cited 0.919, which was itself an unstable rerun result contradicting the repo's own published 0.946 — see the DQ-87 correction in .claude/DATA_QUALITY_TRACKER.md.",
-  "commit_hash": "9f514267",
+  "commit_hash": "0f266f0d",
   "files": [
     "docs/qa/flood-calibration-2022-result.json",
     "scripts/dq_probe_flood_calibration.py",
