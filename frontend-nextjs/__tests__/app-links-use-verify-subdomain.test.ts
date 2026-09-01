@@ -86,3 +86,54 @@ describe('app-route links use the verify subdomain', () => {
     ).toEqual([]);
   });
 });
+
+describe('app-route origin fallbacks use the verify subdomain', () => {
+  // A SECOND, distinct shape of the same defect, found 2026-08-27: an origin
+  // built from `process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au'`
+  // (or `req.headers.get('origin') ?? ...`) and a PATH CONCATENATED onto it
+  // later via template literal - e.g. `${origin}/reports/flood/${id}`. The
+  // string 'https://plotdetect.com.au' alone has no trailing path, so
+  // APEX_WITH_PATH above cannot see it; this needs its own regex.
+  //
+  // This is live, not theoretical: NEXT_PUBLIC_SITE_URL was set to
+  // https://www.plotdetect.com.au in production - not missing, just wrong -
+  // so the fallback never ran, but the value it fell back FROM was equally
+  // dead (www redirects 308 to the bare apex, which 404s on every app path).
+  // Confirmed live with curl 2026-08-27, both directions:
+  //   www.plotdetect.com.au/reports/flood -> 308 -> plotdetect.com.au/reports/flood -> 404
+  //   verify.plotdetect.com.au/assessment -> 200
+  // 14 files, 19 occurrences (stripe/webhook.ts alone had 6) built a Stripe
+  // checkout redirect, a webhook callback, or a report's shareable_url/QR
+  // code from this fallback.
+  // Matches both the bare apex AND the www form: www is equally dead (308s to
+  // the apex, which 404s on every app route), and the test's own name already
+  // claimed to cover "bare/www" while the regex silently only matched bare.
+  const BARE_APEX_FALLBACK = /\?\?\s*(?:process\.env\.NEXT_PUBLIC_SITE_URL\s*\?\?\s*)?'https:\/\/(?:www\.)?plotdetect\.com\.au'/;
+
+  // Excludes this test file itself - its own comments above quote the exact
+  // offending pattern as documentation, which would otherwise self-match.
+  const files = trackedFiles().filter((f) => !f.endsWith('app-links-use-verify-subdomain.test.ts'));
+
+  it('no tracked source file falls back to the bare/www apex as an origin', () => {
+    const offenders: string[] = [];
+    for (const rel of files) {
+      const full = path.join(ROOT, rel);
+      if (!fs.existsSync(full)) continue;
+      const src = fs.readFileSync(full, 'utf8');
+      src.split('\n').forEach((line, i) => {
+        if (BARE_APEX_FALLBACK.test(line)) offenders.push(`${rel}:${i + 1}`);
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // Sol cross-review, 2026-09-01: the test above's own title claimed to cover
+  // "bare/www" while the regex silently matched only bare. Planted directly
+  // rather than via a real source file, so the guard's own reach is pinned
+  // independently of what happens to be in the tree today.
+  it('the regex itself catches both the bare apex and the www form', () => {
+    expect(BARE_APEX_FALLBACK.test("  const origin = req.headers.get('origin') ?? 'https://plotdetect.com.au';")).toBe(true);
+    expect(BARE_APEX_FALLBACK.test("  const origin = req.headers.get('origin') ?? 'https://www.plotdetect.com.au';")).toBe(true);
+    expect(BARE_APEX_FALLBACK.test("  const origin = req.headers.get('origin') ?? 'https://verify.plotdetect.com.au';")).toBe(false);
+  });
+});

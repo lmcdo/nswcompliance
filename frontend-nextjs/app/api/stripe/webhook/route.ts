@@ -112,7 +112,7 @@ async function handleThreatRadarMonitor(
   }
 
   // Activate monitoring by calling the existing threat-radar subscribe endpoint
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
   try {
     await fetch(`${baseUrl}/api/satellite/threat-radar`, {
       method: 'POST',
@@ -189,7 +189,7 @@ async function handleGrannyFlatAnalysis(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
   const resultsUrl = `${baseUrl}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}`;
 
   try {
@@ -260,7 +260,7 @@ async function handleGrannyFlatReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
   let pdfBuffer: Buffer;
 
   try {
@@ -381,7 +381,7 @@ async function handleSatelliteReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
   let pdfBuffer: Buffer;
 
   try {
@@ -460,7 +460,7 @@ async function handleConveyancingReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
 
   // Generate PDF via Railway (returns { pdf_url })
   let pdfUrl: string;
@@ -561,7 +561,7 @@ async function handlePreDAHistoryReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
 
   let pdfBuffer: Buffer;
 
