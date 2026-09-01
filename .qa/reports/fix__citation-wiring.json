@@ -1,0 +1,107 @@
+{
+  "tier": "standard",
+  "justification": "Three commits, each already carrying its own Standard-tier QA in its commit message, had never had a per-branch report generated — the branch-level artifact this repo's gate actually resolves on push. This file consolidates those three without re-deriving anything: (1) 26f9dd82 wires instrument_registry.legislation_url as a citation fallback for 35 documents with no r2_pdf_url/source_url; (2) ad1249a3 recovers 54 stale dcp_setback_controls citation links via a hand-verified chapter_key alias map; (3) 786fb4a7 fixes a bare-apex origin fallback across 14 stripe/report route files. No served value changes beyond what each commit's own QA already pinned; no schema, no migration, no production write.",
+  "commit_hash": "786fb4a7",
+  "files": [
+    "frontend-nextjs/lib/citation-instrument-urls.ts",
+    "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+    "frontend-nextjs/__tests__/lib/citation-instrument-urls.test.ts",
+    "scripts/conveyancing_db.py",
+    "tests/test_conveyancing_chapter_key_aliases.py",
+    "frontend-nextjs/app/api/reports/flood/generate/route.ts",
+    "frontend-nextjs/app/api/reports/granny-flat/generate/route.ts",
+    "frontend-nextjs/app/api/reports/shadow/generate/route.ts",
+    "frontend-nextjs/app/api/reports/solar-yield/generate/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/bushfire/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/conveyancing/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/flood-truth/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/granny-flat/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/pre-da-history/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/shadow/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/solar-yield/route.ts",
+    "frontend-nextjs/app/api/stripe/checkout/threat-radar-monitor/route.ts",
+    "frontend-nextjs/app/api/stripe/webhook/route.ts",
+    "frontend-nextjs/app/share/granny-flat/page.tsx",
+    "frontend-nextjs/__tests__/app-links-use-verify-subdomain.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/citation-instrument-urls.test.ts __tests__/app-links-use-verify-subdomain.test.ts && cd .. && python -m pytest tests/test_conveyancing_chapter_key_aliases.py -v",
+    "fails_when": "resolveCitationUrl's priority order (image > chapter > instrument > null) breaks, a CHAPTER_KEY_ALIASES entry stops resolving or overwrites a key the registry already resolved directly, or a stripe/report route reverts to the bare-apex fallback string.",
+    "observed_red": "Each commit force-reverted its own fix and confirmed the specific test failed at the specific file:line before restoring: citation-instrument-urls (35 matched ids resolve / 17 unmatched proven absent), chapter_key aliases (highest-value entry, 15 of 54 rows, reverted -> red), bare-apex fallback (one file reverted to the old default -> app-links-use-verify-subdomain.test.ts's new BARE_APEX_FALLBACK regex failed on that file:line). All three restored and green: jest 95 suites/1332 tests, tsc clean, test_conveyancing_db.py 88 tests green."
+  },
+  "pre_impl": {
+    "existing_data": "documents.r2_pdf_url/source_url (35 null rows resolved via instrument_registry.legislation_url by deterministic name-derivation, re-verified against the live table, not fuzzy-matched); dcp_setback_controls.source_chapter_key (234 of 967 served rows had no working URL; 54 recovered via 24 hand-verified renames); NEXT_PUBLIC_SITE_URL (was correctly set in Vercel, but 14 files still carried a dead bare-apex string as their code-level fallback default).",
+    "assumption_mismatch": "The alias map deliberately does NOT cover thin registries (the_hills: 1 registered chapter against 4+ referenced; camden's parking chapter unregistered at all) or ambiguous multi-candidate keys (canterbury_bankstown's bare 'ch5', ku_ring_gai's bare 'section-a') or precinct splits with no registry counterpart (leichhardt balmain/birchgrove) — guessing any of these risks citing the wrong council's document, the exact defect class this branch exists to close.",
+    "new_vs_existing": "Applies only to rows/documents with NO existing working URL; a control or document that already resolves through the existing COALESCE fallback chain is untouched by any of the three commits — proven by each commit's own forced-red test, not asserted."
+  },
+  "functions": [
+    {
+      "name": "resolveCitationUrl",
+      "file_line": "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+      "input": "a provision row (pdf_page_image_url, chapterPdfUrls lookup, document_id)",
+      "output": "string | null, consumed as the citation link's href",
+      "if_none": "falls through image -> chapter -> instrument map -> null; null renders no link, never a guessed one"
+    },
+    {
+      "name": "apply_chapter_key_aliases",
+      "file_line": "scripts/conveyancing_db.py",
+      "input": "registry_pdf_urls dict keyed by chapter_key, CHAPTER_KEY_ALIASES constant",
+      "output": "same dict with aliased keys resolved before the existing COALESCE fallback runs",
+      "if_none": "a chapter_key with no alias entry and no direct registry match passes through unresolved, same as before this change"
+    }
+  ],
+  "values": [
+    {
+      "value": "INSTRUMENT_CITATION_URLS[document_id]",
+      "read_at": "frontend-nextjs/lib/citation-instrument-urls.ts",
+      "nullable": "yes — a static map, absent key is the common case",
+      "guard_at": "resolveCitationUrl's fallthrough in PageGroupedProvisions.tsx",
+      "if_missing": "citation renders with no link rather than a guessed one"
+    },
+    {
+      "value": "NEXT_PUBLIC_SITE_URL",
+      "read_at": "14 stripe/report route files, code-level `?? 'https://...'` fallback",
+      "nullable": "yes in a build/CI environment with no env var set",
+      "guard_at": "the fallback default itself, corrected from the dead bare apex to the live app subdomain",
+      "if_missing": "checkout redirect / webhook callback / shareable_url now resolves to a working app route instead of a 404"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "confirm the 35 document ids matched to instrument_registry.legislation_url still hold given deterministic re-derivation, not a stale list",
+      "file_line": "re-derived against live instrument_registry per citation-instrument-urls.ts's own header comment",
+      "where_clause": "documents WHERE r2_pdf_url IS NULL AND source_url IS NULL, joined to instrument_registry by normalised name",
+      "if_zero": "no entries to add — not the case here, 35 matched",
+      "if_wrong": "17 unmatched (7 SEPPs x2 naming variants + 3 non-instrument docs) proven absent, not guessed into the map"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A reader treats the instrument-URL map as authoritative for every SEPP/LEP document.",
+      "what_happens": "A document that later gets its own real r2_pdf_url would still resolve to the static fallback map's URL if the map is checked before the primary source.",
+      "mitigated": true,
+      "how": "resolveCitationUrl checks the per-page image and the DCP chapter URL first; the instrument map is the third-tier fallback, consulted only when both are absent.",
+      "repro": "frontend-nextjs/__tests__/lib/citation-instrument-urls.test.ts pins the priority order"
+    },
+    {
+      "scenario": "A chapter_key alias silently overwrites a key the registry already resolves correctly.",
+      "what_happens": "A working citation link would be replaced by the aliased one, potentially pointing at a different council's chapter.",
+      "mitigated": true,
+      "how": "apply_chapter_key_aliases only fills keys the registry did NOT already resolve directly — pinned by test_conveyancing_chapter_key_aliases.py.",
+      "repro": "test asserts an already-resolved key is never touched by the alias map"
+    },
+    {
+      "scenario": "The bare-apex fallback fix is applied to the Organization/JSON-LD identity URL, which correctly names the bare apex as the company's real site.",
+      "what_happens": "A blanket host replace would turn a true statement (the company's own domain) into a false one.",
+      "mitigated": true,
+      "how": "The BARE_APEX_FALLBACK regex targets only the `?? 'https://plotdetect.com.au'` code-level default shape (a bare origin concatenated with a path later), not literal identity strings — inherited from PR #1009's narrower literal-string guard.",
+      "repro": "app-links-use-verify-subdomain.test.ts distinguishes the two shapes with separate regexes"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No — no database write in any of the three commits.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Reload a property page for an address covered by one of the 35 matched instruments (e.g. an Inner West address) and confirm the citation renders as a clickable legislation.nsw.gov.au link, not just that the API/component logic resolves one. Not yet done for this consolidated report — flagged, not performed."
+  }
+}
