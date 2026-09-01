@@ -1,0 +1,52 @@
+{
+  "tier": "minor",
+  "justification": "Single published-stat correction (dcpSetbackTripleCouncils: 24 -> 23) in frontend-nextjs/lib/coverage.ts, the project's own designated single source of truth for public-facing coverage numbers. No served logic changes, no schema, no query changes -- corrects an exact-count field that had drifted from the live database, caught by the project's own data-watch workflow.",
+  "commit_hash": "PENDING",
+  "files": [
+    "frontend-nextjs/lib/coverage.ts"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/verify_coverage_stats.py",
+    "fails_when": "any exact-count field in COVERAGE disagrees with a fresh live query against production.",
+    "observed_red": "Before this change: 'Councils w/ front+side+rear setback  24  23  DRIFT', 'DRIFT DETECTED'. Independently re-derived the live count myself (not just trusting the script) via a fresh read-only session against the documented query in the file's own header -- confirmed 23, and listed the 5 councils currently missing at least one control type (burwood, cumberland, ku_ring_gai, parramatta, woollahra). After the fix: 'Councils w/ front+side+rear setback  23  23  OK', 'All DB-backed coverage stats are current.'"
+  },
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls, grouped by lga, filtered WHERE is_current AND (needs_review IS NULL OR needs_review=FALSE) AND lga NOT IN ('nsw_statewide','inner_west') -- the exact query already documented in coverage.ts's own header, re-run read-only via scripts/dq_db.py.",
+    "assumption_mismatch": "Did not assume the script's DRIFT report was correct without re-deriving it independently -- ran the identical query myself in a separate session and got the same 23, plus enumerated which 5 councils lack full triple coverage (not identified by the script, added here as context though the specific council that dropped from the prior 24 was not traced).",
+    "new_vs_existing": "Corrects the existing published figure to match current live state; does not change the query, the threshold, or any other field in the same file. Other fields in this file use a rounded-DOWN '+' display form specifically so growth doesn't cause drift -- this is the one exact-count field, which is why it alone triggered DRIFT."
+  },
+  "functions": [],
+  "values": [
+    {
+      "value": "COVERAGE.dcpSetbackTripleCouncils / COVERAGE_DISPLAY.dcpSetbackTripleCouncils",
+      "read_at": "frontend-nextjs/app/for/conveyancers/page.tsx:59 (the only consumer found via grep of app/ and components/ for this constant)",
+      "nullable": "no, always a literal number/string",
+      "guard_at": "n/a -- compile-time constant",
+      "if_missing": "n/a"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "re-derive the published stat independently against live production before changing it",
+      "file_line": "documented in frontend-nextjs/lib/coverage.ts header, re-run via scripts/dq_db.py session",
+      "where_clause": "dcp_setback_controls WHERE is_current AND (needs_review IS NULL OR needs_review=FALSE) AND lga NOT IN ('nsw_statewide','inner_west'), GROUP BY lga, count councils with all three of front/side/rear setback types present",
+      "if_zero": "would mean zero councils have full triple coverage -- not the case, 23 do",
+      "if_wrong": "matched scripts/verify_coverage_stats.py's own independently-computed figure exactly (23), corroborating both"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The published figure is corrected downward without checking whether other fields in the same file also drifted, leaving other overstatements live.",
+      "what_happens": "Other exact-count claims could still be wrong.",
+      "mitigated": true,
+      "how": "Ran the full verify_coverage_stats.py script, not just the one failing field -- every other field reported OK against a fresh live query in the same run.",
+      "repro": "python scripts/verify_coverage_stats.py output shows all 9 stats, only the one field flagged"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "None needed beyond the falsifiable check already run -- this is a pure display-value correction with no runtime branch depending on the specific number."
+  }
+}
