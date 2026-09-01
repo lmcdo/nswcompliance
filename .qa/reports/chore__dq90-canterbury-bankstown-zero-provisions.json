@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Properly scopes a previously-vague 374/371-chapter finding into a precise, evidence-backed defect count (97) with a real query-backed check, and surfaces that 54 of the 97 are a single council (Canterbury-Bankstown) whose entire substantive DCP text corpus is empty despite the source PDFs being on hand for ~4 months. Standard tier: adds a new probe to scripts/dq_probe_live.py, and the underlying finding materially affects what can be honestly claimed about council coverage.",
+  "commit_hash": "2e9b09ca",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "scripts/dq_probe_live.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py && python scripts/dq_probe_live.py --id DQ-90",
+    "fails_when": "an active, non-spatial, non-inert, unflagged chapter has zero currently-served provisions -- exits 1 with count 97 right now, by design (open row).",
+    "observed_red": "Ran the probe's query live, independently, before writing anything: 374 active chapters never successfully extracted, and a close but distinct 371 active chapters currently serving zero provisions; the 97 real gaps are narrowed from the 371 base by is_spatial (247), is_inert (24), and needs_extraction (3) -- 371-247-24-3=97 (the same subtraction from 374 gives 100, a different number), 54 of which are Canterbury-Bankstown's entire non-spatial/non-inert chapter set. Re-ran after writing the probe: still 97, still 54/97 Canterbury-Bankstown. dq_check.py PASSED (0 red) because this row is honestly declared 'open', matching its failing probe."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry and regulatory_provisions -- read-only throughout, via dq_db.py's read-only session. Queried live in stages before writing anything: (1) raw 374/371 counts, (2) breakdown by is_spatial/is_inert/needs_extraction/registration_status to find the 97 real gaps, (3) per-council breakdown of the 97 (canterbury_bankstown 54, then 20 other councils/instruments at 1-3 each), (4) sampled real chapter_key names in each bucket to verify is_spatial means map sheets and is_inert means covers/TOCs/guides rather than guessing at the columns' meaning, (5) Canterbury-Bankstown's full picture: 68 active total, 14 spatial/inert, all remaining 54 confirmed serving zero provisions, dcp_name confirmed as the CURRENT 2023 DCP not a stale registration, r2_current_path populated on most, created_at 2026-05-11, (6) dcp_setback_controls checked separately and found populated (67 rows) for the same council, narrowing the claim to 'DCP text corpus empty' rather than 'all DCP data missing'.",
+    "assumption_mismatch": "The prior session's 374/371 framing implied a single undifferentiated defect; querying the schema's own is_spatial/is_inert flags (which already existed, unused for this purpose) revealed 274 of 374 are legitimately excluded and the real number is 97 -- an order of magnitude more precise. Within that, assumed the 97 would be scattered evenly; it is instead concentrated 54/97 in one council, which the per-council GROUP BY surfaced immediately rather than requiring further digging.",
+    "new_vs_existing": "New row (DQ-90); explicitly does not duplicate or restate DQ-89 (today's suspect-flag spike, a different population entirely -- flagged-and-queued chapters, not silent unflagged gaps) or DQ-78 (extraction quality of chapters that DID get extracted, not coverage of chapters that never did)."
+  },
+  "functions": [
+    {
+      "name": "PROBES['DQ-90'] (registered in scripts/dq_probe_live.py, dispatched by main())",
+      "file_line": "scripts/dq_probe_live.py, DQ-90 entry",
+      "input": "no CLI args beyond --id DQ-90; reads dcp_chapter_registry and regulatory_provisions via the shared read-only dq_db session",
+      "output": "prints count + query + explanation to stdout, exits 1 if count > 0 else 0 -- unmodified dispatch shape shared with every other PROBES entry",
+      "if_none": "the NOT EXISTS subquery correctly returns TRUE (chapter counted as a gap) when source_chapter_key has no matching regulatory_provisions row at all, and correctly returns FALSE (chapter excluded) when at least one is_current row matches -- no null-specific branch needed since NOT EXISTS handles an empty match set natively"
+    }
+  ],
+  "values": [
+    {
+      "value": "dcp_chapter_registry.is_spatial / is_inert / needs_extraction",
+      "read_at": "scripts/dq_probe_live.py DQ-90 entry",
+      "nullable": "no, boolean not-null per schema (confirmed via information_schema.columns earlier this session)",
+      "guard_at": "WHERE is_active AND NOT is_spatial AND NOT is_inert AND NOT needs_extraction",
+      "if_missing": "n/a"
+    },
+    {
+      "value": "regulatory_provisions.source_chapter_key / is_current",
+      "read_at": "the NOT EXISTS correlated subquery in the DQ-90 entry",
+      "nullable": "source_chapter_key can be NULL for provisions not linked to a DCP chapter (e.g. statewide SEPP/LEP text) -- irrelevant here since the subquery matches ON source_chapter_key = r.chapter_key, so a NULL source_chapter_key row can never match and cannot hide a real gap",
+      "guard_at": "the correlation condition itself",
+      "if_missing": "a chapter_key with no matching provisions (NULL-safe by construction) is correctly counted as a gap"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "separate genuine extraction gaps from legitimately-excluded chapters using the schema's own is_spatial/is_inert/needs_extraction flags, then identify which council concentrates the real gaps",
+      "file_line": "ad-hoc read-only queries via scripts/dq_db.py, then codified as the DQ-90 probe",
+      "where_clause": "dcp_chapter_registry WHERE is_active AND NOT is_spatial AND NOT is_inert AND NOT needs_extraction AND NOT EXISTS (matching current regulatory_provisions), grouped by council for the breakdown, and cross-checked against dcp_setback_controls for Canterbury-Bankstown specifically",
+      "if_zero": "would mean the entire 374/371 population was legitimately excluded -- not the case, 97 real gaps confirmed",
+      "if_wrong": "cross-checked Canterbury-Bankstown's count two ways: (a) the general DQ-90 query scoped to council='canterbury_bankstown' returns 54, (b) total active (68) minus spatial-or-inert (14) independently returns 54 -- both methods agree"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "DQ-90's count is read as 'Canterbury-Bankstown has no DCP data at all', when the numeric setback/parking controls table is actually populated.",
+      "what_happens": "Someone over-corrects by treating the council as fully broken when only one surface (the text/TOC provisions corpus) is affected.",
+      "mitigated": true,
+      "how": "Both the tracker row and the probe note explicitly state dcp_setback_controls has 67 current rows for this council, citing COMPONENT_MAP.md's own warning not to conflate the numeric-controls surface with the DCP text corpus.",
+      "repro": "SELECT count(*) FROM dcp_setback_controls WHERE lga='canterbury_bankstown' AND is_current -- returns 67"
+    },
+    {
+      "scenario": "The is_spatial/is_inert exclusion is wrong, and some of the 271 excluded chapters actually do need extraction (e.g. a map sheet chapter that also carries a text overlay, or a 'guide' that states an enforceable numeric control).",
+      "what_happens": "DQ-90 undercounts the real gap, giving false confidence that 97 is the whole picture.",
+      "mitigated": true,
+      "how": "Sampled real chapter_key names in both the is_spatial=TRUE group (all named like 'sheet-NNN-...-map', consistent with pure geospatial layers) and the is_inert=TRUE group (covers, TOCs, character statements, retrofitting/tree-management guides -- administrative or advisory, not the numeric-control extraction pipeline's target) before trusting the flags, rather than assuming the column names meant what they sounded like.",
+      "repro": "the sampled chapter_key lists are in this commit's own message and the probe's inline comments -- re-sample and re-read if the flags are ever suspected of drifting from their intended meaning"
+    },
+    {
+      "scenario": "Someone 'fixes' DQ-90 by bulk re-extracting all 97 chapters without investigating why Canterbury-Bankstown specifically was never queued.",
+      "what_happens": "A blind bulk extraction could hit the same undiagnosed pipeline gap that caused the original omission, or produce a rushed extraction with none of the per-council verification this project's own DCP work always requires (e.g. chapter_key alias mapping, precinct scoping).",
+      "mitigated": true,
+      "how": "Both the tracker row and the probe note state explicitly that root cause for Canterbury-Bankstown is NOT diagnosed here and needs the onboarding/extraction pipeline history checked, not guessed at or bulk-actioned.",
+      "repro": "n/a -- a documentation safeguard; enforced by not shipping any extraction-triggering script in this change"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- read-only throughout.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "The actual investigation (why Canterbury-Bankstown's 2023 DCP was registered and fetched but never queued for extraction) is explicitly NOT done here -- tracked as open work in DQ-90, not resolved by it. The 43 scattered chapters across 20 other councils/instruments are also not individually investigated."
+  }
+}
