@@ -1165,6 +1165,49 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "is the exception: never successfully extracted, zero served "
         "provisions -- a real gap, not a stale-but-fine copy.",
     ),
+    "DQ-90": (
+        "Active, substantive chapters with zero served provisions and no extraction queued",
+        # Scoped from a much cruder 374/371-chapter finding: "active chapters
+        # registry-wide with no successful extraction" is not by itself a
+        # defect count -- most of that population is legitimately excluded
+        # (map sheets, covers, TOCs) and asserting the raw number as a defect
+        # would be the exact DQ-74/DQ-56 mistake this project has already
+        # made and corrected twice. is_spatial and is_inert already exist in
+        # the schema for exactly this purpose; this probe is the first thing
+        # to actually USE them to separate real gaps from legitimate
+        # exclusions, rather than eyeballing chapter_key names.
+        #
+        # needs_extraction is excluded deliberately: a chapter already queued
+        # is DQ-89's population (or DQ-78's), not a SILENT gap -- this probe
+        # is specifically for chapters nothing is tracking at all.
+        #
+        # NOT a correctness check on served content quality (that is DQ-78's
+        # job for what IS extracted) -- this is coverage-completeness only:
+        # does a currently-served provision exist at all for this chapter.
+        "SELECT count(*) FROM dcp_chapter_registry r "
+        "WHERE r.is_active AND NOT r.is_spatial AND NOT r.is_inert "
+        "AND NOT r.needs_extraction "
+        "AND NOT EXISTS (SELECT 1 FROM regulatory_provisions p "
+        "                WHERE p.source_chapter_key = r.chapter_key "
+        "                AND p.is_current)",
+        (),
+        "Each row is a registered, substantive DCP chapter (not a map sheet, "
+        "not administrative/inert material, not already queued for "
+        "extraction) with zero currently-served provisions -- a silent gap "
+        "nothing is tracking. Measured 97 on 2026-09-02. 54 are one council: "
+        "Canterbury-Bankstown -- confirmed as its ENTIRE non-spatial/"
+        "non-inert active chapter set (68 active total, 14 spatial/inert, "
+        "54 remaining, all 54 serving zero provisions), all correctly "
+        "identified as the current 2023 DCP, most with the source PDF "
+        "already fetched to R2, registered 2026-05-11 -- roughly four "
+        "months with the source in hand and never extracted. "
+        "dcp_setback_controls (a separate numeric-controls table) DOES have "
+        "67 current rows for this council, so only the DCP text/TOC corpus "
+        "is empty, not every surface. The remaining 43 are thin 1-3-chapter "
+        "gaps scattered across 15 other councils -- consistent with the "
+        "normal stragglers a multi-council pipeline carries, not "
+        "individually investigated here.",
+    ),
 }
 
 
