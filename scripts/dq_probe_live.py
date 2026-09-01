@@ -247,6 +247,41 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "(PCO 403 / AustLII Cloudflare) and belongs in notes, not in a retry "
         "loop; a residual of 26 means the monitor is not running.",
     ),
+    "DQ-88": (
+        "SEPP/LEP instruments flagged needs_review with nobody having cleared it",
+        # Split out of DQ-69, deliberately: this does NOT check whether the
+        # monitor runs (DQ-69 already does, and it does run) -- it checks
+        # whether a HUMAN has looked at what the monitor flagged. A count-only
+        # check cannot tell "correctly cleared" from "flag flipped without
+        # reading the change", so it does not try.
+        #
+        # check_failures = 0 is deliberate, not decorative: without it, an
+        # instrument whose last fetch FAILED (a source-side problem) would be
+        # counted alongside one whose fetch SUCCEEDED and found a genuine
+        # change awaiting review -- two different defects with two different
+        # fixes, conflated into one count. Sol cross-review flagged this
+        # 2026-09-01 before it shipped.
+        #
+        # Cannot currently distinguish "flagged three weeks ago, still
+        # ignored" from "cleared last week, freshly re-flagged this run" --
+        # updated_at is bumped on every monitor pass regardless of whether
+        # needs_review changed, so age is NOT provable from this schema alone.
+        # A count staying non-zero over repeated measurements is still real
+        # signal (the backlog isn't clearing), but do not assert a specific
+        # instrument's dwell time from this query.
+        "SELECT count(*) FROM instrument_registry "
+        "WHERE is_active AND needs_review AND check_failures = 0",
+        (),
+        "Each row is a SEPP or LEP the monitor successfully checked and "
+        "deliberately did not auto-apply, waiting for a human to read it. "
+        "Measured 7 on both 2026-08-14 and 2026-09-01 -- same count, not "
+        "confirmed to be the same instruments, since nothing here timestamps "
+        "when a flag was SET rather than merely last touched. Either way the "
+        "monitor is correctly refusing to guess; the review step is not "
+        "happening. This can rise legitimately as new changes are detected; "
+        "it should never sit non-zero for weeks while the underlying "
+        "instruments keep serving.",
+    ),
     "DQ-70": (
         "Served provisions whose source PDF has CHANGED since they were extracted",
         # THE OUTCOME SIGNAL, not a mechanism one. Every other gate in this file
