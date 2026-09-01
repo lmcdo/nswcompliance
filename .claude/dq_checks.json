@@ -781,6 +781,18 @@
       "passes_when": "exit 0 - the floor of the governing cluster interval clears the 0.90 pass mark, i.e. recall is ESTABLISHED rather than merely measured",
       "red_when": "The cluster 95% CI straddles the pass mark, so the flood screen's recall is not established and every customer-facing surface must keep saying flood is uncalibrated.",
       "note": "Opened 2026-08-25 after re-running scripts/run_flood_calibration_2022.py at N=150 draws. There was NO ledger row for flood calibration before this - the status lived only in ce-product-assurance-position-2026-08.md, i.e. as prose. Result: recall 0.946 over 37 in-scope points (35 hits), cluster 95% CI 0.727-1.000 across 7 council clusters, against a 0.90 mark committed before the first run. 150 DRAWS yield only 37 scorable points because EMSR567 mapped NSW and south-east Queensland both, and the script refuses to score Brisbane as NSW recall - so the prompt's '~150 points would settle it' does not hold. The binding constraint is CLUSTER DIVERSITY, not sample size: 7 councils cannot produce a tight interval however many points are drawn from them. CORRECTION 2026-09-01: this note originally recorded recall 0.919 (34 hits) from the same script and seed (20220228) - contradicting this repo's own already-published 'final' figure in docs/qa/flood-calibration-2022-result.md (0.946, PR #897), caught by tests/test_flood_calibration_artifacts_agree.py at push time. A third run reproduced 0.946. Cause, confirmed live in that run's output: the script calls maps.six.nsw.gov.au (DEM identify) and www.bom.gov.au (SOS2/flood history) per point with 15-30s timeouts, and both hosts read-timed-out repeatedly mid-run - a timeout on a borderline point can flip its hit/miss between runs. cluster_lo was 0.727 in both the 0.919 and 0.946 results, so the verdict (open, below the 0.90 mark) is unchanged either way; only the point estimate is unstable, which is why the probe pins cluster_lo >= pass_mark and never the recall figure itself. Still NO specificity figure of any kind. This run wrote nothing to production: persist=False (#1005) verified, flood rows 166 before and 166 after."
+    },
+    "DQ-89": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-89"
+      ],
+      "passes_when": "exit 0 - no active chapter needing re-extraction carries an unresolved suspect-extraction alert",
+      "red_when": "an active chapter's needs_extraction flag is paired with a suspect-extraction alert (two-column interleave, schema failure, or a count drop against baseline) that nobody has reviewed",
+      "note": "Measured 2026-09-01/02: 31 active chapters match (29 new that day -- woollahra 22, ku_ring_gai 7, all timestamped 2026-09-01 03:31 UTC, right after Woollahra's council host migrated every chapter's URL -- plus 2 pre-existing and unrelated: city_of_sydney/section-3-general-provisions and hornsby/part-1-general, timestamped 2026-08-15, a different council pair with a different cause that has recurred since 2026-08-03). NOT a served-data defect: every one of the 31 still has is_active=True, so the review queue is correctly holding last-known-good content rather than committing the suspect extraction. This is a backlog-size check, not a correctness check -- DQ-78's own lesson applies here too: some rows near a suspect boundary can carry real controls interleaved with garbage, so clearing this needs someone to read the flagged chapters, not a script that bulk-clears the flag."
     }
   }
 }

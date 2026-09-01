@@ -1082,6 +1082,37 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "and not merely suspected. NEVER clears by re-fetching the portal, "
         "which is the stale source.",
     ),
+    "DQ-89": (
+        "Active chapters flagged suspect (needs_extraction) with no served-data impact",
+        # A backlog-SIZE check, deliberately not a correctness check -- see
+        # DQ-78's own hard lesson: some rows near a suspect boundary carry
+        # real controls interleaved with garbage, so a script that bulk-clears
+        # this flag would risk hiding a live control, the exact liability
+        # direction this project refuses to take. Clearing it needs a human
+        # to read the flagged chapter.
+        #
+        # is_active stays TRUE while needs_extraction is TRUE -- that is the
+        # review queue working as designed (hold last-known-good, do not
+        # commit the suspect re-extraction), not a defect this check measures.
+        # A future regression where a suspect chapter's is_active flips to
+        # something else without the flag clearing would need its own check;
+        # this one only tracks how large the backlog is.
+        "SELECT count(*) FROM dcp_chapter_registry "
+        "WHERE is_active AND needs_extraction "
+        "AND last_suspect_alert_key IS NOT NULL",
+        (),
+        "Each row is an active chapter the extraction pipeline flagged as "
+        "suspect (two-column interleave, a schema failure, or a count drop "
+        "against baseline) and refused to auto-commit. Measured 31 on "
+        "2026-09-01/02: 29 new that day (woollahra 22, ku_ring_gai 7, all "
+        "timestamped 2026-09-01 03:31 UTC, immediately after Woollahra's "
+        "council host migrated every chapter's URL) plus 2 pre-existing and "
+        "unrelated (city_of_sydney/section-3-general-provisions, "
+        "hornsby/part-1-general, timestamped 2026-08-15, recurring since "
+        "2026-08-03). Every one of the 31 still has is_active=True, so no "
+        "served content is currently wrong -- this counts a growing review "
+        "backlog, not a live defect.",
+    ),
 }
 
 

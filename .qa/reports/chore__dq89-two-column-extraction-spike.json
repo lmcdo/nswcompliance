@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Registers a genuinely new, sizeable data-quality finding (31 chapters flagged suspect, 29 of them new today) as a tracked ledger row with a real query-backed check, rather than leaving it in conversation only. Standard tier because it adds a new probe to scripts/dq_probe_live.py, not just prose.",
+  "commit_hash": "PENDING",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "scripts/dq_probe_live.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py && python scripts/dq_probe_live.py --id DQ-89",
+    "fails_when": "an active, needs_extraction chapter carries a suspect-alert key with nobody having reviewed it -- exits 1 with count 31 right now, by design (this is an open row, not declared fixed).",
+    "observed_red": "Ran the probe before and after writing it: 31 both times, matching the live query I ran independently via dq_db.py first. dq_check.py PASSED (0 red, no declared-vs-actual mismatch) because this row is honestly declared 'open', matching its failing probe -- the exact ratchet this session's DQ-79/DQ-69 fixes exist to enforce is satisfied here from the start, not retrofitted."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry -- read-only throughout. Queried live via dq_db.py before writing anything: per-council breakdown (woollahra 22, ku_ring_gai 7, city_of_sydney 1, hornsby 1 = 31 total), confirmed the woollahra+ku_ring_gai 29 share one timestamp (2026-09-01 03:31:26 UTC) distinct from the city_of_sydney+hornsby 2's timestamp (2026-08-15), and confirmed is_active=True on every one of the 31 before claiming 'no served-data impact'.",
+    "assumption_mismatch": "Initially treated this as a single undifferentiated 'today's fire' before querying live -- the query revealed it is two unrelated populations (a 29-chapter spike and a 2-chapter standing item three weeks old), and that despite the spike's size, is_active=True on every row means the review queue already contained it. Also checked and ruled benign in the same pass: Canterbury-Bankstown's 53 'removed from hub' alert (68 active chapters, 0 flagged) and Waverley's HTTP 403 hub-scrape failure (a month-old gap, not new).",
+    "new_vs_existing": "New row (DQ-89); does not touch or restate DQ-78, which covers a different council's map-label-scramble defect from a different extraction failure mode."
+  },
+  "functions": [
+    {
+      "name": "PROBES['DQ-89'] (registered in scripts/dq_probe_live.py, dispatched by main())",
+      "file_line": "scripts/dq_probe_live.py, DQ-89 entry",
+      "input": "no CLI args beyond --id DQ-89; reads dcp_chapter_registry via the shared read-only dq_db session",
+      "output": "prints count + query + explanation to stdout, exits 1 if count > 0 else 0 -- unmodified dispatch shape shared with every other PROBES entry",
+      "if_none": "last_suspect_alert_key IS NOT NULL is the explicit null guard in the WHERE clause -- a chapter never flagged is correctly excluded, not miscounted as suspect"
+    }
+  ],
+  "values": [
+    {
+      "value": "dcp_chapter_registry.needs_extraction",
+      "read_at": "scripts/dq_probe_live.py DQ-89 entry",
+      "nullable": "no, boolean not-null per schema (same table DQ-89's sibling probes already read)",
+      "guard_at": "WHERE is_active AND needs_extraction, no null-handling needed",
+      "if_missing": "n/a"
+    },
+    {
+      "value": "dcp_chapter_registry.is_active",
+      "read_at": "verified manually, not by this probe -- the probe deliberately does NOT filter on it beyond requiring TRUE, since a chapter that went inactive while flagged would be a different (and less urgent) situation than one still being served",
+      "nullable": "no",
+      "guard_at": "WHERE is_active = TRUE",
+      "if_missing": "n/a"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "confirm the 31-count, its two-population split, and that no served content is affected, before writing the tracker row or the probe",
+      "file_line": "ad-hoc read-only queries via scripts/dq_db.py, then codified as the DQ-89 probe",
+      "where_clause": "dcp_chapter_registry WHERE is_active AND needs_extraction AND last_suspect_alert_key IS NOT NULL, grouped by council for the breakdown, filtered by council for the Canterbury-Bankstown/Waverley checks",
+      "if_zero": "would mean the spike had already cleared itself -- not the case, 31 confirmed live moments before writing this report",
+      "if_wrong": "cross-checked against the ops Telegram alert log's own council names and marker text (preflight_two_column, schema_fail, count_drop) -- exact match"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "DQ-89's count is read as 'served data is wrong for 31 chapters'.",
+      "what_happens": "Someone escalates this as a live customer-facing defect when it is a queue holding correctly.",
+      "mitigated": true,
+      "how": "Both the tracker row and the probe note state explicitly and prominently that is_active=True on every counted row, so no served content is currently wrong -- this is a backlog-size check, not a correctness check.",
+      "repro": "dcp_chapter_registry WHERE is_active AND needs_extraction AND last_suspect_alert_key IS NOT NULL AND NOT is_active returns 0"
+    },
+    {
+      "scenario": "Someone 'fixes' DQ-89 by bulk-clearing needs_extraction on all 31 without reading any of them.",
+      "what_happens": "A chapter with a real control interleaved with garbage text (DQ-78's own documented failure shape) gets committed as-is, hiding a real control -- the liability direction this project explicitly refuses.",
+      "mitigated": true,
+      "how": "The tracker row and dq_checks.json note both state this cannot be closed by a script and needs per-chapter human review, citing DQ-78 by name as the precedent for why.",
+      "repro": "n/a -- a documentation safeguard, not a technical one; enforced by not shipping any clearing script here"
+    },
+    {
+      "scenario": "The new probe conflates the 29-chapter spike with the pre-existing 2-chapter item, making it look like one homogeneous defect with one cause.",
+      "what_happens": "Investigation time gets wasted looking for one root cause that explains both populations, when they are unrelated (three weeks apart, different councils).",
+      "mitigated": true,
+      "how": "The probe's own note explicitly separates the two by timestamp and names both council pairs distinctly.",
+      "repro": "grep DQ-89 in dq_probe_live.py or DATA_QUALITY_TRACKER.md -- both state the split"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- read-only throughout.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "The actual investigation (opening Woollahra's migrated PDFs to determine whether this is a genuine new two-column typeset or a scraper artifact) is explicitly NOT done here -- tracked as open work in DQ-89, not resolved by it."
+  }
+}
