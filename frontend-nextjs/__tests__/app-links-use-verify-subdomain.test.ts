@@ -105,7 +105,10 @@ describe('app-route origin fallbacks use the verify subdomain', () => {
   // 14 files, 19 occurrences (stripe/webhook.ts alone had 6) built a Stripe
   // checkout redirect, a webhook callback, or a report's shareable_url/QR
   // code from this fallback.
-  const BARE_APEX_FALLBACK = /\?\?\s*(?:process\.env\.NEXT_PUBLIC_SITE_URL\s*\?\?\s*)?'https:\/\/plotdetect\.com\.au'/;
+  // Matches both the bare apex AND the www form: www is equally dead (308s to
+  // the apex, which 404s on every app route), and the test's own name already
+  // claimed to cover "bare/www" while the regex silently only matched bare.
+  const BARE_APEX_FALLBACK = /\?\?\s*(?:process\.env\.NEXT_PUBLIC_SITE_URL\s*\?\?\s*)?'https:\/\/(?:www\.)?plotdetect\.com\.au'/;
 
   // Excludes this test file itself - its own comments above quote the exact
   // offending pattern as documentation, which would otherwise self-match.
@@ -122,5 +125,15 @@ describe('app-route origin fallbacks use the verify subdomain', () => {
       });
     }
     expect(offenders).toEqual([]);
+  });
+
+  // Sol cross-review, 2026-09-01: the test above's own title claimed to cover
+  // "bare/www" while the regex silently matched only bare. Planted directly
+  // rather than via a real source file, so the guard's own reach is pinned
+  // independently of what happens to be in the tree today.
+  it('the regex itself catches both the bare apex and the www form', () => {
+    expect(BARE_APEX_FALLBACK.test("  const origin = req.headers.get('origin') ?? 'https://plotdetect.com.au';")).toBe(true);
+    expect(BARE_APEX_FALLBACK.test("  const origin = req.headers.get('origin') ?? 'https://www.plotdetect.com.au';")).toBe(true);
+    expect(BARE_APEX_FALLBACK.test("  const origin = req.headers.get('origin') ?? 'https://verify.plotdetect.com.au';")).toBe(false);
   });
 });

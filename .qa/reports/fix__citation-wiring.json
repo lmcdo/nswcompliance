@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Three commits, each already carrying its own Standard-tier QA in its commit message, had never had a per-branch report generated — the branch-level artifact this repo's gate actually resolves on push. This file consolidates those three without re-deriving anything: (1) 26f9dd82 wires instrument_registry.legislation_url as a citation fallback for 35 documents with no r2_pdf_url/source_url; (2) ad1249a3 recovers 54 stale dcp_setback_controls citation links via a hand-verified chapter_key alias map; (3) 786fb4a7 fixes a bare-apex origin fallback across 14 stripe/report route files. No served value changes beyond what each commit's own QA already pinned; no schema, no migration, no production write.",
-  "commit_hash": "786fb4a7",
+  "commit_hash": "29f61638",
   "files": [
     "frontend-nextjs/lib/citation-instrument-urls.ts",
     "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
