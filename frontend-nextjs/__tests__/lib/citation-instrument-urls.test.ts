@@ -110,6 +110,18 @@ describe('resolveCitationUrl — priority order', () => {
     expect(result).toEqual({ url: 'https://council.example/dcp.pdf', kind: 'chapter' });
   });
 
+  it('resolves the chapter URL even when pdf_page is absent — Sol cross-review 2026-09-01', () => {
+    // A provision with a real chapter match but no page number must still get
+    // the more specific chapter link, not fall through to the coarser
+    // whole-of-instrument map. Gating the chapter lookup on pdf_page silently
+    // broke this: it returned 'instrument' here instead of 'chapter'.
+    const result = resolveCitationUrl(
+      { source_chapter_key: 'part-1-chapter', document_id: 'no-match' },
+      chapterPdfUrls
+    );
+    expect(result).toEqual({ url: 'https://council.example/dcp.pdf', kind: 'chapter' });
+  });
+
   it('falls back to the instrument_registry map when neither image nor chapter URL exists', () => {
     const result = resolveCitationUrl(
       { document_id: 'State_Environmental_Planning_Policy_Housing_2021__NSW_Legislation' },

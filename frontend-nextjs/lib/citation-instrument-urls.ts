@@ -129,10 +129,15 @@ export function resolveCitationUrl(
   if (provision.pdf_page_image_url) {
     return { url: provision.pdf_page_image_url, kind: 'image' };
   }
-  const chapterUrl =
-    provision.pdf_page && provision.source_chapter_key
-      ? chapterPdfUrls?.[provision.source_chapter_key]
-      : undefined;
+  // Gating this on `pdf_page` (dropped 2026-09-01, Sol cross-review) meant a
+  // provision with a real chapter match but no page number skipped the more
+  // specific chapter URL and fell through to the coarser whole-of-instrument
+  // link — the exact priority-order violation this module's own header
+  // documents as forbidden. The page number is only needed for the #page=
+  // anchor, which the caller now adds conditionally.
+  const chapterUrl = provision.source_chapter_key
+    ? chapterPdfUrls?.[provision.source_chapter_key]
+    : undefined;
   if (chapterUrl) {
     return { url: chapterUrl, kind: 'chapter' };
   }

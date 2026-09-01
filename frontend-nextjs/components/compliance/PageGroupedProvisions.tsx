@@ -899,11 +899,18 @@ export function PageGroupedProvisions({
                                 );
                               }
                               if (resolved.kind === 'chapter') {
+                                // resolveCitationUrl no longer requires pdf_page to return a
+                                // chapter match (2026-09-01 fix) — the anchor is added here,
+                                // only when a page number actually exists.
+                                const hasPage = Boolean(provision.pdf_page);
+                                const chapterHref = hasPage
+                                  ? `${resolved.url}#page=${provision.pdf_page}`
+                                  : resolved.url;
                                 return (
                                   <button
-                                    onClick={() => onViewPdf(`${resolved.url}#page=${provision.pdf_page}`, provision.pdf_page || 0)}
+                                    onClick={() => onViewPdf(chapterHref, provision.pdf_page || 0)}
                                     className="p-0.5 rounded hover:bg-teal-100 shrink-0"
-                                    title={`PDF page ${provision.pdf_page}`}
+                                    title={hasPage ? `PDF page ${provision.pdf_page}` : 'View chapter PDF'}
                                   >
                                     <FileText className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700" />
                                   </button>
