@@ -44,7 +44,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Payment not configured' }, { status: 500 });
   }
 
-  const origin = req.headers.get('origin') ?? 'https://plotdetect.com.au';
+  // Was req.headers.get('origin') -- an attacker-controlled request header,
+  // not a value the server chose. A POST from any origin sets this to
+  // whatever that origin's own browser truthfully reports, so a page at
+  // https://attacker.example calling this route got its Stripe redirect
+  // built from https://attacker.example: the customer pays, then is sent to
+  // the attacker's site instead of ours. Every sibling checkout route
+  // (bushfire, conveyancing, flood-truth, granny-flat, shadow, solar-yield,
+  // threat-radar-monitor) already reads the server-controlled env var
+  // directly and never touches the request at all -- this file was the one
+  // outlier. Also fixes the same dead-apex fallback #1009/786fb4a7 fixed
+  // everywhere else (this file predates that fix, still on main).
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://verify.plotdetect.com.au';
 
   try {
     const session = await stripe.checkout.sessions.create(
