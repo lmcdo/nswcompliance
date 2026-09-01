@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Registers a genuinely new, sizeable data-quality finding (31 chapters flagged suspect, 29 of them new today) as a tracked ledger row with a real query-backed check, rather than leaving it in conversation only. Standard tier because it adds a new probe to scripts/dq_probe_live.py, not just prose.",
-  "commit_hash": "03b0d6ea",
+  "commit_hash": "96d34af8",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -53,11 +53,11 @@
   ],
   "break_it": [
     {
-      "scenario": "DQ-89's count is read as 'served data is wrong for 31 chapters'.",
-      "what_happens": "Someone escalates this as a live customer-facing defect when it is a queue holding correctly.",
+      "scenario": "DQ-89's count is read as 'all 31 rows are safely held by the review queue', papering over the one that genuinely serves nothing.",
+      "what_happens": "hornsby/part-1-general (never extracted, zero currently-served provisions) gets treated the same as the 30 rows that do have a served fallback, understating a real content gap as a benign backlog item.",
       "mitigated": true,
-      "how": "Both the tracker row and the probe note state explicitly and prominently that is_active=True on every counted row, so no served content is currently wrong -- this is a backlog-size check, not a correctness check.",
-      "repro": "dcp_chapter_registry WHERE is_active AND needs_extraction AND last_suspect_alert_key IS NOT NULL AND NOT is_active returns 0"
+      "how": "Sol cross-review caught the report's first version making exactly this blanket claim. Corrected in the tracker row, the probe's note, and dq_checks.json's note to state 30-of-31 explicitly and name the exception -- no text in any of the three now says all 31 are safe.",
+      "repro": "SELECT count(*) FROM dcp_chapter_registry r WHERE r.is_active AND r.needs_extraction AND r.last_suspect_alert_key IS NOT NULL AND EXISTS (SELECT 1 FROM regulatory_provisions p WHERE p.source_chapter_key = r.chapter_key AND p.is_current) -- returns 30, not 31; the missing one is hornsby/part-1-general"
     },
     {
       "scenario": "Someone 'fixes' DQ-89 by bulk-clearing needs_extraction on all 31 without reading any of them.",
