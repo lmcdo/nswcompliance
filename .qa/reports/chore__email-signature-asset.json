@@ -1,0 +1,45 @@
+{
+  "tier": "minor",
+  "justification": "Adds one static JPEG under frontend-nextjs/public/. No code changes, no imports, nothing reads or references the file at build or runtime other than Next.js's static file server. A static asset has no branch to take and no input to mishandle, so there is nothing for a falsifiable check to exercise beyond confirming the file exists, is a valid image, and is reachable once deployed.",
+  "commit_hash": "54d1a79e",
+  "files": [
+    "frontend-nextjs/public/signature/lawrence-mcdonell.jpg"
+  ],
+  "falsifiable_check": {
+    "command": "python -c \"from PIL import Image; im = Image.open('frontend-nextjs/public/signature/lawrence-mcdonell.jpg'); im.verify(); print(im.format, im.size)\"",
+    "fails_when": "The file is missing, zero-length, or not a decodable image (Image.verify() raises). Confirms the artifact itself is intact independent of anything this change claims about it.",
+    "external_authority": "Pillow's own JPEG decoder, not a property this change asserts about itself."
+  },
+  "pre_impl": {
+    "existing_data": "None. No table, column, or existing route is touched — this adds a new file under public/, which Next.js serves verbatim by path with no code in between.",
+    "assumption_mismatch": "N/A — no assumption about existing data is made.",
+    "new_vs_existing": "N/A — purely additive, no existing behaviour changes for any existing request."
+  },
+  "functions": "N/A - no functions added or changed",
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The file is corrupted in transit or truncated on write.",
+      "what_happens": "The image fails to decode and renders as a broken-image icon wherever it's embedded (e.g. a Gmail signature).",
+      "mitigated": true,
+      "how": "Verified locally with Pillow (Image.verify()) before commit; the falsifiable check above re-runs the same decode.",
+      "repro": "python -c \"from PIL import Image; Image.open('frontend-nextjs/public/signature/lawrence-mcdonell.jpg').verify()\""
+    },
+    {
+      "scenario": "The path collides with an existing route or asset.",
+      "what_happens": "One would silently shadow the other.",
+      "mitigated": true,
+      "how": "frontend-nextjs/public/signature/ is a new directory; grepped the repo for any existing reference to that path before creating it — none found.",
+      "repro": "git grep -n 'public/signature' -- frontend-nextjs ':!frontend-nextjs/public/signature/*'"
+    }
+  ],
+  "mutation_analysis": "No executable logic is added, so mutation testing does not apply. The equivalent check is deletion: removing the file makes the falsifiable check's Image.open() raise FileNotFoundError, proving the check actually depends on the file being present rather than passing unconditionally.",
+  "residual_risk": "The image becomes publicly reachable at whatever URL Vercel serves frontend-nextjs/public/ under, indefinitely, once merged — same as every other file already in that directory. That's the intended outcome (an image signature needs a public URL), not a defect, but it's a one-way door: removing it later after it's been used in sent emails leaves a broken image in every email already sent.",
+  "post_merge": {
+    "db_reset": "No. No schema or data change.",
+    "secrets": "None. The file is a signature image, not a credential.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes. Once deployed, open the production URL directly in a browser to confirm the image renders before pasting it into Gmail's signature settings."
+  }
+}
