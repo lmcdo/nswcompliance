@@ -1262,7 +1262,13 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "a table that does not exist. drawdown_verify_audits is the confirmed "
         "silent-failure case: the insert is wrapped in a bare except that logs "
         "and returns success anyway. Fix = run the missing migration for tables "
-        "still wanted, or delete the dead write path for ones that are not.",
+        "still wanted, or delete the dead write path for ones that are not. "
+        "CAVEAT (Sol cross-review, 2026-09-04): this checks EXISTENCE only, not "
+        "whether the insert actually succeeds once the table exists -- a missing "
+        "column, wrong type, or denied grant on drawdown_verify_audits would still "
+        "let the same bare except swallow the failure and this probe would read "
+        "clean. A 0 here is necessary, not sufficient; closing DQ-91 for real needs "
+        "someone to submit a live request and confirm a row actually lands.",
     ),
     "DQ-92": (
         "Review-queue rows pending for a KNOWN extractor bug, not a human decision",
@@ -1284,12 +1290,18 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "AND (suspect_reason LIKE 'count_drop%%' "
         "     OR suspect_reason LIKE 'preflight_two_column%%')",
         (),
-        "Each row is backlog inflation from a known extractor bug (under-"
-        "extraction or two-column interleaving), not a pending human review "
-        "decision. This count should fall to 0 as affected chapters are fixed "
-        "and re-extracted -- it re-adds itself on any new bad extraction, so a "
-        "non-zero reading after a claimed fix means the fix did not cover the "
-        "chapters it claimed to.",
+        "Each row CARRIES a suspect_reason tag associated with one of two known "
+        "extractor bug classes -- it is not yet independently confirmed, per "
+        "chapter, to actually BE that bug rather than a legitimate DCP revision "
+        "that happens to remove or reflow a lot of text. Treat this count as "
+        "'tagged as suspected bug churn', not 'proven bug churn', until each "
+        "chapter is checked. CAVEAT (Sol cross-review, 2026-09-04): the count_drop "
+        "root cause is proven for only 1 of 28 tagged chapters (marrickville/"
+        "part2-s11-fencing); a council whose DCP genuinely deleted provisions "
+        "would earn the identical tag and be wrongly excluded from the human-"
+        "review count by this probe. This count should fall to 0 as affected "
+        "chapters are fixed and re-extracted -- but do not fix chapters against "
+        "this tag alone without opening each one first.",
     ),
 }
 
