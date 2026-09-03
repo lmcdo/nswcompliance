@@ -1271,37 +1271,46 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "someone to submit a live request and confirm a row actually lands.",
     ),
     "DQ-92": (
-        "Review-queue rows pending for a KNOWN extractor bug, not a human decision",
-        # Answers a direct question: how much of the review backlog would clear
-        # itself if the two known extractor bugs were fixed and re-run, rather
-        # than reviewed row by row? See
-        # memory/project-dcp-review-queue-is-a-bug-report-2026-08.md for the root
-        # cause of both tags. Measured live 2026-09-04: 9,461 pending total, of
-        # which count_drop 5,479 (28 chapters) + preflight_two_column 3,642 (85
-        # chapters) = 9,121 (96.4%). The remaining ~340 (179 clean + ~161 other
-        # suspect reasons, incl. 2026-09-01's Woollahra schema_fail rows) is the
-        # genuinely reviewable set. `scripts/dcp_extract_changed.py:2969` deletes
-        # PENDING rows for a chapter on every re-extract and inserts fresh, so
-        # fixing the extractor and re-running is expected to collapse this count,
-        # not require triaging it row by row -- hand-triaging is measured wasted
-        # work per the memory file above.
+        "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",
+        # Answers a direct question raised in session: how much of the review
+        # backlog is a duplicate of a known extractor problem rather than
+        # distinct human review volume? See
+        # memory/project-dcp-review-queue-is-a-bug-report-2026-08.md for the
+        # root cause of both tags.
+        #
+        # ⚠ TWO ROUNDS OF SOL CROSS-REVIEW BOTH CAUGHT THE SAME OVERCLAIM, so it
+        # is written out in full rather than patched again: a suspect_reason of
+        # count_drop or preflight_two_column is a SIGNATURE the extractor
+        # writes about itself, not an independently confirmed defect. The fix
+        # proven to actually correct count_drop covers 1 of the 28 chapters
+        # that carry that tag (marrickville/part2-s11-fencing, 2026-08-14) --
+        # the other 27, and all 85 preflight_two_column chapters, are UNCHECKED
+        # per-chapter. A council whose DCP genuinely deleted provisions in a
+        # real amendment would earn the identical count_drop tag and this probe
+        # cannot tell the two apart. So: this count is a TRIAGE PRIORITISATION
+        # signal (which chapters to open first), not a completed classification
+        # of "bug, skip" vs "real change, review". Do not exclude these rows
+        # from review planning on this tag alone, and do not call the untagged
+        # remainder "safe" -- it is only "rows without these two tags"; DQ-71
+        # (source-quote verification) still applies to all of it.
+        #
+        # Measured live 2026-09-04: 9,461 pending total; 5,479 tagged
+        # count_drop (28 chapters) + 3,642 tagged preflight_two_column (85
+        # chapters) = 9,121 (96.4%) carry one of the two tags; 340 do not.
         "SELECT count(*) FROM dcp_review_queue "
         "WHERE status = 'pending' "
         "AND (suspect_reason LIKE 'count_drop%%' "
         "     OR suspect_reason LIKE 'preflight_two_column%%')",
         (),
-        "Each row CARRIES a suspect_reason tag associated with one of two known "
-        "extractor bug classes -- it is not yet independently confirmed, per "
-        "chapter, to actually BE that bug rather than a legitimate DCP revision "
-        "that happens to remove or reflow a lot of text. Treat this count as "
-        "'tagged as suspected bug churn', not 'proven bug churn', until each "
-        "chapter is checked. CAVEAT (Sol cross-review, 2026-09-04): the count_drop "
-        "root cause is proven for only 1 of 28 tagged chapters (marrickville/"
-        "part2-s11-fencing); a council whose DCP genuinely deleted provisions "
-        "would earn the identical tag and be wrongly excluded from the human-"
-        "review count by this probe. This count should fall to 0 as affected "
-        "chapters are fixed and re-extracted -- but do not fix chapters against "
-        "this tag alone without opening each one first.",
+        "Each row carries a suspect_reason tag matching one of two extractor "
+        "bug SIGNATURES -- a hypothesis about the row, not a confirmed defect. "
+        "The count_drop root cause is proven fixed for only 1 of the 28 tagged "
+        "chapters; a chapter with a genuine, legitimate DCP amendment that "
+        "removed provisions would earn the identical tag. Use this as a triage "
+        "signal for which chapters to open and check first -- do NOT treat the "
+        "9,121 as confirmed-safe-to-skip, and do NOT treat the remaining 340 as "
+        "a confirmed-clean review set; both need chapter-level or DQ-71 "
+        "verification before either claim can be made.",
     ),
 }
 
