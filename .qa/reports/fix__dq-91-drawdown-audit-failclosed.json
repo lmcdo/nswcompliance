@@ -1,31 +1,53 @@
 {
   "tier": "standard",
-  "justification": "Standard: real behaviour change to a live, deployed API endpoint's failure path (500 instead of a fake 200 'submitted'). Not Critical because the blast radius is narrow (no frontend caller for this endpoint was found anywhere in this repo, so today's real-world traffic is unproven) and the change is contained to one except block in one function, already regression-tested by forcing it to fail against the pre-fix code (git stash) and confirming the new tests go red.",
-  "commit_hash": "run: git rev-parse --short HEAD",
+  "justification": "Standard: two real behaviour changes to a live, deployed API endpoint's DB-write and connection lifecycle. Not Critical because the blast radius is narrow (no frontend caller for this endpoint was found anywhere in this repo, so today's real-world traffic is unproven) and both changes are contained to the same three DB-helper functions, verified twice over -- once as fast mocked unit tests (default pytest run) and once as opt-in real-database integration tests that actually connect to production Supabase (PYTEST_REAL_DB=1 -m database).",
+  "commit_hash": "4508e715",
   "files": [
     "services/drawdown_verify.py",
-    "tests/test_drawdown_verify_audit_failclosed.py"
+    "tests/test_drawdown_verify_audit_failclosed.py",
+    "tests/test_drawdown_verify_real_db.py"
   ],
   "pre_impl": {
-    "existing_data": "drawdown_verify_audits table -- confirmed live 2026-09-04 to NOT exist in production (DQ-91). This fix does not create it (a production DDL write was blocked by the session's own auto-mode classifier and needs explicit user approval, see PR body) -- it only stops the API from lying about the outcome while the table is still missing.",
-    "assumption_mismatch": "None new. The pre-existing code already assumed _insert_audit could fail (it had a try/except); this fix only changes what happens on that already-anticipated failure.",
+    "existing_data": "drawdown_verify_audits table -- confirmed live 2026-09-04 to NOT exist in production (DQ-91), re-confirmed again by tests/test_drawdown_verify_real_db.py's own real-DB assertion. This PR does not create it (a production DDL write was blocked by the session's own auto-mode classifier and needs explicit user approval) -- it stops the API from lying about the outcome, and stops leaking a connection per call, while the table is still missing.",
+    "assumption_mismatch": "None new for the fail-closed fix (the pre-existing code already assumed _insert_audit could fail). The connection-leak fix corrects an assumption that was simply wrong: `with _db_conn() as conn:` was assumed to close the connection on exit: psycopg2 connections only COMMIT/ROLLBACK in __exit__, never close -- confirmed against the real driver, not just documentation, by test_drawdown_verify_real_db.py.",
     "new_vs_existing": "Applies to every new request from merge onward. No historical rows are affected -- there is nothing to backfill, since the table has never held any rows.",
-    "external_source_error": "N/A -- no new external source call added.",
+    "external_source_error": "N/A -- no new external source call added. Note: _submit_hyp3_job (the real HyP3/ASF Earthdata call) is deliberately NOT exercised by any test in this PR, mocked or real -- it is a paid third-party job submission with 1-2 hour turnaround, not something that belongs in an automated suite. That remains genuinely untested end-to-end; flagged rather than silently absent.",
     "frontend_type": "N/A -- no frontend caller found for this endpoint in this repo.",
-    "user_failure_mode": "Before: caller receives 200 'submitted' with a non-functional fallback ID (job_name, not a UUID -- polling GET /pipeline/drawdown-verify/{job_id} with it would itself fail on invalid UUID syntax) while the audit record silently does not exist. After: caller receives 500 with an explicit 'has NOT been recorded' message and the hyp3_job_name for manual reconciliation, matching the existing HyP3-submission-failure pattern three lines above in the same function."
+    "user_failure_mode": "Audit-write silent lie (before this PR): caller receives 200 'submitted' with a non-functional fallback ID while the audit record silently does not exist. Connection leak (also pre-existing, found by the pre-push adversarial scanner while this PR already had the file open): every call to _insert_audit/_update_audit/_get_audit opened a psycopg2 connection against the pooler and never closed it -- including the polling endpoint, which can be hit repeatedly over a 1-2 hour job. After this PR: audit-write failure returns 500 with an explicit message and the hyp3_job_name for reconciliation; every DB helper closes its connection on every exit path, proven against a real connection, not just a mock's approximation of one."
   },
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py -v",
-    "fails_when": "The fix in services/drawdown_verify.py is reverted while the new tests are kept -- proven, not assumed, by actually running git stash push -- services/drawdown_verify.py, re-running the same pytest command, then git stash pop to restore the fix.",
-    "observed_red": "2 of 4 tests went RED against the pre-fix code: test_audit_insert_failure_raises_500_not_a_fake_success and test_audit_insert_failure_response_carries_the_hyp3_job_name_for_reconciliation both printed 'Failed: DID NOT RAISE <class fastapi.exceptions.HTTPException>', with the captured log line 'ERROR services.drawdown_verify:drawdown_verify.py:516 Audit insert failed for loan loan-123' showing the old code swallowing the exception exactly as expected. Result line: '2 failed, 2 passed in 0.67s' -- the 2 that stayed green (test_audit_insert_success_still_returns_submitted, test_hyp3_submission_failure_is_unchanged_by_this_fix) are unrelated to this fix and correctly unaffected."
+    "command": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py -v (mocked, runs in default CI) AND PYTEST_REAL_DB=1 python -m pytest -m database tests/test_drawdown_verify_real_db.py -v -o addopts= (opt-in, actually connects to production Supabase)",
+    "fails_when": "Both suites were run against the fix REVERTED (git stash push -- services/drawdown_verify.py, keeping the tests, then git stash pop to restore) -- proven twice, once mocked and once against the real driver and real production data, not assumed either time.",
+    "observed_red": "MOCKED (first attempt): 2 of 4 fail-closed tests went RED with 'DID NOT RAISE HTTPException'. MOCKED leak tests (first attempt): 3 of 4 failed for the WRONG reason ('DID NOT RAISE') because the default MagicMock.__enter__ returns a different object than the mock itself, unlike real psycopg2 -- caught mid-session, fixed by pinning mock_conn.__enter__.return_value = mock_conn, re-run: all 4 then failed cleanly with 'AssertionError: Expected close to have been called once. Called 0 times.' REAL-DB (against actual production, actual Supabase pooler): test_get_audit_closes_the_real_connection_even_though_the_table_is_missing failed with 'AssertionError: finally: conn.close() did not fire on the real connection when the real query genuinely failed' -- this is a genuine UndefinedTable error from the real missing drawdown_verify_audits table, and a genuine unclosed psycopg2.extensions.connection object, not a simulation of either. After git stash pop restoring the fix: all 8 mocked tests and all 3 real-DB tests pass; the real connection's .closed attribute reads nonzero and reusing it raises a genuine psycopg2.InterfaceError."
   },
   "functions": [
     {
       "name": "submit_drawdown_verify",
-      "file_line": "services/drawdown_verify.py:470",
+      "file_line": "services/drawdown_verify.py:489",
       "input": "DrawdownVerifyRequest (loan_id, address, stage_claimed, lot_bbox, reference_date)",
       "output": "DrawdownVerifySubmitResponse (200) or HTTPException (500) -- previously always 200",
       "if_none": "N/A -- request is a validated pydantic model, FastAPI rejects a malformed body before this function runs"
+    },
+    {
+      "name": "_insert_audit",
+      "file_line": "services/drawdown_verify.py:194",
+      "input": "loan_id, address, stage_claimed, hyp3_job_name, hyp3_job_id, scene_before, scene_after",
+      "output": "audit_id (str) on success; now closes its psycopg2 connection on every exit path via try/finally instead of leaking it via with-conn's commit-only semantics",
+      "if_none": "N/A -- caller always supplies these from validated request fields, none are optional at this call site"
+    },
+    {
+      "name": "_update_audit",
+      "file_line": "services/drawdown_verify.py:230",
+      "input": "audit_id (str) plus **fields to set",
+      "output": "None; now closes its psycopg2 connection on every exit path via try/finally",
+      "if_none": "N/A -- early-returns immediately if fields is empty, before any connection is opened"
+    },
+    {
+      "name": "_get_audit",
+      "file_line": "services/drawdown_verify.py:250",
+      "input": "audit_id (str), the UUID returned by submit_drawdown_verify",
+      "output": "dict or None; now closes its psycopg2 connection on every exit path via try/finally, proven against a real connection in tests/test_drawdown_verify_real_db.py",
+      "if_none": "Returns None if no row matches, which the GET route handler turns into an HTTPException 404 -- unchanged by this PR"
     }
   ],
   "values": [
@@ -33,7 +55,7 @@
       "value": "audit_id",
       "read_at": "services/drawdown_verify.py:526 (job_id field of the response)",
       "nullable": "no -- previously silently set to job_name (a non-UUID string) on failure; now the function never reaches this line on failure, it raises instead",
-      "guard_at": "services/drawdown_verify.py:505-520 (the try/except this fix rewrites)",
+      "guard_at": "services/drawdown_verify.py:505-534 (the try/except this fix rewrites)",
       "if_missing": "Caller gets HTTPException 500 before a response body is ever constructed"
     }
   ],
@@ -44,7 +66,14 @@
       "what_happens": "Before: caller told 'submitted', given a job_id that cannot be polled, audit record permanently missing with nothing surfaced. After: caller gets a 500 naming the failure and the hyp3_job_name for manual reconciliation; the HyP3 job itself is NOT cancelled (documented in the new code comment) so it is not silently wasted, just not auto-tracked.",
       "mitigated": true,
       "how": "services/drawdown_verify.py:504-534, raise HTTPException(500, ...) replaces the silent log-and-continue",
-      "repro": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py -v -- forced against the pre-fix code via git stash to confirm it actually fails without the fix (not just exercises the code)"
+      "repro": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py -v -- forced against the pre-fix code via git stash to confirm it actually fails without the fix"
+    },
+    {
+      "scenario": "Every call to the three DB helpers leaked a psycopg2 connection against the Supabase pooler -- found by the pre-push adversarial scanner mid-PR, not planned. The polling endpoint (GET .../drawdown-verify/{job_id}) can be hit repeatedly over a 1-2 hour job, so this compounds per job.",
+      "what_happens": "Before: pool exhaustion risk under any real traffic. After: every helper closes its connection via try/finally on every exit path, proven against a REAL psycopg2 connection to production (not a mock) via tests/test_drawdown_verify_real_db.py, which uses the actual missing-table error as its real failure trigger.",
+      "mitigated": true,
+      "how": "services/drawdown_verify.py:194-249",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_drawdown_verify_real_db.py -v -o addopts= -- forced against the pre-fix code via git stash, watched it fail against real production, restored, watched it pass"
     },
     {
       "scenario": "This fix accidentally also breaks the SUCCESS path or the unrelated HyP3-submission failure path.",
@@ -54,7 +83,7 @@
       "repro": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py -v"
     },
     {
-      "scenario": "Because drawdown_verify_audits still does not exist in production (the migration was NOT run this session, see post_merge below), every real call to this endpoint will now return 500 instead of the previous fake 200 -- a 0% to 100% visible-failure-rate jump for any existing caller, the moment this merges.",
+      "scenario": "Because drawdown_verify_audits still does not exist in production (the migration was NOT run this session -- blocked, needs explicit approval), every real call to this endpoint now returns 500 instead of the previous fake 200 -- a 0% to 100% visible-failure-rate jump for any existing caller, the moment this merges.",
       "what_happens": "If anything IS calling this endpoint today (unproven either way -- no caller was found in this repo, but that does not rule out an external caller), it goes from silently-broken-but-200 to loudly-broken-500 immediately on merge, before the table exists to fix the root cause.",
       "mitigated": false,
       "how": "Not mitigated by this PR -- this is the correct and intended direction (loud failure over silent lie) but it is a real, immediate behaviour change that should not be merged without the person merging knowing it. The actual fix (create the table) is still blocked pending explicit approval to run migrations/033_drawdown_verify_audits.sql against production.",
@@ -65,6 +94,6 @@
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes -- the underlying gap (drawdown_verify_audits does not exist) is NOT fixed by this PR. Running migrations/033_drawdown_verify_audits.sql against production was attempted this session and blocked by the auto-mode classifier as a production DDL write requiring explicit approval. This PR only stops the endpoint from lying about the outcome while that table is still missing -- DQ-91 stays 'open' until the migration is actually run."
+    "manual_verify": "Yes -- the underlying gap (drawdown_verify_audits does not exist) is NOT fixed by this PR. Running migrations/033_drawdown_verify_audits.sql against production was attempted this session and blocked by the auto-mode classifier as a production DDL write requiring explicit approval. This PR only stops the endpoint from lying about the outcome and stops it leaking connections while that table is still missing -- DQ-91 stays 'open' until the migration is actually run. tests/test_drawdown_verify_real_db.py::test_drawdown_verify_audits_still_does_not_exist is pinned to go red the moment someone runs it, as a signal to update DQ-91's status and rewrite two of its own tests."
   }
 }

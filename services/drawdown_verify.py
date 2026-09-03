@@ -201,8 +201,15 @@ def _insert_audit(
     scene_after: Optional[str],
 ) -> str:
     """Insert initial audit record; return the UUID."""
+    # prior-art-checked: bugfix to an EXISTING function, not a new data
+    # source/capability -- `with conn:` was already here. psycopg2's
+    # connection context manager only manages COMMIT/ROLLBACK on __exit__,
+    # it does NOT close the connection, so every prior call leaked one
+    # against the pooler. finally: conn.close() on every path, same pattern
+    # already used correctly in scripts/dq_db.py's session().
     audit_id = str(uuid.uuid4())
-    with _db_conn() as conn:
+    conn = _db_conn()
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -215,31 +222,43 @@ def _insert_audit(
                  hyp3_job_name, hyp3_job_id, scene_before, scene_after),
             )
         conn.commit()
+    finally:
+        conn.close()
     return audit_id
 
 
 def _update_audit(audit_id: str, **fields) -> None:
     """Update named fields on an audit record."""
+    # prior-art-checked: same connection-leak bugfix as _insert_audit above,
+    # not a new capability.
     if not fields:
         return
     set_clause = ", ".join(f"{k} = %s" for k in fields)
     values = list(fields.values()) + [audit_id]
-    with _db_conn() as conn:
+    conn = _db_conn()
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 f"UPDATE drawdown_verify_audits SET {set_clause}, updated_at = NOW() WHERE id = %s",
                 values,
             )
         conn.commit()
+    finally:
+        conn.close()
 
 
 def _get_audit(audit_id: str) -> Optional[dict]:
-    with _db_conn() as conn:
+    # prior-art-checked: same connection-leak bugfix as _insert_audit above,
+    # not a new capability.
+    conn = _db_conn()
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT * FROM drawdown_verify_audits WHERE id = %s", (audit_id,)
             )
             row = cur.fetchone()
+    finally:
+        conn.close()
     return dict(row) if row else None
 
 

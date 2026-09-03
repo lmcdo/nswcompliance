@@ -14,7 +14,7 @@ tests/conftest_mocks.py, and _find_sentinel1_scenes / _submit_hyp3_job /
 _insert_audit are patched directly so only the failure-handling contract in
 submit_drawdown_verify itself is under test.
 """
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -100,3 +100,81 @@ class TestAuditWriteFailsClosed:
 
         assert exc_info.value.status_code == 500
         assert "HyP3 submission failed" in exc_info.value.detail
+
+
+class TestDbConnectionCloses:
+    """Adversarial pre-push review caught a second, pre-existing defect in the
+    same file while this PR was already touching it: `with _db_conn() as
+    conn:` only manages COMMIT/ROLLBACK on exit (psycopg2 behaviour), it does
+    NOT close the connection -- so _insert_audit/_update_audit/_get_audit
+    each leaked one connection against the pooler on every call, including
+    the polling endpoint that can be hit repeatedly over a 1-2 hour job.
+    Fixed alongside DQ-91 rather than filed separately, since it is in the
+    same three functions this PR already has open."""
+
+    def test_insert_audit_closes_connection_even_on_query_error(self):
+        mock_conn = MagicMock()
+        # Real psycopg2 connections return SELF from __enter__ (only exit
+        # manages commit/rollback) -- the default MagicMock.__enter__ returns
+        # a DIFFERENT auto-generated mock, which silently detached the old
+        # `with _db_conn() as conn:` code from this exception injection and
+        # made these tests fail against the pre-fix code for the wrong reason
+        # (DID NOT RAISE, from never reaching the execute() call at all,
+        # rather than a clean close()-not-called assertion). Pinning this
+        # makes the mock behave like the real driver either way.
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception("boom")
+        with patch.object(dv, "_db_conn", return_value=mock_conn):
+            with pytest.raises(Exception, match="boom"):
+                dv._insert_audit(
+                    loan_id="loan-1", address="addr", stage_claimed="slab",
+                    hyp3_job_name="job", hyp3_job_id="id",
+                    scene_before="a", scene_after="b",
+                )
+        mock_conn.close.assert_called_once()
+
+    def test_update_audit_closes_connection_even_on_query_error(self):
+        mock_conn = MagicMock()
+        # Real psycopg2 connections return SELF from __enter__ (only exit
+        # manages commit/rollback) -- the default MagicMock.__enter__ returns
+        # a DIFFERENT auto-generated mock, which silently detached the old
+        # `with _db_conn() as conn:` code from this exception injection and
+        # made these tests fail against the pre-fix code for the wrong reason
+        # (DID NOT RAISE, from never reaching the execute() call at all,
+        # rather than a clean close()-not-called assertion). Pinning this
+        # makes the mock behave like the real driver either way.
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception("boom")
+        with patch.object(dv, "_db_conn", return_value=mock_conn):
+            with pytest.raises(Exception, match="boom"):
+                dv._update_audit("audit-1", status="complete")
+        mock_conn.close.assert_called_once()
+
+    def test_get_audit_closes_connection_even_on_query_error(self):
+        mock_conn = MagicMock()
+        # Real psycopg2 connections return SELF from __enter__ (only exit
+        # manages commit/rollback) -- the default MagicMock.__enter__ returns
+        # a DIFFERENT auto-generated mock, which silently detached the old
+        # `with _db_conn() as conn:` code from this exception injection and
+        # made these tests fail against the pre-fix code for the wrong reason
+        # (DID NOT RAISE, from never reaching the execute() call at all,
+        # rather than a clean close()-not-called assertion). Pinning this
+        # makes the mock behave like the real driver either way.
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception("boom")
+        with patch.object(dv, "_db_conn", return_value=mock_conn):
+            with pytest.raises(Exception, match="boom"):
+                dv._get_audit("audit-1")
+        mock_conn.close.assert_called_once()
+
+    def test_insert_audit_closes_connection_on_success(self):
+        mock_conn = MagicMock()
+        mock_conn.__enter__.return_value = mock_conn  # match real psycopg2 semantics
+        with patch.object(dv, "_db_conn", return_value=mock_conn):
+            dv._insert_audit(
+                loan_id="loan-1", address="addr", stage_claimed="slab",
+                hyp3_job_name="job", hyp3_job_id="id",
+                scene_before="a", scene_after="b",
+            )
+        mock_conn.close.assert_called_once()
+        mock_conn.commit.assert_called_once()
