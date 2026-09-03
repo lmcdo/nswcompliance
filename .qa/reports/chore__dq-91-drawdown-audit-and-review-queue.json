@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: two new read-only diagnostic SELECT COUNT queries added to the existing dq_probe_live.py PROBES dict (same pattern as ~30 existing entries), plus their matching ledger rows. No application code path is touched, no schema change, no write. Both queries were hand-run against production before being added (DQ-91: count=4; DQ-92: count=9121) and re-verified after wiring via dq_check.py --id and the full coverage/ratchet suite.",
-  "commit_hash": "5251a59d",
+  "commit_hash": "0294b82b",
   "files": [
     "scripts/dq_probe_live.py",
     ".claude/dq_checks.json",
