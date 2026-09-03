@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Adds one static JPEG under frontend-nextjs/public/. No code changes, no imports, nothing reads or references the file at build or runtime other than Next.js's static file server. A static asset has no branch to take and no input to mishandle, so there is nothing for a falsifiable check to exercise beyond confirming the file exists, is a valid image, and is reachable once deployed.",
-  "commit_hash": "2fc4d70a",
+  "commit_hash": "54d1a79e",
   "files": [
     "frontend-nextjs/public/signature/lawrence-mcdonell.jpg"
   ],
