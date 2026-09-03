@@ -501,7 +501,13 @@ def submit_drawdown_verify(req: DrawdownVerifyRequest):
         logger.exception("HyP3 submission failed for loan %s", req.loan_id)
         raise HTTPException(status_code=500, detail=f"HyP3 submission failed: {exc}") from exc
 
-    # Insert audit record
+    # Insert audit record. This table is documented (migrations/033) as the
+    # immutable legal evidence for the verification -- "every API call is
+    # recorded before the result is returned" -- so a failed write must fail
+    # the response, not be logged and silently discharged (DQ-91, 2026-09-04).
+    # The HyP3 job above has already been submitted and is not cancelled here;
+    # its job_name/job_id are in the log line below so it can be reconciled
+    # by hand against HyP3's own dashboard if this branch is ever hit.
     try:
         audit_id = _insert_audit(
             loan_id=req.loan_id,
@@ -513,9 +519,21 @@ def submit_drawdown_verify(req: DrawdownVerifyRequest):
             scene_after=scene_after,
         )
     except Exception as exc:
-        logger.exception("Audit insert failed for loan %s", req.loan_id)
-        # Job is submitted — don't fail the response, but log the DB error
-        audit_id = job_name  # use job_name as fallback ID
+        logger.exception(
+            "Audit insert failed for loan %s (hyp3_job_name=%s, hyp3_job_id=%s) "
+            "-- HyP3 job was already submitted and is now unrecorded; reconcile "
+            "by hand against the HyP3 dashboard",
+            req.loan_id, job_name, hyp3_job_id,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Verification job was submitted to HyP3 but the audit record "
+                "could not be saved. This request has NOT been recorded. "
+                f"hyp3_job_name={job_name} -- quote this to support for manual "
+                "reconciliation."
+            ),
+        ) from exc
 
     logger.info(
         "Drawdown verify submitted | loan=%s stage=%s job_id=%s audit=%s",

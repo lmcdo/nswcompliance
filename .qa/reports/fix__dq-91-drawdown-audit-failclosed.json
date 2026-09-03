@@ -1,0 +1,70 @@
+{
+  "tier": "standard",
+  "justification": "Standard: real behaviour change to a live, deployed API endpoint's failure path (500 instead of a fake 200 'submitted'). Not Critical because the blast radius is narrow (no frontend caller for this endpoint was found anywhere in this repo, so today's real-world traffic is unproven) and the change is contained to one except block in one function, already regression-tested by forcing it to fail against the pre-fix code (git stash) and confirming the new tests go red.",
+  "commit_hash": "run: git rev-parse --short HEAD",
+  "files": [
+    "services/drawdown_verify.py",
+    "tests/test_drawdown_verify_audit_failclosed.py"
+  ],
+  "pre_impl": {
+    "existing_data": "drawdown_verify_audits table -- confirmed live 2026-09-04 to NOT exist in production (DQ-91). This fix does not create it (a production DDL write was blocked by the session's own auto-mode classifier and needs explicit user approval, see PR body) -- it only stops the API from lying about the outcome while the table is still missing.",
+    "assumption_mismatch": "None new. The pre-existing code already assumed _insert_audit could fail (it had a try/except); this fix only changes what happens on that already-anticipated failure.",
+    "new_vs_existing": "Applies to every new request from merge onward. No historical rows are affected -- there is nothing to backfill, since the table has never held any rows.",
+    "external_source_error": "N/A -- no new external source call added.",
+    "frontend_type": "N/A -- no frontend caller found for this endpoint in this repo.",
+    "user_failure_mode": "Before: caller receives 200 'submitted' with a non-functional fallback ID (job_name, not a UUID -- polling GET /pipeline/drawdown-verify/{job_id} with it would itself fail on invalid UUID syntax) while the audit record silently does not exist. After: caller receives 500 with an explicit 'has NOT been recorded' message and the hyp3_job_name for manual reconciliation, matching the existing HyP3-submission-failure pattern three lines above in the same function."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py -v",
+    "fails_when": "The fix in services/drawdown_verify.py is reverted while the new tests are kept -- proven, not assumed, by actually running git stash push -- services/drawdown_verify.py, re-running the same pytest command, then git stash pop to restore the fix.",
+    "observed_red": "2 of 4 tests went RED against the pre-fix code: test_audit_insert_failure_raises_500_not_a_fake_success and test_audit_insert_failure_response_carries_the_hyp3_job_name_for_reconciliation both printed 'Failed: DID NOT RAISE <class fastapi.exceptions.HTTPException>', with the captured log line 'ERROR services.drawdown_verify:drawdown_verify.py:516 Audit insert failed for loan loan-123' showing the old code swallowing the exception exactly as expected. Result line: '2 failed, 2 passed in 0.67s' -- the 2 that stayed green (test_audit_insert_success_still_returns_submitted, test_hyp3_submission_failure_is_unchanged_by_this_fix) are unrelated to this fix and correctly unaffected."
+  },
+  "functions": [
+    {
+      "name": "submit_drawdown_verify",
+      "file_line": "services/drawdown_verify.py:470",
+      "input": "DrawdownVerifyRequest (loan_id, address, stage_claimed, lot_bbox, reference_date)",
+      "output": "DrawdownVerifySubmitResponse (200) or HTTPException (500) -- previously always 200",
+      "if_none": "N/A -- request is a validated pydantic model, FastAPI rejects a malformed body before this function runs"
+    }
+  ],
+  "values": [
+    {
+      "value": "audit_id",
+      "read_at": "services/drawdown_verify.py:526 (job_id field of the response)",
+      "nullable": "no -- previously silently set to job_name (a non-UUID string) on failure; now the function never reaches this line on failure, it raises instead",
+      "guard_at": "services/drawdown_verify.py:505-520 (the try/except this fix rewrites)",
+      "if_missing": "Caller gets HTTPException 500 before a response body is ever constructed"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Audit insert fails (table missing, connection drop, constraint violation) after the HyP3 job has already been submitted.",
+      "what_happens": "Before: caller told 'submitted', given a job_id that cannot be polled, audit record permanently missing with nothing surfaced. After: caller gets a 500 naming the failure and the hyp3_job_name for manual reconciliation; the HyP3 job itself is NOT cancelled (documented in the new code comment) so it is not silently wasted, just not auto-tracked.",
+      "mitigated": true,
+      "how": "services/drawdown_verify.py:504-534, raise HTTPException(500, ...) replaces the silent log-and-continue",
+      "repro": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py -v -- forced against the pre-fix code via git stash to confirm it actually fails without the fix (not just exercises the code)"
+    },
+    {
+      "scenario": "This fix accidentally also breaks the SUCCESS path or the unrelated HyP3-submission failure path.",
+      "what_happens": "Would silently regress a working flow while fixing a broken one.",
+      "mitigated": true,
+      "how": "test_audit_insert_success_still_returns_submitted and test_hyp3_submission_failure_is_unchanged_by_this_fix pin both, unaffected by this diff",
+      "repro": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py -v"
+    },
+    {
+      "scenario": "Because drawdown_verify_audits still does not exist in production (the migration was NOT run this session, see post_merge below), every real call to this endpoint will now return 500 instead of the previous fake 200 -- a 0% to 100% visible-failure-rate jump for any existing caller, the moment this merges.",
+      "what_happens": "If anything IS calling this endpoint today (unproven either way -- no caller was found in this repo, but that does not rule out an external caller), it goes from silently-broken-but-200 to loudly-broken-500 immediately on merge, before the table exists to fix the root cause.",
+      "mitigated": false,
+      "how": "Not mitigated by this PR -- this is the correct and intended direction (loud failure over silent lie) but it is a real, immediate behaviour change that should not be merged without the person merging knowing it. The actual fix (create the table) is still blocked pending explicit approval to run migrations/033_drawdown_verify_audits.sql against production.",
+      "repro": "N/A -- this is a deployed-behaviour consequence, not something a local test reproduces"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- the underlying gap (drawdown_verify_audits does not exist) is NOT fixed by this PR. Running migrations/033_drawdown_verify_audits.sql against production was attempted this session and blocked by the auto-mode classifier as a production DDL write requiring explicit approval. This PR only stops the endpoint from lying about the outcome while that table is still missing -- DQ-91 stays 'open' until the migration is actually run."
+  }
+}
