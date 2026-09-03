@@ -1228,6 +1228,90 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "multi-council pipeline carries, not individually investigated "
         "here.",
     ),
+    "DQ-91": (
+        "Tables a deployed service writes to that have never existed in the catalog",
+        # Found in ce-verified-capability-statement-2026-08.md S4 item 11 via the
+        # schema-contract gate's baseline (scripts/schema_contract_baseline.json),
+        # which accepts these 4 refs as known-invalid so the gate can be enforced
+        # today -- "accepted" there means "not blocking CI", not "fixed". None of
+        # the 4 had a DQ row or a live check until now; the baseline file is a
+        # gate exemption list, not a defect ledger, and nobody was re-reading it.
+        #
+        # drawdown_verify_audits is the one that matters: services/drawdown_verify.py
+        # is registered as a live router in services/compliance_api_server.py (the
+        # actual uvicorn entrypoint), and its audit-insert at line ~505 is wrapped
+        # in `except Exception: ... # Job is submitted -- don't fail the response`.
+        # So the write silently fails and the HTTP response still claims success --
+        # CLAUDE.md's own definition of CRITICAL. No frontend caller was found in
+        # this repo for the endpoint (2026-09-04 grep), so today's blast radius is
+        # probably low, but "probably low because no caller was found" is not the
+        # same as measured traffic. Migration 033 exists in migrations/ to create
+        # the table and was never run against production.
+        #
+        # The other 3 (basix_provisions, sepp_provisions, special_provisions_registry)
+        # are in the deployed Python import graph per the baseline's own reachability
+        # trace but were not individually re-verified for silent-swallow behaviour
+        # here -- this probe only proves existence, not blast radius, for those three.
+        "SELECT count(*) FROM (VALUES "
+        "('basix_provisions'),('drawdown_verify_audits'),"
+        "('sepp_provisions'),('special_provisions_registry')) AS t(tbl) "
+        "WHERE NOT EXISTS (SELECT 1 FROM information_schema.tables "
+        "WHERE table_schema = 'public' AND table_name = t.tbl)",
+        (),
+        "Each missing table is a deployed code path writing (or reading) against "
+        "a table that does not exist. drawdown_verify_audits is the confirmed "
+        "silent-failure case: the insert is wrapped in a bare except that logs "
+        "and returns success anyway. Fix = run the missing migration for tables "
+        "still wanted, or delete the dead write path for ones that are not. "
+        "CAVEAT (Sol cross-review, 2026-09-04): this checks EXISTENCE only, not "
+        "whether the insert actually succeeds once the table exists -- a missing "
+        "column, wrong type, or denied grant on drawdown_verify_audits would still "
+        "let the same bare except swallow the failure and this probe would read "
+        "clean. A 0 here is necessary, not sufficient; closing DQ-91 for real needs "
+        "someone to submit a live request and confirm a row actually lands.",
+    ),
+    "DQ-92": (
+        "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",
+        # Answers a direct question raised in session: how much of the review
+        # backlog is a duplicate of a known extractor problem rather than
+        # distinct human review volume? See
+        # memory/project-dcp-review-queue-is-a-bug-report-2026-08.md for the
+        # root cause of both tags.
+        #
+        # ⚠ TWO ROUNDS OF SOL CROSS-REVIEW BOTH CAUGHT THE SAME OVERCLAIM, so it
+        # is written out in full rather than patched again: a suspect_reason of
+        # count_drop or preflight_two_column is a SIGNATURE the extractor
+        # writes about itself, not an independently confirmed defect. The fix
+        # proven to actually correct count_drop covers 1 of the 28 chapters
+        # that carry that tag (marrickville/part2-s11-fencing, 2026-08-14) --
+        # the other 27, and all 85 preflight_two_column chapters, are UNCHECKED
+        # per-chapter. A council whose DCP genuinely deleted provisions in a
+        # real amendment would earn the identical count_drop tag and this probe
+        # cannot tell the two apart. So: this count is a TRIAGE PRIORITISATION
+        # signal (which chapters to open first), not a completed classification
+        # of "bug, skip" vs "real change, review". Do not exclude these rows
+        # from review planning on this tag alone, and do not call the untagged
+        # remainder "safe" -- it is only "rows without these two tags"; DQ-71
+        # (source-quote verification) still applies to all of it.
+        #
+        # Measured live 2026-09-04: 9,461 pending total; 5,479 tagged
+        # count_drop (28 chapters) + 3,642 tagged preflight_two_column (85
+        # chapters) = 9,121 (96.4%) carry one of the two tags; 340 do not.
+        "SELECT count(*) FROM dcp_review_queue "
+        "WHERE status = 'pending' "
+        "AND (suspect_reason LIKE 'count_drop%%' "
+        "     OR suspect_reason LIKE 'preflight_two_column%%')",
+        (),
+        "Each row carries a suspect_reason tag matching one of two extractor "
+        "bug SIGNATURES -- a hypothesis about the row, not a confirmed defect. "
+        "The count_drop root cause is proven fixed for only 1 of the 28 tagged "
+        "chapters; a chapter with a genuine, legitimate DCP amendment that "
+        "removed provisions would earn the identical tag. Use this as a triage "
+        "signal for which chapters to open and check first -- do NOT treat the "
+        "9,121 as confirmed-safe-to-skip, and do NOT treat the remaining 340 as "
+        "a confirmed-clean review set; both need chapter-level or DQ-71 "
+        "verification before either claim can be made.",
+    ),
 }
 
 
