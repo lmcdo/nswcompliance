@@ -1,0 +1,48 @@
+{
+  "tier": "minor",
+  "justification": "Minor: two new read-only diagnostic SELECT COUNT queries added to the existing dq_probe_live.py PROBES dict (same pattern as ~30 existing entries), plus their matching ledger rows. No application code path is touched, no schema change, no write. Both queries were hand-run against production before being added (DQ-91: count=4; DQ-92: count=9121) and re-verified after wiring via dq_check.py --id and the full coverage/ratchet suite.",
+  "commit_hash": "5251a59d",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-91 — count how many of the 4 tables named in scripts/schema_contract_baseline.json's 'deployed' entries still do not exist in the live catalog",
+      "file_line": "scripts/dq_probe_live.py:~1233 (PROBES['DQ-91'])",
+      "where_clause": "WHERE NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name = t.tbl), t built from a literal 4-row VALUES list",
+      "if_zero": "all 4 tables now exist — the row should be flipped to fixed only after confirming which fix (migration run, or dead code deleted) actually happened, not assumed from the count alone",
+      "if_wrong": "table names are copied verbatim from schema_contract_baseline.json's existing entries, not retyped, so a mismatch would require that file to already be wrong — checked live 2026-09-04, count=4 matches the known baseline exactly"
+    },
+    {
+      "purpose": "DQ-92 — count pending dcp_review_queue rows whose suspect_reason is one of the two known extractor bugs (count_drop, preflight_two_column), as opposed to a genuine pending human review",
+      "file_line": "scripts/dq_probe_live.py:~1266 (PROBES['DQ-92'])",
+      "where_clause": "WHERE status = 'pending' AND (suspect_reason LIKE 'count_drop%%' OR suspect_reason LIKE 'preflight_two_column%%')",
+      "if_zero": "both extractor-bug classes have been fixed and re-run across every affected chapter — the queue's remaining pending count should then be close to the ~340 genuinely-reviewable rows measured today",
+      "if_wrong": "the two LIKE patterns and their live counts (5,479 + 3,642 = 9,121) were confirmed by an ad-hoc GROUP BY on the same column run immediately before this probe was written, in the same session — not guessed"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "DQ-91 reaching 0 gets read as 'the drawdown-verify feature is fixed and safe to rely on', when the tables could have been created without anyone deciding whether the feature (and its silent except-swallow at drawdown_verify.py:~505) should even exist.",
+      "what_happens": "a false sense that the silent-write-loss code path is gone, when only the schema symptom was addressed",
+      "mitigated": true,
+      "how": "the ledger note states explicitly that the decision (run migration 033 vs delete the dead write path) is still open and separate from table existence, and points at the except block by line",
+      "repro": "python scripts/dq_probe_live.py --id DQ-91"
+    },
+    {
+      "scenario": "DQ-92 reaching 0 gets read as 'the review queue is solved', when it only proves the two known extractor bugs stopped adding churn — the ~340 rows that were already genuinely reviewable, and whether they were checked against their source PDF at all, is DQ-71's job, not this one.",
+      "what_happens": "review-queue backlog looks closed while DQ-71's fidelity-verification gap (0.06% of the table's history ever carried a source quote) stays open and unnoticed",
+      "mitigated": true,
+      "how": "the ledger note names DQ-71 explicitly as the check that covers correctness of what remains, and DQ-92 is documented as a backlog-composition check only",
+      "repro": "python scripts/dq_probe_live.py --id DQ-92 and python scripts/dq_probe_live.py --id DQ-71"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
