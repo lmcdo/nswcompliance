@@ -49,8 +49,14 @@ class TestAuditWriteFailsClosed:
                 dv.submit_drawdown_verify(_request())
 
         assert exc_info.value.status_code == 500
-        # The caller must be told the request was NOT recorded, not that it was.
-        assert "NOT been recorded" in exc_info.value.detail
+        # The caller must be told the write is unconfirmed, not that it
+        # succeeded. Wording deliberately does NOT assert "NOT recorded" --
+        # Sol cross-review (2026-09-04) caught that as its own overclaim: a
+        # commit can succeed before a connection drop hides the acknowledgement,
+        # so "definitely absent" is not something this exception can prove
+        # either. See services/drawdown_verify.py's inline comment on this string.
+        assert "could not be confirmed" in exc_info.value.detail
+        assert "UNCONFIRMED" in exc_info.value.detail
 
     def test_audit_insert_failure_response_carries_the_hyp3_job_name_for_reconciliation(self):
         """The HyP3 job was already submitted (money/quota spent) before the

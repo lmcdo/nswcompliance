@@ -547,10 +547,19 @@ def submit_drawdown_verify(req: DrawdownVerifyRequest):
         raise HTTPException(
             status_code=500,
             detail=(
-                "Verification job was submitted to HyP3 but the audit record "
-                "could not be saved. This request has NOT been recorded. "
-                f"hyp3_job_name={job_name} -- quote this to support for manual "
-                "reconciliation."
+                "Verification job was submitted to HyP3 but the audit write "
+                "could not be confirmed. The database raised an error on this "
+                "insert, but whether it committed before doing so is not "
+                # Sol cross-review 2026-09-04: the prior wording ("has NOT
+                # been recorded") asserted a certainty this exception cannot
+                # actually give -- the DB could commit and the connection
+                # still drop before acknowledgement reaches this code. Do not
+                # tell a caller a write definitely failed when it might have
+                # succeeded; that is the same class of overclaim as telling
+                # them it definitely succeeded.
+                "knowable from this error alone. Treat this as UNCONFIRMED, "
+                f"not confirmed-absent. hyp3_job_name={job_name} -- quote "
+                "this to support for manual reconciliation."
             ),
         ) from exc
 

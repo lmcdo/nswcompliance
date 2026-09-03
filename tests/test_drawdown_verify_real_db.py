@@ -51,7 +51,21 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from dq_db import main_checkout  # noqa: E402
 
-load_dotenv(main_checkout() / ".env")
+# Sol cross-review (2026-09-04, caught on the pre-push run that shipped the
+# rest of this file): loading .env unconditionally at collection time meant
+# every plain `pytest` run -- not just an opt-in real-DB run -- pulled
+# production DATABASE_URL into the process environment, even though this
+# module's tests are deselected by default. psycopg2 stays stubbed in that
+# case (conftest_mocks.py gates on PYTEST_REAL_DB, not on DATABASE_URL being
+# present), so nothing in THIS file could act on the leaked credential -- but
+# an unrelated test elsewhere that checks os.environ["DATABASE_URL"] directly
+# (rather than going through the stub) could, and that risk is not worth
+# carrying for a module whose tests never run without the flag anyway. Gate
+# the load on the flag itself, checked with no dotenv/pytest machinery
+# involved, so the credential is never in-process unless explicitly asked for.
+_REAL_DB_REQUESTED = os.environ.get("PYTEST_REAL_DB") == "1"
+if _REAL_DB_REQUESTED:
+    load_dotenv(main_checkout() / ".env")
 
 pytestmark = pytest.mark.database
 
@@ -59,7 +73,7 @@ import services.drawdown_verify as dv  # noqa: E402  (after dotenv/marker setup)
 
 
 def _skip_if_no_real_db():
-    if os.environ.get("PYTEST_REAL_DB") != "1":
+    if not _REAL_DB_REQUESTED:
         pytest.skip(
             "Real-DB test. Run with: PYTEST_REAL_DB=1 DATABASE_URL=... "
             "pytest -m database tests/test_drawdown_verify_real_db.py"

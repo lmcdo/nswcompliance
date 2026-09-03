@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: two real behaviour changes to a live, deployed API endpoint's DB-write and connection lifecycle. Not Critical because the blast radius is narrow (no frontend caller for this endpoint was found anywhere in this repo, so today's real-world traffic is unproven) and both changes are contained to the same three DB-helper functions, verified twice over -- once as fast mocked unit tests (default pytest run) and once as opt-in real-database integration tests that actually connect to production Supabase (PYTEST_REAL_DB=1 -m database).",
-  "commit_hash": "4508e715",
+  "commit_hash": "01d70879",
   "files": [
     "services/drawdown_verify.py",
     "tests/test_drawdown_verify_audit_failclosed.py",
@@ -88,6 +88,27 @@
       "mitigated": false,
       "how": "Not mitigated by this PR -- this is the correct and intended direction (loud failure over silent lie) but it is a real, immediate behaviour change that should not be merged without the person merging knowing it. The actual fix (create the table) is still blocked pending explicit approval to run migrations/033_drawdown_verify_audits.sql against production.",
       "repro": "N/A -- this is a deployed-behaviour consequence, not something a local test reproduces"
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): tests/test_drawdown_verify_real_db.py loaded production .env unconditionally at collection time, before checking PYTEST_REAL_DB -- so even a plain deselected `pytest` run pulled production DATABASE_URL into the process environment.",
+      "what_happens": "psycopg2 stays stubbed regardless (conftest_mocks.py gates on PYTEST_REAL_DB, not DATABASE_URL's presence), so nothing in this file could act on the leaked credential -- but an unrelated test elsewhere reading os.environ directly could.",
+      "mitigated": true,
+      "how": "tests/test_drawdown_verify_real_db.py -- load_dotenv() moved behind an `if os.environ.get('PYTEST_REAL_DB') == \"1\":` check with no dotenv/pytest machinery involved in the check itself. Verified by an actual subprocess run this session confirming DATABASE_URL is absent from os.environ after a plain deselected run.",
+      "repro": "python -c \"import subprocess; ...\" -- see commit message for the exact one-liner run this session"
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): the 500 error message asserted 'This request has NOT been recorded', a certainty the exception cannot actually give -- PostgreSQL could commit the row and the connection could still drop before the acknowledgement reaches this code, in which case the row exists despite the exception.",
+      "what_happens": "A caller (or a human doing manual reconciliation from the error text) could wrongly conclude a row that actually exists does not, and skip checking for it.",
+      "mitigated": true,
+      "how": "services/drawdown_verify.py -- reworded to 'could not be confirmed' / 'UNCONFIRMED', explicitly stating the ambiguity rather than asserting an absence. Tests updated to match (test_audit_insert_failure_raises_500_not_a_fake_success).",
+      "repro": "python -m pytest tests/test_drawdown_verify_audit_failclosed.py::TestAuditWriteFailsClosed::test_audit_insert_failure_raises_500_not_a_fake_success -v"
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): _submit_hyp3_job runs BEFORE _insert_audit, so a client that retries a 500 (which this PR now returns far more often, per the break_it item above) could submit a SECOND, duplicate, untracked HyP3 job while the first stays unrecorded either way -- wasting paid quota and weakening the audit trail this table exists to provide.",
+      "what_happens": "Duplicate paid third-party job submissions on retry, with no way to detect or reconcile them from this table alone.",
+      "mitigated": false,
+      "how": "Deliberately NOT fixed this session. The correct fix (write a 'pending' audit row before calling HyP3, update it after) changes the request's write ordering and was not exercised against the real HyP3 API here -- that API is paid, external, and cannot be safely tested in this session's constraints. Recorded in DQ-91's ledger note so it is not lost, and left for a deliberate follow-up rather than a same-session bolt-on to an already-large diff.",
+      "repro": "N/A -- would need a real HyP3 account and quota to demonstrate; not attempted"
     }
   ],
   "post_merge": {
