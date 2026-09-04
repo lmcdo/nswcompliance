@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: closes a gap raised directly in session -- every prior test for the DQ-91 fixes (#1037, #1038) called submit_drawdown_verify() as a plain Python function, never through a real HTTP request. This adds the missing layer: FastAPI TestClient against the real router, real database (migration already live), only the two genuinely-external paid third-party calls mocked. Not Critical: no new production code, purely additive tests. Not Minor: it is proving a real claim about a live endpoint's HTTP contract that was previously unproven.",
-  "commit_hash": "a1c095fb",
+  "commit_hash": "37da2666",
   "files": [
     "tests/test_drawdown_verify_real_db.py",
     ".github/workflows/gates.yml",
@@ -90,6 +90,13 @@
       "mitigated": true,
       "how": ".github/workflows/gates.yml -- CI step now selects only the 4 read-only-safe tests by explicit pytest node ID (2 pure SELECT, 1 schema check, 1 mocked-failure path that never reaches a real INSERT). The 2 write-requiring tests stay local-only, run by hand against a writable credential.",
       "repro": "grep -A3 \"Real-database integration tests\" .github/workflows/gates.yml -- 4 explicit test IDs, not the whole file"
+    },
+    {
+      "scenario": "Sol cross-review (round 3, on push): restricting CI to the 4 read-only-safe tests means the actual write path -- a real INSERT succeeding through the real endpoint with a well-formed response -- is no longer covered by any BLOCKING check on any PR or push. A change that breaks the INSERT itself (bad SQL, a schema/type mismatch, a malformed 200 response) would pass CI: the read-only tests never attempt that INSERT, and the one HTTP test CI does run is the FAILURE path, where _insert_audit is mocked to raise before any real write is attempted.",
+      "what_happens": "CI stays green while the actual \"does a successful request really work\" path silently breaks -- exactly the class of gap this whole session has been about closing, now re-introduced one level up by the credential-safety fix.",
+      "mitigated": false,
+      "how": "NOT mitigated in this PR. The correct fix -- an isolated, disposable, writable Postgres service in CI (a GitHub Actions services: Postgres container with migrations applied), so the write-path tests run against something that is not production -- is a real infrastructure change (provisioning, migration-running, connection wiring) that was not built and could not be verified against an actual CI run in this session's remaining time. Building it blind and pushing untested YAML would be worse than leaving this gap named. The 2 write-path tests remain committed and correct, just local-only for now: run PYTEST_REAL_DB=1 pytest -m database tests/test_drawdown_verify_real_db.py -v -o addopts= by hand against a writable credential whenever services/drawdown_verify.py changes, until the isolated CI database exists.",
+      "repro": "N/A -- this is a coverage gap, not something a local test reproduces; the absence itself is the finding"
     }
   ],
   "post_merge": {

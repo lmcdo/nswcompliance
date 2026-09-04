@@ -584,6 +584,17 @@ jobs:
       # cleans_up) stay local-only, run by hand against a writable
       # credential when this file changes -- not CI, and not against a role
       # that can act on PR-controlled code with write access to production.
+      #
+      # KNOWN GAP (Sol cross-review round 3, 2026-09-04, not yet closed): this
+      # means the actual write path -- a real INSERT succeeding end-to-end
+      # through the real endpoint -- has no BLOCKING CI coverage. A change
+      # that broke the INSERT itself would pass every check here, because
+      # none of the 4 selected tests attempt one. The correct fix is an
+      # isolated, disposable, writable Postgres service in CI (migrations
+      # applied, never production) -- real infrastructure work, not
+      # attempted this session because it could not be verified against an
+      # actual CI run in the time available, and untested CI YAML is worse
+      # than a named gap.
       - name: Real-database integration tests (drawdown-verify, read-only subset)
         env:
           PYTEST_REAL_DB: "1"
