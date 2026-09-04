@@ -1,0 +1,70 @@
+{
+  "tier": "standard",
+  "justification": "Standard: new CI infrastructure (a Postgres service container, a migration-apply step, a new blocking job) that changes what every future PR touching this area is checked against. Not Critical: strictly additive, isolated, cannot touch production (no production credential is reachable from this job at all). Not Minor: it closes a named, real coverage gap (write-path has no blocking CI check), not a documentation or wording change.",
+  "commit_hash": "5d220cdc",
+  "files": [
+    ".github/workflows/gates.yml",
+    ".claude/dq_checks.json"
+  ],
+  "pre_impl": {
+    "existing_data": "migrations/033_drawdown_verify_audits.sql -- the only schema this job touches, applied fresh to an empty Postgres container. Verified locally first (real throwaway local Postgres, not assumed from reading the file): applies cleanly to a bare database with no prior tables or extensions -- gen_random_uuid() is native since Postgres 13, no pgcrypto or other extension needed.",
+    "assumption_mismatch": "The isolated test database's schema is exactly migration 033, nothing more -- if services/drawdown_verify.py ever assumes a column or table this migration does not create, this job would fail loudly (a real, useful signal) rather than silently pass against a schema that happens to differ from what production actually has.",
+    "new_vs_existing": "N/A -- CI-only change, no application code, no data model change.",
+    "external_source_error": "N/A -- no external service, the Postgres container is local to the job and torn down when it ends.",
+    "frontend_type": "N/A.",
+    "user_failure_mode": "N/A -- CI infrastructure, not a user-facing code path."
+  },
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 DATABASE_URL=\"postgresql://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/drawdown_ci_test\" pytest -m database -o addopts= tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_insert_read_delete_round_trip_through_the_real_functions tests/test_drawdown_verify_real_db.py::TestRealHttpLayer::test_real_http_request_on_success_actually_writes_a_readable_row_and_cleans_up -v",
+    "fails_when": "Run against a throwaway local Postgres database created for exactly this purpose (drawdown_ci_test), BEFORE the migration was applied -- the write-path tests need the table to exist, mirroring what would happen in CI if the migration-apply step were broken or skipped.",
+    "observed_red": "Before applying migrations/033_drawdown_verify_audits.sql to drawdown_ci_test: both tests fail with psycopg2.errors.UndefinedTable (relation \"drawdown_verify_audits\" does not exist), the same real error class DQ-91's original bug was about, now reproduced against an isolated database rather than production. After running the migration-apply step's exact python one-liner against the same database: both tests pass. Database dropped afterward (DROP DATABASE drawdown_ci_test), confirming this test methodology itself leaves nothing behind either."
+  },
+  "functions": [
+    {
+      "name": "Apply migration 033 to the isolated test database (inline step, .github/workflows/gates.yml)",
+      "file_line": ".github/workflows/gates.yml, drawdown-verify-write-path job",
+      "input": "migrations/033_drawdown_verify_audits.sql read from disk, executed against the job's own Postgres service container",
+      "output": "Asserts the table now exists (count=1 from information_schema.tables) before printing success and before any test runs -- a broken apply fails loudly at this explicit check, not confusingly inside a later test",
+      "if_none": "N/A -- the migration file path is a hardcoded literal checked into the repo, not optional input"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Apply migration 033 to the isolated container and confirm the table was actually created before running any test against it",
+      "file_line": ".github/workflows/gates.yml, 'Apply migration 033 to the isolated test database' step",
+      "where_clause": "WHERE table_name='drawdown_verify_audits' (information_schema.tables)",
+      "if_zero": "The step's own assert fails loudly (migration did not create the table) before any test runs against a database that silently lacks the schema it needs",
+      "if_wrong": "N/A -- boolean existence check, not a value that can be 'wrong' short of being absent"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The isolated test database's schema (migration 033 only) drifts from production's real live schema -- someone alters the production table directly (not via a new migration file) or a future migration changes it without this file being updated.",
+      "what_happens": "This job would keep passing against a schema that no longer matches what services/drawdown_verify.py actually runs against in production, giving false confidence.",
+      "mitigated": false,
+      "how": "NOT structurally mitigated -- there is no automatic check that migration 033 still matches production's live schema. Mitigated TODAY only: production was verified column-for-column against migration 033 when the migration was run this session (PR #1038). A drift-detection check (comparing the isolated schema against a live production schema snapshot) would close this properly and was not built here -- named, not silently assumed away.",
+      "repro": "N/A -- a schema-drift scenario, not something the current tooling reproduces"
+    },
+    {
+      "scenario": "The Postgres service container fails to become healthy in time, or the migration-apply step silently does nothing (e.g. wrong DATABASE_URL, empty file).",
+      "what_happens": "Tests would fail with a connection or UndefinedTable error either way -- not a silent pass, but the failure message might not clearly say WHY.",
+      "mitigated": true,
+      "how": "The migration-apply step asserts the table actually exists (count=1) before printing success and before any test runs, so a broken apply step fails at that explicit assertion with a clear message, not three steps later inside a test with a more confusing traceback",
+      "repro": "N/A -- verified locally that the migration applies and creates exactly this table; the assert exists specifically to make a future breakage loud rather than confusing"
+    },
+    {
+      "scenario": "This job accidentally points at production instead of the isolated container (e.g. DATABASE_URL typo, wrong secret reference).",
+      "what_happens": "Could write test rows to production, or worse, could not (if it did, it would be the exact DQ-91-class risk this whole session has been closing).",
+      "mitigated": true,
+      "how": "DATABASE_URL in this job is assembled at runtime from job-level env vars (PGHOST_TEST/PGPORT_TEST/PGUSER_TEST/PGPASSWORD_TEST/PGDATABASE_TEST, all pointing at the job's own localhost service container) -- it never references secrets.DATABASE_URL anywhere in this job, so there is no production secret to typo or misreference in the first place",
+      "repro": "grep -A20 \"drawdown-verify-write-path:\" .github/workflows/gates.yml -- no secrets. reference anywhere in this job"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- the YAML's `services:` container syntax was validated for parse-correctness locally (python yaml.safe_load) and the exact SQL/test logic was proven against a real local Postgres database first, but the full GitHub Actions service-container startup and networking (health check, port mapping, job-to-service connectivity) can only be confirmed by an actual CI run, which happens automatically once this PR is opened -- checked immediately after push, before merge, not assumed."
+  }
+}
