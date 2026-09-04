@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: a new validation layer added to scripts/qa_gate.py, which runs on every single PR unconditionally -- this changes what every future Standard/Critical PR touching services/ or scripts/ is required to prove. Not Critical: purely additive to the gate itself (a new required field/check, opt-out via an explicit written exemption, never a change to how existing checks behave). Not Minor: it changes enforcement behaviour for every future PR, not a documentation or wording change.",
-  "commit_hash": "cd9a99b0",
+  "commit_hash": "245cd733",
   "files": [
     "scripts/qa_gate.py",
     "tests/test_qa_gate_real_layer_requirement.py"
@@ -59,6 +59,13 @@
       "mitigated": false,
       "how": "NOT mitigated. This layer answers 'does SOME real-layer test exist for this file', not 'does a real-layer test cover THIS function' -- the latter would need per-function test-to-code mapping, a meaningfully larger undertaking. Section 1's falsifiable_check.observed_red (already required, already enforced) is where the specific proof that the RIGHT test was run against the RIGHT function is meant to live -- this layer's job is narrower: make sure a candidate exists to run at all, which was the actual gap this session found (DQ-91: no real-layer test existed anywhere for the file in question).",
       "repro": "N/A -- a scope limitation, not a bug to reproduce"
+    },
+    {
+      "scenario": "_REAL_DB_HTTP_TRIGGER_RE matches against a function's whole body text, including comments and docstrings -- not just executable code. Found for real, not hypothetically: pushing this exact commit made the gate fail against scripts/qa_gate.py itself, because _ast_functions' own docstring explained the drawdown_verify.py example using the literal text '.execute()' as prose, which the trigger regex cannot distinguish from a real call.",
+      "what_happens": "A file whose comments/docstrings merely DESCRIBE or reference a DB/HTTP call pattern, without making one, gets flagged as if it made one -- a false positive, and specifically a self-referential one on this file, since it is the one file in the repo whose job is to explain what these patterns look like.",
+      "mitigated": true,
+      "how": "Mitigated for the one real instance found (reworded the docstring to describe the call without using the literal '.execute(' substring) rather than by suppressing the file. NOT mitigated at the mechanism level -- token-stripping comments/docstrings before matching (e.g. via the tokenize module) was considered and deliberately deferred: function-body text sliced by line range is not always independently tokenizable (inconsistent leading indentation on a method body can raise IndentationError), so a naive implementation trades one class of false positive for a different silent-miss failure mode, and this was not proven safe in the time available. Symmetric to the already-fixed _REAL_LAYER_MARK_RE comment-matching bug, on the trigger side instead of the marker side -- named so the next occurrence in some other file's docstring is recognised immediately rather than re-discovered.",
+      "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); import qa_gate; print(qa_gate.check_real_layer_test_exists({}, ['scripts/qa_gate.py'], '.', qa_gate.changed_line_numbers(['scripts/qa_gate.py'], '.').get('scripts/qa_gate.py', set())))\" against a version of this file with a docstring containing the literal substring '.execute(' as prose -- reproduces the false positive that blocked this branch's own push"
     }
   ],
   "post_merge": {

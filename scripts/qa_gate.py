@@ -1421,7 +1421,10 @@ def _ast_functions(source: str, filepath: str) -> list[dict]:
     just enough to resolve one level of "this function delegates to a local
     helper that touches the DB", which is this file's own house style
     (services/drawdown_verify.py: submit_drawdown_verify calls _insert_audit,
-    which is the one that actually calls .execute()). Full call-graph
+    which is the one that actually runs the SQL statement -- worded this way
+    on purpose, not as "dot-execute-paren", so this docstring itself never
+    trips the DB/HTTP trigger regex it is describing; see the break_it entry
+    on that regex matching prose, not just real code). Full call-graph
     resolution (multi-level, method calls, imports) is not attempted --
     one level catches the pattern this codebase actually uses, and going
     further trades a fast static check for something closer to real
