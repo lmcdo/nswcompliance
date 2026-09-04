@@ -1248,27 +1248,44 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # same as measured traffic. Migration 033 exists in migrations/ to create
         # the table and was never run against production.
         #
-        # The other 3 (basix_provisions, sepp_provisions, special_provisions_registry)
-        # are in the deployed Python import graph per the baseline's own reachability
-        # trace but were not individually re-verified for silent-swallow behaviour
-        # here -- this probe only proves existence, not blast radius, for those three.
+        # UPDATE 2026-09-05: the other 3 WERE individually re-verified, and it was
+        # worse than "not yet checked" -- services/enhanced_compliance_api.py's
+        # BASIX branch caught the guaranteed query failure (basix_provisions has
+        # never existed) and FABRICATED a plausible-looking result (hardcoded
+        # 'BASIX requirements apply for Climate Zone X' text with a hardcoded 90%
+        # confidence), live on an unauthenticated page (/authoritative). The
+        # special-provisions branch (sepp_provisions, special_provisions_registry)
+        # silently dropped hazard/heritage/SEPP checks with no error at all. Fixed
+        # by deletion, not migration: no real BASIX/SEPP source data exists to
+        # populate these tables honestly, so the code that fabricated/hid the gap
+        # was removed outright (see fix/fabricated-compliance-fallback) rather than
+        # patched to lie more carefully. This probe's SQL is intentionally left
+        # unchanged -- these 3 tables still do not exist, and that remains true
+        # and worth tracking -- but the "means" text below no longer describes a
+        # live silent-failure risk for them, only drawdown_verify_audits ever was.
         "SELECT count(*) FROM (VALUES "
         "('basix_provisions'),('drawdown_verify_audits'),"
         "('sepp_provisions'),('special_provisions_registry')) AS t(tbl) "
         "WHERE NOT EXISTS (SELECT 1 FROM information_schema.tables "
         "WHERE table_schema = 'public' AND table_name = t.tbl)",
         (),
-        "Each missing table is a deployed code path writing (or reading) against "
-        "a table that does not exist. drawdown_verify_audits is the confirmed "
-        "silent-failure case: the insert is wrapped in a bare except that logs "
-        "and returns success anyway. Fix = run the missing migration for tables "
-        "still wanted, or delete the dead write path for ones that are not. "
-        "CAVEAT (Sol cross-review, 2026-09-04): this checks EXISTENCE only, not "
-        "whether the insert actually succeeds once the table exists -- a missing "
-        "column, wrong type, or denied grant on drawdown_verify_audits would still "
-        "let the same bare except swallow the failure and this probe would read "
-        "clean. A 0 here is necessary, not sufficient; closing DQ-91 for real needs "
-        "someone to submit a live request and confirm a row actually lands.",
+        "drawdown_verify_audits was the confirmed silent-failure case and is now "
+        "fixed (table created, code fails closed, real tests in CI) -- if this "
+        "probe still counts it, that is a regression, not the original bug. "
+        "basix_provisions/sepp_provisions/special_provisions_registry are "
+        "expected to keep showing here: the code that queried them (and either "
+        "fabricated a fake result or silently dropped the check) was deleted "
+        "2026-09-05, not replaced with a real implementation, because no real "
+        "BASIX/SEPP source data was available to populate them honestly. Their "
+        "continued absence is now an unbuilt-feature fact, not a live danger -- "
+        "confirm that reading by checking nothing imports the deleted files "
+        "(services/enhanced_compliance_api.py, basix_compliance_checker.py, "
+        "special_provisions_processor.py, special_provisions_integration.py, "
+        "sepp_quantitative_extractor.py) before treating a nonzero count here as "
+        "urgent. CAVEAT (Sol cross-review, 2026-09-04, predates the deletion): "
+        "this checks EXISTENCE only, not whether an insert actually succeeds "
+        "once a table exists -- still true for drawdown_verify_audits going "
+        "forward if its schema ever drifts.",
     ),
     "DQ-92": (
         "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",

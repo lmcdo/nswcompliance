@@ -73,7 +73,6 @@ const GROUPS: Group[] = [
       { path: '/open-data', title: 'Open data', status: 'content' },
       { path: '/developers', title: 'Developers / API', status: 'content' },
       { path: '/partner', title: 'Partner', status: 'content' },
-      { path: '/authoritative', title: 'Authoritative sources', status: 'content' },
       { path: '/blog', title: 'Blog', status: 'content' },
       { path: '/how-it-works', title: 'How it works', status: 'content' },
       { path: '/quick-guide', title: 'Quick guide', status: 'content' },

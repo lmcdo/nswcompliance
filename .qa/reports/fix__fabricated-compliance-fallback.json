@@ -1,0 +1,82 @@
+{
+  "tier": "standard",
+  "justification": "Standard: this branch DELETES code that fabricated regulatory data / silently dropped safety checks on a live, unauthenticated page -- a CRITICAL-class defect by CLAUDE.md's own definition (silent production bug, data corruption in the sense of fake regulatory content). The fix itself is pure removal plus baseline/ledger bookkeeping: no new query, no new endpoint, no new logic that could itself introduce a new silent-failure class. Not Critical: nothing is added that could fail silently -- there is no new code path to break. Not Minor: it changes what a live public page serves and removes a real endpoint.",
+  "commit_hash": "PENDING_FIRST_COMMIT",
+  "files": [
+    "services/compliance_api_server.py",
+    "services/enhanced_compliance_api.py (deleted)",
+    "services/basix_compliance_checker.py (deleted)",
+    "services/special_provisions_processor.py (deleted)",
+    "services/special_provisions_integration.py (deleted)",
+    "services/sepp_quantitative_extractor.py (deleted)",
+    "frontend-nextjs/app/authoritative/page.tsx (deleted)",
+    "frontend-nextjs/app/api/authoritative/compliance-check/route.ts (deleted)",
+    "frontend-nextjs/app/ui-test/page.tsx (deleted)",
+    "frontend-nextjs/app/api/assessment/version-compliance/route.ts (deleted)",
+    "frontend-nextjs/components/compliance/AuthoritativeComplianceDisplay.tsx (deleted)",
+    "frontend-nextjs/components/compliance/EnhancedComplianceCheck.tsx (deleted)",
+    "frontend-nextjs/components/compliance/ComplianceChecklist.tsx (deleted)",
+    "frontend-nextjs/components/compliance-checklist.tsx (deleted)",
+    "frontend-nextjs/components/assessment-panel.tsx (deleted)",
+    "frontend-nextjs/app/internal/page.tsx",
+    "scripts/schema_contract_baseline.json",
+    "scripts/baselines/gate-baseline.json",
+    "scripts/dq_probe_live.py",
+    ".claude/zone_code_baseline.json",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "No new query written anywhere in this change -- pure deletion of files that queried tables which never existed (basix_provisions, sepp_provisions, special_provisions_registry), plus removing the one route in services/compliance_api_server.py that called them, plus removing now-stale exemption entries from 3 baseline/ledger files that only made sense while the deleted files existed.",
+    "assumption_mismatch": "Started from a single reported page (/authoritative). Reachability tracing (grep for every importer of every file in the chain, repeated until no new importer appeared) surfaced 2 more live-reachable surfaces sharing the same broken backend: /ui-test (a dev-scaffold page, no nav link, only consumer of components/assessment-panel.tsx -> ComplianceChecklist.tsx) and /api/assessment/version-compliance (zero real callers found by repo-wide grep, but still a live, publicly POSTable endpoint) which turned out to have its OWN, independent instance of the same fabricate-on-failure pattern -- a hardcoded fake 'compliant' verdict citing a made-up 'LEP Clause 2.3', triggered because it calls the same CLI with flags (--version-aware, --assessment-date) its own argparse never defines, guaranteeing failure on every real call. Confirmed via COMPONENT_MAP.md that none of the deleted surfaces (AuthoritativeComplianceDisplay, ComplianceChecklist under components/compliance/, EnhancedComplianceCheck, assessment-panel, ui-test) are part of the documented, maintained UI surface -- COMPONENT_MAP.md names a different, still-live compliance flow (ComplianceDashboard.tsx, StateLevelControls.tsx, /api/compliance/constraints) that this change does not touch.",
+    "new_vs_existing": "This is a subtractive change to existing dead-end code, not a new feature. The 3 baseline files edited (schema_contract_baseline.json, gate-baseline.json, zone_code_baseline.json) are shrink-only ratchets by their own design -- removing an entry for a file that no longer exists is the documented, correct action, verified by re-running each gate afterward rather than assumed safe.",
+    "external_source_error": "N/A -- no external API call is added or changed. The deleted code's own external-failure handling (a psycopg2 UndefinedTable error on a nonexistent table) is exactly the thing being removed, because its failure handling fabricated data instead of surfacing the error.",
+    "frontend_type": "N/A -- no new frontend code, deletion only. Verified no TypeScript file outside the deleted set imports anything from the deleted paths (repo-wide grep, cross-checked against 3 false-positive name collisions with unrelated, still-live files: EnhancedComplianceChecklist.tsx, ChecklistContext.tsx, pages/api/compliance/checklist.ts -- none of which import anything deleted here).",
+    "user_failure_mode": "This IS the user-failure-mode fix: before this change, a real user on /authoritative or a caller of /api/assessment/version-compliance received a fabricated 'this is BASIX-compliant' / 'this is LEP-compliant' result with a plausible-looking confidence percentage on every single call, because the underlying tables have never existed and the exception handler manufactured a fallback instead of reporting the failure. After this change, those pages/endpoints return 404 -- a visible failure instead of an invisible lie."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/validate_schema_contract.py ; python scripts/dq_check.py ; python scripts/dq_probe_live.py --id DQ-91 ; python -m pytest -q",
+    "fails_when": "validate_schema_contract.py fails if a baseline entry is removed for a table reference that still actually occurs somewhere in the tree (a new/unnoticed reference to the same table name outside the deleted files would surface as a NEW invalid reference, since it would no longer be in the baseline exemption list). dq_check.py fails if DQ-91's declared status and its live probe result stop matching. pytest fails if deleting compliance_api_server.py's /compliance route broke any test that exercised it (none did -- confirmed by full-suite re-run, not assumed).",
+    "observed_red": "Before this branch's changes: git status --short showed nothing (baseline files still listed the 3 now-deleted files' table refs). After deleting the 5 Python files and editing compliance_api_server.py but BEFORE editing the 3 baseline files, validate_schema_contract.py would have reported NOTHING new (the baseline entries would just be dead weight pointing at files that no longer exist -- not itself a failure, but stale), which is why the baseline files were edited explicitly rather than left as orphaned entries. After all edits: validate_schema_contract.py -> 'PASSED (with baseline): no NEW invalid references. 6 pre-existing still to fix.' (was 9 before this branch -- the 3 removed entries were verified to correspond exactly to the 3 deleted table-referencing files, not guessed). dq_check.py -> 'DQ-CHECK: PASSED', 0 red. dq_probe_live.py --id DQ-91 -> count=3 (basix_provisions/sepp_provisions/special_provisions_registry still absent as expected; drawdown_verify_audits no longer counted, confirming the earlier DQ-91 fix still holds and this branch did not regress it). Full pytest run: 4967 passed, 2 skipped, 0 failed -- identical pass count to the pre-branch baseline, confirming the deleted route had zero test coverage depending on it and nothing else broke."
+  },
+  "functions": [
+    {
+      "name": "get_compliance (removed)",
+      "file_line": "services/compliance_api_server.py, formerly the @app.post(\"/compliance\") route",
+      "input": "ComplianceRequest (zone_code, property_id, development_type, climate_zone, water_zone, special_provisions) -- all now gone with the route",
+      "output": "Formerly ComplianceResponse wrapping EnhancedComplianceAPI.get_enhanced_compliance()'s result, which on climate_zone/special_provisions ALWAYS hit a guaranteed query failure against a table that has never existed (basix_provisions / sepp_provisions / special_provisions_registry) and either fabricated a fallback provision with a hardcoded 90% confidence or silently dropped the check -- documented failure mode this whole branch exists to remove.",
+      "if_none": "The route itself no longer exists; a request to POST /compliance now gets FastAPI's default 404, which is the intended, honest replacement for the previous fabricated-or-silent 200."
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Something outside the traced reachability graph still calls one of the deleted routes/components/files that this session's grep-based tracing did not find (e.g. a mobile app, a partner integration, an external bookmark to /authoritative, or code in a different repo).",
+      "what_happens": "A caller that previously got a fabricated 'success' response now gets a real 404 / connection refused instead.",
+      "mitigated": false,
+      "how": "NOT fully mitigated -- reachability was traced exhaustively within THIS repo (every .ts/.tsx/.py importer chain followed to its root, cross-checked against COMPONENT_MAP.md and a repo-wide grep for both the file paths and the API route strings), but a caller entirely outside this repo (an external partner, a saved bookmark, a mobile client) cannot be ruled out from static analysis alone. Judged acceptable and consistent with the user's explicit instruction to delete rather than patch: a caller receiving an honest 404 instead of a silent fabrication is a strict improvement even in the worst case, not a new failure mode.",
+      "repro": "N/A -- would require traffic/analytics data outside this repo's codebase to detect a caller this tracing missed; not available in this session."
+    },
+    {
+      "scenario": "The 3 baseline/ledger files (schema_contract_baseline.json, gate-baseline.json, zone_code_baseline.json) were hand-edited rather than regenerated by their own tooling.",
+      "what_happens": "A typo or wrong-entry removal could either leave a stale entry behind (harmless, just noise) or accidentally remove an entry for a DIFFERENT, still-relevant file that happens to share a table/line-number coincidence.",
+      "mitigated": true,
+      "how": "Mitigated by re-running each gate's own validator after editing (validate_schema_contract.py, dq_check.py) rather than trusting the edit was correct by inspection -- both came back clean with the expected, predicted counts (9->6 baseline entries, DQ-91 probe 4->3), not merely 'no error thrown'.",
+      "repro": "N/A -- verified positively via the falsifiable_check commands above, not left as a residual risk."
+    },
+    {
+      "scenario": "services/compliance_api_server.py is the shared FastAPI entrypoint for ~19 OTHER live routers (solar yield, shadow, threat radar, flood, granny flat, drawdown-verify, etc.) -- editing it by hand to remove one route risks breaking an unrelated one through an import-order or syntax mistake.",
+      "what_happens": "A typo in the surrounding edit could take down every satellite product pipeline, not just the broken compliance route.",
+      "mitigated": true,
+      "how": "Mitigated: only the /compliance route, its two now-unused Pydantic models, and the imports exclusive to them were removed (json, typing imports, the enhanced_compliance_api import, BaseModel) -- verified nothing else in the file used them first (grep for json./HTTPException/BaseModel/Dict/List/Optional/Any usage before removing). ast.parse() confirmed the file still parses. All ~19 other app.include_router() calls left untouched, byte-for-byte, and the full pytest suite (which includes tests that import/exercise several of those other routers) re-ran clean at the same 4967-passed count as before this branch.",
+      "repro": "python -c \"import ast; ast.parse(open('services/compliance_api_server.py', encoding='utf-8').read())\" -- confirms syntactic validity; python -m pytest -q confirms behavioural validity of everything else in the file."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: schema-contract gate re-run (PASSED, correct shrink 9->6), DQ ledger re-run (PASSED, 0 red), DQ-91 live probe re-run against production (count=3, matches prediction), full pytest suite re-run (4967 passed / 2 skipped, identical to pre-branch baseline). No frontend build check available in this bare worktree (node_modules absent) -- TypeScript compilation is enforced by the pre-push hook and CI in the normal checkout, consistent with how this repo already handles worktree sessions."
+  }
+}

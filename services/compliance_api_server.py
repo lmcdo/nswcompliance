@@ -4,14 +4,10 @@ FastAPI HTTP Server for Enhanced Compliance API
 Wraps the existing enhanced_compliance_api.py for reliable Node.js access
 """
 
-import json
 import os
-from typing import Any, Dict, List, Optional
 
-from enhanced_compliance_api import EnhancedComplianceAPI
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 try:
     from services.solar_yield import router as solar_yield_router  # Docker (PYTHONPATH=/app)
     from services.shadow_detector import router as shadow_router
@@ -96,64 +92,17 @@ app.include_router(brief_overlay_router)
 app.include_router(cdc_screen_router)
 app.include_router(dcp_controls_router)
 
-# Initialize the compliance API
-compliance_api = EnhancedComplianceAPI()
-
-class ComplianceRequest(BaseModel):
-    zone_code: str
-    property_id: Optional[int] = None
-    development_type: Optional[str] = None
-    include_development_permissions: Optional[bool] = False
-    climate_zone: Optional[str] = None
-    water_zone: Optional[str] = None
-    special_provisions: Optional[List[Dict[str, Any]]] = None
-
-class ComplianceResponse(BaseModel):
-    success: bool
-    data: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    processing_time_ms: int
-
-@app.post("/compliance", response_model=ComplianceResponse)
-async def get_compliance(request: ComplianceRequest):
-    """Get compliance data for a zone and development type"""
-    try:
-        import time
-        start_time = time.time()
-
-        print(f"[Compliance API] Request: zone={request.zone_code}, dev_type={request.development_type}")
-
-        # Call the existing enhanced compliance API
-        result = compliance_api.get_enhanced_compliance(
-            zone_code=request.zone_code,
-            property_id=request.property_id,
-            development_type=request.development_type,
-            include_development_permissions=request.include_development_permissions,
-            climate_zone=request.climate_zone,
-            water_zone=request.water_zone,
-            special_provisions=request.special_provisions
-        )
-
-        processing_time = int((time.time() - start_time) * 1000)
-
-        print(f"[Compliance API] Success: {processing_time}ms")
-
-        return ComplianceResponse(
-            success=True,
-            data=result,
-            processing_time_ms=processing_time
-        )
-
-    except Exception as e:
-        processing_time = int((time.time() - start_time) * 1000)
-        error_msg = f"Compliance API error: {str(e)}"
-        print(f"[Compliance API] Error: {error_msg}")
-
-        return ComplianceResponse(
-            success=False,
-            error=error_msg,
-            processing_time_ms=processing_time
-        )
+# /compliance (EnhancedComplianceAPI, basix_compliance_checker.py,
+# special_provisions_processor.py) was removed 2026-09-05: it queried
+# basix_provisions / sepp_provisions / special_provisions_registry, none of
+# which have ever existed in the database. Every real call to it either
+# fabricated a plausible-looking "BASIX requirements apply" result with a
+# hardcoded 90% confidence, or silently dropped hazard/heritage/SEPP checks
+# with no error -- CLAUDE.md's own CRITICAL data-integrity rule, on a live,
+# unauthenticated page (/authoritative, also removed). No path to a real fix
+# existed without sourcing real BASIX/SEPP regulatory data, which is a much
+# larger, separate undertaking -- deleted rather than left fabricating.
+# See fix/fabricated-compliance-fallback.
 
 @app.get("/health")
 async def health_check():
@@ -167,7 +116,6 @@ async def root():
         "service": "NSW Planning Compliance API",
         "version": "1.0.0",
         "endpoints": {
-            "POST /compliance": "Get compliance data for zone and development type",
             "POST /pipeline/solar-yield": "Satellite: Solar Yield Underwriter pipeline",
             "POST /pipeline/shadow": "Satellite: Shadow Detector pipeline",
             "POST /pipeline/threat-radar/subscribe": "Satellite: Threat Radar — subscribe address",
