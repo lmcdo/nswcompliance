@@ -331,34 +331,47 @@ class TestRealHttpLayer:
         _skip_if_no_real_db()
         from unittest.mock import patch
 
+        # Sol cross-review (2026-09-04, on push): the original version's
+        # cleanup only started AFTER the status/body/job_id assertions, so if
+        # the endpoint committed a real row but the RESPONSE was malformed
+        # (wrong status, missing job_id -- a real, plausible failure mode,
+        # not a hypothetical), the assertions would raise before cleanup ever
+        # ran, leaving a fake TEST-DQ91-HTTP-* row permanently in a table
+        # documented as legal evidence. Fixed two ways: (1) the entire flow,
+        # including the request itself, is now inside the try, so cleanup
+        # always runs; (2) cleanup deletes by loan_id (the marker THIS test
+        # generated and controls), not by job_id (which comes from the
+        # response and may not exist if the response is malformed) -- a
+        # cleanup key this test does not depend on the system under test to
+        # hand back correctly.
         marker = f"TEST-DQ91-HTTP-{uuid.uuid4()}"
-        with patch.object(
-            dv, "_find_sentinel1_scenes",
-            return_value=("scene-before-id", "scene-after-id", "2026-05-20", "2026-06-01"),
-        ), patch.object(
-            dv, "_submit_hyp3_job", return_value="hyp3-job-http-test",
-        ):
-            client = self._client()
-            response = client.post(
-                "/pipeline/drawdown-verify",
-                json={
-                    "loan_id": marker,
-                    "address": "TEST ADDRESS -- not a real property",
-                    "stage_claimed": "slab",
-                    "lot_bbox": {
-                        "min_lon": 151.0, "min_lat": -33.9,
-                        "max_lon": 151.01, "max_lat": -33.89,
-                    },
-                    "reference_date": "2026-06-01",
-                },
-            )
-
-        assert response.status_code == 200
-        body = response.json()
-        assert body["status"] == "submitted"
-        job_id = body["job_id"]
-
         try:
+            with patch.object(
+                dv, "_find_sentinel1_scenes",
+                return_value=("scene-before-id", "scene-after-id", "2026-05-20", "2026-06-01"),
+            ), patch.object(
+                dv, "_submit_hyp3_job", return_value="hyp3-job-http-test",
+            ):
+                client = self._client()
+                response = client.post(
+                    "/pipeline/drawdown-verify",
+                    json={
+                        "loan_id": marker,
+                        "address": "TEST ADDRESS -- not a real property",
+                        "stage_claimed": "slab",
+                        "lot_bbox": {
+                            "min_lon": 151.0, "min_lat": -33.9,
+                            "max_lon": 151.01, "max_lat": -33.89,
+                        },
+                        "reference_date": "2026-06-01",
+                    },
+                )
+
+            assert response.status_code == 200
+            body = response.json()
+            assert body["status"] == "submitted"
+            job_id = body["job_id"]
+
             # Not re-asserting against the mock -- reading the REAL row the
             # REAL request wrote, straight from the database.
             row = dv._get_audit(job_id)
@@ -369,7 +382,14 @@ class TestRealHttpLayer:
             conn = dv._db_conn()
             try:
                 cur = conn.cursor()
-                cur.execute("DELETE FROM drawdown_verify_audits WHERE id = %s", (job_id,))
+                cur.execute("DELETE FROM drawdown_verify_audits WHERE loan_id = %s", (marker,))
+                deleted = cur.rowcount
                 conn.commit()
             finally:
                 conn.close()
+            # A row existing here is expected (the happy path deletes it,
+            # rowcount 1); zero is also fine (nothing was ever written, e.g.
+            # if the request itself raised before the server could commit).
+            # More than one would mean this marker collided, which uuid4
+            # makes practically impossible -- surfaced rather than swallowed.
+            assert deleted in (0, 1), f"expected to delete 0 or 1 row by loan_id, deleted {deleted}"

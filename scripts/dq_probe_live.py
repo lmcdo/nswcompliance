@@ -1330,8 +1330,15 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # prevent. Routing through dq_probe_live.py instead means an
         # unreachable database exits 2 (UNKNOWN), never a silent pass, via
         # dq_db.py's own connect().
-        "SELECT CASE WHEN COUNT(*) FILTER (WHERE v2_topic IS NULL)::float "
-        "  / NULLIF(COUNT(*), 0) > 0.10 THEN 1 ELSE 0 END "
+        # Sol cross-review (2026-09-04, on push): the original NULLIF(COUNT(*),0)
+        # form returns NULL, not 1, when zero rows match -- CASE WHEN NULL THEN
+        # 1 ELSE 0 END evaluates to 0, so a council whose provisions were all
+        # deleted/deactivated would report CLEAN (0) instead of the actual
+        # problem (no data at all). Zero-row is checked explicitly FIRST.
+        "SELECT CASE "
+        "  WHEN COUNT(*) = 0 THEN 1 "
+        "  WHEN COUNT(*) FILTER (WHERE v2_topic IS NULL)::float / COUNT(*) > 0.10 THEN 1 "
+        "  ELSE 0 END "
         "FROM regulatory_provisions "
         "WHERE source_council = 'marrickville' AND is_current = TRUE",
         (),

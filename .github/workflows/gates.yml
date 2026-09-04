@@ -567,8 +567,30 @@ jobs:
       # FastAPI's actual routing (not just the bare Python function) --
       # force-failed against the pre-fix code in a disposable worktree
       # before being trusted here.
-      - name: Real-database integration tests (drawdown-verify)
+      #
+      # Sol cross-review (2026-09-04, on push) caught what this file's own
+      # comment above already documents but this step ignored: DATABASE_URL
+      # here is the `ci_readonly` role (default_transaction_read_only=on --
+      # see the comment on the python-tests job above). Two of this file's
+      # six tests genuinely WRITE (insert a real row, delete it) and would
+      # fail here, not because the fix is wrong but because the CI
+      # credential correctly refuses the write at the SERVER, which is the
+      # point of that role. Selected explicitly to the 4 tests that only
+      # ever SELECT -- the connection-lifecycle open/close/schema checks,
+      # and the failure-path HTTP test, where _insert_audit is mocked to
+      # raise before any real INSERT is attempted. The 2 write-requiring
+      # tests (test_insert_read_delete_round_trip_through_the_real_functions,
+      # test_real_http_request_on_success_actually_writes_a_readable_row_and_
+      # cleans_up) stay local-only, run by hand against a writable
+      # credential when this file changes -- not CI, and not against a role
+      # that can act on PR-controlled code with write access to production.
+      - name: Real-database integration tests (drawdown-verify, read-only subset)
         env:
           PYTEST_REAL_DB: "1"
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m pytest -m database tests/test_drawdown_verify_real_db.py -v -o addopts=
+        run: |
+          python -m pytest -m database -o addopts= -v \
+            "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_db_conn_returns_a_real_psycopg2_connection_and_close_actually_closes_it" \
+            "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_get_audit_closes_the_real_connection_even_on_a_genuine_query_error" \
+            "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_drawdown_verify_audits_exists_with_the_expected_schema" \
+            "tests/test_drawdown_verify_real_db.py::TestRealHttpLayer::test_real_http_request_on_audit_failure_returns_a_real_500_with_the_exact_expected_body"

@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: closes a gap raised directly in session -- every prior test for the DQ-91 fixes (#1037, #1038) called submit_drawdown_verify() as a plain Python function, never through a real HTTP request. This adds the missing layer: FastAPI TestClient against the real router, real database (migration already live), only the two genuinely-external paid third-party calls mocked. Not Critical: no new production code, purely additive tests. Not Minor: it is proving a real claim about a live endpoint's HTTP contract that was previously unproven.",
-  "commit_hash": "723b8932",
+  "commit_hash": "a1c095fb",
   "files": [
     "tests/test_drawdown_verify_real_db.py",
     ".github/workflows/gates.yml",
@@ -69,6 +69,27 @@
       "mitigated": true,
       "how": "MITIGATED in this same PR (not a follow-up after all): .github/workflows/gates.yml schema-contract job now runs PYTEST_REAL_DB=1 pytest -m database tests/test_drawdown_verify_real_db.py on every PR and push to main, BLOCKING. Scoped to only this one file (not the whole -m database marker set) because running the full set surfaced a real, pre-existing, unrelated failure (tests/test_lga_coverage.py, now tracked as DQ-93) that wiring in as blocking today would fail every future PR on. That file needs its own decision and is deliberately left out of this PR.",
       "repro": "gh workflow view gates -- the new \"Real-database integration tests (drawdown-verify)\" step in the schema-contract job"
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): DQ-93 probe used NULLIF(COUNT(*),0), which returns NULL (not an error) on zero rows -- CASE WHEN NULL THEN 1 ELSE 0 END silently evaluates to 0 (clean), so a council whose provisions were all deleted/deactivated would report FIXED instead of the real problem (no data at all).",
+      "what_happens": "A zero-data state reads identically to a clean state -- exactly the false-reassurance shape this whole session has been about closing.",
+      "mitigated": true,
+      "how": "scripts/dq_probe_live.py DQ-93 query -- explicit WHEN COUNT(*) = 0 THEN 1 branch checked FIRST, re-verified live (still correctly reports 1/red for the real 14.8% finding).",
+      "repro": "python scripts/dq_probe_live.py --id DQ-93"
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): the success HTTP test only started its cleanup finally AFTER asserting status/body/job_id -- a malformed response (real DB write already committed server-side, but e.g. no job_id key) would raise before cleanup ran, leaving a fake TEST-DQ91-HTTP-* row permanently in a table documented as legal evidence.",
+      "what_happens": "Fake data could survive in production with no automatic cleanup path.",
+      "mitigated": true,
+      "how": "tests/test_drawdown_verify_real_db.py -- the entire request+assertions now sit inside the try; cleanup deletes by the loan_id marker this test itself generates and controls, not by the response job_id, so cleanup no longer depends on the system under test returning a well-formed response.",
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_drawdown_verify_real_db.py::TestRealHttpLayer::test_real_http_request_on_success_actually_writes_a_readable_row_and_cleans_up -v -o addopts="
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): gates.yml wired the WHOLE test_drawdown_verify_real_db.py file into CI, including 2 tests that genuinely INSERT/DELETE -- but re-reading this same file's own earlier comment (line 136) shows DATABASE_URL in CI is the ci_readonly role, default_transaction_read_only=on. Writes would be refused at the SERVER, meaning the CI step as first written would have failed on every run, and more importantly exposes the question of write-capable PR-triggered CI code at all.",
+      "what_happens": "CI step breaks immediately on the two write tests; separately, any write-capable credential reachable from PR-controlled code is a real elevated-privilege surface regardless of whether it happens to work.",
+      "mitigated": true,
+      "how": ".github/workflows/gates.yml -- CI step now selects only the 4 read-only-safe tests by explicit pytest node ID (2 pure SELECT, 1 schema check, 1 mocked-failure path that never reaches a real INSERT). The 2 write-requiring tests stay local-only, run by hand against a writable credential.",
+      "repro": "grep -A3 \"Real-database integration tests\" .github/workflows/gates.yml -- 4 explicit test IDs, not the whole file"
     }
   ],
   "post_merge": {
