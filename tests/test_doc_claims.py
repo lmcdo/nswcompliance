@@ -203,6 +203,29 @@ def test_a_prose_doc_naming_a_deleted_file_is_still_reported(dc, repo):
     assert [v.claim for v in _kinds(result, "path")] == [deleted_path]
 
 
+def test_a_staged_but_uncommitted_deletion_is_still_recognised(dc, repo):
+    """Sol cross-review (2026-09-05): the first version diffed base..HEAD,
+    which misses a deletion that is staged (or merely removed on disk) but
+    not yet committed -- a developer running this check before committing
+    their own true, in-progress deletion would see it rejected as if it
+    hallucinated the path."""
+    target = repo / "services" / "not_yet_committed.py"
+    target.write_text("def f():\n    return 1\n", encoding="utf-8")
+    _git(["git", "add", "-A"], repo)
+    _git(["git", "commit", "-qm", "add file"], repo)
+    _git(["git", "branch", "main", "HEAD"], repo)
+    target.unlink()
+    _git(["git", "add", "-A"], repo)  # staged, deliberately NOT committed
+    (repo / "report_uncommitted.json").write_text(
+        json.dumps({"files": ["services/not_yet_committed.py"]}), encoding="utf-8"
+    )
+    result = dc.scan(repo, docs=[], reports=["report_uncommitted.json"])
+    assert _kinds(result, "path") == [], (
+        "a deletion staged but not yet committed was rejected as a "
+        "hallucinated path"
+    )
+
+
 def test_line_citation_past_end_of_file_is_reported(dc, repo):
     """The tracker cited landing/data/shadow.ts:57 for a 55-line file."""
     rel = _doc(repo, "cite.md", "The bug is at `services/scorer.py:900`.\n")

@@ -853,6 +853,18 @@
       "passes_when": "exit 0 - inner-west/marrickville's live NULL v2_topic rate is at or below the 10% threshold tests/test_lga_coverage.py's own config sets for it",
       "red_when": "the rate exceeds that threshold -- found live 2026-09-04 at 14.8% (583 of 3,934 current provisions), while wiring tests/test_drawdown_verify_real_db.py into CI (see DQ-91/DQ-92)",
       "note": "Not a new defect introduced this session -- a PRE-EXISTING one this session happened to surface, by actually running a real-DB test file nothing had invoked (PYTEST_REAL_DB=1 is opt-in and nothing invoked it for tests/test_lga_coverage.py either, matching DQ-91/92's own root cause). Query in dq_probe_live.py is copied verbatim from that test's own body, not re-derived, so the two can never quietly disagree. Deliberately routed through dq_probe_live.py rather than a raw `pytest -m database` command: without PYTEST_REAL_DB=1 set, that command SKIPS (exit 0), which this ledger reads as a false PASS -- confirmed by actually trying it this session, not assumed. Not investigated further: why marrickville drifted specifically, or whether other ONBOARDED_LGAS entries are also currently red. tests/test_lga_coverage.py itself is NOT wired into any CI workflow as of this row -- gates.yml gained a real-database step this session (DQ-91/92's PR) but scoped deliberately to only the one file already proven fully green, specifically BECAUSE this failure exists and wiring the whole -m database marker in as blocking today would fail every future PR on a defect this session did not cause. Fixing the data (re-running topic classification for this council) is a deliberate follow-up, not attempted here."
+    },
+    "DQ-94": {
+      "declared": "fixed",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-94"
+      ],
+      "passes_when": "exit 0 - drawdown_verify_audits exists in information_schema.tables",
+      "red_when": "the table does not exist -- the exact DQ-91 regression, isolated to a check that cannot be masked by the 3 deliberately-unbuilt tables changing state",
+      "note": "Split out of DQ-91 2026-09-05 on Sol cross-review: DQ-91 aggregates 4 table-existence checks into one count, so a coincidence (drawdown_verify_audits dropped at the same moment one of the 3 unbuilt tables gets created) would leave the count unchanged at 3 and hide a real regression on the one table that matters. This probe checks drawdown_verify_audits alone. Declared fixed because it is: migration 033 ran against production 2026-09-04, a real row was inserted/read/deleted through the actual functions, and the code now fails closed instead of swallowing an insert error. Verified live 2026-09-05: count=0, CLEAN."
     }
   }
 }

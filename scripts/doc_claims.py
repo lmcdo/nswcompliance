@@ -296,7 +296,9 @@ def _read(path: Path) -> str | None:
 
 
 def deleted_in_diff(project_dir: Path) -> set[str]:
-    """Repo-relative paths this branch deletes, versus its merge-base.
+    """Repo-relative paths this branch deletes, versus its merge-base --
+    including a deletion that is only staged or only on disk, not yet
+    committed (see the working-tree note below).
 
     A QA report describing a file IT deletes in the same change is not a
     false claim -- scripts/qa_gate.py's check_claimed_files_reachable already
@@ -327,8 +329,16 @@ def deleted_in_diff(project_dir: Path) -> set[str]:
         if merge_base.returncode != 0 or not base_sha:
             continue
         try:
+            # Deliberately no second ref: `git diff <one-commit>` compares
+            # that commit against the WORKING TREE (staged and unstaged
+            # changes both included), not just HEAD. Sol cross-review
+            # (2026-09-05): an explicit `HEAD` endpoint here misses a
+            # deletion that is staged (or merely deleted on disk) but not
+            # yet committed -- a developer running this check before
+            # committing would see their own true, in-progress deletion
+            # rejected as a hallucinated path.
             diff = subprocess.run(
-                ["git", "diff", "--name-status", "--diff-filter=D", base_sha, "HEAD"],
+                ["git", "diff", "--name-status", "--diff-filter=D", base_sha],
                 cwd=str(project_dir),
                 capture_output=True,
                 text=True,

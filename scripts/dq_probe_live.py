@@ -1287,6 +1287,40 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "once a table exists -- still true for drawdown_verify_audits going "
         "forward if its schema ever drifts.",
     ),
+    "DQ-94": (
+        "drawdown_verify_audits exists -- dedicated, zero-tolerance (does not share a count with any other table)",
+        # Sol cross-review (2026-09-05, on the push that split DQ-91's 3
+        # deliberately-unbuilt tables from the 1 that was actually fixed):
+        # DQ-91's probe adds 4 table-existence checks into ONE count. That is
+        # fine for a human reading the printed breakdown, but it is exactly
+        # the shape a machine ratchet must not rely on -- if drawdown_verify_
+        # audits were EVER accidentally dropped again at the same moment one
+        # of the 3 unbuilt tables (basix_provisions, sepp_provisions,
+        # special_provisions_registry) happened to get created, DQ-91's count
+        # would stay at 3 throughout, and a real regression on the one table
+        # that matters would report as "unchanged, still open" rather than
+        # "newly red". This probe checks drawdown_verify_audits BY NAME,
+        # alone, so its result can never be masked by what happens to the
+        # other 3. DQ-91 is left as-is (aggregate, informational, already
+        # documents this exact caveat) -- this is the row dq_check.py's
+        # declared/actual ratchet should actually trust for "is the audit
+        # write path still safe".
+        # count(*) here must be 0 when CLEAN (table exists) and 1 when RED
+        # (missing), matching run()'s convention (nonzero -> red) -- a plain
+        # "SELECT count(*) ... WHERE table_name = '...'" would return 1 when
+        # the table EXISTS, which is the framework's contract inverted.
+        "SELECT count(*) FROM (VALUES ('drawdown_verify_audits')) AS t(tbl) "
+        "WHERE NOT EXISTS (SELECT 1 FROM information_schema.tables "
+        "WHERE table_schema = 'public' AND table_name = t.tbl)",
+        (),
+        "drawdown_verify_audits does not exist. This is the table DQ-91 fixed "
+        "end-to-end 2026-09-04 (migration 033 run against production, real "
+        "insert/read/delete round-trip proven through the actual functions, "
+        "fail-closed code, real-DB tests in CI). If this probe reads red, "
+        "the audit write path is broken again -- treat as the original DQ-91 "
+        "CRITICAL regardless of what DQ-91's own aggregate count currently "
+        "shows.",
+    ),
     "DQ-92": (
         "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",
         # Answers a direct question raised in session: how much of the review
