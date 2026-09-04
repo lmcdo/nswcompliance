@@ -23,6 +23,7 @@ Exit codes:
 """
 
 import ast
+import glob
 import json
 import subprocess
 import sys
@@ -1329,6 +1330,187 @@ def scan_diff_for_untyped_method_calls(
     return errors
 
 
+# ─── Layer 9.5: Real-database/HTTP proof requirement ────────────────────────
+#
+# ORIGIN: session 2026-09-04. Every prior layer in this file checks that a
+# CLAIM was written down and shaped correctly (a falsifiable_check with an
+# observed_red, break-it scenarios, etc.) -- none of them independently
+# verify that a DATABASE or HTTP call was actually, physically executed
+# against something real for the specific file that changed. That gap took
+# an entire session to close for one file (services/drawdown_verify.py,
+# DQ-91) by hand: mocked tests that turned out to prove nothing about the
+# real driver, a real-DB test suite nothing ever ran, then CI wiring built
+# three separate times before it actually worked. None of that generalises
+# to the next file with the same class of bug -- every fix was named by
+# hand, in one CI step, for one file.
+#
+# prior-art-checked: NOT mutation testing, and deliberately not reusing that
+# approach. A separate mutation-coverage design (mutate the changed lines,
+# require every mutant be killed) was scoped, built, and locally proven
+# working the same session -- then set aside because it costs real minutes
+# per file even scoped to one file's changed lines, and the actual, cheaper
+# question is not "would my tests catch a SUBTLE variant of this bug" but
+# the much more basic "does a real-database test for this file exist and
+# did anyone ever run it". This layer answers the basic question, generically,
+# for any future file -- not the deeper one, and not by running anything
+# expensive itself.
+#
+# WHAT THIS DOES: for each changed .py file under services/ or scripts/,
+# walks its AST to find every function whose body overlaps a line the diff
+# actually changed (not the whole file -- a PR is not responsible for
+# auditing code it did not touch) and whose body contains a DB call
+# (psycopg2/.execute(/.cursor()/_db_conn() or similar) or an outbound HTTP
+# call (requests./httpx.). If found, requires ONE of:
+#   (a) a matching real-layer test file exists -- glob tests/test_<base>*.py
+#       for one carrying @pytest.mark.database or @pytest.mark.integration
+#       (the file need not have been RUN by this check -- proving it ran is
+#       what Section 1's falsifiable_check.observed_red is already for, on
+#       the human/AI writing the report, same as every other claim here), or
+#   (b) an explicit report["real_layer_exempt"][filepath] string recording
+#       why not -- same shape as scripts/schema_contract_baseline.json's
+#       per-entry exemptions: a written reason, not silent scope-cutting.
+#
+# WHAT THIS DOES NOT DO: run pytest, connect to any database, or make any
+# network call. It is a fast, static, glob-and-AST check -- seconds, not
+# minutes, because "does a matching real test exist" is a much cheaper
+# question to answer than "would it catch every subtle mistake".
+
+_REAL_DB_HTTP_TRIGGER_RE = re.compile(
+    r"\bpsycopg2\.|\.execute\(|\.cursor\(|_db_conn\(|"
+    r"\brequests\.(get|post|put|delete|patch)\(|\bhttpx\."
+)
+_REAL_LAYER_MARK_RE = re.compile(r"pytest\.mark\.(database|integration)")
+
+
+def _ast_functions(source: str, filepath: str) -> list[dict]:
+    """[{name, start, end, calls}] for every function/method in `source`.
+
+    `calls` is the set of bare-name local calls made directly in that
+    function's body (`foo(...)`, not `self.foo(...)` or `mod.foo(...)`) --
+    just enough to resolve one level of "this function delegates to a local
+    helper that touches the DB", which is this file's own house style
+    (services/drawdown_verify.py: submit_drawdown_verify calls _insert_audit,
+    which is the one that actually calls .execute()). Full call-graph
+    resolution (multi-level, method calls, imports) is not attempted --
+    one level catches the pattern this codebase actually uses, and going
+    further trades a fast static check for something closer to real
+    execution tracing, which is not what this layer is for."""
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError:
+        return []
+    out = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        end = getattr(node, "end_lineno", None) or node.lineno
+        calls = set()
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name):
+                calls.add(sub.func.id)
+        out.append({"name": node.name, "start": node.lineno, "end": end, "calls": calls})
+    return out
+
+
+def check_real_layer_test_exists(
+    report: dict,
+    diff_files: list[str],
+    project_dir: str,
+    changed: dict[str, set[int]],
+) -> list[str]:
+    """Require a real-DB/HTTP test to exist for any changed function that
+    genuinely touches a database or an outbound HTTP call. See the Layer 9.5
+    header comment above for the full design and why this is NOT mutation
+    testing."""
+    errors: list[str] = []
+    if not project_dir:
+        return errors
+
+    exempt = report.get("real_layer_exempt", {}) or {}
+    tests_dir = os.path.join(project_dir, "tests")
+
+    for filepath in diff_files:
+        norm = filepath.replace("\\", "/")
+        if not norm.endswith(".py"):
+            continue
+        if not (norm.startswith("services/") or norm.startswith("scripts/")):
+            continue
+        if "/test" in norm or norm.startswith("tests/"):
+            continue  # test files are not themselves the thing under test
+
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue  # deleted in this diff -- nothing to require a test for
+        try:
+            source = open(full_path, "r", encoding="utf-8", errors="replace").read()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        changed_ranges = changed.get(filepath) or changed.get(norm)
+        if not changed_ranges:
+            continue  # diff_coverage/other checks already handle "file not really touched"
+
+        lines = source.splitlines()
+        functions = _ast_functions(source, filepath)
+        by_name = {fn["name"]: fn for fn in functions}
+
+        def _body(fn: dict) -> str:
+            return "\n".join(lines[fn["start"] - 1:fn["end"]])
+
+        def _touches_directly(fn: dict) -> bool:
+            return bool(_REAL_DB_HTTP_TRIGGER_RE.search(_body(fn)))
+
+        def _touches_via_one_local_call(fn: dict) -> bool:
+            # One level: does this function call a same-file helper whose
+            # OWN body touches the DB/HTTP layer directly? Catches the
+            # submit_drawdown_verify -> _insert_audit shape without
+            # attempting full call-graph resolution -- see _ast_functions'
+            # docstring for why one level is the deliberate stopping point.
+            return any(
+                called in by_name and _touches_directly(by_name[called])
+                for called in fn["calls"]
+            )
+
+        touches_real_layer = False
+        for fn in functions:
+            if not any(fn["start"] <= ln <= fn["end"] for ln in changed_ranges):
+                continue
+            if _touches_directly(fn) or _touches_via_one_local_call(fn):
+                touches_real_layer = True
+                break
+
+        if not touches_real_layer:
+            continue
+
+        if filepath in exempt or norm in exempt:
+            continue  # explicit written reason recorded, see header comment
+
+        basename = os.path.splitext(os.path.basename(filepath))[0]
+        candidates = glob.glob(os.path.join(tests_dir, f"test_{basename}*.py"))
+        has_real_layer_test = False
+        for c in candidates:
+            try:
+                text = open(c, "r", encoding="utf-8", errors="replace").read()
+            except (FileNotFoundError, PermissionError):
+                continue
+            if _REAL_LAYER_MARK_RE.search(text):
+                has_real_layer_test = True
+                break
+
+        if not has_real_layer_test:
+            errors.append(
+                f"Real-layer test missing: {filepath} has a changed function that "
+                f"touches a database or HTTP call (psycopg2/.execute/.cursor/"
+                f"_db_conn/requests/httpx), but no tests/test_{basename}*.py file "
+                f"carries @pytest.mark.database or @pytest.mark.integration. "
+                f"Add one (see tests/test_drawdown_verify_real_db.py for the "
+                f"pattern), or record 'real_layer_exempt': {{\"{filepath}\": "
+                f"\"<reason>\"}} in this report if genuinely not applicable."
+            )
+
+    return errors
+
+
 # ─── Layer 10: Doc-claim check (OBSERVATION MODE — reports, blocks nothing) ──
 #
 # ORIGIN: 2026-08-07/08. Four times in two days a session acted on a false
@@ -1735,11 +1917,20 @@ def validate_report(
         scanner_errors.extend(scan_diff_for_silent_failures(live_files, project_dir))
         scanner_errors.extend(scan_diff_for_python_adversarial(live_files, project_dir))
         scanner_errors.extend(scan_diff_for_untyped_method_calls(live_files, project_dir))
-        errors.extend(
-            filter_to_changed_lines(
-                scanner_errors, changed_line_numbers(diff_files, project_dir)
+        _changed = changed_line_numbers(diff_files, project_dir)
+        errors.extend(filter_to_changed_lines(scanner_errors, _changed))
+
+        # Layer 9.5 -- NOT line-string-shaped like the scanners above (it
+        # reasons about whole functions, not individual matched lines), so it
+        # is not run through filter_to_changed_lines; it already restricts
+        # itself to functions overlapping _changed internally. Standard/
+        # Critical only -- a Minor-tier change (the shape this project uses
+        # for ledger notes and docs) should not be blocked on writing a new
+        # integration test.
+        if tier in ("standard", "critical"):
+            errors.extend(
+                check_real_layer_test_exists(report, live_files, project_dir, _changed)
             )
-        )
 
     if tier in ("standard", "critical"):
         errors.extend(check_cross_references(report))
