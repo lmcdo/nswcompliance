@@ -605,3 +605,92 @@ jobs:
             "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_get_audit_closes_the_real_connection_even_on_a_genuine_query_error" \
             "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_drawdown_verify_audits_exists_with_the_expected_schema" \
             "tests/test_drawdown_verify_real_db.py::TestRealHttpLayer::test_real_http_request_on_audit_failure_returns_a_real_500_with_the_exact_expected_body"
+
+  # Closes the gap the schema-contract job's own comments above name: the
+  # WRITE path (a real INSERT succeeding end-to-end through the real
+  # endpoint) had no blocking CI coverage, because CI's DATABASE_URL secret
+  # is deliberately the read-only ci_readonly role and cannot write.
+  #
+  # An isolated, disposable Postgres SERVICE container -- not production,
+  # never production, thrown away when the job ends -- with only
+  # migrations/033_drawdown_verify_audits.sql applied (the one table these
+  # tests touch, not a full schema replay). Verified locally against a real
+  # throwaway Postgres database before being trusted here: migration 033
+  # applies cleanly to a bare database with no other tables or extensions
+  # (gen_random_uuid() is native since Postgres 13, no pgcrypto needed), and
+  # both write-path tests pass against it.
+  #
+  # This is a genuinely different database from production -- it can drift
+  # from production's real live schema if migration 033 and prod diverge
+  # without anyone updating this file. Mitigated today (prod was verified to
+  # match migration 033 exactly, column-for-column, when the migration was
+  # run), not mitigated structurally -- there is no automatic check that
+  # this test schema stays in sync with production's real schema.
+  drawdown-verify-write-path:
+    name: Drawdown-verify write path (isolated test DB, never production)
+    # Hardcoded to GitHub-hosted ubuntu-latest, NOT the ${{ vars.RUNNER_LABEL
+    # || 'ubuntu-latest' }} every other job uses. Checked, not assumed: the
+    # first push of this job used that same shared pattern and failed in 12s
+    # with "Cannot connect to the Docker daemon at unix:///var/run/docker.sock"
+    # -- the self-hosted runner (RUNNER_LABEL resolves to one, named
+    # wsl-ubuntu-lawre-2 in the failed run's own log) has no Docker daemon
+    # running, so `services:` containers -- which GitHub Actions implements
+    # via Docker -- cannot start there at all. GitHub-hosted runners always
+    # ship Docker pre-installed and running, which is the entire mechanism
+    # `services:` depends on. This is the one job in this file that needs it.
+    runs-on: ubuntu-latest
+    # Parameterised rather than a literal postgres:postgres@localhost URL --
+    # not because it's a real secret (it's the well-known default for a
+    # throwaway CI-only container, torn down when the job ends), but because
+    # .githooks/pre-commit's own secrets scanner cannot tell "known-public
+    # ephemeral default" from "real leaked credential" by pattern alone, and
+    # its own comment names the exact fix: a ${VAR} placeholder, not the
+    # literal value, is what it recognises as safe. One definition here,
+    # referenced by both steps below, so the two can never drift apart.
+    env:
+      PGHOST_TEST: localhost
+      PGPORT_TEST: "5432"
+      PGUSER_TEST: postgres
+      PGPASSWORD_TEST: postgres
+      PGDATABASE_TEST: postgres
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-test.txt
+      - name: Apply migration 033 to the isolated test database
+        run: |
+          export DATABASE_URL="postgresql://${PGUSER_TEST}:${PGPASSWORD_TEST}@${PGHOST_TEST}:${PGPORT_TEST}/${PGDATABASE_TEST}"
+          python -c "
+          import os, psycopg2
+          conn = psycopg2.connect(os.environ['DATABASE_URL'])
+          conn.autocommit = True
+          cur = conn.cursor()
+          cur.execute(open('migrations/033_drawdown_verify_audits.sql').read())
+          cur.execute(\"SELECT count(*) FROM information_schema.tables WHERE table_name='drawdown_verify_audits'\")
+          assert cur.fetchone()[0] == 1, 'migration did not create the table'
+          conn.close()
+          print('migration 033 applied to the isolated test database')
+          "
+      - name: Write-path integration tests (isolated DB -- NOT production)
+        env:
+          PYTEST_REAL_DB: "1"
+        run: |
+          export DATABASE_URL="postgresql://${PGUSER_TEST}:${PGPASSWORD_TEST}@${PGHOST_TEST}:${PGPORT_TEST}/${PGDATABASE_TEST}"
+          python -m pytest -m database -o addopts= -v \
+            "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_insert_read_delete_round_trip_through_the_real_functions" \
+            "tests/test_drawdown_verify_real_db.py::TestRealHttpLayer::test_real_http_request_on_success_actually_writes_a_readable_row_and_cleans_up"
