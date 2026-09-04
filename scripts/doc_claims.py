@@ -295,6 +295,59 @@ def _read(path: Path) -> str | None:
         return None
 
 
+def deleted_in_diff(project_dir: Path) -> set[str]:
+    """Repo-relative paths this branch deletes, versus its merge-base.
+
+    A QA report describing a file IT deletes in the same change is not a
+    false claim -- scripts/qa_gate.py's check_claimed_files_reachable already
+    applies exactly this reasoning for its own (gitignore) check ("a deletion
+    passes because a deleted path is not ignored either"); path-claim
+    checking never got the same treatment until a branch that deleted 13
+    files and documented every one of them by name hit it for real
+    (2026-09-05). Scoped to reports only (see the report-processing loop in
+    scan()) -- a hand-written prose doc claiming a path that was never part
+    of THIS diff stays exactly as strict as before.
+
+    Empty set, not an exception, when git/the ref cannot be resolved --
+    unknowable is not a license to suppress a real finding.
+    """
+    for base_ref in ("origin/main", "origin/master", "main"):
+        try:
+            merge_base = subprocess.run(
+                ["git", "merge-base", base_ref, "HEAD"],
+                cwd=str(project_dir),
+                capture_output=True,
+                text=True,
+                timeout=10,
+                env=git_env(),
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        base_sha = merge_base.stdout.strip()
+        if merge_base.returncode != 0 or not base_sha:
+            continue
+        try:
+            diff = subprocess.run(
+                ["git", "diff", "--name-status", "--diff-filter=D", base_sha, "HEAD"],
+                cwd=str(project_dir),
+                capture_output=True,
+                text=True,
+                timeout=10,
+                env=git_env(),
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return set()
+        if diff.returncode != 0:
+            return set()
+        out: set[str] = set()
+        for line in diff.stdout.splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 2 and parts[0].startswith("D"):
+                out.add(parts[1].strip())
+        return out
+    return set()
+
+
 # --- check A: paths ---------------------------------------------------------
 
 
@@ -988,6 +1041,8 @@ def scan(
         result.violations.extend(version_hits)
         result.notes.extend(version_notes)
 
+    deleted = deleted_in_diff(project_dir) if report_list else set()
+
     for rel in report_list:
         raw = _read(project_dir / rel)
         if raw is None:
@@ -1004,6 +1059,11 @@ def scan(
         for jpath, value in _json_strings(payload):
             where = f"{rel}#{jpath}"
             for v in check_paths(where, value, project_dir, tracked, basenames):
+                # A report naming a file IT deletes in this same branch is
+                # describing its own diff, not claiming the file exists --
+                # see deleted_in_diff()'s docstring.
+                if v.kind == "path" and v.claim in deleted:
+                    continue
                 result.violations.append(Violation(v.kind, where, 0, v.claim, v.detail))
             version_hits, version_notes = check_versions(where, value, constants)
             for v in version_hits:
