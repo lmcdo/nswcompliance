@@ -1,11 +1,12 @@
 {
   "tier": "standard",
   "justification": "Standard: a production DDL change (migrations/033_drawdown_verify_audits.sql, explicit user authorization) plus a real-database end-to-end verification (insert/read/delete round trip through the actual functions) and the ledger update recording it. Not Critical because the migration is purely additive (CREATE TABLE IF NOT EXISTS + 2 indexes, no ALTER/DROP on any existing table) and was verified before and after in the same session. Not Minor because it is a real production schema change, not a documentation-only edit.",
-  "commit_hash": "23c03993",
+  "commit_hash": "8f1a255b",
   "files": [
     "tests/test_drawdown_verify_real_db.py",
     ".claude/dq_checks.json",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "scripts/schema_contract_baseline.json"
   ],
   "pre_impl": {
     "existing_data": "drawdown_verify_audits -- confirmed absent (count=0) immediately before running the migration, confirmed present with 19 columns / 3 indexes matching the migration file exactly immediately after, inside the same script (uncommitted-state check -> execute -> commit -> re-check), not two separate unverified steps.",
