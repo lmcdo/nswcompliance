@@ -628,7 +628,17 @@ jobs:
   # this test schema stays in sync with production's real schema.
   drawdown-verify-write-path:
     name: Drawdown-verify write path (isolated test DB, never production)
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    # Hardcoded to GitHub-hosted ubuntu-latest, NOT the ${{ vars.RUNNER_LABEL
+    # || 'ubuntu-latest' }} every other job uses. Checked, not assumed: the
+    # first push of this job used that same shared pattern and failed in 12s
+    # with "Cannot connect to the Docker daemon at unix:///var/run/docker.sock"
+    # -- the self-hosted runner (RUNNER_LABEL resolves to one, named
+    # wsl-ubuntu-lawre-2 in the failed run's own log) has no Docker daemon
+    # running, so `services:` containers -- which GitHub Actions implements
+    # via Docker -- cannot start there at all. GitHub-hosted runners always
+    # ship Docker pre-installed and running, which is the entire mechanism
+    # `services:` depends on. This is the one job in this file that needs it.
+    runs-on: ubuntu-latest
     # Parameterised rather than a literal postgres:postgres@localhost URL --
     # not because it's a real secret (it's the well-known default for a
     # throwaway CI-only container, torn down when the job ends), but because

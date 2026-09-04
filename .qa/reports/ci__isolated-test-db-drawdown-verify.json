@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: new CI infrastructure (a Postgres service container, a migration-apply step, a new blocking job) that changes what every future PR touching this area is checked against. Not Critical: strictly additive, isolated, cannot touch production (no production credential is reachable from this job at all). Not Minor: it closes a named, real coverage gap (write-path has no blocking CI check), not a documentation or wording change.",
-  "commit_hash": "5d220cdc",
+  "commit_hash": "1bbfa86c",
   "files": [
     ".github/workflows/gates.yml",
     ".claude/dq_checks.json"
@@ -59,6 +59,13 @@
       "mitigated": true,
       "how": "DATABASE_URL in this job is assembled at runtime from job-level env vars (PGHOST_TEST/PGPORT_TEST/PGUSER_TEST/PGPASSWORD_TEST/PGDATABASE_TEST, all pointing at the job's own localhost service container) -- it never references secrets.DATABASE_URL anywhere in this job, so there is no production secret to typo or misreference in the first place",
       "repro": "grep -A20 \"drawdown-verify-write-path:\" .github/workflows/gates.yml -- no secrets. reference anywhere in this job"
+    },
+    {
+      "scenario": "The first real CI run of this job (PR #1040, run 33840764610) failed in 12s: 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock' -- the shared ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }} pattern every other job in this file uses resolved to a self-hosted runner (wsl-ubuntu-lawre-2, named in the failure log) with no Docker daemon running, so the `services:` Postgres container -- which GitHub Actions implements via Docker -- could never start.",
+      "what_happens": "The job fails every single run, forever, on this repo's actual CI infrastructure -- not a flaky failure, a structural one. Local validation (a real throwaway Postgres, twice) could not catch this because it never involved the self-hosted-runner/Docker question at all.",
+      "mitigated": true,
+      "how": "runs-on hardcoded to `ubuntu-latest` (GitHub-hosted) for this one job only, not the shared RUNNER_LABEL pattern -- GitHub-hosted runners ship Docker pre-installed and running by default, which is the whole mechanism `services:` depends on. Every other job in this file keeps using the fast self-hosted runner; only this one needs hosted infrastructure specifically for Docker.",
+      "repro": "gh run view 33840764610 --log -- the exact failure, timestamped, before this fix; re-run after push confirms whether ubuntu-latest resolves the Docker dependency"
     }
   ],
   "post_merge": {
