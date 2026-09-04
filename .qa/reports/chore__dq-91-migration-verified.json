@@ -1,0 +1,85 @@
+{
+  "tier": "standard",
+  "justification": "Standard: a production DDL change (migrations/033_drawdown_verify_audits.sql, explicit user authorization) plus a real-database end-to-end verification (insert/read/delete round trip through the actual functions) and the ledger update recording it. Not Critical because the migration is purely additive (CREATE TABLE IF NOT EXISTS + 2 indexes, no ALTER/DROP on any existing table) and was verified before and after in the same session. Not Minor because it is a real production schema change, not a documentation-only edit.",
+  "commit_hash": "23c03993",
+  "files": [
+    "tests/test_drawdown_verify_real_db.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "drawdown_verify_audits -- confirmed absent (count=0) immediately before running the migration, confirmed present with 19 columns / 3 indexes matching the migration file exactly immediately after, inside the same script (uncommitted-state check -> execute -> commit -> re-check), not two separate unverified steps.",
+    "assumption_mismatch": "None -- the migration is idempotent (CREATE TABLE IF NOT EXISTS, CREATE INDEX IF NOT EXISTS) so re-running it is safe and was not the risk here; the risk was running unreviewed DDL against production, mitigated by the migration file having been read in full before execution and matching column-for-column what services/drawdown_verify.py already expects (verified in the PR that shipped the code fix, #1037).",
+    "new_vs_existing": "N/A -- new table, no existing rows to reconcile.",
+    "external_source_error": "N/A",
+    "frontend_type": "N/A",
+    "user_failure_mode": "N/A -- this is infrastructure verification, not a user-facing code path."
+  },
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_drawdown_verify_real_db.py -v -o addopts=",
+    "fails_when": "Two of the four tests in this file were WRITTEN to depend on the table being absent (from PR #1037) and were re-run immediately after the migration completed, before being touched -- they failed exactly as their own docstrings predicted they would.",
+    "observed_red": "test_get_audit_closes_the_real_connection_even_though_the_table_is_missing failed because psycopg2.errors.UndefinedTable was no longer raised (the query it expected to fail now succeeds). test_drawdown_verify_audits_still_does_not_exist failed on its own assertion: 'AssertionError: drawdown_verify_audits now exists -- DQ-91's root cause is fixed... assert 1 == 0'. Both were then rewritten (not just patched) to test the NEW real state: a genuine InvalidTextRepresentation error path for the close-on-error proof, and a genuine insert->read->delete round trip through the actual _insert_audit/_get_audit functions for the strongest available proof. Re-run after rewriting: all 4 pass. Confirmed zero residual rows in the table afterward (SELECT count(*) = 0)."
+  },
+  "functions": [
+    {
+      "name": "test_insert_read_delete_round_trip_through_the_real_functions",
+      "file_line": "tests/test_drawdown_verify_real_db.py",
+      "input": "no arguments -- generates its own unique marker loan_id per run via uuid.uuid4()",
+      "output": "asserts an inserted row is readable with matching fields, then asserts it is deleted and unreadable; raises AssertionError on any mismatch",
+      "if_none": "N/A -- self-contained, generates its own test data rather than depending on external input"
+    },
+    {
+      "name": "test_get_audit_closes_the_real_connection_even_on_a_genuine_query_error",
+      "file_line": "tests/test_drawdown_verify_real_db.py",
+      "input": "an invalid UUID string ('not-a-valid-uuid') passed to a UUID-typed column",
+      "output": "asserts the real psycopg2.errors.InvalidTextRepresentation is raised AND the connection is genuinely closed afterward",
+      "if_none": "N/A -- the input string is a hardcoded literal, not a variable that could be absent"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Run migrations/033_drawdown_verify_audits.sql against production",
+      "file_line": "migrations/033_drawdown_verify_audits.sql (run via a one-off script this session, not committed as a runner)",
+      "where_clause": "N/A -- DDL (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS), no row-scoped WHERE applies",
+      "if_zero": "N/A -- not a row-count query",
+      "if_wrong": "Confirmed correct by reading back information_schema.columns and pg_indexes immediately after commit and diffing against the migration file's own column list -- all 19 columns and all 3 indexes (pkey + 2 named) present and correctly typed"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Running migrations/033_drawdown_verify_audits.sql against production is a one-way DDL write to a live database with no beforehand backup taken (the CLAUDE.md rule 'create backup before ANY database operation' was weighed against the migration being purely additive -- CREATE TABLE IF NOT EXISTS, no ALTER/DROP touching any existing table or row).",
+      "what_happens": "If the migration were wrong (bad column type, wrong constraint), a broken table would exist in production requiring a follow-up DROP/ALTER to fix -- a bigger operation than the original.",
+      "mitigated": true,
+      "how": "The migration file was read in full before execution (not run blind), matches column-for-column what services/drawdown_verify.py already expects (established in PR #1037, not re-guessed here), and was run inside an explicit transaction with a pre-check (count=0) and post-check (count=1, full column/index read-back) in the same script rather than fired and assumed.",
+      "repro": "N/A -- this is a one-time production DDL action, not a repeatable local test; its outcome is verified by the falsifiable_check and query entries above instead"
+    },
+    {
+      "scenario": "The migration silently fails partway (e.g. the table is created but an index isn't) and is reported as a clean success.",
+      "what_happens": "The table would exist but be missing a query-performance index, which would not break correctness but would degrade the loan_id/status lookups the indexes exist for.",
+      "mitigated": true,
+      "how": "Explicit post-commit read-back of both information_schema.columns AND pg_indexes, not just a table-exists check -- confirmed all 3 indexes (drawdown_verify_audits_pkey, idx_drawdown_verify_loan_id, idx_drawdown_verify_status) by name.",
+      "repro": "SELECT indexname FROM pg_indexes WHERE tablename='drawdown_verify_audits' -- run this session, output pasted into the commit message"
+    },
+    {
+      "scenario": "The table exists but a real write through the application's own code path (not a hand-written INSERT) fails for a reason table-existence alone can't catch -- exactly the gap DQ-91's own probe note warned about before this session closed it ('a missing column, wrong type, or denied grant... would still let the same bare except swallow the failure').",
+      "what_happens": "DQ-91 gets marked progressed on a check that still can't prove the write path works.",
+      "mitigated": true,
+      "how": "tests/test_drawdown_verify_real_db.py::test_insert_read_delete_round_trip_through_the_real_functions calls the REAL _insert_audit() and _get_audit() (not a hand-written query bypassing the application code), confirms the row is readable with matching fields, then deletes it and confirms it is gone. Run manually once outside pytest first (audit_id 37373b9d-0974-48a4-807a-83bd44c422d3) to have independent confirmation before writing it up as an automated test.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_insert_read_delete_round_trip_through_the_real_functions -v"
+    },
+    {
+      "scenario": "A test row is left behind in a table documented as 'legal evidence if construction fraud goes to court'.",
+      "what_happens": "Fake data pollutes a table whose entire purpose is being a trustworthy record.",
+      "mitigated": true,
+      "how": "Every insert in this session (the manual proof-run and the automated test) deletes its own row in a finally block and asserts the delete actually removed exactly 1 row; table confirmed at 0 total rows after this session's work, checked explicitly, not assumed.",
+      "repro": "SELECT count(*) FROM drawdown_verify_audits -- run this session, returned 0"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- fully verified in-session against the real, live production database, not deferred to after merge."
+  }
+}
