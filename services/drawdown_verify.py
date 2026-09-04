@@ -201,8 +201,15 @@ def _insert_audit(
     scene_after: Optional[str],
 ) -> str:
     """Insert initial audit record; return the UUID."""
+    # prior-art-checked: bugfix to an EXISTING function, not a new data
+    # source/capability -- `with conn:` was already here. psycopg2's
+    # connection context manager only manages COMMIT/ROLLBACK on __exit__,
+    # it does NOT close the connection, so every prior call leaked one
+    # against the pooler. finally: conn.close() on every path, same pattern
+    # already used correctly in scripts/dq_db.py's session().
     audit_id = str(uuid.uuid4())
-    with _db_conn() as conn:
+    conn = _db_conn()
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -215,31 +222,43 @@ def _insert_audit(
                  hyp3_job_name, hyp3_job_id, scene_before, scene_after),
             )
         conn.commit()
+    finally:
+        conn.close()
     return audit_id
 
 
 def _update_audit(audit_id: str, **fields) -> None:
     """Update named fields on an audit record."""
+    # prior-art-checked: same connection-leak bugfix as _insert_audit above,
+    # not a new capability.
     if not fields:
         return
     set_clause = ", ".join(f"{k} = %s" for k in fields)
     values = list(fields.values()) + [audit_id]
-    with _db_conn() as conn:
+    conn = _db_conn()
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 f"UPDATE drawdown_verify_audits SET {set_clause}, updated_at = NOW() WHERE id = %s",
                 values,
             )
         conn.commit()
+    finally:
+        conn.close()
 
 
 def _get_audit(audit_id: str) -> Optional[dict]:
-    with _db_conn() as conn:
+    # prior-art-checked: same connection-leak bugfix as _insert_audit above,
+    # not a new capability.
+    conn = _db_conn()
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT * FROM drawdown_verify_audits WHERE id = %s", (audit_id,)
             )
             row = cur.fetchone()
+    finally:
+        conn.close()
     return dict(row) if row else None
 
 
@@ -501,7 +520,13 @@ def submit_drawdown_verify(req: DrawdownVerifyRequest):
         logger.exception("HyP3 submission failed for loan %s", req.loan_id)
         raise HTTPException(status_code=500, detail=f"HyP3 submission failed: {exc}") from exc
 
-    # Insert audit record
+    # Insert audit record. This table is documented (migrations/033) as the
+    # immutable legal evidence for the verification -- "every API call is
+    # recorded before the result is returned" -- so a failed write must fail
+    # the response, not be logged and silently discharged (DQ-91, 2026-09-04).
+    # The HyP3 job above has already been submitted and is not cancelled here;
+    # its job_name/job_id are in the log line below so it can be reconciled
+    # by hand against HyP3's own dashboard if this branch is ever hit.
     try:
         audit_id = _insert_audit(
             loan_id=req.loan_id,
@@ -513,9 +538,30 @@ def submit_drawdown_verify(req: DrawdownVerifyRequest):
             scene_after=scene_after,
         )
     except Exception as exc:
-        logger.exception("Audit insert failed for loan %s", req.loan_id)
-        # Job is submitted — don't fail the response, but log the DB error
-        audit_id = job_name  # use job_name as fallback ID
+        logger.exception(
+            "Audit insert failed for loan %s (hyp3_job_name=%s, hyp3_job_id=%s) "
+            "-- HyP3 job was already submitted and is now unrecorded; reconcile "
+            "by hand against the HyP3 dashboard",
+            req.loan_id, job_name, hyp3_job_id,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Verification job was submitted to HyP3 but the audit write "
+                "could not be confirmed. The database raised an error on this "
+                "insert, but whether it committed before doing so is not "
+                # Sol cross-review 2026-09-04: the prior wording ("has NOT
+                # been recorded") asserted a certainty this exception cannot
+                # actually give -- the DB could commit and the connection
+                # still drop before acknowledgement reaches this code. Do not
+                # tell a caller a write definitely failed when it might have
+                # succeeded; that is the same class of overclaim as telling
+                # them it definitely succeeded.
+                "knowable from this error alone. Treat this as UNCONFIRMED, "
+                f"not confirmed-absent. hyp3_job_name={job_name} -- quote "
+                "this to support for manual reconciliation."
+            ),
+        ) from exc
 
     logger.info(
         "Drawdown verify submitted | loan=%s stage=%s job_id=%s audit=%s",
