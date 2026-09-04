@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: this branch DELETES code that fabricated regulatory data / silently dropped safety checks on a live, unauthenticated page -- a CRITICAL-class defect by CLAUDE.md's own definition (silent production bug, data corruption in the sense of fake regulatory content). The fix itself is pure removal plus baseline/ledger bookkeeping: no new query, no new endpoint, no new logic that could itself introduce a new silent-failure class. Not Critical: nothing is added that could fail silently -- there is no new code path to break. Not Minor: it changes what a live public page serves and removes a real endpoint.",
-  "commit_hash": "1e082550",
+  "commit_hash": "45f99740",
   "files": [
     "services/compliance_api_server.py",
     "services/enhanced_compliance_api.py",

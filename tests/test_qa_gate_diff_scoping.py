@@ -32,7 +32,17 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
 def real_repo(tmp_path: Path) -> Path:
     r = tmp_path / "repo"
     r.mkdir()
-    _git(r, "init", "-q")
+    # Sol cross-review (2026-09-05): tests in this file create a SEPARATE
+    # "main" branch at a specific commit to give changed_line_numbers() a
+    # base to diff against (see test_a_non_utf8_byte_in_the_diff_does_not_
+    # crash). If the environment's own init.defaultBranch is already "main"
+    # (common -- newer git defaults to it), that later `git branch main
+    # HEAD` fails (branch already exists), HEAD and "main" stay the SAME
+    # ref, and a same-branch diff comes back silently empty -- the wrong
+    # failure, for the wrong reason. `-b work` fixes the starting branch
+    # name explicitly so "main" is always available to create fresh,
+    # regardless of any environment's git config.
+    _git(r, "init", "-q", "-b", "work")
     _git(r, "config", "user.email", "t@example.com")
     _git(r, "config", "user.name", "T")
     top = _git(r, "rev-parse", "--show-toplevel").stdout.strip()
@@ -119,7 +129,15 @@ class TestChangedLineNumbers:
         # checked-out one -- `branch -m` would relabel the very branch HEAD
         # follows, so "main" and HEAD would still be the same ref after the
         # next commit and `git diff main HEAD` would show nothing at all.
-        _git(real_repo, "branch", "main", "HEAD")
+        # Asserted, not just run: if this ever fails silently (e.g. "main"
+        # already existed for some reason the real_repo fixture's `-b work`
+        # did not anticipate), every assertion below would fail for the
+        # WRONG reason -- a same-branch, always-empty diff -- rather than
+        # this one, clear reason.
+        branch_result = _git(real_repo, "branch", "main", "HEAD")
+        assert branch_result.returncode == 0, (
+            f"could not create 'main' at HEAD: {branch_result.stderr}"
+        )
         bad.write_bytes(b"# area is 20\xb2 sqm\ndef f():\n    return 2\n")
         _git(real_repo, "add", "-A")
         _git(real_repo, "commit", "-q", "-m", "edit the file with the bad byte")
