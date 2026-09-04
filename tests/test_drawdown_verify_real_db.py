@@ -20,11 +20,23 @@ Run it:
     PYTEST_REAL_DB=1 DATABASE_URL=<supabase pooler url> pytest -m database \
         tests/test_drawdown_verify_real_db.py -v
 
-Deliberately does NOT touch drawdown_verify_audits with a write -- the table
-does not exist in production (that is DQ-91's root cause, still open pending
-migration approval), and this file must not be the thing that first creates
-data in it. Every test here is read-only or expects the query to fail because
-the table is absent, and asserts nothing is left open regardless.
+UPDATE 2026-09-04: migrations/033_drawdown_verify_audits.sql was run against
+production (explicit user authorization) after this file was first written --
+verified live: 19 columns, 3 indexes, matching the migration exactly. The
+table-absence tests below were pinned to fail the moment that happened, and
+they did (confirmed: test_get_audit_closes_the_real_connection_even_though_
+the_table_is_missing failed because the query it expected to error no longer
+does; test_drawdown_verify_audits_still_does_not_exist failed on its own
+`assert count == 0`). Rewritten per their own instructions: the DQ-91 root
+cause for THIS table is fixed, proven by a genuine insert -> read-back ->
+delete round trip through the real _insert_audit/_get_audit functions (run
+manually first outside pytest to confirm before writing it up as a test:
+audit_id 37373b9d-0974-48a4-807a-83bd44c422d3, inserted, read back with
+matching fields, deleted, confirmed gone). The 3 OTHER tables DQ-91 also
+tracks (basix_provisions, sepp_provisions, special_provisions_registry) were
+NOT touched -- their liveness was only partially checked this session (ruled
+out as registered routers in compliance_api_server.py; not fully re-verified
+beyond that), so DQ-91 stays declared 'open' (probe count 4 -> 3, not 0).
 
 What this file does NOT and importantly SHOULD NOT do: call the real HyP3 API.
 _submit_hyp3_job talks to a paid third-party InSAR processing service (ASF
@@ -104,13 +116,12 @@ class TestRealConnectionLifecycle:
         with pytest.raises(psycopg2.InterfaceError):
             conn.cursor()
 
-    def test_get_audit_closes_the_real_connection_even_though_the_table_is_missing(self):
-        """Uses the ACTUAL DQ-91 root cause (drawdown_verify_audits does not
-        exist in production) as the natural failure trigger -- no mock stands
-        in for the failure, the failure is real. Proves _get_audit's
-        finally: conn.close() fires against a genuine connection on a genuine
-        error, and that the connection this test itself opened is truly
-        closed afterward -- not merely recorded-as-closed by a mock."""
+    def test_get_audit_closes_the_real_connection_even_on_a_genuine_query_error(self):
+        """The table now exists, so the natural failure trigger changed: an
+        invalid UUID string sent to a UUID-typed column raises a genuine
+        psycopg2.errors.InvalidTextRepresentation from the real driver. Same
+        proof as before (finally: conn.close() fires on a real connection on
+        a real error), different real error to trigger it with."""
         _skip_if_no_real_db()
         import psycopg2
 
@@ -148,8 +159,8 @@ class TestRealConnectionLifecycle:
 
         from unittest.mock import patch
         with patch.object(dv, "_db_conn", return_value=proxy):
-            with pytest.raises(psycopg2.errors.UndefinedTable):
-                dv._get_audit(str(uuid.uuid4()))
+            with pytest.raises(psycopg2.errors.InvalidTextRepresentation):
+                dv._get_audit("not-a-valid-uuid")
 
         assert proxy.close_called, (
             "finally: conn.close() did not fire on the real connection when "
@@ -161,27 +172,71 @@ class TestRealConnectionLifecycle:
         with pytest.raises(psycopg2.InterfaceError):
             real_conn.cursor()
 
-    def test_drawdown_verify_audits_still_does_not_exist(self):
-        """Pinned so this file fails loudly (not silently stops testing
-        anything meaningful) the moment someone runs migration 033 and this
-        test file's premise -- 'the table is absent, so its absence is what
-        proves the finally: block fires on a genuine error' -- stops holding.
-        When this goes red, update DQ-91's declared status and rewrite (not
-        delete) the two tests above to insert-then-delete a real throwaway
-        row instead."""
+    def test_drawdown_verify_audits_exists_with_the_expected_schema(self):
+        """Replaces the old absence-watchdog now that migration 033 has run
+        (explicit user authorization, 2026-09-04). Confirms the live schema
+        matches the migration, not just that a table with this name exists."""
         _skip_if_no_real_db()
         conn = dv._db_conn()
         try:
             cur = conn.cursor()
             cur.execute(
-                "SELECT count(*) AS cnt FROM information_schema.tables "
-                "WHERE table_schema='public' AND table_name='drawdown_verify_audits'"
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema='public' AND table_name='drawdown_verify_audits' "
+                "ORDER BY ordinal_position"
             )
-            count = cur.fetchone()["cnt"]  # RealDictCursor -- dict-like row
+            columns = [r["column_name"] for r in cur.fetchall()]
         finally:
             conn.close()
-        assert count == 0, (
-            "drawdown_verify_audits now exists -- DQ-91's root cause is "
-            "fixed. Update .claude/dq_checks.json (declared: fixed) and "
-            "rewrite the two tests above to use a real insert+delete."
+        expected = {
+            "id", "loan_id", "address", "stage_claimed", "hyp3_job_name",
+            "hyp3_job_id", "scene_before", "scene_after", "status",
+            "confidence", "coherence_delta", "coherence_before",
+            "coherence_after", "evidence_date_before", "evidence_date_after",
+            "manual_review", "geotiff_r2_key", "error_message",
+            "created_at", "updated_at",
+        }
+        assert set(columns) == expected, (
+            f"Live schema drifted from migrations/033_drawdown_verify_audits.sql "
+            f"-- got {sorted(columns)}"
         )
+
+    def test_insert_read_delete_round_trip_through_the_real_functions(self):
+        """The strongest proof available: not just 'the table exists' or
+        'close() gets called' but the full path a real caller depends on --
+        _insert_audit really writes a row, _get_audit really reads it back
+        with the right values, and cleanup really removes it. Run manually
+        once outside pytest first to confirm before writing this up
+        (audit_id 37373b9d-0974-48a4-807a-83bd44c422d3, 2026-09-04) -- this
+        test reproduces that run under the suite so it is re-checked, not a
+        one-off claim."""
+        _skip_if_no_real_db()
+        marker = f"TEST-DQ91-{uuid.uuid4()}"
+        audit_id = dv._insert_audit(
+            loan_id=marker,
+            address="TEST ADDRESS -- not a real property",
+            stage_claimed="slab",
+            hyp3_job_name="test-job-name",
+            hyp3_job_id="test-job-id",
+            scene_before="test-scene-before",
+            scene_after="test-scene-after",
+        )
+        try:
+            row = dv._get_audit(audit_id)
+            assert row is not None, "insert claimed to succeed but the row cannot be read back"
+            assert row["loan_id"] == marker
+            assert row["status"] == "submitted"
+        finally:
+            # This table is documented as legal evidence -- no test rows left
+            # behind regardless of whether the assertions above passed.
+            conn = dv._db_conn()
+            try:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM drawdown_verify_audits WHERE id = %s", (audit_id,))
+                conn.commit()
+                deleted = cur.rowcount
+            finally:
+                conn.close()
+            assert deleted == 1, f"expected to delete exactly 1 test row, deleted {deleted}"
+
+        assert dv._get_audit(audit_id) is None, "cleanup failed -- test row still present"

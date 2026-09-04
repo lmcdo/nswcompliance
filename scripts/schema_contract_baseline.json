@@ -1,5 +1,5 @@
 {
-  "_comment": "Known invalid SQL references, accepted so the gate can be enforced today. This list may only SHRINK: a new entry fails CI, and an entry that no longer occurs ALSO fails CI, so it gets deleted rather than lingering as a permanent amnesty. History: opened at 18 entries 2026-08-01; the 8 tod/parking-rates entries were fixed in the same PR (repointed onto dcp_setback_controls) and removed, leaving 10.",
+  "_comment": "Known invalid SQL references, accepted so the gate can be enforced today. This list may only SHRINK: a new entry fails CI, and an entry that no longer occurs ALSO fails CI, so it gets deleted rather than lingering as a permanent amnesty. History: opened at 18 entries 2026-08-01; the 8 tod/parking-rates entries were fixed in the same PR (repointed onto dcp_setback_controls) and removed, leaving 10. drawdown_verify_audits removed 2026-09-04 -- migration 033 run against production (DQ-91, explicit user authorization), table now exists and was proven end-to-end (insert/read/delete round trip through the real functions), leaving 9.",
   "_generated": "2026-08-01",
   "_triage_method": "Reachability traced by import/render graph, not assumed. Frontend: API route -> importing component -> is that component ever rendered in JSX. Python: module -> importer -> is it in the Dockerfile.python entrypoint graph (uvicorn services.compliance_api_server:app). Every table/column absence confirmed individually against information_schema on the live database.",
   "entries": [
@@ -51,13 +51,6 @@
       "kind": "table",
       "status": "deployed",
       "note": "In the deployed import graph: Dockerfile.python runs services.compliance_api_server, which imports enhanced_compliance_api, which imports this. Whether the query executes depends on which endpoint is called - NOT established here, so this is 'deployed', not 'LIVE'. Table has never existed in the catalog."
-    },
-    {
-      "file": "services/drawdown_verify.py",
-      "ref": "drawdown_verify_audits",
-      "kind": "table",
-      "status": "deployed",
-      "note": "Imported directly by services/compliance_api_server.py (the deployed entrypoint). Three references: one INSERT and two reads. Table absent from the catalog, so any drawdown audit write is lost."
     },
     {
       "file": "services/sepp_quantitative_extractor.py",
