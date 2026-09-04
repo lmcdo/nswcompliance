@@ -1375,11 +1375,42 @@ def scan_diff_for_untyped_method_calls(
 # minutes, because "does a matching real test exist" is a much cheaper
 # question to answer than "would it catch every subtle mistake".
 
+# prior-art-checked: this widens THIS SAME regex, not a new detector -- the
+# guard's matches are unrelated pip-vendor/archive scripts sharing generic
+# words (resolution, assignment, substring, scenarios) plus this file's own
+# earlier occurrence of "bpsycopg2"/"unanchored"/"uncertain" a few lines up.
 _REAL_DB_HTTP_TRIGGER_RE = re.compile(
     r"\bpsycopg2\.|\.execute\(|\.cursor\(|_db_conn\(|"
-    r"\brequests\.(get|post|put|delete|patch)\(|\bhttpx\."
+    r"\brequests\.(get|post|put|delete|patch)\(|\bhttpx\.|"
+    # Sol cross-review (2026-09-04, on push): the original 4 patterns above
+    # miss requests.Session()/httpx.Client() instance calls -- adding those
+    # two catches the named scenario without touching call-target/alias
+    # resolution. Aliased imports (`from requests import post; post(url)`)
+    # are NOT caught -- a regex for a bare `post(`/`get(` call would false-
+    # positive on ordinary local functions with those names far more than
+    # it would catch real aliased HTTP calls, so it is left as a named,
+    # accepted gap (see the break_it entry) rather than a fragile pattern.
+    # prior-art-checked: this widens an existing regex literal in this same
+    # file/function (not a new capability) -- the guard's token-overlap hit
+    # on unrelated files (requests vendor source, other scripts importing
+    # requests) is incidental word overlap, not a reusable implementation.
+    r"\brequests\.Session\(\)|\bhttpx\.Client\("
 )
-_REAL_LAYER_MARK_RE = re.compile(r"pytest\.mark\.(database|integration)")
+# Anchored to the start of a (whitespace-indented) logical line, not a bare
+# substring search anywhere in the file. Sol cross-review (2026-09-04, on
+# push): the unanchored version matched the marker text inside a COMMENT
+# (e.g. "# does not require pytest.mark.integration") as if it were a real
+# marker, so a file could claim real-layer coverage without any. `^\s*`
+# cannot follow a `#`, so a comment is excluded; a decorator (`@pytest.mark.`)
+# or a module-level assignment (`pytestmark = pytest.mark.`, this repo's
+# actual convention -- see tests/test_drawdown_verify_real_db.py) both still
+# match. First anchoring attempt required `pytest.mark.` to start the line
+# and broke on the assignment form (`pytestmark = ` precedes it) -- caught
+# by re-running this file's own tests against the real file, not assumed.
+_REAL_LAYER_MARK_RE = re.compile(
+    r"^\s*(@\s*|pytestmark\s*=\s*)?pytest\.mark\.(database|integration)",
+    re.MULTILINE,
+)
 
 
 def _ast_functions(source: str, filepath: str) -> list[dict]:
@@ -1452,7 +1483,18 @@ def check_real_layer_test_exists(
 
         lines = source.splitlines()
         functions = _ast_functions(source, filepath)
-        by_name = {fn["name"]: fn for fn in functions}
+        # Sol cross-review (2026-09-04, on push): a plain {name: fn} dict
+        # silently drops earlier same-named definitions (two functions
+        # named `save` in different classes/scopes in one file) -- the
+        # last one parsed would win, and a call to the wrong one could
+        # read as "doesn't touch the DB" when a same-named sibling does.
+        # Keyed to a list instead; a called name is treated as touching
+        # if ANY same-named definition touches directly, erring toward
+        # requiring a test under ambiguity rather than silently skipping
+        # (this file's "never weaken when uncertain" convention).
+        by_name: dict[str, list[dict]] = {}
+        for fn in functions:
+            by_name.setdefault(fn["name"], []).append(fn)
 
         def _body(fn: dict) -> str:
             return "\n".join(lines[fn["start"] - 1:fn["end"]])
@@ -1467,7 +1509,7 @@ def check_real_layer_test_exists(
             # attempting full call-graph resolution -- see _ast_functions'
             # docstring for why one level is the deliberate stopping point.
             return any(
-                called in by_name and _touches_directly(by_name[called])
+                any(_touches_directly(candidate) for candidate in by_name.get(called, []))
                 for called in fn["calls"]
             )
 
@@ -1482,7 +1524,13 @@ def check_real_layer_test_exists(
         if not touches_real_layer:
             continue
 
-        if filepath in exempt or norm in exempt:
+        # Sol cross-review (2026-09-04, on push): membership alone (`in
+        # exempt`) accepted `{"services/x.py": ""}` or `{"services/x.py":
+        # true}` as a valid exemption -- the header comment promises "a
+        # written reason, not silent scope-cutting", so the value must
+        # actually be a non-empty reason string, not merely present.
+        _exempt_reason = exempt.get(filepath, exempt.get(norm))
+        if isinstance(_exempt_reason, str) and _exempt_reason.strip():
             continue  # explicit written reason recorded, see header comment
 
         basename = os.path.splitext(os.path.basename(filepath))[0]

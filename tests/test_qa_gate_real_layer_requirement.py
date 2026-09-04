@@ -115,6 +115,50 @@ class TestSyntheticCases:
         )
         assert errors == []
 
+    def test_empty_or_non_string_exemption_is_rejected(self, tmp_path):
+        """Sol cross-review (2026-09-04): membership in real_layer_exempt was
+        being treated as sufficient on its own -- an empty string or `true`
+        (no actual reason written) must NOT suppress the finding."""
+        self._write(tmp_path, "services/widget.py", (
+            "import psycopg2\n"
+            "def save(x):\n"
+            "    conn = psycopg2.connect('...')\n"
+            "    conn.cursor().execute('INSERT INTO widgets VALUES (%s)', (x,))\n"
+        ))
+        changed = {"services/widget.py": {2, 3, 4}}
+        for bad_value in ("", "   ", True, None):
+            report = {"real_layer_exempt": {"services/widget.py": bad_value}}
+            errors = check_real_layer_test_exists(
+                report, ["services/widget.py"], str(tmp_path), changed
+            )
+            assert len(errors) == 1, f"bad_value={bad_value!r} was wrongly accepted as an exemption"
+
+    def test_duplicate_function_names_in_one_file_do_not_hide_a_db_touching_sibling(self, tmp_path):
+        """Sol cross-review (2026-09-04): {name: fn} silently dropped
+        earlier same-named definitions -- two functions named `helper` in
+        different scopes, where the CHANGED caller resolves (by name) to
+        whichever one this dict happened to keep last. Must be treated as
+        touching if ANY same-named definition touches directly."""
+        self._write(tmp_path, "services/widget.py", (
+            "import psycopg2\n"
+            "class A:\n"
+            "    def helper(self):\n"
+            "        return 1  # unrelated, no DB\n"
+            "\n"
+            "class B:\n"
+            "    def helper(self):\n"
+            "        psycopg2.connect('...').cursor().execute('SELECT 1')\n"
+            "\n"
+            "def public_entry_point():\n"
+            "    return helper()\n"
+        ))
+        # Only public_entry_point changed. Ambiguous which `helper` it
+        # actually calls at runtime -- must err toward flagging.
+        errors = check_real_layer_test_exists(
+            {}, ["services/widget.py"], str(tmp_path), {"services/widget.py": {10, 11}}
+        )
+        assert len(errors) == 1
+
     def test_unchanged_lines_in_a_db_touching_function_are_not_flagged(self, tmp_path):
         """A PR touching an unrelated part of the file, not the DB-touching
         function itself, should not be forced to add a test for code it
