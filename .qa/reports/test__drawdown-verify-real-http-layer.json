@@ -1,0 +1,108 @@
+{
+  "tier": "standard",
+  "justification": "Standard: closes a gap raised directly in session -- every prior test for the DQ-91 fixes (#1037, #1038) called submit_drawdown_verify() as a plain Python function, never through a real HTTP request. This adds the missing layer: FastAPI TestClient against the real router, real database (migration already live), only the two genuinely-external paid third-party calls mocked. Not Critical: no new production code, purely additive tests. Not Minor: it is proving a real claim about a live endpoint's HTTP contract that was previously unproven.",
+  "commit_hash": "37da2666",
+  "files": [
+    "tests/test_drawdown_verify_real_db.py",
+    ".github/workflows/gates.yml",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "scripts/dq_probe_live.py"
+  ],
+  "pre_impl": {
+    "existing_data": "drawdown_verify_audits -- already live (migration 033, PR #1038). This adds no new schema, only exercises the existing table through the existing endpoint's real HTTP contract.",
+    "assumption_mismatch": "Calling submit_drawdown_verify() directly (as every prior test did) and asserting on the raised HTTPException's .status_code is a narrower claim than 'the API returns this status code' -- FastAPI's own exception handling and response serialization sit between the function and a real client, and neither test suite before this one exercised that layer. TestClient closes that gap.",
+    "new_vs_existing": "N/A -- test-only change, no data model change.",
+    "external_source_error": "The two external calls this test mocks (_find_sentinel1_scenes, _submit_hyp3_job) are paid third-party APIs (ASF Earthdata, HyP3). Calling them for real in an automated test is deliberately out of scope -- documented in the class docstring, not silently absent.",
+    "frontend_type": "N/A -- backend-only endpoint, no frontend caller found in this repo.",
+    "user_failure_mode": "N/A -- test-only change."
+  },
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 pytest -m database tests/test_drawdown_verify_real_db.py::TestRealHttpLayer -v -o addopts=",
+    "fails_when": "Run against the pre-#1037 code (the version before the fail-closed fix), in a disposable worktree pinned to commit 028e7d4d with only this test file copied in, against the real production database.",
+    "observed_red": "test_real_http_request_on_audit_failure_returns_a_real_500_with_the_exact_expected_body FAILED: 'assert response.status_code == 500 / AssertionError: assert 200 == 500 / where 200 = <Response [200 OK]>.status_code' -- a REAL HTTP request through the REAL pre-fix router returned a real 200 where it should have failed, reproducing the exact DQ-91 defect (a caller told 'submitted' when the audit insert silently failed) through the real HTTP layer rather than by calling the function directly. test_real_http_request_on_success_actually_writes_a_readable_row_and_cleans_up PASSED both before and after (unrelated to this specific bug, correctly unaffected). Re-run against the current code (this branch): both tests pass."
+  },
+  "functions": [
+    {
+      "name": "test_real_http_request_on_audit_failure_returns_a_real_500_with_the_exact_expected_body",
+      "file_line": "tests/test_drawdown_verify_real_db.py (TestRealHttpLayer)",
+      "input": "A real POST to /pipeline/drawdown-verify via FastAPI TestClient, with _insert_audit mocked to raise",
+      "output": "Asserts response.status_code == 500 and the exact response body wording ('could not be confirmed', 'UNCONFIRMED')",
+      "if_none": "N/A -- request body is a hardcoded literal, not optional input"
+    },
+    {
+      "name": "test_real_http_request_on_success_actually_writes_a_readable_row_and_cleans_up",
+      "file_line": "tests/test_drawdown_verify_real_db.py (TestRealHttpLayer)",
+      "input": "A real POST to /pipeline/drawdown-verify via FastAPI TestClient, HyP3/scene-search mocked, DB layer real",
+      "output": "Asserts response.status_code == 200, then reads the row back from the REAL database (not the mock) by the job_id the response returned, confirms exact field values, then deletes it",
+      "if_none": "N/A -- request body is a hardcoded literal, not optional input"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Confirm the real row the real HTTP request wrote actually exists and matches the request's fields",
+      "file_line": "tests/test_drawdown_verify_real_db.py, inside test_real_http_request_on_success_actually_writes_a_readable_row_and_cleans_up",
+      "where_clause": "WHERE id = %s (job_id from the real response)",
+      "if_zero": "Test fails with an explicit message: 'the API returned 200 but no row exists for the job_id it gave back' -- exactly the class of silent lie DQ-91 was about, now checked at the HTTP layer",
+      "if_wrong": "Field-by-field assertion (loan_id, status) against the request's actual values, not just presence"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A test row from this test is left behind in a table documented as legal evidence.",
+      "what_happens": "Fake data pollutes a table whose entire purpose is being a trustworthy record.",
+      "mitigated": true,
+      "how": "finally: block deletes the row by the real job_id the response returned, regardless of assertion outcome",
+      "repro": "SELECT count(*) FROM drawdown_verify_audits -- confirmed 0 after this test's own manual run this session"
+    },
+    {
+      "scenario": "This test accidentally calls the real HyP3/ASF Earthdata API, incurring real cost or requiring credentials this environment does not have.",
+      "what_happens": "Test suite becomes flaky/expensive/blocked on external credentials nobody provisioned for CI.",
+      "mitigated": true,
+      "how": "Both _find_sentinel1_scenes and _submit_hyp3_job are patched in every test in this class -- only the database and the HTTP/routing layer are real",
+      "repro": "grep -n 'patch.object(dv,' tests/test_drawdown_verify_real_db.py -- both external calls patched in both TestRealHttpLayer tests"
+    },
+    {
+      "scenario": "Nothing runs this file unless someone remembers to type PYTEST_REAL_DB=1 -m database -- the exact 'depends on being reminded' gap named directly in session, for the 5th time this session (also true of test_lga_coverage.py, test_dcp_setback_validation.py, test_conveyancing_nearby_da_council.py, test_precinct_ancestor_resolution.py, none of which any CI workflow currently runs).",
+      "what_happens": "This test (and the DB-layer tests around it) can silently rot -- pass once, then never run again, with nobody noticing when a later change breaks them.",
+      "mitigated": true,
+      "how": "MITIGATED in this same PR (not a follow-up after all): .github/workflows/gates.yml schema-contract job now runs PYTEST_REAL_DB=1 pytest -m database tests/test_drawdown_verify_real_db.py on every PR and push to main, BLOCKING. Scoped to only this one file (not the whole -m database marker set) because running the full set surfaced a real, pre-existing, unrelated failure (tests/test_lga_coverage.py, now tracked as DQ-93) that wiring in as blocking today would fail every future PR on. That file needs its own decision and is deliberately left out of this PR.",
+      "repro": "gh workflow view gates -- the new \"Real-database integration tests (drawdown-verify)\" step in the schema-contract job"
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): DQ-93 probe used NULLIF(COUNT(*),0), which returns NULL (not an error) on zero rows -- CASE WHEN NULL THEN 1 ELSE 0 END silently evaluates to 0 (clean), so a council whose provisions were all deleted/deactivated would report FIXED instead of the real problem (no data at all).",
+      "what_happens": "A zero-data state reads identically to a clean state -- exactly the false-reassurance shape this whole session has been about closing.",
+      "mitigated": true,
+      "how": "scripts/dq_probe_live.py DQ-93 query -- explicit WHEN COUNT(*) = 0 THEN 1 branch checked FIRST, re-verified live (still correctly reports 1/red for the real 14.8% finding).",
+      "repro": "python scripts/dq_probe_live.py --id DQ-93"
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): the success HTTP test only started its cleanup finally AFTER asserting status/body/job_id -- a malformed response (real DB write already committed server-side, but e.g. no job_id key) would raise before cleanup ran, leaving a fake TEST-DQ91-HTTP-* row permanently in a table documented as legal evidence.",
+      "what_happens": "Fake data could survive in production with no automatic cleanup path.",
+      "mitigated": true,
+      "how": "tests/test_drawdown_verify_real_db.py -- the entire request+assertions now sit inside the try; cleanup deletes by the loan_id marker this test itself generates and controls, not by the response job_id, so cleanup no longer depends on the system under test returning a well-formed response.",
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_drawdown_verify_real_db.py::TestRealHttpLayer::test_real_http_request_on_success_actually_writes_a_readable_row_and_cleans_up -v -o addopts="
+    },
+    {
+      "scenario": "Sol cross-review (round 2, on push): gates.yml wired the WHOLE test_drawdown_verify_real_db.py file into CI, including 2 tests that genuinely INSERT/DELETE -- but re-reading this same file's own earlier comment (line 136) shows DATABASE_URL in CI is the ci_readonly role, default_transaction_read_only=on. Writes would be refused at the SERVER, meaning the CI step as first written would have failed on every run, and more importantly exposes the question of write-capable PR-triggered CI code at all.",
+      "what_happens": "CI step breaks immediately on the two write tests; separately, any write-capable credential reachable from PR-controlled code is a real elevated-privilege surface regardless of whether it happens to work.",
+      "mitigated": true,
+      "how": ".github/workflows/gates.yml -- CI step now selects only the 4 read-only-safe tests by explicit pytest node ID (2 pure SELECT, 1 schema check, 1 mocked-failure path that never reaches a real INSERT). The 2 write-requiring tests stay local-only, run by hand against a writable credential.",
+      "repro": "grep -A3 \"Real-database integration tests\" .github/workflows/gates.yml -- 4 explicit test IDs, not the whole file"
+    },
+    {
+      "scenario": "Sol cross-review (round 3, on push): restricting CI to the 4 read-only-safe tests means the actual write path -- a real INSERT succeeding through the real endpoint with a well-formed response -- is no longer covered by any BLOCKING check on any PR or push. A change that breaks the INSERT itself (bad SQL, a schema/type mismatch, a malformed 200 response) would pass CI: the read-only tests never attempt that INSERT, and the one HTTP test CI does run is the FAILURE path, where _insert_audit is mocked to raise before any real write is attempted.",
+      "what_happens": "CI stays green while the actual \"does a successful request really work\" path silently breaks -- exactly the class of gap this whole session has been about closing, now re-introduced one level up by the credential-safety fix.",
+      "mitigated": false,
+      "how": "NOT mitigated in this PR. The correct fix -- an isolated, disposable, writable Postgres service in CI (a GitHub Actions services: Postgres container with migrations applied), so the write-path tests run against something that is not production -- is a real infrastructure change (provisioning, migration-running, connection wiring) that was not built and could not be verified against an actual CI run in this session's remaining time. Building it blind and pushing untested YAML would be worse than leaving this gap named. The 2 write-path tests remain committed and correct, just local-only for now: run PYTEST_REAL_DB=1 pytest -m database tests/test_drawdown_verify_real_db.py -v -o addopts= by hand against a writable credential whenever services/drawdown_verify.py changes, until the isolated CI database exists.",
+      "repro": "N/A -- this is a coverage gap, not something a local test reproduces; the absence itself is the finding"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- fully verified in-session against real production, both success and forced-failure paths."
+  }
+}

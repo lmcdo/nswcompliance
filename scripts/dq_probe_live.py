@@ -1312,6 +1312,45 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "a confirmed-clean review set; both need chapter-level or DQ-71 "
         "verification before either claim can be made.",
     ),
+    "DQ-93": (
+        "inner-west/marrickville NULL v2_topic rate vs its own 10% threshold",
+        # Found live 2026-09-04 while wiring tests/test_drawdown_verify_real_db.py
+        # into CI (DQ-91/DQ-92): tests/test_lga_coverage.py already has a
+        # parametrised check for exactly this (test_no_null_v2_topic,
+        # per-council thresholds in ONBOARDED_LGAS), but that file carries
+        # pytest.mark.database, is deselected by pytest.ini's default addopts,
+        # and nothing in this repo had ever invoked it with PYTEST_REAL_DB=1 --
+        # the identical root cause as DQ-91/DQ-92, on a different file. Query
+        # copied from that test's own body, not re-derived, so this probe and
+        # that test can never quietly disagree about what "over threshold"
+        # means. Deliberately does NOT point dq_checks.json at a raw
+        # `pytest -m database ...` invocation: without PYTEST_REAL_DB=1 set,
+        # that command SKIPS (pytest exit 0), which dq_check.py reads as
+        # PASSED -- the exact false-reassurance shape this ledger exists to
+        # prevent. Routing through dq_probe_live.py instead means an
+        # unreachable database exits 2 (UNKNOWN), never a silent pass, via
+        # dq_db.py's own connect().
+        # Sol cross-review (2026-09-04, on push): the original NULLIF(COUNT(*),0)
+        # form returns NULL, not 1, when zero rows match -- CASE WHEN NULL THEN
+        # 1 ELSE 0 END evaluates to 0, so a council whose provisions were all
+        # deleted/deactivated would report CLEAN (0) instead of the actual
+        # problem (no data at all). Zero-row is checked explicitly FIRST.
+        "SELECT CASE "
+        "  WHEN COUNT(*) = 0 THEN 1 "
+        "  WHEN COUNT(*) FILTER (WHERE v2_topic IS NULL)::float / COUNT(*) > 0.10 THEN 1 "
+        "  ELSE 0 END "
+        "FROM regulatory_provisions "
+        "WHERE source_council = 'marrickville' AND is_current = TRUE",
+        (),
+        "inner-west/marrickville's live NULL v2_topic rate exceeds the 10% "
+        "threshold tests/test_lga_coverage.py's own ONBOARDED_LGAS config "
+        "sets for it -- measured 2026-09-04 at 14.8% (583 of 3,934). Not "
+        "investigated further here: why this council drifted specifically, "
+        "or whether other ONBOARDED_LGAS entries are also currently red -- "
+        "only this one was observed this session. Fix = re-run topic "
+        "classification for this council (the underlying test's own error "
+        "message), not attempted here.",
+    ),
 }
 
 

@@ -540,3 +540,68 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/check_served_answer_quality.py --baseline
+      # Real-database integration tests, BLOCKING, on the one trigger
+      # guaranteed to fire. Named directly in session (2026-09-04): every
+      # test in tests/*.py that carries @pytest.mark.database is deselected
+      # by pytest.ini's default addopts and requires PYTEST_REAL_DB=1 --
+      # opt-in, on purpose, so the mocked suite everyone runs stays fast and
+      # untouched by production credentials. But opt-in only protects
+      # anything if someone remembers to opt in, and nothing in this repo
+      # ever did for these files before now.
+      #
+      # Scoped to ONE file, not `-m database` over the whole tests/ tree.
+      # Checked, not assumed: running the full marker set surfaced a REAL,
+      # PRE-EXISTING failure with nothing to do with this change --
+      # tests/test_lga_coverage.py found inner-west/marrickville at 14.8%
+      # NULL v2_topic against its own 10% threshold, live in production,
+      # undetected because nothing has ever run this file either. Wiring
+      # the whole marker set in as BLOCKING today would fail every future
+      # PR on a defect this workflow did not introduce. That file needs
+      # its own decision (fix the data, or land in observation mode first
+      # like the "Output grounding" step above already does for exactly
+      # this reason) -- tracked separately, not silently absorbed here.
+      #
+      # tests/test_drawdown_verify_real_db.py is the one file confirmed
+      # green end-to-end this session: real connection lifecycle, a real
+      # insert/read/delete round trip, and a real HTTP request through
+      # FastAPI's actual routing (not just the bare Python function) --
+      # force-failed against the pre-fix code in a disposable worktree
+      # before being trusted here.
+      #
+      # Sol cross-review (2026-09-04, on push) caught what this file's own
+      # comment above already documents but this step ignored: DATABASE_URL
+      # here is the `ci_readonly` role (default_transaction_read_only=on --
+      # see the comment on the python-tests job above). Two of this file's
+      # six tests genuinely WRITE (insert a real row, delete it) and would
+      # fail here, not because the fix is wrong but because the CI
+      # credential correctly refuses the write at the SERVER, which is the
+      # point of that role. Selected explicitly to the 4 tests that only
+      # ever SELECT -- the connection-lifecycle open/close/schema checks,
+      # and the failure-path HTTP test, where _insert_audit is mocked to
+      # raise before any real INSERT is attempted. The 2 write-requiring
+      # tests (test_insert_read_delete_round_trip_through_the_real_functions,
+      # test_real_http_request_on_success_actually_writes_a_readable_row_and_
+      # cleans_up) stay local-only, run by hand against a writable
+      # credential when this file changes -- not CI, and not against a role
+      # that can act on PR-controlled code with write access to production.
+      #
+      # KNOWN GAP (Sol cross-review round 3, 2026-09-04, not yet closed): this
+      # means the actual write path -- a real INSERT succeeding end-to-end
+      # through the real endpoint -- has no BLOCKING CI coverage. A change
+      # that broke the INSERT itself would pass every check here, because
+      # none of the 4 selected tests attempt one. The correct fix is an
+      # isolated, disposable, writable Postgres service in CI (migrations
+      # applied, never production) -- real infrastructure work, not
+      # attempted this session because it could not be verified against an
+      # actual CI run in the time available, and untested CI YAML is worse
+      # than a named gap.
+      - name: Real-database integration tests (drawdown-verify, read-only subset)
+        env:
+          PYTEST_REAL_DB: "1"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python -m pytest -m database -o addopts= -v \
+            "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_db_conn_returns_a_real_psycopg2_connection_and_close_actually_closes_it" \
+            "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_get_audit_closes_the_real_connection_even_on_a_genuine_query_error" \
+            "tests/test_drawdown_verify_real_db.py::TestRealConnectionLifecycle::test_drawdown_verify_audits_exists_with_the_expected_schema" \
+            "tests/test_drawdown_verify_real_db.py::TestRealHttpLayer::test_real_http_request_on_audit_failure_returns_a_real_500_with_the_exact_expected_body"
