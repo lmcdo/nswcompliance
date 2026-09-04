@@ -540,3 +540,35 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/check_served_answer_quality.py --baseline
+      # Real-database integration tests, BLOCKING, on the one trigger
+      # guaranteed to fire. Named directly in session (2026-09-04): every
+      # test in tests/*.py that carries @pytest.mark.database is deselected
+      # by pytest.ini's default addopts and requires PYTEST_REAL_DB=1 --
+      # opt-in, on purpose, so the mocked suite everyone runs stays fast and
+      # untouched by production credentials. But opt-in only protects
+      # anything if someone remembers to opt in, and nothing in this repo
+      # ever did for these files before now.
+      #
+      # Scoped to ONE file, not `-m database` over the whole tests/ tree.
+      # Checked, not assumed: running the full marker set surfaced a REAL,
+      # PRE-EXISTING failure with nothing to do with this change --
+      # tests/test_lga_coverage.py found inner-west/marrickville at 14.8%
+      # NULL v2_topic against its own 10% threshold, live in production,
+      # undetected because nothing has ever run this file either. Wiring
+      # the whole marker set in as BLOCKING today would fail every future
+      # PR on a defect this workflow did not introduce. That file needs
+      # its own decision (fix the data, or land in observation mode first
+      # like the "Output grounding" step above already does for exactly
+      # this reason) -- tracked separately, not silently absorbed here.
+      #
+      # tests/test_drawdown_verify_real_db.py is the one file confirmed
+      # green end-to-end this session: real connection lifecycle, a real
+      # insert/read/delete round trip, and a real HTTP request through
+      # FastAPI's actual routing (not just the bare Python function) --
+      # force-failed against the pre-fix code in a disposable worktree
+      # before being trusted here.
+      - name: Real-database integration tests (drawdown-verify)
+        env:
+          PYTEST_REAL_DB: "1"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m pytest -m database tests/test_drawdown_verify_real_db.py -v -o addopts=

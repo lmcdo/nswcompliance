@@ -841,6 +841,18 @@
       "passes_when": "exit 0 - no pending dcp_review_queue row carries a count_drop or preflight_two_column suspect_reason tag",
       "red_when": "the review queue holds pending rows tagged with one of the two extractor-bug signatures -- a triage signal, not proof those rows are safe to skip",
       "note": "Answers a direct question raised in session: how much of the review backlog duplicates a known extractor problem rather than being distinct human review volume? Measured live 2026-09-04: 9,461 pending total; count_drop 5,479 rows / 28 chapters + preflight_two_column 3,642 rows / 85 chapters = 9,121 (96.4%) carry one of the two tags; 340 do not. TWO ROUNDS of Sol cross-review both caught the same overclaim in earlier drafts of this row, so this is written precisely: a suspect_reason tag is a SIGNATURE the extractor writes about itself, not an independently confirmed defect. The count_drop fix proven in memory/project-dcp-review-queue-is-a-bug-report-2026-08.md covers only 1 of the 28 tagged chapters (marrickville/part2-s11-fencing, 2026-08-14) -- the other 27, and all 85 preflight_two_column chapters, are UNCHECKED per-chapter. A chapter with a genuine DCP amendment that legitimately removed provisions would earn the identical count_drop tag, and this probe cannot distinguish the two. Use the split as a TRIAGE PRIORITISATION signal only: do not exclude the 9,121 from review planning on the tag alone, and do not call the remaining 340 a confirmed-clean set -- DQ-71 (source-quote verification, still at 0.06% coverage) applies to all of it regardless of this tag."
+    },
+    "DQ-93": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-93"
+      ],
+      "passes_when": "exit 0 - inner-west/marrickville's live NULL v2_topic rate is at or below the 10% threshold tests/test_lga_coverage.py's own config sets for it",
+      "red_when": "the rate exceeds that threshold -- found live 2026-09-04 at 14.8% (583 of 3,934 current provisions), while wiring tests/test_drawdown_verify_real_db.py into CI (see DQ-91/DQ-92)",
+      "note": "Not a new defect introduced this session -- a PRE-EXISTING one this session happened to surface, by actually running a real-DB test file nothing had invoked (PYTEST_REAL_DB=1 is opt-in and nothing invoked it for tests/test_lga_coverage.py either, matching DQ-91/92's own root cause). Query in dq_probe_live.py is copied verbatim from that test's own body, not re-derived, so the two can never quietly disagree. Deliberately routed through dq_probe_live.py rather than a raw `pytest -m database` command: without PYTEST_REAL_DB=1 set, that command SKIPS (exit 0), which this ledger reads as a false PASS -- confirmed by actually trying it this session, not assumed. Not investigated further: why marrickville drifted specifically, or whether other ONBOARDED_LGAS entries are also currently red. tests/test_lga_coverage.py itself is NOT wired into any CI workflow as of this row -- gates.yml gained a real-database step this session (DQ-91/92's PR) but scoped deliberately to only the one file already proven fully green, specifically BECAUSE this failure exists and wiring the whole -m database marker in as blocking today would fail every future PR on a defect this session did not cause. Fixing the data (re-running topic classification for this council) is a deliberate follow-up, not attempted here."
     }
   }
 }

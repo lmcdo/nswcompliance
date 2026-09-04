@@ -1,9 +1,13 @@
 {
   "tier": "standard",
   "justification": "Standard: closes a gap raised directly in session -- every prior test for the DQ-91 fixes (#1037, #1038) called submit_drawdown_verify() as a plain Python function, never through a real HTTP request. This adds the missing layer: FastAPI TestClient against the real router, real database (migration already live), only the two genuinely-external paid third-party calls mocked. Not Critical: no new production code, purely additive tests. Not Minor: it is proving a real claim about a live endpoint's HTTP contract that was previously unproven.",
-  "commit_hash": "db42a799",
+  "commit_hash": "723b8932",
   "files": [
-    "tests/test_drawdown_verify_real_db.py"
+    "tests/test_drawdown_verify_real_db.py",
+    ".github/workflows/gates.yml",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "scripts/dq_probe_live.py"
   ],
   "pre_impl": {
     "existing_data": "drawdown_verify_audits -- already live (migration 033, PR #1038). This adds no new schema, only exercises the existing table through the existing endpoint's real HTTP contract.",
@@ -62,9 +66,9 @@
     {
       "scenario": "Nothing runs this file unless someone remembers to type PYTEST_REAL_DB=1 -m database -- the exact 'depends on being reminded' gap named directly in session, for the 5th time this session (also true of test_lga_coverage.py, test_dcp_setback_validation.py, test_conveyancing_nearby_da_council.py, test_precinct_ancestor_resolution.py, none of which any CI workflow currently runs).",
       "what_happens": "This test (and the DB-layer tests around it) can silently rot -- pass once, then never run again, with nobody noticing when a later change breaks them.",
-      "mitigated": false,
-      "how": "NOT mitigated by this PR. gates.yml's schema-contract job already has the DATABASE_URL secret and already runs on every PR; wiring `-m database` into it is a small, separate, deliberate change, not bundled into this test-only PR.",
-      "repro": "N/A -- a CI wiring gap, not something a local test reproduces"
+      "mitigated": true,
+      "how": "MITIGATED in this same PR (not a follow-up after all): .github/workflows/gates.yml schema-contract job now runs PYTEST_REAL_DB=1 pytest -m database tests/test_drawdown_verify_real_db.py on every PR and push to main, BLOCKING. Scoped to only this one file (not the whole -m database marker set) because running the full set surfaced a real, pre-existing, unrelated failure (tests/test_lga_coverage.py, now tracked as DQ-93) that wiring in as blocking today would fail every future PR on. That file needs its own decision and is deliberately left out of this PR.",
+      "repro": "gh workflow view gates -- the new \"Real-database integration tests (drawdown-verify)\" step in the schema-contract job"
     }
   ],
   "post_merge": {
