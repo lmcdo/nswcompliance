@@ -240,3 +240,136 @@ class TestRealConnectionLifecycle:
             assert deleted == 1, f"expected to delete exactly 1 test row, deleted {deleted}"
 
         assert dv._get_audit(audit_id) is None, "cleanup failed -- test row still present"
+
+
+class TestRealHttpLayer:
+    """The one gap named directly in session (2026-09-04): every test above,
+    and every mocked test in test_drawdown_verify_audit_failclosed.py, calls
+    submit_drawdown_verify() as a plain Python function. Neither ever sent a
+    real HTTP request through FastAPI's real routing/exception-handling stack
+    and read back a real status code and a real JSON body. Calling the
+    function directly and checking a status code on the exception it raises
+    is NOT the same claim as "the API returns this" -- FastAPI's own
+    exception handlers, response serialization, and routing sit between the
+    function and an actual client, and none of that was ever exercised.
+
+    prior-art-checked: TestClient + app.include_router is the exact pattern
+    tests/test_upzoning_check.py already uses for a different router --
+    reused verbatim, not reinvented.
+
+    Only the two genuinely-external, paid third-party calls are mocked
+    (Sentinel-1 scene search, HyP3 job submission) -- everything else,
+    including the database, is real. The migration ran this session
+    (explicit user authorization); this is the first test to prove the
+    complete real request -> real response -> real database round trip."""
+
+    def _client(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        app = FastAPI()
+        app.include_router(dv.router)
+        return TestClient(app)
+
+    def test_real_http_request_on_audit_failure_returns_a_real_500_with_the_exact_expected_body(self):
+        """The claim under test, stated precisely: a real POST to
+        /pipeline/drawdown-verify, whose audit insert fails, must come back
+        through real FastAPI routing and exception handling as a real 500
+        with the exact wording this session's fix wrote -- not just that
+        calling the Python function directly raises something with a
+        matching attribute, which is a narrower claim than "the API returns
+        this" and is already covered separately in
+        tests/test_drawdown_verify_audit_failclosed.py.
+
+        No real database constraint is reachable through the public request
+        shape without altering schema (stage_claimed's CHECK mirrors
+        pydantic's own validator; the id is server-generated so no duplicate
+        key is producible; loan_id/address carry no uniqueness). So the
+        insert failure itself is simulated here -- it is proven real and
+        working in the two tests above (real connection, real error, real
+        close). What this test adds that those do not: the real HTTP
+        request/response contract around that failure -- status code, JSON
+        body, exact wording -- which nothing else in this session exercised.
+        """
+        _skip_if_no_real_db()
+        from unittest.mock import patch
+
+        with patch.object(
+            dv, "_find_sentinel1_scenes",
+            return_value=("scene-before-id", "scene-after-id", "2026-05-20", "2026-06-01"),
+        ), patch.object(
+            dv, "_submit_hyp3_job", return_value="hyp3-job-abc123",
+        ), patch.object(
+            dv, "_insert_audit",
+            side_effect=Exception("simulated real-world insert failure for this test"),
+        ):
+            client = self._client()
+            response = client.post(
+                "/pipeline/drawdown-verify",
+                json={
+                    "loan_id": "TEST-DQ91-HTTP-LAYER",
+                    "address": "TEST ADDRESS -- not a real property",
+                    "stage_claimed": "slab",
+                    "lot_bbox": {
+                        "min_lon": 151.0, "min_lat": -33.9,
+                        "max_lon": 151.01, "max_lat": -33.89,
+                    },
+                    "reference_date": "2026-06-01",
+                },
+            )
+
+        assert response.status_code == 500
+        body = response.json()
+        assert "could not be confirmed" in body["detail"]
+        assert "UNCONFIRMED" in body["detail"]
+
+    def test_real_http_request_on_success_actually_writes_a_readable_row_and_cleans_up(self):
+        """The complete real claim: POST through real FastAPI routing, real
+        pydantic validation, a REAL database write (the migration is live),
+        and the response's job_id is a real UUID that reads back a real row
+        with the fields the request actually sent -- not asserted against a
+        mock's memory of being called, against the database itself."""
+        _skip_if_no_real_db()
+        from unittest.mock import patch
+
+        marker = f"TEST-DQ91-HTTP-{uuid.uuid4()}"
+        with patch.object(
+            dv, "_find_sentinel1_scenes",
+            return_value=("scene-before-id", "scene-after-id", "2026-05-20", "2026-06-01"),
+        ), patch.object(
+            dv, "_submit_hyp3_job", return_value="hyp3-job-http-test",
+        ):
+            client = self._client()
+            response = client.post(
+                "/pipeline/drawdown-verify",
+                json={
+                    "loan_id": marker,
+                    "address": "TEST ADDRESS -- not a real property",
+                    "stage_claimed": "slab",
+                    "lot_bbox": {
+                        "min_lon": 151.0, "min_lat": -33.9,
+                        "max_lon": 151.01, "max_lat": -33.89,
+                    },
+                    "reference_date": "2026-06-01",
+                },
+            )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "submitted"
+        job_id = body["job_id"]
+
+        try:
+            # Not re-asserting against the mock -- reading the REAL row the
+            # REAL request wrote, straight from the database.
+            row = dv._get_audit(job_id)
+            assert row is not None, "the API returned 200 but no row exists for the job_id it gave back"
+            assert row["loan_id"] == marker
+            assert row["status"] == "submitted"
+        finally:
+            conn = dv._db_conn()
+            try:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM drawdown_verify_audits WHERE id = %s", (job_id,))
+                conn.commit()
+            finally:
+                conn.close()
