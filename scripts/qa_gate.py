@@ -566,7 +566,19 @@ def changed_line_numbers(diff_files: list[str], project_dir: str) -> dict[str, s
             # catches GIT_OBJECT_DIRECTORY, GIT_CEILING_DIRECTORIES and the rest
             # of the family this list never named.
             r = subprocess.run(
-                ["git", *args], capture_output=True, text=True,
+                ["git", *args], capture_output=True,
+                # Explicit utf-8 + replace, not platform-default `text=True`
+                # decode. This is the ACTUAL crash site found live on CI,
+                # 2026-09-05: a `git diff` of a file this branch deleted
+                # carried a pre-existing non-UTF-8 byte and raised
+                # UnicodeDecodeError under Linux's strict-UTF-8 default,
+                # tolerated silently on Windows where it never surfaced
+                # locally. The module-level _git() below was fixed for the
+                # same reason first; this nested, separate closure -- the
+                # one changed_line_numbers actually calls -- was missed on
+                # that first pass because it looks identical but is a
+                # different function.
+                encoding="utf-8", errors="replace", text=True,
                 timeout=10, cwd=project_dir, env=qa_report_path.git_env(),
             )
             return r.stdout if r.returncode == 0 else None
@@ -2075,7 +2087,19 @@ def _git(args: list[str], project_dir: str) -> tuple[int, str]:
             cwd=project_dir,
             env=qa_report_path.git_env(),
             capture_output=True,
-            text=True,
+            # Explicit utf-8 + replace, not the platform-default `text=True`
+            # decode: found live on CI (2026-09-05) when a `git diff` of a
+            # file deleted by this branch carried a pre-existing non-UTF-8
+            # byte (services/sepp_quantitative_extractor.py, likely a Latin-1
+            # "m²" from long before this session) and crashed with
+            # UnicodeDecodeError on Linux's strict-UTF-8 default -- silently
+            # tolerated on Windows, where the default encoding is more
+            # permissive, so it never surfaced locally. "Never raises" above
+            # was already true for a missing git binary; it was not yet true
+            # for a git binary that answers in bytes this process cannot
+            # decode, which is the same class of gate-that-crashes risk.
+            encoding="utf-8",
+            errors="replace",
             timeout=15,
         )
         return proc.returncode, proc.stdout.strip()

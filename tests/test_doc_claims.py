@@ -226,6 +226,23 @@ def test_a_staged_but_uncommitted_deletion_is_still_recognised(dc, repo):
     )
 
 
+def test_no_resolvable_base_ref_is_empty_not_a_crash(dc, repo):
+    """A shallow CI checkout (fetch-depth: 1, the frontend-tests job's
+    default before 2026-09-05) has no origin/main, origin/master or main --
+    only the single fetched commit. deleted_in_diff() must degrade to an
+    empty set, not raise, and a report naming a genuinely nonexistent path
+    must still be reported exactly as before -- the leniency simply cannot
+    activate without SOME base to diff against, and that must fail closed
+    (stay strict), not open."""
+    assert dc.deleted_in_diff(repo) == set()
+    (repo / "report_no_base.json").write_text(
+        json.dumps({"files": ["services/genuinely_never_existed.py"]}),
+        encoding="utf-8",
+    )
+    result = dc.scan(repo, docs=[], reports=["report_no_base.json"])
+    assert [v.claim for v in _kinds(result, "path")] == ["services/genuinely_never_existed.py"]
+
+
 def test_line_citation_past_end_of_file_is_reported(dc, repo):
     """The tracker cited landing/data/shadow.ts:57 for a 55-line file."""
     rel = _doc(repo, "cite.md", "The bug is at `services/scorer.py:900`.\n")

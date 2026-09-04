@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: this branch DELETES code that fabricated regulatory data / silently dropped safety checks on a live, unauthenticated page -- a CRITICAL-class defect by CLAUDE.md's own definition (silent production bug, data corruption in the sense of fake regulatory content). The fix itself is pure removal plus baseline/ledger bookkeeping: no new query, no new endpoint, no new logic that could itself introduce a new silent-failure class. Not Critical: nothing is added that could fail silently -- there is no new code path to break. Not Minor: it changes what a live public page serves and removes a real endpoint.",
-  "commit_hash": "a0e8e183",
+  "commit_hash": "1e082550",
   "files": [
     "services/compliance_api_server.py",
     "services/enhanced_compliance_api.py",
@@ -26,7 +26,9 @@
     ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md",
     "scripts/doc_claims.py",
-    "tests/test_doc_claims.py"
+    "tests/test_doc_claims.py",
+    "tests/test_qa_gate_diff_scoping.py",
+    ".github/workflows/gates.yml"
   ],
   "pre_impl": {
     "existing_data": "No new query written anywhere in this change -- pure deletion of files that queried tables which never existed (basix_provisions, sepp_provisions, special_provisions_registry), plus removing the one route in services/compliance_api_server.py that called them, plus removing now-stale exemption entries from 3 baseline/ledger files that only made sense while the deleted files existed.",
@@ -101,12 +103,19 @@
       "mitigated": true,
       "how": "Mitigated by adding DQ-94, a single-table probe that checks drawdown_verify_audits by name and cannot be affected by the other 3 tables' state at all. Registered in dq_checks.json (declared 'fixed', matching reality) and DATA_QUALITY_TRACKER.md (kept in sync -- dq_check.py's own coverage ratchet fails the build if the two disagree on which ids exist). DQ-91 is left as the informational aggregate; DQ-94 is the row that actually guards the regression. The first draft of DQ-94's query was itself wrong in exactly the way this session has repeatedly warned about -- a plain 'count(*) WHERE table_name=...' returns 1 when the table EXISTS, inverting the framework's own red/clean convention -- caught by running the probe live against production before committing, not by trusting the SQL from inspection.",
       "repro": "python scripts/dq_probe_live.py --id DQ-94 -- count=0, CLEAN, verified live against production; python scripts/dq_check.py -- PASSED, 99 rows (was 98), 0 red."
+    },
+    {
+      "scenario": "Real CI (Linux, self-hosted runner) found two more defects the extensive local verification above never could, because both are environment-specific: (a) scripts/qa_gate.py's changed_line_numbers() has its OWN nested `_git()` closure -- separate from the module-level `_git()` fixed earlier in this branch for the identical reason -- that also used implicit `text=True` decoding. `services/sepp_quantitative_extractor.py` (deleted by this branch) carried a pre-existing non-UTF-8 byte from long before this session; Linux's strict-UTF-8 platform default raised UnicodeDecodeError and crashed the whole gate, while Windows' more permissive default (cp1252 here) silently tolerated the exact same byte, so this was invisible in every local run. (b) The 'Jest' CI job runs the doc-claim step but its checkout has no fetch-depth:0, so origin/main/origin/master/main all fail to resolve in that job specifically (a genuinely shallow, single-commit clone) -- deleted_in_diff() correctly, silently returned empty rather than guessing, which is fail-safe behaviour, but it meant the whole leniency this branch built never activated in the one job that needed it, only in qa-and-liability/duplication (which already had fetch-depth:0 for the identical reason).",
+      "what_happens": "(a) Every PR touching a file whose git history anywhere carries a non-UTF-8 byte would crash the ENTIRE qa-and-liability job on the self-hosted Linux runners, blocking merges repo-wide, not just for this branch. (b) The doc-claim leniency this branch built would silently never apply in the Jest job specifically, re-blocking the exact push this branch exists to unblock.",
+      "mitigated": true,
+      "how": "(a) Fixed the SAME way as the module-level _git() earlier in this branch -- explicit encoding='utf-8', errors='replace' on the nested closure's subprocess.run call. Caught that this was a SEPARATE, previously-missed function (not a duplicate report of the already-fixed one) by re-reading the exact CI traceback line numbers rather than assuming the earlier fix covered it. Two new tests in tests/test_qa_gate_diff_scoping.py: one reproduces the real scenario end-to-end (a file with the exact byte, added then edited) and separately proves via a raw strict-utf-8 decode that the byte IS genuinely invalid (so the test's premise is real, not assumed) -- but this test alone could NOT force-fail on Windows, where the platform-default decode never crashes either way, so a SECOND test mocks subprocess.run directly and asserts the literal encoding/errors kwargs, which DOES force-fail identically on any platform (verified: reverted the fix via a temporary git stash, confirmed this second test fails with the exact missing kwargs, restored the fix, confirmed it passes again). (b) Added fetch-depth: 0 to the frontend-tests/Jest job's checkout, matching the 3 other jobs that already needed full history for the identical reason.",
+      "repro": "python -m pytest tests/test_qa_gate_diff_scoping.py -q -- 11 passed (was 9). The exact CI command reproduced locally: BASE=$(git merge-base origin/main HEAD); FILES=$(git diff --name-only \"$BASE\"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx'); python scripts/qa_gate.py <report> --diff-files $FILES -- PASSED, no crash (previously crashed with UnicodeDecodeError before this fix)."
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No -- verified in-session: schema-contract gate re-run (PASSED, correct shrink 9->6), DQ ledger re-run (PASSED, 0 red), DQ-91 live probe re-run against production (count=3, matches prediction), doc_claims.py --compare --strict re-run (0 new claims), full pytest suite re-run (4970 passed / 2 skipped -- 3 more than the pre-branch 4967, the new doc_claims tests). No frontend build check available in this bare worktree (node_modules absent) -- TypeScript compilation is enforced by the pre-push hook and CI in the normal checkout, consistent with how this repo already handles worktree sessions."
+    "manual_verify": "No -- verified in-session: schema-contract gate re-run (PASSED, correct shrink 9->6), DQ ledger re-run (PASSED, 0 red, 99 rows), DQ-91 and DQ-94 live probes re-run against production (3 and 0 respectively, matching prediction), doc_claims.py --compare --strict re-run (0 new claims), full pytest suite re-run (4974 passed / 2 skipped -- 7 more than the pre-branch 4967), the exact CI diff-coverage invocation reproduced locally (PASSED, no crash). One round of real CI failure (first push, after every local check above already passed) surfaced 2 environment-specific defects no local run could reach -- both fixed here; re-push and a second real CI run are the next step, not yet observed at the time of this update. No frontend build check available in this bare worktree (node_modules absent) -- TypeScript compilation is enforced by the pre-push hook and CI in the normal checkout, consistent with how this repo already handles worktree sessions."
   }
 }
