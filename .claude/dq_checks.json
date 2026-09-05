@@ -865,6 +865,18 @@
       "passes_when": "exit 0 - drawdown_verify_audits exists in information_schema.tables",
       "red_when": "the table does not exist -- the exact DQ-91 regression, isolated to a check that cannot be masked by the 3 deliberately-unbuilt tables changing state",
       "note": "Split out of DQ-91 2026-09-05 on Sol cross-review: DQ-91 aggregates 4 table-existence checks into one count, so a coincidence (drawdown_verify_audits dropped at the same moment one of the 3 unbuilt tables gets created) would leave the count unchanged at 3 and hide a real regression on the one table that matters. This probe checks drawdown_verify_audits alone. Declared fixed because it is: migration 033 ran against production 2026-09-04, a real row was inserted/read/deleted through the actual functions, and the code now fails closed instead of swallowing an insert error. Verified live 2026-09-05: count=0, CLEAN."
+    },
+    "DQ-95": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-95"
+      ],
+      "passes_when": "exit 0 - no canterbury_bankstown chapters are stuck with needs_extraction=TRUE and never extracted",
+      "red_when": "any chapter is still queued but not extracted -- expected 54 until the two-column extraction bug class gets a real fix",
+      "note": "DQ-90 (item #2 of the users own session priority list) framed this as just needing the extraction pipeline RUN -- documents already fetched, hard part done. Acted on it 2026-09-05: flipped needs_extraction=TRUE on the 54 chapters (explicit user authorization, backed up first), ran the pipeline in --review mode (memory-only, no DB writes). Result: 52 of 54 have a PDF and were processed; ALL 52 came back flagged SUSPECT, zero clean (49 preflight_two_column, 3 schema_fail with confirmed real garbling on inspection -- page numbers bleeding into headings, bare numeric section labels, bare_page_numbers scoring 261% of provision count). The other 2 chapters have no PDF at all yet. docs/DCP_EXTRACTION_KNOWN_PATTERNS.md, which has a documented fix for every other extraction bug class this project has hit, has ZERO mentions of two-column/interleave handling -- this is a genuinely unsolved pipeline gap, not a known fix being skipped. NOT committed to production; needs_extraction correctly stays TRUE. DQ-90s own framing is corrected here: the hard part was downstream of document fetching, not upstream of it."
     }
   }
 }

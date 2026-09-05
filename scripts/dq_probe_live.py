@@ -1321,6 +1321,66 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "CRITICAL regardless of what DQ-91's own aggregate count currently "
         "shows.",
     ),
+    "DQ-95": (
+        "Canterbury-Bankstown DCP extraction attempted for real -- the pipeline cannot currently do this council",
+        # 2026-09-05, acting on DQ-90 (item #2 of the user's own priority
+        # list this session): flipped needs_extraction=TRUE on the 54
+        # chapters DQ-90 found registered-but-never-queued (a real,
+        # deliberate, backed-up production write -- explicit user
+        # authorization given), then ran scripts/dcp_extract_changed.py
+        # --council canterbury_bankstown --review (memory-only, no DB
+        # writes) to see what the pipeline would actually produce before
+        # letting anything near the live regulatory_provisions table.
+        #
+        # Result: 52 of 54 chapters have a PDF and were processed; ALL 52
+        # came back flagged SUSPECT -- zero clean. 49 for preflight_two_column
+        # (text-order interleave from the source PDF's two-column body
+        # layout), 3 for schema_fail (12/46, 12/69, 14/66 provisions per
+        # chapter carrying serious extraction-failure artifacts). The
+        # remaining 2 chapters (cb-dcp-2023-ch5-1-bankstown,
+        # cb-dcp-2023-ch5-2-canterbury) have no PDF fetched at all yet, so
+        # were skipped entirely -- 0 of 54 produced anything.
+        #
+        # Inspected chapter-7-5-canterbury-local-centre's actual output, not
+        # just the summary count: real, visible garbling -- "# 1.1
+        # Application of this DCP Chapter 6" (a page number bled into the
+        # heading), bare_page_numbers scored 120/46 = 261% (more stray page
+        # numbers than actual provisions), and multiple section labels are
+        # bare, contentless numbers ("258", "13", "22.50", "(untitled)")
+        # rather than real headings -- confirms this is genuine document-
+        # structure corruption, not a borderline heuristic false-positive.
+        #
+        # docs/DCP_EXTRACTION_KNOWN_PATTERNS.md -- the project's own
+        # documented playbook for known extraction bug classes, with a fix
+        # for every other pattern encountered so far (LaTeX math artifacts,
+        # header/footer bleed, chapter-prefix lines, etc.) -- has ZERO
+        # mentions of "two-column" or "interleave" (grepped, not assumed).
+        # This is a genuinely unsolved bug class for this pipeline, not one
+        # with an established fix being skipped. DQ-90's original framing
+        # ("the hard part -- getting the documents -- is already done") is
+        # corrected here: the hard part turned out to be downstream of
+        # document fetching, not upstream of it.
+        #
+        # NOT committed to production. needs_extraction is correctly left
+        # TRUE (these chapters DO still need extraction -- just not via the
+        # current pipeline's two-column handling). No provisions were
+        # written; the --review flag guarantees this.
+        "SELECT count(*) FROM dcp_chapter_registry "
+        "WHERE council = 'canterbury_bankstown' AND needs_extraction = TRUE "
+        "AND last_extracted_at IS NULL",
+        (),
+        "Chapters still queued for extraction (flag set) but never "
+        "successfully extracted. Expected to read 54 until either (a) the "
+        "two-column extraction bug class gets a real fix and these are "
+        "re-attempted, or (b) someone manually reviews and hand-corrects "
+        "each chapter's output before committing -- not scalable for 52 "
+        "chapters, named here rather than attempted. A drop in this count "
+        "without a corresponding fix landing in docs/"
+        "DCP_EXTRACTION_KNOWN_PATTERNS.md is itself worth double-checking: "
+        "it would mean either the 2 missing PDFs arrived and got extracted "
+        "cleanly (plausible, unrelated to the two-column issue), or someone "
+        "committed the SUSPECT output anyway (should not happen silently).",
+    ),
     "DQ-92": (
         "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",
         # Answers a direct question raised in session: how much of the review
