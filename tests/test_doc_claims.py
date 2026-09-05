@@ -137,6 +137,112 @@ def test_qa_report_strings_are_checked_too(dc, repo):
     assert [v.claim for v in _kinds(result, "path")] == ["tests/test_ghost.py"]
 
 
+# ── PATH: a report naming a file it deletes in the same diff ────────────────
+# 2026-09-05: a branch that deleted 13 files and documented every one of them
+# by name (fix/fabricated-compliance-fallback) hit this for real. The report
+# is not lying -- it is describing its own diff -- but until deleted_in_diff()
+# existed, the check could not tell that apart from a hallucinated path.
+
+
+def _branch_that_deletes_a_file(repo: Path) -> tuple[str, str]:
+    """Commits a file, brands that commit `main`, then deletes the file on
+    top. `main` must be cut AFTER the file exists -- branching first and
+    adding+removing the file entirely within the range would make git's own
+    diff report NO change for it (both trees agree it is absent), which is
+    not the scenario this exists to cover. Returns (relative path deleted,
+    repo-relative report path naming it)."""
+    target = repo / "services" / "to_delete.py"
+    target.write_text("def f():\n    return 1\n", encoding="utf-8")
+    _git(["git", "add", "-A"], repo)
+    _git(["git", "commit", "-qm", "add file that will be deleted"], repo)
+    _git(["git", "branch", "main", "HEAD"], repo)
+    target.unlink()
+    _git(["git", "add", "-A"], repo)
+    _git(["git", "commit", "-qm", "delete it"], repo)
+    report_rel = ".qa/reports/fix__delete-a-file.json"
+    (repo / ".qa").mkdir(exist_ok=True)
+    (repo / ".qa" / "reports").mkdir(exist_ok=True)
+    (repo / report_rel).write_text(
+        json.dumps({"files": ["services/to_delete.py"]}), encoding="utf-8"
+    )
+    _git(["git", "add", "-A"], repo)
+    _git(["git", "commit", "-qm", "report the deletion"], repo)
+    return "services/to_delete.py", report_rel
+
+
+def test_a_report_naming_a_file_it_deletes_this_branch_is_silent(dc, repo):
+    _, report_rel = _branch_that_deletes_a_file(repo)
+    result = dc.scan(repo, docs=[], reports=[report_rel])
+    assert _kinds(result, "path") == [], (
+        "a report describing its OWN diff's deletion was flagged as if it "
+        "hallucinated the path"
+    )
+
+
+def test_a_report_naming_a_file_never_in_this_diff_is_still_reported(dc, repo):
+    """The leniency must not swallow a genuinely bogus path just because
+    SOME file was deleted somewhere in the branch."""
+    _branch_that_deletes_a_file(repo)
+    (repo / ".qa" / "reports" / "fix__bogus.json").write_text(
+        json.dumps({"files": ["services/never_existed_at_all.py"]}), encoding="utf-8"
+    )
+    _git(["git", "add", "-A"], repo)
+    _git(["git", "commit", "-qm", "bogus report"], repo)
+    result = dc.scan(repo, docs=[], reports=[".qa/reports/fix__bogus.json"])
+    assert [v.claim for v in _kinds(result, "path")] == ["services/never_existed_at_all.py"]
+
+
+def test_a_prose_doc_naming_a_deleted_file_is_still_reported(dc, repo):
+    """The leniency is scoped to reports (which describe THIS diff) -- a
+    hand-written doc claiming a path is a claim about the current tree
+    regardless of what any branch happened to delete."""
+    deleted_path, _ = _branch_that_deletes_a_file(repo)
+    rel = _doc(repo, "mentions_deleted.md", f"See `{deleted_path}`.\n")
+    _git(["git", "commit", "-qm", "doc mentions the deleted file"], repo)
+    result = dc.scan(repo, docs=[rel], reports=[])
+    assert [v.claim for v in _kinds(result, "path")] == [deleted_path]
+
+
+def test_a_staged_but_uncommitted_deletion_is_still_recognised(dc, repo):
+    """Sol cross-review (2026-09-05): the first version diffed base..HEAD,
+    which misses a deletion that is staged (or merely removed on disk) but
+    not yet committed -- a developer running this check before committing
+    their own true, in-progress deletion would see it rejected as if it
+    hallucinated the path."""
+    target = repo / "services" / "not_yet_committed.py"
+    target.write_text("def f():\n    return 1\n", encoding="utf-8")
+    _git(["git", "add", "-A"], repo)
+    _git(["git", "commit", "-qm", "add file"], repo)
+    _git(["git", "branch", "main", "HEAD"], repo)
+    target.unlink()
+    _git(["git", "add", "-A"], repo)  # staged, deliberately NOT committed
+    (repo / "report_uncommitted.json").write_text(
+        json.dumps({"files": ["services/not_yet_committed.py"]}), encoding="utf-8"
+    )
+    result = dc.scan(repo, docs=[], reports=["report_uncommitted.json"])
+    assert _kinds(result, "path") == [], (
+        "a deletion staged but not yet committed was rejected as a "
+        "hallucinated path"
+    )
+
+
+def test_no_resolvable_base_ref_is_empty_not_a_crash(dc, repo):
+    """A shallow CI checkout (fetch-depth: 1, the frontend-tests job's
+    default before 2026-09-05) has no origin/main, origin/master or main --
+    only the single fetched commit. deleted_in_diff() must degrade to an
+    empty set, not raise, and a report naming a genuinely nonexistent path
+    must still be reported exactly as before -- the leniency simply cannot
+    activate without SOME base to diff against, and that must fail closed
+    (stay strict), not open."""
+    assert dc.deleted_in_diff(repo) == set()
+    (repo / "report_no_base.json").write_text(
+        json.dumps({"files": ["services/genuinely_never_existed.py"]}),
+        encoding="utf-8",
+    )
+    result = dc.scan(repo, docs=[], reports=["report_no_base.json"])
+    assert [v.claim for v in _kinds(result, "path")] == ["services/genuinely_never_existed.py"]
+
+
 def test_line_citation_past_end_of_file_is_reported(dc, repo):
     """The tracker cited landing/data/shadow.ts:57 for a 55-line file."""
     rel = _doc(repo, "cite.md", "The bug is at `services/scorer.py:900`.\n")

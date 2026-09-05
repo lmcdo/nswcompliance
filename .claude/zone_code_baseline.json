@@ -90,7 +90,6 @@
   "scripts/xref_detection_audit.py": 1,
   "services/authoritative_setback_calculator.py": 2,
   "services/clause_number_cleaner.py": 1,
-  "services/enhanced_compliance_api.py": 1,
   "services/setback_calculator.py": 1,
   "services/universal_regulatory_engine.py": 2,
   "src/processing/rule_generator.py": 4,

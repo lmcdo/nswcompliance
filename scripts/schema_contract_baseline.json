@@ -1,5 +1,5 @@
 {
-  "_comment": "Known invalid SQL references, accepted so the gate can be enforced today. This list may only SHRINK: a new entry fails CI, and an entry that no longer occurs ALSO fails CI, so it gets deleted rather than lingering as a permanent amnesty. History: opened at 18 entries 2026-08-01; the 8 tod/parking-rates entries were fixed in the same PR (repointed onto dcp_setback_controls) and removed, leaving 10. drawdown_verify_audits removed 2026-09-04 -- migration 033 run against production (DQ-91, explicit user authorization), table now exists and was proven end-to-end (insert/read/delete round trip through the real functions), leaving 9.",
+  "_comment": "Known invalid SQL references, accepted so the gate can be enforced today. This list may only SHRINK: a new entry fails CI, and an entry that no longer occurs ALSO fails CI, so it gets deleted rather than lingering as a permanent amnesty. History: opened at 18 entries 2026-08-01; the 8 tod/parking-rates entries were fixed in the same PR (repointed onto dcp_setback_controls) and removed, leaving 10. drawdown_verify_audits removed 2026-09-04 -- migration 033 run against production (DQ-91, explicit user authorization), table now exists and was proven end-to-end (insert/read/delete round trip through the real functions), leaving 9. The 3 remaining 'deployed' entries (basix_provisions/sepp_provisions/special_provisions_registry) removed 2026-09-05 -- not by creating the tables, but because the only code that referenced them (services/enhanced_compliance_api.py, basix_compliance_checker.py, special_provisions_processor.py, special_provisions_integration.py, sepp_quantitative_extractor.py) was deleted outright: it queried tables that never existed, and on every real failure it either fabricated a plausible-looking result (BASIX) or silently dropped the check with no error (hazards/heritage/SEPP), live on an unauthenticated page (/authoritative). See DQ-91 and fix/fabricated-compliance-fallback. Leaving 6.",
   "_generated": "2026-08-01",
   "_triage_method": "Reachability traced by import/render graph, not assumed. Frontend: API route -> importing component -> is that component ever rendered in JSX. Python: module -> importer -> is it in the Dockerfile.python entrypoint graph (uvicorn services.compliance_api_server:app). Every table/column absence confirmed individually against information_schema on the live database.",
   "entries": [
@@ -44,27 +44,6 @@
       "kind": "table",
       "status": "dead-code",
       "note": "Not a route: Next.js serves only route.ts, and nothing imports this file. An abandoned draft left in the tree. Fix = delete."
-    },
-    {
-      "file": "services/basix_compliance_checker.py",
-      "ref": "basix_provisions",
-      "kind": "table",
-      "status": "deployed",
-      "note": "In the deployed import graph: Dockerfile.python runs services.compliance_api_server, which imports enhanced_compliance_api, which imports this. Whether the query executes depends on which endpoint is called - NOT established here, so this is 'deployed', not 'LIVE'. Table has never existed in the catalog."
-    },
-    {
-      "file": "services/sepp_quantitative_extractor.py",
-      "ref": "sepp_provisions",
-      "kind": "table",
-      "status": "deployed",
-      "note": "Reached via special_provisions_processor -> enhanced_compliance_api -> compliance_api_server. The catalog has sepp_structured_requirements and housing_sepp_standards, not sepp_provisions."
-    },
-    {
-      "file": "services/special_provisions_processor.py",
-      "ref": "special_provisions_registry",
-      "kind": "table",
-      "status": "deployed",
-      "note": "Reached via enhanced_compliance_api -> compliance_api_server. Table absent from the catalog."
     }
   ]
 }

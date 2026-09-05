@@ -1,0 +1,121 @@
+{
+  "tier": "standard",
+  "justification": "Standard: this branch DELETES code that fabricated regulatory data / silently dropped safety checks on a live, unauthenticated page -- a CRITICAL-class defect by CLAUDE.md's own definition (silent production bug, data corruption in the sense of fake regulatory content). The fix itself is pure removal plus baseline/ledger bookkeeping: no new query, no new endpoint, no new logic that could itself introduce a new silent-failure class. Not Critical: nothing is added that could fail silently -- there is no new code path to break. Not Minor: it changes what a live public page serves and removes a real endpoint.",
+  "commit_hash": "45f99740",
+  "files": [
+    "services/compliance_api_server.py",
+    "services/enhanced_compliance_api.py",
+    "services/basix_compliance_checker.py",
+    "services/special_provisions_processor.py",
+    "services/special_provisions_integration.py",
+    "services/sepp_quantitative_extractor.py",
+    "frontend-nextjs/app/authoritative/page.tsx",
+    "frontend-nextjs/app/api/authoritative/compliance-check/route.ts",
+    "frontend-nextjs/app/ui-test/page.tsx",
+    "frontend-nextjs/app/api/assessment/version-compliance/route.ts",
+    "frontend-nextjs/components/compliance/AuthoritativeComplianceDisplay.tsx",
+    "frontend-nextjs/components/compliance/EnhancedComplianceCheck.tsx",
+    "frontend-nextjs/components/compliance/ComplianceChecklist.tsx",
+    "frontend-nextjs/components/compliance-checklist.tsx",
+    "frontend-nextjs/components/assessment-panel.tsx",
+    "frontend-nextjs/app/internal/page.tsx",
+    "scripts/schema_contract_baseline.json",
+    "scripts/baselines/gate-baseline.json",
+    "scripts/dq_probe_live.py",
+    ".claude/zone_code_baseline.json",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "scripts/doc_claims.py",
+    "tests/test_doc_claims.py",
+    "tests/test_qa_gate_diff_scoping.py",
+    ".github/workflows/gates.yml"
+  ],
+  "pre_impl": {
+    "existing_data": "No new query written anywhere in this change -- pure deletion of files that queried tables which never existed (basix_provisions, sepp_provisions, special_provisions_registry), plus removing the one route in services/compliance_api_server.py that called them, plus removing now-stale exemption entries from 3 baseline/ledger files that only made sense while the deleted files existed.",
+    "assumption_mismatch": "Started from a single reported page (/authoritative). Reachability tracing (grep for every importer of every file in the chain, repeated until no new importer appeared) surfaced 2 more live-reachable surfaces sharing the same broken backend: /ui-test (a dev-scaffold page, no nav link, only consumer of the assessment-panel component -> the compliance/ComplianceChecklist component) and /api/assessment/version-compliance (zero real callers found by repo-wide grep, but still a live, publicly POSTable endpoint) which turned out to have its OWN, independent instance of the same fabricate-on-failure pattern -- a hardcoded fake 'compliant' verdict citing a made-up 'LEP Clause 2.3', triggered because it calls the same CLI with flags (--version-aware, --assessment-date) its own argparse never defines, guaranteeing failure on every real call. Confirmed via COMPONENT_MAP.md that none of the deleted surfaces (AuthoritativeComplianceDisplay, ComplianceChecklist under components/compliance/, EnhancedComplianceCheck, assessment-panel, ui-test) are part of the documented, maintained UI surface -- COMPONENT_MAP.md names a different, still-live compliance flow (ComplianceDashboard.tsx, StateLevelControls.tsx, /api/compliance/constraints) that this change does not touch.",
+    "new_vs_existing": "This is a subtractive change to existing dead-end code, not a new feature. The 3 baseline files edited (schema_contract_baseline.json, gate-baseline.json, zone_code_baseline.json) are shrink-only ratchets by their own design -- removing an entry for a file that no longer exists is the documented, correct action, verified by re-running each gate afterward rather than assumed safe.",
+    "external_source_error": "N/A -- no external API call is added or changed. The deleted code's own external-failure handling (a psycopg2 UndefinedTable error on a nonexistent table) is exactly the thing being removed, because its failure handling fabricated data instead of surfacing the error.",
+    "frontend_type": "N/A -- no new frontend code, deletion only. Verified no TypeScript file outside the deleted set imports anything from the deleted paths (repo-wide grep, cross-checked against 3 false-positive name collisions with unrelated, still-live files: EnhancedComplianceChecklist.tsx, ChecklistContext.tsx, pages/api/compliance/checklist.ts -- none of which import anything deleted here).",
+    "user_failure_mode": "This IS the user-failure-mode fix: before this change, a real user on /authoritative or a caller of /api/assessment/version-compliance received a fabricated 'this is BASIX-compliant' / 'this is LEP-compliant' result with a plausible-looking confidence percentage on every single call, because the underlying tables have never existed and the exception handler manufactured a fallback instead of reporting the failure. After this change, those pages/endpoints return 404 -- a visible failure instead of an invisible lie."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/validate_schema_contract.py ; python scripts/dq_check.py ; python scripts/dq_probe_live.py --id DQ-91 ; python scripts/dq_probe_live.py --id DQ-94 ; python scripts/doc_claims.py --compare --strict ; python -m pytest -q",
+    "fails_when": "validate_schema_contract.py fails if a baseline entry is removed for a table reference that still actually occurs somewhere in the tree (a new/unnoticed reference to the same table name outside the deleted files would surface as a NEW invalid reference, since it would no longer be in the baseline exemption list). dq_check.py fails if any declared status and its live probe result stop matching, or if the ledger and dq_checks.json disagree on which ids exist. doc_claims.py --strict fails (exit 1) if this report or DATA_QUALITY_TRACKER.md names a file that neither exists nor was deleted by this branch (committed OR merely staged/on-disk). pytest fails if deleting compliance_api_server.py's /compliance route broke any test that exercised it (none did -- confirmed by full-suite re-run, not assumed), or if the deleted_in_diff() leniency in doc_claims.py is wrong in either direction, or if DQ-94's probe is wrong in either direction (inverted count logic would have shipped a check that reads red when the table EXISTS -- caught before commit by running it live, not by trusting the SQL by inspection).",
+    "observed_red": "Before this branch's changes: git status --short showed nothing (baseline files still listed the 3 now-deleted files' table refs). After deleting the 5 Python files and editing compliance_api_server.py but BEFORE editing the 3 baseline files, validate_schema_contract.py would have reported NOTHING new (the baseline entries would just be dead weight pointing at files that no longer exist -- not itself a failure, but stale), which is why the baseline files were edited explicitly rather than left as orphaned entries. After all edits: validate_schema_contract.py -> 'PASSED (with baseline): no NEW invalid references. 6 pre-existing still to fix.' (was 9 before this branch). dq_check.py -> 'DQ-CHECK: PASSED', 0 red, 99 rows (was 98 -- DQ-94 added). dq_probe_live.py --id DQ-91 -> count=3 (unchanged, aggregate). dq_probe_live.py --id DQ-94 -> count=0, CLEAN (drawdown_verify_audits exists). Full pytest run: 4971 passed, 2 skipped, 0 failed. THREE separate force-fails found by pushing for real, not by inspection: (1) the first report version named every deleted file with its real extension and doc_claims.py --strict genuinely blocked the push, correctly, because it had never been asked whether a named file is gone because THIS branch deleted it or because it never existed -- fixed by adding deleted_in_diff() rather than reformatting around the check. (2) Reformatting-around attempt #1 broke qa_gate.py's diff-coverage validator instead ('12/17 changed files not referenced in report'), which needs the literal extension-bearing path -- this is what proved (1)'s real fix had to be in doc_claims.py itself, not in report wording. (3) Sol cross-review on the push containing fix (1) found two more real issues: deleted_in_diff() diffed base..HEAD only, missing a staged-but-uncommitted deletion (fixed: drop the explicit HEAD endpoint so git diffs against the working tree); and DQ-91's aggregate 4-table count could mask a real drawdown_verify_audits regression behind a coincidental change to one of the other 3 (fixed: DQ-94, a dedicated single-table probe). Writing DQ-94's first draft query as a plain existence check (count=1 when the table EXISTS) would have inverted the framework's own red/clean convention -- caught by running it live against production before committing, not assumed correct from the SQL alone. 4 new tests in tests/test_doc_claims.py (57 total, all passing): the deleted_in_diff() fix itself, a bogus-path-still-caught guardrail, a prose-doc-stays-strict guardrail, and the staged-but-uncommitted-deletion guardrail for Sol's finding."
+  },
+  "functions": [
+    {
+      "name": "get_compliance (removed)",
+      "file_line": "services/compliance_api_server.py, formerly the @app.post(\"/compliance\") route",
+      "input": "ComplianceRequest (zone_code, property_id, development_type, climate_zone, water_zone, special_provisions) -- all now gone with the route",
+      "output": "Formerly ComplianceResponse wrapping EnhancedComplianceAPI.get_enhanced_compliance()'s result, which on climate_zone/special_provisions ALWAYS hit a guaranteed query failure against a table that has never existed (basix_provisions / sepp_provisions / special_provisions_registry) and either fabricated a fallback provision with a hardcoded 90% confidence or silently dropped the check -- documented failure mode this whole branch exists to remove.",
+      "if_none": "The route itself no longer exists; a request to POST /compliance now gets FastAPI's default 404, which is the intended, honest replacement for the previous fabricated-or-silent 200."
+    },
+    {
+      "name": "deleted_in_diff",
+      "file_line": "scripts/doc_claims.py (new)",
+      "input": "project_dir -- resolves its own merge-base against origin/main / origin/master / main (first that succeeds) and diffs from there against the WORKING TREE (no second ref -- see Sol finding #2 in falsifiable_check)",
+      "output": "set[str] of repo-relative paths this branch DELETES relative to that merge-base, including staged/uncommitted deletions; empty set if no base ref resolves or git cannot answer",
+      "if_none": "Empty set on any git failure -- explicitly NOT treated as license to suppress a real doc-claim finding; only ever used to SILENCE a finding, never to invent one, so an empty result just means the existing strict behaviour is unchanged"
+    },
+    {
+      "name": "PROBES[\"DQ-94\"]",
+      "file_line": "scripts/dq_probe_live.py (new)",
+      "input": "none beyond the standing --id DQ-94 CLI arg -- a single-table existence query, no params",
+      "output": "0 (CLEAN) when drawdown_verify_audits exists, 1 (RED) when it does not -- deliberately NOT a plain count(*) WHERE table_name=..., which would return 1 when the table EXISTS and invert the framework's own red/clean convention",
+      "if_none": "N/A -- exits 2/UNKNOWN via the shared run() harness if the database is unreachable, same as every other probe in this file, never a false CLEAN"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Something outside the traced reachability graph still calls one of the deleted routes/components/files that this session's grep-based tracing did not find (e.g. a mobile app, a partner integration, an external bookmark to /authoritative, or code in a different repo).",
+      "what_happens": "A caller that previously got a fabricated 'success' response now gets a real 404 / connection refused instead.",
+      "mitigated": false,
+      "how": "NOT fully mitigated -- reachability was traced exhaustively within THIS repo (every .ts/.tsx/.py importer chain followed to its root, cross-checked against COMPONENT_MAP.md and a repo-wide grep for both the file paths and the API route strings), but a caller entirely outside this repo (an external partner, a saved bookmark, a mobile client) cannot be ruled out from static analysis alone. Judged acceptable and consistent with the user's explicit instruction to delete rather than patch: a caller receiving an honest 404 instead of a silent fabrication is a strict improvement even in the worst case, not a new failure mode.",
+      "repro": "N/A -- would require traffic/analytics data outside this repo's codebase to detect a caller this tracing missed; not available in this session."
+    },
+    {
+      "scenario": "The 3 baseline/ledger files (schema_contract_baseline.json, gate-baseline.json, zone_code_baseline.json) were hand-edited rather than regenerated by their own tooling.",
+      "what_happens": "A typo or wrong-entry removal could either leave a stale entry behind (harmless, just noise) or accidentally remove an entry for a DIFFERENT, still-relevant file that happens to share a table/line-number coincidence.",
+      "mitigated": true,
+      "how": "Mitigated by re-running each gate's own validator after editing (validate_schema_contract.py, dq_check.py) rather than trusting the edit was correct by inspection -- both came back clean with the expected, predicted counts (9->6 baseline entries, DQ-91 probe 4->3), not merely 'no error thrown'.",
+      "repro": "N/A -- verified positively via the falsifiable_check commands above, not left as a residual risk."
+    },
+    {
+      "scenario": "services/compliance_api_server.py is the shared FastAPI entrypoint for ~19 OTHER live routers (solar yield, shadow, threat radar, flood, granny flat, drawdown-verify, etc.) -- editing it by hand to remove one route risks breaking an unrelated one through an import-order or syntax mistake.",
+      "what_happens": "A typo in the surrounding edit could take down every satellite product pipeline, not just the broken compliance route.",
+      "mitigated": true,
+      "how": "Mitigated: only the /compliance route, its two now-unused Pydantic models, and the imports exclusive to them were removed (json, typing imports, the enhanced_compliance_api import, BaseModel) -- verified nothing else in the file used them first (grep for json./HTTPException/BaseModel/Dict/List/Optional/Any usage before removing). ast.parse() confirmed the file still parses. All ~19 other app.include_router() calls left untouched, byte-for-byte, and the full pytest suite (which includes tests that import/exercise several of those other routers) re-ran clean at the same 4967-passed count as before this branch.",
+      "repro": "python -c \"import ast; ast.parse(open('services/compliance_api_server.py', encoding='utf-8').read())\" -- confirms syntactic validity; python -m pytest -q confirms behavioural validity of everything else in the file."
+    },
+    {
+      "scenario": "deleted_in_diff() is a NEW leniency in a shared, actively-hardened, every-branch-every-push hook script (scripts/doc_claims.py). A bug in it could turn into a silent, permanent hole: any future report naming ANY currently-nonexistent path would read as clean, as long as SOMETHING was deleted anywhere in that branch's diff, if the matching were looser than 'the exact claimed path'.",
+      "what_happens": "The doc-claim ratchet, whose entire purpose is catching a report that names a file that does not exist, could stop catching a genuinely hallucinated path on any branch that also happens to delete something unrelated.",
+      "mitigated": true,
+      "how": "Mitigated by exact-string set membership (v.claim in deleted, not a prefix/substring/fuzzy match) and by dedicated regression tests proving the negative cases: test_a_report_naming_a_file_never_in_this_diff_is_still_reported plants a real deletion AND a genuinely bogus, unrelated path in the same branch, and asserts the bogus one is still reported; test_a_prose_doc_naming_a_deleted_file_is_still_reported proves the leniency does not leak into hand-written docs. Sol cross-review (2026-09-05, on the push containing this fix) found the diff range itself was too narrow (base..HEAD misses a staged-but-uncommitted deletion) -- fixed by comparing against the working tree instead, with test_a_staged_but_uncommitted_deletion_is_still_recognised pinning the exact scenario Sol described. All 4 new tests plus the 53 pre-existing ones in tests/test_doc_claims.py pass (57 total).",
+      "repro": "python -m pytest tests/test_doc_claims.py -q -- 57 passed, including the three guardrail/regression tests named above."
+    },
+    {
+      "scenario": "DQ-91's original probe aggregates 4 table-existence checks into one count. Sol cross-review (2026-09-05): if drawdown_verify_audits were accidentally dropped again at the same moment one of the 3 deliberately-unbuilt tables (basix_provisions/sepp_provisions/special_provisions_registry) happened to get created, the count would stay at 3 throughout -- a real, critical regression on the one table that matters would read as 'unchanged, still open' rather than 'newly red'.",
+      "what_happens": "A regression on the audit write path this session spent hours fixing and proving end-to-end could go undetected indefinitely, hidden by an unrelated, coincidental change to a different table's existence.",
+      "mitigated": true,
+      "how": "Mitigated by adding DQ-94, a single-table probe that checks drawdown_verify_audits by name and cannot be affected by the other 3 tables' state at all. Registered in dq_checks.json (declared 'fixed', matching reality) and DATA_QUALITY_TRACKER.md (kept in sync -- dq_check.py's own coverage ratchet fails the build if the two disagree on which ids exist). DQ-91 is left as the informational aggregate; DQ-94 is the row that actually guards the regression. The first draft of DQ-94's query was itself wrong in exactly the way this session has repeatedly warned about -- a plain 'count(*) WHERE table_name=...' returns 1 when the table EXISTS, inverting the framework's own red/clean convention -- caught by running the probe live against production before committing, not by trusting the SQL from inspection.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-94 -- count=0, CLEAN, verified live against production; python scripts/dq_check.py -- PASSED, 99 rows (was 98), 0 red."
+    },
+    {
+      "scenario": "Real CI (Linux, self-hosted runner) found two more defects the extensive local verification above never could, because both are environment-specific: (a) scripts/qa_gate.py's changed_line_numbers() has its OWN nested `_git()` closure -- separate from the module-level `_git()` fixed earlier in this branch for the identical reason -- that also used implicit `text=True` decoding. `services/sepp_quantitative_extractor.py` (deleted by this branch) carried a pre-existing non-UTF-8 byte from long before this session; Linux's strict-UTF-8 platform default raised UnicodeDecodeError and crashed the whole gate, while Windows' more permissive default (cp1252 here) silently tolerated the exact same byte, so this was invisible in every local run. (b) The 'Jest' CI job runs the doc-claim step but its checkout has no fetch-depth:0, so origin/main/origin/master/main all fail to resolve in that job specifically (a genuinely shallow, single-commit clone) -- deleted_in_diff() correctly, silently returned empty rather than guessing, which is fail-safe behaviour, but it meant the whole leniency this branch built never activated in the one job that needed it, only in qa-and-liability/duplication (which already had fetch-depth:0 for the identical reason).",
+      "what_happens": "(a) Every PR touching a file whose git history anywhere carries a non-UTF-8 byte would crash the ENTIRE qa-and-liability job on the self-hosted Linux runners, blocking merges repo-wide, not just for this branch. (b) The doc-claim leniency this branch built would silently never apply in the Jest job specifically, re-blocking the exact push this branch exists to unblock.",
+      "mitigated": true,
+      "how": "(a) Fixed the SAME way as the module-level _git() earlier in this branch -- explicit encoding='utf-8', errors='replace' on the nested closure's subprocess.run call. Caught that this was a SEPARATE, previously-missed function (not a duplicate report of the already-fixed one) by re-reading the exact CI traceback line numbers rather than assuming the earlier fix covered it. Two new tests in tests/test_qa_gate_diff_scoping.py: one reproduces the real scenario end-to-end (a file with the exact byte, added then edited) and separately proves via a raw strict-utf-8 decode that the byte IS genuinely invalid (so the test's premise is real, not assumed) -- but this test alone could NOT force-fail on Windows, where the platform-default decode never crashes either way, so a SECOND test mocks subprocess.run directly and asserts the literal encoding/errors kwargs, which DOES force-fail identically on any platform (verified: reverted the fix via a temporary git stash, confirmed this second test fails with the exact missing kwargs, restored the fix, confirmed it passes again). (b) Added fetch-depth: 0 to the frontend-tests/Jest job's checkout, matching the 3 other jobs that already needed full history for the identical reason.",
+      "repro": "python -m pytest tests/test_qa_gate_diff_scoping.py -q -- 11 passed (was 9). The exact CI command reproduced locally: BASE=$(git merge-base origin/main HEAD); FILES=$(git diff --name-only \"$BASE\"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx'); python scripts/qa_gate.py <report> --diff-files $FILES -- PASSED, no crash (previously crashed with UnicodeDecodeError before this fix)."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: schema-contract gate re-run (PASSED, correct shrink 9->6), DQ ledger re-run (PASSED, 0 red, 99 rows), DQ-91 and DQ-94 live probes re-run against production (3 and 0 respectively, matching prediction), doc_claims.py --compare --strict re-run (0 new claims), full pytest suite re-run (4974 passed / 2 skipped -- 7 more than the pre-branch 4967), the exact CI diff-coverage invocation reproduced locally (PASSED, no crash). One round of real CI failure (first push, after every local check above already passed) surfaced 2 environment-specific defects no local run could reach -- both fixed here; re-push and a second real CI run are the next step, not yet observed at the time of this update. No frontend build check available in this bare worktree (node_modules absent) -- TypeScript compilation is enforced by the pre-push hook and CI in the normal checkout, consistent with how this repo already handles worktree sessions."
+  }
+}

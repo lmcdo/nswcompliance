@@ -254,6 +254,16 @@ jobs:
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # this job also runs the doc-claim ratchet,
+          # which needs origin/main to compute what THIS branch deletes
+          # (scripts/doc_claims.py:deleted_in_diff). Found live 2026-09-05:
+          # the default shallow checkout here has no other ref history at
+          # all, so origin/main, origin/master and main all fail to resolve
+          # and deleted_in_diff() correctly, silently returns empty rather
+          # than guessing -- which meant the leniency it exists to provide
+          # never activated in THIS job, only in qa-and-liability/duplication
+          # (which already set this for the identical reason).
       - uses: actions/setup-node@v7
         with:
           node-version: '20'

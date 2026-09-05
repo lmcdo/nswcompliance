@@ -2216,41 +2216,6 @@
     },
     {
       "scanner": "py-adversarial",
-      "file": "services/special_provisions_integration.py",
-      "line": 89,
-      "bucket": "production",
-      "message": "Python adversarial: services/special_provisions_integration.py:89 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
-    },
-    {
-      "scanner": "py-adversarial",
-      "file": "services/special_provisions_integration.py",
-      "line": 90,
-      "bucket": "production",
-      "message": "Python adversarial: services/special_provisions_integration.py:90 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
-    },
-    {
-      "scanner": "py-adversarial",
-      "file": "services/special_provisions_integration.py",
-      "line": 91,
-      "bucket": "production",
-      "message": "Python adversarial: services/special_provisions_integration.py:91 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
-    },
-    {
-      "scanner": "py-adversarial",
-      "file": "services/special_provisions_integration.py",
-      "line": 92,
-      "bucket": "production",
-      "message": "Python adversarial: services/special_provisions_integration.py:92 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
-    },
-    {
-      "scanner": "py-adversarial",
-      "file": "services/special_provisions_integration.py",
-      "line": 93,
-      "bucket": "production",
-      "message": "Python adversarial: services/special_provisions_integration.py:93 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
-    },
-    {
-      "scanner": "py-adversarial",
       "file": "src/processing/rag_enhanced_processor.py",
       "line": 238,
       "bucket": "production",
