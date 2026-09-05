@@ -1102,7 +1102,7 @@ def find_vertical_margin_label_band(words: list[dict]) -> tuple[float, float] | 
     extract_words() output, no PDF I/O."""
     bands: dict[tuple[int, int], list[dict]] = {}
     for w in words:
-        text = w.get("text", "")
+        text = w.get("text") or ""
         if not text or len(text) > _MARGIN_LABEL_MAX_CHARS:
             continue
         x0, x1 = w.get("x0"), w.get("x1")
