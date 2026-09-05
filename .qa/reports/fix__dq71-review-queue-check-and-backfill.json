@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A real code fix (a DQ probe's SQL was structurally incapable of ever reading clean) plus a production data operation (grading 4,742 pending review-queue rows against source PDFs across 9 councils). Not minor: the check's WHERE clause changed, and a backup-then-write production operation ran.",
-  "commit_hash": "PENDING_POST_COMMIT_STAMP",
+  "commit_hash": "e0bd1843",
   "files": [
     "scripts/dq_probe_live.py",
     ".claude/dq_checks.json",
@@ -24,13 +24,10 @@
   "functions": [
     {
       "name": "PROBES['DQ-71'] query (scripts/dq_probe_live.py)",
-      "responsibility": "Count gradeable pending dcp_review_queue rows that have never been opened against their source PDF, using fidelity_status IS NULL as the true 'never graded' signal instead of the structurally-flawed fidelity_source_quote IS NULL.",
-      "edge_cases_handled": [
-        "removed rows excluded (change_type <> 'removed') -- they have no new_text to ground, so they can never clear regardless of grading effort",
-        "rows with NULL new_text excluded -- nothing for the gate to check",
-        "a grounded row (fidelity_status='grounded', fidelity_source_quote=NULL by design) now correctly counts as CHECKED, not as red",
-        "a flagged row whose quote-matcher found nothing (fidelity_status='flagged', fidelity_source_quote=NULL) also correctly counts as CHECKED (it WAS graded, evidence-quality is a separate, smaller gap noted in the ledger, not conflated with verification-occurrence)"
-      ]
+      "file_line": "scripts/dq_probe_live.py, PROBES dict, key 'DQ-71'",
+      "input": "no arguments -- a fixed SQL string run via psycopg2 against the live dcp_review_queue table",
+      "output": "int count of gradeable pending rows with fidelity_status IS NULL -- 0 means every such row has been opened against its source PDF at least once (grounded or flagged); nonzero names exactly how many have not",
+      "if_none": "an empty dcp_review_queue, or one where every pending row is change_type='removed' or has NULL new_text, correctly returns 0 -- there is nothing gradeable to be unchecked, which is the same CLEAN result as 'everything was graded', and is the honest state (there is no gradeable-row denominator to hide a false pass behind, unlike a percentage-based check)"
     }
   ],
   "values": [],
@@ -67,6 +64,13 @@
       "mitigated": false,
       "how": "Not fully closed by this fix -- gate_chapter's own except-and-continue-to-next-chapter path on an unreadable PDF ('cannot read PDF; left unchecked') correctly leaves that chapter's rows at fidelity_status IS NULL (still red, as intended), so a whole-chapter PDF failure is safely caught. What is NOT independently re-verified here is whether ground_row itself could ever be reached with a source string that failed to actually load (e.g. an empty pages dict silently treated as 'checked, nothing found') -- ground_row's own _best_page returns (None, False) on empty pages/prov_words and grounds against an empty joined string, which would score ground_ratio=0 and correctly flag rather than silently pass, but this exact path was not written as a dedicated test in this branch.",
       "repro": "Not reproduced here -- flagged as a residual worth a dedicated test (empty-pages-dict input to ground_row asserts status='flagged', not 'grounded') rather than fixed speculatively."
+    },
+    {
+      "scenario": "The pre-backfill scope query (queries[1]) joins dcp_review_queue to dcp_chapter_registry ON council+chapter_key and requires reg.r2_current_path IS NOT NULL -- if that join silently dropped rows (e.g. a chapter_key mismatch between the two tables, or a registry row missing entirely), the scope measurement would UNDERCOUNT the backlog and the backfill would be run believing it covered everything when real gradeable rows were left invisible outside the loop.",
+      "what_happens": "A false 'fully backfilled' declaration in the ledger while a subset of the backlog was never even attempted, because it never appeared in the scope query's output at all.",
+      "mitigated": true,
+      "how": "Checked the join's own drop rate directly rather than trusting it: a companion query counted ungraded rows with a LEFT JOIN (reg.r2_current_path IS NULL OR reg.chapter_key IS NULL) and returned 0 rows / 0 councils -- confirming the INNER JOIN in the scope query dropped nothing, i.e. all 4,705 then-ungraded gradeable rows genuinely had a resolvable registry row with a usable PDF path. The final post-backfill check (fidelity_status IS NULL = 0, queried independently of either join) is what actually proves completeness, not the scope estimate itself.",
+      "repro": "SELECT count(*), count(DISTINCT q.council) FROM dcp_review_queue q LEFT JOIN dcp_chapter_registry reg ON reg.council=q.council AND reg.chapter_key=q.chapter_key WHERE q.status IN ('pending','in_progress') AND q.change_type <> 'removed' AND q.new_text IS NOT NULL AND q.fidelity_status IS NULL AND (reg.r2_current_path IS NULL OR reg.chapter_key IS NULL) -- run after any future backfill to confirm the join isn't hiding uncovered rows."
     },
     {
       "scenario": "The ledger's 'fixed' declaration for DQ-71 could itself drift the moment new chapters enter the review queue after this backfill, since the fix clears only the already-queued backlog, not a standing guarantee.",
