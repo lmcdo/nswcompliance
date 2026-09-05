@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Real, generalizable fixes to the AI extraction engine: a new provider (sonnet), a crash fix for a response shape a newer model can return, and a retry that recovers a class of previously-silent data loss. Not minor: changes production extraction behaviour for every future --review run with AI_EXTRACTION on.",
-  "commit_hash": "3ad182b8",
+  "commit_hash": "b9fad681",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_extractor.py"
