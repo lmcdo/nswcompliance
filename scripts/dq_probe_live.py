@@ -329,16 +329,43 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # human is being asked to approve into the served corpus with nothing
         # having confirmed its text appears in the council's own PDF.
         #
-        # fidelity_status is NOT this check. 19,199 of 19,649 queue rows carry
-        # one, but it is a cheap inline heuristic -- garbled glyphs, junk ref,
-        # emptied, oversize -- and it never opens the PDF. fidelity_source_quote
-        # is the real thing: the passage from the source document that grounds
-        # the row. 12 rows in the table's history have one. 0.06%.
+        # fidelity_status is NOT the cheap heuristic this check used to be
+        # confused with -- that confusion was about fidelity_status vs
+        # fidelity_source_quote, and it ran the other way: 19,199 of 19,649
+        # queue rows carry a *heuristic* status (garbled glyphs, junk ref,
+        # emptied, oversize) that never opens the PDF. What THIS check counts
+        # is dcp_fidelity_gate's own verdict column, fidelity_status, which
+        # gate_chapter sets to 'grounded' or 'flagged' -- never left NULL --
+        # for every row it actually opens the source PDF and grades.
         #
-        # Cause was a coupling, not an absence: dcp_fidelity_gate.gate_chapter
-        # was gated on AI_EXTRACTION, a flag that ALSO swaps the whole
-        # deterministic extractor for an LLM (~L1130 of dcp_extract_changed).
-        # Nobody was going to enable that in production to get verification, so
+        # ⛔ CORRECTED 2026-09-05 -- the check itself was wrong, not just
+        # unrun. The original query below tested fidelity_source_quote IS NULL
+        # as a proxy for "never graded". That column is populated ONLY on a
+        # subset of flagged rows (ground_row / _source_quote return a quote
+        # only when something was absent AND a source sentence matched at
+        # >=40% word overlap) -- a grounded row has nothing to quote, by
+        # design, forever. Measured live after running the gate over every
+        # then-outstanding chapter (4,742 rows, 9 councils, 186 chapters,
+        # 0 left with fidelity_status IS NULL): the old query still read
+        # 4,365 "red" -- 3,975 of those were the GROUNDED rows (checked, and
+        # fine) plus 390 flagged rows whose quote-matcher didn't clear the
+        # 40% bar. A check built to reach zero only when fidelity_source_quote
+        # is universal can never pass, because the majority-case (grounded)
+        # verdict has no quote to write. See
+        # memory/feedback-a-check-can-watch-the-field-the-fix-abandoned.md --
+        # ask "can this reach 0 at all" before trusting a red count.
+        #
+        # OLD query, kept here for the record (never reaches 0 by design):
+        #   SELECT count(*) FROM dcp_review_queue
+        #    WHERE status IN ('pending', 'in_progress')
+        #      AND change_type <> 'removed' AND new_text IS NOT NULL
+        #      AND fidelity_source_quote IS NULL
+        #
+        # Cause of the backlog (separate from the check bug above) was a
+        # coupling, not an absence: dcp_fidelity_gate.gate_chapter was gated
+        # on AI_EXTRACTION, a flag that ALSO swaps the whole deterministic
+        # extractor for an LLM (~L1130 of dcp_extract_changed). Nobody was
+        # going to enable that in production to get verification, so
         # verification never ran. Decoupled 2026-08-14 behind its own opt-OUT
         # control, fidelity_gate_enabled().
         #
@@ -348,13 +375,22 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "SELECT count(*) FROM dcp_review_queue "
         " WHERE status IN ('pending', 'in_progress') "
         "   AND change_type <> 'removed' AND new_text IS NOT NULL "
-        "   AND fidelity_source_quote IS NULL",
+        "   AND fidelity_status IS NULL",
         (),
         "Each row is a provision a reviewer is asked to approve on trust. "
-        "Measured 3,741 of 3,741 gradeable pending rows on 2026-08-14 -- 100%, "
-        "and 0 of all 8,693 pending rows carry a source quote. Clears as the "
-        "decoupled gate runs over each chapter; a residual means the grader read "
-        "the PDF and could not find the text, which is a FINDING, not a gap.",
+        "Measured 4,705 of 4,705 gradeable pending rows red on 2026-09-04 "
+        "(this check's OWN prior query never reaches 0 -- see the block "
+        "comment above). Backfilled live 2026-09-05: 9 councils, 186 "
+        "chapters, 4,742 rows graded (3,975 grounded, 767 flagged) -- 0 rows "
+        "with fidelity_status IS NULL remain gradeable-but-unchecked. 390 of "
+        "the 767 flagged rows have no fidelity_source_quote (the matcher "
+        "found no source sentence at >=40% word overlap) -- those are still "
+        "correctly flagged for human review, just without a one-line quote "
+        "to compare against; that is a reviewer-convenience gap, not a "
+        "verification gap, and is not what this check measures. Clears "
+        "again as new chapters enter the queue and the gate has not yet run "
+        "over them -- re-run dcp_fidelity_gate.py per council after each "
+        "batch of new extractions, same as this session did.",
     ),
     "DQ-40": (
         "Setback controls still flagged for review",
