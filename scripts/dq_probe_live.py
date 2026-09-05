@@ -1322,7 +1322,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "shows.",
     ),
     "DQ-95": (
-        "Canterbury-Bankstown DCP extraction attempted for real -- 11 of 52 processed chapters are genuinely broken, not 52",
+        "Canterbury-Bankstown DCP extraction attempted for real -- 11 of 52 processed chapters flagged by the artifact scanner, not 52",
         # 2026-09-05, acting on DQ-90 (item #2 of the user's own priority
         # list this session): flipped needs_extraction=TRUE on the 54
         # chapters DQ-90 found registered-but-never-queued (a real,
@@ -1353,12 +1353,20 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # former-wsu-campus-milperra, chapter-1-1-introduction-and-
         # administration. 29 of 52 have ZERO artifacts detected
         # ("ARTIFACT CHECK: (none detected)"); the remaining 12 carry minor,
-        # under-threshold artifacts, not blocking. Inspected one of the 11
-        # (chapter-7-5) directly: real, visible corruption confirmed --
-        # a page number bled into a heading, bare_page_numbers scored
-        # 261% of the provision count, several section labels are bare
-        # numbers with no title -- so the 11-chapter list is a real defect
-        # list, not itself a false-positive artifact of the scan.
+        # under-threshold artifacts, not blocking.
+        #
+        # Sol cross-review (2026-09-05, HIGH, real, on the push containing
+        # this correction): only 1 of the 11 (chapter-7-5) was actually
+        # opened and inspected -- real, visible corruption confirmed there
+        # (a page number bled into a heading, bare_page_numbers scored 261%
+        # of the provision count, several section labels are bare numbers
+        # with no title). The other 10 are FLAGGED BY THE SCANNER, not
+        # independently verified -- exactly the same shape of over-claim
+        # this whole entry exists to correct on the preflight side (that
+        # scanner over-triggered; this one has not been shown NOT to). Do
+        # not read "11" as "11 manually confirmed" -- it is "11 the
+        # post-extraction artifact scan flagged, 1 of which was checked by
+        # hand and found real."
         #
         # ALSO TESTED AND REVERTED, same session: this repo already has a
         # working geometric two-column reader (commit 53b0c8ee, 2026-07-29,
@@ -1390,18 +1398,22 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         (),
         "Chapters still queued for extraction (flag set) but never "
         "successfully extracted. Reads 54 today -- but only 11 of the 52 "
-        "already-processed chapters carry confirmed extraction bugs per "
-        "the pipeline's own post-extraction artifact scan (29 are clean, "
-        "12 have minor under-threshold artifacts); the crude preflight "
-        "'52 flagged SUSPECT' banner is not evidence the other 41 are "
-        "broken -- see the header comment above before assuming a nonzero "
-        "count here means the whole council needs a pipeline fix. Most of "
-        "the drop this count needs could plausibly come from committing "
-        "the clean/near-clean chapters after a human clears their (mostly "
-        "false-positive) SUSPECT flags, matching the precedent already set "
-        "for ashfield/marrickville/city_of_sydney/hornsby (#851) -- not "
-        "from a pipeline change. The 11 genuinely broken chapters and the "
-        "2 missing-PDF chapters are the real remaining blockers.",
+        "already-processed chapters are FLAGGED by the pipeline's own "
+        "post-extraction artifact scan (29 read clean, 12 have minor "
+        "under-threshold artifacts); only 1 of those 11 was manually "
+        "opened and confirmed as a real defect, so 'flagged' is not the "
+        "same claim as 'confirmed' for the other 10 -- see the header "
+        "comment above. The crude preflight '52 flagged SUSPECT' banner "
+        "is not evidence the other 41 are broken either -- do not assume "
+        "a nonzero count here means the whole council needs a pipeline "
+        "fix. Most of the drop this count needs could plausibly come from "
+        "committing the clean/near-clean chapters after a human clears "
+        "their (mostly false-positive) SUSPECT flags, matching the "
+        "precedent already set for ashfield/marrickville/city_of_sydney/"
+        "hornsby (#851) -- not from a pipeline change. The chapters the "
+        "artifact scan flags and the 2 missing-PDF chapters are the "
+        "candidates for real remaining work, pending per-chapter human "
+        "review, not a pipeline-wide failure.",
     ),
     "DQ-92": (
         "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",
