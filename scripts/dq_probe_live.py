@@ -1392,10 +1392,82 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # TRUE (these chapters DO still need extraction). No provisions
         # were written to regulatory_provisions in any of these runs; the
         # --review flag guarantees this.
+        #
+        # Sol cross-review (2026-09-05, MEDIUM, confidence 0.98, on the
+        # rebase force-push): the original query here was
+        # "WHERE council = 'canterbury_bankstown' AND needs_extraction = TRUE
+        # AND last_extracted_at IS NULL" -- no is_active/is_spatial/is_inert/
+        # dcp_name scope, so a FUTURE unrelated canterbury_bankstown
+        # registry row (a superseded chapter re-added, a new spatial-only
+        # chapter registered later) could silently change this count
+        # without any connection to this specific extraction attempt.
+        # Fixed per Sol's PREFERRED option (an immutable cohort over extra
+        # WHERE columns, "because DQ-95 tracks a specific attempt"): scoped
+        # to the exact 54 chapter_key values this session's flag flip
+        # touched, read back verbatim from the committed pre-write backup
+        # (data/db_rollback_backups/..._pre_flag_flip_2026-09-05.json) --
+        # not re-derived from any live filter that could itself drift.
         "SELECT count(*) FROM dcp_chapter_registry "
-        "WHERE council = 'canterbury_bankstown' AND needs_extraction = TRUE "
+        "WHERE chapter_key = ANY(%s) AND needs_extraction = TRUE "
         "AND last_extracted_at IS NULL",
-        (),
+        (
+            [
+                "cb-dcp-2023-ch5-1-bankstown",
+                "cb-dcp-2023-ch5-2-canterbury",
+                "chapter-1-1-introduction-and-administration",
+                "chapter-10-1-child-care-centres",
+                "chapter-10-2-schools",
+                "chapter-10-3-home-businesses",
+                "chapter-10-4-non-residential-land-uses",
+                "chapter-10-5-places-of-public-worship",
+                "chapter-10-6-commercial-land-uses",
+                "chapter-10-7-sex-services-premises",
+                "chapter-10-8-telecommunications-facilities",
+                "chapter-11-1-milton-street",
+                "chapter-11-10-chullora-marketplace",
+                "chapter-11-11-brighton-avenue",
+                "chapter-11-12-445-canterbury-road",
+                "chapter-11-13-former-wsu-campus-milperra",
+                "chapter-11-14-riverwood-estate",
+                "chapter-11-15-marco-avenue",
+                "chapter-11-2-undercliffe-bridge-precinct",
+                "chapter-11-3-roberts-road",
+                "chapter-11-4-croydon-street-precinct",
+                "chapter-11-5-riverlands",
+                "chapter-11-6-potts-hill",
+                "chapter-11-7-auburn-road",
+                "chapter-11-8-boorea",
+                "chapter-11-9-revesby-hospital",
+                "chapter-2-1-site-analysis",
+                "chapter-2-2-flood-risk-management",
+                "chapter-2-3-tree-management",
+                "chapter-2-4-pipeline-corridors",
+                "chapter-3-1-development-engineering-standards",
+                "chapter-3-2-parking",
+                "chapter-3-3-waste-management",
+                "chapter-3-4-sustainable-development",
+                "chapter-3-5-subdivision",
+                "chapter-3-6-signs",
+                "chapter-3-7-landscape",
+                "chapter-4-1-introduction",
+                "chapter-4-2-heritage-items",
+                "chapter-4-3-heritage-conservation-areas",
+                "chapter-4-4-vicinity-of-places-of-heritage-significance",
+                "chapter-6-1-general-requirements",
+                "chapter-6-2-bankstown-city-centre",
+                "chapter-6-3-campsie-town-centre",
+                "chapter-7-1-general-requirements",
+                "chapter-7-2-city-west",
+                "chapter-7-3-city-east",
+                "chapter-7-4-neighbourhood-centres",
+                "chapter-7-5-canterbury-local-centre",
+                "chapter-7-6-belmore-and-lakemba",
+                "chapter-8-1-general-requirements",
+                "chapter-8-2-canterbury-road",
+                "chapter-8-3-hume-highway",
+                "chapter-9-1-general-requirements",
+            ],
+        ),
         "Chapters still queued for extraction (flag set) but never "
         "successfully extracted. Reads 54 today -- but only 11 of the 52 "
         "already-processed chapters are FLAGGED by the pipeline's own "

@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: this branch includes a real, deliberate production database write (flipping needs_extraction on 54 dcp_chapter_registry rows, explicit user authorization, backed up first) and registers a new live-executable check (DQ-95) that future sessions/CI will run. Not Critical: the write is a status-flag flip, not a content write, and no application code changed -- nothing user-facing is touched. Not Minor: it's a real production write plus a new standing check, not a wording-only change.",
-  "commit_hash": "c5284f77",
+  "commit_hash": "c301e6f5",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -53,6 +53,13 @@
       "mitigated": true,
       "how": "Copied into data/db_rollback_backups/ (this repo's existing, tracked convention for exactly this purpose -- confirmed via `git check-ignore`, unlike the separate gitignored `backups/` directory) as dcp_chapter_registry_canterbury_bankstown_pre_flag_flip_2026-09-05.json (35KB, well under the ~600KB norm for that directory). Committed with this branch.",
       "repro": "N/A -- verified positively: the file is listed in `files` below and staged for commit."
+    },
+    {
+      "scenario": "DQ-95's original query filtered only on council + needs_extraction=TRUE + last_extracted_at IS NULL, with no is_active/is_spatial/is_inert/dcp_name scoping -- a future, unrelated canterbury_bankstown registry row (a superseded chapter re-added, a new spatial-only chapter registered later) could silently change the count without any connection to this specific 54-chapter extraction attempt.",
+      "what_happens": "DQ-95 could stay red (or go clean) for a reason that has nothing to do with whether THIS attempt's 54 chapters were ever resolved, making the check's own history meaningless for tracking this specific incident.",
+      "mitigated": true,
+      "how": "Caught by Sol cross-review (MEDIUM, confidence 0.98) on the rebase force-push. Fixed per Sol's own preferred option: rewrote the query to `WHERE chapter_key = ANY(%s) AND needs_extraction = TRUE AND last_extracted_at IS NULL`, with the exact 54 chapter_key values read back verbatim from the committed pre-write backup file (not re-derived from any live filter that could itself drift). Verified live: still reads count=54 (correctly RED, matching the real unresolved state), dq_check.py PASSED, full pytest suite unchanged (4974 passed, 2 skipped, 0 failed).",
+      "repro": "python scripts/dq_probe_live.py --id DQ-95 -- confirm the printed `params` list contains exactly the 54 chapter_key strings from data/db_rollback_backups/dcp_chapter_registry_canterbury_bankstown_pre_flag_flip_2026-09-05.json, not a loose council-wide filter."
     }
   ],
   "post_merge": {
