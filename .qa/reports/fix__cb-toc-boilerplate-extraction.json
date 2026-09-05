@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Real code change to the DCP extraction pipeline's section-boundary detection, shared by every council using the default (non-AI, non-page-range-configured) extraction path. Not Critical: additive-only guard extension, no existing behaviour changes for pages that were already handled correctly (verified by full-batch regression across all 39 already-committed CB chapters: 0 new artifact-scan bugs). Not Minor: it changes what content gets extracted for real pages, not just wording.",
-  "commit_hash": "31999305",
+  "commit_hash": "19d8d03a",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_section_divider_guard.py",
