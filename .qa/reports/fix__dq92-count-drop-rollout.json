@@ -1,0 +1,76 @@
+{
+  "tier": "standard",
+  "justification": "A real extraction-pipeline code fix (a new geometric filter wired into _extract_page_text, run for every council) with new pure-function tests. Not minor: changes what text every DCP chapter extraction sees.",
+  "commit_hash": "ed6d82de",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_vertical_margin_label_guard.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Investigated live via read-only PDF inspection (boto3 R2 download + DCPExtractor.extract() directly, no DB writes) on marrickville/part7-s3-sex-industry, a real count_drop-tagged chapter (DQ-92). Captured real word-geometry fixtures from pages 25 (true positive) and 6 (a real false-positive risk) before writing any detection logic.",
+    "assumption_mismatch": "The existing rotated-character filter (_upright_only, gated to UPRIGHT_ONLY_COUNCILS) was assumed to be the fix for sidebar/margin artifacts. Tested directly on the real page: it changed nothing, because pdfplumber reports every glyph in this artifact as upright=True -- the artifact is a stacked-narrow-x-band GEOMETRY signature, not a rotation flag. A new, position-based detector was required.",
+    "new_vs_existing": "New function (find_vertical_margin_label_band) and new page filter (_strip_vertical_margin_label), wired into the single existing _extract_page_text choke point every extraction path already goes through -- not council-scoped like _upright_only or GEOMETRIC_COLUMN_COUNCILS, because the geometric signature (several short, mostly-alphabetic words stacked at one fixed narrow x with near-zero vertical gaps) does not occur in ordinary DCP prose regardless of council.",
+    "external_source_error": "N/A -- PDF text-layer artifact from the source document's own generator, not an external API.",
+    "frontend_type": "N/A -- backend extraction pipeline only.",
+    "user_failure_mode": "Before this fix: a running margin-title banner rendered as individual upright glyphs interleaved single letters into real body text between lines, which broke the heading-detection regex on the very next section and silently swallowed 7 real sections (7.3.8-7.3.14) into whichever section was still open (confirmed: it grew to 14,738 characters). A reviewer approving that provision would be approving 7 real DCP sections' worth of content merged into one wrong section, with no indication anything was missing. After: the margin letters are stripped before any heading detection runs, restoring the two sections (7.3.1, 7.3.2) this specific artifact was corrupting on this chapter -- verified directly by comparing extracted section counts before/after on the real PDF."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_vertical_margin_label_guard.py -v",
+    "fails_when": "find_vertical_margin_label_band fails to detect the real verbatim margin-label fixture (false negative), OR incorrectly flags the real verbatim 'To ...' objectives-bullet fixture, a numeric column, too-short runs, wide ordinary-prose words, or malformed word dicts (false positives) -- 8 tests, each pinning one of these cases against real captured PDF geometry or a deliberately adversarial synthetic fixture.",
+    "observed_red": "Before the fix existed, this test file did not exist and the bug was live: on the real marrickville/part7-s3-sex-industry PDF, 7.3.1 and 7.3.2 collapsed into an 8,564-character '7.3' blob (measured directly via DCPExtractor.extract() before vs. after this change). After: 8/8 new tests pass; full existing suite (446 tests matching dcp/extract/column/margin patterns) passes with zero regressions; 7.3.1 (1,160 chars) and 7.3.2 (4,915 chars) are correctly restored as separate sections on the real PDF."
+  },
+  "functions": [
+    {
+      "name": "find_vertical_margin_label_band",
+      "file_line": "scripts/dcp_extract_changed.py (new)",
+      "input": "list[dict] of pdfplumber extract_words() output for one page",
+      "output": "(x0, x1) tuple bounding the detected margin-label band (padded 0.5pt each side), or None when no such band exists",
+      "if_none": "empty word list -> None; words present but none satisfy the short/narrow candidacy filter -> None; a candidate x-band exists but its longest vertically-contiguous run is below _MARGIN_LABEL_MIN_RUN, or that run is majority-numeric rather than majority-alphabetic -> None (both confirmed by dedicated tests)"
+    },
+    {
+      "name": "_strip_vertical_margin_label",
+      "file_line": "scripts/dcp_extract_changed.py (new)",
+      "input": "one pdfplumber Page object for a single chapter PDF page",
+      "output": "the same page with characters inside a detected margin-label band filtered out (page.filter, same pattern as the existing _upright_only), or the original page unchanged when no band is detected",
+      "if_none": "a page with no words, or no margin-label band, returns unmodified -- confirmed no crash on a page with zero extractable words (covered indirectly via the empty-list unit test on the underlying detector; the page-level wrapper is exercised end-to-end via the live PDF verification, not a separate unit test, since it requires a real pdfplumber Page object)"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A genuine bulleted Objectives list where every bullet starts with the same short word (\"To ...\") at a consistent left margin -- short, alphabetic, same (x0,x1) column, exactly the surface shape this detector looks for.",
+      "what_happens": "Without the contiguity check, this would be misdetected as a margin label and its content silently deleted -- an earlier version of this fix did exactly that (found live on the same PDF's page 6, before the contiguity requirement was added).",
+      "mitigated": true,
+      "how": "Added a vertical-contiguity requirement: real margin-label glyphs sit back-to-back (gap ~0, up to ~6.5pt at the label's own word-spaces, measured on the true positive) while separate paragraph/bullet lines sit a full line-height apart (measured >=12.6pt on this same real page). The 'To' bullets' gaps are all >=18pt, so their longest contiguous run never reaches _MARGIN_LABEL_MIN_RUN.",
+      "repro": "tests/test_vertical_margin_label_guard.py::TestConfusableNegatives::test_objectives_bullets_all_starting_with_to -- verbatim real geometry from the same PDF's page 6."
+    },
+    {
+      "scenario": "A stacked column of page numbers or a fee schedule -- short, narrow, tightly stacked (would pass width/run-length/contiguity checks).",
+      "what_happens": "Real numeric content (not a label) would be deleted from the page.",
+      "mitigated": true,
+      "how": "Required the majority of the run's tokens to be alphabetic (isalpha()) -- a pure-digit run fails this and is never flagged.",
+      "repro": "tests/test_vertical_margin_label_guard.py::TestConfusableNegatives::test_stacked_numeric_column_is_not_a_label"
+    },
+    {
+      "scenario": "The fix runs unconditionally for EVERY council (not gated like UPRIGHT_ONLY_COUNCILS or GEOMETRIC_COLUMN_COUNCILS) -- a broad blast radius if the detector is even slightly over-eager on some other council's real content.",
+      "what_happens": "Silent content loss on a council this investigation never looked at.",
+      "mitigated": true,
+      "how": "Ran the full pre-existing test suite (4,988+ tests spanning every onboarded council's extraction fixtures) after wiring the change in -- 0 regressions. Also re-ran the full 26-chapter marrickville dry-run scan before/after: 25 of 26 chapters read byte-for-byte identical section counts (the 26th differs by 1, in the same direction as normal page-to-page extraction variance, not a new loss), confirming the filter is a no-op everywhere it isn't needed rather than a broad, unverified rewrite.",
+      "repro": "python -m pytest (full suite, 0 regressions). The before/after 26-chapter comparison was run from an ad hoc, uncommitted loop over `python scripts/dcp_extract_changed.py --council marrickville --chapter <key> --all --dry-run` per chapter -- not a tracked script, so no path is named here."
+    },
+    {
+      "scenario": "Fixing this one defect does not, by itself, close the count_drop tag on the chapter it was found on (part7-s3-sex-industry stays at 65 of 108 baseline) -- a second, independent defect (headings 7.3.8-7.3.14 missing their number prefix entirely from the extracted text, not merely garbled) remains on that same chapter.",
+      "what_happens": "A reader could mistake 'this fix landed' for 'this chapter's count_drop is resolved' -- it is not, and is not claimed to be.",
+      "mitigated": true,
+      "how": "Recorded explicitly, not glossed over: this PR fixes a confirmed, narrow, real defect (restores 7.3.1/7.3.2) and is committed on its own merits; the chapter's remaining shortfall and the broader two-column under-extraction pattern seen across most of the other 25 flagged marrickville chapters are separate, still-open investigations (DQ-92), continuing on this same branch/session.",
+      "repro": "N/A -- documented scope boundary, not a code path."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: 8/8 new tests pass, 446/446 relevant existing tests pass (0 regressions), before/after section counts confirmed directly against the real PDF and against a full 26-chapter dry-run re-scan."
+  }
+}

@@ -1059,6 +1059,93 @@ def _upright_only(page: Any) -> Any:
     )
 
 
+# A running section/chapter title some DCP PDF generators print sideways down a
+# page's margin as individually-positioned UPRIGHT glyphs (one letter per short
+# line) rather than one rotated text run — so pdfplumber's own rotation flag
+# (upright=False, see _upright_only above) does not catch it; every glyph reports
+# upright=True, only its stacked position gives it away. Found 2026-09-05 on
+# marrickville/part7-s3-sex-industry page 25: 38 words all sharing one narrow
+# x-band (x0=557.9/x1=572.0), top strictly increasing, spelling "7.3 Sex Industry
+# and Adult Business Premises" one letter per line. Left in place, these letters
+# interleave into the real body text between lines, which broke detection of the
+# very next section heading (7.3.8 never appeared anywhere in the extracted text)
+# and silently swallowed 7 real sections (7.3.8–7.3.14) into whichever section was
+# still open (which grew to 14,738 chars). Not council-scoped: the geometric
+# signature — several short, mostly-alphabetic words stacked at one fixed narrow
+# x — does not occur in ordinary DCP prose, so this runs for every council.
+_MARGIN_LABEL_MIN_RUN = 6        # fewer than this is plausible coincidence, not a label
+_MARGIN_LABEL_MAX_WIDTH = 20.0   # a single glyph's word-bbox width, generously bounded
+_MARGIN_LABEL_MAX_CHARS = 2      # each stacked "word" is one letter (occasionally two)
+_MARGIN_LABEL_MIN_ALPHA_FRACTION = 0.7  # excludes a stacked NUMERIC column (page
+                                         # numbers, a fee schedule) — that is real
+                                         # content, not a label, and must survive.
+# ⚠ x-band + short-word alone is NOT enough — measured live 2026-09-05 on this
+# same PDF: a genuine Objectives list where every bullet starts "To ..." puts
+# 20+ short, alphabetic "To" words at one identical (x0, x1), a false positive
+# for the checks above. What actually separates a rotated running label from
+# that list is VERTICAL CONTINUITY: a real label's glyphs are drawn back to
+# back with no line-leading (gap ~0, up to ~6.5pt at the label's own word
+# spaces — measured on the true positive), while separate paragraph lines
+# (the "To" bullets) sit a full line-height apart (measured >=12.6pt on the
+# same page). Require the run to be contiguous under this gap, not just
+# same-column and short.
+_MARGIN_LABEL_MAX_GAP = 8.0
+
+
+def find_vertical_margin_label_band(words: list[dict]) -> tuple[float, float] | None:
+    """Detect a running margin-title band: a CONTIGUOUS run of
+    >=_MARGIN_LABEL_MIN_RUN short, mostly-alphabetic words sharing one narrow
+    (x0, x1) pair with near-zero vertical gaps between them (stacked glyphs of
+    one rotated string, not separate list-item lines that merely start with the
+    same short word at the same indent). Returns (x0, x1) padded by 0.5pt on
+    each side, or None when no such band exists. Pure — takes pdfplumber's own
+    extract_words() output, no PDF I/O."""
+    bands: dict[tuple[int, int], list[dict]] = {}
+    for w in words:
+        text = w.get("text") or ""
+        if not text or len(text) > _MARGIN_LABEL_MAX_CHARS:
+            continue
+        x0, x1 = w.get("x0"), w.get("x1")
+        if x0 is None or x1 is None or (x1 - x0) > _MARGIN_LABEL_MAX_WIDTH:
+            continue
+        bands.setdefault((round(x0), round(x1)), []).append(w)
+    for ws in bands.values():
+        ws = sorted(ws, key=lambda w: w["top"])
+        best_run: list[dict] = []
+        run = [ws[0]]
+        for prev, cur in zip(ws, ws[1:]):
+            if cur["top"] - prev["bottom"] <= _MARGIN_LABEL_MAX_GAP:
+                run.append(cur)
+            else:
+                if len(run) > len(best_run):
+                    best_run = run
+                run = [cur]
+        if len(run) > len(best_run):
+            best_run = run
+        if len(best_run) < _MARGIN_LABEL_MIN_RUN:
+            continue
+        alpha_count = sum(1 for w in best_run if w["text"].isalpha())
+        if alpha_count / len(best_run) < _MARGIN_LABEL_MIN_ALPHA_FRACTION:
+            continue
+        return (
+            min(w["x0"] for w in best_run) - 0.5,
+            max(w["x1"] for w in best_run) + 0.5,
+        )
+    return None
+
+
+def _strip_vertical_margin_label(page: Any) -> Any:
+    """Return `page` with a detected running margin-title band's characters
+    removed, else `page` unchanged. See find_vertical_margin_label_band."""
+    band = find_vertical_margin_label_band(page.extract_words() or [])
+    if band is None:
+        return page
+    bx0, bx1 = band
+    return page.filter(
+        lambda obj: obj.get("object_type") != "char" or not (bx0 <= obj.get("x0", -1) <= bx1)
+    )
+
+
 def _extract_page_text(page: Any, council: str | None) -> str:
     """
     Extract text from a PDF page, handling two-column layouts for councils
@@ -1074,7 +1161,13 @@ def _extract_page_text(page: Any, council: str | None) -> str:
 
     For councils in UPRIGHT_ONLY_COUNCILS: filters to upright characters
     before extraction to remove rotated sidebar labels and figure callouts.
+
+    Runs for every council: strips a running margin-title band rendered as
+    stacked upright glyphs (see _strip_vertical_margin_label) before anything
+    else, so it can't corrupt column detection or heading matching downstream.
     """
+    page = _strip_vertical_margin_label(page)
+
     if council in UPRIGHT_ONLY_COUNCILS:
         page = _upright_only(page)
 
