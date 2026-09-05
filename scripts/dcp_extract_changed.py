@@ -868,6 +868,34 @@ _STANDALONE_SECTION_CODE_RE = re.compile(
     r'|^([A-Z]\d+(?:\.\d+)*)\b'   # e.g. "B3", "O9", "C1.2"
 )
 
+# Matches a "SECTION N" divider-page marker, e.g. a standalone line reading
+# "SECTION 1" or "SECTION 5" (a section-title/divider page, distinct from a
+# real body heading like "5.1 Dwelling mix"). Canterbury-Bankstown
+# chapter-7-5 origin case (2026-09-05): pages 5, 8 and 82 each read
+# "SECTION N\n<ALL-CAPS TITLE>\n<N.1 ... page#>\n<N.2 ... page#>\n..." -- a
+# mini table-of-contents repeating only THAT section's own 2-4 child
+# entries. The existing TOC-page guard below only fires at >=5 section-code
+# matches (calibrated for the chapter's full TOC), so these divider pages
+# (3-4 matches) slip through and get captured as the opening paragraph of
+# sections 1.1/2.1/5.1 -- unrelated sibling titles and page numbers standing
+# in for real provision text. Checked against the real PDF (not assumed):
+# in every observed case the divider block is the page's ENTIRE text, so
+# suppressing the whole page on this signal is safe.
+_SECTION_DIVIDER_RE = re.compile(r'(?m)^\s*SECTION\s+\d+\s*$')
+
+
+def is_toc_or_divider_page(text: str, section_re: "re.Pattern[str]") -> bool:
+    """True when a page's text should be suppressed from section detection
+    and absorbed into whichever section is already open -- either a full
+    chapter TOC page (5+ section-code matches) or a section-DIVIDER mini-TOC
+    page (a literal "SECTION N" marker near the top plus 2+ matches). Pure
+    function, no PDF I/O, so it is unit-testable without a fixture PDF (this
+    module's own convention: full extraction is validated against real
+    council PDFs out of band; the decision logic is tested directly)."""
+    toc_hits = len(section_re.findall(text))
+    is_divider_page = bool(_SECTION_DIVIDER_RE.search(text[:300]))
+    return toc_hits >= 5 or (toc_hits >= 2 and is_divider_page)
+
 
 # Councils whose PDFs contain rotated figure/diagram labels (sidebar labels,
 # figure callouts, diagram text) that pdfplumber extracts as reversed or
@@ -1195,13 +1223,11 @@ class DCPExtractor:
                 page_tables = [] if self.ocr_pages else (page.extract_tables() or [])
 
                 section_re = COUNCIL_SECTION_RE_OVERRIDES.get(self.council, self.SECTION_RE)
-                # TOC page guard: if the page contains 5+ section-code matches it is
-                # almost certainly a chapter table-of-contents page (list of sub-sections
-                # with titles). Extracting sections from a TOC page produces false sections
-                # whose content is just the TOC list. Skip all section detection on these
-                # pages; their text is absorbed into the current (parent) section.
-                _toc_hits = len(section_re.findall(text))
-                _suppress = _toc_hits >= 5
+                # TOC / section-divider page guard: skip all section detection on a
+                # full chapter TOC page or a section's own mini-TOC divider page;
+                # their text is absorbed into the current (parent) section instead
+                # of becoming false sections of their own. See is_toc_or_divider_page.
+                _suppress = is_toc_or_divider_page(text, section_re)
 
                 # Councils in MULTI_HEADING_COUNCILS carry more than one heading
                 # per page; split so each heading-delimited block runs through the

@@ -1,0 +1,64 @@
+{
+  "tier": "standard",
+  "justification": "Real code change to the DCP extraction pipeline's section-boundary detection, shared by every council using the default (non-AI, non-page-range-configured) extraction path. Not Critical: additive-only guard extension, no existing behaviour changes for pages that were already handled correctly (verified by full-batch regression across all 39 already-committed CB chapters: 0 new artifact-scan bugs). Not Minor: it changes what content gets extracted for real pages, not just wording.",
+  "commit_hash": "fe591e9c",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_section_divider_guard.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Ran the real extractor against chapter-7-5's actual 122-page PDF (downloaded from R2) and printed every one of the 46 sections it produced, with real page ranges and content previews -- ground truth, not inference. Confirmed the existing TOC-page guard (_toc_hits >= 5) already correctly absorbs a chapter's FULL table-of-contents page. Traced the exact root cause of the remaining defect to a narrower case (a section's own mini-TOC divider page, 3-4 entries) that falls below that threshold.",
+    "assumption_mismatch": "Initially scoped this as 'fix the TOC-as-provision bug in chapter-7-5'. The real diagnosis showed TWO distinct defect classes: (1) section-divider mini-TOC contamination (clean, well-understood, fixed here) and (2) garbled map/key-site/legend pages producing scrambled text that section_re occasionally mismatches onto (a harder, separate problem, explicitly named as out-of-scope follow-up, not silently dropped or conflated with this fix).",
+    "new_vs_existing": "Extended the existing TOC-page guard with a second, narrower, independent signal rather than duplicating it or hardcoding to canterbury_bankstown -- the fix is general and will apply to any council using the default extraction path that has the same section-divider-page pattern (confirmed on TWO independent real chapters: chapter-7-5's pages 5/8/82 and chapter-11-15-marco-avenue's page 5).",
+    "external_source_error": "N/A -- reads already-downloaded/cached PDFs from R2, same mechanism proven throughout this investigation.",
+    "frontend_type": "N/A -- backend extraction pipeline only.",
+    "user_failure_mode": "Before this fix: a planner reading Canterbury-Bankstown chapter 1.1, 2.1 or 5.1 (or any future council/chapter sharing this layout pattern) would see a table-of-contents fragment and sibling section titles presented as if they were that section's actual regulatory text -- confusing and wrong, though not yet served in production for chapter-7-5 (it's one of the 13 held-back chapters). Separately discovered: chapter-11-15-marco-avenue (already LIVE, committed on PR #1045) IS currently serving exactly this defect on its '2.1 Objectives' provision -- flagged as a named, pending follow-up, not silently left in production nor auto-fixed without a decision."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_section_divider_guard.py -v ; python -m pytest -q ; python scripts/dq_check.py",
+    "fails_when": "Any of the 11 new tests fail if the guard's threshold or divider-marker logic regresses. dq_check.py fails if DQ-95's declared status and live result disagree.",
+    "observed_red": "11/11 new tests pass, including 5 confusable-negative cases (real content page, garbled-map page with only 1 hit, 'section' mentioned mid-sentence, single-hit-with-marker below threshold, a marker appearing past the 300-char cutoff on a long real page) and 2 regression-pin cases for the pre-existing >=5 full-TOC guard. Full pytest suite: 4988 passed, 2 skipped, 0 failed (was 4977 before this branch's 11 new tests). Full-batch regression check (--all --review across all 39 already-committed CB chapters): 0 new artifact-scan bugs, exactly 1 real diff (chapter-11-15-marco-avenue's already-live '2.1' provision would be correctly removed, confirmed by direct diff inspection, not assumed). dq_check.py PASSED."
+  },
+  "functions": [
+    {
+      "name": "is_toc_or_divider_page",
+      "file_line": "scripts/dcp_extract_changed.py (new, extracted from inline logic in _extract_sequential)",
+      "input": "page text (str), the council's section_re pattern",
+      "output": "bool -- True suppresses section detection on this page (its text is absorbed into the currently-open section) when either the full-TOC threshold (>=5 section-code matches) or the new divider threshold (a literal 'SECTION N' line in the first 300 chars plus >=2 matches) is met",
+      "if_none": "empty text -> 0 matches -> False (no suppression); this matches the pre-existing behaviour for the >=5 case exactly, since the function is a pure refactor of that logic plus one additive OR-branch"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The new divider-marker check could false-positive on a real content page that happens to mention 'SECTION N' as a standalone line for a legitimate reason (e.g. quoting a cross-referenced chapter's own divider), incorrectly swallowing real content.",
+      "what_happens": "A real provision could be silently dropped from what gets served.",
+      "mitigated": true,
+      "how": "Restricted the marker search to the first 300 characters of the page (real divider pages are short and the marker is always near the top; a long real page mentioning it deep in the body cannot trigger this) and required 2+ additional section-code matches on the SAME page as a second, independent confirming signal -- not the marker alone. Pinned with a dedicated test (test_section_divider_marker_deep_in_a_long_real_page_does_not_suppress) proving a >300-char real page with a late marker is NOT suppressed.",
+      "repro": "tests/test_section_divider_guard.py::TestConfusableNegatives::test_section_divider_marker_deep_in_a_long_real_page_does_not_suppress"
+    },
+    {
+      "scenario": "A code change to a shared extraction function used by every council could regress previously-clean chapters elsewhere, not just canterbury_bankstown.",
+      "what_happens": "Silent content loss or corruption across the whole DCP corpus, not just the targeted chapter.",
+      "mitigated": true,
+      "how": "Ran the fixed extractor against ALL 39 already-committed canterbury_bankstown chapters (--all --review, memory-only) and diffed against the live, already-committed baseline: 0 new artifact-scan bugs, exactly 1 chapter shows any difference at all, and that difference is a confirmed correct improvement (removing 100% junk content), not a regression. This is the full-batch check this session's own prior lesson (a single-chapter spot check proves nothing) explicitly required.",
+      "repro": "python scripts/dcp_extract_changed.py --council canterbury_bankstown --all --review, then diff the OVERALL SUMMARY provision counts per chapter against a live regulatory_provisions count query."
+    },
+    {
+      "scenario": "An earlier draft of the chapter-11-15-marco-avenue test used a truncated snippet copied from a diff report's preview text, silently asserting it was 'verbatim' when it was missing 2 of the page's 3 real section-code matches -- the test would have passed for the wrong reason (the real page has 3 hits, the truncated fixture had 1).",
+      "what_happens": "A test that looks like it pins real behaviour but actually tests a fabricated, incorrect fixture -- exactly the class of false confidence this project's own QA discipline exists to catch.",
+      "mitigated": true,
+      "how": "Caught before committing: the test failed immediately when run (1 hit is below the >=2 threshold). Re-fetched the real PDF page directly and confirmed the true text (3 matches: 2.1/2.2/2.3), then rewrote the test with the verified real content and a note explaining the correction.",
+      "repro": "tests/test_section_divider_guard.py::TestSectionDividerPagesAreSuppressed::test_chapter_11_15_marco_avenue_section_2_divider -- the docstring records the correction."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- a pending, separate decision: whether to re-run `python scripts/dcp_extract_changed.py --council canterbury_bankstown --chapter chapter-11-15-marco-avenue` to apply the confirmed-correct removal of that chapter's junk '2.1' provision to already-live production content. Not done as part of this PR; named explicitly in .claude/DATA_QUALITY_TRACKER.md's DQ-95 row."
+  }
+}
