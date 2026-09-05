@@ -868,6 +868,61 @@ _STANDALONE_SECTION_CODE_RE = re.compile(
     r'|^([A-Z]\d+(?:\.\d+)*)\b'   # e.g. "B3", "O9", "C1.2"
 )
 
+# Matches a "SECTION N" divider-page marker, e.g. a standalone line reading
+# "SECTION 1" or "SECTION 5" (a section-title/divider page, distinct from a
+# real body heading like "5.1 Dwelling mix"). Canterbury-Bankstown
+# chapter-7-5 origin case (2026-09-05): pages 5, 8 and 82 each read
+# "SECTION N\n<ALL-CAPS TITLE>\n<N.1 ... page#>\n<N.2 ... page#>\n..." -- a
+# mini table-of-contents repeating only THAT section's own 2-4 child
+# entries. The existing TOC-page guard below only fires at >=5 section-code
+# matches (calibrated for the chapter's full TOC), so these divider pages
+# (3-4 matches) slip through and get captured as the opening paragraph of
+# sections 1.1/2.1/5.1 -- unrelated sibling titles and page numbers standing
+# in for real provision text. Checked against the real PDF (not assumed):
+# in every observed case the divider block is the page's ENTIRE text, so
+# suppressing the whole page on this signal is safe.
+_SECTION_DIVIDER_RE = re.compile(r'(?m)^\s*SECTION\s+\d+\s*$')
+
+
+def classify_toc_or_divider_page(
+    text: str, section_re: "re.Pattern[str]"
+) -> tuple[bool, bool]:
+    """Returns (suppress, discard) for a page that should not start a new
+    section. Pure function, no PDF I/O, so it is unit-testable without a
+    fixture PDF (this module's own convention: full extraction is validated
+    against real council PDFs out of band; the decision logic is tested
+    directly).
+
+    suppress: True for either a full chapter TOC page (5+ section-code
+    matches) or a section-DIVIDER mini-TOC page (a literal "SECTION N"
+    marker near the top plus 2+ matches) -- this page must not start a new
+    section.
+
+    discard: True ONLY for the divider case. Sol cross-review (HIGH,
+    confidence 0.98, 2026-09-05): suppressing heading detection alone does
+    not remove the corrupt text -- the existing code unconditionally
+    appends every non-heading page's text to whichever section is already
+    open. For the chapter's own full TOC page this lands harmlessly inside
+    'preamble' in every observed case (the TOC always appears before any
+    real section exists, and preamble is already non-actionable --
+    consistent with docs/DCP_EXTRACTION_KNOWN_PATTERNS.md §4's "do not
+    delete, keep as navigational context"). A section-divider page fires
+    MID-CHAPTER, so "whichever section is already open" is almost always a
+    real, actionable one: verified live, chapter-7-5's page 8 divider
+    landed inside section 1.2 (previously clean) and page 82's divider
+    landed inside 4.6 (previously clean), corrupting two sections this fix
+    was never meant to touch. So divider-page text must be discarded
+    outright, not absorbed -- a page that is BOTH a full-TOC page and
+    (incidentally) carries a "SECTION N" line keeps the existing,
+    unchanged full-TOC behaviour (absorb), since that combination has
+    never been observed and is out of this fix's scope."""
+    toc_hits = len(section_re.findall(text))
+    is_full_toc = toc_hits >= 5
+    is_divider = (not is_full_toc) and toc_hits >= 2 and bool(
+        _SECTION_DIVIDER_RE.search(text[:300])
+    )
+    return (is_full_toc or is_divider), is_divider
+
 
 # Councils whose PDFs contain rotated figure/diagram labels (sidebar labels,
 # figure callouts, diagram text) that pdfplumber extracts as reversed or
@@ -1195,13 +1250,16 @@ class DCPExtractor:
                 page_tables = [] if self.ocr_pages else (page.extract_tables() or [])
 
                 section_re = COUNCIL_SECTION_RE_OVERRIDES.get(self.council, self.SECTION_RE)
-                # TOC page guard: if the page contains 5+ section-code matches it is
-                # almost certainly a chapter table-of-contents page (list of sub-sections
-                # with titles). Extracting sections from a TOC page produces false sections
-                # whose content is just the TOC list. Skip all section detection on these
-                # pages; their text is absorbed into the current (parent) section.
-                _toc_hits = len(section_re.findall(text))
-                _suppress = _toc_hits >= 5
+                # TOC / section-divider page guard: skip all section detection on a
+                # full chapter TOC page or a section's own mini-TOC divider page.
+                # The full-TOC case is absorbed into the current (parent) section
+                # (existing, unchanged behaviour); a divider page is DISCARDED
+                # outright rather than absorbed, since it fires mid-chapter and
+                # would otherwise corrupt whatever real section is currently open
+                # (Sol cross-review, HIGH, 2026-09-05). See classify_toc_or_divider_page.
+                _suppress, _discard_page = classify_toc_or_divider_page(text, section_re)
+                if _discard_page:
+                    continue
 
                 # Councils in MULTI_HEADING_COUNCILS carry more than one heading
                 # per page; split so each heading-delimited block runs through the
