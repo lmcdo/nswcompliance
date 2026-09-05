@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Real production write: applying the merged, tested section-divider extraction fix (PR #1046) to already-LIVE content. Not Critical: a single, well-characterised chapter recommit, backed up first, with a documented before/after diff already produced and reviewed BEFORE this branch was created (as part of PR #1046's own regression testing). Not Minor: it changes already-served regulatory content, not wording.",
-  "commit_hash": "93f23e74",
+  "commit_hash": "103afc3e",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
