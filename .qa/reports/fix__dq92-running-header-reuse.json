@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A real extraction-pipeline code fix (a heuristic in _extract_sequential's heading-detection loop) refactored into a pure, tested function. Changes when a repeated section number opens a new section vs is treated as a running header.",
-  "commit_hash": "e51e73bd",
+  "commit_hash": "750bc884",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_running_header_repeat_guard.py"
