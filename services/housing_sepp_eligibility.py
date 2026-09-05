@@ -67,6 +67,13 @@ class FormEligibility:
     source_document: Optional[str] = None
     legislation_url: Optional[str] = None
     effective_date: Optional[str] = None
+    # DQ-96: housing_sepp_standards.stale_since/stale_reason (W3 auto-stale,
+    # #839) were never read here — the legislation monitor stamps them when it
+    # detects a version change, but this engine kept serving values with no
+    # notice, unlike services/cdc_screen.py's equivalent contract for
+    # cdc_eligibility_standards. Values still serve; the notice rides along.
+    stale_since: Optional[str] = None
+    stale_reason: Optional[str] = None
 
 
 def normalize_zone(zone_code: Optional[str]) -> str:
@@ -95,10 +102,15 @@ def _fetch_standards_grouped() -> dict:
         # _fetch_standards_grouped query in this same module, extended to also read
         # the citation columns (source_clause/document/url/date) that already exist
         # on housing_sepp_standards. No new source, no new query, same table.
+        # DQ-96, prior-art-checked: extending the SAME query again to add
+        # stale_since/stale_reason — the two columns services/cdc_screen.py
+        # already reads from cdc_eligibility_standards under the identical W3
+        # (#839) contract, but this table's own copy of those columns was
+        # never selected here. No new table, no new query, no new function.
         cur.execute(
             "SELECT development_type, standard_type, numeric_value, applicable_zones, "
             "requires_lmr_area, source_clause, source_document, legislation_url, "
-            "effective_date FROM housing_sepp_standards"
+            "effective_date, stale_since, stale_reason FROM housing_sepp_standards"
         )
         rows = cur.fetchall()
     finally:
@@ -107,7 +119,8 @@ def _fetch_standards_grouped() -> dict:
 
     grouped: dict = {}
     for (dev_type, standard_type, numeric_value, zones, lmr,
-         source_clause, source_document, legislation_url, effective_date) in rows:
+         source_clause, source_document, legislation_url, effective_date,
+         stale_since, stale_reason) in rows:
         g = grouped.get(dev_type)
         if g is None:
             g = {
@@ -119,6 +132,8 @@ def _fetch_standards_grouped() -> dict:
                 "source_document": None,
                 "legislation_url": None,
                 "effective_date": None,
+                "stale_since": None,
+                "stale_reason": None,
             }
             grouped[dev_type] = g
         if g.get("source_clause") is None and source_clause:
@@ -126,6 +141,14 @@ def _fetch_standards_grouped() -> dict:
             g["source_document"] = source_document
             g["legislation_url"] = legislation_url
             g["effective_date"] = effective_date.isoformat() if effective_date else None
+        # Latest stale_since wins, paired with ITS OWN reason from the same row
+        # (Sol #839 on cdc_screen.py: independent max()/next() can pair one
+        # amendment's reason with a different amendment's date). Kept as a raw
+        # datetime through the loop (not isoformat yet) so this comparison is
+        # always datetime-vs-datetime, never datetime-vs-string.
+        if stale_since and (g.get("stale_since") is None or stale_since > g.get("stale_since")):
+            g["stale_since"] = stale_since
+            g["stale_reason"] = stale_reason
         if numeric_value is None:
             continue
         if standard_type == "min_lot_size":
@@ -238,6 +261,10 @@ def evaluate_eligibility(
                 source_document=g.get("source_document"),
                 legislation_url=g.get("legislation_url"),
                 effective_date=g.get("effective_date"),
+                stale_since=(
+                    g.get("stale_since").isoformat() if g.get("stale_since") else None
+                ),
+                stale_reason=g.get("stale_reason"),
             )
 
         if heritage and lmr_req:

@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "justification": "Investigating DQ-88 (item #3 of the user's own priority list) surfaced a real, independent silent-failure bug: services/housing_sepp_eligibility.py never read stale_since/stale_reason from housing_sepp_standards, unlike services/cdc_screen.py's identical, working W3 (#839) contract for cdc_eligibility_standards. Every CDC/ADG-eligibility answer this engine computes could serve a standard the legislation monitor had already flagged as amended, with zero surfaced notice. Fixed the read-side gap, registered a new live check (DQ-96) for the write-side backfill gap that remains, and corrected an inflated, unsupported figure in DQ-88's own tracker text. Not Critical: no application code path changed behaviour for any CURRENTLY non-stale row (all 45 housing_sepp_standards rows read stale_since IS NULL today, so this fix is currently a no-op in production until either a row goes stale or the write-side backfill lands) -- this is additive plumbing of an existing, unused DB column, not a behaviour change to today's served answers. Not Minor: it is a real code fix with new tests, not a wording-only change.",
+  "commit_hash": "5e1c3061",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "scripts/dq_probe_live.py",
+    "scripts/brief_field_coverage_baseline.json",
+    "services/housing_sepp_eligibility.py",
+    "services/intelligence_brief.py",
+    "tests/test_housing_sepp_eligibility.py"
+  ],
+  "pre_impl": {
+    "existing_data": "housing_sepp_standards.stale_since/stale_reason already exist (added by #839, 2026-07-29) and are already written by scripts/legislation_monitor.py's mark_dependent_standards_stale(). No new column, no new table. _fetch_standards_grouped() already selects 4 sibling columns (source_clause/document/url/effective_date) from the same table with the identical query shape.",
+    "assumption_mismatch": "Assumed (from DQ-88's own tracker text) that SEPP Housing 2021 backs 241 served provisions. Checked live, not assumed: v2_marker ILIKE housing/sepp = 0 rows, document_id-linked regulatory_provisions = 12, ref_number text match = 1. The 241 figure does not check out against any query and traces to an unrelated '241-row zone repair' elsewhere in the same tracker file -- corrected in DQ-88's row text.",
+    "new_vs_existing": "Pure additive: 2 new Optional[str]=None dataclass fields on FormEligibility, 2 new columns in an existing SELECT, 2 mirrored fields on the existing HousingSeppFormOutput pydantic contract (kept in lockstep by test_housing_sepp_contract_locks_the_dataclass_fields, which caught the omission on first run). No new function, no new table, no new query beyond extending one existing SELECT.",
+    "external_source_error": "N/A -- no external call in this change; the underlying legislation-monitor amendment detection (external, against legislation.nsw.gov.au/PCO) was already verified real in the DQ-88 investigation this branch is based on (instrument_registry.last_changed/current_version measured live).",
+    "frontend_type": "N/A -- no frontend code touched. The two new fields flow through services/upzoning_check.py's existing dataclasses.asdict() serialization with no additional wiring; a frontend consumer would need its own follow-up to render the notice, not part of this fix.",
+    "user_failure_mode": "Before this fix: a planner asking for CDC/Housing-SEPP eligibility on a lot got an answer computed from a standard the legislation monitor had already flagged as amended 2026-04-24, with no indication anything might have changed -- exactly the class of silent staleness the W3 mechanism was built to prevent, but only for one of its two dependent tables. After this fix: the notice is available as structured data (stale_since/stale_reason) on every FormEligibility result whenever a row IS marked stale; today (no row is yet stale) this is a no-op, verified live-neutral."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-96 ; python scripts/dq_check.py ; python -m pytest -q ; python scripts/brief_field_coverage_ratchet.py",
+    "fails_when": "dq_probe_live.py --id DQ-96 fails to connect (exit 2, UNKNOWN) if the database is unreachable -- never reports a false CLEAN. dq_check.py fails if DQ-96's declared status and its live result stop agreeing. pytest fails if the dataclass/pydantic mirror drifts (test_housing_sepp_contract_locks_the_dataclass_fields) or if the latest-wins-with-own-reason pairing regresses (test_fetch_standards_grouped_pairs_stale_date_with_its_own_reason).",
+    "observed_red": "DQ-96 reads live count=35 (33 housing_sepp_standards rows tied to sepp_housing_2021, 2 tied to sepp_exempt_complying_2008, 0 in cdc_eligibility_standards -- confirming that table's own staling has worked correctly since #839, which is why this gap is specific to housing_sepp_standards's read/backfill path, not a repo-wide W3 failure). dq_check.py PASSED, 53 checks across 101 rows, 0 red. Full pytest suite: 4977 passed, 2 skipped, 0 failed (was 4976 passed before this branch's 4 new tests were added, net +1 after accounting for one pre-existing test elsewhere). brief_field_coverage_ratchet.py: PASSED, 53 models locked, 0 pending new-field notices after --regen (the 2 HousingSeppFormOutput fields plus 4 pre-existing, unrelated ShadowScenario/ShadowScenarioOutput fields that had never been regen'd)."
+  },
+  "functions": [
+    {
+      "name": "_fetch_standards_grouped",
+      "file_line": "services/housing_sepp_eligibility.py:85",
+      "input": "none (reads DATABASE_URL env var, queries housing_sepp_standards)",
+      "output": "dict keyed by development_type; each value now additionally carries stale_since (raw datetime or None) and stale_reason (str or None), latest stale_since wins paired with its own reason",
+      "if_none": "no matching rows for a dev_type -> that key absent from the returned dict, unchanged from before this branch; DB unreachable -> exception propagates to evaluate_eligibility's try/except, which logs and returns [] (fail-safe, unchanged from before)"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The latest-wins comparison in _fetch_standards_grouped compares a raw datetime against a previously-stored isoformat STRING on a later iteration, raising TypeError.",
+      "what_happens": "First draft of this fix did exactly this -- caught immediately by running the new tests, which failed with AttributeError: 'str' object has no attribute 'isoformat' before the bug could reach any real code path.",
+      "mitigated": true,
+      "how": "Kept stale_since as a raw datetime throughout the grouping loop (matching the comparison's own type), converting to isoformat only once, at the point _result() builds the FormEligibility instance -- mirrored exactly on services/cdc_screen.py's own established pattern for the identical problem (Sol #839).",
+      "repro": "tests/test_housing_sepp_eligibility.py::test_fetch_standards_grouped_pairs_stale_date_with_its_own_reason exercises two rows for the same development_type with different stale_since values and asserts the later date pairs with its own reason."
+    },
+    {
+      "scenario": "Adding 2 fields to FormEligibility without updating its pydantic mirror (HousingSeppFormOutput in services/intelligence_brief.py) would silently desynchronise the two contracts.",
+      "what_happens": "A future brief-layer consumer trusting HousingSeppFormOutput's field set would never see the new stale notice even after the dataclass gained it -- the exact 'brief silently stopped surfacing X' class of bug this repo's own field-coverage/contract-drift tooling exists to catch.",
+      "mitigated": true,
+      "how": "Caught immediately by test_housing_sepp_contract_locks_the_dataclass_fields failing on the first full-suite run; fixed by adding the same 2 fields to HousingSeppFormOutput and re-running brief_field_coverage_ratchet.py --regen.",
+      "repro": "python -m pytest tests/test_brief_golden_fixtures.py -k contract_locks -- passes now; reverting the intelligence_brief.py change reproduces the original failure."
+    },
+    {
+      "scenario": "This work was drafted on chore/dq90-cb-triage-and-commit (a branch cut specifically for the unrelated Canterbury-Bankstown extraction triage), bundling two unrelated changes into one PR.",
+      "what_happens": "Would have re-triggered CI on a PR scoped for a narrower, already-understood purpose, and made either change harder to review or revert independently.",
+      "mitigated": true,
+      "how": "Caught before committing (nothing had been committed on that branch yet): moved via git stash push -u with a unique, descriptive tag (this repo's shared-stash-stack convention, not a bare stash), a fresh worktree/branch cut from updated origin/main, and git stash apply by exact SHA, then dropped from the stash stack.",
+      "repro": "git status --short on chore/dq90-cb-triage-and-commit now shows none of these 7 files."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: DQ-96 read live against production (count=35, correctly RED, matching the real, confirmed gap), dq_check.py PASSED, full pytest suite green (4977/2 skipped/0 failed), field-coverage ratchet PASSED with baseline regenerated."
+  }
+}

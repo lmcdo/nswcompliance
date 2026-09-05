@@ -14,6 +14,11 @@ from services.housing_sepp_eligibility import (
     _gate_inputs,
 )
 
+# Captured at collection time, before the autouse fixture below ever patches
+# hse._fetch_standards_grouped — a test that wants the REAL function (not the
+# GROUPED fixture) calls this name instead of going through the module attr.
+_REAL_FETCH_STANDARDS_GROUPED = hse._fetch_standards_grouped
+
 # Fake housing_sepp_standards (mirrors the real shape).
 GROUPED = {
     "dwelling_houses":      {"requires_lmr_area": False, "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": None,  "min_lot_width": None},
@@ -264,3 +269,72 @@ def test_gate_inputs_town_centre_query_failure_is_not_falsely_anchored(monkeypat
         raise RuntimeError("766 down")
     monkeypatch.setattr(hse, "fetch_town_centre_catchment", _boom)
     assert _gate_inputs(-33.8, 151.1)["in_lmr_area"] is False
+
+
+# --- DQ-96: stale_since/stale_reason notice (W3, #839 — the contract already
+# proven for services/cdc_screen.py, extended here where it was missing) -----
+
+def test_fresh_standards_carry_no_stale_notice():
+    """No stale_since in the grouped dict -> FormEligibility carries none."""
+    r = _by_type(evaluate_eligibility("R2", None, None, -33.8, 151.1, gate_inputs=ALL_FALSE))
+    assert r["dwelling_houses"].stale_since is None
+    assert r["dwelling_houses"].stale_reason is None
+
+
+def test_stale_standard_still_serves_with_a_notice(monkeypatch):
+    """Founder-specified contract (W3): values keep serving; the notice rides
+    along as data on the result, never a blank and never silently dropped.
+
+    _fetch_standards_grouped's real contract carries stale_since as a raw
+    datetime (isoformat'd only in _result()) — the mock must match that
+    contract, not a pre-formatted string, or this test would prove nothing
+    about the actual conversion path it exists to check.
+    """
+    import datetime as _dt
+
+    grouped_with_stale = {
+        **GROUPED,
+        "dwelling_houses": {
+            **GROUPED["dwelling_houses"],
+            "stale_since": _dt.datetime(2026, 4, 24, 10, 54, 53, tzinfo=_dt.timezone.utc),
+            "stale_reason": "State Environmental Planning Policy (Housing) 2021 version changed (24 April 2026 -> 15 May 2026)",
+        },
+    }
+    monkeypatch.setattr(hse, "_fetch_standards_grouped", lambda: grouped_with_stale)
+    r = _by_type(evaluate_eligibility("R2", None, None, -33.8, 151.1, gate_inputs=ALL_FALSE))
+    assert r["dwelling_houses"].eligible is True  # screen RAN — not blanked
+    assert r["dwelling_houses"].stale_since == "2026-04-24T10:54:53+00:00"
+    assert "version changed" in r["dwelling_houses"].stale_reason
+
+
+def test_fetch_standards_grouped_pairs_stale_date_with_its_own_reason(monkeypatch):
+    """Sol #839's exact finding, replicated for this table: two rows for the
+    SAME development_type with different stale_since values must return the
+    LATER date paired with THAT row's own reason, never a mixed pair."""
+    import datetime as _dt
+
+    d1 = _dt.datetime(2026, 4, 24, tzinfo=_dt.timezone.utc)
+    d2 = _dt.datetime(2026, 6, 8, tzinfo=_dt.timezone.utc)
+    rows = [
+        ("dwelling_houses", "min_lot_size", 200.0, ["R2"], False,
+         "cl 3.1", "SEPP (Housing) 2021", "https://legislation.nsw.gov.au/x",
+         None, d1, "amendment A"),
+        ("dwelling_houses", "min_lot_width", 12.0, ["R2"], False,
+         "cl 3.1(3)", "SEPP (Housing) 2021", "https://legislation.nsw.gov.au/x",
+         None, d2, "amendment B"),
+    ]
+
+    class Cur:
+        def execute(self, *a): pass
+        def fetchall(self): return rows
+        def close(self): pass
+
+    class Conn:
+        def cursor(self): return Cur()
+        def close(self): pass
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
+    monkeypatch.setattr("psycopg2.connect", lambda *a, **k: Conn())
+    out = _REAL_FETCH_STANDARDS_GROUPED()
+    assert out["dwelling_houses"]["stale_since"] == d2
+    assert out["dwelling_houses"]["stale_reason"] == "amendment B"
