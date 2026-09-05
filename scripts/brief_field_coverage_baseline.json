@@ -346,6 +346,8 @@
     "requires_lmr_area",
     "source_clause",
     "source_document",
+    "stale_reason",
+    "stale_since",
     "unconfirmed"
   ],
   "LepLandUseRow": [
@@ -498,18 +500,22 @@
   ],
   "ShadowScenario": [
     "date_label",
+    "error_note",
     "overlap_pct",
     "overlaps_subject_lot",
     "shadow_direction_deg",
     "shadow_length_m",
+    "status",
     "time_label"
   ],
   "ShadowScenarioOutput": [
+    "error_note",
     "label",
     "overlaps_subject_lot",
     "shadow_direction_deg",
     "shadow_length_m",
     "shadow_overlap_fraction",
+    "status",
     "time_local"
   ],
   "ShadowServiceOutput": [

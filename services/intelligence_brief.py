@@ -792,6 +792,11 @@ class HousingSeppFormOutput(BaseModel):
     source_document: Optional[str] = None
     legislation_url: Optional[str] = None
     effective_date: Optional[str] = None
+    # DQ-96: mirrors FormEligibility.stale_since/stale_reason, added when the
+    # dataclass gained the W3 (#839) auto-stale notice services/cdc_screen.py
+    # already carried for its own standards table.
+    stale_since: Optional[str] = None
+    stale_reason: Optional[str] = None
 
 
 class LepLandUseRow(BaseModel):

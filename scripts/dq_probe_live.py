@@ -1487,6 +1487,102 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "candidates for real remaining work, pending per-chapter human "
         "review, not a pipeline-wide failure.",
     ),
+    "DQ-96": (
+        "housing_sepp_standards/cdc_eligibility_standards rows a KNOWN amendment should have staled, but never did",
+        # 2026-09-05, investigating DQ-88 (item #3 of the user's own priority
+        # list): DQ-88's own row claimed "SEPP (Housing) 2021 alone backs 241
+        # served provisions" -- checked, not assumed: v2_marker ILIKE
+        # '%housing%'/'%sepp%' = 0 rows, document_id-linked regulatory_provisions
+        # = 12, ref_number text match = 1. None come close to 241 -- that figure
+        # traces to an UNRELATED "241-row zone repair" elsewhere in the tracker
+        # (line ~722, a DQ-30-adjacent DCP part-key fix), almost certainly copied
+        # into DQ-88 by mistake. DQ-88's text is corrected accordingly.
+        #
+        # Also checked, not assumed: of the 7 instruments DQ-88 names, 4
+        # (Canterbury-Bankstown LEP 2023, Parramatta LEP 2023, Sutherland Shire
+        # LEP 2015, The Hills LEP 2019) have ZERO rows in `documents` by name,
+        # document_type, or any pattern -- nothing was ever extracted from their
+        # text, so nothing served can be citing a superseded version of them.
+        # Their zoning/numeric standards are served live from the Planning
+        # Portal API (services/nsw_planning_api.py), not from stored text, per
+        # this repo's own regulatory-data rule. DQ-88's real scope is 3
+        # instruments (Inner West LEP 2022, SEPP E&C 2008, SEPP Housing 2021),
+        # not 7.
+        #
+        # The real finding, for the table that actually backs served content:
+        # housing_sepp_standards drives CDC eligibility + ADG (real, if smaller
+        # than claimed -- 45 rows, 43 tied to SEPP Housing/E&C by
+        # source_document). The legislation monitor's W3 auto-stale mechanism
+        # (#839, shipped 2026-07-29) is supposed to stamp stale_since/
+        # stale_reason on these rows the moment it detects a version change --
+        # but sepp_housing_2021's own detected change is dated 2026-04-24,
+        # BEFORE #839 existed. The mechanism only fires on a fresh
+        # needs_review=FALSE->TRUE transition; there is no backfill sweep for
+        # an instrument that was ALREADY flagged when the feature shipped. 33
+        # housing_sepp_standards rows (+2 tied to SEPP E&C) predate both the
+        # detected amendment and the feature, and still read stale_since IS
+        # NULL today -- serving as if current, with no notice, 4+ months after
+        # a real, detected legislative amendment.
+        #
+        # A SECOND, independent gap, confirmed by reading the actual serving
+        # code: services/cdc_screen.py already reads stale_since/stale_reason
+        # from cdc_eligibility_standards and renders a notice (tests/
+        # test_sepp_auto_stale.py::TestCdcEngineNotice pins this). The
+        # equivalent path for Housing-SEPP eligibility,
+        # services/housing_sepp_eligibility.py, never selected those two
+        # columns from housing_sepp_standards at all -- so even a correctly-
+        # fired stamp would have served silently, with zero surfaced notice,
+        # for every CDC/ADG-eligibility answer this engine computes. FIXED on
+        # this branch: _fetch_standards_grouped() now reads stale_since/
+        # stale_reason (latest wins, paired with its own reason -- Sol #839's
+        # exact finding on cdc_screen.py, replicated and avoided here), and
+        # FormEligibility carries both fields through services/upzoning_
+        # check.py's existing dataclasses.asdict() serialization with no
+        # further wiring needed. 4 new tests (tests/test_housing_sepp_
+        # eligibility.py), full suite green.
+        #
+        # NOT fixed on this branch, and it is a judgement call per instrument,
+        # not a script (DQ-88's own note, still true): the 35 pre-existing
+        # rows still need someone to actually read what changed on
+        # legislation.nsw.gov.au for SEPP Housing 2021 / SEPP E&C 2008 and
+        # either update the standard or dismiss with a reason via
+        # scripts/update_instrument_provisions.py. This probe measures
+        # whether that backfill (or the review closing) has happened --
+        # it does not do the review itself.
+        "SELECT "
+        "  (SELECT count(*) FROM housing_sepp_standards h "
+        "   JOIN instrument_registry ir ON ir.instrument_key = 'sepp_housing_2021' "
+        "   WHERE ir.needs_review AND h.stale_since IS NULL "
+        "     AND h.created_at < ir.last_changed "
+        "     AND h.source_document ILIKE %s) "
+        "  + "
+        "  (SELECT count(*) FROM housing_sepp_standards h "
+        "   JOIN instrument_registry ir ON ir.instrument_key = 'sepp_exempt_complying_2008' "
+        "   WHERE ir.needs_review AND h.stale_since IS NULL "
+        "     AND h.created_at < ir.last_changed "
+        "     AND (h.source_document ILIKE %s OR h.source_document ILIKE %s)) "
+        "  + "
+        "  (SELECT count(*) FROM cdc_eligibility_standards c "
+        "   JOIN instrument_registry ir ON ir.instrument_key = 'sepp_exempt_complying_2008' "
+        "   WHERE ir.needs_review AND c.stale_since IS NULL "
+        "     AND c.created_at < ir.last_changed)",
+        ("%housing%", "%exempt%", "%e&c%"),
+        "Reads 35 today (33 housing_sepp_standards rows predating the SEPP "
+        "Housing 2021 amendment detected 2026-04-24, 2 more tied to SEPP E&C "
+        "2008, 0 in cdc_eligibility_standards -- that table's own staling has "
+        "worked correctly since #839). This is NOT '35 wrong values being "
+        "served' -- the numeric standards may well still be correct; it is "
+        "'35 rows serving with zero notice that the source law was amended "
+        "and nobody has confirmed they still hold.' Falls to 0 either by a "
+        "human completing the review (scripts/update_instrument_provisions.py "
+        "clears needs_review, which removes these rows from scope) or by a "
+        "backfill sweep stamping stale_since on rows #839 could not reach "
+        "retroactively. The read-side half of this gap (services/housing_sepp_"
+        "eligibility.py never selecting these columns at all) is fixed on "
+        "this same branch -- this count is what remains: the write-side "
+        "backfill, and the actual per-instrument legislative review DQ-88 "
+        "already named as 'not yet done'.",
+    ),
     "DQ-92": (
         "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",
         # Answers a direct question raised in session: how much of the review
