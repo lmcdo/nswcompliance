@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Real code change to the DCP extraction pipeline's section-boundary detection, shared by every council using the default (non-AI, non-page-range-configured) extraction path. Not Critical: additive-only guard extension, no existing behaviour changes for pages that were already handled correctly (verified by full-batch regression across all 39 already-committed CB chapters: 0 new artifact-scan bugs). Not Minor: it changes what content gets extracted for real pages, not just wording.",
-  "commit_hash": "fe591e9c",
+  "commit_hash": "31999305",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_section_divider_guard.py",
@@ -19,20 +19,34 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_section_divider_guard.py -v ; python -m pytest -q ; python scripts/dq_check.py",
     "fails_when": "Any of the 11 new tests fail if the guard's threshold or divider-marker logic regresses. dq_check.py fails if DQ-95's declared status and live result disagree.",
-    "observed_red": "11/11 new tests pass, including 5 confusable-negative cases (real content page, garbled-map page with only 1 hit, 'section' mentioned mid-sentence, single-hit-with-marker below threshold, a marker appearing past the 300-char cutoff on a long real page) and 2 regression-pin cases for the pre-existing >=5 full-TOC guard. Full pytest suite: 4988 passed, 2 skipped, 0 failed (was 4977 before this branch's 11 new tests). Full-batch regression check (--all --review across all 39 already-committed CB chapters): 0 new artifact-scan bugs, exactly 1 real diff (chapter-11-15-marco-avenue's already-live '2.1' provision would be correctly removed, confirmed by direct diff inspection, not assumed). dq_check.py PASSED."
+    "observed_red": "11/11 new tests pass (updated for the (suppress, discard) tuple after Sol's HIGH finding), including 5 confusable-negative cases and 2 regression-pin cases proving the pre-existing >=5 full-TOC guard still suppresses but does NOT discard (absorb behaviour unchanged). Full pytest suite: 4988 passed, 2 skipped, 0 failed. FINAL full-batch regression check (--all --review across all 39 already-committed CB chapters, re-run after the discard fix): every one of the 39 chapters shows a clean [ok] diff with 0 changed/0 added/0 removed, EXCEPT chapter-11-15-marco-avenue's confirmed-correct improvement (3 unchanged, 1 changed, 1 removed) -- and sections 1.2 and 4.6 (the two Sol caught being corrupted by the first version of this fix) are confirmed back to their exact original, pre-fix lengths (1760 and 2916 chars respectively). dq_check.py PASSED."
   },
   "functions": [
     {
-      "name": "is_toc_or_divider_page",
-      "file_line": "scripts/dcp_extract_changed.py (new, extracted from inline logic in _extract_sequential)",
+      "name": "classify_toc_or_divider_page",
+      "file_line": "scripts/dcp_extract_changed.py (new, extracted and renamed from an earlier is_toc_or_divider_page draft after Sol's HIGH finding required a richer return value)",
       "input": "page text (str), the council's section_re pattern",
-      "output": "bool -- True suppresses section detection on this page (its text is absorbed into the currently-open section) when either the full-TOC threshold (>=5 section-code matches) or the new divider threshold (a literal 'SECTION N' line in the first 300 chars plus >=2 matches) is met",
-      "if_none": "empty text -> 0 matches -> False (no suppression); this matches the pre-existing behaviour for the >=5 case exactly, since the function is a pure refactor of that logic plus one additive OR-branch"
+      "output": "(suppress, discard) tuple -- suppress=True stops this page from starting a new section (full-TOC >=5 matches, or divider: a 'SECTION N' line in the first 300 chars plus >=2 matches); discard=True (divider case only) means the page's text must be dropped, not appended to whichever section is open",
+      "if_none": "empty text -> 0 matches -> (False, False); the full-TOC case's suppress behaviour matches the pre-existing logic exactly, its discard is always False (unchanged absorb behaviour)"
     }
   ],
   "values": [],
   "queries": [],
   "break_it": [
+    {
+      "scenario": "Sol cross-review (HIGH, confidence 0.98) on the first push: suppressing heading detection on a divider page does not discard its text -- the pre-existing code unconditionally appends every non-heading page's text to whichever section is already open, so the first version of this fix RELOCATED the divider garbage into a neighbouring section instead of removing it. Verified directly against this session's own earlier diagnostic output: chapter-7-5's section 1.2 had grown from 1760 to 1999 chars (page 8's divider appended) and section 4.6 had grown from 2916 to 3145 chars (page 82's divider appended) -- both previously fully-clean, actionable sections, now corrupted by the fix meant to clean up 1.1/2.1/5.1.",
+      "what_happens": "Two previously-correct, already-actionable sections would have shipped with unrelated sibling titles and page numbers appended to their end -- a new defect introduced by the fix itself, in the opposite direction from what it was meant to achieve.",
+      "mitigated": true,
+      "how": "Split the single suppress boolean into (suppress, discard). The divider case now discards its text outright (a `continue` before section-content accumulation, per Sol's own suggested fix) instead of falling through to the unconditional append. The pre-existing full-TOC-page case (>=5 hits) keeps its original absorb behaviour unchanged, since it has never been observed landing anywhere but the already-non-actionable preamble section. Re-verified live: 1.2 and 4.6 are both back to their exact original, pre-fix lengths (1760 and 2916 chars) while 1.1/2.1/5.1 still have their contamination removed. Full-batch regression re-run across all 39 committed chapters: every single one now shows a clean [ok] diff with 0 changed/0 added/0 removed, except chapter-11-15-marco-avenue's confirmed-correct improvement.",
+      "repro": "tests/test_section_divider_guard.py -- every positive case now asserts (True, True) (suppress AND discard), and the full-TOC regression case asserts (True, False) (suppress only, absorb unchanged)."
+    },
+    {
+      "scenario": "Sol cross-review (MEDIUM, confidence 0.99): the DQ ledger note describing the 13 held-back chapters said 'the original 11 confirmed-bad' when the session's own earlier, hard-won correction established only 1 of those 11 (chapter-7-5) was manually confirmed -- the other 10 are unverified scanner flags. Re-asserting 'confirmed-bad' silently regressed a distinction the session had already fixed once.",
+      "what_happens": "A maintainer reading the ledger would believe 11 chapters were independently verified broken and might deprioritise reviewing the other 10 on the assumption they're already known-bad, when they are only scanner-flagged.",
+      "mitigated": true,
+      "how": "Corrected the wording in both .claude/dq_checks.json and .claude/DATA_QUALITY_TRACKER.md to 'the original 11 scanner-flagged chapters (1 manually confirmed)'.",
+      "repro": "grep -i 'confirmed-bad\\|confirmed bad' .claude/DATA_QUALITY_TRACKER.md .claude/dq_checks.json -- 0 matches after the fix."
+    },
     {
       "scenario": "The new divider-marker check could false-positive on a real content page that happens to mention 'SECTION N' as a standalone line for a legitimate reason (e.g. quoting a cross-referenced chapter's own divider), incorrectly swallowing real content.",
       "what_happens": "A real provision could be silently dropped from what gets served.",

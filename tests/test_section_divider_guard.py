@@ -1,7 +1,6 @@
-"""Tests for is_toc_or_divider_page() in dcp_extract_changed.py -- the guard
-that suppresses section detection on a chapter's full TOC page and on a
-section's own "SECTION N" mini-TOC divider page, absorbing their text into
-the currently-open section instead of letting them become false sections.
+"""Tests for classify_toc_or_divider_page() in dcp_extract_changed.py -- the
+guard that keeps a chapter's full TOC page and a section's own "SECTION N"
+mini-TOC divider page from starting a false new section.
 
 Pure decision-logic tests (no PDF I/O), per this module's own convention:
 full extraction is validated against real council PDFs out of band (see
@@ -10,6 +9,19 @@ sibling tests/test_dcp_toc_extraction.py). Every positive fixture below is
 a VERBATIM excerpt from Canterbury-Bankstown chapter-7-5 and chapter-11-15's
 real, already-downloaded source PDFs (2026-09-05 investigation), not
 invented text -- this is the exact shape that produced the bug.
+
+The function returns (suppress, discard):
+  suppress -- this page must not start a new section (both the full-TOC and
+    divider cases).
+  discard  -- this page's text must be DROPPED, not appended to whichever
+    section is currently open. Only True for the divider case. Sol cross-
+    review (HIGH, confidence 0.98, 2026-09-05) caught the first version of
+    this fix suppressing heading detection but still silently absorbing the
+    divider text into the previously-open section -- corrupting two
+    previously-CLEAN sections (chapter-7-5's 1.2 and 4.6) with unrelated
+    sibling titles and page numbers. The full-TOC case keeps the existing,
+    unchanged absorb behaviour (it lands harmlessly in 'preamble' in every
+    observed case, which is already non-actionable).
 """
 import os
 import sys
@@ -27,7 +39,7 @@ for _k in _STUBS:
     sys.modules[_k] = MagicMock()
 sys.modules["dotenv"].load_dotenv = MagicMock()
 try:
-    from dcp_extract_changed import DCPExtractor, is_toc_or_divider_page  # noqa: E402
+    from dcp_extract_changed import DCPExtractor, classify_toc_or_divider_page  # noqa: E402
 finally:
     for _k, _v in _saved.items():
         if _v is None:
@@ -38,8 +50,10 @@ finally:
 SECTION_RE = DCPExtractor.SECTION_RE
 
 
-class TestSectionDividerPagesAreSuppressed:
-    """Positive cases -- verbatim excerpts from the real, broken pages."""
+class TestSectionDividerPagesAreSuppressedAndDiscarded:
+    """Positive cases -- verbatim excerpts from the real, broken pages.
+    Divider pages must both suppress (no new section) AND discard (text
+    dropped, not appended elsewhere)."""
 
     def test_chapter_7_5_page_5_section_1_divider(self):
         # Page 5 of chapter-7-5-canterbury-local-centre.pdf, verbatim.
@@ -49,26 +63,28 @@ class TestSectionDividerPagesAreSuppressed:
             "Chapter 7\nCanterbury-Bankstown Development Control Plan 2023 "
             "Chapter 7.5 Canterbury Local Centre 5"
         )
-        assert is_toc_or_divider_page(text, SECTION_RE) is True
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (True, True)
 
     def test_chapter_7_5_page_8_section_2_divider(self):
-        # Page 8, verbatim.
+        # Page 8, verbatim. This page's text was the one Sol caught landing
+        # inside section 1.2 (previously clean) before the discard fix.
         text = (
             "SECTION 2\nUNDERSTANDING\nPLACE\n2.1 Structure Plan for the Local 9\n"
             "Centre\n2.2 Character Areas and key street 11\nand lanes\n"
             "2.3 Connecting to Country 24\nCanterbury-Bankstown Development "
             "Control Plan 2023 Chapter 7.5 Canterbury Local Centre 8"
         )
-        assert is_toc_or_divider_page(text, SECTION_RE) is True
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (True, True)
 
     def test_chapter_7_5_page_82_section_5_divider(self):
-        # Page 82, verbatim.
+        # Page 82, verbatim. This page's text was the one Sol caught landing
+        # inside section 4.6 (previously clean) before the discard fix.
         text = (
             "\n\nSECTION 5\nGENERAL\nPROVISIONS\n5.1 Dwelling mix and flexible "
             "housing 83\n5.2 Parking 84\n5.3 Underground floor space 87\n"
             "5.4 Sustainability 88\nCanterbury-Bankstown Development Control"
         )
-        assert is_toc_or_divider_page(text, SECTION_RE) is True
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (True, True)
 
     def test_chapter_11_15_marco_avenue_section_2_divider(self):
         # Page 5 of chapter-11-15-marco-avenue.pdf, verbatim (re-fetched and
@@ -86,7 +102,7 @@ class TestSectionDividerPagesAreSuppressed:
             "Development Control Plan 2023 Chapter 11.14 - 75A, 75B & "
             "7C Marco Avenue, Revesby"
         )
-        assert is_toc_or_divider_page(text, SECTION_RE) is True
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (True, True)
 
 
 class TestConfusableNegatives:
@@ -101,7 +117,7 @@ class TestConfusableNegatives:
             "green leafy character to create\na lively and distinctive "
             "destination."
         )
-        assert is_toc_or_divider_page(text, SECTION_RE) is False
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (False, False)
 
     def test_garbled_map_page_with_one_hit_is_not_suppressed(self):
         # Page 6 of chapter-7-5 -- the REAL "1.1 Application of this
@@ -113,7 +129,7 @@ class TestConfusableNegatives:
             "1.1 Application of this Chapter\nCanterbury\nT\nD C P\no\nh\nl\nb\n"
             "C a a\ni\nn\nj\ns\nP n\ne\nt\nc\nC\n2 e 2\nt\n0 0 r\nh\ni\nb\nv"
         )
-        assert is_toc_or_divider_page(text, SECTION_RE) is False
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (False, False)
 
     def test_section_mentioned_in_prose_is_not_a_divider(self):
         # "Section" appearing mid-sentence, lower case, is not the literal
@@ -123,7 +139,7 @@ class TestConfusableNegatives:
             "chapter and clause 4.2 of the LEP, as well as any relevant "
             "state environmental planning policy."
         )
-        assert is_toc_or_divider_page(text, SECTION_RE) is False
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (False, False)
 
     def test_single_hit_with_divider_marker_does_not_suppress(self):
         # A "SECTION N" line with only ONE section-code match (not 2+) is
@@ -131,7 +147,7 @@ class TestConfusableNegatives:
         # divider page. Named explicitly so the >=2 boundary is pinned,
         # not just the >=5 and the 3-4-hit real cases.
         text = "SECTION 9\nGENERAL REQUIREMENTS\n9.1 Application 3"
-        assert is_toc_or_divider_page(text, SECTION_RE) is False
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (False, False)
 
     def test_section_divider_marker_deep_in_a_long_real_page_does_not_suppress(self):
         # A long real content page that happens to mention "SECTION 5" (as
@@ -141,15 +157,17 @@ class TestConfusableNegatives:
         filler = "This is real DCP body prose discussing setbacks. " * 10
         text = filler + "\nSECTION 5\nCROSS-REFERENCED CHAPTER\n5.1 Foo 1\n5.2 Bar 2"
         assert len(filler) > 300
-        assert is_toc_or_divider_page(text, SECTION_RE) is False
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (False, False)
 
 
 class TestFullTocPageGuardUnchanged:
-    """Regression coverage: the pre-existing >=5-hit guard still fires,
-    independent of the new divider-specific path (no 'SECTION N' line
-    needed here -- this is the chapter's full table of contents)."""
+    """Regression coverage: the pre-existing >=5-hit guard still suppresses
+    (no new section) but keeps its ORIGINAL absorb behaviour (discard=False)
+    -- this fix only changes the divider case, not the full-TOC case, since
+    the full-TOC page has never been observed landing anywhere but the
+    already-non-actionable preamble section."""
 
-    def test_full_toc_page_with_5_plus_hits_is_suppressed(self):
+    def test_full_toc_page_with_5_plus_hits_is_suppressed_but_not_discarded(self):
         text = (
             "CONTENTS\n1.1 Application of this DCP Chapter 6\n"
             "1.2 Vision for Canterbury Local Centre 7\n"
@@ -158,7 +176,7 @@ class TestFullTocPageGuardUnchanged:
             "2.2 Character areas and key streets and lanes 11\n"
             "2.3 Connecting to Country 24\n"
         )
-        assert is_toc_or_divider_page(text, SECTION_RE) is True
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (True, False)
 
     def test_four_line_start_hits_no_divider_marker_is_not_suppressed(self):
         # 4 real line-start section-code matches (below the >=5 full-TOC
@@ -173,4 +191,4 @@ class TestFullTocPageGuardUnchanged:
             "5.6 Adjoining land use buffers\n"
         )
         assert len(SECTION_RE.findall(text)) == 4
-        assert is_toc_or_divider_page(text, SECTION_RE) is False
+        assert classify_toc_or_divider_page(text, SECTION_RE) == (False, False)
