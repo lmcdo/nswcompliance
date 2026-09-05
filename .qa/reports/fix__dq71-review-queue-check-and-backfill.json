@@ -1,0 +1,89 @@
+{
+  "tier": "standard",
+  "justification": "A real code fix (a DQ probe's SQL was structurally incapable of ever reading clean) plus a production data operation (grading 4,742 pending review-queue rows against source PDFs across 9 councils). Not minor: the check's WHERE clause changed, and a backup-then-write production operation ran.",
+  "commit_hash": "e4c945db",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "data/db_rollback_backups/dcp_review_queue_fidelity_pre_dq71_backfill_2026-09-05.json"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue schema and dcp_fidelity_gate.py's grading logic were already known live from this session's earlier CB extraction work. Confirmed the exact bug by reading dcp_fidelity_gate.ground_row/_source_quote source directly before touching the check: fidelity_source_quote is written ONLY inside the flagged branch, and even then only when _source_quote's >=40% word-overlap match succeeds -- a grounded verdict never populates it, by design.",
+    "assumption_mismatch": "The DQ-71 check's own comment asserted fidelity_source_quote was 'the real thing' proving a row was checked. Measured live after backfilling 100% of the then-outstanding backlog (0 rows left with fidelity_status IS NULL): the old query still read 4,365 'red' -- 3,975 grounded rows plus 390 flagged rows whose quote-matcher didn't clear the 40% bar. The check could not distinguish 'never graded' from 'graded and fine' from 'graded, flagged, but no citable source sentence found'. It was measuring evidence-richness, not verification-occurrence.",
+    "new_vs_existing": "Corrected the existing check's query (fidelity_source_quote IS NULL -> fidelity_status IS NULL) rather than writing a parallel check -- same probe id, same scope filters, one column swapped for the one the gate actually guarantees is non-NULL after processing.",
+    "external_source_error": "N/A -- no external API involved; source of truth is each council's own PDF via R2, unchanged.",
+    "frontend_type": "N/A -- backend/data-quality change only, no frontend surface touched.",
+    "user_failure_mode": "Before this fix: a check declared 'open' that could never be declared 'fixed' by any amount of real work -- running the gate over the entire backlog (which this session also did) left it reading exactly as red as before grading started, hiding genuine progress and making the check itself untrustworthy as a completion signal. After: the check reads CLEAN (0) exactly when the thing it claims to measure -- every gradeable pending row opened against its source PDF at least once -- is actually true, and goes red again the moment a real gap reopens (verified by the reasoning below, not by waiting for a real regression)."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-71 ; python scripts/dq_check.py",
+    "fails_when": "dq_check.py fails if DQ-71's declared status ('fixed') and its live probe result disagree. The probe itself fails (exit 1, RED) if any gradeable pending row (status pending/in_progress, change_type<>removed, new_text not null) has fidelity_status IS NULL.",
+    "observed_red": "Before the query fix: old query (fidelity_source_quote IS NULL) read 4,365, and would have kept reading nonzero even after 100% grading, because it counts grounded rows. Before the backfill: fidelity_status IS NULL read 4,705 (matches the pre-existing declared-open state). After both fixes: fidelity_status IS NULL reads 0. dq_check.py: PASSED, 0 red across all 101 tracked rows. Full relevant test slice (test_dcp_extraction_fidelity, test_dq_check, test_ai_extractor, test_git_env_ratchet, test_session_commands_survive_cp1252 -- 63 tests) passed."
+  },
+  "functions": [
+    {
+      "name": "PROBES['DQ-71'] query (scripts/dq_probe_live.py)",
+      "file_line": "scripts/dq_probe_live.py, PROBES dict, key 'DQ-71'",
+      "input": "no arguments -- a fixed SQL string run via psycopg2 against the live dcp_review_queue table",
+      "output": "int count of gradeable pending rows with fidelity_status IS NULL -- 0 means every such row has been opened against its source PDF at least once (grounded or flagged); nonzero names exactly how many have not",
+      "if_none": "an empty dcp_review_queue, or one where every pending row is change_type='removed' or has NULL new_text, correctly returns 0 -- there is nothing gradeable to be unchecked, which is the same CLEAN result as 'everything was graded', and is the honest state (there is no gradeable-row denominator to hide a false pass behind, unlike a percentage-based check)"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "DQ-71 corrected probe query.",
+      "file_line": "scripts/dq_probe_live.py, PROBES['DQ-71']",
+      "where_clause": "SELECT count(*) FROM dcp_review_queue WHERE status IN ('pending', 'in_progress') AND change_type <> 'removed' AND new_text IS NOT NULL AND fidelity_status IS NULL"
+    },
+    {
+      "purpose": "Pre-backfill scope measurement (ad hoc, not committed code) -- confirmed 100% of gradeable ungraded rows had a usable r2_current_path before running any write, and produced the per-council breakdown recorded in the ledger.",
+      "file_line": "ad hoc verification query, not committed code",
+      "where_clause": "SELECT count(*), count(DISTINCT q.council), count(DISTINCT (q.council, q.chapter_key)) FROM dcp_review_queue q JOIN dcp_chapter_registry reg ON reg.council=q.council AND reg.chapter_key=q.chapter_key WHERE q.status IN ('pending','in_progress') AND q.change_type <> 'removed' AND q.new_text IS NOT NULL AND q.fidelity_source_quote IS NULL AND reg.r2_current_path IS NOT NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A check whose passing condition can never be satisfied by the work it is supposed to gate -- exactly this bug. fidelity_source_quote is null-by-design on the majority (grounded) outcome, so a query requiring it to be non-null everywhere can read red forever regardless of real progress.",
+      "what_happens": "Nobody trusts the check, or worse, someone 'fixes' it by declaring it fixed in the ledger without the underlying work ever being verifiable -- exactly the failure mode memory/feedback-a-check-can-watch-the-field-the-fix-abandoned.md warns about.",
+      "mitigated": true,
+      "how": "Discovered by actually running the gate to 100% completion and observing the check STILL read red -- the falsifying test was doing the real work and watching the check fail to reflect it, then reading dcp_fidelity_gate.py's source to find the column-population asymmetry, then correcting the query to a column gate_chapter guarantees non-NULL for every processed row.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-71 against a DB where every gate-eligible row has been graded (fidelity_status set) but grounded rows outnumber flagged -- old query still returns nonzero equal to the grounded count."
+    },
+    {
+      "scenario": "Backfill runs against a mid-run kill (background process interrupted, e.g. by the initial 2-minute foreground timeout hit during marrickville) and leaves the backlog in a partially-graded, ambiguous state.",
+      "what_happens": "If gate_chapter's per-row writes and the overall run were not resumable, an interrupted run could leave some chapters half-graded with no way to tell which, or duplicate work/waste R2 calls on re-run.",
+      "mitigated": true,
+      "how": "Verified empirically, not assumed: after the real interrupt (2-minute timeout mid-marrickville), re-querying live showed exactly the rows from already-completed chapters had cleared (2,694 -> 2,657 ungraded) while later chapters were untouched -- gate_chapter's per-chapter conn.commit() plus the WHERE clause re-selecting only fidelity_status/fidelity_source_quote-null rows makes every re-invocation safely resumable with no manual bookkeeping.",
+      "repro": "Kill scripts/dcp_fidelity_gate.py mid-run for a multi-chapter council, then re-run the same command -- it picks up exactly where it left off, re-grading only the chapters not yet committed, with no duplicate DB churn on already-graded rows."
+    },
+    {
+      "scenario": "Correcting the query to fidelity_status IS NULL could itself be gamed or accidentally satisfied by a code path that sets fidelity_status without genuinely opening the source PDF (e.g. a future refactor short-circuiting grading on an exception and still writing a status).",
+      "what_happens": "The check would read CLEAN while rows are still effectively unverified -- the same class of bug this fix just corrected, one level down.",
+      "mitigated": false,
+      "how": "Not fully closed by this fix -- gate_chapter's own except-and-continue-to-next-chapter path on an unreadable PDF ('cannot read PDF; left unchecked') correctly leaves that chapter's rows at fidelity_status IS NULL (still red, as intended), so a whole-chapter PDF failure is safely caught. What is NOT independently re-verified here is whether ground_row itself could ever be reached with a source string that failed to actually load (e.g. an empty pages dict silently treated as 'checked, nothing found') -- ground_row's own _best_page returns (None, False) on empty pages/prov_words and grounds against an empty joined string, which would score ground_ratio=0 and correctly flag rather than silently pass, but this exact path was not written as a dedicated test in this branch.",
+      "repro": "Not reproduced here -- flagged as a residual worth a dedicated test (empty-pages-dict input to ground_row asserts status='flagged', not 'grounded') rather than fixed speculatively."
+    },
+    {
+      "scenario": "The pre-backfill scope query (queries[1]) joins dcp_review_queue to dcp_chapter_registry ON council+chapter_key and requires reg.r2_current_path IS NOT NULL -- if that join silently dropped rows (e.g. a chapter_key mismatch between the two tables, or a registry row missing entirely), the scope measurement would UNDERCOUNT the backlog and the backfill would be run believing it covered everything when real gradeable rows were left invisible outside the loop.",
+      "what_happens": "A false 'fully backfilled' declaration in the ledger while a subset of the backlog was never even attempted, because it never appeared in the scope query's output at all.",
+      "mitigated": true,
+      "how": "Checked the join's own drop rate directly rather than trusting it: a companion query counted ungraded rows with a LEFT JOIN (reg.r2_current_path IS NULL OR reg.chapter_key IS NULL) and returned 0 rows / 0 councils -- confirming the INNER JOIN in the scope query dropped nothing, i.e. all 4,705 then-ungraded gradeable rows genuinely had a resolvable registry row with a usable PDF path. The final post-backfill check (fidelity_status IS NULL = 0, queried independently of either join) is what actually proves completeness, not the scope estimate itself.",
+      "repro": "SELECT count(*), count(DISTINCT q.council) FROM dcp_review_queue q LEFT JOIN dcp_chapter_registry reg ON reg.council=q.council AND reg.chapter_key=q.chapter_key WHERE q.status IN ('pending','in_progress') AND q.change_type <> 'removed' AND q.new_text IS NOT NULL AND q.fidelity_status IS NULL AND (reg.r2_current_path IS NULL OR reg.chapter_key IS NULL) -- run after any future backfill to confirm the join isn't hiding uncovered rows."
+    },
+    {
+      "scenario": "The ledger's 'fixed' declaration for DQ-71 could itself drift the moment new chapters enter the review queue after this backfill, since the fix clears only the already-queued backlog, not a standing guarantee.",
+      "what_happens": "A reader could mistake 'Fixed 2026-09-05' for 'permanently solved', when in fact any future extraction that lands new pending rows without a subsequent dcp_fidelity_gate.py run would silently reopen the gap this row exists to catch.",
+      "mitigated": true,
+      "how": "Stated explicitly in both .claude/dq_checks.json's note and the tracker row: this clears the already-queued backlog only, and the gate needs to run again as new extractions land -- and the check itself (fidelity_status IS NULL, re-run any time) will correctly flag that reopening the moment it happens, rather than needing anyone to remember to re-check by hand.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-71 after any future --review extraction run that doesn't also invoke dcp_fidelity_gate.py -- will correctly read nonzero again."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: live probe re-run (0), dq_check.py PASSED (0 red across 101 rows), relevant pytest slice green (63 passed), and the full 4,742-row backfill's before/after counts cross-checked against the pre-write backup file."
+  }
+}
