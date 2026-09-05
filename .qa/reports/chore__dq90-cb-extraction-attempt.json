@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: this branch includes a real, deliberate production database write (flipping needs_extraction on 54 dcp_chapter_registry rows, explicit user authorization, backed up first) and registers a new live-executable check (DQ-95) that future sessions/CI will run. Not Critical: the write is a status-flag flip, not a content write, and no application code changed -- nothing user-facing is touched. Not Minor: it's a real production write plus a new standing check, not a wording-only change.",
-  "commit_hash": "c301e6f5",
+  "commit_hash": "548006dd",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
