@@ -1,0 +1,59 @@
+{
+  "tier": "minor",
+  "justification": "Wording/number-only correction to a ledger note, found during a final post-merge sanity pass (re-running every live probe from a fresh checkout and comparing against the committed prose). No code, no data, no schema touched -- exactly the 'minor' tier this repo defines.",
+  "commit_hash": "0bb42313",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "N/A -- documentation-only change.",
+    "assumption_mismatch": "DQ-90's row claimed 43 (unchanged by the CB commit). Re-running the live probe from a fresh checkout after the ch5-1/ch5-2 revert (PR #1045) and the section-divider fix (#1046/#1047) showed it now reads 45. Root-caused, not guessed: the +2 is exactly cb-dcp-2023-ch5-1-bankstown and ch5-2-canterbury, which were correctly reverted to needs_extraction=FALSE earlier in this session -- they now legitimately match DQ-90's own query definition (not queued, zero served provisions), even though they are a deliberately different, already-handled case (setbacks served from dcp_setback_controls instead).",
+    "new_vs_existing": "N/A.",
+    "external_source_error": "N/A.",
+    "frontend_type": "N/A.",
+    "user_failure_mode": "Before this fix: anyone reading DQ-90 would see a stale count that no longer matches the live database, exactly the class of drift this project's own DQ ledger discipline exists to prevent. After: the number and its explanation are both live-verified."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-90 ; python scripts/dq_check.py",
+    "fails_when": "dq_check.py fails if declared status and live result disagree (both before and after this fix, DQ-90 is declared 'open' and reads nonzero, so this specific check does not gate the number itself -- the correction is for prose accuracy, not check-passing).",
+    "observed_red": "python scripts/dq_probe_live.py --id DQ-90 reads 45 live (verified from a fresh worktree cut from updated origin/main, not the branch that introduced the ch5 revert). dq_check.py PASSED. Full pytest suite: 4988 passed, 2 skipped, 0 failed (unchanged -- no application code touched)."
+  },
+  "functions": [],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Confirm the +2 discrepancy is exactly the 2 ch5 rows, not a broader drift.",
+      "file_line": "ad hoc verification query, not committed code",
+      "where_clause": "SELECT chapter_key, council FROM dcp_chapter_registry r WHERE r.is_active AND NOT r.is_spatial AND NOT r.is_inert AND NOT r.needs_extraction AND NOT EXISTS (SELECT 1 FROM regulatory_provisions p WHERE p.source_chapter_key=r.chapter_key AND p.source_council=r.council AND p.is_current) AND r.council='canterbury_bankstown' -- result: exactly cb-dcp-2023-ch5-1-bankstown, cb-dcp-2023-ch5-2-canterbury"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A ledger note's numbers can silently drift out of sync with the live database as later, unrelated work changes the underlying data (here: the ch5 revert, committed on a different PR, changed a count reported in this row).",
+      "what_happens": "A reader trusts a stale number and draws a wrong conclusion about how much of the gap is closed.",
+      "mitigated": true,
+      "how": "Caught by explicitly re-running every live probe from a fresh checkout as a final verification step after all related PRs merged, rather than trusting the last-written prose.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-90 from a clean origin/main checkout; compare against the number quoted in .claude/DATA_QUALITY_TRACKER.md's DQ-90 row."
+    },
+    {
+      "scenario": "Fixing the number without explaining WHY it moved would just replace one static (now-correct) number with another number that will look 'wrong' again the next time something changes, with no way for a future reader to tell drift from a new bug.",
+      "what_happens": "The same class of confusion recurs on the next real change.",
+      "mitigated": true,
+      "how": "The corrected text names the exact root cause (the ch5-1/ch5-2 revert) and cross-references DQ-95's own note explaining why those 2 rows are a deliberately different case, not a new gap.",
+      "repro": "N/A -- documentation content, verified by reading."
+    },
+    {
+      "scenario": "This correction itself could be wrong if the live count changes again before it's committed (e.g. a concurrent session touching the same rows).",
+      "what_happens": "A stale correction replacing one wrong number with another.",
+      "mitigated": true,
+      "how": "Re-verified the live count (45) immediately before writing this report, from the same fresh checkout used to write the fix, with no intervening writes.",
+      "repro": "N/A -- verified positively in the same session, same worktree, no gap between measurement and commit."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: live probe re-run, dq_check.py PASSED, full pytest suite green."
+  }
+}
