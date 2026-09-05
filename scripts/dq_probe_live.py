@@ -1321,6 +1321,172 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "CRITICAL regardless of what DQ-91's own aggregate count currently "
         "shows.",
     ),
+    "DQ-95": (
+        "Canterbury-Bankstown DCP extraction attempted for real -- 11 of 52 processed chapters flagged by the artifact scanner, not 52",
+        # 2026-09-05, acting on DQ-90 (item #2 of the user's own priority
+        # list this session): flipped needs_extraction=TRUE on the 54
+        # chapters DQ-90 found registered-but-never-queued (a real,
+        # deliberate, backed-up production write -- explicit user
+        # authorization given), then ran scripts/dcp_extract_changed.py
+        # --council canterbury_bankstown --review (memory-only, no DB
+        # writes) repeatedly to see what the pipeline would actually
+        # produce before letting anything near regulatory_provisions.
+        #
+        # FIRST PASS, MISREAD: the CLI's "52 chapter(s) flagged SUSPECT"
+        # banner and per-chapter preflight warnings made this look like a
+        # total pipeline failure for this council. That banner is a crude,
+        # PRE-extraction page-geometry heuristic ("does this page's word
+        # layout look two-column") -- it does not look at the actual
+        # extracted output at all, and over-triggers heavily. The review
+        # file's own OVERALL SUMMARY, further down, carries a SEPARATE,
+        # POST-extraction artifact scan ("CHAPTERS WITH EXTRACTION BUGS")
+        # that is the real signal -- missed on the first read.
+        #
+        # CORRECTED, using that real signal: of 52 processed chapters (2 of
+        # 54 have no PDF fetched at all yet), exactly **11** are listed
+        # under CHAPTERS WITH EXTRACTION BUGS -- chapter-7-5-canterbury-
+        # local-centre, chapter-3-4-sustainable-development, chapter-2-2-
+        # flood-risk-management, chapter-6-2-bankstown-city-centre,
+        # chapter-4-3-heritage-conservation-areas, chapter-11-14-riverwood-
+        # estate, chapter-7-6-belmore-and-lakemba, chapter-11-12-445-
+        # canterbury-road, chapter-11-9-revesby-hospital, chapter-11-13-
+        # former-wsu-campus-milperra, chapter-1-1-introduction-and-
+        # administration. 29 of 52 have ZERO artifacts detected
+        # ("ARTIFACT CHECK: (none detected)"); the remaining 12 carry minor,
+        # under-threshold artifacts, not blocking.
+        #
+        # Sol cross-review (2026-09-05, HIGH, real, on the push containing
+        # this correction): only 1 of the 11 (chapter-7-5) was actually
+        # opened and inspected -- real, visible corruption confirmed there
+        # (a page number bled into a heading, bare_page_numbers scored 261%
+        # of the provision count, several section labels are bare numbers
+        # with no title). The other 10 are FLAGGED BY THE SCANNER, not
+        # independently verified -- exactly the same shape of over-claim
+        # this whole entry exists to correct on the preflight side (that
+        # scanner over-triggered; this one has not been shown NOT to). Do
+        # not read "11" as "11 manually confirmed" -- it is "11 the
+        # post-extraction artifact scan flagged, 1 of which was checked by
+        # hand and found real."
+        #
+        # ALSO TESTED AND REVERTED, same session: this repo already has a
+        # working geometric two-column reader (commit 53b0c8ee, 2026-07-29,
+        # proven on ashfield/marrickville/city_of_sydney/hornsby) --
+        # GEOMETRIC_COLUMN_COUNCILS in scripts/dcp_extract_changed.py.
+        # Adding "canterbury_bankstown" to it and re-running the FULL
+        # 52-chapter batch produced the IDENTICAL 11-chapter bug list, and
+        # 2 FEWER chapters with zero artifacts (27 vs 29) -- a controlled
+        # before/after comparison, not a single-chapter spot check, proves
+        # the existing fix does not transfer to this council and may make
+        # it marginally worse. Reverted; not committed. (A single-chapter
+        # test run in isolation had wrongly suggested the fix helped --
+        # that chapter turned out to already be clean in the ORIGINAL,
+        # pre-edit run too; the error was not checking the real baseline
+        # before attributing an unrelated result to the edit.)
+        #
+        # docs/DCP_EXTRACTION_KNOWN_PATTERNS.md has zero mentions of
+        # "two-column" (grepped). No documented, working fix exists for
+        # THIS council's specific two-column geometry -- the existing
+        # reader was verified, live, not to transfer.
+        #
+        # NOT committed to production. needs_extraction is correctly left
+        # TRUE (these chapters DO still need extraction). No provisions
+        # were written to regulatory_provisions in any of these runs; the
+        # --review flag guarantees this.
+        #
+        # Sol cross-review (2026-09-05, MEDIUM, confidence 0.98, on the
+        # rebase force-push): the original query here was
+        # "WHERE council = 'canterbury_bankstown' AND needs_extraction = TRUE
+        # AND last_extracted_at IS NULL" -- no is_active/is_spatial/is_inert/
+        # dcp_name scope, so a FUTURE unrelated canterbury_bankstown
+        # registry row (a superseded chapter re-added, a new spatial-only
+        # chapter registered later) could silently change this count
+        # without any connection to this specific extraction attempt.
+        # Fixed per Sol's PREFERRED option (an immutable cohort over extra
+        # WHERE columns, "because DQ-95 tracks a specific attempt"): scoped
+        # to the exact 54 chapter_key values this session's flag flip
+        # touched, read back verbatim from the committed pre-write backup
+        # (data/db_rollback_backups/..._pre_flag_flip_2026-09-05.json) --
+        # not re-derived from any live filter that could itself drift.
+        "SELECT count(*) FROM dcp_chapter_registry "
+        "WHERE chapter_key = ANY(%s) AND needs_extraction = TRUE "
+        "AND last_extracted_at IS NULL",
+        (
+            [
+                "cb-dcp-2023-ch5-1-bankstown",
+                "cb-dcp-2023-ch5-2-canterbury",
+                "chapter-1-1-introduction-and-administration",
+                "chapter-10-1-child-care-centres",
+                "chapter-10-2-schools",
+                "chapter-10-3-home-businesses",
+                "chapter-10-4-non-residential-land-uses",
+                "chapter-10-5-places-of-public-worship",
+                "chapter-10-6-commercial-land-uses",
+                "chapter-10-7-sex-services-premises",
+                "chapter-10-8-telecommunications-facilities",
+                "chapter-11-1-milton-street",
+                "chapter-11-10-chullora-marketplace",
+                "chapter-11-11-brighton-avenue",
+                "chapter-11-12-445-canterbury-road",
+                "chapter-11-13-former-wsu-campus-milperra",
+                "chapter-11-14-riverwood-estate",
+                "chapter-11-15-marco-avenue",
+                "chapter-11-2-undercliffe-bridge-precinct",
+                "chapter-11-3-roberts-road",
+                "chapter-11-4-croydon-street-precinct",
+                "chapter-11-5-riverlands",
+                "chapter-11-6-potts-hill",
+                "chapter-11-7-auburn-road",
+                "chapter-11-8-boorea",
+                "chapter-11-9-revesby-hospital",
+                "chapter-2-1-site-analysis",
+                "chapter-2-2-flood-risk-management",
+                "chapter-2-3-tree-management",
+                "chapter-2-4-pipeline-corridors",
+                "chapter-3-1-development-engineering-standards",
+                "chapter-3-2-parking",
+                "chapter-3-3-waste-management",
+                "chapter-3-4-sustainable-development",
+                "chapter-3-5-subdivision",
+                "chapter-3-6-signs",
+                "chapter-3-7-landscape",
+                "chapter-4-1-introduction",
+                "chapter-4-2-heritage-items",
+                "chapter-4-3-heritage-conservation-areas",
+                "chapter-4-4-vicinity-of-places-of-heritage-significance",
+                "chapter-6-1-general-requirements",
+                "chapter-6-2-bankstown-city-centre",
+                "chapter-6-3-campsie-town-centre",
+                "chapter-7-1-general-requirements",
+                "chapter-7-2-city-west",
+                "chapter-7-3-city-east",
+                "chapter-7-4-neighbourhood-centres",
+                "chapter-7-5-canterbury-local-centre",
+                "chapter-7-6-belmore-and-lakemba",
+                "chapter-8-1-general-requirements",
+                "chapter-8-2-canterbury-road",
+                "chapter-8-3-hume-highway",
+                "chapter-9-1-general-requirements",
+            ],
+        ),
+        "Chapters still queued for extraction (flag set) but never "
+        "successfully extracted. Reads 54 today -- but only 11 of the 52 "
+        "already-processed chapters are FLAGGED by the pipeline's own "
+        "post-extraction artifact scan (29 read clean, 12 have minor "
+        "under-threshold artifacts); only 1 of those 11 was manually "
+        "opened and confirmed as a real defect, so 'flagged' is not the "
+        "same claim as 'confirmed' for the other 10 -- see the header "
+        "comment above. The crude preflight '52 flagged SUSPECT' banner "
+        "is not evidence the other 41 are broken either -- do not assume "
+        "a nonzero count here means the whole council needs a pipeline "
+        "fix. Most of the drop this count needs could plausibly come from "
+        "committing the clean/near-clean chapters after a human clears "
+        "their (mostly false-positive) SUSPECT flags, matching the "
+        "precedent already set for ashfield/marrickville/city_of_sydney/"
+        "hornsby (#851) -- not from a pipeline change. The chapters the "
+        "artifact scan flags and the 2 missing-PDF chapters are the "
+        "candidates for real remaining work, pending per-chapter human "
+        "review, not a pipeline-wide failure.",
+    ),
     "DQ-92": (
         "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",
         # Answers a direct question raised in session: how much of the review

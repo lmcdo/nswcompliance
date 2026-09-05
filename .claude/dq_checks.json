@@ -865,6 +865,18 @@
       "passes_when": "exit 0 - drawdown_verify_audits exists in information_schema.tables",
       "red_when": "the table does not exist -- the exact DQ-91 regression, isolated to a check that cannot be masked by the 3 deliberately-unbuilt tables changing state",
       "note": "Split out of DQ-91 2026-09-05 on Sol cross-review: DQ-91 aggregates 4 table-existence checks into one count, so a coincidence (drawdown_verify_audits dropped at the same moment one of the 3 unbuilt tables gets created) would leave the count unchanged at 3 and hide a real regression on the one table that matters. This probe checks drawdown_verify_audits alone. Declared fixed because it is: migration 033 ran against production 2026-09-04, a real row was inserted/read/deleted through the actual functions, and the code now fails closed instead of swallowing an insert error. Verified live 2026-09-05: count=0, CLEAN."
+    },
+    "DQ-95": {
+      "declared": "open",
+      "check": [
+        "python",
+        "scripts/dq_probe_live.py",
+        "--id",
+        "DQ-95"
+      ],
+      "passes_when": "exit 0 - no canterbury_bankstown chapters are stuck with needs_extraction=TRUE and never extracted",
+      "red_when": "any chapter is still queued but not extracted -- reads 54 today, but see note: only 11 of 52 processed chapters are flagged by the post-extraction artifact scan, and only 1 of those 11 has been manually confirmed",
+      "note": "CORRECTED 2026-09-05, same session as the original entry, TWICE. First pass misread the CLI's crude preflight 52-flagged-SUSPECT banner as a measure of extraction quality; it is a pre-extraction page-geometry heuristic that never inspects the actual output. The review file's own post-extraction CHAPTERS WITH EXTRACTION BUGS summary is a better signal: 11 of 52 processed chapters (2 of 54 have no PDF yet); 29 of 52 have zero artifacts; 12 carry minor under-threshold artifacts. SECOND correction (Sol cross-review, HIGH, real, on the push containing the first): the note then called all 11 'confirmed genuinely broken' when only 1 (chapter-7-5, opened and inspected directly -- real page-number-in-heading corruption, bare_page_numbers at 261%) was independently verified. The other 10 are flagged BY THE SCANNER only -- 'flagged' and 'confirmed' are not the same claim, and this scanner's own false-positive rate on this council has not been established, the same way the preflight banner's was. Also tested and reverted: adding canterbury_bankstown to the existing, working GEOMETRIC_COLUMN_COUNCILS reader (commit 53b0c8ee, proven on 4 other councils) produced the IDENTICAL 11-chapter flagged list on a full 52-chapter before/after re-run, and 2 fewer clean chapters (27 vs 29) -- the existing fix does not transfer here. NOT committed to production either way. Most of this council (41 of 52 processed chapters) may be committable after human review clears the same class of false-positive SUSPECT flags already precedented for 4 other councils (PR #851) and individually reviews the 11 artifact-scan-flagged chapters -- only 1 of which is independently confirmed so far."
     }
   }
 }

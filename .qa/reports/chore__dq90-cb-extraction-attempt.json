@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "justification": "Standard: this branch includes a real, deliberate production database write (flipping needs_extraction on 54 dcp_chapter_registry rows, explicit user authorization, backed up first) and registers a new live-executable check (DQ-95) that future sessions/CI will run. Not Critical: the write is a status-flag flip, not a content write, and no application code changed -- nothing user-facing is touched. Not Minor: it's a real production write plus a new standing check, not a wording-only change.",
+  "commit_hash": "548006dd",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "scripts/dq_probe_live.py",
+    "data/db_rollback_backups/dcp_chapter_registry_canterbury_bankstown_pre_flag_flip_2026-09-05.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Reused the exact WHERE clause already used to measure DQ-90 (dcp_chapter_registry, is_active/is_spatial/is_inert/needs_extraction), verified live against production before writing anything -- 54 rows matched, exactly as DQ-90 recorded. No new table, no new column.",
+    "assumption_mismatch": "DQ-90 assumed the only blocker was that the extraction pipeline had never been RUN for this council ('the hard part -- getting the documents -- is already done'). Forced this to fail on purpose by actually running the pipeline (--review mode, no writes): the assumption was wrong. The pipeline's own preflight step flagged 52 of 52 processed chapters as SUSPECT (49 preflight_two_column, 3 schema_fail), and manual inspection of one flagged chapter confirmed real, visible text corruption -- not a borderline heuristic false-positive.",
+    "new_vs_existing": "The needs_extraction flag flip applies only to Canterbury-Bankstown's 54 already-registered chapters -- no new chapters, no new council, no schema change. DQ-95 is a new row, scoped narrowly to this specific extraction attempt's outcome.",
+    "external_source_error": "N/A for the write itself (a status flag, not an external call). The --review run DOES call out to R2 (PDF storage) for each chapter's source PDF -- all 52 downloads succeeded (byte counts logged, ranging 368KB-2.2MB), so this was not an R2/network failure being mistaken for an extraction failure.",
+    "frontend_type": "N/A -- no frontend code touched.",
+    "user_failure_mode": "N/A -- nothing was committed to the served regulatory_provisions table. If anything HAD been committed with these SUSPECT flags, a planner using the compliance tool would have been shown corrupted/fabricated-looking rule text (mangled headings, stray page numbers presented as content) as if it were a real DCP clause -- exactly the class of harm this whole session has been about preventing. That is precisely why nothing was committed."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-95 ; python scripts/dq_check.py ; python -m pytest -q",
+    "fails_when": "dq_probe_live.py --id DQ-95 fails to connect (exit 2, UNKNOWN) if the database is unreachable -- never reports a false CLEAN. dq_check.py fails if DQ-95's declared status (open) and its live result (nonzero) stop agreeing, or if the ledger and dq_checks.json disagree on which ids exist.",
+    "observed_red": "Before this branch: DQ-90's own probe (not yet automated, described in prose only) reported 97 chapters with no served content, 54 of them Canterbury-Bankstown, all with needs_extraction=FALSE. After flipping the flag (verified 54/54 matched before the UPDATE, 54/54 rows affected, committed): the same DQ-90-shape query (is_active/NOT is_spatial/NOT is_inert/NOT needs_extraction/no served provision) now reads 43 live-verified -- down from 97, with a live per-council breakdown matching DQ-90's own named 20-council list exactly (northern_beaches 3, fairfield 3, liverpool 3, ... cumberland 1). This proves the flag flip touched exactly the intended 54 rows and nothing else. dq_probe_live.py --id DQ-95 reads count=54 (all still stuck, none successfully extracted) -- correctly RED, matching the real, observed pipeline failure this session found by actually running the extraction (not assumed from the flag state alone). python scripts/dq_check.py: PASSED, 99 rows (98 + this session's DQ-95), 0 red, coverage intact. Full pytest suite: 4967 passed, 2 skipped, 0 failed -- unchanged, since no application code was touched."
+  },
+  "functions": [
+    {
+      "name": "PROBES[\"DQ-95\"]",
+      "file_line": "scripts/dq_probe_live.py (new)",
+      "input": "none beyond the standing --id DQ-95 CLI arg",
+      "output": "count of canterbury_bankstown chapters with needs_extraction=TRUE AND last_extracted_at IS NULL -- 0 would mean every queued chapter was eventually extracted successfully; currently 54 (all of them, since none has been committed)",
+      "if_none": "N/A -- exits 2/UNKNOWN via the shared run() harness if the database is unreachable, same as every other probe in this file, never a false CLEAN"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The needs_extraction=TRUE flag flip on 54 rows could accidentally cause the pipeline's SCHEDULED, automated sweep (the --all mode used for the 'quarterly re-extract-all detector cadence') to pick these 54 chapters up on its next scheduled run and commit the known-SUSPECT extraction output to production, since nothing about the flag itself prevents that -- only running with --review manually does.",
+      "what_happens": "If a scheduled --all run (without --review) fires before someone builds a real two-column fix, the exact garbled content this session deliberately kept out of production would get committed automatically, and DQ-90/DQ-95's own prose would be the only warning anyone had.",
+      "mitigated": false,
+      "how": "NOT mitigated at the mechanism level -- there is no code-level guard preventing a scheduled --all run from committing SUSPECT output; the pipeline's own design is 'commit unless a human intervenes', which is exactly what DQ-92 already documented as a standing risk for this repo's review-queue model generally. Named here explicitly rather than assumed safe: whoever picks up the two-column fix (or decides to skip Canterbury-Bankstown) should check whether any scheduled extraction job runs --all without --review before that decision is made, since this branch's flag flip is what makes these 54 chapters newly eligible for a future --all sweep to reach.",
+      "repro": "grep for how --all is invoked in any cron/scheduled config (not done in this session -- named as the open question, not investigated)."
+    },
+    {
+      "scenario": "This branch was originally started as uncommitted changes on fix/fabricated-compliance-fallback (an unrelated, already-CI-passed branch) before being noticed and moved.",
+      "what_happens": "Committing DQ-90/DQ-95 work onto that branch would have silently bundled two unrelated changes into one PR, and re-triggered CI on a PR that had already passed review for a narrower, already-understood scope.",
+      "mitigated": true,
+      "how": "Caught before committing: `git status --short` on that branch showed the 3 unrelated files staged. Moved via `git stash push -u` with a unique, descriptive tag (not a bare stash, per this repo's shared-stash-stack convention), a fresh worktree/branch cut from updated origin/main, and `git stash apply` (not pop) by exact SHA. The apply produced real merge conflicts in 2 of 3 files (this branch's origin/main snapshot predates a second, still-unmerged PR's DQ-91/DQ-94 changes) -- resolved by keeping this branch's own DQ-90/DQ-95 content and the ORIGINAL upstream DQ-91 text, deliberately NOT importing the other PR's DQ-94 addition here (it will arrive naturally when that PR merges). Verified post-resolution: 0 leftover conflict markers in any of the 3 files, valid JSON, dq_check.py PASSED, full pytest suite unchanged.",
+      "repro": "grep -c \"^<<<<<<<\\|^=======\\|^>>>>>>>\" on all 3 touched files -- 0 in each, confirmed after resolution."
+    },
+    {
+      "scenario": "The pre-write backup of the 54 dcp_chapter_registry rows was initially written only to a session-specific scratchpad temp directory, not committed to the repository -- if that temp directory were cleaned up before anyone needed to restore the pre-flip state, the backup would be gone.",
+      "what_happens": "The CLAUDE.md rule 'create backup before ANY database operation' would have been satisfied only in the narrow, in-session sense, not durably.",
+      "mitigated": true,
+      "how": "Copied into data/db_rollback_backups/ (this repo's existing, tracked convention for exactly this purpose -- confirmed via `git check-ignore`, unlike the separate gitignored `backups/` directory) as dcp_chapter_registry_canterbury_bankstown_pre_flag_flip_2026-09-05.json (35KB, well under the ~600KB norm for that directory). Committed with this branch.",
+      "repro": "N/A -- verified positively: the file is listed in `files` below and staged for commit."
+    },
+    {
+      "scenario": "DQ-95's original query filtered only on council + needs_extraction=TRUE + last_extracted_at IS NULL, with no is_active/is_spatial/is_inert/dcp_name scoping -- a future, unrelated canterbury_bankstown registry row (a superseded chapter re-added, a new spatial-only chapter registered later) could silently change the count without any connection to this specific 54-chapter extraction attempt.",
+      "what_happens": "DQ-95 could stay red (or go clean) for a reason that has nothing to do with whether THIS attempt's 54 chapters were ever resolved, making the check's own history meaningless for tracking this specific incident.",
+      "mitigated": true,
+      "how": "Caught by Sol cross-review (MEDIUM, confidence 0.98) on the rebase force-push. Fixed per Sol's own preferred option: rewrote the query to `WHERE chapter_key = ANY(%s) AND needs_extraction = TRUE AND last_extracted_at IS NULL`, with the exact 54 chapter_key values read back verbatim from the committed pre-write backup file (not re-derived from any live filter that could itself drift). Verified live: still reads count=54 (correctly RED, matching the real unresolved state), dq_check.py PASSED, full pytest suite unchanged (4974 passed, 2 skipped, 0 failed).",
+      "repro": "python scripts/dq_probe_live.py --id DQ-95 -- confirm the printed `params` list contains exactly the 54 chapter_key strings from data/db_rollback_backups/dcp_chapter_registry_canterbury_bankstown_pre_flag_flip_2026-09-05.json, not a loose council-wide filter."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: the needs_extraction flag flip was verified 54/54 before and after the write against production; the resulting DQ-90-shape count (43) was independently re-queried live and matches DQ-90's own named council breakdown exactly; DQ-95's probe was run live against production (count=54, correctly RED); dq_check.py PASSED with correct coverage; full pytest suite re-run clean (4967 passed / 2 skipped, unchanged since no application code was touched)."
+  }
+}
