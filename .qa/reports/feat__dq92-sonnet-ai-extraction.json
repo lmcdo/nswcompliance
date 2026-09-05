@@ -1,0 +1,76 @@
+{
+  "tier": "standard",
+  "justification": "Real, generalizable fixes to the AI extraction engine: a new provider (sonnet), a crash fix for a response shape a newer model can return, and a retry that recovers a class of previously-silent data loss. Not minor: changes production extraction behaviour for every future --review run with AI_EXTRACTION on.",
+  "commit_hash": "b9fad681",
+  "files": [
+    "scripts/ai_extractor.py",
+    "tests/test_ai_extractor.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Piloted live against a real count_drop chapter (marrickville/part7-s3-sex-industry, already downloaded from R2) with AI_EXTRACTION=1 on both haiku and the new sonnet provider, comparing output directly against the chapter's real page-by-page text (read in full, 28 pages) to verify correctness -- not just a bigger row count.",
+    "assumption_mismatch": "Haiku mislabeled a long run of correctly-extracted clauses under one reused section number -- an error rate too high to trust unreviewed, per the 2026-07 decision doc's own finding ('neither is trustworthy unreviewed'). Wiring in Sonnet surfaced two further, unrelated bugs on first call: (1) client.messages.create raised on temperature=0 ('deprecated for this model') -- removed the parameter, the decision doc's own measurement had already found it 'marginal help, no downside'; (2) msg.content[0].text crashed with AttributeError because Sonnet can prepend a ThinkingBlock with no .text attribute before the real response.",
+    "new_vs_existing": "Refactored _call_haiku into a shared _call_anthropic(pdf_bytes, prompt, default_model) plus two thin wrappers (_call_haiku, _call_sonnet) registered in _PROVIDERS -- same request shape, only the model differs, AI_MODEL_ID still overrides either explicitly. Also extracted the chunk-level call+parse+retry logic into a new pure-ish function, _call_and_parse_with_empty_retry, so the retry behaviour is unit-testable without a real PDF.",
+    "external_source_error": "N/A -- Anthropic API response-shape difference between models, not an external data source.",
+    "frontend_type": "N/A -- backend extraction pipeline only.",
+    "user_failure_mode": "Before: (a) a document reusing a code repeated under Haiku's own error pattern would have silently mislabeled real content; (b) any Sonnet response with a ThinkingBlock crashed the whole extraction with an unhandled AttributeError; (c) a chunk whose response happened to be truncated/malformed lost its entire content silently -- confirmed live: the SAME chunk request, re-sent, returned 0 provisions once and 46 correctly-parsed provisions the next, with no retry to catch the bad run. After: sonnet is a selectable, working provider; a ThinkingBlock-prefixed response is handled; a non-trivial empty-parse result is retried up to 2 times before being accepted, recovering the exact failure mode measured live. Full-chapter re-test after all three fixes (with a chunk size covering the whole 28-page chapter): 49 of 49 real objectives/controls extracted, every section number correct, zero mislabeling."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ai_extractor.py -v",
+    "fails_when": "sonnet is missing from _PROVIDERS; _call_anthropic crashes or returns the wrong text when content[0] has no .text attribute; _call_and_parse_with_empty_retry fails to retry a non-trivial empty-parse result, retries a genuinely-short empty result it shouldn't, or doesn't give up after _EMPTY_PARSE_MAX_RETRIES -- 8 new tests across 3 test classes, all mocking the network boundary (no live API calls in the suite).",
+    "observed_red": "Before this branch: AI_MODEL=sonnet crashed outright (temperature error, then a ThinkingBlock AttributeError) and could not run at all. After: 59/59 tests in test_ai_extractor.py pass (51 pre-existing + 8 new), 321/321 relevant tests across the suite pass (0 regressions), and a live end-to-end run against the real problem chapter with a whole-chapter chunk size produced 49/49 correctly-numbered provisions, verified by hand against the source PDF's full text."
+  },
+  "functions": [
+    {
+      "name": "_call_anthropic",
+      "file_line": "scripts/ai_extractor.py (new, factored out of the old _call_haiku)",
+      "input": "pdf_bytes (bytes), prompt (str), default_model (str, e.g. 'claude-haiku-4-5' or 'claude-sonnet-5')",
+      "output": "str -- the model's text response, taking the first content block that actually has a .text attribute rather than assuming content[0]",
+      "if_none": "a response whose content contains only non-text blocks (e.g. only a ThinkingBlock) returns an empty string rather than raising -- confirmed by test_no_text_block_at_all_returns_empty_not_a_crash"
+    },
+    {
+      "name": "_call_and_parse_with_empty_retry",
+      "file_line": "scripts/ai_extractor.py (new, factored out of ai_extract_chapter's per-chunk loop)",
+      "input": "model (str), pdf_bytes (bytes), prompt (str)",
+      "output": "list[dict] of parsed provisions for this one chunk, having retried up to _EMPTY_PARSE_MAX_RETRIES times if a non-trivial response parsed to nothing",
+      "if_none": "a genuinely short response (<= 200 chars) that parses to nothing is accepted immediately, never retried -- confirmed by test_a_genuinely_short_empty_response_is_not_retried; a response that stays non-trivial-but-empty across every retry returns [] after the cap, not an infinite loop -- confirmed by test_gives_up_after_max_retries_and_returns_empty"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A model response includes a ThinkingBlock (or any other non-text content block) before the real answer -- content[0].text assumes the first block is always the answer.",
+      "what_happens": "AttributeError crashes the whole chapter extraction, exactly as measured live calling claude-sonnet-5 for the first time.",
+      "mitigated": true,
+      "how": "Scan all content blocks for the first one with a .text attribute, rather than indexing content[0] directly.",
+      "repro": "tests/test_ai_extractor.py::TestAnthropicThinkingBlock::test_finds_text_block_after_a_thinking_block"
+    },
+    {
+      "scenario": "A chunk's API call succeeds (no HTTP error, so _call_with_retry's own retry never fires) but the response body is truncated or malformed and parses to zero provisions -- measured live, the identical request re-sent recovered fully.",
+      "what_happens": "A whole chunk's real content is silently lost with no signal to a reviewer that anything is missing -- the chapter just reads as having fewer provisions than it should, indistinguishable from a genuinely thin chapter.",
+      "mitigated": true,
+      "how": "Retry up to _EMPTY_PARSE_MAX_RETRIES times when a non-trivial-length response parses to zero provisions.",
+      "repro": "tests/test_ai_extractor.py::TestEmptyParseRetry::test_retries_a_nontrivial_response_that_parses_empty -- uses the exact 0-then-46 pattern measured live."
+    },
+    {
+      "scenario": "The empty-retry logic could over-fire on a chapter section that is GENUINELY empty (e.g. a blank or cover-only page range), wasting API calls and retries on every run.",
+      "what_happens": "Extra cost and latency on every legitimately-thin chunk, with no benefit.",
+      "mitigated": true,
+      "how": "Require the response to be non-trivial in length (> 200 chars) before retrying -- a genuine empty-chunk response from the model is short (e.g. '{\"provisions\": []}', 18 chars, measured live on this exact chapter's actual empty appendix chunk).",
+      "repro": "tests/test_ai_extractor.py::TestEmptyParseRetry::test_a_genuinely_short_empty_response_is_not_retried"
+    },
+    {
+      "scenario": "Sonnet is a real quality improvement over Haiku for THIS chapter's binding controls (49/49 correct in one full-chapter chunk), but that does not mean chunked, multi-call runs on larger chapters are automatically fixed -- a chunk boundary landing mid-document can still starve the model of context needed to recognise a section as still-open.",
+      "what_happens": "A reader could assume switching AI_MODEL=sonnet alone resolves DQ-92 broadly; it resolves the model-choice-driven mislabeling but not chunk-boundary-driven under-extraction on chapters too large for a single chunk.",
+      "mitigated": false,
+      "how": "Not fixed in this change -- AI_CHUNK_PAGES is left at its existing default and semantics; the whole-chapter-in-one-chunk result was obtained by explicitly overriding AI_CHUNK_PAGES for this one chapter's test run, not by a code change. A chapter larger than a safe single-chunk size (very large chapters, e.g. 200+ pages) still needs multi-chunk handling and inherits the pre-existing boundary risk.",
+      "repro": "Not reproduced as a failing test here -- documented as a known scope boundary for the next investigation (adaptive/larger chunk sizing per chapter page count)."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: 59/59 test_ai_extractor.py tests, 321/321 relevant suite tests (0 regressions), live end-to-end extraction against the real problem PDF cross-checked by hand against its full source text."
+  }
+}

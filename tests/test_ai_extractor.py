@@ -11,9 +11,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 from ai_extractor import (  # noqa: E402
     chunk_ranges, parse_provisions, dedupe_provisions, provisions_to_sections,
-    _call_with_retry, _is_retryable,
+    _call_with_retry, _is_retryable, _PROVIDERS,
+    _call_and_parse_with_empty_retry,
     coverage_gap, truncation_rate, COVERAGE_MIN_TOC,
 )
+import ai_extractor as _ai_extractor_mod  # noqa: E402
 
 
 class TestChunkRanges:
@@ -651,3 +653,109 @@ class TestRetryableTimeouts:
         e400 = urllib.error.HTTPError("u", 400, "x", {}, None)
         assert _is_retryable(e500) is True
         assert _is_retryable(e400) is False
+
+
+class TestSonnetProvider:
+    """AI_MODEL=sonnet, added 2026-09-05 after Haiku's real-chapter mislabeling
+    rate proved too high for unreviewed sections."""
+
+    def test_sonnet_is_a_known_provider(self):
+        assert "sonnet" in _PROVIDERS
+        assert "haiku" in _PROVIDERS and "mistral" in _PROVIDERS
+
+    def test_unknown_model_message_lists_sonnet(self):
+        try:
+            _call_with_retry("does-not-exist", b"%PDF")
+            assert False, "should have raised"
+        except ValueError as e:
+            assert "sonnet" in str(e)
+
+
+class TestAnthropicThinkingBlock:
+    """Some Claude models prepend a ThinkingBlock (no .text) before the real
+    response; content[0].text broke on it. Measured live 2026-09-05 calling
+    claude-sonnet-5 -- AttributeError: 'ThinkingBlock' object has no attribute
+    'text'."""
+
+    def _stub_anthropic(self, monkeypatch, blocks):
+        class _Msg:
+            content = blocks
+
+        class _Messages:
+            def create(self, **kwargs):
+                return _Msg()
+
+        class _Client:
+            def __init__(self):
+                self.messages = _Messages()
+
+        stub = MagicMock()
+        stub.Anthropic = _Client
+        monkeypatch.setitem(sys.modules, "anthropic", stub)
+
+    def test_finds_text_block_after_a_thinking_block(self, monkeypatch):
+        thinking = MagicMock(spec=[])  # no .text attribute at all, like ThinkingBlock
+        text_block = MagicMock()
+        text_block.text = '{"provisions": []}'
+        self._stub_anthropic(monkeypatch, [thinking, text_block])
+        result = _ai_extractor_mod._call_anthropic(b"%PDF", "prompt", "claude-sonnet-5")
+        assert result == '{"provisions": []}'
+
+    def test_plain_text_first_block_still_works(self, monkeypatch):
+        text_block = MagicMock()
+        text_block.text = "plain response"
+        self._stub_anthropic(monkeypatch, [text_block])
+        result = _ai_extractor_mod._call_anthropic(b"%PDF", "prompt", "claude-haiku-4-5")
+        assert result == "plain response"
+
+    def test_no_text_block_at_all_returns_empty_not_a_crash(self, monkeypatch):
+        thinking = MagicMock(spec=[])
+        self._stub_anthropic(monkeypatch, [thinking])
+        result = _ai_extractor_mod._call_anthropic(b"%PDF", "prompt", "claude-sonnet-5")
+        assert result == ""
+
+
+class TestEmptyParseRetry:
+    """A non-trivial response that parses to zero provisions is retried (very
+    likely truncated/malformed JSON), but a genuinely short empty-chunk
+    response is accepted immediately. Measured live 2026-09-05: the identical
+    chunk request, re-sent, returned 0 then 46 correctly-parsed provisions."""
+
+    def test_retries_a_nontrivial_response_that_parses_empty(self, monkeypatch):
+        calls = {"n": 0}
+        long_but_empty = "x" * 300  # non-trivial length, parses to nothing
+        good = '{"provisions": [{"code": "1.1", "title": "T", "text": "body"}]}'
+
+        def fake_call_with_retry(model, pdf_bytes, prompt):
+            calls["n"] += 1
+            return long_but_empty if calls["n"] == 1 else good
+
+        monkeypatch.setattr(_ai_extractor_mod, "_call_with_retry", fake_call_with_retry)
+        provs = _call_and_parse_with_empty_retry("sonnet", b"%PDF", "prompt")
+        assert calls["n"] == 2
+        assert len(provs) == 1 and provs[0]["code"] == "1.1"
+
+    def test_a_genuinely_short_empty_response_is_not_retried(self, monkeypatch):
+        calls = {"n": 0}
+
+        def fake_call_with_retry(model, pdf_bytes, prompt):
+            calls["n"] += 1
+            return '{"provisions": []}'  # short, genuinely empty
+
+        monkeypatch.setattr(_ai_extractor_mod, "_call_with_retry", fake_call_with_retry)
+        provs = _call_and_parse_with_empty_retry("sonnet", b"%PDF", "prompt")
+        assert calls["n"] == 1
+        assert provs == []
+
+    def test_gives_up_after_max_retries_and_returns_empty(self, monkeypatch):
+        calls = {"n": 0}
+        long_but_empty = "x" * 300
+
+        def fake_call_with_retry(model, pdf_bytes, prompt):
+            calls["n"] += 1
+            return long_but_empty
+
+        monkeypatch.setattr(_ai_extractor_mod, "_call_with_retry", fake_call_with_retry)
+        provs = _call_and_parse_with_empty_retry("sonnet", b"%PDF", "prompt")
+        assert provs == []
+        assert calls["n"] == 1 + _ai_extractor_mod._EMPTY_PARSE_MAX_RETRIES
