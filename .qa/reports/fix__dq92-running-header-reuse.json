@@ -1,0 +1,63 @@
+{
+  "tier": "standard",
+  "justification": "A real extraction-pipeline code fix (a heuristic in _extract_sequential's heading-detection loop) refactored into a pure, tested function. Changes when a repeated section number opens a new section vs is treated as a running header.",
+  "commit_hash": "750bc884",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_running_header_repeat_guard.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Investigated live via read-only PDF inspection (already-downloaded R2 copy of marrickville/part7-s3-sex-industry.pdf, DCPExtractor.extract() directly, no DB writes). Read the chapter's full page-by-page text to confirm the real document structure: 7.3.7 opens on page 13 (real C1-C7 controls) and the chapter's own Appendix 3 reuses the identical '7.3.7' code on page 23 for unrelated content, 10 pages later.",
+    "assumption_mismatch": "The pre-existing running-header rule (same or parent section number = ignore, forever, while that section stays open) was written for the ordinary case (a header repeating on every page of its own section) and had no way to distinguish that from a document reusing a number much later for unrelated content. Confirmed live: this swallowed 7 real sections (7.3.8-7.3.14) into the section still open, which grew to 14,738 characters.",
+    "new_vs_existing": "Extracted the existing inline heuristic into a new pure function, is_running_header_repeat(), adding a page-gap requirement (_RUNNING_HEADER_MAX_GAP=2) so the same/parent-number match is only treated as a repeat while the code last confirmed itself within the last 2 pages -- resurfacing later is a new section. Same call site in _extract_sequential, no new state machine.",
+    "external_source_error": "N/A -- PDF structure quirk in the source document, not an external API.",
+    "frontend_type": "N/A -- backend extraction pipeline only.",
+    "user_failure_mode": "Before this fix: a document reusing a section number for later, unrelated content (its own Appendices) would have that content silently merged into the wrong, already-closed-in-spirit section, with no indication to a reviewer that real sections were missing. After: a reused number resurfacing after a gap starts a new section instead of being discarded as a repeat.",
+    "note_not_a_full_fix": "This chapter (marrickville/part7-s3-sex-industry) has multiple, independent structural quirks (this reuse pattern plus at least one more), so fixing this one heuristic does not, by itself, make the chapter's extracted count match its live baseline -- confirmed by a live before/after regression scan across all 26 marrickville count_drop chapters (unchanged except 3 chapters gaining +1 row each from unrelated page-boundary variance). Committed on its own merits as a real, generalizable, tested correctness fix, independent of whether it closes DQ-92 by itself."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_running_header_repeat_guard.py -v",
+    "fails_when": "is_running_header_repeat returns True for a resurfacing-after-a-gap case (the real bug), or False for a genuine same-page/near-page repeat (would regress the ordinary running-header suppression this rule exists for) -- 8 tests cover both directions plus the parent-prefix case and its reverse.",
+    "observed_red": "Before this fix: 7.3.7's content spanned pages 13-28 in a single 14,510-character section (verified live via DCPExtractor.extract() before the change). After: full existing test suite (411 tests matching dcp/extract) passes with zero regressions, 8/8 new tests pass, and a live before/after 26-chapter regression scan shows no chapter regressed (3 improved by +1 row from unrelated variance)."
+  },
+  "functions": [
+    {
+      "name": "is_running_header_repeat",
+      "file_line": "scripts/dcp_extract_changed.py (new, extracted from _extract_sequential's inline heading check)",
+      "input": "current_number (str, the already-open section's number), new_code (str, the just-matched heading's number), page_num (int, current page), last_confirmed_page (int, the page this code last confirmed itself as a repeat)",
+      "output": "bool -- True when the match should be treated as a repeated running header (suppressed), False when it should open a genuinely new section",
+      "if_none": "not applicable (no None inputs expected -- section_number and new_code always come from a live regex match group, page_num/last_confirmed_page from int page counters); confirmed via 8 tests covering same-code, parent-prefix, same-page, within-gap, past-gap, different-code, and reverse-parent cases"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A document reuses a section's own number for unrelated later content (its own Appendices reusing the main body's numbering scheme) -- the exact bug this fix addresses.",
+      "what_happens": "Without the gap check, the later heading is discarded as a 'repeat' and its content silently merges into whichever section was still open, hiding real sections from a reviewer with no indication anything is missing.",
+      "mitigated": true,
+      "how": "Require the gap since the code last confirmed itself as a genuine repeat to be small (<=2 pages); a resurfacing further away opens a new section instead.",
+      "repro": "tests/test_running_header_repeat_guard.py::TestReusedNumberIsNotARepeat::test_the_real_marrickville_sex_industry_case -- the real page numbers from the live PDF."
+    },
+    {
+      "scenario": "The gap requirement could itself be too strict and break the ORIGINAL intended case -- a running header repeating on every page, or across a section that spans a blank/table-only page with no text match on one page.",
+      "what_happens": "A real multi-page section would incorrectly fragment into several spurious sub-sections each time its own header repeats.",
+      "mitigated": true,
+      "how": "2 pages of slack (_RUNNING_HEADER_MAX_GAP) covers a single skipped page; verified against the real PDF and the full pre-existing test suite (which includes marrickville's own multi-page 2.1/2.1.1.3-style running-header fixtures) with zero regressions.",
+      "repro": "tests/test_running_header_repeat_guard.py::TestGenuineRunningHeader (4 tests) + full suite (python -m pytest -k \"dcp or extract\")."
+    },
+    {
+      "scenario": "This fix alone could be mistaken for a complete resolution of the chapter's (or DQ-92's) shortfall.",
+      "what_happens": "A reader assumes marrickville's count_drop backlog is closed when it is not -- this chapter has at least one more independent structural defect, and 25 of the other 26 marrickville count_drop chapters are unaffected by this specific fix.",
+      "mitigated": true,
+      "how": "Documented explicitly in this report and the session record: committed on its own merits as a real, generalizable correctness fix, not claimed to close DQ-92 or even this one chapter's count_drop tag. A live 26-chapter before/after regression scan is the evidence, not an assumption.",
+      "repro": "N/A -- documented scope boundary."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: 8/8 new tests, 411/411 relevant existing tests (0 regressions), live before/after 26-chapter dry-run scan."
+  }
+}
