@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A real fix to the AI extraction engine's token budget, found live during the DQ-92 rollout. Not minor: without it, dense chunks silently produce zero output.",
-  "commit_hash": "b1355465",
+  "commit_hash": "d3ced894",
   "files": [
     "scripts/ai_extractor.py",
     "tests/test_ai_extractor.py"
