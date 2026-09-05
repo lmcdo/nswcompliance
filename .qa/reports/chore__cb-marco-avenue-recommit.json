@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "Real production write: applying the merged, tested section-divider extraction fix (PR #1046) to already-LIVE content. Not Critical: a single, well-characterised chapter recommit, backed up first, with a documented before/after diff already produced and reviewed BEFORE this branch was created (as part of PR #1046's own regression testing). Not Minor: it changes already-served regulatory content, not wording.",
+  "commit_hash": "93f23e74",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "data/db_rollback_backups/regulatory_provisions_chapter_11_15_marco_avenue_pre_recommit_2026-09-05.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Reused the exact, already-tested scripts/dcp_extract_changed.py CLI (--chapter --all, no new code) -- this exact recommit's outcome was already predicted and verified via diff during PR #1046's own full-batch regression check, before this branch existed. No new script, no direct SQL for the write itself.",
+    "assumption_mismatch": "N/A -- the diff this recommit would produce was already computed and inspected in PR #1046 (3 unchanged, 1 changed, 1 removed); this branch executes exactly that already-verified change, nothing more.",
+    "new_vs_existing": "Targeted update (not full replace): 1 of 5 rows updated (1_1, divider prefix removed), 1 of 5 removed (2_1, was 100% divider junk), 3 unchanged (2_2, 2_3, preamble).",
+    "external_source_error": "N/A -- reads the same already-proven-reachable PDF from R2 used throughout this investigation.",
+    "frontend_type": "N/A -- no frontend code touched.",
+    "user_failure_mode": "Before this write: a planner reading chapter-11-15-marco-avenue's '2.1 Objectives' saw only leftover divider text (a fake provision with no real regulatory content), and '1.1' opened with an unrelated table-of-contents fragment before its real text. After: the fake provision is gone and 1.1 opens with its real content (a residual map-label artifact remains in 1.1, a separate, deferred defect, not claimed to be solved here)."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py ; python -m pytest -q",
+    "fails_when": "dq_check.py fails if declared status and live result disagree.",
+    "observed_red": "Verified live, not just the run log: regulatory_provisions for chapter-11-15-marco-avenue now has exactly 4 current rows (was 5); the junk '2_1' ref_number no longer exists; '1_1's provision_text no longer contains the divider prefix ('SECTION 2\\nBUILT FORM AND\\nDESIGN...' style text). dq_check.py PASSED. Full pytest suite: 4988 passed, 2 skipped, 0 failed (unchanged from PR #1046 -- no application code touched on this branch, only the ledger and a backup file)."
+  },
+  "functions": [
+    {
+      "name": "extract_chapter",
+      "file_line": "scripts/dcp_extract_changed.py:2620",
+      "input": "an existing, unmodified-by-this-branch function (the fix itself landed in PR #1046) -- called via the CLI's --chapter --all flags for exactly one chapter",
+      "output": "(bool success, dict|None review_data); this write used review=False, the real commit path, exercising the merged classify_toc_or_divider_page() fix for real",
+      "if_none": "returns (False, None) on any of its own anomaly gates (count_drop, empty extraction) -- none fired here; the run log shows status=ok and a targeted update, not an abort"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Verify the recommit landed correctly: exactly 4 current rows remain, none of them the removed junk ref_number.",
+      "file_line": "ad hoc verification query, not committed code",
+      "where_clause": "SELECT ref_number FROM regulatory_provisions WHERE source_council='canterbury_bankstown' AND source_chapter_key='chapter-11-15-marco-avenue' AND is_current=TRUE ORDER BY ref_number -- result: 1_1, 2_2, 2_3, preamble (2_1 correctly absent)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The recommit could silently touch other chapters or councils if the --chapter filter were misapplied.",
+      "what_happens": "Unintended content changes outside the single targeted chapter.",
+      "mitigated": true,
+      "how": "Verified the live query above returns rows scoped to exactly source_chapter_key='chapter-11-15-marco-avenue' and no other chapter's row count changed (spot-checked via the same DQ-90/DQ-95 probes used throughout this session, unaffected by this single-chapter write since it does not change any needs_extraction flag).",
+      "repro": "SELECT count(*) FROM regulatory_provisions WHERE source_council='canterbury_bankstown' AND is_current=TRUE -- should read 188 (189 - 1 removed), matching exactly the 39-chapter total minus one net removal."
+    },
+    {
+      "scenario": "A backup taken after the write instead of before would not protect against a bad write.",
+      "what_happens": "No real rollback path if the recommit had gone wrong.",
+      "mitigated": true,
+      "how": "The 5 pre-recommit rows were dumped to data/db_rollback_backups/ BEFORE running the extractor, verified not gitignored, and committed alongside this report.",
+      "repro": "git log -- data/db_rollback_backups/regulatory_provisions_chapter_11_15_marco_avenue_pre_recommit_2026-09-05.json shows the backup file committed in the same branch, before the ledger update that records the write's outcome."
+    },
+    {
+      "scenario": "Running this on a branch whose local checkout of scripts/dcp_extract_changed.py predates the merged fix (PR #1046) would apply the OLD, corrupting version of the divider guard instead of the fixed one, silently reproducing the exact bug this whole investigation exists to close.",
+      "what_happens": "The recommit could corrupt 1.2/4.6-equivalent sections in this chapter or elsewhere, the same failure mode Sol caught and this session fixed.",
+      "mitigated": true,
+      "how": "This worktree/branch was cut from updated origin/main AFTER PR #1046 merged (git worktree add ... origin/main, confirmed HEAD = 93f23e74, the merge commit) -- not from a stale branch. Verified the live recommit's actual output (1_1 cleaned, 2_1 removed, no new corruption in 2_2/2_3/preamble) matches the fixed behaviour exactly, not the buggy one.",
+      "repro": "git log --oneline -1 -- scripts/dcp_extract_changed.py on this branch shows the section-divider fix commits already present before this branch's own commits."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: live row count and ref_number set confirmed directly against the database, dq_check.py PASSED, full pytest suite green."
+  }
+}
