@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A real extraction-pipeline code fix (a new geometric filter wired into _extract_page_text, run for every council) with new pure-function tests. Not minor: changes what text every DCP chapter extraction sees.",
-  "commit_hash": "eb0918ee",
+  "commit_hash": "0d097440",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_vertical_margin_label_guard.py"
@@ -57,7 +57,7 @@
       "what_happens": "Silent content loss on a council this investigation never looked at.",
       "mitigated": true,
       "how": "Ran the full pre-existing test suite (4,988+ tests spanning every onboarded council's extraction fixtures) after wiring the change in -- 0 regressions. Also re-ran the full 26-chapter marrickville dry-run scan before/after: 25 of 26 chapters read byte-for-byte identical section counts (the 26th differs by 1, in the same direction as normal page-to-page extraction variance, not a new loss), confirming the filter is a no-op everywhere it isn't needed rather than a broad, unverified rewrite.",
-      "repro": "python -m pytest (full suite); scripts/_dq92_scan_marrickville_count_drop.py before/after comparison (not committed -- a one-off measurement script, see session notes)."
+      "repro": "python -m pytest (full suite, 0 regressions). The before/after 26-chapter comparison was run from an ad hoc, uncommitted loop over `python scripts/dcp_extract_changed.py --council marrickville --chapter <key> --all --dry-run` per chapter -- not a tracked script, so no path is named here."
     },
     {
       "scenario": "Fixing this one defect does not, by itself, close the count_drop tag on the chapter it was found on (part7-s3-sex-industry stays at 65 of 108 baseline) -- a second, independent defect (headings 7.3.8-7.3.14 missing their number prefix entirely from the extracted text, not merely garbled) remains on that same chapter.",
