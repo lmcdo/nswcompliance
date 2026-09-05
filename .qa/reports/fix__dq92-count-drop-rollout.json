@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A real extraction-pipeline code fix (a new geometric filter wired into _extract_page_text, run for every council) with new pure-function tests. Not minor: changes what text every DCP chapter extraction sees.",
-  "commit_hash": "71f2a7e3",
+  "commit_hash": "eb0918ee",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_vertical_margin_label_guard.py"
