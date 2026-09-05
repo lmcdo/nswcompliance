@@ -1,0 +1,80 @@
+{
+  "tier": "standard",
+  "justification": "Real, deliberate production write: committed 39 of Canterbury-Bankstown's 54 DCP chapters into regulatory_provisions (189 provisions), following explicit user authorization at each decision point (which chapters to hold back, and the final go-ahead to commit). Not Critical: the write is additive (first-time extraction, no existing provisions touched, verified 0 pre-existing rows for this council), and the exclusion list was verified against live data before writing, not asserted. Not Minor: it is a real production content write serving live compliance answers, not a wording-only change.",
+  "commit_hash": "7f339158",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Reused the existing, tested scripts/dcp_extract_changed.py CLI (--chapter, no new code) for every write -- no new script, no direct SQL. Read the real commit code path (extract_chapter with review=False) before running anything: confirmed it is a SEPARATE branch from --review's fidelity-gate/dcp_review_queue machinery, with its own independent anomaly gates (count_drop/regeneration_artifact/map_change/restructure), and cannot exclude a single provision -- only a whole chapter.",
+    "assumption_mismatch": "Original plan (from the fidelity-gate sample) was to exclude 2 specific PROVISIONS, not 2 whole chapters. Reading the actual commit code corrected this before any write: the commit path never reads dcp_review_queue.fidelity_status, so provision-level exclusion is not possible via this CLI. Held back the 2 chapters (chapter-7-2-city-west, chapter-9-1-general-requirements) in full instead -- a more conservative outcome than originally scoped.",
+    "new_vs_existing": "39 chapters, first-time extraction (0 pre-existing regulatory_provisions rows for this council, verified live before writing). 15 chapters (2 no-PDF + 13 confirmed-bad) deliberately left untouched, needs_extraction stays TRUE.",
+    "external_source_error": "N/A for the commit step itself (reads already-downloaded/cached PDFs from R2, same mechanism proven earlier in the --review runs this same investigation already used).",
+    "frontend_type": "N/A -- no frontend code touched. New regulatory_provisions rows flow through the same existing serving paths every other council's DCP content already uses.",
+    "user_failure_mode": "Before this write: a planner asking about these 39 CB chapters got zero DCP content (DQ-90). After: real, spot-checked, coherent provision text is served. The alternative failure mode -- committing garbled/wrong content -- was the entire reason for the multi-step review (chapter-level artifact scan, then provision-level fidelity-gate sampling of 33 of 91 flagged rows) before any write."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-90 ; python scripts/dq_probe_live.py --id DQ-95 ; python scripts/dq_check.py ; python -m pytest -q",
+    "fails_when": "DQ-95 fails to connect (exit 2, UNKNOWN) if the database is unreachable -- never a false CLEAN. dq_check.py fails if declared status and live result disagree.",
+    "observed_red": "Live verification, not just the run log: regulatory_provisions now carries 189 current rows for source_council='canterbury_bankstown' across exactly 39 distinct source_chapter_key values -- matching the commit list precisely (checked by set membership, not just a count). dcp_chapter_registry: exactly 15 of the 54 backed-up chapter_keys still read needs_extraction=TRUE, and they are exactly the intended 15 (checked by listing them, not just counting). DQ-90 probe: 43 (unchanged, as expected -- the 39 committed chapters were never in this count once needs_extraction was TRUE, and now they're excluded because they serve content instead). DQ-95 probe: 15 (down from 54). dq_check.py PASSED, 52 checks across 100 rows, 0 red. Full pytest suite: 4974 passed, 2 skipped, 0 failed (this branch predates DQ-96's 3 new tests merged separately via PR #1044; rebasing onto main will pick those up)."
+  },
+  "functions": [
+    {
+      "name": "extract_chapter",
+      "file_line": "scripts/dcp_extract_changed.py:2562",
+      "input": "an existing, unmodified function -- read in full (both the review=True early-return branch and the review=False commit branch) to verify the exclusion mechanism before any write, per this report's break_it entries",
+      "output": "(bool success, dict|None review_data); this branch's write calls it with review=False via the --chapter CLI flag, once per chapter in the 39-chapter commit list",
+      "if_none": "returns (False, None) on any of its own anomaly gates (count_drop, empty extraction, page-range failure) -- verified none fired for the 39 committed chapters by grepping the run log for ABORT/ERROR/SKIP (0 matches)"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Verify the write landed: live count of newly-committed provisions, checked directly against the database, not inferred from the CLI's own printed running total.",
+      "file_line": "ad hoc verification query, not committed code",
+      "where_clause": "SELECT count(*) FROM regulatory_provisions WHERE source_council='canterbury_bankstown' AND is_current=TRUE -- result: 189"
+    },
+    {
+      "purpose": "Confirm exactly the intended 39 chapters now serve content -- not more, not fewer -- by set membership, not just a count.",
+      "file_line": "ad hoc verification query, not committed code",
+      "where_clause": "SELECT count(DISTINCT source_chapter_key) FROM regulatory_provisions WHERE source_council='canterbury_bankstown' AND is_current=TRUE -- result: 39"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Assumed the fidelity-gate's 91 flagged provisions could be excluded individually while committing the rest of their chapters.",
+      "what_happens": "Would have either (a) blocked on a CLI limitation discovered mid-write, or worse (b) been silently wrong if the commit path happened to also read dcp_review_queue and skip flagged rows without saying so, serving an incomplete chapter with no record of what was omitted.",
+      "mitigated": true,
+      "how": "Read scripts/dcp_extract_changed.py's actual extract_chapter() function BEFORE running any commit -- confirmed the review-mode fidelity/queue machinery returns early and the real commit path is entirely separate, with no provision-level exclusion mechanism. Held back the 2 affected chapters in full instead of assuming partial exclusion was possible.",
+      "repro": "grep 'if dry_run or review:' scripts/dcp_extract_changed.py -- the fidelity-gate/dcp_review_queue block is inside this guard and returns before reaching the count_drop/regeneration_artifact gates further down, which are the ONLY gates the real commit path checks."
+    },
+    {
+      "scenario": "A count_drop, regeneration_artifact, map_change, or restructure anomaly could silently abort a chapter mid-batch, leaving the batch partially applied with no record of which chapters actually landed.",
+      "what_happens": "A silent partial commit would be indistinguishable from a full one without checking.",
+      "mitigated": true,
+      "how": "Grepped the full run log for ABORT/ERROR/SKIP (0 matches) and for 'Inserted' (39 matches, one per chapter) before trusting the result; then independently re-verified against the live database (source_chapter_key set membership, not just a row count) rather than trusting either the log or a single aggregate number.",
+      "repro": "grep -c 'ABORT\\|\\[ERROR\\]\\|\\[SKIP\\]' on the run transcript; SELECT DISTINCT source_chapter_key against regulatory_provisions."
+    },
+    {
+      "scenario": "A chapter could be committed twice (e.g. a retry after a transient error), or a held-back chapter could accidentally slip into the commit list, without the row COUNT alone catching it -- 189 rows could still be 189 rows even if they came from 38 chapters twice-committed-in-part and one held-back chapter instead of the intended 39.",
+      "what_happens": "A count-only check would report success on a wrong distribution of chapters, silently including a held-back chapter's (possibly bad) content or double-counting one chapter's provisions.",
+      "mitigated": true,
+      "how": "Verified by SET MEMBERSHIP, not just a count: SELECT count(DISTINCT source_chapter_key) confirms exactly 39 distinct chapters, and a separate listing (not shown in this report's queries but run in-session) confirmed the 15 chapters still needs_extraction=TRUE are exactly the intended 15 -- both directions checked, not just one aggregate number.",
+      "repro": "SELECT count(DISTINCT source_chapter_key) FROM regulatory_provisions WHERE source_council='canterbury_bankstown' AND is_current=TRUE -- must equal exactly 39, and cross-checked against the literal 39-key commit list, not just the number 39."
+    },
+    {
+      "scenario": "The pre-existing needs_extraction flag flip (DQ-90's fix, committed on PR #1043) could have been silently reverted or re-flipped by an unrelated process between then and this commit.",
+      "what_happens": "Would have meant committing against a different baseline than verified.",
+      "mitigated": true,
+      "how": "Re-verified live immediately before writing: 0 existing regulatory_provisions rows for the council, 54 of 54 backed-up chapters still needs_extraction=TRUE -- matched the expected post-#1043 state exactly before any write began.",
+      "repro": "N/A -- verified positively, the pre-write baseline query is in this report's falsifiable_check history above (0 rows, 54 TRUE)."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: live row count (189), live distinct-chapter count (39), live needs_extraction state for all 54 backed-up chapters checked by exact set membership (not just counts), spot-checked provision text for coherence, dq_check.py PASSED, full pytest suite green."
+  }
+}
