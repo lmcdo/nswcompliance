@@ -30,6 +30,9 @@ import urllib.request
 AI_CHUNK_PAGES = int(os.getenv("AI_CHUNK_PAGES", "12"))
 _MAX_RETRIES = 5
 _BACKOFF_BASE = 2.0  # seconds; exponential
+_EMPTY_PARSE_MAX_RETRIES = 2  # a non-trivial response parsing to 0 provisions is
+                               # very likely a truncated/malformed body, not a
+                               # genuine empty chunk -- see ai_extract_chapter.
 
 PROMPT = (
     "This is part of a NSW council Development Control Plan. Extract every numbered "
@@ -206,19 +209,44 @@ def toc_codes_from_pdf(pdf_path, max_scan: int = 12) -> set[str]:
 
 
 # ── providers ────────────────────────────────────────────────────────────────
-def _call_haiku(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
+def _call_anthropic(pdf_bytes: bytes, prompt: str, default_model: str) -> str:
+    """Shared Anthropic Messages API call for both the haiku and sonnet providers
+    -- same request shape, only the model differs. AI_MODEL_ID still overrides
+    either one explicitly (e.g. pinning an exact dated snapshot)."""
     import anthropic
     client = anthropic.Anthropic()
     data = base64.standard_b64encode(pdf_bytes).decode()
     msg = client.messages.create(
-        model=os.getenv("AI_MODEL_ID", "claude-haiku-4-5"),
+        model=os.getenv("AI_MODEL_ID", default_model),
         max_tokens=8000,
-        temperature=0,  # maximise determinism across quarterly re-extracts
+        # No explicit temperature: newer Sonnet snapshots reject temperature=0
+        # outright ("deprecated for this model"), and the 2026-07 decision doc's
+        # own measurement found it "marginal help, no downside" for determinism
+        # anyway -- not worth a model-conditional parameter for that.
         messages=[{"role": "user", "content": [
             {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": data}},
             {"type": "text", "text": prompt}]}],
     )
-    return msg.content[0].text
+    # Some models (e.g. Sonnet) can prepend a ThinkingBlock before the real
+    # text response -- content[0] is not reliably the answer. Take the first
+    # block that actually has text.
+    for block in msg.content:
+        text = getattr(block, "text", None)
+        if text is not None:
+            return text
+    return ""
+
+
+def _call_haiku(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
+    return _call_anthropic(pdf_bytes, prompt, "claude-haiku-4-5")
+
+
+def _call_sonnet(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
+    # AI_MODEL=sonnet: 2026-09-05 -- added after Haiku's own real-chapter error
+    # rate proved too high for unreviewed sections (see the 2026-07 decision
+    # doc). Same drop-in call shape, no other change; still goes through the
+    # same --review -> guards -> human-approval path, nothing auto-commits.
+    return _call_anthropic(pdf_bytes, prompt, "claude-sonnet-5")
 
 
 def _call_mistral(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
@@ -243,7 +271,7 @@ def _call_mistral(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
         return json.load(r)["choices"][0]["message"]["content"]
 
 
-_PROVIDERS = {"haiku": _call_haiku, "mistral": _call_mistral}
+_PROVIDERS = {"haiku": _call_haiku, "sonnet": _call_sonnet, "mistral": _call_mistral}
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -275,6 +303,30 @@ def _call_with_retry(model: str, pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     raise last  # pragma: no cover
 
 
+_EMPTY_PARSE_RAW_LEN_FLOOR = 200  # a genuine empty-chunk response is short; longer
+                                   # bodies that still parse to nothing are almost
+                                   # certainly truncated/malformed, not intentional
+
+
+def _call_and_parse_with_empty_retry(model: str, pdf_bytes: bytes, prompt: str) -> list[dict]:
+    """Call the model and parse its response, retrying when a non-trivial body
+    parses to zero provisions. Measured live 2026-09-05: the identical chunk
+    request, re-sent, returned 0 provisions once and 46 correctly-parsed
+    provisions the next -- _call_with_retry only retries on HTTP-level
+    failures, so a 200 response that fails to parse was previously accepted
+    as-is, silently losing a whole chunk's content. A real empty page range
+    (e.g. a blank/cover-only chunk) gets a short response and is never
+    retried."""
+    raw = _call_with_retry(model, pdf_bytes, prompt)
+    provs = parse_provisions(raw)
+    attempts = 0
+    while not provs and len(raw) > _EMPTY_PARSE_RAW_LEN_FLOOR and attempts < _EMPTY_PARSE_MAX_RETRIES:
+        attempts += 1
+        raw = _call_with_retry(model, pdf_bytes, prompt)
+        provs = parse_provisions(raw)
+    return provs
+
+
 # ── entrypoint ───────────────────────────────────────────────────────────────
 def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None) -> list[dict]:
     """Extract a chapter's provisions via an LLM. Returns section dicts matching
@@ -287,8 +339,9 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
     collected: list[dict] = []
     current_section: str | None = None
     for (a, b) in chunk_ranges(total):
-        raw = _call_with_retry(model, _subset_bytes(reader, a, b), _build_prompt(current_section))
-        chunk_provs = parse_provisions(raw)
+        pdf_bytes = _subset_bytes(reader, a, b)
+        prompt = _build_prompt(current_section)
+        chunk_provs = _call_and_parse_with_empty_retry(model, pdf_bytes, prompt)
         for p in chunk_provs:
             p.setdefault("page", a + 1)  # approximate: first page of the chunk
             collected.append(p)
