@@ -883,6 +883,42 @@ _STANDALONE_SECTION_CODE_RE = re.compile(
 # suppressing the whole page on this signal is safe.
 _SECTION_DIVIDER_RE = re.compile(r'(?m)^\s*SECTION\s+\d+\s*$')
 
+# A genuine running page-header repeats on (near-)every page of its own section
+# (e.g. Marrickville's "2.1 Urban Design" atop every page of 2.1 and its
+# children). A reused section number resurfacing many pages later (a
+# document's own Appendices reusing the main body's numbering) is a NEW
+# section, not a repeat -- see is_running_header_repeat. 2 pages of slack
+# covers the ordinary case (a section spanning a blank/table-only page with no
+# text match) without accepting a reuse many pages downstream.
+_RUNNING_HEADER_MAX_GAP = 2
+
+
+def is_running_header_repeat(
+    current_number: str, new_code: str, page_num: int, last_confirmed_page: int
+) -> bool:
+    """True when a heading match for `new_code` on `page_num` is a repeat of the
+    ALREADY-OPEN section's own running page-header, not a genuinely new section.
+
+    A running header is either the exact same code, or a parent prefix of it
+    (Marrickville prints "2.1 Urban Design" atop every page of 2.1 and its
+    numbered children, e.g. "2.1.1.3"). That alone isn't enough, though: found
+    live 2026-09-05 on marrickville/part7-s3-sex-industry, a document's own
+    Appendices reuse the main body's numbering for unrelated later content --
+    a real second heading, "7.3.7 Appendix 3 - Health standards...", appeared
+    12+ pages after the original 7.3.7 opened, and treating it as a repeated
+    header merged 7 real sections' worth of content (7.3.8-7.3.14) into the
+    original section (which grew to 14,738 characters). A genuine running
+    header repeats on (near-)every page of its own section, so the repeat is
+    only honoured while the gap since it last confirmed itself stays small
+    (_RUNNING_HEADER_MAX_GAP); a resurfacing many pages later is a new
+    section, however it also captures. Pure -- no PDF I/O."""
+    same_or_parent = (
+        current_number == new_code or current_number.startswith(new_code + ".")
+    )
+    if not same_or_parent:
+        return False
+    return page_num - last_confirmed_page <= _RUNNING_HEADER_MAX_GAP
+
 
 def classify_toc_or_divider_page(
     text: str, section_re: "re.Pattern[str]"
@@ -1374,15 +1410,11 @@ class DCPExtractor:
                     match = None if _suppress else section_re.search(text)
                     if match:
                         new_code = match.group(1)
-                        if current and (
-                            current["section_number"] == new_code
-                            or current["section_number"].startswith(new_code + ".")
+                        if current and is_running_header_repeat(
+                            current["section_number"], new_code,
+                            page_num, current["last_confirmed_page"],
                         ):
-                            # Running page header: either the same section code, or a parent
-                            # prefix (e.g. Marrickville prints "2.1 Urban Design" at the top
-                            # of every page in 2.1 and its sub-sections 2.1.1.3, 2.1.2.2
-                            # etc.). Don't start a new section for the parent code while
-                            # already inside a child of that section.
+                            current["last_confirmed_page"] = page_num
                             match = None
                     if match:
                         if current:
@@ -1448,6 +1480,7 @@ class DCPExtractor:
                             "page_start": page_num,
                             "page_end": page_num,
                             "pages": [page_num],
+                            "last_confirmed_page": page_num,
                         }
 
                     if current:
