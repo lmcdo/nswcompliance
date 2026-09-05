@@ -714,6 +714,35 @@ class TestAnthropicThinkingBlock:
         result = _ai_extractor_mod._call_anthropic(b"%PDF", "prompt", "claude-sonnet-5")
         assert result == ""
 
+    def test_max_tokens_leaves_room_for_thinking_plus_a_real_answer(self, monkeypatch):
+        # Measured live 2026-09-05: a dense 23-page chunk's extended thinking
+        # alone consumed the full 8000-token budget (thinking_tokens=8000,
+        # stop_reason='max_tokens') before any answer was written -- content
+        # held ONLY a ThinkingBlock. 20000 left room for ~16k of thinking AND
+        # an 11k-char JSON answer on that same chunk. Also stays under 32000,
+        # where the SDK refuses a non-streaming call outright ('Streaming is
+        # required for operations that may take longer than 10 minutes').
+        captured = {}
+
+        class _Msg:
+            content = [MagicMock(text="ok")]
+
+        class _Messages:
+            def create(self, **kwargs):
+                captured.update(kwargs)
+                return _Msg()
+
+        class _Client:
+            def __init__(self):
+                self.messages = _Messages()
+
+        stub = MagicMock()
+        stub.Anthropic = _Client
+        monkeypatch.setitem(sys.modules, "anthropic", stub)
+        _ai_extractor_mod._call_anthropic(b"%PDF", "prompt", "claude-sonnet-5")
+        assert captured["max_tokens"] == 20000
+        assert captured["max_tokens"] < 32000
+
 
 class TestEmptyParseRetry:
     """A non-trivial response that parses to zero provisions is retried (very

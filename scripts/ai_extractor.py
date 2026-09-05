@@ -218,7 +218,16 @@ def _call_anthropic(pdf_bytes: bytes, prompt: str, default_model: str) -> str:
     data = base64.standard_b64encode(pdf_bytes).decode()
     msg = client.messages.create(
         model=os.getenv("AI_MODEL_ID", default_model),
-        max_tokens=8000,
+        # 20000, not 8000: measured live 2026-09-05 on a dense 23-page chunk --
+        # extended thinking alone consumed the full 8000-token budget
+        # (thinking_tokens=8000, stop_reason='max_tokens') before the model
+        # ever wrote an answer, so msg.content held ONLY a ThinkingBlock and
+        # _call_anthropic correctly returned "" (empty, not a crash) with
+        # nothing to retry into. 20000 left room for both thinking (~16k) and
+        # a real 11k-char JSON answer on that same chunk. 32000+ requires
+        # streaming (the SDK refuses a >10-minute non-streaming call), which
+        # this function does not implement -- stay below that ceiling.
+        max_tokens=20000,
         # No explicit temperature: newer Sonnet snapshots reject temperature=0
         # outright ("deprecated for this model"), and the 2026-07 decision doc's
         # own measurement found it "marginal help, no downside" for determinism

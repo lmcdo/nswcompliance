@@ -1,0 +1,73 @@
+{
+  "tier": "standard",
+  "justification": "A real fix to the AI extraction engine's token budget, found live during the DQ-92 rollout. Not minor: without it, dense chunks silently produce zero output.",
+  "commit_hash": "d3ced894",
+  "files": [
+    "scripts/ai_extractor.py",
+    "tests/test_ai_extractor.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Found live during the DQ-92 marrickville rollout: marrickville/part9-p48-mary-robert-edith failed twice with 'Extracted: 0 sections' and no error. Diagnosed by calling the Anthropic API directly (bypassing the retry wrapper) and inspecting msg.stop_reason/usage: thinking_tokens=8000, stop_reason='max_tokens' -- extended thinking alone consumed the entire budget before any answer was written, so msg.content held only a ThinkingBlock and _call_anthropic (this session's own earlier fix) correctly returned an empty string rather than crashing -- but there was nothing to retry into, since an empty string never triggers the empty-parse retry (which requires a non-trivial response length as its signal that something is worth retrying).",
+    "assumption_mismatch": "max_tokens=8000 was carried over unchanged from the original Haiku-only implementation, before extended thinking was a factor for this newer model on this account. It silently starves the actual answer on dense content.",
+    "new_vs_existing": "Raised max_tokens 8000 -> 20000 in the shared _call_anthropic. Chose 20000 deliberately, not higher: tested 32000 live and the SDK refused outright ('Streaming is required for operations that may take longer than 10 minutes'), which this function does not implement. 20000 was confirmed live to complete a dense 23-page chunk (usage: thinking_tokens ~16k + an 11k-char JSON answer) without hitting that ceiling.",
+    "external_source_error": "N/A -- API token-budget interaction with extended thinking, not an external data source.",
+    "frontend_type": "N/A -- backend extraction pipeline only.",
+    "user_failure_mode": "Before: a dense chunk could silently produce zero provisions with no error surfaced -- 'Extracted: 0 sections, [WARN] No sections extracted -- skipping chapter' looks identical to a genuinely thin/empty page range, so a reviewer or operator has no way to tell content was lost to a token-budget starvation vs the chapter genuinely having nothing there. After: the same chapter (retried with a smaller AI_CHUNK_PAGES to reduce per-call density, as a targeted workaround for chunks that remain too dense even at 20000) produced 114 correctly-extracted sections, fidelity-gated at 111 grounded / 2 flagged."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ai_extractor.py -v -k TestAnthropicThinkingBlock",
+    "fails_when": "the max_tokens value the Anthropic client is called with is not 20000, or is >= 32000 (the SDK's non-streaming ceiling) -- 1 new test asserts both bounds directly against the captured call kwargs.",
+    "observed_red": "Before this fix: the same chunk request (verified live, not assumed) returned stop_reason='max_tokens' with thinking_tokens=8000 and zero answer text at max_tokens=8000. After: 60/60 tests in test_ai_extractor.py pass (59 pre-existing + 1 new), 322/322 relevant suite tests pass (0 regressions), and the real failing chapter was successfully re-extracted end-to-end (114 sections, 111 grounded / 2 flagged by the fidelity gate) once combined with a smaller per-chunk page count."
+  },
+  "functions": [
+    {
+      "name": "_call_anthropic",
+      "file_line": "scripts/ai_extractor.py (unchanged signature, changed max_tokens constant)",
+      "input": "pdf_bytes (bytes), prompt (str), default_model (str, e.g. 'claude-haiku-4-5' or 'claude-sonnet-5')",
+      "output": "str -- the model's text response; now requested with max_tokens=20000 instead of 8000, the largest value confirmed live to stay under the SDK's non-streaming ceiling",
+      "if_none": "a chunk dense enough to exhaust even 20000 tokens between thinking and the answer still returns an empty string (unchanged, pre-existing behaviour from the ThinkingBlock fix) rather than crashing -- confirmed by the pre-existing TestAnthropicThinkingBlock tests, none of which regressed"
+    }
+  ],
+  "values": [
+    {
+      "value": "thinking_tokens=8000, stop_reason='max_tokens', zero answer text at max_tokens=8000 on a real dense 23-page chunk",
+      "read_at": "live Anthropic API call against marrickville/part9-p48-mary-robert-edith.pdf, 2026-09-05",
+      "if_missing": "without this measurement, raising max_tokens would be a guess; with it, 8000 is shown to be provably insufficient for real production content, not a hypothetical edge case"
+    },
+    {
+      "value": "at max_tokens=32000, the SDK raises ValueError('Streaming is required for operations that may take longer than 10 minutes') before even sending the request",
+      "read_at": "same live test, escalating max_tokens on the identical chunk",
+      "if_missing": "without this measurement, 20000 could look like an arbitrary middle value; with it, 20000 is shown to be the largest safe choice given this function does not implement streaming"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A dense enough chunk still exhausts even the raised 20000-token budget (thinking + answer together exceed it), same failure mode as before at a higher threshold.",
+      "what_happens": "The chunk again returns empty (no answer text), silently under-extracting that page range.",
+      "mitigated": false,
+      "how": "Not fully closed by this fix -- 20000 was chosen as the largest value the SDK accepts without requiring streaming, which this call does not implement. The practical mitigation used during the rollout was reducing AI_CHUNK_PAGES for the one chapter that still hit this at 20000 (10 pages instead of 23), which succeeded (114 sections). A more complete fix (streaming support, or adaptive chunk sizing keyed to page density rather than a fixed page count) is a follow-up, not built here.",
+      "repro": "Not reproduced as a failing test -- documented as a known residual. The workaround (smaller AI_CHUNK_PAGES) is recorded in the session's operational log, not in code."
+    },
+    {
+      "scenario": "Raising max_tokens could be mistaken for a complete fix to the empty-chunk problem, when it only raises the threshold rather than removing the failure mode.",
+      "what_happens": "A future dense chapter could still hit the same 'Extracted: 0 sections' symptom and be debugged as if it were a new bug.",
+      "mitigated": true,
+      "how": "Documented explicitly in the max_tokens value's own rationale (this report, and inline in the code) that 20000 is a measured, bounded improvement, not an unlimited fix, and that the SDK's own 32000 non-streaming ceiling is the real constraint.",
+      "repro": "N/A -- documented scope boundary."
+    },
+    {
+      "scenario": "A larger max_tokens costs more per call (more output tokens billed, whether spent on thinking or the answer) -- raising it 2.5x for every future extraction call, forever, on every chunk regardless of whether it needed the extra room.",
+      "what_happens": "Ongoing extraction cost creeps up even for chunks that were already fine at 8000.",
+      "mitigated": true,
+      "how": "Anthropic bills for tokens actually generated, not the max_tokens ceiling -- a chunk that finishes in 3000 tokens is billed for 3000 regardless of whether the cap is 8000 or 20000. The cap only matters (and only costs more) on chunks that were already going to use most of the budget, which is exactly the population this fix targets.",
+      "repro": "N/A -- billing-model fact, not a code path to test."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- verified in-session: 60/60 test_ai_extractor.py tests, 322/322 relevant suite tests (0 regressions), and the real previously-failing chapter successfully re-extracted end-to-end with a real fidelity-gate result."
+  }
+}
