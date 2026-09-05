@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Real, deliberate production write: committed 39 of Canterbury-Bankstown's 54 DCP chapters into regulatory_provisions (189 provisions), following explicit user authorization at each decision point (which chapters to hold back, and the final go-ahead to commit). Not Critical: the write is additive (first-time extraction, no existing provisions touched, verified 0 pre-existing rows for this council), and the exclusion list was verified against live data before writing, not asserted. Not Minor: it is a real production content write serving live compliance answers, not a wording-only change.",
-  "commit_hash": "5e1c3061",
+  "commit_hash": "907defb2",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json"
