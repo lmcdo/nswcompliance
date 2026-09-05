@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Wording/number-only correction to a ledger note, found during a final post-merge sanity pass (re-running every live probe from a fresh checkout and comparing against the committed prose). No code, no data, no schema touched -- exactly the 'minor' tier this repo defines.",
-  "commit_hash": "0bb42313",
+  "commit_hash": "958ce5cc",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md"
   ],
