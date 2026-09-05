@@ -1322,64 +1322,86 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "shows.",
     ),
     "DQ-95": (
-        "Canterbury-Bankstown DCP extraction attempted for real -- the pipeline cannot currently do this council",
+        "Canterbury-Bankstown DCP extraction attempted for real -- 11 of 52 processed chapters are genuinely broken, not 52",
         # 2026-09-05, acting on DQ-90 (item #2 of the user's own priority
         # list this session): flipped needs_extraction=TRUE on the 54
         # chapters DQ-90 found registered-but-never-queued (a real,
         # deliberate, backed-up production write -- explicit user
         # authorization given), then ran scripts/dcp_extract_changed.py
         # --council canterbury_bankstown --review (memory-only, no DB
-        # writes) to see what the pipeline would actually produce before
-        # letting anything near the live regulatory_provisions table.
+        # writes) repeatedly to see what the pipeline would actually
+        # produce before letting anything near regulatory_provisions.
         #
-        # Result: 52 of 54 chapters have a PDF and were processed; ALL 52
-        # came back flagged SUSPECT -- zero clean. 49 for preflight_two_column
-        # (text-order interleave from the source PDF's two-column body
-        # layout), 3 for schema_fail (12/46, 12/69, 14/66 provisions per
-        # chapter carrying serious extraction-failure artifacts). The
-        # remaining 2 chapters (cb-dcp-2023-ch5-1-bankstown,
-        # cb-dcp-2023-ch5-2-canterbury) have no PDF fetched at all yet, so
-        # were skipped entirely -- 0 of 54 produced anything.
+        # FIRST PASS, MISREAD: the CLI's "52 chapter(s) flagged SUSPECT"
+        # banner and per-chapter preflight warnings made this look like a
+        # total pipeline failure for this council. That banner is a crude,
+        # PRE-extraction page-geometry heuristic ("does this page's word
+        # layout look two-column") -- it does not look at the actual
+        # extracted output at all, and over-triggers heavily. The review
+        # file's own OVERALL SUMMARY, further down, carries a SEPARATE,
+        # POST-extraction artifact scan ("CHAPTERS WITH EXTRACTION BUGS")
+        # that is the real signal -- missed on the first read.
         #
-        # Inspected chapter-7-5-canterbury-local-centre's actual output, not
-        # just the summary count: real, visible garbling -- "# 1.1
-        # Application of this DCP Chapter 6" (a page number bled into the
-        # heading), bare_page_numbers scored 120/46 = 261% (more stray page
-        # numbers than actual provisions), and multiple section labels are
-        # bare, contentless numbers ("258", "13", "22.50", "(untitled)")
-        # rather than real headings -- confirms this is genuine document-
-        # structure corruption, not a borderline heuristic false-positive.
+        # CORRECTED, using that real signal: of 52 processed chapters (2 of
+        # 54 have no PDF fetched at all yet), exactly **11** are listed
+        # under CHAPTERS WITH EXTRACTION BUGS -- chapter-7-5-canterbury-
+        # local-centre, chapter-3-4-sustainable-development, chapter-2-2-
+        # flood-risk-management, chapter-6-2-bankstown-city-centre,
+        # chapter-4-3-heritage-conservation-areas, chapter-11-14-riverwood-
+        # estate, chapter-7-6-belmore-and-lakemba, chapter-11-12-445-
+        # canterbury-road, chapter-11-9-revesby-hospital, chapter-11-13-
+        # former-wsu-campus-milperra, chapter-1-1-introduction-and-
+        # administration. 29 of 52 have ZERO artifacts detected
+        # ("ARTIFACT CHECK: (none detected)"); the remaining 12 carry minor,
+        # under-threshold artifacts, not blocking. Inspected one of the 11
+        # (chapter-7-5) directly: real, visible corruption confirmed --
+        # a page number bled into a heading, bare_page_numbers scored
+        # 261% of the provision count, several section labels are bare
+        # numbers with no title -- so the 11-chapter list is a real defect
+        # list, not itself a false-positive artifact of the scan.
         #
-        # docs/DCP_EXTRACTION_KNOWN_PATTERNS.md -- the project's own
-        # documented playbook for known extraction bug classes, with a fix
-        # for every other pattern encountered so far (LaTeX math artifacts,
-        # header/footer bleed, chapter-prefix lines, etc.) -- has ZERO
-        # mentions of "two-column" or "interleave" (grepped, not assumed).
-        # This is a genuinely unsolved bug class for this pipeline, not one
-        # with an established fix being skipped. DQ-90's original framing
-        # ("the hard part -- getting the documents -- is already done") is
-        # corrected here: the hard part turned out to be downstream of
-        # document fetching, not upstream of it.
+        # ALSO TESTED AND REVERTED, same session: this repo already has a
+        # working geometric two-column reader (commit 53b0c8ee, 2026-07-29,
+        # proven on ashfield/marrickville/city_of_sydney/hornsby) --
+        # GEOMETRIC_COLUMN_COUNCILS in scripts/dcp_extract_changed.py.
+        # Adding "canterbury_bankstown" to it and re-running the FULL
+        # 52-chapter batch produced the IDENTICAL 11-chapter bug list, and
+        # 2 FEWER chapters with zero artifacts (27 vs 29) -- a controlled
+        # before/after comparison, not a single-chapter spot check, proves
+        # the existing fix does not transfer to this council and may make
+        # it marginally worse. Reverted; not committed. (A single-chapter
+        # test run in isolation had wrongly suggested the fix helped --
+        # that chapter turned out to already be clean in the ORIGINAL,
+        # pre-edit run too; the error was not checking the real baseline
+        # before attributing an unrelated result to the edit.)
+        #
+        # docs/DCP_EXTRACTION_KNOWN_PATTERNS.md has zero mentions of
+        # "two-column" (grepped). No documented, working fix exists for
+        # THIS council's specific two-column geometry -- the existing
+        # reader was verified, live, not to transfer.
         #
         # NOT committed to production. needs_extraction is correctly left
-        # TRUE (these chapters DO still need extraction -- just not via the
-        # current pipeline's two-column handling). No provisions were
-        # written; the --review flag guarantees this.
+        # TRUE (these chapters DO still need extraction). No provisions
+        # were written to regulatory_provisions in any of these runs; the
+        # --review flag guarantees this.
         "SELECT count(*) FROM dcp_chapter_registry "
         "WHERE council = 'canterbury_bankstown' AND needs_extraction = TRUE "
         "AND last_extracted_at IS NULL",
         (),
         "Chapters still queued for extraction (flag set) but never "
-        "successfully extracted. Expected to read 54 until either (a) the "
-        "two-column extraction bug class gets a real fix and these are "
-        "re-attempted, or (b) someone manually reviews and hand-corrects "
-        "each chapter's output before committing -- not scalable for 52 "
-        "chapters, named here rather than attempted. A drop in this count "
-        "without a corresponding fix landing in docs/"
-        "DCP_EXTRACTION_KNOWN_PATTERNS.md is itself worth double-checking: "
-        "it would mean either the 2 missing PDFs arrived and got extracted "
-        "cleanly (plausible, unrelated to the two-column issue), or someone "
-        "committed the SUSPECT output anyway (should not happen silently).",
+        "successfully extracted. Reads 54 today -- but only 11 of the 52 "
+        "already-processed chapters carry confirmed extraction bugs per "
+        "the pipeline's own post-extraction artifact scan (29 are clean, "
+        "12 have minor under-threshold artifacts); the crude preflight "
+        "'52 flagged SUSPECT' banner is not evidence the other 41 are "
+        "broken -- see the header comment above before assuming a nonzero "
+        "count here means the whole council needs a pipeline fix. Most of "
+        "the drop this count needs could plausibly come from committing "
+        "the clean/near-clean chapters after a human clears their (mostly "
+        "false-positive) SUSPECT flags, matching the precedent already set "
+        "for ashfield/marrickville/city_of_sydney/hornsby (#851) -- not "
+        "from a pipeline change. The 11 genuinely broken chapters and the "
+        "2 missing-PDF chapters are the real remaining blockers.",
     ),
     "DQ-92": (
         "Review-queue rows TAGGED with a suspect extractor-bug signature (unconfirmed per chapter)",
