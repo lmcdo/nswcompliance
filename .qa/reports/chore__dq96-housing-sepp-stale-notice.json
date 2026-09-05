@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Investigating DQ-88 (item #3 of the user's own priority list) surfaced a real, independent silent-failure bug: services/housing_sepp_eligibility.py never read stale_since/stale_reason from housing_sepp_standards, unlike services/cdc_screen.py's identical, working W3 (#839) contract for cdc_eligibility_standards. Every CDC/ADG-eligibility answer this engine computes could serve a standard the legislation monitor had already flagged as amended, with zero surfaced notice. Fixed the read-side gap, registered a new live check (DQ-96) for the write-side backfill gap that remains, and corrected an inflated, unsupported figure in DQ-88's own tracker text. Not Critical: no application code path changed behaviour for any CURRENTLY non-stale row (all 45 housing_sepp_standards rows read stale_since IS NULL today, so this fix is currently a no-op in production until either a row goes stale or the write-side backfill lands) -- this is additive plumbing of an existing, unused DB column, not a behaviour change to today's served answers. Not Minor: it is a real code fix with new tests, not a wording-only change.",
-  "commit_hash": "5e1c3061",
+  "commit_hash": "22dca7f6",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
@@ -9,7 +9,8 @@
     "scripts/brief_field_coverage_baseline.json",
     "services/housing_sepp_eligibility.py",
     "services/intelligence_brief.py",
-    "tests/test_housing_sepp_eligibility.py"
+    "tests/test_housing_sepp_eligibility.py",
+    "tests/test_housing_sepp_eligibility_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "housing_sepp_standards.stale_since/stale_reason already exist (added by #839, 2026-07-29) and are already written by scripts/legislation_monitor.py's mark_dependent_standards_stale(). No new column, no new table. _fetch_standards_grouped() already selects 4 sibling columns (source_clause/document/url/effective_date) from the same table with the identical query shape.",
@@ -20,9 +21,9 @@
     "user_failure_mode": "Before this fix: a planner asking for CDC/Housing-SEPP eligibility on a lot got an answer computed from a standard the legislation monitor had already flagged as amended 2026-04-24, with no indication anything might have changed -- exactly the class of silent staleness the W3 mechanism was built to prevent, but only for one of its two dependent tables. After this fix: the notice is available as structured data (stale_since/stale_reason) on every FormEligibility result whenever a row IS marked stale; today (no row is yet stale) this is a no-op, verified live-neutral."
   },
   "falsifiable_check": {
-    "command": "python scripts/dq_probe_live.py --id DQ-96 ; python scripts/dq_check.py ; python -m pytest -q ; python scripts/brief_field_coverage_ratchet.py",
+    "command": "python scripts/dq_probe_live.py --id DQ-96 ; python scripts/dq_check.py ; python -m pytest -q ; python scripts/brief_field_coverage_ratchet.py ; PYTEST_REAL_DB=1 pytest -m database tests/test_housing_sepp_eligibility_real_db.py -v",
     "fails_when": "dq_probe_live.py --id DQ-96 fails to connect (exit 2, UNKNOWN) if the database is unreachable -- never reports a false CLEAN. dq_check.py fails if DQ-96's declared status and its live result stop agreeing. pytest fails if the dataclass/pydantic mirror drifts (test_housing_sepp_contract_locks_the_dataclass_fields) or if the latest-wins-with-own-reason pairing regresses (test_fetch_standards_grouped_pairs_stale_date_with_its_own_reason).",
-    "observed_red": "DQ-96 reads live count=35 (33 housing_sepp_standards rows tied to sepp_housing_2021, 2 tied to sepp_exempt_complying_2008, 0 in cdc_eligibility_standards -- confirming that table's own staling has worked correctly since #839, which is why this gap is specific to housing_sepp_standards's read/backfill path, not a repo-wide W3 failure). dq_check.py PASSED, 53 checks across 101 rows, 0 red. Full pytest suite: 4977 passed, 2 skipped, 0 failed (was 4976 passed before this branch's 4 new tests were added, net +1 after accounting for one pre-existing test elsewhere). brief_field_coverage_ratchet.py: PASSED, 53 models locked, 0 pending new-field notices after --regen (the 2 HousingSeppFormOutput fields plus 4 pre-existing, unrelated ShadowScenario/ShadowScenarioOutput fields that had never been regen'd)."
+    "observed_red": "DQ-96 reads live count=35 (33 housing_sepp_standards rows tied to sepp_housing_2021, 2 tied to sepp_exempt_complying_2008, 0 in cdc_eligibility_standards -- confirming that table's own staling has worked correctly since #839, which is why this gap is specific to housing_sepp_standards's read/backfill path, not a repo-wide W3 failure). dq_check.py PASSED, 53 checks across 101 rows, 0 red. Full pytest suite (default, real-DB test correctly deselected): 4977 passed, 2 skipped, 0 failed, 251 deselected. brief_field_coverage_ratchet.py: PASSED, 53 models locked, 0 pending new-field notices after --regen. Real-DB test (PYTEST_REAL_DB=1 pytest -m database tests/test_housing_sepp_eligibility_real_db.py) run live against production: 1 passed -- the extended 11-column SELECT executes without a SQL error against the actual live schema, and every returned group carries stale_since/stale_reason keys (all None today, matching DQ-96's live count)."
   },
   "functions": [
     {
