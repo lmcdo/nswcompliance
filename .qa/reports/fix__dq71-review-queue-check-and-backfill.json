@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A real code fix (a DQ probe's SQL was structurally incapable of ever reading clean) plus a production data operation (grading 4,742 pending review-queue rows against source PDFs across 9 councils). Not minor: the check's WHERE clause changed, and a backup-then-write production operation ran.",
-  "commit_hash": "e0bd1843",
+  "commit_hash": "e4c945db",
   "files": [
     "scripts/dq_probe_live.py",
     ".claude/dq_checks.json",
