@@ -1700,6 +1700,58 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "classification for this council (the underlying test's own error "
         "message), not attempted here.",
     ),
+    "DQ-97": (
+        "Pending review-queue rows carrying the margin-artifact SYMPTOM "
+        "(coarse SQL proxy for the Python has_margin_artifact scan)",
+        # See ~/.claude/plans/ce-margin-artifact-census-2026-09-06.md for the
+        # full per-chapter census this count summarises.
+        #
+        # THIS COUNT CANNOT REACH 0 BY DESIGN, and that is stated up front
+        # rather than discovered later (feedback-a-check-can-watch-the-field-
+        # the-fix-abandoned): a run of 6+ short whitespace-separated tokens
+        # also matches genuine content -- numeric tables (a flood-risk X/N
+        # compatibility matrix, an Rw noise-insulation schedule), contour/
+        # site-plan RL labels, and ordinary Title Case prose with short
+        # link-words (Of/In/To/Or). Confirmed live 2026-09-06 on marrickville
+        # (all 6 of its residual post-DQ-92 rows), blacktown, ku_ring_gai's
+        # 14k/14m/14o site-plan chapters, and 3 of city_of_sydney's 5 rows.
+        #
+        # Of the rest, per-chapter real-geometry inspection (pdfplumber
+        # extract_words on the actual flagged pages, not just the symptom
+        # regex) found this is NOT one bug: woollahra (~410 of 424 flagged
+        # rows, 21 of 22 chapters) carries a "Repealed by [instrument]
+        # Amendment No. X on [date]" stamp whose characters extract in
+        # reversed x-order (upright glyphs, decreasing position) -- a THIRD
+        # mechanism distinct from both marrickville's stacked-vertical-glyph
+        # margin label (PR #1050) and canterbury_bankstown's original
+        # extract_words word-splitting. canterbury_bankstown/chapter-7-6-
+        # belmore-and-lakemba separately carries a locality-map label
+        # interleave (~18 rows: street/station names from a rotated map
+        # graphic merging character-by-character) -- 3 of that chapter's
+        # rows (pages 126/128/130) already match find_vertical_margin_label_
+        # band on the CURRENT code, meaning they are stale pending rows that
+        # a bare re-extraction would clear, not a live gap. No fix has been
+        # decided or built yet (this registers the census only, per the
+        # session prompt's own step ordering -- decide fix order before
+        # writing code).
+        #
+        # SQL approximates the Python token scan (word-boundary-anchored,
+        # not true whole-token length) and over-counts by ~10% against it
+        # (574 vs. the Python census's 519 on 2026-09-06) -- a triage upper
+        # bound, not the per-row-verified count.
+        "SELECT count(*) FROM dcp_review_queue "
+        "WHERE status = 'pending' "
+        r"AND new_text ~ '([[:space:]][^[:space:]]{1,2}){6,}'",
+        (),
+        "A pending row matches the coarse short-token-run symptom. Per the "
+        "2026-09-06 census this is mostly ONE real, unfixed cause (woollahra's "
+        "reversed-order repeal stamp) plus a smaller distinct cause "
+        "(canterbury_bankstown's map-label interleave) plus a substantial "
+        "false-positive rate from legitimate tables/diagrams/prose -- do NOT "
+        "read this count as 'N rows of corruption'. See the census doc for "
+        "the per-chapter breakdown before triaging or fixing anything from "
+        "this number alone.",
+    ),
 }
 
 
