@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Registers a DQ ledger entry (docs/config JSON) and fixes 5 unguarded set -e traps in a git hook. No served-output logic, no schema change, no new DB write path -- comment/config/hook-guard changes only, verified by direct reproduction rather than new application tests.",
-  "commit_hash": "9b5fad29",
+  "commit_hash": "25537a86",
   "files": [
     "scripts/dq_probe_live.py",
     ".githooks/pre-push",
