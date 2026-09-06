@@ -1,0 +1,32 @@
+{
+  "tier": "minor",
+  "justification": "Registers a DQ ledger entry (docs/config JSON) and fixes 5 unguarded set -e traps in a git hook. No served-output logic, no schema change, no new DB write path -- comment/config/hook-guard changes only, verified by direct reproduction rather than new application tests.",
+  "commit_hash": "25537a86",
+  "files": [
+    "scripts/dq_probe_live.py",
+    ".githooks/pre-push",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "Any future branch pushes with no .qa/reports/<slug>.json yet (the normal state of a brand-new branch) -- before this fix, .githooks/pre-push's `QA_REPORT=$(python scripts/qa_report_path.py --relative)` exits 1 to signal 'not found', and with set -e (line 26) active and no || guard on that assignment, the whole hook died right there, before the intended 'WARNING: no report, skipping' message ever printed.",
+      "what_happens": "git prints its own generic 'error: failed to push some refs', with zero indication which of ~10 checks failed or why -- reproduced twice this session (isolated with sh -c 'set -e; VAR=$(cmd-that-exits-1); echo after', which never reaches the echo). A developer sees an unexplained rejection indistinguishable from an auth or branch-protection problem and can burn real time chasing the wrong cause.",
+      "mitigated": true,
+      "how": ".githooks/pre-push: changed `QA_REPORT=$(...)` to `QA_REPORT=$(...) || QA_REPORT=\"\"`, and applied the same 'VAR=0; cmd || VAR=$?' idiom (already used by 4 other checks in the same file, one of which carries a comment recording this exact failure mode happening before) to the 4 other unguarded spots found by grepping the file: mutation-baseline check, brief-coverage ratchet, Jest, and the QA-gate call and liability-language check right next to the one that broke. Verified by isolated sh -c reproduction of both the broken and fixed shape, then by an actual end-to-end `git push` against origin that reached and printed the intended WARNING text instead of dying silently.",
+      "repro": "sh -c 'set -e; QA_REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null); echo after' on a branch with no report -- exits 1, never prints 'after', before the fix"
+    },
+    {
+      "scenario": "DQ-97's new SQL probe (`new_text ~ '([[:space:]][^[:space:]]{1,2}){6,}'`) could be wrong in a way that makes it always read 0/clean, silently hiding the real, still-open defect the row exists to track.",
+      "what_happens": "A DQ row that reads clean when it should not looks exactly like a fixed defect, which is the specific failure mode this repo's own dq_checks.json ledger says it exists to catch ('declared open + check PASSES -> red').",
+      "mitigated": true,
+      "how": "Ran the exact query live against production before committing it (574 rows, matches the independently-computed Python has_margin_artifact count of 519 within the documented ~10% variance) and ran the full `python scripts/dq_check.py` (not just --coverage) after adding the entry: 0 red, DQ-97 correctly reports non-zero/open. The ledger's own two-way ratchet (dq_check.py, tests/test_dq_ratchet_enforcement.py) would independently flag it red if the probe ever silently started reading 0 while DQ-97 stays declared 'open'."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- no schema or data change, one new read-only SQL SELECT added to an existing probe script.",
+    "secrets": "No -- no credentials or config touched.",
+    "other_repo": "No -- this repo only.",
+    "manual_verify": "No -- the hook fix takes effect automatically for anyone already running `git config core.hooksPath .githooks` (a session-start requirement per CLAUDE.md); no separate step needed."
+  }
+}
