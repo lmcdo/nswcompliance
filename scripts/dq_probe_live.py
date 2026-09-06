@@ -1731,9 +1731,8 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # rows (pages 126/128/130) already match find_vertical_margin_label_
         # band on the CURRENT code, meaning they are stale pending rows that
         # a bare re-extraction would clear, not a live gap. No fix has been
-        # decided or built yet (this registers the census only, per the
-        # session prompt's own step ordering -- decide fix order before
-        # writing code).
+        # decided or built for any of this yet -- this entry records the
+        # census result only.
         #
         # SQL approximates the Python token scan (word-boundary-anchored,
         # not true whole-token length) and over-counts by ~10% against it
