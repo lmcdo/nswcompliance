@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
     eligible !== verifiedEligible
   ) {
     console.warn('[canibuildit/lead] client eligible claim did not match recomputed verdict', {
-      interest_type, address: cleanAddress, ip, client_claimed: eligible, verified: verifiedEligible,
+      interest_type, address: cleanAddress, ip, client_claimed: eligible, server_recomputed: verifiedEligible,
     });
   }
 

@@ -318,7 +318,7 @@ describe('POST /api/canibuildit/lead — mismatch visibility', () => {
     }));
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('did not match recomputed verdict'),
-      expect.objectContaining({ client_claimed: true, verified: false }),
+      expect.objectContaining({ client_claimed: true, server_recomputed: false }),
     );
     warnSpy.mockRestore();
   });
