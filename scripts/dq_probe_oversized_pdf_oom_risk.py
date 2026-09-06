@@ -16,16 +16,16 @@ shrink the PDF.
 
 Threshold (30 MB) is a rough heuristic from the only data points measured so
 far, not a precisely calibrated cutoff:
-  - CONFIRMED CRASHED (exit -9, production, 2026-09-06): 139,006,750 bytes
-  - CONFIRMED SAME COUNCIL, not yet re-extracted since (same risk, unconfirmed):
+  - MEASURED CRASHED (exit -9, production, 2026-09-06): 139,006,750 bytes
+  - MEASURED SAME COUNCIL, not yet re-extracted since (same risk, unverified):
     canterbury_bankstown/chapter-6-2-bankstown-city-centre, 117,829,367 bytes
-  - CONFIRMED PATHOLOGICALLY SLOW (2 independent timeout attempts, 90s and
+  - MEASURED PATHOLOGICALLY SLOW (2 independent timeout attempts, 90s and
     300s, same session): ku_ring_gai/section-b-part-14e-lindfield-local-centre,
     35,405,674 bytes (also 14a/14d, sizes not yet pulled)
-  - CONFIRMED FINE (graded successfully, no timeout, same session):
+  - MEASURED FINE (graded successfully, no timeout, same session):
     ashfield/chapter-d-precinct-guidelines, 20,607,908 bytes
-30 MB sits in the gap between the largest CONFIRMED-FINE chapter and the
-smallest CONFIRMED-TROUBLED one. It will mis-classify some genuinely-fine
+30 MB sits in the gap between the largest MEASURED-FINE chapter and the
+smallest MEASURED-TROUBLED one. It will mis-classify some genuinely-fine
 large PDFs and may miss a genuinely-troubled small one (page count, two-column
 layout, and embedded raster images likely matter more than raw byte size) --
 a coarse triage signal, not a diagnosis, same caveat DQ-97's symptom probe
