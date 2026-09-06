@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Real logic change to the DCP review-queue fidelity checker (scripts/dcp_fidelity_gate.py) plus a scoping change to what it grades at all, and one small behavioural change to how rows are inserted (scripts/dcp_extract_changed.py). Standard rather than Light because it changes what gets written to dcp_review_queue.fidelity_status/status for every pending row across all 9 councils, and a wrong exclusion could silently hide a genuine hallucinated number. Standard rather than Critical because nothing here touches the served table (regulatory_provisions) or auto-approves anything into production -- dcp_review_queue is a human-gated staging table, the exclusions and scoping only affect which rows a human sees as 'needs review' vs 'grounded' vs 'not yet relevant', numeric changes always still require a human unless the number is demonstrably present in the source text, and every exclusion pattern and the scoping definition were verified against real flagged rows and the project's own established 'live+actionable' definition (not invented) before being added.",
-  "commit_hash": "c0aa3ffa",
+  "commit_hash": "30d81ffe",
   "files": [
     "scripts/dcp_fidelity_gate.py",
     "scripts/dcp_extract_changed.py",
