@@ -4,7 +4,7 @@
   "commit_hash": "d08d38c8",
   "falsifiable_check": {
     "command": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts",
-    "fails_when": "Any of the 19 tests in that file fails -- most directly, reverting route.ts's :236-273 change back to using the client's `eligible` verbatim (old vulnerable behaviour) fails 'client claims eligible=true, server recomputes false: email states the negative, not the claim' and its mirror, because the email/DB assertions check the RECOMPUTED value while the client claim in the test is deliberately the opposite of it -- a spoofed claim passing through unchanged makes those specific assertions fail, not merely a coverage gap.",
+    "fails_when": "Any of the 19 tests in that file fails -- most directly, reverting route.ts's :291-346 change back to using the client's `eligible` verbatim (old vulnerable behaviour) fails 'client claims eligible=true, server recomputes false: email states the negative, not the claim' and its mirror, because the email/DB assertions check the RECOMPUTED value while the client claim in the test is deliberately the opposite of it -- a spoofed claim passing through unchanged makes those specific assertions fail, not merely a coverage gap.",
     "observed_red": "Actually reproduced, not just argued: swapped route.ts for the pre-fix origin/main version (git checkout origin/main -- the version with no recomputation at all) and re-ran this exact test file. Result: 16 of 19 tests failed, 3 passed (tests unrelated to the recompute path, e.g. ones exercising only buildEmailContent's pre-existing null branch). Representative failures observed directly: the dual-occ-referral DB-value test expected false, received true; the recompute-failure-stores-null test expected null, received true (old code still trusted the client's claim even though recomputeDualOccEligible didn't exist yet); the mismatch-warning test expected one console.warn call, received zero. Restored the fixed route.ts afterward and re-ran: 19 of 19 passed. Both runs' full output captured in-session before this report was written."
   },
   "files": [
@@ -30,17 +30,17 @@
   ],
   "values": [
     {
-      "value": "verifiedEligible",
-      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:259 (DB insert), :273 (buildEmailContent call)",
+      "value": "storedEligible",
+      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:332 (DB insert), :346 (buildEmailContent call)",
       "nullable": "yes",
-      "guard_at": "computed once at :236-239 as boolean | null; both consumers already have pre-existing null handling (buildEmailContent's switch default branch predates this fix; the DB column is nullable and the internal dashboard's tri-state render at app/internal/leads/page.tsx:138 already treats null as '--')",
+      "guard_at": "computed once at :291-294 as boolean | null; both consumers already have pre-existing null handling (buildEmailContent's switch default branch predates this fix; the DB column is nullable and the internal dashboard's tri-state render at app/internal/leads/page.tsx:138 already treats null as '--')",
       "if_missing": "Both consumers render/store the pre-existing neutral state ('Your duplex check has been run for this address' in the email; '--' or 'Needs checking' on the internal dashboard) -- never a false positive or negative, and never a 500."
     },
     {
       "value": "eligible (the original client-supplied field, from Zod-parsed body)",
-      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:193 (destructured), :248-256 (mismatch-logging comparison only)",
+      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:239 (destructured), :304-311 (mismatch-logging comparison only)",
       "nullable": "yes",
-      "guard_at": "typeof eligible === 'boolean' check before the mismatch comparison at :250",
+      "guard_at": "typeof eligible === 'boolean' check before the mismatch comparison at :306",
       "if_missing": "No longer read for the DB write or the email at all (that was the vulnerability) -- its only remaining use is an observability log line when it disagrees with the recomputed truth; a missing/null value simply skips that log, no other effect."
     }
   ],
@@ -58,14 +58,14 @@
       "scenario": "Caller POSTs interest_type:'duplex-result', an address that is genuinely ineligible, and eligible:true, trying to force the false positive this fix exists to prevent.",
       "what_happens": "Before this fix: the email states the caller can apply to build a duplex there -- exactly the Sol-confirmed vulnerability, reproduced live against origin/main before writing the fix.",
       "mitigated": true,
-      "how": "route.ts:236-239 discards the client's eligible entirely for this interest_type and substitutes the server-recomputed boolean at :273; pinned by lead-verdict-integrity.test.ts's first two tests (client claims true/server recomputes false, and the reverse), both asserting the EMAIL text matches the recomputed value, not the claim.",
+      "how": "route.ts:291-294 discards the client's eligible entirely for this interest_type and substitutes the server-recomputed boolean at :346; pinned by lead-verdict-integrity.test.ts's first two tests (client claims true/server recomputes false, and the reverse), both asserting the EMAIL text matches the recomputed value, not the claim.",
       "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'client claims eligible=true, server recomputes false'"
     },
     {
       "scenario": "Same attack via interest_type:'dual-occ-referral' instead -- the email text is generic here (no stated verdict), but the STORED canibuildit_leads.eligible value is what the internal leads dashboard renders as fact to staff.",
       "what_happens": "Before this fix: a staff member viewing /internal/leads sees 'Eligible' for a property that isn't, and could connect a builder to a lead on false pretences -- a second, distinct consequence of the identical root cause that the original Sol finding and the governing plan document did not name (found this session by tracing every reader of the eligible column, not assumed).",
       "mitigated": true,
-      "how": "The same recomputed verifiedEligible is used for the DB insert at :259, not a separate value -- one recomputation feeds both consumers, so there is no way for the email and the stored record to disagree. Pinned by lead-verdict-integrity.test.ts's dual-occ-referral describe block, asserting insertMock's eligible argument directly.",
+      "how": "The same recomputed storedEligible is used for the DB insert at :332, not a separate value -- one recomputation feeds both consumers, so there is no way for the email and the stored record to disagree. Pinned by lead-verdict-integrity.test.ts's dual-occ-referral describe block, asserting insertMock's eligible argument directly.",
       "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'dual-occ-referral'"
     },
     {
@@ -86,8 +86,15 @@
       "scenario": "The added recompute step changes behaviour or adds latency for the 11 OTHER interest_types that never used eligible meaningfully (granny-flat, flood, solar-yield, shadow, threat-radar, conveyancing, pre-da-history, lga-request, intelligence-brief) -- a regression risk on unrelated, currently-working traffic.",
       "what_happens": "If VERDICT_BEARING_INTEREST_TYPES were scoped wrong (too broad), every other product's lead capture would gain an unnecessary ~seconds-to-20s pipeline round-trip and an unrelated failure surface for no reason.",
       "mitigated": true,
-      "how": "VERDICT_BEARING_INTEREST_TYPES is an explicit 2-item allowlist (duplex-result, dual-occ-referral only), not a denylist -- every other interest_type's verifiedEligible is unconditionally null with zero fetch calls, identical to today's stored value for those types (grepped every caller in the app: none of the other 11 send a non-null eligible today, so this is not a behaviour change for any real caller). Pinned by a granny-flat test asserting fetchMock was never called.",
+      "how": "VERDICT_BEARING_INTEREST_TYPES is an explicit 2-item allowlist (duplex-result, dual-occ-referral only), not a denylist -- every other interest_type gets zero fetch calls, unconditionally. Pinned by a granny-flat test asserting fetchMock was never called.",
       "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'does not call the pipeline for granny-flat'"
+    },
+    {
+      "scenario": "Sol MEDIUM 0.9 (round 2 cross-review): an earlier version of this fix forced storedEligible to null for EVERY interest_type outside the 2-item allowlist, not just the two the fix targets -- a real (if currently unexercised) narrowing of the eligible field's pre-existing pass-through contract for the other 11 types.",
+      "what_happens": "A caller submitting {interest_type:'granny-flat', eligible:true} would have the request accepted but the DB now silently store null instead of true -- correct behaviour is unaffected today only because grepping every caller in this app confirms none of the 11 other interest_types send a non-null eligible currently; an external or future caller relying on that field's old pass-through behaviour would have data silently dropped.",
+      "mitigated": true,
+      "how": "Narrowed the override to exactly the two verdict-bearing types: storedEligible recomputes from the address ONLY for duplex-result/dual-occ-referral; every other interest_type keeps its pre-existing `eligible ?? null` pass-through unchanged (route.ts:291-294). Safe specifically because buildEmailContent's switch never reads the third argument for any case except duplex-result, so passing the client's raw value through for other types is inert wherever it's read. 2 new tests pin both directions: a non-null client value passes through unchanged for granny-flat, and a missing value still stores null (matching pre-fix behaviour) for flood.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'passes the client eligible value through unchanged'"
     },
     {
       "scenario": "A bot (honeypot-filled) or a duplicate resubmission within 24h triggers a wasted, chargeable pipeline call.",

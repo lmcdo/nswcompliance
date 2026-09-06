@@ -355,10 +355,30 @@ describe('POST /api/canibuildit/lead — recompute is scoped to verdict-bearing 
       interest_type: 'granny-flat',
     }));
     expect(fetchMock).not.toHaveBeenCalled();
-    // Unaffected path: stores null now (was previously whatever the client sent) —
-    // granny-flat never populated a meaningful eligible value before this fix either
-    // (grep of every caller confirms none send eligible for this interest_type), so
-    // this is not a behaviour change for any real caller.
+  });
+
+  // Sol MEDIUM 0.9 (round 2 cross-review): an earlier version of this fix
+  // forced eligible to null for every interest_type outside the allowlist,
+  // silently dropping the client's value even for types where it's inert but
+  // was previously stored as-submitted. Pins the corrected, narrower scope:
+  // the field's existing pass-through contract is untouched outside the two
+  // verdict-bearing types.
+  it('passes the client eligible value through unchanged for non-verdict-bearing types', async () => {
+    await POST(makeRequest({
+      email: 'buyer@example.com',
+      address: '12 Test St, Marrickville NSW 2204',
+      eligible: true,
+      interest_type: 'granny-flat',
+    }));
+    expect(insertMock.mock.calls[0][0].eligible).toBe(true);
+  });
+
+  it('stores null for non-verdict-bearing types when the client sends no eligible value (unaffected, matches pre-fix behaviour)', async () => {
+    await POST(makeRequest({
+      email: 'buyer@example.com',
+      address: '12 Test St, Marrickville NSW 2204',
+      interest_type: 'flood',
+    }));
     expect(insertMock.mock.calls[0][0].eligible).toBeNull();
   });
 

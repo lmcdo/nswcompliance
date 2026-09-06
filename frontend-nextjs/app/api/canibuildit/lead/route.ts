@@ -275,29 +275,39 @@ export async function POST(req: NextRequest) {
   }
 
   // --- 6. Recompute eligibility server-side for verdict-bearing interest_types.
-  // The client's `eligible` is discarded entirely here, not merely double-checked —
-  // see the VERDICT RECOMPUTATION block above for why. Runs after the honeypot and
-  // duplicate-detection early returns so a bot or a repeat submission never spends
-  // a Housing-SEPP pipeline call.
-  const verifiedEligible: boolean | null =
-    interest_type && VERDICT_BEARING_INTEREST_TYPES.has(interest_type) && cleanAddress
-      ? await recomputeDualOccEligible(cleanAddress)
-      : null;
+  // The client's `eligible` is discarded entirely for THESE TWO TYPES ONLY, not
+  // merely double-checked — see the VERDICT RECOMPUTATION block above for why.
+  // Runs after the honeypot and duplicate-detection early returns so a bot or a
+  // repeat submission never spends a Housing-SEPP pipeline call.
+  //
+  // Sol MEDIUM 0.9 (round 2 cross-review): an earlier version of this line
+  // forced storedEligible to null for EVERY other interest_type too, silently
+  // dropping whatever the client sent even though nothing downstream ever
+  // treats it as a verdict for those types — a real, if currently unexercised
+  // (grepped every caller: none send a non-null eligible for any type outside
+  // the two below), narrowing of this field's existing contract. Scoped back to
+  // exactly the two types this fix is about: everywhere else, eligible keeps
+  // its pre-existing pass-through behaviour unchanged.
+  const storedEligible: boolean | null =
+    interest_type && VERDICT_BEARING_INTEREST_TYPES.has(interest_type)
+      ? (cleanAddress ? await recomputeDualOccEligible(cleanAddress) : null)
+      : (eligible ?? null);
 
-  // Visibility, not enforcement: verifiedEligible is already what gets stored
+  // Visibility, not enforcement: storedEligible is already what gets stored
   // and emailed below regardless, so this can't be bypassed by a mismatch —
   // it only logs when a caller's claim disagrees with the recomputed truth.
   // Not proof of malice on its own (a stale on-screen result submitted after a
   // genuine same-day amendment would also land here), but a sustained pattern
   // for one IP/address is worth knowing about, and there was no signal at all
-  // for this before.
+  // for this before. Scoped to the two verdict-bearing types only — outside
+  // them storedEligible IS the client's value, so there is nothing to disagree.
   if (
     interest_type && VERDICT_BEARING_INTEREST_TYPES.has(interest_type) &&
-    typeof eligible === 'boolean' && verifiedEligible !== null &&
-    eligible !== verifiedEligible
+    typeof eligible === 'boolean' && storedEligible !== null &&
+    eligible !== storedEligible
   ) {
     console.warn('[canibuildit/lead] client eligible claim did not match recomputed verdict', {
-      interest_type, address: cleanAddress, ip, client_claimed: eligible, server_recomputed: verifiedEligible,
+      interest_type, address: cleanAddress, ip, client_claimed: eligible, server_recomputed: storedEligible,
     });
   }
 
@@ -319,7 +329,7 @@ export async function POST(req: NextRequest) {
     await supabase.from('canibuildit_leads').insert({
       email: cleanEmail,
       address: cleanAddress,
-      eligible: verifiedEligible,
+      eligible: storedEligible,
       ...(first_name ? { first_name: first_name.trim() } : {}),
       ...(phone ? { phone: phone.trim() } : {}),
       ...(lga_name ? { lga_name: lga_name.trim() } : {}),
@@ -333,7 +343,7 @@ export async function POST(req: NextRequest) {
 
   // --- 8. Send confirmation email ---
   const addressLabel = cleanAddress ?? 'your property';
-  const { subject, body: emailBody } = buildEmailContent(interest_type ?? 'granny-flat', addressLabel, verifiedEligible);
+  const { subject, body: emailBody } = buildEmailContent(interest_type ?? 'granny-flat', addressLabel, storedEligible);
   // Sender brand follows the product, not one hardcoded consumer identity —
   // intelligence-brief is the PlotDetect (verify./brief. subdomain) product,
   // distinct from the canibuildit.com.au consumer tools every other
