@@ -99,8 +99,11 @@ echo ""
 
 echo "=== [1b/5] Checking mutation test baselines ==="
 if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
-  python scripts/check_test_baselines.py mutation-baselines.json 2>&1
-  BASELINE_RESULT=$?
+  # `set -e` is on (line 26); a bare command here would kill the hook on any
+  # real failure before the message below ever prints, same class of bug as
+  # [2c]'s doc-claim ratchet (see that block's comment) and [3]'s QA report.
+  BASELINE_RESULT=0
+  python scripts/check_test_baselines.py mutation-baselines.json 2>&1 || BASELINE_RESULT=$?
   if [ $BASELINE_RESULT -ne 0 ]; then
     echo ""
     echo "Mutation test baseline check FAILED. Push blocked."
@@ -117,8 +120,9 @@ echo ""
 
 echo "=== [1c/5] Brief field-coverage ratchet ==="
 if [ -f scripts/brief_field_coverage_ratchet.py ]; then
-  python scripts/brief_field_coverage_ratchet.py 2>&1
-  RATCHET_RESULT=$?
+  # Same set -e trap as [1b] above.
+  RATCHET_RESULT=0
+  python scripts/brief_field_coverage_ratchet.py 2>&1 || RATCHET_RESULT=$?
   if [ $RATCHET_RESULT -ne 0 ]; then
     echo ""
     echo "Brief field-coverage ratchet FAILED. Push blocked."
@@ -227,8 +231,10 @@ elif [ -f frontend-nextjs/jest.config.js ]; then
   # its cache on file content and babel config, so a stale hit is not a failure
   # mode this repo has. If a cache ever is suspected, bust it explicitly:
   #   cd frontend-nextjs && npx jest --clearCache
-  (cd frontend-nextjs && npx jest --bail --silent 2>&1)
-  JEST_RESULT=$?
+  # `|| JEST_RESULT=$?`: same set -e trap as [1b]/[1c] above -- a bare failure
+  # here would kill the hook before the "Push blocked" message ever printed.
+  JEST_RESULT=0
+  (cd frontend-nextjs && npx jest --bail --silent 2>&1) || JEST_RESULT=$?
   if [ $JEST_RESULT -ne 0 ]; then
     echo ""
     echo "Frontend Jest tests FAILED. Push blocked."
@@ -325,7 +331,13 @@ echo "=== [3/4] Validating QA report ==="
 # The report is per-branch (.qa/reports/<slug>.json). Resolve it rather than
 # hardcoding a path, so this hook and CI can never disagree about which file
 # they are checking — a disagreement would present as "the gate passed".
-QA_REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null)
+# `set -e` is on (line 26) and this script exits 1 (printing nothing) when no
+# report exists for this branch yet -- the normal case for a brand-new branch.
+# Without `|| QA_REPORT=""` that nonzero status kills the WHOLE hook right here,
+# before the `if` below ever runs its "no report, skipping" warning: the push
+# just fails with git's own generic "failed to push some refs", no explanation
+# printed at all. Same set -e trap as the build block above (line 269-271).
+QA_REPORT=$(python scripts/qa_report_path.py --relative 2>/dev/null) || QA_REPORT=""
 if [ -n "$QA_REPORT" ] && [ -f "$QA_REPORT" ]; then
   # Auto-detect changed files vs merge-base (works correctly in worktrees where origin/main may have diverged)
   MERGE_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
@@ -340,8 +352,11 @@ if [ -n "$QA_REPORT" ] && [ -f "$QA_REPORT" ]; then
   if [ -n "$DIFF_FILES" ]; then
     QA_ARGS="$QA_ARGS --diff-files $DIFF_FILES"
   fi
-  python scripts/qa_gate.py $QA_ARGS 2>&1
-  QA_RESULT=$?
+  # `|| QA_RESULT=$?`: same set -e trap fixed just above for QA_REPORT itself --
+  # a bare failure here would kill the hook before the "Push blocked" message
+  # (and the fix-it hint) ever printed.
+  QA_RESULT=0
+  python scripts/qa_gate.py $QA_ARGS 2>&1 || QA_RESULT=$?
   if [ $QA_RESULT -ne 0 ]; then
     echo ""
     echo "QA report validation FAILED. Push blocked."
@@ -362,8 +377,10 @@ echo "=== [4/4] Scanning for liability language ==="
 
 # Scan only NEW lines in user-facing files (not existing reviewed code)
 LANG_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
-python scripts/liability_language_check.py --diff-base "$LANG_BASE" 2>&1
-LANG_RESULT=$?
+# `|| LANG_RESULT=$?`: same set -e trap as the QA gate above -- a bare failure
+# here would kill the hook before the "Push blocked" message ever printed.
+LANG_RESULT=0
+python scripts/liability_language_check.py --diff-base "$LANG_BASE" 2>&1 || LANG_RESULT=$?
 if [ $LANG_RESULT -ne 0 ]; then
   echo ""
   echo "Liability language check FAILED. Push blocked."
