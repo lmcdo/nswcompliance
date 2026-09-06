@@ -308,6 +308,29 @@ def gate_chapter(cur, s3, council: str, chapter_key: str, r2_path: str) -> tuple
     return grounded, flagged, skipped
 
 
+def chapters_query(council: str, chapter: str | None, include_backlog: bool) -> tuple[str, list]:
+    """Build the SQL (+ params) that selects which pending chapters to grade.
+    Pulled out of main() so a real-DB test can execute exactly this query,
+    not a hand-copied approximation of it, against the actual tables."""
+    sql = ("SELECT DISTINCT q.chapter_key, reg.r2_current_path FROM dcp_review_queue q "
+           "JOIN dcp_chapter_registry reg ON reg.council=q.council AND reg.chapter_key=q.chapter_key "
+           "WHERE q.council=%s AND q.status IN ('pending','in_progress') "
+           "AND reg.r2_current_path IS NOT NULL")
+    params = [council]
+    if not include_backlog:
+        # prior-art-checked: is_current AND v2_is_actionable is the project's own
+        # established definition of "live + actionable (the served set)" -- see
+        # CLAUDE.md's Database Quick Reference table (19,957 of 55,696 provisions).
+        # Reused verbatim, not a new definition of "live".
+        sql += (" AND EXISTS (SELECT 1 FROM regulatory_provisions rp "
+                "WHERE rp.source_council = q.council AND rp.source_chapter_key = q.chapter_key "
+                "AND rp.is_current AND rp.v2_is_actionable)")
+    if chapter:
+        sql += " AND q.chapter_key=%s"
+        params.append(chapter)
+    return sql, params
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Grade pending DCP review rows against source PDFs.")
     ap.add_argument("--council", required=True)
@@ -329,22 +352,7 @@ def main() -> int:
     )
     conn = psycopg2.connect(dx.DATABASE_URL)
     cur = conn.cursor()
-    sql = ("SELECT DISTINCT q.chapter_key, reg.r2_current_path FROM dcp_review_queue q "
-           "JOIN dcp_chapter_registry reg ON reg.council=q.council AND reg.chapter_key=q.chapter_key "
-           "WHERE q.council=%s AND q.status IN ('pending','in_progress') "
-           "AND reg.r2_current_path IS NOT NULL")
-    params = [args.council]
-    if not args.include_backlog:
-        # prior-art-checked: is_current AND v2_is_actionable is the project's own
-        # established definition of "live + actionable (the served set)" -- see
-        # CLAUDE.md's Database Quick Reference table (19,957 of 55,696 provisions).
-        # Reused verbatim, not a new definition of "live".
-        sql += (" AND EXISTS (SELECT 1 FROM regulatory_provisions rp "
-                "WHERE rp.source_council = q.council AND rp.source_chapter_key = q.chapter_key "
-                "AND rp.is_current AND rp.v2_is_actionable)")
-    if args.chapter:
-        sql += " AND q.chapter_key=%s"
-        params.append(args.chapter)
+    sql, params = chapters_query(args.council, args.chapter, args.include_backlog)
     cur.execute(sql, params)
     chapters = cur.fetchall()
     if not chapters:

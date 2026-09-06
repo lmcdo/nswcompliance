@@ -440,11 +440,12 @@ class TestGateChapterScopesToActionableRows:
         assert (g, f, s) == (1, 1, 1)
 
 
-class TestMainScopesToLiveChapters:
-    """Source pin for the other half of the same fix: main()'s chapter-selection
-    SQL must default to live+actionable chapters only, with an explicit,
-    documented opt-out flag -- never silently drop rows, only skip grading them
-    until asked."""
+class TestChaptersQueryScopesToLiveChapters:
+    """Behavioural (not source-grep) test of the other half of the same fix:
+    chapters_query() -- the function main() actually calls, and the same one
+    tests/test_dcp_fidelity_gate_real_db.py runs against the real database --
+    must default to a live+actionable-only filter, with an explicit opt-out.
+    Never silently drops rows, only skips grading them until asked."""
 
     @staticmethod
     def _main_src():
@@ -457,11 +458,19 @@ class TestMainScopesToLiveChapters:
         assert "--include-backlog" in self._main_src()
 
     def test_default_query_filters_on_live_actionable(self):
-        block = self._main_src()
-        assert "if not args.include_backlog:" in block
-        filt = block[block.index("if not args.include_backlog:"):]
-        filt = filt[:filt.index("if args.chapter:")]
-        assert "rp.is_current" in filt and "rp.v2_is_actionable" in filt
+        sql, params = _gate.chapters_query("blacktown", None, include_backlog=False)
+        assert "rp.is_current" in sql and "rp.v2_is_actionable" in sql
+        assert params == ["blacktown"]
+
+    def test_include_backlog_omits_the_filter(self):
+        sql, _ = _gate.chapters_query("blacktown", None, include_backlog=True)
+        assert "regulatory_provisions" not in sql
+
+    def test_chapter_filter_still_applies_params_in_order(self):
+        sql, params = _gate.chapters_query("ashfield", "chapter-d-precinct-guidelines",
+                                            include_backlog=False)
+        assert "q.chapter_key=%s" in sql
+        assert params == ["ashfield", "chapter-d-precinct-guidelines"]
 
     def test_skipped_count_is_reported_not_silently_dropped(self):
         assert "non-actionable rows skipped, not graded" in self._main_src()
