@@ -177,6 +177,74 @@ describe('recomputeDualOccEligible', () => {
     await expect(recomputeDualOccEligible('12 Test St')).resolves.toBeNull();
   });
 
+  // Sol HIGH 0.9: a bare `as UpzoningResult` type assertion trusts the external
+  // service's shape without checking it. These pin the runtime Zod validation
+  // that replaced it -- a malformed status:'ok' payload must fail closed, not
+  // get read truthy by dualOccEligible's plain `f.eligible` check.
+  describe('malformed status:ok payloads (Sol HIGH 0.9 — no runtime validation)', () => {
+    it('eligible arriving as the STRING "false" does not get read as truthy', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'ok',
+          forms: [{ development_type: 'dual_occupancy', eligible: 'false' }],
+        }),
+      } as Response);
+      await expect(recomputeDualOccEligible('12 Test St')).resolves.toBeNull();
+    });
+
+    it('missing forms array resolves to null, not an exception or a false positive', async () => {
+      fetchMock.mockResolvedValue({ ok: true, json: async () => ({ status: 'ok' }) } as Response);
+      await expect(recomputeDualOccEligible('12 Test St')).resolves.toBeNull();
+    });
+
+    it('forms entries missing development_type resolve to null', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: 'ok', forms: [{ eligible: true }] }),
+      } as Response);
+      await expect(recomputeDualOccEligible('12 Test St')).resolves.toBeNull();
+    });
+
+    it('a genuinely well-formed payload still resolves correctly (validation is not over-strict)', async () => {
+      mockPipelineResponse(makeUpzoningResult({ forms: [makeForm({ eligible: true })] }));
+      await expect(recomputeDualOccEligible('12 Test St')).resolves.toBe(true);
+    });
+  });
+
+  // Sol MEDIUM 0.99: every failure path used to be silent. These pin that a
+  // systemic outage is now at least visible in logs, without changing the
+  // fail-closed return value itself.
+  describe('operational visibility on recompute failure (Sol MEDIUM 0.99)', () => {
+    let errorSpy: jest.SpyInstance;
+    beforeEach(() => { errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {}); });
+    afterEach(() => { errorSpy.mockRestore(); });
+
+    it('logs on a non-2xx response', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 502, json: async () => ({}) } as Response);
+      await recomputeDualOccEligible('12 Test St');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('non-2xx'));
+    });
+
+    it('logs on a thrown fetch error', async () => {
+      fetchMock.mockRejectedValue(new Error('ECONNREFUSED'));
+      await recomputeDualOccEligible('12 Test St');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('threw'), expect.any(Error));
+    });
+
+    it('logs on a schema-validation failure', async () => {
+      fetchMock.mockResolvedValue({ ok: true, json: async () => ({ status: 'ok' }) } as Response);
+      await recomputeDualOccEligible('12 Test St');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('failed validation'), expect.anything());
+    });
+
+    it('does not log for the ordinary indeterminate case (not_residential) — that is not a failure', async () => {
+      mockPipelineResponse(makeUpzoningResult({ status: 'not_residential', forms: [] }));
+      await recomputeDualOccEligible('12 Test St');
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+  });
+
   it('never defaults to true on any failure path', async () => {
     // Sweep every failure shape above through one assertion style, so a future
     // edit that changes ANY of them to `true` is caught here too, not just in

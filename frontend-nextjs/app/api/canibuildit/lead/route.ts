@@ -104,6 +104,31 @@ const VERDICT_BEARING_INTEREST_TYPES = new Set(['duplex-result', 'dual-occ-refer
 // shorter bound is the safe direction if this needs retuning later.
 const RECOMPUTE_TIMEOUT_MS = 20_000;
 
+// Runtime validation of the pipeline's response — a TypeScript `as UpzoningResult`
+// assertion alone (the original shape of this fix) trusts the external service's
+// JSON without checking it, so a malformed status:'ok' payload (Sol HIGH 0.9,
+// e.g. eligible arriving as the STRING "false") could cross the boundary and be
+// read as truthy by dualOccEligible's `f.eligible` check, producing exactly the
+// false positive this whole fix exists to prevent — just moved from the client
+// to a misbehaving upstream service instead. Scoped to only the fields
+// dualOccEligible actually reads (status, forms[].development_type/.eligible);
+// .passthrough() lets every other field ride along unvalidated since nothing
+// here touches them.
+const RecomputeResponseSchema = z.object({
+  status: z.enum(['ok', 'not_residential', 'unavailable']),
+  // Required, not defaulted: the real contract always includes forms (see
+  // frontend-nextjs/lib/upzoning.ts's UpzoningResult), so a status:'ok'
+  // response missing it entirely is itself malformed and should fail
+  // validation -> null, not silently read as "zero forms, so not eligible" --
+  // a determinate-looking answer the response never actually grounded.
+  forms: z.array(
+    z.object({
+      development_type: z.string(),
+      eligible: z.boolean(),
+    }).passthrough(),
+  ),
+}).passthrough();
+
 export async function recomputeDualOccEligible(address: string): Promise<boolean | null> {
   const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
   try {
@@ -113,11 +138,32 @@ export async function recomputeDualOccEligible(address: string): Promise<boolean
       body: JSON.stringify({ address }),
       signal: AbortSignal.timeout(RECOMPUTE_TIMEOUT_MS),
     });
-    if (!resp.ok) return null;
-    const result = (await resp.json()) as UpzoningResult;
-    if (result.status !== 'ok') return null;
-    return dualOccEligible(result);
-  } catch {
+    if (!resp.ok) {
+      // Sol MEDIUM 0.99: previously swallowed with zero signal, so a
+      // misconfigured PYTHON_API_URL or a systemic pipeline outage would
+      // silently degrade every verdict-bearing submission to the neutral
+      // copy with nothing in the logs pointing at why. Logging, not
+      // retrying or surfacing to the user — the fail-closed behaviour
+      // (return null) is unchanged; this only makes it observable.
+      console.error(`[canibuildit/lead] upzoning recompute non-2xx: ${resp.status}`);
+      return null;
+    }
+    const raw: unknown = await resp.json();
+    const parsed = RecomputeResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error('[canibuildit/lead] upzoning recompute response failed validation', parsed.error.flatten());
+      return null;
+    }
+    if (parsed.data.status !== 'ok') return null;
+    // parsed.data only statically carries the fields RecomputeResponseSchema
+    // checked (status, forms[].development_type/.eligible) plus whatever
+    // .passthrough() let through untyped -- dualOccEligible only ever reads
+    // the checked fields, so this is safe despite TS seeing an incomplete
+    // UpzoningResult; `as unknown as` makes that "trust the rest" step explicit
+    // rather than a same-shape cast TS would otherwise (rightly) reject.
+    return dualOccEligible(parsed.data as unknown as UpzoningResult);
+  } catch (err) {
+    console.error('[canibuildit/lead] upzoning recompute threw:', err);
     return null;
   }
 }
