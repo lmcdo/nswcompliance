@@ -6,6 +6,7 @@ import { getResend } from '@/lib/resend-client';
 import { checkRateLimit, createRateLimitHeaders, getClientIdentifier } from '@/lib/rate-limit';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { dualOccEligible, type UpzoningResult } from '@/lib/upzoning';
 
 // Service role client — bypasses RLS, server-only, never exposed to browser.
 const getSupabase = () =>
@@ -54,6 +55,72 @@ const leadRateLimiter = redis
       prefix: 'rl:lead',
     })
   : null;
+
+// ============================================================================
+// VERDICT RECOMPUTATION — Sol HIGH 0.99, PR #1015
+//
+// `eligible` in the request body is CLIENT-SUPPLIED and unverified — email,
+// address and eligible are three unrelated fields in one flat JSON body, and
+// nothing binds them together. Two interest_types treat it as a stated fact
+// rather than inert data:
+//   - 'duplex-result': the confirmation EMAIL asserts a definite verdict
+//     sentence ("you can apply to build a duplex here...") built straight
+//     from the client's boolean.
+//   - 'dual-occ-referral': the value is stored and later rendered as
+//     "Eligible"/"Not eligible"/"Needs checking" to staff on the internal
+//     leads dashboard (app/internal/leads/page.tsx) — a false claim there
+//     misleads a human into connecting a builder to an ineligible property,
+//     not just a misleading email.
+// A caller can POST any (email, address, eligible) combination directly —
+// no UI is required to reach this route — so client trust must be removed
+// at the boundary, not patched per-caller.
+//
+// Fix: for these two interest_types, IGNORE the client's `eligible` and
+// recompute it server-side from the submitted `address`, using the exact
+// pipeline /api/upzoning proxies to (services/upzoning_check.py ->
+// housing_sepp_eligibility) — the same source of truth the on-screen verdict
+// already came from moments earlier. This also closes a broader hole than
+// originally scoped: previously a caller could pair ANY address with ANY
+// eligible value; recomputing means whatever address is submitted is what
+// the stored/emailed verdict actually describes.
+//
+// Fail-closed, three states, never two: recompute failure (network error,
+// timeout, non-2xx, malformed JSON) or an indeterminate pipeline result
+// (status !== 'ok' — not_residential/unavailable) both resolve to `null`
+// (the existing neutral copy — "Your duplex check has been run for this
+// address" / stored as unknown), never a default `true` and never let an
+// upstream failure quietly collapse into a false "not eligible". Missing
+// address for one of these interest_types is treated the same way: null,
+// not "assume ineligible".
+// ============================================================================
+
+const VERDICT_BEARING_INTEREST_TYPES = new Set(['duplex-result', 'dual-occ-referral']);
+
+// Generous relative to typical pipeline latency, bounded relative to this
+// route's own purpose (a "thanks, check your email" confirmation call, not
+// the primary interactive check the user already waited through on-screen
+// seconds earlier). A timeout here costs one user a neutral email instead of
+// the specific one — it can never produce a false claim, so erring toward a
+// shorter bound is the safe direction if this needs retuning later.
+const RECOMPUTE_TIMEOUT_MS = 20_000;
+
+export async function recomputeDualOccEligible(address: string): Promise<boolean | null> {
+  const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+  try {
+    const resp = await fetch(`${PYTHON_API}/pipeline/upzoning`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+      signal: AbortSignal.timeout(RECOMPUTE_TIMEOUT_MS),
+    });
+    if (!resp.ok) return null;
+    const result = (await resp.json()) as UpzoningResult;
+    if (result.status !== 'ok') return null;
+    return dualOccEligible(result);
+  } catch {
+    return null;
+  }
+}
 
 // ============================================================================
 // INPUT SCHEMA
@@ -161,7 +228,34 @@ export async function POST(req: NextRequest) {
     // Non-blocking — if dupe check fails, proceed anyway
   }
 
-  // --- 6. Store lead ---
+  // --- 6. Recompute eligibility server-side for verdict-bearing interest_types.
+  // The client's `eligible` is discarded entirely here, not merely double-checked —
+  // see the VERDICT RECOMPUTATION block above for why. Runs after the honeypot and
+  // duplicate-detection early returns so a bot or a repeat submission never spends
+  // a Housing-SEPP pipeline call.
+  const verifiedEligible: boolean | null =
+    interest_type && VERDICT_BEARING_INTEREST_TYPES.has(interest_type) && cleanAddress
+      ? await recomputeDualOccEligible(cleanAddress)
+      : null;
+
+  // Visibility, not enforcement: verifiedEligible is already what gets stored
+  // and emailed below regardless, so this can't be bypassed by a mismatch —
+  // it only logs when a caller's claim disagrees with the recomputed truth.
+  // Not proof of malice on its own (a stale on-screen result submitted after a
+  // genuine same-day amendment would also land here), but a sustained pattern
+  // for one IP/address is worth knowing about, and there was no signal at all
+  // for this before.
+  if (
+    interest_type && VERDICT_BEARING_INTEREST_TYPES.has(interest_type) &&
+    typeof eligible === 'boolean' && verifiedEligible !== null &&
+    eligible !== verifiedEligible
+  ) {
+    console.warn('[canibuildit/lead] client eligible claim did not match recomputed verdict', {
+      interest_type, address: cleanAddress, ip, client_claimed: eligible, verified: verifiedEligible,
+    });
+  }
+
+  // --- 7. Store lead ---
   try {
     const supabase = getSupabase();
     // Build the consent audit only when a consent statement was actually shown,
@@ -179,7 +273,7 @@ export async function POST(req: NextRequest) {
     await supabase.from('canibuildit_leads').insert({
       email: cleanEmail,
       address: cleanAddress,
-      eligible: eligible ?? null,
+      eligible: verifiedEligible,
       ...(first_name ? { first_name: first_name.trim() } : {}),
       ...(phone ? { phone: phone.trim() } : {}),
       ...(lga_name ? { lga_name: lga_name.trim() } : {}),
@@ -191,9 +285,9 @@ export async function POST(req: NextRequest) {
     // Non-blocking — don't error the user if DB insert fails
   }
 
-  // --- 7. Send confirmation email ---
+  // --- 8. Send confirmation email ---
   const addressLabel = cleanAddress ?? 'your property';
-  const { subject, body: emailBody } = buildEmailContent(interest_type ?? 'granny-flat', addressLabel, eligible ?? null);
+  const { subject, body: emailBody } = buildEmailContent(interest_type ?? 'granny-flat', addressLabel, verifiedEligible);
   // Sender brand follows the product, not one hardcoded consumer identity —
   // intelligence-brief is the PlotDetect (verify./brief. subdomain) product,
   // distinct from the canibuildit.com.au consumer tools every other

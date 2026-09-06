@@ -1,0 +1,105 @@
+{
+  "tier": "critical",
+  "justification": "Fixes a silent-production-bug class exactly matching this repo's own CRITICAL definition: a live, unauthenticated, no-UI-required API endpoint could email a fabricated regulatory verdict (a false 'you can build a duplex here' claim) to a real inbox, and separately mislead internal staff via the leads dashboard, based entirely on a client-supplied boolean nothing verified. Sol HIGH 0.99 confidence, independently re-confirmed live against origin/main before writing any fix.",
+  "commit_hash": "PENDING_FIRST_COMMIT",
+  "falsifiable_check": {
+    "command": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts",
+    "fails_when": "Any of the 20 tests in that file fails -- most directly, reverting route.ts's :236-273 change back to using the client's `eligible` verbatim (old vulnerable behaviour) fails 'client claims eligible=true, server recomputes false: email states the negative, not the claim' and its mirror, because the email/DB assertions check the RECOMPUTED value while the client claim in the test is deliberately the opposite of it -- a spoofed claim passing through unchanged makes those specific assertions fail, not merely a coverage gap."
+  },
+  "files": [
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-verdict-integrity.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "canibuildit_leads table, column eligible (boolean, nullable) -- previously written verbatim from client input for every interest_type, read back by frontend-nextjs/app/internal/leads/page.tsx and rendered as a fact ('Eligible'/'Not eligible'/'Needs checking') to staff behind a shared-secret gate (INTERNAL_ACCESS_KEY). No schema change made -- same column, same nullability, values now come from a different source.",
+    "assumption_mismatch": "The route previously assumed email/address/eligible were a coherent, truthful triple submitted by its own trusted UI. They are not bound together at all -- any caller can POST any combination directly, confirmed by reading the route: eligible is read straight from Zod-parsed JSON with no cross-check against address. The fix removes that assumption structurally (recompute from address, discard the claim) rather than patching each caller.",
+    "new_vs_existing": "Applies to every future submission from the moment this deploys -- there is no backfill of historically-stored canibuildit_leads.eligible values, which stay as originally submitted (unverified) for rows written before this ships. Not treated as in scope: those are historical marketing-partner referral records, not a live-serving compliance surface, and backfilling would itself require re-running the pipeline against addresses that may since have changed zoning.",
+    "external_source_error": "POST /pipeline/upzoning (the external call this fix adds) can return 400 (missing address), 422 (address unresolvable / no coordinates -- services/upzoning_check.py:141,144), or a bare 500/timeout on an internal failure. recomputeDualOccEligible treats every one of these identically: any non-2xx, any thrown error, or a JSON body that fails to parse all resolve to null -- the caller never branches on the specific status code, by design, so a new error shape from that service cannot silently become a wrong true/false.",
+    "frontend_type": "No frontend type changes. UpzoningResult/FormResult are imported from the existing frontend-nextjs/lib/upzoning.ts, not modified. This route's own response contract to ITS callers ({ok:true} / {error} JSON) is unchanged -- every existing caller (PostResultEmailStrip.tsx, BuilderReferralCard.tsx, etc.) needs no changes.",
+    "user_failure_mode": "Invisible by design, matching this flow's existing posture (every caller already treats the POST as fire-and-forget and shows a generic 'Thanks' regardless of the actual response -- confirmed in lead-abuse.test.ts's own comment on this). If the recompute fails, the user still gets {ok:true} and a confirmation email, just with the pre-existing NEUTRAL copy ('Your duplex check has been run for this address') instead of a specific verdict -- never an error, a hang, or a false claim."
+  },
+  "functions": [
+    {
+      "name": "recomputeDualOccEligible",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:107",
+      "input": "address: string (the cleaned, trimmed address string already validated by Zod's min-5-char rule earlier in the same request)",
+      "output": "Promise<boolean | null> -- true/false only when the pipeline returns status:'ok'; null on every other outcome (non-2xx, thrown fetch/timeout, malformed JSON, or an indeterminate status)",
+      "if_none": "Not applicable to the input (address is only ever called with a truthy, already-trimmed string, guarded at the call site by `cleanAddress &&`); for the OUTPUT, null is the deliberate 'could not verify' state and both call sites (DB insert, buildEmailContent) already treat null as their existing neutral case, unchanged in this fix."
+    }
+  ],
+  "values": [
+    {
+      "value": "verifiedEligible",
+      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:259 (DB insert), :273 (buildEmailContent call)",
+      "nullable": "yes",
+      "guard_at": "computed once at :236-239 as boolean | null; both consumers already have pre-existing null handling (buildEmailContent's switch default branch predates this fix; the DB column is nullable and the internal dashboard's tri-state render at app/internal/leads/page.tsx:138 already treats null as '--')",
+      "if_missing": "Both consumers render/store the pre-existing neutral state ('Your duplex check has been run for this address' in the email; '--' or 'Needs checking' on the internal dashboard) -- never a false positive or negative, and never a 500."
+    },
+    {
+      "value": "eligible (the original client-supplied field, from Zod-parsed body)",
+      "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:193 (destructured), :248-256 (mismatch-logging comparison only)",
+      "nullable": "yes",
+      "guard_at": "typeof eligible === 'boolean' check before the mismatch comparison at :250",
+      "if_missing": "No longer read for the DB write or the email at all (that was the vulnerability) -- its only remaining use is an observability log line when it disagrees with the recomputed truth; a missing/null value simply skips that log, no other effect."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Server-side recomputation of duplex eligibility for the address actually submitted, replacing trust in the client's claim -- an HTTP call, not a DB query, to the same Python pipeline endpoint /api/upzoning already proxies to.",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:110 (fetch call inside recomputeDualOccEligible)",
+      "where_clause": "N/A -- POST /pipeline/upzoning with body {address}; verified directly against services/upzoning_check.py:129 (@router.post('/upzoning'), prefix '/pipeline') and its response contract (status: 'ok'|'not_residential'|'unavailable', forms: FormResult[]) rather than assumed from the proxy route's comment alone.",
+      "if_zero": "If the pipeline resolves the address but finds no eligible dual_occupancy form, dualOccEligible(result) correctly returns false (a real, determined 'no') -- this is the intended negative case, not a failure.",
+      "if_wrong": "If the pipeline's response shape ever changes without this route being updated, `result.status` would fail the 'ok' check (since an unexpected/missing value !== 'ok') and resolve to null (neutral), not a false claim -- the tri-state check is structured so a contract drift fails closed rather than silently mis-parsing into a wrong true/false."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Caller POSTs interest_type:'duplex-result', an address that is genuinely ineligible, and eligible:true, trying to force the false positive this fix exists to prevent.",
+      "what_happens": "Before this fix: the email states the caller can apply to build a duplex there -- exactly the Sol-confirmed vulnerability, reproduced live against origin/main before writing the fix.",
+      "mitigated": true,
+      "how": "route.ts:236-239 discards the client's eligible entirely for this interest_type and substitutes the server-recomputed boolean at :273; pinned by lead-verdict-integrity.test.ts's first two tests (client claims true/server recomputes false, and the reverse), both asserting the EMAIL text matches the recomputed value, not the claim.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'client claims eligible=true, server recomputes false'"
+    },
+    {
+      "scenario": "Same attack via interest_type:'dual-occ-referral' instead -- the email text is generic here (no stated verdict), but the STORED canibuildit_leads.eligible value is what the internal leads dashboard renders as fact to staff.",
+      "what_happens": "Before this fix: a staff member viewing /internal/leads sees 'Eligible' for a property that isn't, and could connect a builder to a lead on false pretences -- a second, distinct consequence of the identical root cause that the original Sol finding and the governing plan document did not name (found this session by tracing every reader of the eligible column, not assumed).",
+      "mitigated": true,
+      "how": "The same recomputed verifiedEligible is used for the DB insert at :259, not a separate value -- one recomputation feeds both consumers, so there is no way for the email and the stored record to disagree. Pinned by lead-verdict-integrity.test.ts's dual-occ-referral describe block, asserting insertMock's eligible argument directly.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'dual-occ-referral'"
+    },
+    {
+      "scenario": "The Python pipeline is down, slow, or the network call otherwise fails at the exact moment a genuine user submits a duplex-result email-me request.",
+      "what_happens": "A naive fix that falls back to the client's claim on recompute failure would reopen the exact same vulnerability under load/outage conditions -- the failure path is the attacker's easiest way to force trust back onto their own input.",
+      "mitigated": true,
+      "how": "recomputeDualOccEligible's try/catch returns null on every failure mode (network throw, non-2xx, JSON parse failure, timeout via AbortSignal) -- never falls through to the client value, never defaults true. Pinned by a dedicated 'never defaults to true on any failure path' test that sweeps all four failure shapes through one assertion, plus a full-POST-handler test confirming the resulting email is the neutral copy, not either boolean.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'never defaults to true'"
+    },
+    {
+      "scenario": "duplex-result or dual-occ-referral submitted with no address at all (Zod allows address to be optional/nullable).",
+      "what_happens": "Without a guard, this would either crash calling the pipeline with an empty/invalid address, or -- worse -- silently fall through to trusting the client's eligible again for lack of anything to recompute from.",
+      "mitigated": true,
+      "how": "The ternary at :237 requires cleanAddress to be truthy before ever calling recomputeDualOccEligible; missing address resolves straight to null with zero network calls, verified by asserting fetchMock was never invoked in that case.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'missing address never attempts'"
+    },
+    {
+      "scenario": "The added recompute step changes behaviour or adds latency for the 11 OTHER interest_types that never used eligible meaningfully (granny-flat, flood, solar-yield, shadow, threat-radar, conveyancing, pre-da-history, lga-request, intelligence-brief) -- a regression risk on unrelated, currently-working traffic.",
+      "what_happens": "If VERDICT_BEARING_INTEREST_TYPES were scoped wrong (too broad), every other product's lead capture would gain an unnecessary ~seconds-to-20s pipeline round-trip and an unrelated failure surface for no reason.",
+      "mitigated": true,
+      "how": "VERDICT_BEARING_INTEREST_TYPES is an explicit 2-item allowlist (duplex-result, dual-occ-referral only), not a denylist -- every other interest_type's verifiedEligible is unconditionally null with zero fetch calls, identical to today's stored value for those types (grepped every caller in the app: none of the other 11 send a non-null eligible today, so this is not a behaviour change for any real caller). Pinned by a granny-flat test asserting fetchMock was never called.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'does not call the pipeline for granny-flat'"
+    },
+    {
+      "scenario": "A bot (honeypot-filled) or a duplicate resubmission within 24h triggers a wasted, chargeable pipeline call.",
+      "what_happens": "Every honeypot hit or repeat submission would needlessly call the live Housing-SEPP pipeline (Planning Portal + 4 ArcGIS gates), adding load and latency for traffic that's discarded immediately after anyway.",
+      "mitigated": true,
+      "how": "The recompute step is inserted AFTER both the honeypot early-return (step 3) and the duplicate-detection early-return (step 5) in the handler's existing sequence -- neither path reaches the new code at all. Pinned by the honeypot test asserting fetchMock was never called.",
+      "repro": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts -t 'honeypot short-circuits'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- no schema change. canibuildit_leads.eligible keeps its existing type and nullability; only the source of the value written to it changes going forward.",
+    "secrets": "No -- reuses the existing PYTHON_API_URL env var already required by /api/upzoning/route.ts; no new secret introduced.",
+    "other_repo": "No -- calls an existing, already-deployed Python endpoint (/pipeline/upzoning), not a new service.",
+    "manual_verify": "Recommended, not required: after deploy, submit one real duplex-result and one dual-occ-referral lead end-to-end (e.g. through /duplex-check) for a KNOWN-eligible and a KNOWN-ineligible address, and confirm both the received email and the /internal/leads?key=... row show the correct recomputed verdict rather than whatever was clicked in the UI. Not required to merge -- covered by the automated tests above -- but closes the loop against the live Python service once, since jest mocks it."
+  }
+}
