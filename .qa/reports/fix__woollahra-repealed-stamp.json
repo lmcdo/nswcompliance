@@ -1,0 +1,24 @@
+{
+  "tier": "minor",
+  "justification": "Documentation-only change (.claude/dq_checks.json, .claude/DATA_QUALITY_TRACKER.md) recording a data operation already performed and verified live -- no code, no schema, no new logic.",
+  "commit_hash": "PENDING",
+  "files": [
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "The tracking note overstates what was fixed -- e.g. claims all of Woollahra is clean when only 3 chapters were actually touched, or claims the 2 coverage_fail chapters are approved.",
+      "what_happens": "A future session trusts the ledger and skips checking live data, missing that b3/d5 are unapproved and still need human review, or wrongly believes the other 19 chapters were fixed.",
+      "mitigated": true,
+      "how": "Every claim in the note is a number re-derived live this session (742-row backup count, 3-of-22 live-corrupted count, 0 has_margin_artifact hits post-extraction, the 4/11 and 43/54 coverage_fail figures straight from the pipeline's own output) rather than asserted from memory, and the note explicitly says 'not approved' for b3/d5 and 'remain untouched' for the other causes.",
+      "repro": "python scripts/dq_check.py --coverage"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- this commit touches no code or schema. The underlying data operation it documents (AI re-extraction of 3 Woollahra chapters into dcp_review_queue) already happened and was already verified live before this commit was written; nothing further executes on merge.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No -- the claims in this note are already independently verified against live data (queried directly, not assumed) before being written."
+  }
+}
