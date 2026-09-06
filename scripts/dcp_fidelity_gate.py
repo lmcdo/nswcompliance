@@ -81,16 +81,112 @@ def _best_page(prov_words: set, pages: dict) -> tuple[int | None, bool]:
     return best[1], confident
 
 
+_TABLE_CAPTION_RE = re.compile(r"\*\*Table\s+(\d+)\*\*\s*\(Page\s+(\d+)\)")
+_PAGE_CITATION_RE = re.compile(r"\bpage\s+(\d+)\b", re.IGNORECASE)
+_FIGURE_CITATION_RE = re.compile(r"\bFigures?\s+(\d+)\b")
+_FIGURE_RANGE_RE = re.compile(r"\bFigures?\s+(\d+)\s*[-–]\s*(\d+)\b")
+_CLAUSE_CITATION_RE = re.compile(r"\b(?:DS|PC)\s*(\d+(?:\.\d+)*)\b")
+# ku_ring_gai's running-footer stamp: "p 14-135" (section-scoped page number),
+# distinct from the generic "page N" phrasing _PAGE_CITATION_RE already covers.
+_FOOTER_STAMP_RE = re.compile(r"\bp\s+(\d+)-(\d+)\b")
+# A property/street-address number ("no.810 Pacific Highway") cited to name a
+# SITE, not a regulatory value -- the real measurement sits elsewhere in the
+# same sentence (e.g. "3 metre setback ... applying to property no.810 ...").
+_PROPERTY_NUMBER_RE = re.compile(r"\bno\.?\s*(\d+)\b", re.IGNORECASE)
+
+
+def _page_window(page: int, pages: dict, text: str = "") -> str:
+    """Text of the anchor page, its immediate neighbours, and any page this row's
+    own '**Table N** (Page P)' captions name explicitly.
+
+    The +-1 neighbours catch a clause that opens near the bottom of one page and
+    finishes on the next (footer stamps like '2.1-4' / '2.1-5' are the tell). The
+    caption pages catch something +-1 can miss: a row built from several stitched
+    tables (dcp_extract_changed.py's enqueue_review_changes) can legitimately span
+    MORE than 3 consecutive pages, and each caption already states -- as fact, not
+    a word-overlap guess -- exactly which page its table came from. Neither widening
+    falls all the way back to the whole chapter, which is a much weaker check (used
+    only when the page itself is ambiguous) because almost any word appears
+    somewhere in a multi-page chapter."""
+    window_pages = {p for p in (page - 1, page, page + 1) if p in pages}
+    for m in _TABLE_CAPTION_RE.finditer(text or ""):
+        cap_page = int(m.group(2))
+        if cap_page in pages:
+            window_pages.add(cap_page)
+    return " ".join(pages[p] for p in sorted(window_pages))
+
+
+def _citation_numbers(text: str) -> set:
+    """Numbers that only ever appear as a page/table/figure/clause CITATION --
+    pointing at content elsewhere in the document -- not as a regulatory value in
+    this row's own content. All four sources are structurally guaranteed rather
+    than guessed:
+
+      * '**Table N** (Page P)' -- a caption dcp_extract_changed.py stamps itself when
+        stitching an extracted table into the provision text (see enqueue_review_changes);
+        P is the real pdfplumber page the table came from, known by construction, never
+        an AI guess.
+      * 'page N' / 'Figure N' / 'Figures N-M' in body prose -- the AI faithfully
+        transcribing a cross-reference to a different page/figure elsewhere in the same
+        DCP (e.g. 'see Figures 8-11', 'Comprehensive Inner West DCP 2016 page 123').
+        A checker anchored on ONE page can never meaningfully validate a pointer to a
+        DIFFERENT one -- the citation might be correct or wrong, but 'is N a real page
+        somewhere in this multi-page chapter' answers nothing either way, so these are
+        excluded from fidelity checking rather than produce a false alarm.
+      * 'DS N.N' / 'PC N' -- a cross-reference to a DIFFERENT provision's own Design
+        Solution / Performance Criteria code within the same DCP numbering convention
+        (e.g. 'pursuant to clauses PC2 and DS 2.6') -- the same idea as excluding this
+        row's OWN ref_number digits (code_nums in ground_row), just for a citation to
+        someone else's code instead of this row's own.
+      * 'p 14-135' -- ku_ring_gai's own running-footer stamp (section-scoped page
+        number; measured live: chapter section-b-part-14d, ref 14d_9), distinct
+        formatting from the 'page N' case but the same underlying thing.
+      * 'no.810 Pacific Highway' -- a property/street-address number naming a SITE,
+        not a regulatory value (the real measurement is elsewhere in the same
+        sentence, e.g. '3 metre setback ... applying to property no.810 ...')."""
+    text = text or ""
+    nums: set = set()
+    for m in _TABLE_CAPTION_RE.finditer(text):
+        nums.add(m.group(1))  # table index
+        nums.add(m.group(2))  # page number
+    for m in _PAGE_CITATION_RE.finditer(text):
+        nums.add(m.group(1))
+    for m in _FIGURE_RANGE_RE.finditer(text):
+        lo, hi = int(m.group(1)), int(m.group(2))
+        if 0 <= hi - lo <= 20:  # sane range guard against a stray "Figure 3-99999" match
+            nums.update(str(n) for n in range(lo, hi + 1))
+    for m in _FIGURE_CITATION_RE.finditer(text):
+        nums.add(m.group(1))
+    for m in _CLAUSE_CITATION_RE.finditer(text):
+        nums.add(m.group(1))
+    for m in _FOOTER_STAMP_RE.finditer(text):
+        nums.add(m.group(1))
+        nums.add(m.group(2))
+    for m in _PROPERTY_NUMBER_RE.finditer(text):
+        nums.add(m.group(1))
+    return nums
+
+
 def ground_row(text: str, ref_number: str, pages: dict) -> dict:
     """Grade one row. Returns dict(status, detail, verified_page)."""
     prov_words = set(vf._content_words(text))
     page, confident = _best_page(prov_words, pages)
     verified_page = page if confident else None
-    # Ground numbers/words against the confident page, else the whole chapter.
-    source = pages.get(page, "") if confident else " ".join(pages.values())
+    # Ground numbers/words against the confident page +- 1 (plus any page this row's
+    # own table captions name), else the whole chapter.
+    source = _page_window(page, pages, text) if confident else " ".join(pages.values())
 
     code_nums = set(vf._NUM_RE.findall((ref_number or "").split("__")[-1].replace("_", ".")))
-    nums = [n for n in vf._numbers(text) if n not in code_nums]
+    # A provision's own markdown heading (e.g. "# D-Part12 55-63 Smith Street") carries
+    # street-address/precinct numbers that are structural labels, not content to verify.
+    # dcp_extract_changed.py always builds new_text as "# {heading}\n\n{content}"
+    # (enqueue_review_changes / the table-stitching helper), so requiring the first
+    # line to actually start with '#' is what keeps this from swallowing a genuine
+    # single-line/no-heading row's own numbers into a bogus "heading" exclusion.
+    first_line = (text or "").splitlines()[0] if text else ""
+    heading_nums = set(vf._NUM_RE.findall(first_line)) if first_line.lstrip().startswith("#") else set()
+    excluded_nums = code_nums | heading_nums | _citation_numbers(text)
+    nums = [n for n in vf._numbers(text) if n not in excluded_nums]
     absent = [r["v"] for r in vf.value_absent_from_source(
         [{"v": n, "src": source} for n in nums], value_field="v", source_field="src")]
     grounded_words = sum(1 for w in prov_words if w in source)

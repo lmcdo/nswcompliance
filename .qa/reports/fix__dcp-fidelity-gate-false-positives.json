@@ -1,0 +1,72 @@
+{
+  "tier": "standard",
+  "justification": "Real logic change to the DCP review-queue fidelity checker (scripts/dcp_fidelity_gate.py) plus one small behavioural change to how rows are inserted (scripts/dcp_extract_changed.py). Standard rather than Light because it changes what gets written to dcp_review_queue.fidelity_status/status for every pending row across all 9 councils (5,660 rows), and a wrong exclusion could silently hide a genuine hallucinated number. Standard rather than Critical because nothing here touches the served table (regulatory_provisions) or auto-approves anything into production -- dcp_review_queue is a human-gated staging table, the exclusions only affect which rows a human sees as 'needs review' vs 'grounded', numeric changes always still require a human unless the number is demonstrably present in the source text, and every exclusion pattern was verified against real flagged rows (not invented) before being added.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/dcp_fidelity_gate.py",
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_fidelity_gate.py",
+    "tests/test_dcp_extraction_fidelity.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_fidelity_gate.py tests/test_dcp_extraction_fidelity.py -v",
+    "fails_when": "a genuine wrong number stops being flagged, a citation/heading/caption exclusion swallows a real measurement, the +-1/caption page window stops widening correctly, or a row-level 'failed' verdict stops auto-rejecting",
+    "observed_red": "Every exclusion has a paired negative test proving it does NOT fire on plain measurement prose (test_plain_measurement_not_swept_up_as_a_citation, test_property_number_requires_no_prefix_not_bare_digits) and every widening has a paired test proving a genuinely wrong/unrelated number still flags (test_hallucinated_number_flags_even_with_wider_window, test_unrelated_text_flags_not_grounded). The heading-exclusion regression itself was caught this way: the first draft used text.splitlines()[0] unconditionally, and test_hallucinated_number_flags_even_with_wider_window (a single-line fixture) immediately failed because its own only line got treated as 'the heading' and exempted -- fixed by requiring the line to actually start with '#', which is how dcp_extract_changed.py always builds new_text. 45/45 tests pass; full suite 5,040 passed / 2 skipped / 0 failed (up from 5,022 baseline)."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_review_queue currently holds 5,660 pending rows across 9 councils (status IN pending/in_progress, change_type <> removed), queried live via dq_db.py, not assumed. Before this fix: 597 flagged, 5,063 grounded. Every excluded number pattern was read off a real flagged row's actual text and its actual source PDF page before being added: city_of_sydney 2_1_2 (page-straddle, footer stamps 2.1-4/2.1-5), blacktown 10_4_3_1 (3 stitched tables, real source pages 61/62/63 -- named by the row's own **Table N** (Page P) captions), ashfield D-Part12 ('55-63 Smith Street' heading number), ashfield D-Part4/D-Part13 (Table-caption index+page numbers), ashfield D-Part6/DS3.17 ('Figures 8-11', 'page 123' cross-references), ashfield D-Part1/PC2 ('pursuant to clauses PC2 and DS 2.6'), ku_ring_gai 14d_9 ('p 14-135' running-footer stamp, 'no.810 Pacific Highway' property number next to its real '3 metre setback').",
+    "assumption_mismatch": "The original assumption (from the census that opened DQ-97) was that 'garbled fragments' meant bad extraction quality needing re-extraction. Reading the actual flagged rows disproved that for the numeric-flag class entirely: in every one of the ~20 cases inspected, the AI's extracted text was already correct, and the checker's own single-page/no-window numeric-grounding logic was the defect, not the extraction. A second assumption also broke: that ku_ring_gai's remaining flags were the same false-positive class as the other 8 councils. Direct re-verification (re-graded with the fully current code, counts unchanged) showed several Part-14 site precincts have a fourth, distinct, still-undiagnosed cause -- not silently folded into 'fixed'.",
+    "new_vs_existing": "No new surface. dcp_fidelity_gate.py and its confident-page/whole-chapter grounding design already existed (2026-09 DQ-95/DQ-97 era) -- this fix widens what 'the source' means for a confident match (a small, evidenced page window instead of one page) and narrows what counts as 'a number needing grounding' (excluding citations/captions/footers that were never regulatory content), it does not add a new checking mechanism or a new table/column. The auto-reject change reuses the existing 'rejected' status value and the existing rejected+content-hash commit-blocking logic in dcp_commit_approved.py verbatim -- no new status value, no new blocking rule."
+  },
+  "functions": [
+    {
+      "name": "ground_row",
+      "file_line": "scripts/dcp_fidelity_gate.py:170",
+      "input": "a row's extracted text, its ref_number, and the chapter's {page_num: text} dict",
+      "output": "dict(status, detail, verified_page, source_quote) -- 'grounded' or 'flagged' with the reason",
+      "why_it_changed": "the source text it grounds against now widens to a +-1 page window plus any page the row's own table captions name (was: the single confident anchor page only), and the number set it checks now excludes citation/caption/heading/footer numbers (was: every number in the text)",
+      "if_none": "without the window widening, any provision whose real content spans a page break or a multi-page stitched table falsely fails the 75% word-match threshold (measured: blacktown 10_4_3_1 dropped to 60% grounding under the old +-1-only window, 100% with the fix); without the citation exclusions, a table caption's own page number, a 'Figure 8-11' cross-reference, or a property street number gets treated as an unverified regulatory value and the row is wrongly sent to human review even though its content is entirely correct"
+    }
+  ],
+  "real_layer_exempt": {
+    "scripts/dcp_extract_changed.py": "The SQL/DB-interaction this diff touches (the INSERT INTO dcp_review_queue statement inside enqueue_review_changes) is completely unchanged in shape, columns, or connection handling -- this diff only changes which VALUE is bound to the existing status placeholder (a Python row_status = 'rejected' if fidelity == 'failed' else 'pending' expression) and adds one existing local variable (change_type) to an existing function call. That exact INSERT statement and its cursor.execute() call are already exercised end-to-end by tests/test_dcp_review_enqueue.py (MagicMock-based, asserts on cur.execute.call_args_list and the params tuple shape) -- pre-existing coverage, not new. The genuinely new logic (row_status derivation, change_type pass-through) is pure Python with zero DB interaction, covered directly by tests/test_dcp_extraction_fidelity.py::TestRowLevelFailurePreRejected. A live-DB integration test here would mainly re-verify that psycopg2 executes an already-tested INSERT statement, not this diff's actual change."
+  },
+  "break_it": [
+    {
+      "scenario": "A genuinely wrong/hallucinated number happens to be immediately preceded by 'page'/'Figure'/'DS'/'PC'/'no.'/'p N-' in the same row's text, or shares a digit-string with a 'Figures N-M' range cited elsewhere in the same row.",
+      "what_happens": "The exclusion is set-based per row, not proximity-aware, so the wrong number would be wrongly exempted from the numeric check and the row would ground when it should flag.",
+      "mitigated": "Partially. Every pattern was scoped as narrowly as the real evidence justified (a literal 'page N' or 'DS N.N' shape, not a bare number), and DCP prose essentially never phrases a genuine measurement as 'page 4.5 metres' or 'DS 9.9'. Accepted as a known, narrow tradeoff -- documented explicitly in the test file (TestCitationNumbers.test_figure_range_expands_to_every_endpoint) rather than silently ignored -- for the same reason the pre-existing whole-chapter fallback (used when the page match itself is ambiguous) already accepts: a large, measured cut in false positives against a narrow, specific coincidence.",
+      "repro": "python -m pytest tests/test_dcp_fidelity_gate.py::TestCitationNumbers -v",
+      "how": "The word-grounding ratio check (ground_ratio < 0.75) is untouched by any of this session's changes and still independently catches wholesale-wrong content; only the NUMBER check has this narrow gap, and only for a number that both matches a citation shape AND is wrong."
+    },
+    {
+      "scenario": "A row-level 'failed' classify_row_fidelity verdict (garbled_glyphs/junk_ref/emptied_by_strip/section_collapsed/oversize_new_provision) is itself a false positive on a genuinely good row.",
+      "what_happens": "The row now auto-inserts as status='rejected' instead of 'pending', so a human reviewing the 'pending' queue would not see it and would have to know to check the 'rejected' history to override it.",
+      "mitigated": "classify_row_fidelity's docstring states each check is 'proven against a real 2026-07 defect' with no recorded false-positive history in this codebase (test_small_section_shrink_is_not_collapse etc. already exist to guard the known near-miss cases). The row is not deleted or hidden -- it's fully audit-visible as 'rejected' with its reason attached, identical to what a human clicking reject would have produced, and dcp_commit_approved's existing rejected+content-hash blocking still prevents the chapter from committing until it's resolved (superseded by re-extraction or a human override), unchanged by this fix.",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py::TestRowLevelFailurePreRejected -v",
+      "how": "TestRowLevelFailurePreRejected.test_failed_row_actually_yields_rejected_status + test_status_is_derived_from_fidelity_not_hardcoded pin the exact derivation; TestCommitBlockingScope (pre-existing) proves rejected+current-hash still blocks commit."
+    },
+    {
+      "scenario": "The caption-page window (_page_window with text) reads a Table N (Page P) caption from a DIFFERENT row's text by mistake, or a malformed caption names a page number outside the chapter.",
+      "what_happens": "Could silently widen grounding to an unrelated page.",
+      "mitigated": "The caption is parsed from the SAME row's own text passed into ground_row -- never cross-row. A page number the caption names that isn't a real key in the chapter's pages dict is silently skipped (`if cap_page in pages`), so a malformed/out-of-range caption cannot widen the window at all, only a real, existing page can.",
+      "repro": "python -m pytest tests/test_dcp_fidelity_gate.py::TestPageWindowFollowsTableCaptions::test_no_captions_falls_back_to_plain_neighbours -v",
+      "how": "test_window_extends_to_a_captioned_page_outside_neighbours and test_no_captions_falls_back_to_plain_neighbours together prove the window is exactly {page-1, page, page+1} plus only real, present caption pages -- nothing else."
+    },
+    {
+      "scenario": "The single-line-row heading-exclusion bug (splitlines()[0] catching the whole text when there's no separate heading line) regresses in a future edit.",
+      "what_happens": "A single-line row's own (and only) numbers would be silently exempted from the numeric check entirely.",
+      "mitigated": "Fixed by requiring the first line to start with '#' before treating it as a heading -- matches dcp_extract_changed.py's own invariant that new_text is always built as '# {heading}\\n\\n{content}'. A dedicated regression test locks this in.",
+      "repro": "python -m pytest tests/test_dcp_fidelity_gate.py::TestHeadingExclusionRequiresRealHeading -v",
+      "how": "test_single_line_row_without_heading_marker_is_still_checked fails loudly (asserts 'flagged') if the guard is ever removed; caught this exact regression once already while writing this fix."
+    }
+  ],
+  "mutation_analysis": "Not run via MUTMUT (scripts/, not services/ -- outside the tip's scope). Instead: every new exclusion/widening function has a paired test that fails if the function is stubbed to a trivial always-true or always-empty return -- _citation_numbers returning set() always would fail 8 of the TestCitationNumbers/TestPageWindowFollowsTableCaptions tests that assert specific numbers/pages ARE excluded/included; _page_window ignoring its text argument would fail test_window_extends_to_a_captioned_page_outside_neighbours; ground_row always returning 'grounded' would fail every test in TestGroundRowStillCatchesRealErrors and TestHeadingExclusionRequiresRealHeading's single-line case. Full suite (5,040 passed / 2 skipped) confirms no regression elsewhere.",
+  "residual_risk": "Three things left open on purpose, all documented above and none silently hidden: (1) ku_ring_gai's 3 pathologically-slow chapters (14a/14d/14e) carry stale pre-fix fidelity_status values until their separate performance defect is diagnosed. (2) A fourth, undiagnosed false-positive cause remains in several ku_ring_gai Part-14 site-specific precincts (14i/14j/14k/14l/14m/14n), confirmed unchanged by this fix. (3) The known citation/coincidence tradeoff in break_it above. None of these three affect what's already committed as 'grounded' -- they only mean the 169 current flagged count could still fall further with follow-up work, never that it understates real risk.",
+  "post_merge": {
+    "db_reset": "No schema change. This branch's own gate runs already wrote the improved fidelity_status/status values live to dcp_review_queue (a staging table) during verification -- that already happened and is independently re-confirmed by the falsifiable_check numbers above, not something that executes on merge.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Open /internal/dcp-review and confirm the flagged count across councils matches the 169 total measured here (python scripts/dcp_fidelity_gate.py --council <name> is safely re-runnable and idempotent if a spot-check is wanted)."
+  }
+}

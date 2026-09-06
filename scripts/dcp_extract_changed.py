@@ -3372,13 +3372,24 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
             (council, chapter_key),
         )
         for change_type, ref, old_t, new_t, old_p, new_p, has_num in rows:
-            # Fidelity gate: strip doubled-glyph running headers, then verdict
-            # the row. A 'failed' row still lands in the queue (it blocks the
-            # chapter's commit and the watchdog reports it) but carries its
-            # reason so nobody has to diagnose garbage by eye again.
+            # Fidelity gate: strip doubled-glyph running headers, then verdict the row.
+            # A row-level 'failed' verdict (garbled_glyphs/junk_ref/emptied_by_strip/
+            # section_collapsed/oversize_new_provision) is a deterministic, already-
+            # proven defect -- the pipeline has already concluded the content is
+            # garbage, so it lands pre-rejected (status='rejected', reason attached)
+            # instead of making a human click reject on something already diagnosed.
+            # It still blocks the chapter's commit under the current content hash
+            # (dcp_commit_approved's rejected+hash-match check) and the watchdog
+            # still reports it -- only the manual click is removed.
+            #
+            # A chapter-level-only suspect_reason (count_drop/coverage_fail/schema_fail/
+            # etc, with no row-level failure) still lands 'pending': that flag is about
+            # missing/incomplete extraction, not bad content IN this row, and needs a
+            # human's judgment on the whole batch -- there's nothing here to auto-reject.
             new_t = strip_garbled_header_lines(new_t)
-            fidelity, row_reason = classify_row_fidelity(ref, old_t, new_t)
+            fidelity, row_reason = classify_row_fidelity(ref, old_t, new_t, change_type)
             merged_reason = "; ".join(x for x in (reason, row_reason) if x) or None
+            row_status = "rejected" if fidelity == "failed" else "pending"
             cur.execute(
                 """
                 INSERT INTO dcp_review_queue
@@ -3386,11 +3397,11 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
                      old_text, new_text, old_page, new_page, has_numeric_change,
                      source_content_hash, suspect_reason, is_full_replace, status,
                      fidelity_status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending', %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (council, chapter_key, document_id, ref, change_type,
                  old_t, new_t, old_p, new_p, has_num, content_hash, merged_reason,
-                 is_full_replace, fidelity),
+                 is_full_replace, row_status, fidelity),
             )
             total += 1
 
