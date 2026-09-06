@@ -1,10 +1,11 @@
 {
   "tier": "critical",
   "justification": "Fixes a silent-production-bug class exactly matching this repo's own CRITICAL definition: a live, unauthenticated, no-UI-required API endpoint could email a fabricated regulatory verdict (a false 'you can build a duplex here' claim) to a real inbox, and separately mislead internal staff via the leads dashboard, based entirely on a client-supplied boolean nothing verified. Sol HIGH 0.99 confidence, independently re-confirmed live against origin/main before writing any fix.",
-  "commit_hash": "PENDING_FIRST_COMMIT",
+  "commit_hash": "9ef20347",
   "falsifiable_check": {
     "command": "npx jest __tests__/api/canibuildit/lead-verdict-integrity.test.ts",
-    "fails_when": "Any of the 20 tests in that file fails -- most directly, reverting route.ts's :236-273 change back to using the client's `eligible` verbatim (old vulnerable behaviour) fails 'client claims eligible=true, server recomputes false: email states the negative, not the claim' and its mirror, because the email/DB assertions check the RECOMPUTED value while the client claim in the test is deliberately the opposite of it -- a spoofed claim passing through unchanged makes those specific assertions fail, not merely a coverage gap."
+    "fails_when": "Any of the 19 tests in that file fails -- most directly, reverting route.ts's :236-273 change back to using the client's `eligible` verbatim (old vulnerable behaviour) fails 'client claims eligible=true, server recomputes false: email states the negative, not the claim' and its mirror, because the email/DB assertions check the RECOMPUTED value while the client claim in the test is deliberately the opposite of it -- a spoofed claim passing through unchanged makes those specific assertions fail, not merely a coverage gap.",
+    "observed_red": "Actually reproduced, not just argued: swapped route.ts for the pre-fix origin/main version (git checkout origin/main -- the version with no recomputation at all) and re-ran this exact test file. Result: 16 of 19 tests failed, 3 passed (tests unrelated to the recompute path, e.g. ones exercising only buildEmailContent's pre-existing null branch). Representative failures observed directly: the dual-occ-referral DB-value test expected false, received true; the recompute-failure-stores-null test expected null, received true (old code still trusted the client's claim even though recomputeDualOccEligible didn't exist yet); the mismatch-warning test expected one console.warn call, received zero. Restored the fixed route.ts afterward and re-ran: 19 of 19 passed. Both runs' full output captured in-session before this report was written."
   },
   "files": [
     "frontend-nextjs/app/api/canibuildit/lead/route.ts",
