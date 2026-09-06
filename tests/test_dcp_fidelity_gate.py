@@ -3,14 +3,59 @@
 Contract under test (anchored to a real false-flag found live: city_of_sydney
 section-2-locality-statements, provision 2_1_2, page 11 — text visibly runs
 across a page break per its own footer stamps '2.1-4' / '2.1-5'):
-  - a confident page match grounds against a +-1 page window, not just the
-    single anchor page, so text that legitimately straddles a page break is
-    not falsely flagged as unmatched
+  - a confident page match grounds WORDS against a +-1 page window, not just
+    the single anchor page, so text that legitimately straddles a page break
+    is not falsely flagged as unmatched
   - a genuinely wrong/hallucinated number is still flagged even against the
     wider window (the fix must not weaken the numeric check into a rubber
     stamp — NUMERIC changes stay human-gated by design)
   - an ambiguous (non-confident) page match still falls back to the whole
     chapter, unchanged by this fix
+
+2026-09-07 Sol cross-review (4 HIGH + 1 MEDIUM on the pushed branch) forced a
+second pass on the numeric check specifically. Two of the four HIGH findings
+are fixed; the other two were attempted and REVERTED after live re-verification
+showed the fix caused a worse regression than the risk it closed -- documented
+honestly below rather than silently claimed as solved:
+
+  FIXED:
+  - citation/caption/heading exclusion is SPAN-based, not value-based -- a
+    legitimate 'Figure 10' citation no longer removes every occurrence of the
+    digit '10' from the row, only its own matched span (confidence 1.0's
+    mechanism is fixed; see the residual note below for why the finding as a
+    whole is only partially closed)
+  - a citation's own phrase must be independently verified present in the
+    WHOLE CHAPTER's text before it is trusted at all -- a hallucinated
+    citation (source says 'DS 2.6', extraction says 'DS 2.7') is no longer
+    exempted just because it LOOKS like a citation (confidence 0.99, fully closed)
+  - numbers are checked against a NARROWER window than words (anchor page +
+    caption pages only, not +-1 neighbours) -- an unrelated NEIGHBOURING
+    provision's coincidental number can no longer mask a wrong one this way
+    (confidence 0.98, the neighbour-page half, fully closed)
+  - row-level auto-reject (dcp_extract_changed.py) is scoped to only the
+    three near-certain defect reasons; a SIZE heuristic (section_collapsed /
+    oversize_new_provision) that could legitimately fire on a genuine
+    amendment stays 'pending' for a human (confidence 0.91, fully closed)
+
+  ATTEMPTED AND REVERTED (residual, accepted, documented -- not silently
+  claimed fixed): sentence-level source matching (checking a number against
+  its best-matching SOURCE SENTENCE rather than the whole window) was built to
+  close the remaining half of confidence 1.0/0.98 -- a citation's digit
+  coinciding with an unrelated genuinely-wrong value ON THE SAME PAGE. Re-run
+  against real production data, it caused a severe regression: real DCP PDFs
+  are full of structural extraction messiness naive sentence-splitting cannot
+  handle -- unpunctuated TABLE rows (blacktown 6_1_7: an entire multi-hundred-
+  word road-width table became one 'sentence') and two-column-interleaved text
+  (hornsby 1_2_6: alternating unrelated column fragments produce nonsense
+  'sentences'). ashfield/blacktown/georges_river/hornsby all jumped from
+  single digits to 15-50%+ flagged. A length guard fixed the table case but
+  not the interleaving case, and interleaving is a KNOWN, pre-existing,
+  separately-tracked defect class (suspect_reason's preflight_two_column) --
+  chasing further guards was diminishing, so the sentence-level mechanism was
+  removed entirely rather than shipped half-working. The SAME-PAGE masking
+  coincidence (source page independently contains the same digit for an
+  unrelated reason) remains open, same as before this session -- see
+  TestGroundRowStillAcceptsKnownResidualRisk below.
 """
 
 import importlib.util
@@ -35,10 +80,14 @@ def _load(name):
 _gate = _load("dcp_fidelity_gate")
 _best_page = _gate._best_page
 _page_window = _gate._page_window
+_number_window = _gate._number_window
+_blank = _gate._blank_verified_references
 ground_row = _gate.ground_row
 
 
 class TestPageWindow:
+    """The WORD window: anchor +-1 plus any page a table caption names."""
+
     def test_includes_neighbours_when_present(self):
         pages = {10: "alpha", 11: "beta", 12: "gamma"}
         assert _page_window(11, pages) == "alpha beta gamma"
@@ -50,6 +99,22 @@ class TestPageWindow:
     def test_single_page_chapter(self):
         pages = {1: "only page"}
         assert _page_window(1, pages) == "only page"
+
+
+class TestNumberWindow:
+    """The NUMBER window: anchor page ONLY plus caption pages -- deliberately
+    narrower than the word window (Sol HIGH 0.98): +-1 neighbours exist for
+    word-straddling, and including them for numbers would let an unrelated
+    adjacent provision's coincidentally-identical value mask a wrong one."""
+
+    def test_excludes_plain_neighbours_the_word_window_would_include(self):
+        pages = {10: "alpha", 11: "beta", 12: "gamma"}
+        assert _number_window(11, pages, "no captions here") == "beta"
+
+    def test_still_includes_captioned_pages(self):
+        pages = {60: "x", 61: "table one", 62: "y", 63: "table three"}
+        text = "**Table 1** (Page 61)\n\n**Table 3** (Page 63)"
+        assert _number_window(61, pages, text) == "table one table three"
 
 
 class TestGroundRowPageStraddle:
@@ -119,83 +184,138 @@ class TestNonConfidentFallbackUnchanged:
         assert result["status"] == "grounded"
 
 
-class TestCitationNumbers:
-    """2026-09-07: live queue rows showed 'numbers not in source' false-flagging
-    numbers that were never regulatory values at all -- table captions we stamp
-    ourselves, and page/figure/clause cross-references the AI faithfully
-    transcribed. Fixtures below are the real flagged rows (ashfield/blacktown,
-    council DB), trimmed to the minimum reproducing snippet."""
+class TestBlankVerifiedReferences:
+    """2026-09-07 Sol cross-review (2 HIGH). The earlier design excluded a
+    citation's digit VALUE everywhere in the row and trusted the citation's own
+    digits unconditionally. This version blanks only the matched SPAN, and only
+    once the matched phrase is independently verified present somewhere in the
+    chapter's real text (table captions are the one exception, verified by
+    construction -- see the function docstring)."""
 
-    _citation_numbers = staticmethod(_gate._citation_numbers)
-
-    def test_table_caption_excludes_both_index_and_page(self):
+    def test_table_caption_blanked_unconditionally(self):
         text = "some clause text\n\n**Table 3** (Page 63)\n\n<table>...</table>"
-        nums = self._citation_numbers(text)
-        assert "3" in nums and "63" in nums
+        cleaned = _blank(text, whole_chapter="")
+        assert "3" not in cleaned
+        assert "63" not in cleaned
+        assert "some clause text" in cleaned  # untouched outside the caption span
 
-    def test_page_citation_in_prose(self):
-        # ashfield D-Part6/DS3.17: "Comprehensive Inner West DCP 2016 page 123"
-        text = "see Figures 8-11 (maps).\nComprehensive Inner West DCP 2016 page 123\n\nFigure 10"
-        nums = self._citation_numbers(text)
-        assert "123" in nums
+    def test_page_citation_blanked_only_when_verified(self):
+        text = "Comprehensive Inner West DCP 2016 page 123"
+        cleaned = _blank(text, whole_chapter="comprehensive inner west dcp 2016 page 123")
+        assert "123" not in cleaned
 
-    def test_figure_range_expands_to_every_endpoint(self):
-        text = "see Figures 8-11 (maps) for the relevant elevations."
-        nums = self._citation_numbers(text)
-        assert {"8", "9", "10", "11"} <= nums
-        # KNOWN TRADEOFF, not a guarded case: if a genuine value elsewhere in the
-        # SAME row's text happens to share a digit-string with a figure range cited
-        # in that row (e.g. a real "10 m" height alongside "see Figures 8-11"), this
-        # exclusion is set-based, not proximity-aware, and would wrongly exempt it
-        # too. Accepted for the same reason the pre-existing whole-chapter fallback
-        # is: a large, measured cut in false positives against a narrow, specific
-        # coincidence, not a silent hole in the common case.
+    def test_unverifiable_page_citation_left_alone(self):
+        text = "Comprehensive Inner West DCP 2016 page 123"
+        cleaned = _blank(text, whole_chapter="nothing matching here at all")
+        assert "123" in cleaned
 
-    def test_figure_range_guards_against_absurd_span(self):
-        text = "see Figures 3-99999 for details."
-        nums = self._citation_numbers(text)
-        # "3" is separately caught by the single-figure citation pattern ("Figures 3")
-        # -- correct on its own terms, since it IS a real figure being cited. The guard
-        # under test is narrower: the RANGE must not expand to 99,996 excluded numbers.
-        assert "99999" not in nums
-        assert "50000" not in nums
+    def test_hallucinated_clause_citation_not_blanked(self):
+        """The exact scenario Sol found (confidence 0.99): source says DS 2.7,
+        extraction says DS 2.6 -- must NOT be exempted just because it looks
+        like a citation. PC2 stays too: a single-digit clause code never
+        verifies (_NUM_RE requires 2+ digits or a decimal), so it's always
+        conservatively left alone rather than blanked -- by design, not a gap,
+        since a lone digit is not confusable with a real measured value."""
+        text = "pursuant to clauses PC2 and DS 2.6"
+        cleaned = _blank(text, whole_chapter="pursuant to clauses pc2 and ds 2.7")
+        assert "2.6" in cleaned  # left alone -- unverifiable
+        assert "PC2" in cleaned  # left alone -- single digit never verifies
 
-    def test_clause_citation_ds_and_pc_codes(self):
-        # ashfield D-Part1/PC2: "pursuant to clauses PC2 and DS 2.6"
-        text = "12 m Street Wall Height pursuant to clauses PC2 and DS 2.6"
-        nums = self._citation_numbers(text)
-        assert "2" in nums and "2.6" in nums
+    def test_masking_scenario_blanks_only_the_citation_occurrence(self):
+        """The exact scenario Sol found (confidence 1.0): a legitimate 'Figure
+        10' citation must not remove a DIFFERENT, unrelated '10' elsewhere."""
+        text = "the maximum height is 10 m, see Figure 10 for the elevation."
+        cleaned = _blank(text, whole_chapter="see figure 10 for the elevation diagram")
+        assert "10 m" in cleaned  # the standalone measurement survives
+        assert "Figure 10" not in cleaned  # only the citation occurrence is gone
 
-    def test_plain_measurement_not_swept_up_as_a_citation(self):
-        """Guard against the exclusion swallowing genuine values: a setback
-        figure with no 'page'/'Figure'/'Table'/'DS'/'PC' nearby must survive."""
+    def test_property_number_blanked_only_when_address_verified(self):
+        text = "3 metre setback applying to property no.810 Pacific Highway."
+        cleaned = _blank(text, whole_chapter="setback applying to property no.810 pacific highway")
+        assert "810" not in cleaned
+        assert "3 metre" in cleaned
+
+    def test_wrong_property_number_not_blanked(self):
+        text = "3 metre setback applying to property no.811 Pacific Highway."
+        cleaned = _blank(text, whole_chapter="setback applying to property no.810 pacific highway")
+        assert "811" in cleaned
+
+    def test_heading_blanked_only_when_verified(self):
+        text = "# D-Part12 55-63 Smith Street Summer Hill\n\nbody text here"
+        cleaned = _blank(text, whole_chapter="d-part12 55-63 smith street summer hill other page")
+        assert "55-63" not in cleaned
+        assert "body text here" in cleaned
+
+    def test_wrong_heading_not_blanked(self):
+        """The wrong-site-range scenario Sol found (confidence 0.98): a
+        hallucinated address range must not be exempted just for being on the
+        first markdown-heading line."""
+        text = "# D-Part12 57-63 Smith Street Summer Hill\n\nbody text here"
+        cleaned = _blank(text, whole_chapter="d-part12 55-63 smith street summer hill other page")
+        assert "57" in cleaned
+
+    def test_no_heading_marker_not_blanked(self):
+        text = "front setback is 9.9 metres from the primary road boundary"
+        cleaned = _blank(text, whole_chapter="front setback is 4.5 metres from the primary road")
+        assert "9.9" in cleaned
+
+    def test_plain_measurement_never_touched(self):
         text = "the minimum rear setback is 4.5 metres from the boundary"
-        nums = self._citation_numbers(text)
-        assert "4.5" not in nums
+        assert _blank(text, whole_chapter="anything") == text
 
-    def test_footer_stamp_excludes_both_parts(self):
-        # ku_ring_gai section-b-part-14d/14d_9: "Ku-ring-gai Development Control
-        # Plan\n14D\nGORDON LOCAL CENTRE\np 14-135" -- a section-scoped running
-        # footer, distinct format from the generic "page N" citation.
-        text = "Ku-ring-gai Development Control Plan\n14D\nGORDON LOCAL CENTRE\np 14-135\n\nURBAN"
-        nums = self._citation_numbers(text)
-        assert "14" in nums and "135" in nums
+    def test_no_citations_returns_text_unchanged(self):
+        text = "plain body text with no citations at all"
+        assert _blank(text, whole_chapter="") == text
 
-    def test_property_number_excludes_the_address_not_the_setback(self):
-        # ku_ring_gai section-b-part-14d/14d_9, verbatim: the real value (3m) must
-        # survive; only the address number (810) is excluded.
-        text = ("3 metre setback to Radford Place applying to property no.810 "
-                "Pacific Highway for wider footpaths.")
-        nums = self._citation_numbers(text)
-        assert "810" in nums
-        assert "3" not in nums
 
-    def test_property_number_requires_no_prefix_not_bare_digits(self):
-        """Guard: a bare setback number with no 'no.'/'no ' prefix anywhere near
-        it must never be caught by this pattern."""
-        text = "side setback of 900mm applies to all boundaries"
-        nums = self._citation_numbers(text)
-        assert "900" not in nums
+class TestGroundRowCitationFindingsEndToEnd:
+    """End-to-end reproductions of Sol's findings through the full ground_row
+    pipeline. The hallucinated-citation finding (confidence 0.99) is fully
+    closed by _blank_verified_references's phrase-verification. The masking
+    finding (confidence 1.0) is only PARTIALLY closed -- span-based blanking
+    stops a citation from removing every occurrence of its digit value, but
+    the SAME-PAGE coincidence Sol's exact scenario describes (source
+    independently contains the digit for an unrelated reason) remains open,
+    same as before this session: see the module docstring's 'ATTEMPTED AND
+    REVERTED' note for why a sentence-level fix was tried, found to regress
+    real production data severely (unpunctuated tables, two-column
+    interleaving), and removed rather than shipped half-working."""
+
+    def test_hallucinated_citation_still_flags_end_to_end(self):
+        pages = {1: "pursuant to clauses pc2 and ds 2.7, the wall height applies."}
+        text = "# X\n\npursuant to clauses PC2 and DS 2.6, the wall height applies."
+        result = ground_row(text, "x__1_1", pages)
+        assert result["status"] == "flagged"
+        assert "2.6" in result["detail"]
+
+    def test_genuinely_correct_row_with_legitimate_citation_still_grounds(self):
+        """The fix must not become so strict it starts flagging correct rows
+        just because they happen to contain a citation."""
+        pages = {11: ("the maximum height is 8 m in this precinct. "
+                      "see figure 10 for the elevation diagram.")}
+        text = ("the maximum height is 8 m in this precinct. "
+                "see Figure 10 for the elevation diagram.")
+        result = ground_row(text, "x__1_1", pages)
+        assert result["status"] == "grounded"
+
+    def test_masking_scenario_is_a_documented_accepted_residual_not_silently_hidden(self):
+        """Confirms the HONEST state after reverting sentence-level matching:
+        this specific coincidence (a legitimate citation's digit + an unrelated
+        genuinely-wrong value sharing the same page) still grounds. This is a
+        real, known gap -- documented in the module docstring and QA report,
+        not silently claimed fixed. If this test starts failing (status
+        becomes 'flagged'), a future fix closed the gap for real; update this
+        test's assertion and the docstring together rather than leaving them
+        to contradict each other."""
+        pages = {
+            11: ("the maximum height is 8 m in this precinct. "
+                 "see figure 10 for the elevation diagram."),
+            12: "unrelated content about landscaping requirements setback controls fencing.",
+        }
+        text = ("the maximum height is 10 m in this precinct. "
+                "see Figure 10 for the elevation diagram.")
+        result = ground_row(text, "x__1_1", pages)
+        assert result["status"] == "grounded"  # accepted residual, see docstring above
 
 
 class TestPageWindowFollowsTableCaptions:
@@ -205,7 +325,7 @@ class TestPageWindowFollowsTableCaptions:
     even though the row's OWN caption already states it. Using that caption is
     exact, not another heuristic widening."""
 
-    def test_window_extends_to_a_captioned_page_outside_neighbours(self):
+    def test_word_window_extends_to_a_captioned_page_outside_neighbours(self):
         pages = {60: "unrelated", 61: "table one content", 62: "table two content",
                   63: "225mm above finished ground"}
         text = "flood controls\n\n**Table 1** (Page 61)\n\n**Table 3** (Page 63)"
@@ -268,3 +388,80 @@ class TestHeadingExclusionRequiresRealHeading:
                  "the design controls for this precinct address building form")
         result = ground_row(text, "x__12_1", pages)
         assert result["status"] == "grounded"
+
+
+class TestGateChapterScopesToActionableRows:
+    """2026-09-07: measured live that only 2,662 of 5,660 pending rows across all
+    9 councils sit in a chapter with existing live+actionable content AND are
+    themselves actionable text (not an introduction/definitions/boilerplate
+    section) -- the rest was being graded (spending real R2/CPU time) for
+    content that could never become served regulatory data even once approved.
+    gate_chapter now skips non-actionable rows entirely (ungraded, not flagged,
+    not touched); main()'s chapter query defaults to live+actionable chapters
+    only (see TestMainScopesToLiveChapters below for that half)."""
+
+    @staticmethod
+    def _run_gate_chapter(rows, pages):
+        """rows: list of (id, ref_number, new_text). Mocks the cursor and the
+        real R2/pdfplumber fetch so this stays a fast, offline unit test."""
+        from unittest.mock import MagicMock, patch
+        cur = MagicMock()
+        cur.fetchall.return_value = rows
+        with patch.object(_gate.vf, "_page_text_for_chapter", return_value=pages):
+            g, f, s = _gate.gate_chapter(cur, s3=None, council="x", chapter_key="y", r2_path="z")
+        return g, f, s, cur
+
+    def test_non_actionable_row_is_skipped_not_graded(self):
+        rows = [(1, "x__intro", "# Introduction\n\nThis Part provides additional "
+                                  "objectives and controls for development.")]
+        g, f, s, cur = self._run_gate_chapter(rows, pages={1: "anything"})
+        assert (g, f, s) == (0, 0, 1)
+        # skipped rows must never be written back -- ungraded means untouched
+        update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
+        assert update_calls == []
+
+    def test_actionable_row_is_still_graded_and_written(self):
+        rows = [(1, "x__1_1", "front setback is 4.5 metres from the primary road boundary")]
+        pages = {1: "front setback is 4.5 metres from the primary road boundary"}
+        g, f, s, cur = self._run_gate_chapter(rows, pages)
+        assert (g, f, s) == (1, 0, 0)
+        update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
+        assert len(update_calls) == 1
+        assert update_calls[0].args[1][0] == "grounded"
+
+    def test_mixed_batch_counts_each_bucket_correctly(self):
+        rows = [
+            (1, "x__intro", "# Introduction\n\nThis Part provides additional objectives."),
+            (2, "x__1_1", "front setback is 4.5 metres from the primary road boundary"),
+            (3, "x__1_2", "front setback is 9.9 metres from the primary road boundary"),
+        ]
+        pages = {1: "front setback is 4.5 metres from the primary road boundary"}
+        g, f, s, cur = self._run_gate_chapter(rows, pages)
+        assert (g, f, s) == (1, 1, 1)
+
+
+class TestMainScopesToLiveChapters:
+    """Source pin for the other half of the same fix: main()'s chapter-selection
+    SQL must default to live+actionable chapters only, with an explicit,
+    documented opt-out flag -- never silently drop rows, only skip grading them
+    until asked."""
+
+    @staticmethod
+    def _main_src():
+        src = open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                                "dcp_fidelity_gate.py"), encoding="utf-8").read()
+        start = src.index("def main()")
+        return src[start:]
+
+    def test_include_backlog_flag_exists(self):
+        assert "--include-backlog" in self._main_src()
+
+    def test_default_query_filters_on_live_actionable(self):
+        block = self._main_src()
+        assert "if not args.include_backlog:" in block
+        filt = block[block.index("if not args.include_backlog:"):]
+        filt = filt[:filt.index("if args.chapter:")]
+        assert "rp.is_current" in filt and "rp.v2_is_actionable" in filt
+
+    def test_skipped_count_is_reported_not_silently_dropped(self):
+        assert "non-actionable rows skipped, not graded" in self._main_src()

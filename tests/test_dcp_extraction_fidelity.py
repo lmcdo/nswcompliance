@@ -117,12 +117,19 @@ class TestQueueInsertCarriesFidelity:
 
 
 class TestRowLevelFailurePreRejected:
-    """2026-09 DQ-97 follow-up: a row-level 'failed' verdict is a deterministic,
-    already-proven defect (garbled_glyphs/junk_ref/emptied_by_strip/section_collapsed/
-    oversize_new_provision) -- the pipeline already knows it's garbage, so it should
-    land pre-rejected instead of making a human click reject on a pre-diagnosed row.
-    A chapter-level-only suspect_reason (count_drop/coverage_fail/...) must NOT
-    auto-reject -- that flag is about missing rows, not bad content in a present one."""
+    """2026-09 DQ-97 follow-up: a row-level 'failed' verdict whose reason is
+    EXCLUSIVELY one of the three near-certain defect classes (garbled_glyphs/
+    junk_ref/emptied_by_strip) -- the pipeline already knows it's garbage, so it
+    lands pre-rejected instead of making a human click reject on a pre-diagnosed
+    row. A chapter-level-only suspect_reason (count_drop/coverage_fail/...) must
+    NOT auto-reject -- that flag is about missing rows, not bad content in a
+    present one.
+
+    2026-09-07 Sol cross-review (MEDIUM 0.91): section_collapsed and
+    oversize_new_provision are SIZE heuristics, not certain-garbage detectors --
+    a genuine large new schedule or a genuine substantial restructure can
+    legitimately trigger them, so those two stay 'pending' for a human even when
+    'failed', rather than being silently auto-rejected out of the review queue."""
 
     @staticmethod
     def _enqueue_src():
@@ -134,7 +141,7 @@ class TestRowLevelFailurePreRejected:
 
     def test_status_is_derived_from_fidelity_not_hardcoded(self):
         block = self._enqueue_src()
-        assert 'row_status = "rejected" if fidelity == "failed" else "pending"' in block
+        assert "row_status = \"rejected\" if auto_reject else \"pending\"" in block
         # the INSERT must use the derived variable, not a literal 'pending'
         insert = block[block.index("INSERT INTO dcp_review_queue"):]
         insert = insert[:insert.index(")\n")]
@@ -158,13 +165,32 @@ class TestRowLevelFailurePreRejected:
         block = block[:block.index("if not rows:")]
         assert '"removed", r.get("ref_number"), r.get("old_text"), None,' in block
 
-    def test_failed_row_actually_yields_rejected_status(self):
-        """End-to-end of the derivation logic itself (not just its presence in
-        source): a row classify_row_fidelity marks 'failed' must compute to
-        row_status == 'rejected', and an 'ok' row to 'pending'."""
-        for fidelity, expected in (("failed", "rejected"), ("ok", "pending")):
-            row_status = "rejected" if fidelity == "failed" else "pending"
-            assert row_status == expected
+    def test_auto_reject_reasons_exclude_the_two_size_heuristics(self):
+        """Source pin for the Sol MEDIUM finding: section_collapsed and
+        oversize_new_provision must never be in the auto-reject set."""
+        assert _extract.classify_row_fidelity is not None  # module loaded
+        auto_reject = _extract._AUTO_REJECT_REASONS
+        assert "section_collapsed" not in auto_reject
+        assert "oversize_new_provision" not in auto_reject
+        assert auto_reject == {"garbled_glyphs", "junk_ref", "emptied_by_strip"}
+
+    def test_near_certain_reasons_still_auto_reject(self):
+        for fidelity, row_reason, expect_reject in (
+            ("failed", "garbled_glyphs", True),
+            ("failed", "junk_ref", True),
+            ("failed", "emptied_by_strip", True),
+            ("failed", "garbled_glyphs+junk_ref", True),
+            ("failed", "section_collapsed", False),
+            ("failed", "oversize_new_provision", False),
+            ("failed", "garbled_glyphs+section_collapsed", False),  # any non-near-certain tag blocks it
+            ("ok", None, False),
+        ):
+            reason_tags = set((row_reason or "").split("+")) if row_reason else set()
+            auto_reject = (fidelity == "failed" and reason_tags
+                           and reason_tags <= _extract._AUTO_REJECT_REASONS)
+            row_status = "rejected" if auto_reject else "pending"
+            assert row_status == ("rejected" if expect_reject else "pending"), \
+                f"reason={row_reason!r} expected reject={expect_reject}"
 
 
 class TestCommitBlockingScope:
