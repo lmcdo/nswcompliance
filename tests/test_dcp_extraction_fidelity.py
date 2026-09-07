@@ -116,6 +116,83 @@ class TestQueueInsertCarriesFidelity:
         assert "new_t = strip_garbled_header_lines(new_t)" in src
 
 
+class TestRowLevelFailurePreRejected:
+    """2026-09 DQ-97 follow-up: a row-level 'failed' verdict whose reason is
+    EXCLUSIVELY one of the three near-certain defect classes (garbled_glyphs/
+    junk_ref/emptied_by_strip) -- the pipeline already knows it's garbage, so it
+    lands pre-rejected instead of making a human click reject on a pre-diagnosed
+    row. A chapter-level-only suspect_reason (count_drop/coverage_fail/...) must
+    NOT auto-reject -- that flag is about missing rows, not bad content in a
+    present one.
+
+    2026-09-07 Sol cross-review (MEDIUM 0.91): section_collapsed and
+    oversize_new_provision are SIZE heuristics, not certain-garbage detectors --
+    a genuine large new schedule or a genuine substantial restructure can
+    legitimately trigger them, so those two stay 'pending' for a human even when
+    'failed', rather than being silently auto-rejected out of the review queue."""
+
+    @staticmethod
+    def _enqueue_src():
+        src = open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                                "dcp_extract_changed.py"), encoding="utf-8").read()
+        start = src.index("def enqueue_review_changes")
+        end = src.index("\ndef ", start + 1)
+        return src[start:end]
+
+    def test_status_is_derived_from_fidelity_not_hardcoded(self):
+        block = self._enqueue_src()
+        assert "row_status = \"rejected\" if auto_reject else \"pending\"" in block
+        # the INSERT must use the derived variable, not a literal 'pending'
+        insert = block[block.index("INSERT INTO dcp_review_queue"):]
+        insert = insert[:insert.index(")\n")]
+        assert "'pending'" not in insert
+
+    def test_classify_row_fidelity_is_called_with_change_type(self):
+        """Without passing change_type, the function's own 'removed' exemption for
+        emptied_by_strip can never engage at this call site (it silently defaults to
+        'changed'). Currently harmless only because removed rows always carry
+        new_text=None here -- passing it explicitly removes the latent trap instead
+        of relying on that second, unrelated guard staying true forever."""
+        block = self._enqueue_src()
+        assert "classify_row_fidelity(ref, old_t, new_t, change_type)" in block
+
+    def test_removed_rows_always_pass_none_new_text(self):
+        """The safety net the missing-argument bug was quietly relying on: confirm
+        it still holds, so a future refactor can't silently reintroduce the trap."""
+        src = open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                                "dcp_extract_changed.py"), encoding="utf-8").read()
+        block = src[src.index('for r in diff.get("removed", [])'):]
+        block = block[:block.index("if not rows:")]
+        assert '"removed", r.get("ref_number"), r.get("old_text"), None,' in block
+
+    def test_auto_reject_reasons_exclude_the_two_size_heuristics(self):
+        """Source pin for the Sol MEDIUM finding: section_collapsed and
+        oversize_new_provision must never be in the auto-reject set."""
+        assert _extract.classify_row_fidelity is not None  # module loaded
+        auto_reject = _extract._AUTO_REJECT_REASONS
+        assert "section_collapsed" not in auto_reject
+        assert "oversize_new_provision" not in auto_reject
+        assert auto_reject == {"garbled_glyphs", "junk_ref", "emptied_by_strip"}
+
+    def test_near_certain_reasons_still_auto_reject(self):
+        for fidelity, row_reason, expect_reject in (
+            ("failed", "garbled_glyphs", True),
+            ("failed", "junk_ref", True),
+            ("failed", "emptied_by_strip", True),
+            ("failed", "garbled_glyphs+junk_ref", True),
+            ("failed", "section_collapsed", False),
+            ("failed", "oversize_new_provision", False),
+            ("failed", "garbled_glyphs+section_collapsed", False),  # any non-near-certain tag blocks it
+            ("ok", None, False),
+        ):
+            reason_tags = set((row_reason or "").split("+")) if row_reason else set()
+            auto_reject = (fidelity == "failed" and reason_tags
+                           and reason_tags <= _extract._AUTO_REJECT_REASONS)
+            row_status = "rejected" if auto_reject else "pending"
+            assert row_status == ("rejected" if expect_reject else "pending"), \
+                f"reason={row_reason!r} expected reject={expect_reject}"
+
+
 class TestCommitBlockingScope:
     def test_rejected_blocks_only_current_hash(self):
         """A rejected row for a SUPERSEDED extraction must not wedge the
