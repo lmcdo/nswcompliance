@@ -47,13 +47,24 @@ QUERIES: dict[str, tuple[str, str]] = {
     ),
     "dcpNumericCouncils": (
         "Councils with DCP numeric controls",
-        # Matches /api/dcp/coverage/route.ts exactly (fixed 2026-09-07) --
-        # no parent_lga filter, so Ashfield/Leichhardt/Marrickville (Inner
-        # West sub-councils, parent has 0 current rows to be shown under)
-        # are counted by their own display name instead of being dropped.
-        "SELECT COUNT(DISTINCT r.display_name) "
-        "FROM dcp_setback_controls c JOIN lga_registry r ON r.slug = c.lga "
-        "WHERE c.is_current = TRUE AND r.slug != 'nsw_statewide'",
+        # Matches /api/dcp/coverage/route.ts exactly (fixed 2026-09-07,
+        # corrected same day after Sol cross-review HIGH 0.96 caught a
+        # first-attempt overcount): Ashfield/Leichhardt/Marrickville
+        # (abolished pre-2016-merger councils, parent_lga='inner_west')
+        # are aggregated under Inner West's CURRENT display name via
+        # COALESCE, not counted as three separate councils, and the
+        # needs_review guard is included -- an earlier version of this
+        # exact query claimed to "match the route exactly" while actually
+        # missing that guard (Sol HIGH 0.99, same review round).
+        "SELECT COUNT(DISTINCT COALESCE(parent.display_name, r.display_name)) "
+        "FROM dcp_setback_controls c "
+        "JOIN lga_registry r ON r.slug = c.lga "
+        "LEFT JOIN lga_registry parent ON parent.slug = r.parent_lga "
+        "WHERE c.is_current = TRUE "
+        "AND (c.needs_review IS NULL OR c.needs_review = FALSE) "
+        "AND r.slug != 'nsw_statewide' "
+        "AND r.is_active = TRUE "
+        "AND (parent.is_active IS NULL OR parent.is_active = TRUE)",
     ),
     "dcpSetbackRows": (
         "DCP setback/control rows",

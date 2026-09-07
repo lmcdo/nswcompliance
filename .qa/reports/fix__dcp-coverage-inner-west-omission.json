@@ -1,11 +1,11 @@
 {
   "tier": "standard",
-  "justification": "Changes a live, public-facing API response (/api/dcp/coverage) that answers 'which councils do you cover' and feeds a coverage figure published on 7 marketing/product pages via the single source of truth (frontend-nextjs/lib/coverage.ts). Standard, not Light, because a wrong council list or count is a public claim about product coverage -- exactly the class of thing this project's own outreach-hold campaign exists to prevent. Standard, not Critical, because this is a read-only SELECT (no write, no schema change) and the fix REDUCES a known understatement (was silently hiding 3 real, deeply-integrated councils) rather than introducing new risk -- verified against production before shipping, not asserted.",
+  "justification": "Changes a live, public-facing API response (/api/dcp/coverage) that answers 'which councils do you cover' and feeds a coverage figure published on 7 marketing/product pages via the single source of truth (frontend-nextjs/lib/coverage.ts). Standard, not Light, because a wrong council list or count is a public claim about product coverage -- exactly the class of thing this project's own outreach-hold campaign exists to prevent, and this branch's own first attempt proved that risk is real (see break_it). Standard, not Critical, because this is a read-only SELECT (no write, no schema change).",
   "commit_hash": "PENDING",
   "falsifiable_check": {
     "command": "python scripts/verify_coverage_stats.py; cd frontend-nextjs && npx jest __tests__/api/dcp-coverage.test.ts",
-    "fails_when": "the route's SQL re-acquires a parent_lga filter (or any other predicate that drops Ashfield/Leichhardt/Marrickville), lib/coverage.ts's dcpNumericCouncils drifts from the live count again, verify_coverage_stats.py's own query stops matching the route's query, or the route stops failing visibly (500 + empty list) on a DB error",
-    "observed_red": "Before this fix: verify_coverage_stats.py reported the published '25' against the true state (28 councils actually hold current, non-flagged controls) -- this is the exact drift the script exists to catch, and it was already latent (silently tolerated by the coverage.ts comment explicitly keeping the published figure wrong to match the endpoint's own bug, per its own prior text: 'Kept at 25 so this figure and the list the endpoint renders cannot disagree'). Re-run after the fix: python scripts/verify_coverage_stats.py -> 'Councils with DCP numeric controls: published 28, live 28, OK' -- all 9 DB-backed stats report OK, none drifted as a side effect."
+    "fails_when": "the route's SQL re-acquires a parent_lga filter, stops aggregating a sub-council under its current parent via COALESCE, drops the needs_review guard, lib/coverage.ts's dcpNumericCouncils drifts from the live count again, verify_coverage_stats.py's own query stops matching the route's query, or the route stops failing visibly (500 + empty list) on a DB error",
+    "observed_red": "THREE real gaps caught before merge, not after -- two by Sol cross-review on push (round 1), one by qa_gate's own static DB-currency guard on the same round, all fixed before pushing again: (1) [Sol HIGH 0.99] verify_coverage_stats.py's dcpNumericCouncils query claimed to 'match the route exactly' while missing the needs_review guard the route has always had -- currently harmless by coincidence (28 either way against today's data, re-verified directly), but a council with every current row flagged needs_review=TRUE would silently pass this script's check while the public endpoint excluded it. (2) [Sol HIGH 0.96] the first fix attempt removed the parent_lga filter with NO aggregation, which listed Ashfield/Leichhardt/Marrickville -- three councils ABOLISHED in the 2016 Inner West merger, no longer real local government areas -- as three separate CURRENT councils, taking the published count from 25 to 28. The true, parent-aware count is 26 (25 unaffected + Inner West, newly surfaced), verified directly against production. (3) [qa_gate static guard] neither the child nor resolved-parent lga_registry row was gated on is_active -- this project's own pre-pr-review rule requires an explicit currency filter on every SELECT. Checked, not assumed, before adding it: 0 rows in lga_registry are currently inactive, so this changes nothing today (still 26); it is a defensive guard against a future retired council, not a live bug. Re-run after all three fixes: verify_coverage_stats.py -> 'Councils with DCP numeric controls: published 26, live 26, OK' -- all 9 DB-backed stats OK."
   },
   "files": [
     "frontend-nextjs/app/api/dcp/coverage/route.ts",
@@ -14,51 +14,51 @@
     "frontend-nextjs/__tests__/api/dcp-coverage.test.ts"
   ],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls (1,071 rows) joined to lga_registry via the existing `lga` -> `slug` foreign key. No schema change, no new table, no new join -- the fix removes one filter predicate (`r.parent_lga IS NULL`) from an already-live query.",
-    "assumption_mismatch": "None found -- verified the fix's exact effect against production BEFORE editing any file: dropping the filter changes 25 -> 28 councils, adding exactly Ashfield/Leichhardt/Marrickville, zero duplicates, no other council affected. This was the fix the route's own pre-existing code comment already named as the deliberately-deferred correct resolution ('KNOWN GAP, deliberately left for a ruling rather than patched here') -- not a new diagnosis.",
-    "new_vs_existing": "Applies immediately to the next request against the live endpoint -- no backfill, no re-extraction, nothing to migrate. The three newly-included councils' underlying data (99 current dcp_setback_controls rows) already existed; this only changes which rows a read-only SELECT surfaces."
+    "existing_data": "dcp_setback_controls (1,071 rows) joined to lga_registry via the existing `lga` -> `slug` foreign key, plus a second self-join on lga_registry to resolve a sub-council's parent (`parent_lga`). No schema change, no new table.",
+    "assumption_mismatch": "The first-attempt fix assumed 'stop excluding these three rows' was the whole fix. It was not: the DEEPER fact is that Ashfield/Leichhardt/Marrickville are not current councils at all (abolished in the 2016 merger into Inner West Council) -- the original parent_lga IS NULL filter's INTENT (bucket under the parent) was right, its EXECUTION was wrong (the parent had 0 rows to bucket under, so it dropped them instead of aggregating). Caught by Sol cross-review, not by the pre-shipping verification, which only checked count deltas (25->28) and real-word-vs-garbage, not real-world council identity. Lesson: verifying a count changed correctly is not the same as verifying the THING being counted is correct.",
+    "new_vs_existing": "Applies immediately to the next request -- no backfill, no migration. The underlying data (99 current controls under the three sub-council slugs) already existed; this only changes how a read-only SELECT names and aggregates it."
   },
   "functions": [
     {
       "name": "GET",
-      "file_line": "frontend-nextjs/app/api/dcp/coverage/route.ts:17",
+      "file_line": "frontend-nextjs/app/api/dcp/coverage/route.ts:20",
       "input": "no parameters -- a plain GET request",
       "output": "JSON { councils: string[] }, or { councils: [] } with HTTP 500 on a DB error",
-      "why_it_changed": "removed the r.parent_lga IS NULL predicate from the SELECT -- it was meant to bucket a sub-council's controls under its parent's display name (e.g. Inner West), but Inner West's own lga_registry row carries zero current controls, so the filter silently DROPPED Ashfield/Leichhardt/Marrickville instead of showing them under anything",
-      "if_none": "the endpoint that answers 'which councils do you cover' keeps omitting the three councils with the deepest DCP integration in the product (99 current controls between them), and every page reading COVERAGE_DISPLAY.dcpNumericCouncils keeps publishing 25 instead of the true 28"
+      "why_it_changed": "replaced the r.parent_lga IS NULL filter (which silently dropped Ashfield/Leichhardt/Marrickville because their parent Inner West had 0 current rows to be 'shown under') with a LEFT JOIN + COALESCE that aggregates each sub-council's rows under its CURRENT parent's display name -- 'Inner West', not three abolished pre-2016-merger names",
+      "if_none": "either the endpoint keeps omitting the councils with the deepest DCP integration in the product (the original bug), or -- if only the filter is dropped without aggregation -- it wrongly presents three non-existent local government areas as current councils, overstating coverage the opposite way"
     }
   ],
   "break_it": [
     {
-      "scenario": "Dropping the parent_lga filter accidentally re-includes a council that SHOULD be hidden (e.g. a different sub-council relationship elsewhere in lga_registry, not just Inner West's three).",
-      "what_happens": "A council with no real DCP integration could wrongly appear in the coverage list.",
+      "scenario": "A sub-council relationship other than Inner West's exists in lga_registry and the COALESCE aggregation groups it incorrectly.",
+      "what_happens": "A council could be mis-attributed to the wrong parent, or a real distinct council could be wrongly merged with another.",
       "mitigated": true,
-      "how": "Verified directly against production before shipping, not assumed: the fixed query's result set is exactly the old 25-council list PLUS Ashfield/Leichhardt/Marrickville, nothing else changed, zero duplicates. is_current + needs_review guard predicates are untouched -- a council only appears because it has real, non-flagged, current dcp_setback_controls rows, same standard as before.",
-      "repro": "python scripts/verify_coverage_stats.py -- reports live=28, matching the published figure exactly",
-      "how_measured": "ad-hoc script this session, run against the real production DB via dq_db.session(): compared the old query's result set to the new one directly (set difference), not just the counts."
+      "how": "Verified directly against production before shipping: lga_registry currently has exactly one parent_lga relationship set (ashfield/leichhardt/marrickville -> inner_west); the fixed query's full result set was printed and manually checked -- 26 names, all real current councils, no duplicates, no unexpected merges.",
+      "repro": "python scripts/verify_coverage_stats.py -- reports live=26, matching the published figure exactly",
+      "how_measured": "ad-hoc script this session, run against the real production DB via dq_db.session(): printed the complete result list, not just the count."
     },
     {
-      "scenario": "lib/coverage.ts's dcpNumericCouncils and the live endpoint drift apart again in the future (a new council onboarded, a chapter deactivated) with nothing catching it.",
-      "what_happens": "A published marketing number silently goes stale, the exact failure mode this fix corrects.",
+      "scenario": "This exact class of bug -- a fix that changes a public coverage claim without checking whether the underlying entity identity is still correct -- recurs on a future coverage-related change.",
+      "what_happens": "A published number could be technically 'derived from real data' while still misrepresenting what that data means in the real world (this branch's own first attempt).",
       "mitigated": true,
-      "how": "Not newly introduced by this change -- scripts/verify_coverage_stats.py already exists as the standing drift check for every COVERAGE field (this fix keeps its dcpNumericCouncils query byte-identical in shape to the route's own, so the two can never silently diverge from each other, only both drift from the DB together, which the script catches).",
-      "repro": "python scripts/verify_coverage_stats.py",
-      "how_measured": "N/A -- pre-existing check, re-run and confirmed passing after this change (see falsifiable_check.observed_red)."
+      "how": "Documented explicitly in both route.ts's and lib/coverage.ts's comments: the lesson is verifying a count CHANGED correctly is not the same as verifying the THING being counted is correct. Sol cross-review caught it this time; the comment trail means a future session re-touching this query starts from the corrected reasoning, not the first draft.",
+      "repro": "N/A -- process/documentation mitigation, not a runtime check",
+      "how_measured": "N/A"
     },
     {
-      "scenario": "The new frontend-nextjs/__tests__/api/dcp-coverage.test.ts has never been executed -- this worktree has no node_modules (bare worktree), so Jest cannot run locally.",
-      "what_happens": "A syntax error or a wrong mock shape in the new test file would not be caught until CI, which does have node_modules.",
+      "scenario": "The new frontend-nextjs/__tests__/api/dcp-coverage.test.ts has never been executed locally -- this worktree has no node_modules (bare worktree), so Jest cannot run here.",
+      "what_happens": "A syntax error or a wrong mock shape would not be caught until CI, which does have node_modules.",
       "mitigated": true,
-      "how": "Written to match tests/__tests__/api/dcp-structured-controls.test.ts's exact established pattern for this codebase (mocking @/lib/db's getPool, not the query internals) rather than inventing a new approach, and the route.ts source (GET's exact control flow, NextResponse.json shape, try/catch/500 path) was read directly before writing each assertion, not guessed. Named as an explicit, honest limitation here rather than silently assumed to pass -- CI's Jest run is the first real execution.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/dcp-coverage.test.ts -v (will run for the first time in CI on push)"
+      "how": "Written to match tests/__tests__/api/dcp-structured-controls.test.ts's exact established pattern (mocking @/lib/db's getPool). Named as an explicit, honest limitation rather than silently assumed to pass -- CI's Jest run is the first real execution, and this report will be re-validated if it fails there.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/dcp-coverage.test.ts -v"
     }
   ],
-  "mutation_analysis": "Not run via MUTMUT (frontend-nextjs/, not services/, outside the tip's scope). The new Jest suite has a paired positive test (parent_lga predicate absent) and a paired negative test (nsw_statewide predicate still present) that would fail if the fix were reverted or over-applied (e.g. dropping the nsw_statewide guard too).",
-  "residual_risk": "None left open on purpose. This was a fully-scoped, single-predicate fix with a pre-existing code comment already naming the exact correct resolution and a pre-existing verification script (verify_coverage_stats.py) that now confirms it end-to-end.",
+  "mutation_analysis": "Not run via MUTMUT (frontend-nextjs/, outside the tip's scope). The new Jest suite has a paired positive test (COALESCE aggregation present) and a paired negative test (abolished council names must NOT appear as separate entries) that would fail if the fix regressed to either the pre-fix or the first-attempt-overclaiming shape.",
+  "residual_risk": "None left open on purpose. Two real gaps were found by Sol cross-review and fixed in this same round, not deferred -- both are now covered by the falsifiable check and the new test suite.",
   "post_merge": {
     "db_reset": "No. Read-only query change; nothing writes to the database.",
     "secrets": "No.",
     "other_repo": "No.",
-    "manual_verify": "Optional spot-check once deployed: curl https://verify.plotdetect.com.au/api/dcp/coverage and confirm Ashfield/Leichhardt/Marrickville appear in the councils array; visit /what-you-get or /developers and confirm the published council count reads 28, not 25."
+    "manual_verify": "Optional spot-check once deployed: curl https://verify.plotdetect.com.au/api/dcp/coverage and confirm the response contains 'Inner West' and does NOT contain 'Ashfield'/'Leichhardt'/'Marrickville' as separate entries; visit /what-you-get or /developers and confirm the published council count reads 26."
   }
 }
