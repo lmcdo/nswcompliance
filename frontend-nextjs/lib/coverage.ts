@@ -24,21 +24,28 @@
  *   provisionsTotal            SELECT COUNT(*) FROM regulatory_provisions
  *   dcpActionableProvisions    SELECT COUNT(*) FROM regulatory_provisions
  *                                WHERE v2_is_actionable = TRUE AND v2_dcp_layer IS NOT NULL
- *   dcpNumericCouncils         SELECT COUNT(DISTINCT r.display_name)
+ *   dcpNumericCouncils         SELECT COUNT(DISTINCT COALESCE(parent.display_name, r.display_name))
  *                                FROM dcp_setback_controls c
  *                                JOIN lga_registry r ON r.slug = c.lga
+ *                                LEFT JOIN lga_registry parent ON parent.slug = r.parent_lga
  *                                WHERE c.is_current = TRUE
+ *                                  AND (c.needs_review IS NULL OR c.needs_review = FALSE)
  *                                  AND r.slug != 'nsw_statewide'
- *                                  AND r.parent_lga IS NULL
+ *                                  AND r.is_active = TRUE
+ *                                  AND (r.parent_lga IS NULL OR parent.is_active = TRUE)
  *                                (identical to /api/dcp/coverage — the canonical list)
- *                                ⚠ UNDERSTATES BY THREE. The parent_lga IS NULL filter drops
- *                                Ashfield, Leichhardt and Marrickville, which carry
- *                                parent_lga='inner_west' while the parent holds 0 is_current
- *                                rows — so the three councils with the DEEPEST DCP integration
- *                                are invisible here. Councils actually holding current,
- *                                non-flagged controls: 28. Kept at 25 so this figure and the
- *                                list the endpoint renders cannot disagree; the endpoint is
- *                                the thing to fix, and it is not fixed here.
+ *                                FIXED 2026-09-07: was 25, kept deliberately understated to
+ *                                match /api/dcp/coverage's own bug (a parent_lga IS NULL
+ *                                filter that dropped Ashfield/Leichhardt/Marrickville — the
+ *                                three councils with the DEEPEST DCP integration — because
+ *                                their parent Inner West registry row holds 0 current rows
+ *                                to be "shown under"). First fix attempt (same day) removed
+ *                                the filter with no aggregation and landed on 28, wrongly
+ *                                counting the three abolished pre-2016-merger councils as
+ *                                separate CURRENT councils — caught by Sol cross-review
+ *                                (HIGH 0.96) before merge. Corrected to aggregate them under
+ *                                Inner West's current display name: 26 (25 + Inner West,
+ *                                newly surfaced), re-verified live.
  *   dcpSetbackTripleCouncils   Councils holding ALL THREE of front/side/rear setback — the
  *                                claim the conveyancer page actually makes. Live:
  *                                WITH t AS (SELECT lga,
@@ -89,7 +96,7 @@
 export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
-  dcpNumericCouncils: 25,
+  dcpNumericCouncils: 26,
   dcpSetbackTripleCouncils: 23,
   dcpFullCouncils: 7,
   dcpSetbackRows: 1069,
@@ -112,7 +119,7 @@ export const COVERAGE = {
 export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
-  dcpNumericCouncils: '25',
+  dcpNumericCouncils: '26',
   dcpSetbackTripleCouncils: '23',
   dcpFullCouncils: '7',
   dcpSetbackRows: '1,000+',
