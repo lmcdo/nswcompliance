@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Static marketing-copy removal on frontend-nextjs/app/for/planners/page.tsx -- no logic, no DB query, no schema. Removes the hero 'See pricing' link + 'early access' suffix and deletes the bottom Pricing section ($49/mo comparison) per explicit user instruction: this page is the landing target for an outreach campaign asking planners for free feedback on an untested tool, and showing a future price undercuts that ask.",
-  "commit_hash": "PENDING",
+  "commit_hash": "7ff4c975",
   "files": [
     "frontend-nextjs/app/for/planners/page.tsx"
   ],
