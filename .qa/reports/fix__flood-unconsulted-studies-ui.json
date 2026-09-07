@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a new servable field on a liability-sensitive surface (flood status) that reaches two live report UIs (standalone /reports/flood tool and the Intelligence Brief). No DB schema change and no new verdict logic -- it exposes a fact the backend already computes but was silently dropping (pydantic extra='ignore') -- but wrong wiring here could either show nothing (current bug, low harm) or, if the three-state guard were done wrong, misrender 'not assessed' as a clear reading, which is exactly the class of defect #892 and the 2026-08-24 Dockerfile fix both exist to prevent. Standard, not critical: additive only, reuses existing tested helpers (lib/not-assessed.ts), doesn't touch the verdict computation itself.",
-  "commit_hash": "aaabb98f",
+  "commit_hash": "167eda91",
   "falsifiable_check": {
     "command": "python -m pytest tests/test_brief_contract_drift.py tests/test_brief_contracts.py tests/test_flood_truth.py tests/test_flood_raster_deploy.py tests/test_flood_study_filenames.py tests/test_flood_queries.py tests/test_flood_normalise.py -q && python scripts/brief_field_coverage_ratchet.py",
     "fails_when": "in_100yr_flood_zone_unconsulted is removed from FloodServiceOutput/FloodDetail (the contract fixtures assert the exact key set and go red), or the ratchet baseline is reverted without the field (field-coverage check flags it as untracked again)",
@@ -73,6 +73,13 @@
       "mitigated": true,
       "how": "scripts/brief_field_coverage_ratchet.py --regen was run and the baseline now locks both FloodDetail.in_100yr_flood_zone_unconsulted and FloodServiceOutput.in_100yr_flood_zone_unconsulted as tracked fields; a future silent drop of either would need an explicit, reviewed baseline change to pass CI.",
       "repro": "python scripts/brief_field_coverage_ratchet.py"
+    },
+    {
+      "scenario": "Sol cross-review (HIGH, 0.95) on the first push of this branch: FloodTool.tsx's negative-verdict wording said 'Outside the 1% AEP extent' / 'this property', overclaiming a definitive geographic guarantee a run that only consulted the sources it could reach doesn't actually give -- e.g. a large parcel where the geocoded point falls outside a consulted raster's extent while another part of the parcel intersects it.",
+      "what_happens": "A reader sees a flat, reassuring 'Outside the extent' green line for the whole property when the underlying check only speaks to the checked location this run.",
+      "mitigated": true,
+      "how": "frontend-nextjs/components/tools/FloodTool.tsx:507-514 -- reworded to mirror the Brief's own already-shipped, unmodified wording for the same field (page.tsx:704-706): 'No source in this run maps this location inside the extent', scoped to 'this run' and 'this location' rather than an absolute property-wide claim.",
+      "repro": "Read the diff: FloodTool.tsx's negative-verdict value/detail strings now match the Brief's existing scoped pattern verbatim in structure."
     }
   ],
   "post_merge": {

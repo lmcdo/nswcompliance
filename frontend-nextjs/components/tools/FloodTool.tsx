@@ -505,10 +505,16 @@ function FloodCard({ result }: { result: FloodResult }) {
   if (aepVerdict !== null) {
     findings.push({
       label: '1% AEP (1-in-100-year) flood extent',
-      value: aepVerdict ? 'Inside the 1% AEP extent' : 'Outside the 1% AEP extent',
+      value: aepVerdict
+        ? 'At least one source maps this location inside the extent'
+        : 'No source in this run maps this location inside the extent',
+      // Scoped to "sources in this run" and "this location", matching the
+      // Brief's own wording for the same field (page.tsx:704-706) — never a
+      // bare "outside the flood extent", which would overclaim a guarantee
+      // the underlying sources don't give for the whole parcel.
       detail: aepVerdict
-        ? 'A council or statutory flood study places this property inside the 1-in-100-year flood extent.'
-        : 'Every source that can answer this question was consulted and none placed this property inside the 1-in-100-year flood extent.',
+        ? 'A council or statutory flood study maps this location within the 1-in-100-year flood extent.'
+        : 'Every source that could answer this question for this run was consulted, and none of them maps this location within the 1-in-100-year flood extent.',
       severity: aepVerdict ? 'red' : 'green',
     });
   } else if (o.in_100yr_flood_zone_unconsulted && o.in_100yr_flood_zone_unconsulted.length > 0) {
