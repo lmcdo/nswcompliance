@@ -648,7 +648,15 @@ function FloodCard({ result }: { result: FloodResult }) {
     for (const raw of o.flood_studies) {
       if (!raw || typeof raw !== 'object') continue;
       const study = raw as Record<string, unknown>;
-      const studyName = typeof study.study_name === 'string' ? study.study_name : null;
+      const studyKey = typeof study.study_key === 'string' && study.study_key ? study.study_key : null;
+      // Fall back to a humanised study_key when study_name is missing so a
+      // real, usable figure is never silently dropped just because one
+      // string field on the entry didn't validate.
+      const displayName = typeof study.study_name === 'string' && study.study_name
+        ? study.study_name
+        : studyKey
+          ? `${studyKey.charAt(0).toUpperCase()}${studyKey.slice(1)} flood study`
+          : null;
       const design = study.design && typeof study.design === 'object'
         ? (study.design as Record<string, unknown>)
         : null;
@@ -656,7 +664,7 @@ function FloodCard({ result }: { result: FloodResult }) {
       const onePct = onePctRaw && typeof onePctRaw === 'object'
         ? (onePctRaw as { depth_m?: unknown; level_m_ahd?: unknown })
         : null;
-      if (!studyName || !onePct) continue;
+      if (!displayName || !onePct) continue;
       const depth = typeof onePct.depth_m === 'number' ? onePct.depth_m : null;
       const level = typeof onePct.level_m_ahd === 'number' ? onePct.level_m_ahd : null;
       if (depth == null && level == null) continue;
@@ -670,15 +678,19 @@ function FloodCard({ result }: { result: FloodResult }) {
         // and a study can supply only one of the two.
         label: depth != null ? '1-in-100-year flood depth' : '1-in-100-year flood level',
         value: figure,
-        detail: `${studyName} — a named local flood study covering this address, more detailed than the standard government overlay used elsewhere in NSW. This is the modelled water ${depth != null ? 'depth' : 'level'} here during a 1% annual chance flood. Insurers and lenders may use flood information like this in their own assessments — confirm their specific requirements directly.`,
+        // Source-neutral vs the EPI overlay: naming this "more detailed than
+        // the standard overlay used elsewhere in NSW" would be an unqualified
+        // statewide comparison this component can't establish (some other
+        // area could have its own detailed local study too).
+        detail: `Modelled water ${depth != null ? 'depth' : 'level'} at this location from ${displayName}; the EPI overlay separately maps planning categories. Insurers and lenders may use flood information like this in their own assessments — confirm their specific requirements directly.`,
         severity: 'red',
       });
       // Normalized identity, not a bare study_key match: a malformed or
       // differently-cased key on a genuine Hawkesbury entry would otherwise
       // defeat the fallback-suppression below and let the same study render
       // twice (once here, once from the legacy flat fields).
-      const normalizedKey = typeof study.study_key === 'string' ? study.study_key.toLowerCase() : '';
-      if (normalizedKey === 'hawkesbury' || studyName.toLowerCase().includes('hawkesbury')) {
+      const normalizedKey = studyKey ? studyKey.toLowerCase() : '';
+      if (normalizedKey === 'hawkesbury' || displayName.toLowerCase().includes('hawkesbury')) {
         studiesShown.add('hawkesbury');
       }
     }
