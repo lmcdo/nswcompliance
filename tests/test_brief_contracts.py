@@ -41,6 +41,7 @@ EXPECTED_FLOOD_KEYS = {
     "bom_last_major_flood_peak_m",
     "bom_flood_history",
     "in_100yr_flood_zone",
+    "in_100yr_flood_zone_unconsulted",
     "ground_elevation_m_ahd",
     "s1_gap_warning",
     "flood_studies",

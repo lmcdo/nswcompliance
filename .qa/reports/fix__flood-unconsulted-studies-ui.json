@@ -1,0 +1,105 @@
+{
+  "tier": "standard",
+  "justification": "Adds a new servable field on a liability-sensitive surface (flood status) that reaches two live report UIs (standalone /reports/flood tool and the Intelligence Brief). No DB schema change and no new verdict logic -- it exposes a fact the backend already computes but was silently dropping (pydantic extra='ignore') -- but wrong wiring here could either show nothing (current bug, low harm) or, if the three-state guard were done wrong, misrender 'not assessed' as a clear reading, which is exactly the class of defect #892 and the 2026-08-24 Dockerfile fix both exist to prevent. Standard, not critical: additive only, reuses existing tested helpers (lib/not-assessed.ts), doesn't touch the verdict computation itself.",
+  "commit_hash": "13345e23",
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_brief_contract_drift.py tests/test_brief_contracts.py tests/test_flood_truth.py tests/test_flood_raster_deploy.py tests/test_flood_study_filenames.py tests/test_flood_queries.py tests/test_flood_normalise.py -q && python scripts/brief_field_coverage_ratchet.py",
+    "fails_when": "in_100yr_flood_zone_unconsulted is removed from FloodServiceOutput/FloodDetail (the contract fixtures assert the exact key set and go red), or the ratchet baseline is reverted without the field (field-coverage check flags it as untracked again)",
+    "observed_red": "Genuinely observed, not hypothetical: before tests/test_brief_contract_drift.py and tests/test_brief_contracts.py were updated in this same PR, the full pytest run failed exactly this way -- test_no_drift_when_all_contract_keys_present asserted drift False and got True, and test_flood_contract_fields_are_the_expected_service_keys' exact-set comparison failed -- both because the new field existed on the two pydantic models but not yet in the fixtures. Caught by pre-push's full suite, fixed in commit 8cf1041a, full suite re-run clean at 5069 passed."
+  },
+  "files": [
+    "services/intelligence_brief.py",
+    "frontend-nextjs/components/tools/FloodTool.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "scripts/brief_field_coverage_baseline.json",
+    "tests/test_brief_contract_drift.py",
+    "tests/test_brief_contracts.py"
+  ],
+  "pre_impl": {
+    "existing_data": "services/flood_truth.py already computes and returns in_100yr_flood_zone_unconsulted (a list of human-readable study names) in its raw outputs dict -- confirmed by reading normalise_flood_result() and by a direct smoke test. No DB or schema involved.",
+    "assumption_mismatch": "The field existed on the wire but was invisible end-to-end: FloodServiceOutput (pydantic, extra='ignore') silently dropped it before it ever reached FloodDetail, so even though /api/satellite/flood's route.ts spreads the full raw dict through untouched (verified), the Brief's typed layer never carried it and both live UIs never rendered it -- confirmed nowhere in FloodTool.tsx or the Brief's live render path before this change (grepped, zero matches), even though the generated static report page and the PDF export already used the exact same value via a shared, tested helper (lib/not-assessed.ts).",
+    "new_vs_existing": "Applies to every future flood run in Hawkesbury/Redbank/Tweed/Wollongong council areas where the address's own study is absent -- entirely a render-time change reading a field already present in stored/served outputs, no backfill needed for old rows (a null/missing field on an old row just means nothing renders, same as today)."
+  },
+  "functions": [
+    {
+      "name": "_build_flood_detail",
+      "file_line": "services/intelligence_brief.py:2286",
+      "input": "flood_raw dict from the flood pipeline's raw outputs",
+      "output": "a FloodDetail whose new field carries the unconsulted study name list",
+      "if_none": "Field stays None on FloodDetail -- frontend's Array.isArray guard treats that as 'nothing to show', same as before this change"
+    },
+    {
+      "name": "FloodCard (1% AEP finding block)",
+      "file_line": "frontend-nextjs/components/tools/FloodTool.tsx:499",
+      "input": "the verdict boolean/null plus the unconsulted study name array",
+      "output": "a findings[] entry (or none) rendered in the existing findings list",
+      "if_none": "verdict null AND unconsulted empty/absent -> no finding pushed, identical to current behaviour for the ~99% of addresses with no relevant named study"
+    },
+    {
+      "name": "SectionData in_100yr_flood_zone branch",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:699",
+      "input": "the raw val for this key, plus the sibling unconsulted array read off data",
+      "output": "a row in the Brief's satellite.flood section, or null (nothing rendered)",
+      "if_none": "val null and unconsulted not a non-empty array -> returns null, same as the pre-change hidden-when-null behaviour"
+    }
+  ],
+  "values": [
+    {
+      "value": "in_100yr_flood_zone_unconsulted",
+      "read_at": "frontend-nextjs/components/tools/FloodTool.tsx:517, frontend-nextjs/app/reports/intelligence-brief/page.tsx:715",
+      "nullable": "yes",
+      "guard_at": "both sites: `&&`/Array.isArray truthy-length check before use, matching the existing pattern in lib/not-assessed.ts's own consumers",
+      "if_missing": "no new finding/row rendered -- falls back to exactly today's behaviour, not an error state"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "in_100yr_flood_zone is null (not assessed) but a caller mistakenly reads this as the verdict being 'No' because a naive truthiness check treats null as falsy.",
+      "what_happens": "A property inside an unconsulted named flood study's coverage would read as 'not in a flood zone' -- exactly the #892 defect class.",
+      "mitigated": true,
+      "how": "Both new call sites use readFloodZoneVerdict()/an explicit `typeof val === 'boolean'` check before treating a value as a real verdict, never a bare truthiness test; verified by reading lib/not-assessed.ts's own three-state contract and by the existing flood-zone-three-state.test.ts suite, which locks this exact behaviour and was not modified.",
+      "repro": "frontend-nextjs/__tests__/lib/flood-zone-three-state.test.ts (unmodified, still covers readFloodZoneVerdict/floodZoneUnavailableMessage); python -m pytest tests/test_flood_truth.py tests/test_flood_raster_deploy.py tests/test_flood_study_filenames.py tests/test_flood_queries.py tests/test_flood_normalise.py -q"
+    },
+    {
+      "scenario": "Removing in_100yr_flood_zone from HIDE_WHEN_NULL_KEYS in the Brief causes the field to render noisy 'nothing to say' rows for the vast majority of addresses that have no nearby named study at all.",
+      "what_happens": "Clutter on every Brief report, not a wrong answer but a UX regression.",
+      "mitigated": true,
+      "how": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:718 -- the branch explicitly `return null`s when val is not boolean AND unconsulted is empty/absent, so the row only ever appears when there is something concrete to say (a named study exists and was unreachable).",
+      "repro": "Manual: run a Brief for a Sydney address with no local flood study (e.g. most of the served councils) and confirm no '1% AEP' row appears under satellite.flood, matching pre-change behaviour."
+    },
+    {
+      "scenario": "FloodServiceOutput's pydantic model (extra='ignore') silently drops the new field again if a future refactor renames it on the flood_truth.py side without updating this contract.",
+      "what_happens": "Field goes null forever, degrading silently back to today's gap with no warning.",
+      "mitigated": true,
+      "how": "scripts/brief_field_coverage_ratchet.py --regen was run and the baseline now locks both FloodDetail.in_100yr_flood_zone_unconsulted and FloodServiceOutput.in_100yr_flood_zone_unconsulted as tracked fields; a future silent drop of either would need an explicit, reviewed baseline change to pass CI.",
+      "repro": "python scripts/brief_field_coverage_ratchet.py"
+    },
+    {
+      "scenario": "Sol cross-review (HIGH, 0.95) on the first push of this branch: FloodTool.tsx's negative-verdict wording said 'Outside the 1% AEP extent' / 'this property', overclaiming a definitive geographic guarantee a run that only consulted the sources it could reach doesn't actually give -- e.g. a large parcel where the geocoded point falls outside a consulted raster's extent while another part of the parcel intersects it.",
+      "what_happens": "A reader sees a flat, reassuring 'Outside the extent' green line for the whole property when the underlying check only speaks to the checked location this run.",
+      "mitigated": true,
+      "how": "frontend-nextjs/components/tools/FloodTool.tsx:507-514 -- reworded to mirror the Brief's own already-shipped, unmodified wording for the same field (page.tsx:704-706): 'No source in this run maps this location inside the extent', scoped to 'this run' and 'this location' rather than an absolute property-wide claim.",
+      "repro": "Read the diff: FloodTool.tsx's negative-verdict value/detail strings now match the Brief's existing scoped pattern verbatim in structure."
+    },
+    {
+      "scenario": "Sol cross-review (MEDIUM, 0.97) on the second push: FloodTool.tsx's unconsulted-array guard was a bare truthy + .length check, not Array.isArray -- and a plain string also has .length, so a contract regression returning a single string instead of an array would pass the guard and then throw inside floodZoneUnavailableMessage's .filter()/.join() array methods, crashing the whole card render for every visitor on that run.",
+      "what_happens": "A backend regression that returns the wrong shape for this one new field takes down the entire flood result, not just the new row.",
+      "mitigated": true,
+      "how": "frontend-nextjs/components/tools/FloodTool.tsx:520-529 -- guard changed to Array.isArray(...) && length > 0 && every(name is string), mirroring the Brief's existing Array.isArray guard for the same field (page.tsx:719).",
+      "repro": "Manual: pass in_100yr_flood_zone_unconsulted as a bare non-empty string in a test fixture and confirm the finding is silently skipped (no row, no crash) rather than reaching floodZoneUnavailableMessage."
+    },
+    {
+      "scenario": "Sol cross-review (2 x HIGH 0.94, 1 x MEDIUM 0.91) on the third push: both FloodTool.tsx and the Brief rendered the boolean verdict branch unconditionally whenever in_100yr_flood_zone was true/false, without checking whether a named unconsulted study also existed -- so a hypothetical/future contradictory payload (false verdict + a non-empty unconsulted list, which the backend's own rule should prevent but nothing enforced against a regression) would render a reassuring green 'not in the flood zone' while silently dropping the unconsulted-source warning. The Brief's null-branch also cast unconsulted's elements to string without checking each one (same class as the FloodTool.tsx fix above, just not mirrored there yet).",
+      "what_happens": "A future backend bug that violates the false-only-when-unconsulted-is-empty invariant would produce a false-confidence clearance instead of degrading to 'not assessed', and malformed cached unconsulted entries could render a bogus study name like [object Object].",
+      "mitigated": true,
+      "how": "Both files restructured to compute a validated (Array.isArray + every-string) unconsulted list FIRST, then: verdict true -> positive finding always; verdict false AND no valid unconsulted -> real negative; any valid unconsulted present (verdict null OR the contradictory false+unconsulted case) -> 'not assessed', never a green clearance. FloodTool.tsx:504-554, page.tsx:700-758.",
+      "repro": "Manual: construct a fixture with in_100yr_flood_zone: false and in_100yr_flood_zone_unconsulted: ['Tweed Valley Flood Study'] and confirm both surfaces render 'Not assessed' (amber), not a green clearance; construct in_100yr_flood_zone_unconsulted: [{\"name\":\"x\"}] and confirm the Brief renders nothing rather than a bogus name."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "On the deployed preview, run a flood check for an address in the Tweed or Wollongong LGA (where the raster host-availability gap is currently live) and confirm both /reports/flood and the Intelligence Brief show a '1% AEP' row reading 'Not assessed' with a named-study explanation, rather than showing nothing."
+  }
+}

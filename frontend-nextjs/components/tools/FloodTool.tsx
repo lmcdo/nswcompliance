@@ -7,6 +7,7 @@ import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+import { readFloodZoneVerdict, floodZoneUnavailableMessage } from '@/lib/not-assessed';
 
 const FLOOD_STEPS: TransparencyStep[] = [
   { label: 'Checking EPI flood overlays…',              ms: 0 },
@@ -57,6 +58,15 @@ interface FloodOutputs {
   hawkesbury_flood_level_500aep: number | null;
   hawkesbury_flood_level_pmf: number | null;
   hawkesbury_flood_study: string | null;
+  // Three-state (2026-08-08): true/false are real verdicts, null means the
+  // question could not be answered — see lib/not-assessed.ts. Optional here
+  // because this interface predates the multi-study contract; older cached
+  // rows and the "unavailable" flood_signal path may not carry it.
+  in_100yr_flood_zone?: boolean | null;
+  // Named studies (e.g. "Redbank Creek flood study") that cover this address's
+  // council but could not be consulted for this report — files not on this
+  // host, most commonly. Only present when in_100yr_flood_zone is null.
+  in_100yr_flood_zone_unconsulted?: string[] | null;
 }
 
 interface FloodResult {
@@ -485,6 +495,68 @@ function FloodCard({ result }: { result: FloodResult }) {
 
   // Build findings with explanations
   const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];
+
+  // 1% AEP (1-in-100-year) verdict — three-state. A named council flood study
+  // can exist for this address's area (Hawkesbury, Redbank, Tweed, Wollongong)
+  // and still be unreachable on this run; when that happens the verdict is
+  // null and unconsulted names the study, so the reader knows a more precise
+  // answer exists rather than reading silence as "not in a flood zone".
+  const aepVerdict = readFloodZoneVerdict(o.in_100yr_flood_zone);
+  // Array.isArray + every-string, not a bare truthy/.length check: `outputs`
+  // is a JSON API response only asserted to be FloodResult by a type cast,
+  // not runtime-validated, so a contract regression returning a bare string
+  // or a malformed element would otherwise pass a `.length > 0` check (a
+  // string has .length too) and either throw inside
+  // floodZoneUnavailableMessage's array methods or render a bogus name.
+  // Mirrors the same guard on the Brief (page.tsx).
+  const rawUnconsulted = o.in_100yr_flood_zone_unconsulted;
+  const aepUnconsulted =
+    Array.isArray(rawUnconsulted) &&
+    rawUnconsulted.length > 0 &&
+    rawUnconsulted.every((name): name is string => typeof name === 'string')
+      ? rawUnconsulted
+      : null;
+  if (aepVerdict === true) {
+    // A positive finding stands on its own regardless of what else was
+    // unreachable — matches the backend's own three-state rule (only a
+    // NEGATIVE needs every source to have been asked).
+    findings.push({
+      label: '1% AEP (1-in-100-year) flood extent',
+      value: 'At least one source we checked places this location inside the flood extent',
+      // Source-neutral on purpose: the backend flags this from the EPI
+      // government overlay alone, a council/SES study, or a named flood-study
+      // raster (see flood_truth.py's in_100yr check) — naming "a council or
+      // statutory flood study" specifically would misattribute an EPI-only
+      // positive to evidence that wasn't actually consulted for this address.
+      detail: 'At least one of the sources we checked places this location within the 1-in-100-year flood extent.',
+      severity: 'red',
+    });
+  } else if (aepVerdict === false && !aepUnconsulted) {
+    // A real negative: every source that could answer was consulted.
+    findings.push({
+      label: '1% AEP (1-in-100-year) flood extent',
+      value: 'None of the sources we checked place this location inside the flood extent',
+      // Scoped to "sources we checked" and "this location", not a bare
+      // "outside the flood extent" — that would overclaim a guarantee the
+      // underlying sources don't give for the whole parcel.
+      detail: 'We checked every source that could answer this question, and none of them place this location within the 1-in-100-year flood extent.',
+      severity: 'green',
+    });
+  } else if (aepUnconsulted) {
+    // Either the verdict was never established (null), or the backend sent
+    // an internally contradictory payload — a False verdict alongside a
+    // named unconsulted study, which should never happen given the
+    // backend's own rule (in_100yr_flood_zone is only False when unconsulted
+    // is empty) but is treated as "not assessed" here rather than trusted,
+    // so a future backend regression degrades safely instead of rendering a
+    // false-confidence clearance.
+    findings.push({
+      label: '1% AEP (1-in-100-year) flood extent',
+      value: 'Not assessed',
+      detail: floodZoneUnavailableMessage(aepUnconsulted),
+      severity: 'amber',
+    });
+  }
 
   // Government flood overlay
   if (epiClass === 'none' && (signal === 'moderate' || signal === 'elevated')) {

@@ -17,6 +17,7 @@ import { GrannyFlatBriefCard } from '@/components/reports/GrannyFlatBriefCard';
 import { describeUnavailable, type UnavailableTone } from './unavailable';
 import { ShadowDisplay, type ShadowData } from '@/components/reports/ShadowDetailDisplay';
 import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
+import { floodZoneUnavailableMessage } from '@/lib/not-assessed';
 import { collectSources } from './provenance';
 
 // Brief LLM overlay (flag-gated, default OFF; #742 engine). Both this build-time
@@ -696,17 +697,66 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
-          if (key === 'in_100yr_flood_zone' && typeof val === 'boolean') {
-            return (
-              <div key={key} className="flex flex-col col-span-full">
-                <FieldLabel fieldKey={key} />
-                <dd className="text-sm text-slate-900 mt-0.5">
-                  {val
-                    ? 'Yes — at least one source in this run maps this location within a 1% AEP extent'
-                    : 'No — no source in this run maps this location within a 1% AEP extent'}
-                </dd>
-              </div>
-            );
+          if (key === 'in_100yr_flood_zone') {
+            // Array.isArray + every-string, not a bare truthy/.length check:
+            // `data` is an untyped JSON bag, so a contract regression or
+            // malformed cached row could hand this a non-array or an array
+            // of non-strings — either would otherwise reach
+            // floodZoneUnavailableMessage's array methods or render a bogus
+            // name (e.g. "[object Object]"). Mirrors the same guard on the
+            // standalone flood tool (FloodTool.tsx).
+            const rawUnconsulted = data.in_100yr_flood_zone_unconsulted;
+            const unconsulted =
+              Array.isArray(rawUnconsulted) &&
+              rawUnconsulted.length > 0 &&
+              rawUnconsulted.every((name): name is string => typeof name === 'string')
+                ? rawUnconsulted
+                : null;
+            if (val === true) {
+              // A positive finding stands on its own regardless of what else
+              // was unreachable — matches the backend's own three-state rule
+              // (only a NEGATIVE needs every source to have been asked).
+              return (
+                <div key={key} className="flex flex-col col-span-full">
+                  <FieldLabel fieldKey={key} />
+                  <dd className="text-sm text-slate-900 mt-0.5">
+                    Yes — at least one source we checked places this location inside the 1% AEP flood extent
+                  </dd>
+                </div>
+              );
+            }
+            if (val === false && !unconsulted) {
+              return (
+                <div key={key} className="flex flex-col col-span-full">
+                  <FieldLabel fieldKey={key} />
+                  <dd className="text-sm text-slate-900 mt-0.5">
+                    No — none of the sources we checked place this location inside the 1% AEP flood extent
+                  </dd>
+                </div>
+              );
+            }
+            // Either the verdict was never established (null), or the
+            // backend sent an internally contradictory payload — a False
+            // verdict alongside a named unconsulted study, which should
+            // never happen given the backend's own rule (in_100yr_flood_zone
+            // is only False when unconsulted is empty) but is treated as
+            // "not assessed" here rather than trusted, so a future backend
+            // regression degrades safely instead of rendering a
+            // false-confidence clearance. Also: val === null with no named
+            // study for this address's council has nothing worth telling the
+            // reader beyond what the EPI/SES rows above already say.
+            if (unconsulted) {
+              return (
+                <div key={key} className="flex flex-col col-span-full">
+                  <FieldLabel fieldKey={key} />
+                  <dd className="text-sm text-slate-900 mt-0.5">Not assessed</dd>
+                  <dd className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    {floodZoneUnavailableMessage(unconsulted)}
+                  </dd>
+                </div>
+              );
+            }
+            return null;
           }
           if (key === 's1_gap_warning' && typeof val === 'string') {
             return (
@@ -918,7 +968,7 @@ const FIELD_HINTS: Record<string, string> = {
   ses_in_flood_planning_area:
     'Whether the lot falls within a council or SES flood-study extent held in our dataset.',
   in_100yr_flood_zone:
-    'Whether any source in this run (EPI layer, council study, flood-study raster) maps this location within a 1% annual exceedance probability extent.',
+    'Whether any source we checked (EPI layer, council study, flood-study raster) places this location within a 1% annual exceedance probability extent.',
   ground_elevation_m_ahd:
     'Ground elevation from the NSW 5 m elevation model, in metres above the Australian Height Datum.',
   jrc_data_year:
@@ -981,7 +1031,11 @@ const HIDE_WHEN_NULL_KEYS = new Set([
   'flood_signal', 'ems_flood_detected', 'ems_activations', 'sar_flood_detected',
   'sar_confidence', 'sar_analysis_date', 'ses_in_flood_planning_area',
   'ses_flood_class', 'ses_study_name', 'bom_gauge_name', 'bom_last_major_flood_date',
-  'bom_last_major_flood_peak_m', 'bom_flood_history', 'in_100yr_flood_zone',
+  'bom_last_major_flood_peak_m', 'bom_flood_history',
+  // in_100yr_flood_zone is NOT here (unlike its siblings above): a null value
+  // can carry a named unconsulted study (Hawkesbury/Redbank/Tweed/Wollongong)
+  // worth telling the reader about, so its own render branch below decides
+  // whether to show something, rather than being filtered out before it runs.
   'ground_elevation_m_ahd', 's1_gap_warning', 'jrc_data_year',
   // LGA determination stats — null means the layer holds none for this council.
   'da_refusal_stats',
@@ -996,6 +1050,8 @@ const SATELLITE_FOLDED_KEYS = new Set([
   // flood
   'ems_activations', 'ses_flood_class', 'ses_study_name', 'bom_gauge_name',
   'sar_confidence', 'sar_analysis_date', 'bom_last_major_flood_peak_m',
+  // consumed by the in_100yr_flood_zone row above, not a row of its own
+  'in_100yr_flood_zone_unconsulted',
   // bushfire
   'bal_assessor_directory_url',
 ]);

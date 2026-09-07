@@ -37,6 +37,7 @@ _FLOOD_OK = {
     "bom_last_major_flood_peak_m": None,
     "bom_flood_history": [],
     "in_100yr_flood_zone": True,
+    "in_100yr_flood_zone_unconsulted": [],
     "ground_elevation_m_ahd": None,
     "s1_gap_warning": None,
     "flood_studies": [],
