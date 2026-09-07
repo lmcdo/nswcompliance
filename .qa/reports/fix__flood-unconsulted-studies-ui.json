@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a new servable field on a liability-sensitive surface (flood status) that reaches two live report UIs (standalone /reports/flood tool and the Intelligence Brief). No DB schema change and no new verdict logic -- it exposes a fact the backend already computes but was silently dropping (pydantic extra='ignore') -- but wrong wiring here could either show nothing (current bug, low harm) or, if the three-state guard were done wrong, misrender 'not assessed' as a clear reading, which is exactly the class of defect #892 and the 2026-08-24 Dockerfile fix both exist to prevent. Standard, not critical: additive only, reuses existing tested helpers (lib/not-assessed.ts), doesn't touch the verdict computation itself.",
-  "commit_hash": "PENDING",
+  "commit_hash": "b013a119",
   "files": [
     "services/intelligence_brief.py",
     "frontend-nextjs/components/tools/FloodTool.tsx",
