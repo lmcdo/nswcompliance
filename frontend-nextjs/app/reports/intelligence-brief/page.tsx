@@ -17,6 +17,7 @@ import { GrannyFlatBriefCard } from '@/components/reports/GrannyFlatBriefCard';
 import { describeUnavailable, type UnavailableTone } from './unavailable';
 import { ShadowDisplay, type ShadowData } from '@/components/reports/ShadowDetailDisplay';
 import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
+import { floodZoneUnavailableMessage } from '@/lib/not-assessed';
 import { collectSources } from './provenance';
 
 // Brief LLM overlay (flag-gated, default OFF; #742 engine). Both this build-time
@@ -696,17 +697,37 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
-          if (key === 'in_100yr_flood_zone' && typeof val === 'boolean') {
-            return (
-              <div key={key} className="flex flex-col col-span-full">
-                <FieldLabel fieldKey={key} />
-                <dd className="text-sm text-slate-900 mt-0.5">
-                  {val
-                    ? 'Yes — at least one source in this run maps this location within a 1% AEP extent'
-                    : 'No — no source in this run maps this location within a 1% AEP extent'}
-                </dd>
-              </div>
-            );
+          if (key === 'in_100yr_flood_zone') {
+            if (typeof val === 'boolean') {
+              return (
+                <div key={key} className="flex flex-col col-span-full">
+                  <FieldLabel fieldKey={key} />
+                  <dd className="text-sm text-slate-900 mt-0.5">
+                    {val
+                      ? 'Yes — at least one source in this run maps this location within a 1% AEP extent'
+                      : 'No — no source in this run maps this location within a 1% AEP extent'}
+                  </dd>
+                </div>
+              );
+            }
+            // val === null: not a "No". Only worth a row when a named study
+            // (Hawkesbury/Redbank/Tweed/Wollongong) exists for this address's
+            // council and could not be consulted — otherwise this address
+            // simply has no local study, and there's nothing to tell the
+            // reader beyond what the EPI/SES rows above already say.
+            const unconsulted = data.in_100yr_flood_zone_unconsulted;
+            if (Array.isArray(unconsulted) && unconsulted.length > 0) {
+              return (
+                <div key={key} className="flex flex-col col-span-full">
+                  <FieldLabel fieldKey={key} />
+                  <dd className="text-sm text-slate-900 mt-0.5">Not assessed</dd>
+                  <dd className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    {floodZoneUnavailableMessage(unconsulted as string[])}
+                  </dd>
+                </div>
+              );
+            }
+            return null;
           }
           if (key === 's1_gap_warning' && typeof val === 'string') {
             return (
@@ -981,7 +1002,11 @@ const HIDE_WHEN_NULL_KEYS = new Set([
   'flood_signal', 'ems_flood_detected', 'ems_activations', 'sar_flood_detected',
   'sar_confidence', 'sar_analysis_date', 'ses_in_flood_planning_area',
   'ses_flood_class', 'ses_study_name', 'bom_gauge_name', 'bom_last_major_flood_date',
-  'bom_last_major_flood_peak_m', 'bom_flood_history', 'in_100yr_flood_zone',
+  'bom_last_major_flood_peak_m', 'bom_flood_history',
+  // in_100yr_flood_zone is NOT here (unlike its siblings above): a null value
+  // can carry a named unconsulted study (Hawkesbury/Redbank/Tweed/Wollongong)
+  // worth telling the reader about, so its own render branch below decides
+  // whether to show something, rather than being filtered out before it runs.
   'ground_elevation_m_ahd', 's1_gap_warning', 'jrc_data_year',
   // LGA determination stats — null means the layer holds none for this council.
   'da_refusal_stats',
@@ -996,6 +1021,8 @@ const SATELLITE_FOLDED_KEYS = new Set([
   // flood
   'ems_activations', 'ses_flood_class', 'ses_study_name', 'bom_gauge_name',
   'sar_confidence', 'sar_analysis_date', 'bom_last_major_flood_peak_m',
+  // consumed by the in_100yr_flood_zone row above, not a row of its own
+  'in_100yr_flood_zone_unconsulted',
   // bushfire
   'bal_assessor_directory_url',
 ]);

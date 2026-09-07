@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "Adds a new servable field on a liability-sensitive surface (flood status) that reaches two live report UIs (standalone /reports/flood tool and the Intelligence Brief). No DB schema change and no new verdict logic -- it exposes a fact the backend already computes but was silently dropping (pydantic extra='ignore') -- but wrong wiring here could either show nothing (current bug, low harm) or, if the three-state guard were done wrong, misrender 'not assessed' as a clear reading, which is exactly the class of defect #892 and the 2026-08-24 Dockerfile fix both exist to prevent. Standard, not critical: additive only, reuses existing tested helpers (lib/not-assessed.ts), doesn't touch the verdict computation itself.",
+  "commit_hash": "PENDING",
+  "files": [
+    "services/intelligence_brief.py",
+    "frontend-nextjs/components/tools/FloodTool.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "scripts/brief_field_coverage_baseline.json"
+  ],
+  "pre_impl": {
+    "existing_data": "services/flood_truth.py already computes and returns in_100yr_flood_zone_unconsulted (a list of human-readable study names) in its raw outputs dict -- confirmed by reading normalise_flood_result() and by a direct smoke test. No DB or schema involved.",
+    "assumption_mismatch": "The field existed on the wire but was invisible end-to-end: FloodServiceOutput (pydantic, extra='ignore') silently dropped it before it ever reached FloodDetail, so even though /api/satellite/flood's route.ts spreads the full raw dict through untouched (verified), the Brief's typed layer never carried it and both live UIs never rendered it -- confirmed nowhere in FloodTool.tsx or the Brief's live render path before this change (grepped, zero matches), even though the generated static report page and the PDF export already used the exact same value via a shared, tested helper (lib/not-assessed.ts).",
+    "new_vs_existing": "Applies to every future flood run in Hawkesbury/Redbank/Tweed/Wollongong council areas where the address's own study is absent -- entirely a render-time change reading a field already present in stored/served outputs, no backfill needed for old rows (a null/missing field on an old row just means nothing renders, same as today)."
+  },
+  "functions": [
+    {
+      "name": "_build_flood_detail",
+      "file_line": "services/intelligence_brief.py:2317",
+      "input": "flood_raw: dict (validated against FloodServiceOutput)",
+      "output": "FloodDetail.in_100yr_flood_zone_unconsulted: list[str] | None",
+      "if_none": "Field stays None on FloodDetail -- frontend's Array.isArray guard treats that as 'nothing to show', same as before this change"
+    },
+    {
+      "name": "FloodCard (1% AEP finding block)",
+      "file_line": "frontend-nextjs/components/tools/FloodTool.tsx:499",
+      "input": "o.in_100yr_flood_zone: boolean|null, o.in_100yr_flood_zone_unconsulted: string[]|null",
+      "output": "a findings[] entry (or none) rendered in the existing findings list",
+      "if_none": "verdict null AND unconsulted empty/absent -> no finding pushed, identical to current behaviour for the ~99% of addresses with no relevant named study"
+    },
+    {
+      "name": "SectionData in_100yr_flood_zone branch",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:699",
+      "input": "val: boolean|null, data.in_100yr_flood_zone_unconsulted: unknown",
+      "output": "a row in the Brief's satellite.flood section, or null (nothing rendered)",
+      "if_none": "val null and unconsulted not a non-empty array -> returns null, same as the pre-change hidden-when-null behaviour"
+    }
+  ],
+  "values": [
+    {
+      "value": "in_100yr_flood_zone_unconsulted",
+      "read_at": "frontend-nextjs/components/tools/FloodTool.tsx:517, frontend-nextjs/app/reports/intelligence-brief/page.tsx:715",
+      "nullable": "yes",
+      "guard_at": "both sites: `&&`/Array.isArray truthy-length check before use, matching the existing pattern in lib/not-assessed.ts's own consumers",
+      "if_missing": "no new finding/row rendered -- falls back to exactly today's behaviour, not an error state"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "in_100yr_flood_zone is null (not assessed) but a caller mistakenly reads this as the verdict being 'No' because a naive truthiness check treats null as falsy.",
+      "what_happens": "A property inside an unconsulted named flood study's coverage would read as 'not in a flood zone' -- exactly the #892 defect class.",
+      "mitigated": true,
+      "how": "Both new call sites use readFloodZoneVerdict()/an explicit `typeof val === 'boolean'` check before treating a value as a real verdict, never a bare truthiness test; verified by reading lib/not-assessed.ts's own three-state contract and by the existing flood-zone-three-state.test.ts suite, which locks this exact behaviour and was not modified.",
+      "repro": "frontend-nextjs/__tests__/lib/flood-zone-three-state.test.ts (unmodified, still covers readFloodZoneVerdict/floodZoneUnavailableMessage); python -m pytest tests/test_flood_truth.py tests/test_flood_raster_deploy.py tests/test_flood_study_filenames.py tests/test_flood_queries.py tests/test_flood_normalise.py -q"
+    },
+    {
+      "scenario": "Removing in_100yr_flood_zone from HIDE_WHEN_NULL_KEYS in the Brief causes the field to render noisy 'nothing to say' rows for the vast majority of addresses that have no nearby named study at all.",
+      "what_happens": "Clutter on every Brief report, not a wrong answer but a UX regression.",
+      "mitigated": true,
+      "how": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:718 -- the branch explicitly `return null`s when val is not boolean AND unconsulted is empty/absent, so the row only ever appears when there is something concrete to say (a named study exists and was unreachable).",
+      "repro": "Manual: run a Brief for a Sydney address with no local flood study (e.g. most of the served councils) and confirm no '1% AEP' row appears under satellite.flood, matching pre-change behaviour."
+    },
+    {
+      "scenario": "FloodServiceOutput's pydantic model (extra='ignore') silently drops the new field again if a future refactor renames it on the flood_truth.py side without updating this contract.",
+      "what_happens": "Field goes null forever, degrading silently back to today's gap with no warning.",
+      "mitigated": true,
+      "how": "scripts/brief_field_coverage_ratchet.py --regen was run and the baseline now locks both FloodDetail.in_100yr_flood_zone_unconsulted and FloodServiceOutput.in_100yr_flood_zone_unconsulted as tracked fields; a future silent drop of either would need an explicit, reviewed baseline change to pass CI.",
+      "repro": "python scripts/brief_field_coverage_ratchet.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "On the deployed preview, run a flood check for an address in the Tweed or Wollongong LGA (where the raster host-availability gap is currently live) and confirm both /reports/flood and the Intelligence Brief show a '1% AEP' row reading 'Not assessed' with a named-study explanation, rather than showing nothing."
+  }
+}

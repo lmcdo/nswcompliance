@@ -7,6 +7,7 @@ import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+import { readFloodZoneVerdict, floodZoneUnavailableMessage } from '@/lib/not-assessed';
 
 const FLOOD_STEPS: TransparencyStep[] = [
   { label: 'Checking EPI flood overlays…',              ms: 0 },
@@ -57,6 +58,15 @@ interface FloodOutputs {
   hawkesbury_flood_level_500aep: number | null;
   hawkesbury_flood_level_pmf: number | null;
   hawkesbury_flood_study: string | null;
+  // Three-state (2026-08-08): true/false are real verdicts, null means the
+  // question could not be answered — see lib/not-assessed.ts. Optional here
+  // because this interface predates the multi-study contract; older cached
+  // rows and the "unavailable" flood_signal path may not carry it.
+  in_100yr_flood_zone?: boolean | null;
+  // Named studies (e.g. "Redbank Creek flood study") that cover this address's
+  // council but could not be consulted for this report — files not on this
+  // host, most commonly. Only present when in_100yr_flood_zone is null.
+  in_100yr_flood_zone_unconsulted?: string[] | null;
 }
 
 interface FloodResult {
@@ -485,6 +495,30 @@ function FloodCard({ result }: { result: FloodResult }) {
 
   // Build findings with explanations
   const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];
+
+  // 1% AEP (1-in-100-year) verdict — three-state. A named council flood study
+  // can exist for this address's area (Hawkesbury, Redbank, Tweed, Wollongong)
+  // and still be unreachable on this run; when that happens the verdict is
+  // null and unconsulted names the study, so the reader knows a more precise
+  // answer exists rather than reading silence as "not in a flood zone".
+  const aepVerdict = readFloodZoneVerdict(o.in_100yr_flood_zone);
+  if (aepVerdict !== null) {
+    findings.push({
+      label: '1% AEP (1-in-100-year) flood extent',
+      value: aepVerdict ? 'Inside the 1% AEP extent' : 'Outside the 1% AEP extent',
+      detail: aepVerdict
+        ? 'A council or statutory flood study places this property inside the 1-in-100-year flood extent.'
+        : 'Every source that can answer this question was consulted and none placed this property inside the 1-in-100-year flood extent.',
+      severity: aepVerdict ? 'red' : 'green',
+    });
+  } else if (o.in_100yr_flood_zone_unconsulted && o.in_100yr_flood_zone_unconsulted.length > 0) {
+    findings.push({
+      label: '1% AEP (1-in-100-year) flood extent',
+      value: 'Not assessed',
+      detail: floodZoneUnavailableMessage(o.in_100yr_flood_zone_unconsulted),
+      severity: 'amber',
+    });
+  }
 
   // Government flood overlay
   if (epiClass === 'none' && (signal === 'moderate' || signal === 'elevated')) {

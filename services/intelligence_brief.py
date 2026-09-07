@@ -620,6 +620,11 @@ class FloodDetail(BaseModel):
     bom_last_major_flood_peak_m: Optional[float] = None
     bom_flood_history: Optional[list[dict]] = None  # {date, peak_m, ari_category}
     in_100yr_flood_zone: Optional[bool] = None
+    # Named studies (e.g. "Redbank Creek flood study") covering this address's
+    # council whose rasters could not be consulted this run — only set when
+    # in_100yr_flood_zone is None. See lib/not-assessed.ts on the frontend,
+    # which already renders this same field for the standalone flood report.
+    in_100yr_flood_zone_unconsulted: Optional[list[str]] = None
     ground_elevation_m_ahd: Optional[float] = None
     s1_gap_warning: Optional[str] = None
     flood_studies: Optional[list[dict]] = None
@@ -658,6 +663,7 @@ class FloodServiceOutput(BaseModel):
     bom_last_major_flood_peak_m: Optional[float] = None
     bom_flood_history: Optional[list[dict]] = None
     in_100yr_flood_zone: Optional[bool] = None
+    in_100yr_flood_zone_unconsulted: Optional[list[str]] = None
     ground_elevation_m_ahd: Optional[float] = None
     s1_gap_warning: Optional[str] = None
     flood_studies: Optional[list[dict]] = None
@@ -2311,6 +2317,7 @@ def _build_flood_detail(flood_raw: Optional[dict]) -> Optional[FloodDetail]:
         bom_last_major_flood_peak_m=out.bom_last_major_flood_peak_m,
         bom_flood_history=out.bom_flood_history,
         in_100yr_flood_zone=out.in_100yr_flood_zone,
+        in_100yr_flood_zone_unconsulted=out.in_100yr_flood_zone_unconsulted,
         ground_elevation_m_ahd=out.ground_elevation_m_ahd,
         s1_gap_warning=out.s1_gap_warning,
         flood_studies=out.flood_studies,
