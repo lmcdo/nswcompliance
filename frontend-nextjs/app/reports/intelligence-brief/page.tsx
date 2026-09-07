@@ -720,7 +720,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
                 <div key={key} className="flex flex-col col-span-full">
                   <FieldLabel fieldKey={key} />
                   <dd className="text-sm text-slate-900 mt-0.5">
-                    Yes — at least one source in this run maps this location within a 1% AEP extent
+                    Yes — at least one source we checked places this location inside the 1% AEP flood extent
                   </dd>
                 </div>
               );
@@ -730,7 +730,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
                 <div key={key} className="flex flex-col col-span-full">
                   <FieldLabel fieldKey={key} />
                   <dd className="text-sm text-slate-900 mt-0.5">
-                    No — no source in this run maps this location within a 1% AEP extent
+                    No — none of the sources we checked place this location inside the 1% AEP flood extent
                   </dd>
                 </div>
               );
@@ -968,7 +968,7 @@ const FIELD_HINTS: Record<string, string> = {
   ses_in_flood_planning_area:
     'Whether the lot falls within a council or SES flood-study extent held in our dataset.',
   in_100yr_flood_zone:
-    'Whether any source in this run (EPI layer, council study, flood-study raster) maps this location within a 1% annual exceedance probability extent.',
+    'Whether any source we checked (EPI layer, council study, flood-study raster) places this location within a 1% annual exceedance probability extent.',
   ground_elevation_m_ahd:
     'Ground elevation from the NSW 5 m elevation model, in metres above the Australian Height Datum.',
   jrc_data_year:

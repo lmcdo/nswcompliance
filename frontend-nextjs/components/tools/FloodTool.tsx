@@ -522,20 +522,19 @@ function FloodCard({ result }: { result: FloodResult }) {
     // NEGATIVE needs every source to have been asked).
     findings.push({
       label: '1% AEP (1-in-100-year) flood extent',
-      value: 'At least one source maps this location inside the extent',
-      detail: 'A council or statutory flood study maps this location within the 1-in-100-year flood extent.',
+      value: 'At least one source we checked places this location inside the flood extent',
+      detail: 'A council or statutory flood study places this location within the 1-in-100-year flood extent.',
       severity: 'red',
     });
   } else if (aepVerdict === false && !aepUnconsulted) {
     // A real negative: every source that could answer was consulted.
     findings.push({
       label: '1% AEP (1-in-100-year) flood extent',
-      value: 'No source in this run maps this location inside the extent',
-      // Scoped to "sources in this run" and "this location", matching the
-      // Brief's own wording for the same field — never a bare "outside the
-      // flood extent", which would overclaim a guarantee the underlying
-      // sources don't give for the whole parcel.
-      detail: 'Every source that could answer this question for this run was consulted, and none of them maps this location within the 1-in-100-year flood extent.',
+      value: 'None of the sources we checked place this location inside the flood extent',
+      // Scoped to "sources we checked" and "this location", not a bare
+      // "outside the flood extent" — that would overclaim a guarantee the
+      // underlying sources don't give for the whole parcel.
+      detail: 'We checked every source that could answer this question, and none of them place this location within the 1-in-100-year flood extent.',
       severity: 'green',
     });
   } else if (aepUnconsulted) {
