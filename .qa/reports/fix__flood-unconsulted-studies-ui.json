@@ -1,7 +1,12 @@
 {
   "tier": "standard",
   "justification": "Adds a new servable field on a liability-sensitive surface (flood status) that reaches two live report UIs (standalone /reports/flood tool and the Intelligence Brief). No DB schema change and no new verdict logic -- it exposes a fact the backend already computes but was silently dropping (pydantic extra='ignore') -- but wrong wiring here could either show nothing (current bug, low harm) or, if the three-state guard were done wrong, misrender 'not assessed' as a clear reading, which is exactly the class of defect #892 and the 2026-08-24 Dockerfile fix both exist to prevent. Standard, not critical: additive only, reuses existing tested helpers (lib/not-assessed.ts), doesn't touch the verdict computation itself.",
-  "commit_hash": "8cf1041a",
+  "commit_hash": "aaabb98f",
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_brief_contract_drift.py tests/test_brief_contracts.py tests/test_flood_truth.py tests/test_flood_raster_deploy.py tests/test_flood_study_filenames.py tests/test_flood_queries.py tests/test_flood_normalise.py -q && python scripts/brief_field_coverage_ratchet.py",
+    "fails_when": "in_100yr_flood_zone_unconsulted is removed from FloodServiceOutput/FloodDetail (the contract fixtures assert the exact key set and go red), or the ratchet baseline is reverted without the field (field-coverage check flags it as untracked again)",
+    "observed_red": "Genuinely observed, not hypothetical: before tests/test_brief_contract_drift.py and tests/test_brief_contracts.py were updated in this same PR, the full pytest run failed exactly this way -- test_no_drift_when_all_contract_keys_present asserted drift False and got True, and test_flood_contract_fields_are_the_expected_service_keys' exact-set comparison failed -- both because the new field existed on the two pydantic models but not yet in the fixtures. Caught by pre-push's full suite, fixed in commit 8cf1041a, full suite re-run clean at 5069 passed."
+  },
   "files": [
     "services/intelligence_brief.py",
     "frontend-nextjs/components/tools/FloodTool.tsx",
@@ -18,22 +23,22 @@
   "functions": [
     {
       "name": "_build_flood_detail",
-      "file_line": "services/intelligence_brief.py:2317",
-      "input": "flood_raw: dict (validated against FloodServiceOutput)",
-      "output": "FloodDetail.in_100yr_flood_zone_unconsulted: list[str] | None",
+      "file_line": "services/intelligence_brief.py:2286",
+      "input": "flood_raw dict from the flood pipeline's raw outputs",
+      "output": "a FloodDetail whose new field carries the unconsulted study name list",
       "if_none": "Field stays None on FloodDetail -- frontend's Array.isArray guard treats that as 'nothing to show', same as before this change"
     },
     {
       "name": "FloodCard (1% AEP finding block)",
       "file_line": "frontend-nextjs/components/tools/FloodTool.tsx:499",
-      "input": "o.in_100yr_flood_zone: boolean|null, o.in_100yr_flood_zone_unconsulted: string[]|null",
+      "input": "the verdict boolean/null plus the unconsulted study name array",
       "output": "a findings[] entry (or none) rendered in the existing findings list",
       "if_none": "verdict null AND unconsulted empty/absent -> no finding pushed, identical to current behaviour for the ~99% of addresses with no relevant named study"
     },
     {
       "name": "SectionData in_100yr_flood_zone branch",
       "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:699",
-      "input": "val: boolean|null, data.in_100yr_flood_zone_unconsulted: unknown",
+      "input": "the raw val for this key, plus the sibling unconsulted array read off data",
       "output": "a row in the Brief's satellite.flood section, or null (nothing rendered)",
       "if_none": "val null and unconsulted not a non-empty array -> returns null, same as the pre-change hidden-when-null behaviour"
     }
