@@ -1,0 +1,87 @@
+{
+  "tier": "standard",
+  "justification": "Liability-sensitive surface (flood status figures) reaching two live report UIs. No DB/schema change and no backend change -- flood_studies has been on the wire since before this PR (both FloodServiceOutput and FloodDetail already declare it). This is purely wiring an already-served field into rendering that never consumed it, replacing a Hawkesbury-only special case with a generic one covering all four named studies. Standard, not critical: additive/generalizing only, every read defensively guards its own shape (matches the discipline established in the sibling in_100yr_flood_zone_unconsulted fix, PR #1061), and the old Hawkesbury path is kept as a fallback rather than deleted.",
+  "commit_hash": "21b1d024",
+  "falsifiable_check": {
+    "command": "bash -c \"grep -c flood_studies frontend-nextjs/components/tools/FloodTool.tsx frontend-nextjs/app/reports/intelligence-brief/page.tsx\"",
+    "fails_when": "before this change: FloodTool.tsx had 0 matches for flood_studies (only the hawkesbury_flood_level_* legacy fields were handled) and page.tsx had exactly 1 match (a FIELD_LABEL_OVERRIDES tooltip string, no render branch). After this change the counts are 5 and 2 respectively, reflecting the new type declaration/loop/render logic in each file. A regression that removes the new handling would drop these counts back toward 0/1.",
+    "observed_red": "Actually run in this session before writing the fix, not hypothetical: 'grep -n flood_studies frontend-nextjs/components/tools/FloodTool.tsx' returned zero matches (only hawkesbury_flood_level_* lines), and 'grep -n flood_studies\\b page.tsx' returned exactly one line -- the FIELD_LABEL_OVERRIDES tooltip entry, no render branch. Confirmed the generic array formatter (formatValue, page.tsx:1775) would have rendered any object array as a bare 'N items' string, by reading its source directly rather than assuming."
+  },
+  "files": [
+    "frontend-nextjs/components/tools/FloodTool.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "services/flood_truth.py already computes flood_studies (a list of {study_key, study_name, source, design, historical} dicts, one per matched named study) on every run, and both FloodServiceOutput and FloodDetail already declare the field -- confirmed by reading the models (no Python change needed here). /api/satellite/flood's route.ts spreads the full raw dict through untouched, so it already reaches FloodTool.tsx's JSON payload today; the Brief's typed pipeline already carries it to the rendered `data` prop.",
+    "assumption_mismatch": "FloodTool.tsx's FloodOutputs interface never declared flood_studies, so its live depth-figure block only ever fired for the legacy hawkesbury_flood_level_* flat fields -- Redbank/Tweed/Wollongong's computed depth numbers were silently unused even when a raster matched. The Brief had zero special-case handling for flood_studies at all; it fell through to the generic array formatter (formatValue), which for an array of objects returns a bare 'N items' string with no figure -- confirmed by reading formatValue's array branch, not assumed.",
+    "new_vs_existing": "Applies to every future flood run that matches a named study with a readable 1% AEP raster. For FloodTool.tsx, the Hawkesbury-only fallback path is kept (only fires when the new generic loop didn't already cover 'hawkesbury'), so a genuinely old stored/paid report that predates flood_studies on the wire still renders exactly as it did before -- no regression for historical data."
+  },
+  "functions": [
+    {
+      "name": "FloodCard's flood_studies loop",
+      "file_line": "frontend-nextjs/components/tools/FloodTool.tsx:630",
+      "input": "the flood_studies array from the live API response, each element unknown at compile time",
+      "output": "one findings[] entry per study with a readable 1% AEP depth or level, or none",
+      "if_none": "empty/absent array, or every element missing a usable 1pct figure -> no entries pushed, falls through to the Hawkesbury-only fallback exactly as before this change"
+    },
+    {
+      "name": "SectionData flood_studies branch",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:769",
+      "input": "the raw val for this key from the untyped data bag, plus each study's design/1pct sub-object",
+      "output": "a row per named study with a figure, or null (nothing rendered) if no study yields a usable number",
+      "if_none": "not an array, empty array, or no study passes the studyName+onePct guard -> returns null, same silent nothing as before this change (previously rendered a useless 'N items' instead)"
+    }
+  ],
+  "values": [
+    {
+      "value": "study.design['1pct'].depth_m / level_m_ahd",
+      "read_at": "FloodTool.tsx:648-656, page.tsx:790-795",
+      "nullable": "yes",
+      "guard_at": "both sites: typeof === 'number' check before use, plus a study-level continue/skip when neither figure is present",
+      "if_missing": "that study is skipped (no row for it); other studies with a real figure still render"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A flood_studies element has an unexpected shape (e.g. design is a string, or 1pct.depth_m is itself an object) due to a future backend refactor.",
+      "what_happens": "Without defensive typing, this could throw (crashing the whole card) or render a bogus figure like '[object Object]m deep'.",
+      "mitigated": true,
+      "how": "Every level is guarded: `raw && typeof raw === 'object'`, `study.design && typeof study.design === 'object'`, `onePct && typeof onePct === 'object'`, and `typeof onePct.depth_m === 'number'` / `typeof onePct.level_m_ahd === 'number'` before ever touching .toLocaleString(). A failing guard skips that one study rather than throwing or rendering garbage.",
+      "repro": "Manual: construct a flood_studies fixture with design: 'not an object' or design: {'1pct': {depth_m: {}}} and confirm the study is silently skipped, not rendered or thrown."
+    },
+    {
+      "scenario": "Duplicate rendering: a Hawkesbury address matches the new generic flood_studies loop AND the old flat hawkesbury_flood_level_100aep fallback, producing two rows for the same study.",
+      "what_happens": "Redundant/confusing duplicate flood-depth rows for the same address.",
+      "mitigated": true,
+      "how": "FloodTool.tsx:630 -- studiesShown tracks study_key values the generic loop already rendered; the legacy fallback is gated on `!studiesShown.has('hawkesbury')`, so it only fires when the generic loop did NOT already cover Hawkesbury (i.e. genuinely old data missing flood_studies).",
+      "repro": "Manual: construct a fixture where flood_studies contains a hawkesbury entry with a 1pct figure AND hawkesbury_flood_level_100aep is also set; confirm only one '1-in-100-year' row renders, not two."
+    },
+    {
+      "scenario": "The Brief's flood_studies branch previously fell through to the generic array formatter (formatValue), which is not a crash but is a real regression risk if the new branch is ever removed without checking what formatValue does with an object array.",
+      "what_happens": "Silently reverting to a useless 'N items' label with no figure, easy to miss since it's not an error.",
+      "mitigated": true,
+      "how": "Documented explicitly in the new branch's comment (page.tsx:773-774) and in this QA report's pre_impl section, so a future editor sees the fallback behaviour named rather than rediscovering it via formatValue's source.",
+      "repro": "Read frontend-nextjs/lib or the inline formatValue function at page.tsx:1775 -- the Array.isArray branch's non-primitive case returns `${val.length} item(s)`."
+    },
+    {
+      "scenario": "Sol cross-review (3 x MEDIUM, 0.99/0.98/0.9) on the first push: (a) the finding label always said 'flood depth' even when a study supplied only level_m_ahd and no depth_m, misrepresenting a level as a depth; (b) the detail text made an unsupported universal claim ('your insurer and lender both use figures like this') about third parties' behaviour; (c) Hawkesbury deduplication depended solely on an exact study_key === 'hawkesbury' match, so a malformed/differently-cased key on a genuine Hawkesbury entry would let the same study render twice (generic row + legacy fallback row).",
+      "what_happens": "(a) reader sees a mislabeled figure; (b) an overclaimed statement about third-party underwriting practice; (c) a confusing duplicate flood-depth row for the same address.",
+      "mitigated": true,
+      "how": "FloodTool.tsx:667-683 -- label now derives from which measurement is actually present (depth vs level); the insurer/lender sentence softened to 'may use... confirm their specific requirements directly' in both the generic loop and the legacy fallback; Hawkesbury dedup now checks a lowercased study_key OR a case-insensitive study_name match, not the key alone. NOTE: the same unqualified insurer/lender claim pattern pre-exists elsewhere in this file (lines 351-365, 581, 588) — untouched, out of scope for this PR (not part of the diff Sol reviewed), flagged here for a future pass rather than silently left unnoticed.",
+      "repro": "Manual: construct a fixture with design['1pct'] = {level_m_ahd: 12.34, depth_m: null} and confirm the label reads '...flood level', not '...flood depth'; construct a fixture with a Hawkesbury study_name but study_key: 'Hawkesbury ' (trailing space/different case) plus hawkesbury_flood_level_100aep set, and confirm only one row renders."
+    },
+    {
+      "scenario": "Sol cross-review (2 x MEDIUM 0.96 silent-failure + 1 x MEDIUM 0.86 liability) on the second push: (a)+(b) a study entry with a real, usable 1% AEP figure but a missing/malformed study_name was silently skipped in both files -- the figure existed but was never shown, no warning either; (c) the detail text's 'more detailed than the standard government overlay used elsewhere in NSW' was an unqualified statewide comparison this component has no basis to make (another NSW area could have its own detailed local study too).",
+      "what_happens": "(a)+(b) a real flood figure the backend computed silently never reaches the reader; (c) an overclaimed statewide comparison.",
+      "mitigated": true,
+      "how": "Both files now fall back to a humanised study_key ('Redbank flood study') when study_name is missing/invalid, so a study is only skipped when NEITHER a name nor a usable figure exists. The overclaiming comparison sentence was replaced with Sol's suggested factual wording: 'Modelled water depth/level at this location from {name}; the EPI overlay separately maps planning categories.' FloodTool.tsx:647-696, page.tsx:769-822.",
+      "repro": "Manual: construct a flood_studies fixture with study_key: 'redbank', study_name: null, design: {'1pct': {level_m_ahd: 12.34}} and confirm a row now renders reading 'Redbank flood study: 12.34m AHD', not silently dropped."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "On the deployed preview, run a flood check for an address in the Redbank, Tweed, or Wollongong LGA where the study raster covers the point, and confirm both /reports/flood and the Intelligence Brief now show a real '1-in-100-year flood depth' figure (not just a plain yes/no), matching what a Hawkesbury address already showed before this PR."
+  }
+}

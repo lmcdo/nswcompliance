@@ -58,6 +58,14 @@ interface FloodOutputs {
   hawkesbury_flood_level_500aep: number | null;
   hawkesbury_flood_level_pmf: number | null;
   hawkesbury_flood_study: string | null;
+  // Canonical shape for ALL named local flood studies (Hawkesbury, Redbank,
+  // Tweed, Wollongong), superseding the flat hawkesbury_flood_level_* fields
+  // above for anything generated after those studies were unified onto one
+  // schema. Untyped at the element level (unknown, not FloodStudyEntry)
+  // because this is a live JSON API response only asserted to be
+  // FloodResult by a type cast, never runtime-validated — every read below
+  // guards its own shape rather than trusting this declaration.
+  flood_studies?: unknown[] | null;
   // Three-state (2026-08-08): true/false are real verdicts, null means the
   // question could not be answered — see lib/not-assessed.ts. Optional here
   // because this interface predates the multi-study contract; older cached
@@ -627,12 +635,71 @@ function FloodCard({ result }: { result: FloodResult }) {
     }
   }
 
-  // Hawkesbury raster
-  if (o.hawkesbury_flood_level_100aep != null) {
+  // Named local flood study modelling — the canonical flood_studies array
+  // covers all four studies (Hawkesbury, Redbank, Tweed, Wollongong)
+  // uniformly, each giving a real modelled depth/level specific to this
+  // address rather than the category-only EPI overlay everywhere else in
+  // NSW gets. Loop first; studiesShown tracks which studies it already
+  // covered so the legacy Hawkesbury-only fields below act as a fallback
+  // for older stored reports generated before flood_studies existed on the
+  // wire, never a duplicate of a study already shown here.
+  const studiesShown = new Set<string>();
+  if (Array.isArray(o.flood_studies)) {
+    for (const raw of o.flood_studies) {
+      if (!raw || typeof raw !== 'object') continue;
+      const study = raw as Record<string, unknown>;
+      const studyKey = typeof study.study_key === 'string' && study.study_key ? study.study_key : null;
+      // Fall back to a humanised study_key when study_name is missing so a
+      // real, usable figure is never silently dropped just because one
+      // string field on the entry didn't validate.
+      const displayName = typeof study.study_name === 'string' && study.study_name
+        ? study.study_name
+        : studyKey
+          ? `${studyKey.charAt(0).toUpperCase()}${studyKey.slice(1)} flood study`
+          : null;
+      const design = study.design && typeof study.design === 'object'
+        ? (study.design as Record<string, unknown>)
+        : null;
+      const onePctRaw = design ? design['1pct'] : null;
+      const onePct = onePctRaw && typeof onePctRaw === 'object'
+        ? (onePctRaw as { depth_m?: unknown; level_m_ahd?: unknown })
+        : null;
+      if (!displayName || !onePct) continue;
+      const depth = typeof onePct.depth_m === 'number' ? onePct.depth_m : null;
+      const level = typeof onePct.level_m_ahd === 'number' ? onePct.level_m_ahd : null;
+      if (depth == null && level == null) continue;
+      const figure = depth != null
+        ? `${depth.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m deep`
+        : `${(level as number).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`;
+      findings.push({
+        // Label matches whichever measurement is actually shown — depth_m
+        // and level_m_ahd are not interchangeable (a depth is height of
+        // water above ground; an AHD level is height above a fixed datum),
+        // and a study can supply only one of the two.
+        label: depth != null ? '1-in-100-year flood depth' : '1-in-100-year flood level',
+        value: figure,
+        // Source-neutral vs the EPI overlay: naming this "more detailed than
+        // the standard overlay used elsewhere in NSW" would be an unqualified
+        // statewide comparison this component can't establish (some other
+        // area could have its own detailed local study too).
+        detail: `Modelled water ${depth != null ? 'depth' : 'level'} at this location from ${displayName}; the EPI overlay separately maps planning categories. Insurers and lenders may use flood information like this in their own assessments — confirm their specific requirements directly.`,
+        severity: 'red',
+      });
+      // Normalized identity, not a bare study_key match: a malformed or
+      // differently-cased key on a genuine Hawkesbury entry would otherwise
+      // defeat the fallback-suppression below and let the same study render
+      // twice (once here, once from the legacy flat fields).
+      const normalizedKey = studyKey ? studyKey.toLowerCase() : '';
+      if (normalizedKey === 'hawkesbury' || displayName.toLowerCase().includes('hawkesbury')) {
+        studiesShown.add('hawkesbury');
+      }
+    }
+  }
+  if (!studiesShown.has('hawkesbury') && o.hawkesbury_flood_level_100aep != null) {
     findings.push({
       label: '1-in-100 year flood level',
       value: `${o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`,
-      detail: 'This is the modelled water level at this site during a 1% annual chance flood. Your insurer and lender both use this number.',
+      detail: 'This is the modelled water level at this site during a 1% annual chance flood. Insurers and lenders may use flood information like this in their own assessments — confirm their specific requirements directly.',
       severity: 'red',
     });
   }

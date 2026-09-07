@@ -766,6 +766,63 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          if (key === 'flood_studies') {
+            // Named local flood study modelling (Hawkesbury, Redbank, Tweed,
+            // Wollongong) — a real depth/level number specific to this
+            // address. Previously fell through to the generic array
+            // formatter, which rendered a bare "N items" with no figure.
+            // Every read guards its own shape: this is an untyped JSON bag,
+            // not runtime-validated against FloodDetail.
+            if (!Array.isArray(val) || val.length === 0) return null;
+            const rows = val.flatMap((raw) => {
+              if (!raw || typeof raw !== 'object') return [];
+              const study = raw as Record<string, unknown>;
+              const studyKey = typeof study.study_key === 'string' && study.study_key ? study.study_key : null;
+              // Fall back to a humanised study_key when study_name is
+              // missing so a real, usable figure is never silently dropped
+              // just because one string field on the entry didn't validate.
+              const displayName = typeof study.study_name === 'string' && study.study_name
+                ? study.study_name
+                : studyKey
+                  ? `${studyKey.charAt(0).toUpperCase()}${studyKey.slice(1)} flood study`
+                  : null;
+              const design = study.design && typeof study.design === 'object'
+                ? (study.design as Record<string, unknown>)
+                : null;
+              const onePctRaw = design ? design['1pct'] : null;
+              const onePct = onePctRaw && typeof onePctRaw === 'object'
+                ? (onePctRaw as { depth_m?: unknown; level_m_ahd?: unknown })
+                : null;
+              if (!displayName || !onePct) return [];
+              const depth = typeof onePct.depth_m === 'number' ? onePct.depth_m : null;
+              const level = typeof onePct.level_m_ahd === 'number' ? onePct.level_m_ahd : null;
+              if (depth == null && level == null) return [];
+              const figure = depth != null
+                ? `${depth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m deep`
+                : `${(level as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`;
+              return [{ displayName, figure, depthBased: depth != null }];
+            });
+            if (rows.length === 0) return null;
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dl className="mt-0.5 space-y-1">
+                  {rows.map((r) => (
+                    <div key={r.displayName}>
+                      <dd className="text-sm font-medium text-slate-900">{r.displayName}: {r.figure}</dd>
+                      <dd className="text-xs text-slate-500">
+                        {/* Source-neutral vs the EPI overlay: naming this "more
+                            detailed than the standard overlay used elsewhere in
+                            NSW" would be an unqualified statewide comparison
+                            this component can't establish. */}
+                        Modelled water {r.depthBased ? 'depth' : 'level'} at this location from {r.displayName}; the EPI overlay separately maps planning categories.
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            );
+          }
         }
         if (section === 'satellite.bushfire') {
           if (SATELLITE_FOLDED_KEYS.has(key)) return null;
