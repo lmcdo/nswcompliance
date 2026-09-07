@@ -141,11 +141,22 @@ class TestPhraseLevelGarbleStrip:
         assert "ahead" in out
 
     def test_two_consecutive_spaced_doubled_letters_not_enough(self):
-        """Only 2 consecutive doubled-single-letter tokens -- below the 3+
-        threshold, must not fire (guards against a threshold typo turning
+        """Only 2 consecutive doubled-single-letter tokens -- well below the
+        5+ threshold, must not fire (guards against a threshold typo turning
         this into a 1-token trigger)."""
         text = "AA and BB are lot identifiers on the plan"
         assert strip_garbled_header_lines(text) == text
+
+    def test_sol_lot_identifier_scenario_survives(self):
+        """Sol cross-review (HIGH 0.98, on push): a 3-token threshold could
+        not distinguish 'SS TT RR EE EE TT' from a plausible real identifier
+        scheme like 'Lots AA BB CC'. Raised to 5+ tokens specifically to
+        exclude this and its natural 4-token extension -- both pinned here."""
+        for text in (
+            "Lots AA BB CC are subject to separate controls",
+            "Lots AA BB CC DD are subject to separate controls",
+        ):
+            assert strip_garbled_header_lines(text) == text
 
 
 class TestClassifyRowFidelity:

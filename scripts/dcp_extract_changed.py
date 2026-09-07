@@ -2036,11 +2036,23 @@ _WHOLE_TOKEN_GARBLE = re.compile(r"^(?:([A-Za-z])\1+)+$")
 # ("SS TT RR EE EE TT" = "STREET"). The space between each pair breaks both
 # other patterns' adjacency requirement entirely -- 0 hits on this text from
 # either, verified directly -- so this is a genuinely separate blind spot.
-# Requires 3+ consecutive doubled-single-letter tokens; no real English text
-# runs three single-letter doubled "words" in a row. Verified against the
-# full real corpus: 7 hits, all garbage (ku_ring_gai's "SS TT RR EE EE TT"
-# and canterbury_bankstown's "hh aa oo" / "aa UU uu" / "ee ll ee uu").
-_SPACED_GARBLE_RUN = re.compile(r"(?:\b([A-Za-z])\1\b[ \t]+){2,}\b([A-Za-z])\2\b")
+#
+# UNLIKE the two patterns above, this one has no structural safety argument
+# ("no real word is doubled edge-to-edge") -- it is a pure heuristic on
+# consecutive-token count, and Sol cross-review (HIGH 0.98, on push) found a
+# real coincidence a lower bar could hit: "Lots AA BB CC are subject to
+# separate controls" is a plausible real identifier scheme, not garbage, and
+# a 3-token threshold could not tell them apart. Requires 5+ consecutive
+# doubled-single-letter tokens (raised from 3 after that finding) -- Sol's
+# own "AA BB CC" (3 tokens) and its natural 4-token extension "AA BB CC DD"
+# both now correctly fall below the bar (verified), while the real fixture
+# ("SS TT RR EE EE TT", 6 tokens) stays comfortably above it with margin.
+# Re-verified against the full real corpus at the new threshold: 3 hits, all
+# ku_ring_gai, all the same real "SS TT RR EE EE TT" occurrence and its
+# sub-spans -- the canterbury_bankstown 3-token fragments a lower bar also
+# caught ("hh aa oo" / "aa UU uu" / "ee ll ee uu") now correctly fall out
+# too, the same direction as Sol's fix, not assumed safe either.
+_SPACED_GARBLE_RUN = re.compile(r"(?:\b([A-Za-z])\1\b[ \t]+){4,}\b([A-Za-z])\2\b")
 
 
 def _strip_garbled_phrase_spans(text: str) -> str:
