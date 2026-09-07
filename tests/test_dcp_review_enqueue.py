@@ -30,7 +30,13 @@ def _load_enqueue():
     junk = re.search(r"_JUNK_REF = .+", src).group(0)
     exec(garble, ns)
     exec(junk, ns)
+    # 2026-09-07 (DQ-97 cause 5): strip_garbled_header_lines now delegates to
+    # _strip_garbled_phrase_spans, which needs these three module-level
+    # regexes too -- same exec-extract pattern as _GARBLE_RUN/_JUNK_REF above.
+    for const in ("_GARBLE_RUN_TOLERANT", "_WHOLE_TOKEN_GARBLE", "_SPACED_GARBLE_RUN"):
+        exec(re.search(rf"{const} = .+", src).group(0), ns)
     exec(_extract_def(src, "_garble_evidence"), ns)
+    exec(_extract_def(src, "_strip_garbled_phrase_spans"), ns)
     exec(_extract_def(src, "strip_garbled_header_lines"), ns)
     exec(_extract_def(src, "classify_row_fidelity"), ns)
     exec(_extract_def(src, "enqueue_review_changes"), ns)

@@ -1986,6 +1986,94 @@ def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
 _GARBLE_RUN = re.compile(r"(?:([A-Za-z])\1){3,}")
 _JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table", re.IGNORECASE)
 
+# DQ-97 cause 5 (ku_ring_gai/section-a-part-6-multi-dwelling, found live 2026-09-07):
+# a diagram/figure-label bleed ("PPeedddeess)ttrriiaann PPaatthhwwaayy", "Pedestrian
+# Pathway" with every letter doubled) sitting MID-PARAGRAPH inside otherwise-real
+# site-layout guidance text. strip_garbled_header_lines only drops a whole LINE
+# dominated (>60%) by _GARBLE_RUN hits -- surrounded by enough legitimate prose,
+# the same garbage phrase never reaches that ratio and the line survives whole.
+# These patterns strip the PHRASE itself, wherever it sits, instead of requiring
+# it to dominate its line.
+#
+# TWO independent signals, combined because neither alone caught everything in
+# the real fixture (row id 69816): the PDF glued "(continue" directly onto
+# "PPeedddeess)" with no separating character, so a WHOLE-TOKEN check sees one
+# 19-char token ("continuePPeedddeess") that is not entirely doubled and
+# correctly leaves it alone.
+#
+# _GARBLE_RUN_TOLERANT is the same idea as the pre-existing _GARBLE_RUN but
+# tolerates a TRIPLED glyph mid-run ("ddd" in "PPeedddeess", an extraction
+# quirk) via \1+ instead of \1 -- _GARBLE_RUN's strict alternating-pair form
+# stops at the triple and only ever finds a 6-char "PPeedd" fragment.
+# Substring matches of this tolerant pattern are blanked at >=8 chars -- the
+# SAME threshold _garble_evidence already trusts as strong evidence on its
+# own regardless of word-boundary position (its own docstring: 'bookkeeping's
+# genuine "ookkee" run is 6 chars, safely under this bar). Verified against
+# the full real dcp_review_queue corpus (11,314 rows, all councils) before
+# shipping: 24 distinct substring matches at 8+ chars, every one a real
+# doubled/tripled word or word-fragment ('PPeedddeess'='Pedes', 'ttrriiaann'=
+# 'trian', 'nnddssccaappee'='ndscape', 'sseeccoonnddaa'='seconda[ry]'...),
+# zero false positives.
+_GARBLE_RUN_TOLERANT = re.compile(r"(?:([A-Za-z])\1+)+")
+
+# _WHOLE_TOKEN_GARBLE catches the shorter, standalone tokens the 8-char
+# substring bar above deliberately excludes (6-7 chars, e.g. 'kkkuuu'='ku'
+# tripled, 'aanndd'='and' doubled) -- safe at that shorter length only
+# because it is anchored to the ENTIRE token (^...$), not a substring: no
+# real English word is composed edge-to-edge of doubled-letter runs
+# ('bookkeeper' starts 'b' and ends 'r', both single, so the anchored match
+# fails at the first character; same for 'committee', 'possession', 'coffee',
+# 'street', and every other real word checked, see
+# tests/test_garbled_phrase_strip.py). Verified against the full real corpus:
+# 19 distinct whole-token matches at 6+ chars, all genuine doubled/tripled
+# words ('aaannnddd'='and' tripled, 'gggaaaiii'='gai', 'ppaatthhwwaayy'=
+# 'pathway', 'ssttoorreeyy'='storey'...), zero false positives.
+_WHOLE_TOKEN_GARBLE = re.compile(r"^(?:([A-Za-z])\1+)+$")
+
+# _SPACED_GARBLE_RUN catches a THIRD rendering of the same underlying defect
+# that neither pattern above can see at all: single letters doubled AND
+# separated by whitespace, spelling a word letter-by-letter-doubled
+# ("SS TT RR EE EE TT" = "STREET"). The space between each pair breaks both
+# other patterns' adjacency requirement entirely -- 0 hits on this text from
+# either, verified directly -- so this is a genuinely separate blind spot.
+#
+# UNLIKE the two patterns above, this one has no structural safety argument
+# ("no real word is doubled edge-to-edge") -- it is a pure heuristic on
+# consecutive-token count, and Sol cross-review (HIGH 0.98, on push) found a
+# real coincidence a lower bar could hit: "Lots AA BB CC are subject to
+# separate controls" is a plausible real identifier scheme, not garbage, and
+# a 3-token threshold could not tell them apart. Requires 5+ consecutive
+# doubled-single-letter tokens (raised from 3 after that finding) -- Sol's
+# own "AA BB CC" (3 tokens) and its natural 4-token extension "AA BB CC DD"
+# both now correctly fall below the bar (verified), while the real fixture
+# ("SS TT RR EE EE TT", 6 tokens) stays comfortably above it with margin.
+# Re-verified against the full real corpus at the new threshold: 3 hits, all
+# ku_ring_gai, all the same real "SS TT RR EE EE TT" occurrence and its
+# sub-spans -- the canterbury_bankstown 3-token fragments a lower bar also
+# caught ("hh aa oo" / "aa UU uu" / "ee ll ee uu") now correctly fall out
+# too, the same direction as Sol's fix, not assumed safe either.
+_SPACED_GARBLE_RUN = re.compile(r"(?:\b([A-Za-z])\1\b[ \t]+){4,}\b([A-Za-z])\2\b")
+
+
+def _strip_garbled_phrase_spans(text: str) -> str:
+    """Blank out doubled-glyph PHRASES wherever they sit in `text`, not just
+    whole lines they dominate -- see the three regexes above for what each
+    catches and why every one is safe against real English. Replaces a match
+    with a single space (never deletes outright) so the real words on either
+    side of the garbage don't fuse into one ('...(continued) Bad Examples...'
+    must not become '...(continuedBad Examples...' once the phrase between
+    them is gone)."""
+    text = _SPACED_GARBLE_RUN.sub(" ", text)
+    text = _GARBLE_RUN_TOLERANT.sub(lambda m: " " if len(m.group(0)) >= 8 else m.group(0), text)
+
+    def _blank_if_whole_token_garbled(m: re.Match) -> str:
+        token = m.group(0)
+        if len(token) >= 6 and _WHOLE_TOKEN_GARBLE.match(token):
+            return " "
+        return token
+
+    return re.sub(r"[A-Za-z]+", _blank_if_whole_token_garbled, text)
+
 
 # ── Preflight layout check (2026-07-29) ─────────────────────────────────────
 # prior-art-checked: the guard's hits are SEPP markdown parsers (different
@@ -2296,9 +2384,15 @@ def strip_garbled_header_lines(text: str | None) -> str | None:
     """Drop lines dominated by doubled-glyph runs (letter-spaced running
     headers whose text layer duplicates every glyph). Only whole LINES are
     removed, and only when the doubled run covers most of the line's letters —
-    body text containing a legitimate 'LLoyd' or 'III' is untouched."""
+    body text containing a legitimate 'LLoyd' or 'III' is untouched.
+
+    Runs _strip_garbled_phrase_spans FIRST (DQ-97 cause 5) to also catch a
+    doubled-glyph PHRASE that sits mid-paragraph, surrounded by enough real
+    prose that it never dominates its line and so would otherwise survive
+    this function entirely -- see that function's docstring."""
     if not text:
         return text
+    text = _strip_garbled_phrase_spans(text)
     kept = []
     for line in text.splitlines():
         letters = sum(ch.isalpha() for ch in line)
