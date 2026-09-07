@@ -1,10 +1,10 @@
 {
   "tier": "standard",
   "justification": "Liability-sensitive surface (flood status figures) reaching two live report UIs. No DB/schema change and no backend change -- flood_studies has been on the wire since before this PR (both FloodServiceOutput and FloodDetail already declare it). This is purely wiring an already-served field into rendering that never consumed it, replacing a Hawkesbury-only special case with a generic one covering all four named studies. Standard, not critical: additive/generalizing only, every read defensively guards its own shape (matches the discipline established in the sibling in_100yr_flood_zone_unconsulted fix, PR #1061), and the old Hawkesbury path is kept as a fallback rather than deleted.",
-  "commit_hash": "PENDING",
+  "commit_hash": "405a1867",
   "falsifiable_check": {
-    "command": "grep -n \"flood_studies\\|hawkesbury_flood_level\" frontend-nextjs/components/tools/FloodTool.tsx; grep -n \"flood_studies\" frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "fails_when": "before this change, the first grep found only the hawkesbury_flood_level_* legacy block (no flood_studies handling at all) and the second grep found only a tooltip-label entry with no render branch -- i.e. Redbank/Tweed/Wollongong depth figures were provably absent from both live surfaces. After this change both greps must show the new flood_studies-handling code.",
+    "command": "bash -c \"grep -c flood_studies frontend-nextjs/components/tools/FloodTool.tsx frontend-nextjs/app/reports/intelligence-brief/page.tsx\"",
+    "fails_when": "before this change: FloodTool.tsx had 0 matches for flood_studies (only the hawkesbury_flood_level_* legacy fields were handled) and page.tsx had exactly 1 match (a FIELD_LABEL_OVERRIDES tooltip string, no render branch). After this change the counts are 5 and 2 respectively, reflecting the new type declaration/loop/render logic in each file. A regression that removes the new handling would drop these counts back toward 0/1.",
     "observed_red": "Actually run in this session before writing the fix, not hypothetical: 'grep -n flood_studies frontend-nextjs/components/tools/FloodTool.tsx' returned zero matches (only hawkesbury_flood_level_* lines), and 'grep -n flood_studies\\b page.tsx' returned exactly one line -- the FIELD_LABEL_OVERRIDES tooltip entry, no render branch. Confirmed the generic array formatter (formatValue, page.tsx:1775) would have rendered any object array as a bare 'N items' string, by reading its source directly rather than assuming."
   },
   "files": [
