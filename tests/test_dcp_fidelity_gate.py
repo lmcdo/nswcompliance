@@ -116,6 +116,16 @@ class TestNumberWindow:
         text = "**Table 1** (Page 61)\n\n**Table 3** (Page 63)"
         assert _number_window(61, pages, text) == "table one table three"
 
+    def test_page_straddle_false_positive_is_a_documented_accepted_residual(self):
+        """Sol cross-review (MEDIUM 0.96, on push): a number that genuinely
+        continues onto the next page with no table caption falls outside this
+        window -- the CURRENT (imperfect) behaviour, asserted honestly rather
+        than silently hidden. See _number_window's docstring for why this is
+        the deliberately-chosen side of the trade-off (a flagged-but-correct
+        row costs review time; a masked wrong number ships silently)."""
+        pages = {11: "beta", 12: "4.5 metres, no caption here"}
+        assert "4.5" not in _number_window(11, pages, "no captions here")
+
 
 class TestGroundRowPageStraddle:
     """Reproduces the real defect: a provision whose distinctive words are
@@ -471,6 +481,16 @@ class TestChaptersQueryScopesToLiveChapters:
                                             include_backlog=False)
         assert "q.chapter_key=%s" in sql
         assert params == ["ashfield", "chapter-d-precinct-guidelines"]
+
+    def test_is_active_required_regardless_of_include_backlog(self):
+        """Sol cross-review (MEDIUM 0.99, on push): a retired/superseded registry
+        entry must never be graded -- unconditionally, not just when scoping to
+        live+actionable content. --include-backlog widens what counts as
+        'relevant', it does not resurrect a chapter the registry itself has
+        retired."""
+        for include_backlog in (False, True):
+            sql, _ = _gate.chapters_query("blacktown", None, include_backlog=include_backlog)
+            assert "reg.is_active" in sql, f"include_backlog={include_backlog}"
 
     def test_skipped_count_is_reported_not_silently_dropped(self):
         assert "non-actionable rows skipped, not graded" in self._main_src()

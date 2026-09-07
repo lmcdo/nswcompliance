@@ -129,7 +129,23 @@ def _number_window(page: int, pages: dict, text: str) -> str:
     one on THIS page (anchor page 11 says '4.5 metres', unrelated page 12 happens to
     say '9.9 metres' about something else, and a hallucinated '9.9' on page 11 would
     wrongly ground). Caption pages stay in: unlike a neighbour, a caption page is
-    this row's OWN table, known by construction, not a coincidence of proximity."""
+    this row's OWN table, known by construction, not a coincidence of proximity.
+
+    ACCEPTED RESIDUAL, other direction (Sol cross-review MEDIUM 0.96, on push): a
+    provision that genuinely straddles an ordinary page break -- its distinctive
+    words make page 11 the confident anchor, but its final sentence and number
+    continue onto page 12 with no table caption -- will have that number fall
+    outside this window and get wrongly flagged, even though word_source's +-1
+    window (_page_window) correctly grounds the surrounding words. Deliberately
+    NOT widened back to +-1 for numbers: doing so is exactly what caused the
+    masking regression this function's own docstring documents above, and
+    dcp_review_queue is a human-gated staging table where a wrongly-flagged
+    correct row costs a human's review time while a wrongly-grounded wrong
+    number ships a false 'this is correct' signal -- see this file's module
+    docstring and the QA report's tier justification for why that asymmetry is
+    the deciding factor. Same shape as the citation-masking residual documented
+    in _blank_verified_references's break_it entry -- named, accepted, not
+    silently hidden."""
     window_pages = {page} if page in pages else set()
     for m in _TABLE_CAPTION_RE.finditer(text or ""):
         cap_page = int(m.group(2))
@@ -311,11 +327,21 @@ def gate_chapter(cur, s3, council: str, chapter_key: str, r2_path: str) -> tuple
 def chapters_query(council: str, chapter: str | None, include_backlog: bool) -> tuple[str, list]:
     """Build the SQL (+ params) that selects which pending chapters to grade.
     Pulled out of main() so a real-DB test can execute exactly this query,
-    not a hand-copied approximation of it, against the actual tables."""
+    not a hand-copied approximation of it, against the actual tables.
+
+    reg.is_active is required unconditionally, regardless of include_backlog:
+    a retired/superseded registry entry should never be graded even when
+    --include-backlog widens the live+actionable content requirement -- the
+    two flags answer different questions (is this chapter still the one we
+    serve at all vs has it ever had approved live content). Sol cross-review
+    (MEDIUM 0.99, on push): this was a gap in the ORIGINAL main() query,
+    present before this branch's refactor, not introduced by it -- caught
+    because chapters_query's extraction made the query independently
+    reviewable for the first time."""
     sql = ("SELECT DISTINCT q.chapter_key, reg.r2_current_path FROM dcp_review_queue q "
            "JOIN dcp_chapter_registry reg ON reg.council=q.council AND reg.chapter_key=q.chapter_key "
            "WHERE q.council=%s AND q.status IN ('pending','in_progress') "
-           "AND reg.r2_current_path IS NOT NULL")
+           "AND reg.r2_current_path IS NOT NULL AND reg.is_active")
     params = [council]
     if not include_backlog:
         # prior-art-checked: is_current AND v2_is_actionable is the project's own
