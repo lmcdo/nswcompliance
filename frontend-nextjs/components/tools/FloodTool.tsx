@@ -523,7 +523,12 @@ function FloodCard({ result }: { result: FloodResult }) {
     findings.push({
       label: '1% AEP (1-in-100-year) flood extent',
       value: 'At least one source we checked places this location inside the flood extent',
-      detail: 'A council or statutory flood study places this location within the 1-in-100-year flood extent.',
+      // Source-neutral on purpose: the backend flags this from the EPI
+      // government overlay alone, a council/SES study, or a named flood-study
+      // raster (see flood_truth.py's in_100yr check) — naming "a council or
+      // statutory flood study" specifically would misattribute an EPI-only
+      // positive to evidence that wasn't actually consulted for this address.
+      detail: 'At least one of the sources we checked places this location within the 1-in-100-year flood extent.',
       severity: 'red',
     });
   } else if (aepVerdict === false && !aepUnconsulted) {
