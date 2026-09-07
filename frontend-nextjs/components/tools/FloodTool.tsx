@@ -664,19 +664,30 @@ function FloodCard({ result }: { result: FloodResult }) {
         ? `${depth.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m deep`
         : `${(level as number).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`;
       findings.push({
-        label: '1-in-100-year flood depth',
+        // Label matches whichever measurement is actually shown — depth_m
+        // and level_m_ahd are not interchangeable (a depth is height of
+        // water above ground; an AHD level is height above a fixed datum),
+        // and a study can supply only one of the two.
+        label: depth != null ? '1-in-100-year flood depth' : '1-in-100-year flood level',
         value: figure,
-        detail: `${studyName} — a named local flood study covering this address, more detailed than the standard government overlay used elsewhere in NSW. This is the modelled water ${depth != null ? 'depth' : 'level'} here during a 1% annual chance flood; your insurer and lender both use figures like this.`,
+        detail: `${studyName} — a named local flood study covering this address, more detailed than the standard government overlay used elsewhere in NSW. This is the modelled water ${depth != null ? 'depth' : 'level'} here during a 1% annual chance flood. Insurers and lenders may use flood information like this in their own assessments — confirm their specific requirements directly.`,
         severity: 'red',
       });
-      if (typeof study.study_key === 'string') studiesShown.add(study.study_key);
+      // Normalized identity, not a bare study_key match: a malformed or
+      // differently-cased key on a genuine Hawkesbury entry would otherwise
+      // defeat the fallback-suppression below and let the same study render
+      // twice (once here, once from the legacy flat fields).
+      const normalizedKey = typeof study.study_key === 'string' ? study.study_key.toLowerCase() : '';
+      if (normalizedKey === 'hawkesbury' || studyName.toLowerCase().includes('hawkesbury')) {
+        studiesShown.add('hawkesbury');
+      }
     }
   }
   if (!studiesShown.has('hawkesbury') && o.hawkesbury_flood_level_100aep != null) {
     findings.push({
       label: '1-in-100 year flood level',
       value: `${o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`,
-      detail: 'This is the modelled water level at this site during a 1% annual chance flood. Your insurer and lender both use this number.',
+      detail: 'This is the modelled water level at this site during a 1% annual chance flood. Insurers and lenders may use flood information like this in their own assessments — confirm their specific requirements directly.',
       severity: 'red',
     });
   }

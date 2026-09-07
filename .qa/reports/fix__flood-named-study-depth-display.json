@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Liability-sensitive surface (flood status figures) reaching two live report UIs. No DB/schema change and no backend change -- flood_studies has been on the wire since before this PR (both FloodServiceOutput and FloodDetail already declare it). This is purely wiring an already-served field into rendering that never consumed it, replacing a Hawkesbury-only special case with a generic one covering all four named studies. Standard, not critical: additive/generalizing only, every read defensively guards its own shape (matches the discipline established in the sibling in_100yr_flood_zone_unconsulted fix, PR #1061), and the old Hawkesbury path is kept as a fallback rather than deleted.",
-  "commit_hash": "405a1867",
+  "commit_hash": "82d80257",
   "falsifiable_check": {
     "command": "bash -c \"grep -c flood_studies frontend-nextjs/components/tools/FloodTool.tsx frontend-nextjs/app/reports/intelligence-brief/page.tsx\"",
     "fails_when": "before this change: FloodTool.tsx had 0 matches for flood_studies (only the hawkesbury_flood_level_* legacy fields were handled) and page.tsx had exactly 1 match (a FIELD_LABEL_OVERRIDES tooltip string, no render branch). After this change the counts are 5 and 2 respectively, reflecting the new type declaration/loop/render logic in each file. A regression that removes the new handling would drop these counts back toward 0/1.",
@@ -62,6 +62,13 @@
       "mitigated": true,
       "how": "Documented explicitly in the new branch's comment (page.tsx:773-774) and in this QA report's pre_impl section, so a future editor sees the fallback behaviour named rather than rediscovering it via formatValue's source.",
       "repro": "Read frontend-nextjs/lib or the inline formatValue function at page.tsx:1775 -- the Array.isArray branch's non-primitive case returns `${val.length} item(s)`."
+    },
+    {
+      "scenario": "Sol cross-review (3 x MEDIUM, 0.99/0.98/0.9) on the first push: (a) the finding label always said 'flood depth' even when a study supplied only level_m_ahd and no depth_m, misrepresenting a level as a depth; (b) the detail text made an unsupported universal claim ('your insurer and lender both use figures like this') about third parties' behaviour; (c) Hawkesbury deduplication depended solely on an exact study_key === 'hawkesbury' match, so a malformed/differently-cased key on a genuine Hawkesbury entry would let the same study render twice (generic row + legacy fallback row).",
+      "what_happens": "(a) reader sees a mislabeled figure; (b) an overclaimed statement about third-party underwriting practice; (c) a confusing duplicate flood-depth row for the same address.",
+      "mitigated": true,
+      "how": "FloodTool.tsx:667-683 -- label now derives from which measurement is actually present (depth vs level); the insurer/lender sentence softened to 'may use... confirm their specific requirements directly' in both the generic loop and the legacy fallback; Hawkesbury dedup now checks a lowercased study_key OR a case-insensitive study_name match, not the key alone. NOTE: the same unqualified insurer/lender claim pattern pre-exists elsewhere in this file (lines 351-365, 581, 588) — untouched, out of scope for this PR (not part of the diff Sol reviewed), flagged here for a future pass rather than silently left unnoticed.",
+      "repro": "Manual: construct a fixture with design['1pct'] = {level_m_ahd: 12.34, depth_m: null} and confirm the label reads '...flood level', not '...flood depth'; construct a fixture with a Hawkesbury study_name but study_key: 'Hawkesbury ' (trailing space/different case) plus hawkesbury_flood_level_100aep set, and confirm only one row renders."
     }
   ],
   "post_merge": {
