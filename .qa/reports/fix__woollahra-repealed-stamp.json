@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Documentation-only change (.claude/dq_checks.json, .claude/DATA_QUALITY_TRACKER.md) recording a data operation already performed and verified live -- no code, no schema, no new logic.",
-  "commit_hash": "ab57c332",
+  "commit_hash": "2b2da496",
   "files": [
     ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md"
