@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes a live, public-facing API response (/api/dcp/coverage) that answers 'which councils do you cover' and feeds a coverage figure published on 7 marketing/product pages via the single source of truth (frontend-nextjs/lib/coverage.ts). Standard, not Light, because a wrong council list or count is a public claim about product coverage -- exactly the class of thing this project's own outreach-hold campaign exists to prevent, and this branch's own first attempt proved that risk is real (see break_it). Standard, not Critical, because this is a read-only SELECT (no write, no schema change).",
-  "commit_hash": "3416e0e2",
+  "commit_hash": "438c1899",
   "falsifiable_check": {
     "command": "python scripts/verify_coverage_stats.py; cd frontend-nextjs && npx jest __tests__/api/dcp-coverage.test.ts",
     "fails_when": "the route's SQL re-acquires a parent_lga filter, stops aggregating a sub-council under its current parent via COALESCE, drops the needs_review guard, lib/coverage.ts's dcpNumericCouncils drifts from the live count again, verify_coverage_stats.py's own query stops matching the route's query, or the route stops failing visibly (500 + empty list) on a DB error",

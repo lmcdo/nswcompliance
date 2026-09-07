@@ -42,11 +42,18 @@ describe('GET /api/dcp/coverage', () => {
     mockQuery.mockReset();
   });
 
-  it('does not filter on parent_lga -- the exact predicate that dropped Inner West sub-councils', async () => {
+  it('no longer excludes sub-councils outright -- the exact standalone filter that dropped Inner West', async () => {
+    // The OLD bug was `AND r.parent_lga IS NULL` as its own exclusionary
+    // clause. The FIX still legitimately contains the substring
+    // "parent_lga IS NULL" (as one arm of the new OR-based is_active
+    // guard below), so this must not be a blanket substring check -- Sol
+    // cross-review (MEDIUM 0.99) caught the first version of this test
+    // failing against the very query it was meant to validate. Anchored
+    // to the specific standalone-AND-clause shape instead.
     mockQuery.mockResolvedValue(rows(['Inner West']));
     await GET();
     const [sql] = mockQuery.mock.calls[0];
-    expect(sql).not.toMatch(/WHERE[\s\S]*parent_lga IS NULL/i);
+    expect(sql).not.toMatch(/AND\s+r\.parent_lga\s+IS\s+NULL\s*(?:AND|ORDER BY|$)/i);
   });
 
   it('aggregates a sub-council under its CURRENT parent via COALESCE, not as a separate council, and gates both rows on is_active', async () => {
@@ -90,10 +97,13 @@ describe('GET /api/dcp/coverage', () => {
     expect(body.councils).toEqual(['Bayside', 'Inner West', 'Woollahra']);
     // The abolished pre-2016-merger names must never appear as their own
     // entries -- if they do, the aggregation regressed to the first,
-    // Sol-caught, overclaiming fix attempt.
-    expect(body.councils).not.toEqual(
-      expect.arrayContaining(['Ashfield', 'Leichhardt', 'Marrickville']),
-    );
+    // Sol-caught, overclaiming fix attempt. Asserted independently, not
+    // via arrayContaining(all three) -- Sol cross-review (LOW 0.99): that
+    // form only fails when ALL three leak together, silently passing a
+    // regression that leaks just one or two.
+    for (const abolished of ['Ashfield', 'Leichhardt', 'Marrickville']) {
+      expect(body.councils).not.toContain(abolished);
+    }
   });
 
   it('fails visibly (500, empty list) on a DB error -- never a silent empty success', async () => {
