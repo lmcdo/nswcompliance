@@ -1,0 +1,78 @@
+{
+  "tier": "standard",
+  "justification": "Real logic change to scripts/dcp_extract_changed.py's text-cleaning step (strip_garbled_header_lines), which runs on every pending row's new_text at insert time before it reaches dcp_review_queue -- Standard, not Light, because a wrong removal could delete real regulatory content from a provision a human later approves into regulatory_provisions. Standard, not Critical, because dcp_review_queue is human-gated staging (nothing here auto-commits), the change is pure string processing with no new DB query, and every claim below was verified against the full real production corpus (11,314 pending rows, all councils) before shipping, not asserted.",
+  "commit_hash": "PENDING",
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_extraction_fidelity.py tests/test_dcp_review_enqueue.py tests/test_ocr_fallback.py -v",
+    "fails_when": "the real ku_ring_gai doubled-glyph phrase stops being stripped, real content gets wrongly blanked alongside it, any of the 14 confusable-negative words gets wrongly stripped, the spaced-doubled-letter pattern stops firing at 3+ tokens or wrongly fires at 2, or either exec-extraction test harness (test_dcp_review_enqueue.py, test_ocr_fallback.py) NameErrors because a new module-level name it depends on isn't captured",
+    "observed_red": "test_dcp_review_enqueue.py DID go red before this was fixed, live: adding _strip_garbled_phrase_spans without updating that file's exec-extraction harness produced NameError: name '_strip_garbled_phrase_spans' is not defined on 3/4 of its tests, caught by running the file, not assumed clean. test_emptied_by_strip_fails_not_ok also went red the moment the phrase-strip landed (assert 'ok' == 'failed') -- a real, understood behaviour change (COS_HEADER's real 'Section 3' prefix is now preserved instead of destroyed), fixed by updating the fixture, not by weakening the check; the old destructive behaviour is now itself pinned as a positive test. All 53 tests across the three files pass now (31 + 4 + 18); full suite re-run clean: 5,068 passed / 2 skipped / 0 failed."
+  },
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_extraction_fidelity.py",
+    "tests/test_dcp_review_enqueue.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue.new_text, 11,314 pending rows across 9 councils at measurement time. No schema change, no new column, no new query -- the fix is entirely inside the existing strip_garbled_header_lines() call already made once per row in enqueue_review_changes().",
+    "assumption_mismatch": "Assumed a naive 'strip any doubled-letter substring' approach would be safe. Checked, not assumed, before writing a single test: real English has genuine doubled-letter runs inside otherwise-normal words ('bookkeeper' -> 'ookkee', 6 chars) that a substring-only check could wrongly strip. Verified against the full real corpus which mechanism is safe at which length threshold BEFORE committing to either: whole-token anchoring (^...$) is safe at 6+ chars because no real word is doubled edge-to-edge; unanchored substring matching needs an 8+ char floor (the same threshold this file's own pre-existing _garble_evidence() already trusts) to stay clear of 'bookkeeper'-class words. Both were run against all 11,314 rows before shipping -- 19 whole-token hits + 24 substring hits, zero false positives in either.",
+    "new_vs_existing": "Applies to every row processed through enqueue_review_changes() going forward (new extractions and re-extractions) -- not a backfill. Existing dcp_review_queue rows (like id 69816, the real fixture this fix was built against) are NOT retroactively cleaned; they stay as-is until their chapter is next re-extracted, same as every other change in strip_garbled_header_lines' history."
+  },
+  "functions": [
+    {
+      "name": "_strip_garbled_phrase_spans",
+      "file_line": "scripts/dcp_extract_changed.py:2046",
+      "input": "raw provision text, a plain Python str, from new_text",
+      "output": "the same text with doubled-glyph phrases blanked to single spaces, real content otherwise untouched",
+      "why_it_changed": "new function -- DQ-97 cause 5: strip_garbled_header_lines only ever dropped a whole LINE dominated (>60%) by doubling. A diagram-label bleed sitting mid-paragraph, surrounded by enough real prose, never reached that ratio and survived whole (measured on the real fixture: ratio 0.56, just under the 0.6 bar). This function catches the phrase itself via three independent patterns -- see the regex docstrings immediately above it in the file for what each catches and why each is safe.",
+      "if_none": "the diagram-label bleed keeps bleeding into approved provision text indefinitely; a human approving the row commits garbage characters into regulatory_provisions alongside the real content"
+    },
+    {
+      "name": "strip_garbled_header_lines",
+      "file_line": "scripts/dcp_extract_changed.py:2371",
+      "input": "raw provision text (str | None)",
+      "output": "text with both whole-line-dominated garbage (pre-existing behaviour) and mid-paragraph phrase garbage (new) removed",
+      "why_it_changed": "now calls _strip_garbled_phrase_spans() first, then applies its own pre-existing whole-line-dominance pass as a backstop for garbage that isn't expressible as a doubled-glyph phrase",
+      "if_none": "identical to _strip_garbled_phrase_spans' if_none -- this is the one call site (enqueue_review_changes) every pending row already passes through"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A real DCP provision legitimately contains a word composed entirely of doubled letters (no such English word was found, but the codebase cannot prove none exists in any of 130 LGAs' plans).",
+      "what_happens": "That word would be wrongly blanked to a space, silently altering real content.",
+      "mitigated": true,
+      "how": "Verified against the ENTIRE real production dcp_review_queue corpus (11,314 rows, every council currently onboarded) before shipping, not a sample: every one of the 19 whole-token and 24 substring matches found is a real doubled/tripled DCP-vocabulary word ('and', 'gai', 'pathway', 'storey', 'precinct', 'secondary', 'boundary', 'setbacks'...), zero false positives. See tests/test_dcp_extraction_fidelity.py::TestPhraseLevelGarbleStrip::test_confusable_negatives_survive_word_by_word for the explicit negative-case list (bookkeeper, committee, possession, coffee, street, greenhouse, appeal, accessible, agreement, proceed, success, balloon, coordinator, aardvark).",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py::TestPhraseLevelGarbleStrip -v",
+      "how_measured": "scripts run this session (not committed, ad-hoc verification): scanned all 11,314 pending rows' new_text for every whole-token and 8+-char substring match of the two new patterns, printed every distinct match with its council, manually classified all 43 distinct matches -- all garbage."
+    },
+    {
+      "scenario": "The fix is claimed to 'fix' the real ku_ring_gai row (id 69816) that motivated it, but the row keeps getting flagged.",
+      "what_happens": "A stale claim of closure would mislead a future session into re-investigating a row that was already addressed, or wrongly assuming the DQ-97 flagged count should have dropped.",
+      "mitigated": true,
+      "how": "NOT overclaimed. Row 69816 carries a SECOND, separate, genuinely harder defect in the same text (a character-level interleave of overlapping setback-diagram labels, e.g. 'hhaabbitiatabblele rorooomm 6.06m.0' -- multiple diagram labels merged character-by-character, not uniform doubling) that this fix does not and cannot address with a doubling-based pattern. Measured directly: dq_check.py-style has_margin_artifact() symptom scan on row 69816's cleaned text still returns True; a corpus-wide re-scan of all 373 currently DQ-97-flagged pending rows shows 0 rows drop out of the flagged set after this fix (measured, not assumed -- every flagged row apparently carries additional garbage beyond what this specific gap covers). The fix is real and independently verified (the targeted doubled-glyph phrase IS removed, confirmed by direct before/after diff), it just does not move the census's headline number today. Documented here rather than silently claiming a row-level win.",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py::TestPhraseLevelGarbleStrip::test_real_ku_ring_gai_fixture_loses_the_doubled_phrase tests/test_dcp_extraction_fidelity.py::TestPhraseLevelGarbleStrip::test_real_ku_ring_gai_fixture_keeps_the_real_content -v",
+      "how_measured": "ad-hoc script this session: dx.strip_garbled_header_lines() run against the live id=69816 new_text pulled directly from production via dq_db.session(); has_margin_artifact() re-run on the result; separately, the same before/after comparison run across all 373 rows currently matching the census's symptom scan."
+    },
+    {
+      "scenario": "A previous test (test_emptied_by_strip_fails_not_ok) relied on stripping a mixed real+garbage line ('Section 3 GGEENNEERRAALL PPRROOVVIISSIIOONNSS') producing fully-empty output.",
+      "what_happens": "That test broke -- not a regression in the code, a genuine behaviour change: the real 'Section 3' fragment is now correctly preserved instead of being destroyed along with the doubled garbage next to it (previously the WHOLE line was dropped by the line-dominance check, real content included).",
+      "mitigated": true,
+      "how": "Test fixture updated to use a purely-garbled line with no real content mixed in, which still correctly empties and still correctly triggers emptied_by_strip. The old, now-fixed behaviour (destroying real content that shared a line with garbage) is pinned as its own new positive test: TestStripGarbledHeaderLines::test_phrase_strip_preserves_real_prefix_on_a_mixed_line.",
+      "repro": "python -m pytest tests/test_dcp_extraction_fidelity.py::TestClassifyRowFidelity::test_emptied_by_strip_fails_not_ok tests/test_dcp_extraction_fidelity.py::TestStripGarbledHeaderLines::test_phrase_strip_preserves_real_prefix_on_a_mixed_line -v"
+    },
+    {
+      "scenario": "Two exec-extraction test harnesses (tests/test_dcp_review_enqueue.py, tests/test_ocr_fallback.py) pull individually-named source slices out of dcp_extract_changed.py to avoid importing its boto3/pdfplumber module-level dependencies -- a new helper function/regex the real module needs could be missed by an exec harness that doesn't know it exists, passing green while the real integrated call path is broken.",
+      "what_happens": "Silent test-suite blind spot: the exec-based test could pass even though the real module-level call would NameError, exactly what happened here on the first run (caught before merge, not after).",
+      "mitigated": true,
+      "how": "tests/test_dcp_review_enqueue.py's _load_enqueue() updated to also exec the three new regex constants and _strip_garbled_phrase_spans, mirroring the existing pattern it already used for _GARBLE_RUN/_JUNK_REF. tests/test_ocr_fallback.py needed no change -- it already execs a contiguous SOURCE RANGE (_GARBLE_RUN through the line before strip_garbled_header_lines), so the new additions were captured automatically since they sit inside that same range.",
+      "repro": "python -m pytest tests/test_dcp_review_enqueue.py tests/test_ocr_fallback.py -v"
+    }
+  ],
+  "mutation_analysis": "Not run via MUTMUT (scripts/, outside the tip's scope). Each of the three new regex patterns has a paired positive test (the real ku_ring_gai fixture) and a paired negative test (confusable real words / below-threshold cases) that would fail if the pattern were stubbed to always-match or never-match -- test_confusable_negatives_survive_word_by_word fails if the whole-token or substring check were loosened even slightly toward matching normal prose; test_real_ku_ring_gai_fixture_loses_the_doubled_phrase fails if either check were disabled. test_two_consecutive_spaced_doubled_letters_not_enough specifically guards the {2,} threshold in _SPACED_GARBLE_RUN against an off-by-one loosening to {1,}.",
+  "residual_risk": "One thing left open on purpose, not silently hidden: the harder, second defect class in the same real fixture row (ku_ring_gai id 69816) -- character-level interleaving of multiple overlapping diagram/site-plan labels, NOT uniform doubling -- is unaddressed. It is the same shape of problem already named and deliberately deferred elsewhere in this project (DQ-78's 'separating interleaved map labels from a control needs the source PDF's layout -- the very information the extractor discarded', canterbury_bankstown's map-label interleave cause in the DQ-97 census). Attempting a quick pattern-match fix for it risks either doing nothing or, worse, corrupting legitimate content -- correctly out of scope for this fix. The DQ-97 census's flagged-row count is measured, not assumed, to be unchanged by this fix (0 of 373 currently-flagged rows drop out) for exactly this reason -- every flagged row apparently carries this harder defect alongside or instead of the simpler one this fix closes.",
+  "post_merge": {
+    "db_reset": "No schema change. No code here executes anything on merge -- the fixed strip runs the next time a chapter is re-extracted through the normal --review pipeline, same as every prior change to this function.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No live DB write from this change. Optional spot-check once ku_ring_gai/section-a-part-6-multi-dwelling is next re-extracted: python scripts/dcp_extract_changed.py --council ku_ring_gai --chapter section-a-part-6-multi-dwelling --review, then confirm the specific span ('PPeedddeess', 'ttrriiaann', 'PPaatthhwwaayy', 'SS TT RR EE EE TT') is absent from the newly-inserted row's new_text."
+  }
+}

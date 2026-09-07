@@ -29,7 +29,21 @@ classify_row_fidelity = _extract.classify_row_fidelity
 
 # Real artifacts from the 2026-07 backlog
 COS_HEADER = "Section 3 GGEENNEERRAALL PPRROOVVIISSIIOONNSS"
+_PURE_GARBLE_LINE = "GGEENNEERRAALL PPRROOVVIISSIIOONNSS"
 KRG_INTERLEAVE = "existing dwelling pro 9m rad 9m nneeww ddwweelllliinngg new dwelling"
+
+# Real artifact from ku_ring_gai/section-a-part-6-multi-dwelling, dcp_review_queue
+# id 69816, found live 2026-09-07 (DQ-97 cause 5) -- a diagram-label bleed
+# ("Pedestrian Pathway", doubled) sitting mid-paragraph inside real site-layout
+# guidance text. Verbatim from the real row, not invented.
+KRG_MID_PARAGRAPH_PHRASE = (
+    "6A.2 SITE LAYOUT (continuePPeedddeess)ttrriiaann PPaatthhwwaayy\n"
+    "SS TT RR EE EE TT\n"
+    "Bad Examples of Site Layout\n"
+    "SS TT RR EE EE TT SS TT RR EE EE TT\n"
+    "Figure 6A.2-1:\n"
+    "Gun barrel not permitted"
+)
 
 
 class TestStripGarbledHeaderLines:
@@ -47,6 +61,91 @@ class TestStripGarbledHeaderLines:
     def test_none_and_empty_pass_through(self):
         assert strip_garbled_header_lines(None) is None
         assert strip_garbled_header_lines("") == ""
+
+    def test_phrase_strip_preserves_real_prefix_on_a_mixed_line(self):
+        """The genuine improvement that broke test_emptied_by_strip_fails_
+        not_ok's old fixture: a real heading fragment sharing a line with
+        garbage is no longer destroyed along with it."""
+        out = strip_garbled_header_lines(COS_HEADER)
+        assert "Section 3" in out
+        assert "GGEE" not in out
+        assert "PPRR" not in out
+
+
+class TestPhraseLevelGarbleStrip:
+    """DQ-97 cause 5, found live 2026-09-07: strip_garbled_header_lines only
+    ever dropped a whole LINE dominated (>60%) by doubled-glyph runs. A
+    diagram-label bleed sitting mid-paragraph, surrounded by enough real
+    prose, never reaches that ratio and previously survived whole. See the
+    three regex docstrings in scripts/dcp_extract_changed.py (immediately
+    above _GARBLE_RUN_TOLERANT/_WHOLE_TOKEN_GARBLE/_SPACED_GARBLE_RUN) for
+    why each is safe against real English -- every claim there was checked
+    against the full real dcp_review_queue corpus (11,314 rows, all
+    councils) before this shipped, not asserted."""
+
+    def test_real_ku_ring_gai_fixture_loses_the_doubled_phrase(self):
+        out = strip_garbled_header_lines(KRG_MID_PARAGRAPH_PHRASE)
+        assert "PPeedd" not in out
+        assert "ttrriiaann" not in out
+        assert "PPaatthhwwaayy" not in out
+        assert "SS TT RR EE EE TT" not in out
+
+    def test_real_ku_ring_gai_fixture_keeps_the_real_content(self):
+        """The point of stripping the SPAN, not the whole line/row: '6A.2
+        SITE LAYOUT', 'continue', 'Bad Examples of Site Layout', 'Figure
+        6A.2-1', 'Gun barrel not permitted' are all real DCP content that
+        must survive."""
+        out = strip_garbled_header_lines(KRG_MID_PARAGRAPH_PHRASE)
+        for real in ("6A.2 SITE LAYOUT", "continue", "Bad Examples of Site Layout",
+                     "Figure 6A.2-1", "Gun barrel not permitted"):
+            assert real in out
+
+    def test_glued_token_with_no_separating_character_still_caught(self):
+        """The PDF glued '(continue' directly onto 'PPeedddeess)' with zero
+        separating characters -- a whole-token check alone sees one 19-char
+        token that is not entirely doubled and would wrongly leave it whole.
+        This is why the 8+-char substring pass exists alongside the
+        whole-token pass."""
+        out = strip_garbled_header_lines("(continuePPeedddeess)")
+        assert "continue" in out
+        assert "PPeedddeess" not in out
+
+    def test_confusable_negatives_survive_word_by_word(self):
+        """Every one of these carries a genuine doubled-letter run but is
+        NOT composed edge-to-edge of doubling -- must survive untouched.
+        Confirmed clean against the full real production corpus before
+        shipping (zero false positives across 11,314 rows)."""
+        text = ("bookkeeper committee possession coffee street greenhouse "
+                "appeal accessible agreement proceed success balloon "
+                "coordinator aardvark")
+        assert strip_garbled_header_lines(text) == text
+
+    def test_short_standalone_doubled_token_still_caught_below_the_substring_bar(self):
+        """A 6-char token that IS its own whole word ('kkkuuu' = 'ku'
+        tripled) is below the 8-char substring bar but still caught, because
+        whole-token anchoring makes the shorter length safe on its own."""
+        out = strip_garbled_header_lines("Located in kkkuuu-ring-gai council")
+        assert "kkkuuu" not in out
+        assert "Located in" in out
+        assert "council" in out
+
+    def test_spaced_doubled_letters_spelling_a_word(self):
+        """'SS TT RR EE EE TT' = 'STREET', every letter doubled AND
+        space-separated -- _GARBLE_RUN's adjacency requirement cannot see
+        this at all (a space breaks 'consecutive'), verified directly, so
+        this is a genuinely separate blind spot from the mid-paragraph one
+        above, not just the same fix applied twice."""
+        out = strip_garbled_header_lines("Diagram: SS TT RR EE EE TT ahead")
+        assert "SS TT RR EE EE TT" not in out
+        assert "Diagram:" in out
+        assert "ahead" in out
+
+    def test_two_consecutive_spaced_doubled_letters_not_enough(self):
+        """Only 2 consecutive doubled-single-letter tokens -- below the 3+
+        threshold, must not fire (guards against a threshold typo turning
+        this into a 1-token trigger)."""
+        text = "AA and BB are lot identifiers on the plan"
+        assert strip_garbled_header_lines(text) == text
 
 
 class TestClassifyRowFidelity:
@@ -88,8 +187,15 @@ class TestClassifyRowFidelity:
     def test_emptied_by_strip_fails_not_ok(self):
         """Sol #830: a changed row whose extraction was ONLY header garbage
         strips to empty — approving it would erase the provision. It must
-        fail, never slip through as ok because the checks see falsy text."""
-        stripped = strip_garbled_header_lines(COS_HEADER)
+        fail, never slip through as ok because the checks see falsy text.
+
+        Uses a PURELY garbled line, not COS_HEADER -- 2026-09-07's phrase-
+        level stripping (DQ-97 cause 5) now correctly preserves COS_HEADER's
+        real 'Section 3' prefix instead of destroying it along with the
+        genuinely garbled 'GENERAL PROVISIONS' suffix (see
+        TestStripGarbledHeaderLines::test_phrase_strip_preserves_real_prefix_
+        on_a_mixed_line), so stripping COS_HEADER alone no longer empties."""
+        stripped = strip_garbled_header_lines(_PURE_GARBLE_LINE)
         status, reason = classify_row_fidelity("X__3_2", "a real existing clause " * 20,
                                                stripped, "changed")
         assert status == "failed"
