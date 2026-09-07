@@ -59,7 +59,12 @@ describe('GET /api/dcp/coverage', () => {
     // a retired parent must not surface a council. 0 rows are currently
     // inactive (checked live, not assumed), so this guards a future state.
     expect(sql).toMatch(/r\.is_active = TRUE/i);
-    expect(sql).toMatch(/parent\.is_active IS NULL OR parent\.is_active = TRUE/i);
+    // A row WITH a declared parent must require that parent to be
+    // explicitly active -- not merely "parent.is_active is not FALSE",
+    // which would also pass a missing parent row or one with NULL
+    // is_active (Sol HIGH 0.99, round 2). Only a PARENTLESS row may pass
+    // on r.parent_lga IS NULL alone.
+    expect(sql).toMatch(/r\.parent_lga IS NULL OR parent\.is_active = TRUE/i);
   });
 
   it('still gates on needs_review, matching every other serving path', async () => {

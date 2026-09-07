@@ -31,6 +31,8 @@
  *                                WHERE c.is_current = TRUE
  *                                  AND (c.needs_review IS NULL OR c.needs_review = FALSE)
  *                                  AND r.slug != 'nsw_statewide'
+ *                                  AND r.is_active = TRUE
+ *                                  AND (r.parent_lga IS NULL OR parent.is_active = TRUE)
  *                                (identical to /api/dcp/coverage — the canonical list)
  *                                FIXED 2026-09-07: was 25, kept deliberately understated to
  *                                match /api/dcp/coverage's own bug (a parent_lga IS NULL

@@ -52,6 +52,17 @@ export async function GET() {
     // this is a defensive guard against a future state, not today's fix --
     // added per this project's own pre-pr-review rule (every SELECT needs
     // an explicit currency filter), caught by qa_gate's static DB guard.
+    //
+    // Round 2 (Sol HIGH 0.99): the first version of this guard,
+    // `parent.is_active IS NULL OR parent.is_active = TRUE`, was meant to
+    // let a PARENTLESS row (parent_lga IS NULL, so the LEFT JOIN naturally
+    // produces NULL parent.* fields) pass through on its own name -- but
+    // it ALSO let a row that DOES declare a parent_lga through whenever
+    // the parent registry row was missing or itself had NULL is_active,
+    // which would surface the abolished child's own name via COALESCE's
+    // fallback instead of being excluded. Corrected to require an
+    // explicitly ACTIVE parent whenever one is declared: a row only
+    // passes on its own name if it has no parent at all.
     const result = await pool.query(
       `SELECT DISTINCT COALESCE(parent.display_name, r.display_name) AS display_name
        FROM dcp_setback_controls c
@@ -61,7 +72,7 @@ export async function GET() {
          AND (c.needs_review IS NULL OR c.needs_review = FALSE)
          AND r.slug != 'nsw_statewide'
          AND r.is_active = TRUE
-         AND (parent.is_active IS NULL OR parent.is_active = TRUE)
+         AND (r.parent_lga IS NULL OR parent.is_active = TRUE)
        ORDER BY display_name`,
     );
 

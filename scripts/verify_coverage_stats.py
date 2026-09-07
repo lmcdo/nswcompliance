@@ -64,7 +64,7 @@ QUERIES: dict[str, tuple[str, str]] = {
         "AND (c.needs_review IS NULL OR c.needs_review = FALSE) "
         "AND r.slug != 'nsw_statewide' "
         "AND r.is_active = TRUE "
-        "AND (parent.is_active IS NULL OR parent.is_active = TRUE)",
+        "AND (r.parent_lga IS NULL OR parent.is_active = TRUE)",
     ),
     "dcpSetbackRows": (
         "DCP setback/control rows",
