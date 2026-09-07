@@ -107,15 +107,7 @@ export default function PlannersPage() {
             cta="hero_try_free"
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
           >
-            Try it now — early access <ArrowRight className="w-4 h-4" />
-          </TrackedLink>
-          <TrackedLink
-            href="/pricing"
-            page="planners"
-            cta="hero_see_pricing"
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            See pricing
+            Try it now <ArrowRight className="w-4 h-4" />
           </TrackedLink>
         </div>
       </section>
@@ -213,39 +205,6 @@ export default function PlannersPage() {
               <p className="text-xs text-gray-400">{sub}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="bg-gray-50 border-y border-gray-100 py-12 px-6">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Pricing</h2>
-          <p className="text-gray-500 text-sm mb-6">
-            Site Controls is in early access — open to use now while it&apos;s built out with the
-            planners who use it.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl border-2 border-teal-500 p-5">
-              <p className="text-2xl font-bold text-gray-900">Early access</p>
-              <p className="text-sm text-gray-500 mt-1">Open now — no account required</p>
-              <p className="text-xs text-gray-400 mt-2">
-                Full zone, LEP, DCP, SEPP, and spatial overlay data. Early users whose
-                feedback shapes the tool keep free access when paid plans land.
-              </p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-2xl font-bold text-gray-900">$49<span className="text-sm font-normal text-gray-400">/mo</span></p>
-              <p className="text-sm text-gray-500 mt-1">Site Controls Pro — planned</p>
-              <p className="text-xs text-gray-400 mt-2">
-                Unlimited lookups, DA Mode, annotation, SEE export — the paid plan
-                early-access pricing will be measured against.
-              </p>
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 mt-4">
-            At 3 sites/week, Site Controls Pro works out to ~$4 per site. One saved hour of manual
-            lookup covers the month.
-          </p>
         </div>
       </section>
 

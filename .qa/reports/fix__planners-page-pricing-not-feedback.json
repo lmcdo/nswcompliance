@@ -1,0 +1,24 @@
+{
+  "tier": "minor",
+  "justification": "Static marketing-copy removal on frontend-nextjs/app/for/planners/page.tsx -- no logic, no DB query, no schema. Removes the hero 'See pricing' link + 'early access' suffix and deletes the bottom Pricing section ($49/mo comparison) per explicit user instruction: this page is the landing target for an outreach campaign asking planners for free feedback on an untested tool, and showing a future price undercuts that ask.",
+  "commit_hash": "7ff4c975",
+  "files": [
+    "frontend-nextjs/app/for/planners/page.tsx"
+  ],
+  "break_it": [
+    {
+      "scenario": "The removed /pricing hero link or the deleted Pricing section was the only place on the page linking to /pricing or explaining the tool is free/no-account, leaving a gap.",
+      "what_happens": "A visitor loses a legitimate way to find pricing info, or loses reassurance the tool is free to try.",
+      "mitigated": true,
+      "how": "Checked before removing: no anchor elsewhere in the codebase links to #pricing on this page (grepped), and the remaining hero CTA ('Try it now') plus the CTA section's own copy ('Enter any NSW address... Decide if it saves you time') already implies free, no-signup use without needing a dedicated pricing block. SiteNav (unchanged) still carries whatever global pricing link exists site-wide.",
+      "repro": "Visual check: verify.plotdetect.com.au/for/planners (or the preview URL) renders cleanly with one hero CTA and no Pricing section between Coverage and the final CTA.",
+      "how_measured": "Read the full file before and after; confirmed JSX structure is balanced (Coverage section flows directly into the CTA section) and no dangling references to the removed TrackedLink (cta=\"hero_see_pricing\") exist elsewhere (e.g. analytics dashboards keyed on that cta string would simply stop receiving new events, not error)."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Visual check on the deployed preview: hero has one button ('Try it now'), no pricing section appears between Data coverage and the final CTA."
+  }
+}
