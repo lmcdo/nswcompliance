@@ -517,7 +517,17 @@ function FloodCard({ result }: { result: FloodResult }) {
         : 'Every source that could answer this question for this run was consulted, and none of them maps this location within the 1-in-100-year flood extent.',
       severity: aepVerdict ? 'red' : 'green',
     });
-  } else if (o.in_100yr_flood_zone_unconsulted && o.in_100yr_flood_zone_unconsulted.length > 0) {
+  } else if (
+    // Array.isArray + every-string, not a bare truthy/.length check: `outputs`
+    // is a JSON API response only asserted to be FloodResult by a type cast,
+    // not runtime-validated, so a contract regression returning a bare string
+    // here would pass a `.length > 0` check (strings have .length) and then
+    // throw inside floodZoneUnavailableMessage's array methods, taking the
+    // whole card down. Mirrors the same guard on the Brief (page.tsx).
+    Array.isArray(o.in_100yr_flood_zone_unconsulted) &&
+    o.in_100yr_flood_zone_unconsulted.length > 0 &&
+    o.in_100yr_flood_zone_unconsulted.every((name): name is string => typeof name === 'string')
+  ) {
     findings.push({
       label: '1% AEP (1-in-100-year) flood extent',
       value: 'Not assessed',
