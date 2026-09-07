@@ -502,36 +502,54 @@ function FloodCard({ result }: { result: FloodResult }) {
   // null and unconsulted names the study, so the reader knows a more precise
   // answer exists rather than reading silence as "not in a flood zone".
   const aepVerdict = readFloodZoneVerdict(o.in_100yr_flood_zone);
-  if (aepVerdict !== null) {
+  // Array.isArray + every-string, not a bare truthy/.length check: `outputs`
+  // is a JSON API response only asserted to be FloodResult by a type cast,
+  // not runtime-validated, so a contract regression returning a bare string
+  // or a malformed element would otherwise pass a `.length > 0` check (a
+  // string has .length too) and either throw inside
+  // floodZoneUnavailableMessage's array methods or render a bogus name.
+  // Mirrors the same guard on the Brief (page.tsx).
+  const rawUnconsulted = o.in_100yr_flood_zone_unconsulted;
+  const aepUnconsulted =
+    Array.isArray(rawUnconsulted) &&
+    rawUnconsulted.length > 0 &&
+    rawUnconsulted.every((name): name is string => typeof name === 'string')
+      ? rawUnconsulted
+      : null;
+  if (aepVerdict === true) {
+    // A positive finding stands on its own regardless of what else was
+    // unreachable — matches the backend's own three-state rule (only a
+    // NEGATIVE needs every source to have been asked).
     findings.push({
       label: '1% AEP (1-in-100-year) flood extent',
-      value: aepVerdict
-        ? 'At least one source maps this location inside the extent'
-        : 'No source in this run maps this location inside the extent',
-      // Scoped to "sources in this run" and "this location", matching the
-      // Brief's own wording for the same field (page.tsx:704-706) — never a
-      // bare "outside the flood extent", which would overclaim a guarantee
-      // the underlying sources don't give for the whole parcel.
-      detail: aepVerdict
-        ? 'A council or statutory flood study maps this location within the 1-in-100-year flood extent.'
-        : 'Every source that could answer this question for this run was consulted, and none of them maps this location within the 1-in-100-year flood extent.',
-      severity: aepVerdict ? 'red' : 'green',
+      value: 'At least one source maps this location inside the extent',
+      detail: 'A council or statutory flood study maps this location within the 1-in-100-year flood extent.',
+      severity: 'red',
     });
-  } else if (
-    // Array.isArray + every-string, not a bare truthy/.length check: `outputs`
-    // is a JSON API response only asserted to be FloodResult by a type cast,
-    // not runtime-validated, so a contract regression returning a bare string
-    // here would pass a `.length > 0` check (strings have .length) and then
-    // throw inside floodZoneUnavailableMessage's array methods, taking the
-    // whole card down. Mirrors the same guard on the Brief (page.tsx).
-    Array.isArray(o.in_100yr_flood_zone_unconsulted) &&
-    o.in_100yr_flood_zone_unconsulted.length > 0 &&
-    o.in_100yr_flood_zone_unconsulted.every((name): name is string => typeof name === 'string')
-  ) {
+  } else if (aepVerdict === false && !aepUnconsulted) {
+    // A real negative: every source that could answer was consulted.
+    findings.push({
+      label: '1% AEP (1-in-100-year) flood extent',
+      value: 'No source in this run maps this location inside the extent',
+      // Scoped to "sources in this run" and "this location", matching the
+      // Brief's own wording for the same field — never a bare "outside the
+      // flood extent", which would overclaim a guarantee the underlying
+      // sources don't give for the whole parcel.
+      detail: 'Every source that could answer this question for this run was consulted, and none of them maps this location within the 1-in-100-year flood extent.',
+      severity: 'green',
+    });
+  } else if (aepUnconsulted) {
+    // Either the verdict was never established (null), or the backend sent
+    // an internally contradictory payload — a False verdict alongside a
+    // named unconsulted study, which should never happen given the
+    // backend's own rule (in_100yr_flood_zone is only False when unconsulted
+    // is empty) but is treated as "not assessed" here rather than trusted,
+    // so a future backend regression degrades safely instead of rendering a
+    // false-confidence clearance.
     findings.push({
       label: '1% AEP (1-in-100-year) flood extent',
       value: 'Not assessed',
-      detail: floodZoneUnavailableMessage(o.in_100yr_flood_zone_unconsulted),
+      detail: floodZoneUnavailableMessage(aepUnconsulted),
       severity: 'amber',
     });
   }

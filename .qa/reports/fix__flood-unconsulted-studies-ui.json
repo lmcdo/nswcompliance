@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a new servable field on a liability-sensitive surface (flood status) that reaches two live report UIs (standalone /reports/flood tool and the Intelligence Brief). No DB schema change and no new verdict logic -- it exposes a fact the backend already computes but was silently dropping (pydantic extra='ignore') -- but wrong wiring here could either show nothing (current bug, low harm) or, if the three-state guard were done wrong, misrender 'not assessed' as a clear reading, which is exactly the class of defect #892 and the 2026-08-24 Dockerfile fix both exist to prevent. Standard, not critical: additive only, reuses existing tested helpers (lib/not-assessed.ts), doesn't touch the verdict computation itself.",
-  "commit_hash": "7589f796",
+  "commit_hash": "13345e23",
   "falsifiable_check": {
     "command": "python -m pytest tests/test_brief_contract_drift.py tests/test_brief_contracts.py tests/test_flood_truth.py tests/test_flood_raster_deploy.py tests/test_flood_study_filenames.py tests/test_flood_queries.py tests/test_flood_normalise.py -q && python scripts/brief_field_coverage_ratchet.py",
     "fails_when": "in_100yr_flood_zone_unconsulted is removed from FloodServiceOutput/FloodDetail (the contract fixtures assert the exact key set and go red), or the ratchet baseline is reverted without the field (field-coverage check flags it as untracked again)",
@@ -87,6 +87,13 @@
       "mitigated": true,
       "how": "frontend-nextjs/components/tools/FloodTool.tsx:520-529 -- guard changed to Array.isArray(...) && length > 0 && every(name is string), mirroring the Brief's existing Array.isArray guard for the same field (page.tsx:719).",
       "repro": "Manual: pass in_100yr_flood_zone_unconsulted as a bare non-empty string in a test fixture and confirm the finding is silently skipped (no row, no crash) rather than reaching floodZoneUnavailableMessage."
+    },
+    {
+      "scenario": "Sol cross-review (2 x HIGH 0.94, 1 x MEDIUM 0.91) on the third push: both FloodTool.tsx and the Brief rendered the boolean verdict branch unconditionally whenever in_100yr_flood_zone was true/false, without checking whether a named unconsulted study also existed -- so a hypothetical/future contradictory payload (false verdict + a non-empty unconsulted list, which the backend's own rule should prevent but nothing enforced against a regression) would render a reassuring green 'not in the flood zone' while silently dropping the unconsulted-source warning. The Brief's null-branch also cast unconsulted's elements to string without checking each one (same class as the FloodTool.tsx fix above, just not mirrored there yet).",
+      "what_happens": "A future backend bug that violates the false-only-when-unconsulted-is-empty invariant would produce a false-confidence clearance instead of degrading to 'not assessed', and malformed cached unconsulted entries could render a bogus study name like [object Object].",
+      "mitigated": true,
+      "how": "Both files restructured to compute a validated (Array.isArray + every-string) unconsulted list FIRST, then: verdict true -> positive finding always; verdict false AND no valid unconsulted -> real negative; any valid unconsulted present (verdict null OR the contradictory false+unconsulted case) -> 'not assessed', never a green clearance. FloodTool.tsx:504-554, page.tsx:700-758.",
+      "repro": "Manual: construct a fixture with in_100yr_flood_zone: false and in_100yr_flood_zone_unconsulted: ['Tweed Valley Flood Study'] and confirm both surfaces render 'Not assessed' (amber), not a green clearance; construct in_100yr_flood_zone_unconsulted: [{\"name\":\"x\"}] and confirm the Brief renders nothing rather than a bogus name."
     }
   ],
   "post_merge": {

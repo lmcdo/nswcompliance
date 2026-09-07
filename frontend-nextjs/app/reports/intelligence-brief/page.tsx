@@ -698,31 +698,60 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
             );
           }
           if (key === 'in_100yr_flood_zone') {
-            if (typeof val === 'boolean') {
+            // Array.isArray + every-string, not a bare truthy/.length check:
+            // `data` is an untyped JSON bag, so a contract regression or
+            // malformed cached row could hand this a non-array or an array
+            // of non-strings — either would otherwise reach
+            // floodZoneUnavailableMessage's array methods or render a bogus
+            // name (e.g. "[object Object]"). Mirrors the same guard on the
+            // standalone flood tool (FloodTool.tsx).
+            const rawUnconsulted = data.in_100yr_flood_zone_unconsulted;
+            const unconsulted =
+              Array.isArray(rawUnconsulted) &&
+              rawUnconsulted.length > 0 &&
+              rawUnconsulted.every((name): name is string => typeof name === 'string')
+                ? rawUnconsulted
+                : null;
+            if (val === true) {
+              // A positive finding stands on its own regardless of what else
+              // was unreachable — matches the backend's own three-state rule
+              // (only a NEGATIVE needs every source to have been asked).
               return (
                 <div key={key} className="flex flex-col col-span-full">
                   <FieldLabel fieldKey={key} />
                   <dd className="text-sm text-slate-900 mt-0.5">
-                    {val
-                      ? 'Yes — at least one source in this run maps this location within a 1% AEP extent'
-                      : 'No — no source in this run maps this location within a 1% AEP extent'}
+                    Yes — at least one source in this run maps this location within a 1% AEP extent
                   </dd>
                 </div>
               );
             }
-            // val === null: not a "No". Only worth a row when a named study
-            // (Hawkesbury/Redbank/Tweed/Wollongong) exists for this address's
-            // council and could not be consulted — otherwise this address
-            // simply has no local study, and there's nothing to tell the
+            if (val === false && !unconsulted) {
+              return (
+                <div key={key} className="flex flex-col col-span-full">
+                  <FieldLabel fieldKey={key} />
+                  <dd className="text-sm text-slate-900 mt-0.5">
+                    No — no source in this run maps this location within a 1% AEP extent
+                  </dd>
+                </div>
+              );
+            }
+            // Either the verdict was never established (null), or the
+            // backend sent an internally contradictory payload — a False
+            // verdict alongside a named unconsulted study, which should
+            // never happen given the backend's own rule (in_100yr_flood_zone
+            // is only False when unconsulted is empty) but is treated as
+            // "not assessed" here rather than trusted, so a future backend
+            // regression degrades safely instead of rendering a
+            // false-confidence clearance. Also: val === null with no named
+            // study for this address's council has nothing worth telling the
             // reader beyond what the EPI/SES rows above already say.
-            const unconsulted = data.in_100yr_flood_zone_unconsulted;
-            if (Array.isArray(unconsulted) && unconsulted.length > 0) {
+            if (unconsulted) {
               return (
                 <div key={key} className="flex flex-col col-span-full">
                   <FieldLabel fieldKey={key} />
                   <dd className="text-sm text-slate-900 mt-0.5">Not assessed</dd>
                   <dd className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {floodZoneUnavailableMessage(unconsulted as string[])}
+                    {floodZoneUnavailableMessage(unconsulted)}
                   </dd>
                 </div>
               );
