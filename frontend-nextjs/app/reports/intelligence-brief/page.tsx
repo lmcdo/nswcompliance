@@ -766,6 +766,52 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          if (key === 'flood_studies') {
+            // Named local flood study modelling (Hawkesbury, Redbank, Tweed,
+            // Wollongong) — a real depth/level number specific to this
+            // address, more detailed than the EPI category-only overlay
+            // everywhere else in NSW gets. Previously fell through to the
+            // generic array formatter, which rendered a bare "N items" with
+            // no figure. Every read guards its own shape: this is an
+            // untyped JSON bag, not runtime-validated against FloodDetail.
+            if (!Array.isArray(val) || val.length === 0) return null;
+            const rows = val.flatMap((raw) => {
+              if (!raw || typeof raw !== 'object') return [];
+              const study = raw as Record<string, unknown>;
+              const studyName = typeof study.study_name === 'string' ? study.study_name : null;
+              const design = study.design && typeof study.design === 'object'
+                ? (study.design as Record<string, unknown>)
+                : null;
+              const onePctRaw = design ? design['1pct'] : null;
+              const onePct = onePctRaw && typeof onePctRaw === 'object'
+                ? (onePctRaw as { depth_m?: unknown; level_m_ahd?: unknown })
+                : null;
+              if (!studyName || !onePct) return [];
+              const depth = typeof onePct.depth_m === 'number' ? onePct.depth_m : null;
+              const level = typeof onePct.level_m_ahd === 'number' ? onePct.level_m_ahd : null;
+              if (depth == null && level == null) return [];
+              const figure = depth != null
+                ? `${depth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m deep`
+                : `${(level as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`;
+              return [{ studyName, figure, depthBased: depth != null }];
+            });
+            if (rows.length === 0) return null;
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dl className="mt-0.5 space-y-1">
+                  {rows.map((r) => (
+                    <div key={r.studyName}>
+                      <dd className="text-sm font-medium text-slate-900">{r.studyName}: {r.figure}</dd>
+                      <dd className="text-xs text-slate-500">
+                        Named local flood study — modelled water {r.depthBased ? 'depth' : 'level'} here during a 1% annual chance flood, more detailed than the standard government overlay used elsewhere in NSW.
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            );
+          }
         }
         if (section === 'satellite.bushfire') {
           if (SATELLITE_FOLDED_KEYS.has(key)) return null;

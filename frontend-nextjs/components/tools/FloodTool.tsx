@@ -58,6 +58,14 @@ interface FloodOutputs {
   hawkesbury_flood_level_500aep: number | null;
   hawkesbury_flood_level_pmf: number | null;
   hawkesbury_flood_study: string | null;
+  // Canonical shape for ALL named local flood studies (Hawkesbury, Redbank,
+  // Tweed, Wollongong), superseding the flat hawkesbury_flood_level_* fields
+  // above for anything generated after those studies were unified onto one
+  // schema. Untyped at the element level (unknown, not FloodStudyEntry)
+  // because this is a live JSON API response only asserted to be
+  // FloodResult by a type cast, never runtime-validated — every read below
+  // guards its own shape rather than trusting this declaration.
+  flood_studies?: unknown[] | null;
   // Three-state (2026-08-08): true/false are real verdicts, null means the
   // question could not be answered — see lib/not-assessed.ts. Optional here
   // because this interface predates the multi-study contract; older cached
@@ -627,8 +635,44 @@ function FloodCard({ result }: { result: FloodResult }) {
     }
   }
 
-  // Hawkesbury raster
-  if (o.hawkesbury_flood_level_100aep != null) {
+  // Named local flood study modelling — the canonical flood_studies array
+  // covers all four studies (Hawkesbury, Redbank, Tweed, Wollongong)
+  // uniformly, each giving a real modelled depth/level specific to this
+  // address rather than the category-only EPI overlay everywhere else in
+  // NSW gets. Loop first; studiesShown tracks which studies it already
+  // covered so the legacy Hawkesbury-only fields below act as a fallback
+  // for older stored reports generated before flood_studies existed on the
+  // wire, never a duplicate of a study already shown here.
+  const studiesShown = new Set<string>();
+  if (Array.isArray(o.flood_studies)) {
+    for (const raw of o.flood_studies) {
+      if (!raw || typeof raw !== 'object') continue;
+      const study = raw as Record<string, unknown>;
+      const studyName = typeof study.study_name === 'string' ? study.study_name : null;
+      const design = study.design && typeof study.design === 'object'
+        ? (study.design as Record<string, unknown>)
+        : null;
+      const onePctRaw = design ? design['1pct'] : null;
+      const onePct = onePctRaw && typeof onePctRaw === 'object'
+        ? (onePctRaw as { depth_m?: unknown; level_m_ahd?: unknown })
+        : null;
+      if (!studyName || !onePct) continue;
+      const depth = typeof onePct.depth_m === 'number' ? onePct.depth_m : null;
+      const level = typeof onePct.level_m_ahd === 'number' ? onePct.level_m_ahd : null;
+      if (depth == null && level == null) continue;
+      const figure = depth != null
+        ? `${depth.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m deep`
+        : `${(level as number).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`;
+      findings.push({
+        label: '1-in-100-year flood depth',
+        value: figure,
+        detail: `${studyName} — a named local flood study covering this address, more detailed than the standard government overlay used elsewhere in NSW. This is the modelled water ${depth != null ? 'depth' : 'level'} here during a 1% annual chance flood; your insurer and lender both use figures like this.`,
+        severity: 'red',
+      });
+      if (typeof study.study_key === 'string') studiesShown.add(study.study_key);
+    }
+  }
+  if (!studiesShown.has('hawkesbury') && o.hawkesbury_flood_level_100aep != null) {
     findings.push({
       label: '1-in-100 year flood level',
       value: `${o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`,
