@@ -76,7 +76,20 @@ export async function GET() {
        ORDER BY display_name`,
     );
 
-    const councils = result.rows.map(r => r.display_name as string);
+    // display_name is NOT NULL on lga_registry (checked live against
+    // production: is_nullable='NO', 0 NULL rows) on both sides of the
+    // COALESCE, so this cast is sound today. Guarded anyway (Sol HIGH
+    // 0.99): a future migration relaxing that constraint would otherwise
+    // silently serve `{"councils":[null]}` with no visible failure. Fail
+    // closed like every other error path here, not fail open with a
+    // malformed entry.
+    const councils = result.rows.map(r => {
+      const name = r.display_name;
+      if (typeof name !== 'string' || name.trim() === '') {
+        throw new Error(`[dcp/coverage] non-string display_name in result row: ${JSON.stringify(r)}`);
+      }
+      return name;
+    });
 
     return NextResponse.json({ councils });
   } catch (err) {

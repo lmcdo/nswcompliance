@@ -113,4 +113,17 @@ describe('GET /api/dcp/coverage', () => {
     const body = await res.json();
     expect(body.councils).toEqual([]);
   });
+
+  it('fails visibly (500) rather than serving a null/malformed council entry', async () => {
+    // display_name is NOT NULL on lga_registry today (verified live), so
+    // this can't happen through the real query -- guarded anyway (Sol
+    // HIGH 0.99) against a future schema change silently serving
+    // {"councils":[null]}. This proves the guard actually fires, not just
+    // that it's present in the source.
+    mockQuery.mockResolvedValue({ rows: [{ display_name: null }] });
+    const res = (await GET()) as NextResponse;
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.councils).toEqual([]);
+  });
 });
