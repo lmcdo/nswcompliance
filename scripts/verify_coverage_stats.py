@@ -47,10 +47,13 @@ QUERIES: dict[str, tuple[str, str]] = {
     ),
     "dcpNumericCouncils": (
         "Councils with DCP numeric controls",
+        # Matches /api/dcp/coverage/route.ts exactly (fixed 2026-09-07) --
+        # no parent_lga filter, so Ashfield/Leichhardt/Marrickville (Inner
+        # West sub-councils, parent has 0 current rows to be shown under)
+        # are counted by their own display name instead of being dropped.
         "SELECT COUNT(DISTINCT r.display_name) "
         "FROM dcp_setback_controls c JOIN lga_registry r ON r.slug = c.lga "
-        "WHERE c.is_current = TRUE AND r.slug != 'nsw_statewide' "
-        "AND r.parent_lga IS NULL",
+        "WHERE c.is_current = TRUE AND r.slug != 'nsw_statewide'",
     ),
     "dcpSetbackRows": (
         "DCP setback/control rows",
