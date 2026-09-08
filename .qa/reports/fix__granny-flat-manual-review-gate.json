@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Fixes a real defect on a monetized calculation flow (granny-flat yield report): the submitted structure count silently defaulted to 1 (main dwelling only) when detection found nothing or was unvalidated, with no UI enforcement despite text claiming manual entry was required. Detection recall is measured at 0.368 (2026-08-12) -- roughly two of three real structures missed -- so a real secondary structure could be silently treated as nonexistent in a paid yield calculation. Standard, not critical: no DB write, no schema change, purely a client-side gate that changes WHEN the existing submit path can fire, not what it submits.",
-  "commit_hash": "PENDING",
+  "commit_hash": "402716a1",
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/app/granny-flat-confirm-wiring.test.tsx -q",
     "fails_when": "the 3 new tests in the 'zero/unvalidated detection cannot silently calculate' describe block would fail without this fix: 'Calculate yield' was previously rendered with no disabled attribute at all in every state, so the disabled-until-ticked assertions would fail on unpatched code.",

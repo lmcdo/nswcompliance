@@ -1111,7 +1111,7 @@ export function ConfirmationPanel({
                 onChange={(e) => setManualReviewConfirmed(e.target.checked)}
                 className="mt-0.5"
               />
-              <span>I&apos;ve checked SIX Maps and confirmed the structures on this lot.</span>
+              <span>I&apos;ve checked SIX Maps and reviewed the structures on this lot.</span>
             </label>
           </div>
         ) : detectResult.detected_structures.length > 0 ? (
@@ -1174,7 +1174,7 @@ export function ConfirmationPanel({
                 onChange={(e) => setManualReviewConfirmed(e.target.checked)}
                 className="mt-0.5"
               />
-              <span>I&apos;ve checked SIX Maps and confirm there are no other structures on this lot.</span>
+              <span>I&apos;ve checked SIX Maps and there are no other structures on this lot.</span>
             </label>
           </div>
         )}
