@@ -718,7 +718,7 @@ function FloodCard({ result }: { result: FloodResult }) {
         </div>
         <p className="text-sm text-gray-600">{signalMeta.sublabel}</p>
         {/* Positioned here, not only in the footer disclaimer, because a
-            reader who stops at the badge should still see it: this is a
+            reader who stops at the badge still sees it: this is a
             screening signal, not a scored risk figure — the calibration
             rerun (2026-09-01) came out statistically indistinguishable from
             its own pass mark, and there is still no measured false-positive
