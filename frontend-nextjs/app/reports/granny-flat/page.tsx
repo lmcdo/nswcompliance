@@ -986,6 +986,30 @@ function getPositionLabel(bbox_pixel: number[], tileHeight: number | undefined):
   return 'mid-lot';
 }
 
+// Sol HIGH 0.99: the manual-review checkbox next to this used to assert "no
+// other structures" with no way to say otherwise — a person who genuinely
+// found something extra on SIX Maps had to either tick a false statement to
+// proceed, or stay stuck with no way to correct the number at all. This
+// gives them an actual field to enter what they found; the checkbox beside
+// it now just attests the number is accurate, true in either direction.
+function ManualStructureCount({ confirmedCount, onCountChange }: { confirmedCount: number; onCountChange: (n: number) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor="manual-structure-count" className="text-xs text-gray-600">
+        Total structures on this lot (including the main dwelling):
+      </label>
+      <input
+        id="manual-structure-count"
+        type="number"
+        min={1}
+        value={confirmedCount}
+        onChange={(e) => onCountChange(Math.max(1, Number(e.target.value) || 1))}
+        className="w-16 px-2 py-1 rounded border border-gray-300 text-xs"
+      />
+    </div>
+  );
+}
+
 // Exported for test only. The regression this guards is specific: onCountChange
 // was a prop this component accepted and never called, so the "user-confirmed"
 // structure count could only repeat the detector for the tool's whole life.
@@ -1019,6 +1043,22 @@ export function ConfirmationPanel({
   const secondaryStructures = detectResult.detected_structures.filter(s => !s.is_main_dwelling);
   const usePerStructureQuestions = detectResult.samgeo_validated && secondaryStructures.length > 0;
 
+  // Detection recall is measured at 0.368 against a 0.70 floor (2026-08-12) —
+  // it misses roughly two of every three real structures. Sol HIGH 0.98: a
+  // validated scan that finds ONLY the main dwelling (secondaryStructures
+  // empty) is the single most likely shape for a missed granny flat or shed
+  // to take, and it triggered neither this gate nor usePerStructureQuestions
+  // (which needs secondaryStructures.length > 0) — so "found nothing extra"
+  // and "missed something" were indistinguishable and both submitted
+  // unreviewed. Gate on secondaryStructures, not the raw detected array:
+  // this also subsumes the true zero-detection case (secondaryStructures is
+  // empty whenever detected_structures is). When secondary structures WERE
+  // found, the existing per-structure review (allSecondaryAnswered) is what
+  // must be complete instead — it existed before this fix but nothing
+  // enforced it either.
+  const needsManualReview = !detectResult.samgeo_validated || secondaryStructures.length === 0;
+  const [manualReviewConfirmed, setManualReviewConfirmed] = useState(false);
+
   const handleStructureType = (idx: number, type: StructureTypeAnswer) => {
     const next = { ...structureTypes, [idx]: type };
     const values = Object.values(next);
@@ -1051,6 +1091,11 @@ export function ConfirmationPanel({
   const answeredCount = secondaryStructures.filter(s => s.index in structureTypes).length;
   const allSecondaryAnswered = secondaryStructures.length > 0 &&
     answeredCount === secondaryStructures.length;
+
+  // needsManualReview false implies samgeo_validated AND
+  // secondaryStructures.length > 0 (see its definition above) — exactly
+  // usePerStructureQuestions — so these two branches are exhaustive.
+  const calculateBlocked = needsManualReview ? !manualReviewConfirmed : !allSecondaryAnswered;
 
   const canonical = detectResult.address;
   const showCanonical = canonical && canonical.toLowerCase() !== inputAddress.toLowerCase();
@@ -1091,8 +1136,18 @@ export function ConfirmationPanel({
         />
 
         {!detectResult.samgeo_validated ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4">
-            Aerial detection is in pre-validation mode. Please verify the structure count manually using the SIX Maps viewer before proceeding.
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4 space-y-2">
+            <p>Aerial detection is in pre-validation mode. Please verify the structure count manually using the SIX Maps viewer before proceeding.</p>
+            <ManualStructureCount confirmedCount={confirmedCount} onCountChange={onCountChange} />
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={manualReviewConfirmed}
+                onChange={(e) => setManualReviewConfirmed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>I&apos;ve checked SIX Maps and the count above reflects what I found.</span>
+            </label>
           </div>
         ) : detectResult.detected_structures.length > 0 ? (
           <div className="mb-4">
@@ -1140,12 +1195,44 @@ export function ConfirmationPanel({
                       </div>
                     ))}
                   </div>
+                  {/* Only the main dwelling was found — no secondary structure
+                      to review against, but a real one may simply have been
+                      missed (this is the shape a missed detection actually
+                      takes). Same manual-review requirement as an empty
+                      detection, not the per-structure flow, since there is
+                      nothing here to answer questions about. */}
+                  {secondaryStructures.length === 0 && (
+                    <div className="mt-2 space-y-2">
+                      <ManualStructureCount confirmedCount={confirmedCount} onCountChange={onCountChange} />
+                      <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={manualReviewConfirmed}
+                          onChange={(e) => setManualReviewConfirmed(e.target.checked)}
+                          className="mt-0.5"
+                        />
+                        <span>I&apos;ve checked SIX Maps and the count above reflects what I found.</span>
+                      </label>
+                    </div>
+                  )}
                 </>
               );
             })()}
           </div>
         ) : (
-          <p className="text-sm text-gray-500 mb-4">No structures detected — enter count manually.</p>
+          <div className="mb-4 space-y-2">
+            <p className="text-sm text-gray-500">No structures detected — enter count manually.</p>
+            <ManualStructureCount confirmedCount={confirmedCount} onCountChange={onCountChange} />
+            <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={manualReviewConfirmed}
+                onChange={(e) => setManualReviewConfirmed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>I&apos;ve checked SIX Maps and the count above reflects what I found.</span>
+            </label>
+          </div>
         )}
 
         {/* Gate: if detect says ineligible, block confirm entirely */}
@@ -1318,10 +1405,18 @@ export function ConfirmationPanel({
             </div>
           )}
 
+          {calculateBlocked && (
+            <p className="text-xs text-amber-700">
+              {needsManualReview
+                ? 'Tick the box above to continue — detection here needs a human check before a yield can be calculated.'
+                : 'Answer for every detected structure above to continue — a human check is needed before a yield can be calculated.'}
+            </p>
+          )}
           <div className="flex gap-3">
             <button
               type="submit"
-              className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+              disabled={calculateBlocked}
+              className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Calculate yield
             </button>

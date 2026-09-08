@@ -1,0 +1,80 @@
+{
+  "tier": "standard",
+  "justification": "Fixes a real defect on a monetized calculation flow (granny-flat yield report): the submitted structure count silently defaulted to 1 (main dwelling only) when detection found nothing or was unvalidated, with no UI enforcement despite text claiming manual entry was required. Detection recall is measured at 0.368 (2026-08-12) -- roughly two of three real structures missed -- so a real secondary structure could be silently treated as nonexistent in a paid yield calculation. Standard, not critical: no DB write, no schema change, purely a client-side gate that changes WHEN the existing submit path can fire, not what it submits.",
+  "commit_hash": "177f3e49",
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/app/granny-flat-confirm-wiring.test.tsx -q",
+    "fails_when": "the 6 new tests in the 'zero/unvalidated detection cannot silently calculate' describe block would fail without this fix: 'Calculate yield' was previously rendered with no disabled attribute at all in any state -- including a main-dwelling-only detection and an unanswered multi-structure detection -- so every disabled/enabled assertion in that block would fail on unpatched code.",
+    "observed_red": "Verified by direct code read, not hypothetical: before this change, grep for 'disabled=' in the submit-button region of frontend-nextjs/app/reports/granny-flat/page.tsx returned zero matches near the 'Calculate yield' button. jest itself could not be run locally to confirm red-then-green (frontend-nextjs/node_modules absent in this bare worktree, consistent with every other frontend PR this session); CI runs it."
+  },
+  "files": [
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
+    "frontend-nextjs/__tests__/app/granny-flat-confirm-wiring.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "No DB/schema interaction -- this is purely client-side state (a new useState boolean gating an existing button's disabled attribute). The submission payload (confirmedCount, structureTypes) is completely unchanged; the fix only changes when the existing onConfirm handler can be invoked.",
+    "assumption_mismatch": "The existing on-screen text ('enter count manually', 'verify manually using SIX Maps') was assumed by a reader to mean the flow required that verification. It did not -- confirmed by reading the initial-state setter (`setConfirmedCount(d.samgeo_validated && d.detected_structures?.length > 0 ? d.detected_structures.length : 1)`) and the submit button, which had no disabled condition anywhere in the file before this change.",
+    "new_vs_existing": "Applies only to the two risky states going forward (samgeo_validated=false, or detected_structures.length===0) on every future run -- no backfill needed since this is render-time gating, not stored data. A user already mid-flow on an old session simply sees a newly-required checkbox on their next interaction; nothing behind them changes."
+  },
+  "functions": [
+    {
+      "name": "ConfirmationPanel needsManualReview / calculateBlocked gate",
+      "file_line": "frontend-nextjs/app/reports/granny-flat/page.tsx:1035, 1074",
+      "input": "detectResult.samgeo_validated (boolean), secondaryStructures.length (derived number), allSecondaryAnswered (derived boolean)",
+      "output": "calculateBlocked: a boolean controlling whether the Calculate yield button is disabled -- checkbox-gated when needsManualReview is true, per-structure-answer-gated otherwise",
+      "if_none": "detectResult always has the required fields per the DetectResult type, so there is no null-input case to handle here"
+    }
+  ],
+  "values": [
+    {
+      "value": "manualReviewConfirmed / allSecondaryAnswered",
+      "read_at": "frontend-nextjs/app/reports/granny-flat/page.tsx:1074 (calculateBlocked), 1389 (submit button disabled attribute)",
+      "nullable": "no -- both are concrete booleans (useState(false) and a derived comparison respectively)",
+      "guard_at": "N/A -- manualReviewConfirmed is local component state, unmounts and resets to false on every fresh ConfirmationPanel mount (the panel is only rendered inside `state === 'confirming' && detectResult`, a conditional block, so it fully unmounts between detections rather than persisting across addresses)",
+      "if_missing": "N/A -- cannot be missing, both are concrete values every render"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A user checks the box for one address, goes Back, and detects a different address -- does the tick persist and silently bypass the gate for the new, unrelated detection?",
+      "what_happens": "If state persisted across addresses, the gate would be defeated for every address after the first tick.",
+      "mitigated": true,
+      "how": "ConfirmationPanel is only rendered inside `{state === 'confirming' && detectResult && (...)}` (page.tsx:603) -- onBack sets state to 'idle', which unmounts the whole block including ConfirmationPanel; a fresh detection re-mounts it, and useState(false) re-initialises to false on every fresh mount. No key prop was needed because conditional rendering already provides the unmount/remount boundary.",
+      "repro": "Manual: detect an unvalidated/zero-structure address, tick the box, click Back, detect a second unvalidated/zero-structure address, and confirm Calculate yield is disabled again until ticked for the new address."
+    },
+    {
+      "scenario": "The gate accidentally also blocks the NORMAL case (detection succeeded, structures found) where no manual review was ever required.",
+      "what_happens": "Every user would be blocked by a checkbox that doesn't even appear, since needsManualReview would be true unconditionally.",
+      "mitigated": true,
+      "how": "needsManualReview is `!detectResult.samgeo_validated || secondaryStructures.length === 0` -- explicitly false when validated AND at least one SECONDARY structure was found; the checkbox only renders in the other cases. Covered by the test 'shows no checkbox ... when secondary structures are found but unanswered', which asserts no checkbox renders in that case.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/app/granny-flat-confirm-wiring.test.tsx -q -t 'shows no checkbox'"
+    },
+    {
+      "scenario": "Sol HIGH 0.98 on the first push: a validated scan that detects ONLY the main dwelling (a real secondary structure missed) triggered neither the new gate (which originally checked detected_structures.length===0, not secondaryStructures.length===0) nor the existing per-structure review (usePerStructureQuestions needs secondaryStructures.length>0) -- so 'found nothing extra' and 'missed the granny flat' were indistinguishable and both submitted unreviewed. Sol also flagged that the pre-existing per-structure review itself (allSecondaryAnswered) was never enforced by a disabled attribute even when secondary structures WERE found.",
+      "what_happens": "The single most likely real-world shape a missed detection takes (main dwelling found, secondary structure missed) had zero gating, before or after the first version of this fix -- and a fully-detected multi-structure scan could be submitted with none of the per-structure questions answered.",
+      "mitigated": true,
+      "how": "needsManualReview now gates on secondaryStructures.length===0 (which subsumes the true-zero-detection case, since secondaryStructures is empty whenever detected_structures is), covering the main-dwelling-only case with the same checkbox. A new calculateBlocked value additionally requires allSecondaryAnswered whenever needsManualReview is false (i.e., whenever secondary structures were found) -- page.tsx:1035, 1074, 1179-1189, 1379-1393.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/app/granny-flat-confirm-wiring.test.tsx -q -t 'only the main dwelling|enables Calculate yield once'"
+    },
+    {
+      "scenario": "The Brief's card (GrannyFlatBriefCard.tsx) has the same silent-default gap as the standalone page and was missed.",
+      "what_happens": "The same class of defect would remain live on the Brief surface even after this PR.",
+      "mitigated": true,
+      "how": "Checked directly, not assumed: the Brief's card does NOT have this defect. Its zero-detection state renders the plain, honest sentence 'No buildings were detected on the aerial image — the calculation will run on that basis' (GrannyFlatBriefCard.tsx:384-387) -- it never claims manual entry is required and then silently ignores that claim, so there is no gap between what the text promises and what the code enforces. No change needed there.",
+      "repro": "Read frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:384-387."
+    },
+    {
+      "scenario": "Sol HIGH 0.99 on the second push: the checkbox text asserted 'there are no other structures on this lot' with no way to say otherwise. A person who genuinely found a real structure on SIX Maps that detection missed had no input to correct the number -- they had to either tick a false statement to proceed, or stay permanently stuck even after doing the right check.",
+      "what_happens": "The exact review this gate exists to require could not actually be acted on: finding a real missed structure led to a dead end, not a corrected submission.",
+      "mitigated": true,
+      "how": "Added ManualStructureCount, a real number input wired to the existing onCountChange prop, in all three manual-review states (unvalidated, zero-detected, main-dwelling-only). Checkbox wording changed to a neutral attestation ('the count above reflects what I found') that is true whether the person found nothing extra or corrected the number upward -- page.tsx:989-1007 (component), 1141, 1206, 1225 (usage).",
+      "repro": "cd frontend-nextjs && npx jest __tests__/app/granny-flat-confirm-wiring.test.tsx -q; manual: on a zero-detection result, type 2 into the new count field, tick the checkbox, confirm Calculate yield enables and submits count=2, not 1."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "On the deployed preview, run a granny-flat check on an address where detection finds zero structures (or force pre-validation mode) and confirm Calculate yield is disabled until the new checkbox is ticked, then confirm it enables immediately on tick."
+  }
+}

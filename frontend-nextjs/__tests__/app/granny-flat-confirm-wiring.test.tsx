@@ -144,3 +144,64 @@ describe('ConfirmationPanel — count control is connected', () => {
     expect(screen.queryByText(/the detector's own figure/i)).toBeNull();
   });
 });
+
+describe('ConfirmationPanel — a zero/unvalidated detection cannot silently calculate', () => {
+  // Recall is measured at 0.368 against a 0.70 floor (2026-08-12): detection
+  // misses roughly two of every three real structures. When it finds nothing,
+  // or was never validated, the submitted count silently defaulted to 1 with
+  // nothing forcing a human check first — this is exactly the "2 apparent
+  // disagreements were the page's `: 1` fallback" this file's header already
+  // documented as measured, but did not yet gate against.
+
+  it('disables Calculate yield when detection found zero structures, until the checkbox is ticked', () => {
+    renderPanel({
+      detectResult: { ...DETECT, detected_structures: [] } as never,
+    });
+    const button = screen.getByRole('button', { name: /Calculate yield/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(button).not.toBeDisabled();
+  });
+
+  it('disables Calculate yield when detection was never validated, until the checkbox is ticked', () => {
+    renderPanel({
+      detectResult: { ...DETECT, samgeo_validated: false } as never,
+    });
+    const button = screen.getByRole('button', { name: /Calculate yield/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(button).not.toBeDisabled();
+  });
+
+  it('shows no checkbox and blocks Calculate yield when secondary structures are found but unanswered', () => {
+    // Sol HIGH 0.98's fix also closed a second, pre-existing gap: the
+    // per-structure review (allSecondaryAnswered) existed but nothing
+    // enforced it either, so a scan that DID find secondary structures could
+    // still be submitted with none of them individually reviewed.
+    renderPanel();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getByRole('button', { name: /Calculate yield/i })).toBeDisabled();
+  });
+
+  it('enables Calculate yield once every found secondary structure is answered', () => {
+    renderPanel({ structureTypes: { 1: 'garage', 2: 'garage' } });
+    expect(screen.getByRole('button', { name: /Calculate yield/i })).not.toBeDisabled();
+  });
+
+  it('requires an explicit tick, not just a checked-count coincidence, when only the main dwelling is found', () => {
+    // Sol's exact scenario: a validated scan detects only the main dwelling.
+    // secondaryStructures is empty, so usePerStructureQuestions never fires,
+    // and prior to this fix nothing else fired either — "found nothing
+    // extra" and "missed the granny flat" were indistinguishable.
+    renderPanel({
+      detectResult: {
+        ...DETECT,
+        detected_structures: [DETECT.detected_structures[0]], // main dwelling only
+      } as never,
+    });
+    const button = screen.getByRole('button', { name: /Calculate yield/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(button).not.toBeDisabled();
+  });
+});
