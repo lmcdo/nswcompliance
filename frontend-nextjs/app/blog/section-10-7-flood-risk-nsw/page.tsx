@@ -311,7 +311,7 @@ export default function Section107FloodRiskPage() {
                   href="/reports/flood"
                   className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
                 >
-                  free Flood Risk Check
+                  free Flood Screening
                 </Link>{' '}
                 does this for any NSW address. For the broader picture
                 &mdash; flood, bushfire, coastal, and heat exposure combined
@@ -820,7 +820,7 @@ export default function Section107FloodRiskPage() {
               See what your Section 10.7 certificate does not show
             </h2>
             <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect&apos;s free Flood Risk Check shows modelled flood depth
+              PlotDetect&apos;s free Flood Screening shows modelled flood depth
               at multiple return intervals &mdash; not just the binary yes/no
               from the planning certificate. Enter any NSW address for instant
               results. No account required.

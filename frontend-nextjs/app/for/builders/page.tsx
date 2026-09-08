@@ -17,7 +17,7 @@ const TOOLS = [
     audience: 'Builders, display centres, mortgage brokers',
   },
   {
-    name: 'Flood Risk',
+    name: 'Flood Screening',
     slug: 'flood',
     description: 'Modelled flood depth (ARI) and LEP flood control lot status by address.',
     audience: 'Conveyancers, insurance brokers',

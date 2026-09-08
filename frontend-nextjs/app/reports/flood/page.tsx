@@ -5,10 +5,10 @@ import { LandingVisibility } from '@/components/reports/landing/LandingVisibilit
 import { SoftwareAppJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
-  title: 'Flood Risk Check — PlotDetect',
+  title: 'Flood Screening — PlotDetect',
   description: 'Is this NSW property in a flood zone? Cross-referenced flood assessment from government overlays, satellite imagery, river gauges, and council flood models — free for any address.',
   openGraph: {
-    title: 'NSW Flood Risk Check — Free for any address',
+    title: 'NSW Flood Screening — Free for any address',
     description: 'Government overlays, satellite detection, river gauges, and council flood model depths — cross-referenced for any NSW address. No login required.',
     url: 'https://verify.plotdetect.com.au/reports/flood',
     siteName: 'plotdetect.com.au',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NSW Flood Risk Check — PlotDetect',
+    title: 'NSW Flood Screening — PlotDetect',
     description: 'Flood depth and planning implications for any NSW address. Free, instant.',
   },
 }
@@ -32,7 +32,7 @@ export default async function FloodPage({ searchParams }: Props) {
   return (
     <div>
       <SoftwareAppJsonLd
-        name="Flood Risk Check"
+        name="Flood Screening"
         description="Is this NSW property in a flood zone? Cross-referenced flood assessment from government overlays, satellite imagery, river gauges, and council flood models — free for any address."
         url="/reports/flood"
       />

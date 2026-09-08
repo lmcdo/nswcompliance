@@ -574,7 +574,7 @@ export default function RegionalPropertyConveyancingPage() {
               href="/reports/flood"
               className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
             >
-              Flood Risk Report
+              Flood Screening Report
             </Link>{' '}
             and{' '}
             <Link

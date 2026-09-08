@@ -24,7 +24,7 @@ export function generateMetadata(
     ? ` ARI flood data (${lga.ariScenarios.slice(0, 3).join(', ')} and more).`
     : ' Statutory flood planning area check.'
   return {
-    title: `Flood Risk in ${lga.name} NSW — Check Your Property Address`,
+    title: `Flood Screening in ${lga.name} NSW — Check Your Property Address`,
     description: `Is your ${lga.name} property in a flood zone? Instant check against NSW statutory flood overlays.${ariDesc} Free.`,
   }
 }
@@ -42,14 +42,14 @@ export default function FloodRiskLgaPage(
     <div className="max-w-2xl mx-auto px-6">
       <BreadcrumbJsonLd items={[
         { name: 'Home', href: '/' },
-        { name: 'Flood Risk Check', href: '/reports/flood' },
+        { name: 'Flood Screening', href: '/reports/flood' },
         { name: lga.name, href: `/flood-risk/${lga.slug}` },
       ]} />
 
       {/* SEO content — above the tool */}
       <div className="pt-12 pb-8">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-          Flood Risk in {lga.name}, NSW
+          Flood Screening in {lga.name}, NSW
         </h1>
         <p className="mt-3 text-base text-gray-500">
           Check whether a {lga.name} property address falls within a flood planning area.
@@ -104,7 +104,7 @@ export default function FloodRiskLgaPage(
 
       {/* Schema markup */}
       <DatasetJsonLd
-        name={`Flood Risk Data — ${lga.name}, NSW`}
+        name={`Flood Screening Data — ${lga.name}, NSW`}
         description={`Flood risk assessment data for ${lga.name} including statutory flood planning area boundaries${lga.ariScenarios.length > 0 ? ', ARI flood scenarios' : ''}, and planning constraints. Sourced from NSW Planning Portal spatial overlays.`}
         url={`/flood-risk/${lga.slug}`}
         spatialCoverage={`${lga.name}, New South Wales, Australia`}

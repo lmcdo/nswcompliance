@@ -3,7 +3,7 @@
 import Link from 'next/link';
 
 const TOOL_LINKS = [
-  { label: 'Flood Risk Check', href: '/reports/flood' },
+  { label: 'Flood Screening', href: '/reports/flood' },
   { label: 'Bushfire Pre-Screen', href: '/reports/bushfire' },
   { label: 'Conveyancing Disclosure', href: '/reports/conveyancing' },
   { label: 'Granny Flat Yield', href: '/reports/granny-flat' },

@@ -16,7 +16,7 @@ import { COVERAGE_DISPLAY } from '@/lib/coverage';
 const TOOLS = [
   {
     href: '/reports/flood',
-    title: 'Flood Risk Check',
+    title: 'Flood Screening',
     question: 'stop',
     tagline: 'How deep does it flood — not just whether it floods.',
     badge: 'Free + $49',

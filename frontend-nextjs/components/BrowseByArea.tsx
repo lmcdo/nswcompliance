@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 const TOOLS = [
   { label: 'Granny Flat', prefix: '/granny-flat' },
-  { label: 'Flood Risk', prefix: '/flood-risk' },
+  { label: 'Flood Screening', prefix: '/flood-risk' },
   { label: 'DA Monitor', prefix: '/threat-radar' },
   { label: 'Solar', prefix: '/solar-potential' },
   { label: 'Shadow', prefix: '/shadow' },

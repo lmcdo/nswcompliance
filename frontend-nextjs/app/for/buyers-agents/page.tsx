@@ -27,7 +27,7 @@ const WORKFLOW_SECTIONS = [
         icon: Droplets,
         iconColor: 'text-blue-600',
         iconBg: 'bg-blue-500/10',
-        title: 'Flood Risk Check',
+        title: 'Flood Screening',
         question: 'Does it flood? How deep?',
         answer:
           'ARI return period depths from council flood studies — not just whether the overlay exists. Know the difference between ankle-deep and ground-floor-underwater.',

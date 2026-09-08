@@ -109,7 +109,7 @@ describe('CrossSellCards — ineligible (fail) result', () => {
     render(<GrannyFlatPage />);
     await runDetect();
     await screen.findByText('Not eligible');
-    expect(screen.getByText('Flood Risk')).toBeInTheDocument();
+    expect(screen.getByText('Flood Screening')).toBeInTheDocument();
   });
 
   it('Threat Radar link points to /reports/threat-radar with encoded address', async () => {
