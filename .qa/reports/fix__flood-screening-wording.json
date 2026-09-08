@@ -1,11 +1,11 @@
 {
   "tier": "standard",
   "justification": "Renames the flood product's public-facing name from 'Flood Risk' to 'Flood Screening' across nav, footer, ~20 marketing/blog pages, SEO metadata (title/description/OpenGraph/Twitter/JSON-LD), and adds a new prominent near-headline caveat to the live tool. Standard, not minor: this changes indexed page titles/metadata on live, search-ranked pages and adds new user-facing liability-adjacent copy -- both carry real (if modest) business risk beyond a pure copy tidy. Not critical: no logic, no DB, no schema, and URL paths/slugs are explicitly untouched (user decision) so there is no redirect/404 risk.",
-  "commit_hash": "88dffc1d",
+  "commit_hash": "c0a8dfd3",
   "falsifiable_check": {
-    "command": "bash -c \"grep -rc 'Flood Risk' frontend-nextjs --include='*.tsx' --include='*.ts' | grep -v ':0' || echo CLEAN\"",
-    "fails_when": "before this change, that grep found 23 matches across 23 files (the exact list this PR's files[] covers). After this change it must print CLEAN -- any surviving 'Flood Risk' (title case, i.e. a display string, not the untouched /flood-risk URL slug which is lowercase-hyphenated and does not match this pattern) means a rename was missed.",
-    "observed_red": "Actually run before writing the fix, not hypothetical: the same grep returned 23 file matches with the exact counts recorded in this report's files[] list before any edit was made."
+    "command": "bash -c \"grep -rc 'Flood Risk' frontend-nextjs --include='*.tsx' --include='*.ts' | grep -v ':0'\"",
+    "fails_when": "before this change, that grep found 23 matches across 23 files (the exact list this PR's files[] covers). After this change it must print exactly one line: 'frontend-nextjs/app/blog/section-10-7-flood-risk-nsw/page.tsx:1' -- the one deliberate exception (Sol MEDIUM 0.99, see break_it), where the title refers to what a government Section 10.7 certificate discloses, not the product. Any OTHER surviving match, or the exception match disappearing/multiplying, means a rename was missed or the exception regressed.",
+    "observed_red": "Actually run before writing the fix, not hypothetical: the same grep returned 23 file matches with the exact counts recorded in this report's files[] list before any edit was made. Re-run after the fix (and after the Sol-caught revert) confirms exactly the one expected exception remains."
   },
   "files": [
     "frontend-nextjs/app/(tools)/flood-risk/[lga-slug]/page.tsx",
@@ -71,6 +71,20 @@
       "mitigated": true,
       "how": "The new line is short and distinct in purpose from the footer ('Screening signal, not a scored risk' vs the footer's 'not a legal flood determination... Section 10.7 certificate') -- one addresses the accuracy/calibration question, the other addresses the legal-standing question, not overlapping claims. Wording was checked against the liability-language grep and against the 2026-09-01 calibration rerun's actual finding (statistically indistinguishable from its own pass mark, no specificity figure) rather than invented.",
       "repro": "Compare the near-headline caveat and the footer disclaimer in frontend-nextjs/components/tools/FloodTool.tsx -- fail if they make overlapping or contradictory claims about the same fact."
+    },
+    {
+      "scenario": "Sol MEDIUM 0.99 on the first push: the mechanical replacement renamed the blog title 'Why Your Section 10.7 Certificate Might Not Show Flood Risk' to '...Flood Screening'. That sentence is about what a GOVERNMENT certificate discloses (the generic concept), not our product -- the rename turned it into a claim that a statutory certificate might contain PlotDetect's tool, which is nonsensical.",
+      "what_happens": "A live, indexed blog title makes a claim that doesn't parse -- a government document containing a named commercial product.",
+      "mitigated": true,
+      "how": "Reverted this one title. Re-verified every other 'Flood Risk'/'Flood Screening' instance in this file and the two other similarly-themed blog posts by reading surrounding context (all are either explicit 'PlotDetect's...' phrasing or an href to /reports/flood) -- confirmed no sibling instance shares this defect.",
+      "repro": "bash -c \"grep -rc 'Flood Risk' frontend-nextjs --include='*.tsx' --include='*.ts' | grep -v ':0'\" -- must print exactly frontend-nextjs/app/blog/section-10-7-flood-risk-nsw/page.tsx:1, the deliberate exception."
+    },
+    {
+      "scenario": "Sol MEDIUM 0.97 on the second push: this QA report's own repro text for the near-headline-caveat finding read as an instruction telling a future AI reviewer what conclusion to reach ('confirm they state two different things') rather than a neutral condition that could actually fail -- exactly the class of defect qa_gate.py's own falsifiable-check requirement exists to prevent.",
+      "what_happens": "A reviewer (human or AI) following the directive rather than independently evaluating could rubber-stamp a real contradiction between the two disclaimers.",
+      "mitigated": true,
+      "how": "Reworded to a neutral, falsifiable condition ('fail if they make overlapping or contradictory claims') per Sol's own suggested fix.",
+      "repro": "Read this report's own break_it[2].repro field -- confirm it states a failure condition, not an instruction to confirm a predetermined answer."
     }
   ],
   "post_merge": {
