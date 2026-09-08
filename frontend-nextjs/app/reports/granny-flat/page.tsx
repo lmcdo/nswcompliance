@@ -1019,6 +1019,17 @@ export function ConfirmationPanel({
   const secondaryStructures = detectResult.detected_structures.filter(s => !s.is_main_dwelling);
   const usePerStructureQuestions = detectResult.samgeo_validated && secondaryStructures.length > 0;
 
+  // Detection recall is measured at 0.368 against a 0.70 floor (2026-08-12) —
+  // it misses roughly two of every three real structures. When it finds
+  // nothing, or hasn't been validated at all, the submitted count silently
+  // defaulted to 1 (main dwelling only) with nothing forcing a person to
+  // actually check SIX Maps first, despite the on-screen text telling them
+  // to. A missed structure could then be treated as "doesn't exist" in the
+  // yield calculation. Requiring an explicit tick before Calculate yield is
+  // enabled closes that gap without changing what gets submitted.
+  const needsManualReview = !detectResult.samgeo_validated || detectResult.detected_structures.length === 0;
+  const [manualReviewConfirmed, setManualReviewConfirmed] = useState(false);
+
   const handleStructureType = (idx: number, type: StructureTypeAnswer) => {
     const next = { ...structureTypes, [idx]: type };
     const values = Object.values(next);
@@ -1091,8 +1102,17 @@ export function ConfirmationPanel({
         />
 
         {!detectResult.samgeo_validated ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4">
-            Aerial detection is in pre-validation mode. Please verify the structure count manually using the SIX Maps viewer before proceeding.
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4 space-y-2">
+            <p>Aerial detection is in pre-validation mode. Please verify the structure count manually using the SIX Maps viewer before proceeding.</p>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={manualReviewConfirmed}
+                onChange={(e) => setManualReviewConfirmed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>I&apos;ve checked SIX Maps and confirmed the structures on this lot.</span>
+            </label>
           </div>
         ) : detectResult.detected_structures.length > 0 ? (
           <div className="mb-4">
@@ -1145,7 +1165,18 @@ export function ConfirmationPanel({
             })()}
           </div>
         ) : (
-          <p className="text-sm text-gray-500 mb-4">No structures detected — enter count manually.</p>
+          <div className="mb-4 space-y-2">
+            <p className="text-sm text-gray-500">No structures detected — enter count manually.</p>
+            <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={manualReviewConfirmed}
+                onChange={(e) => setManualReviewConfirmed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>I&apos;ve checked SIX Maps and confirm there are no other structures on this lot.</span>
+            </label>
+          </div>
         )}
 
         {/* Gate: if detect says ineligible, block confirm entirely */}
@@ -1318,10 +1349,14 @@ export function ConfirmationPanel({
             </div>
           )}
 
+          {needsManualReview && !manualReviewConfirmed && (
+            <p className="text-xs text-amber-700">Tick the box above to continue — detection here needs a human check before a yield can be calculated.</p>
+          )}
           <div className="flex gap-3">
             <button
               type="submit"
-              className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+              disabled={needsManualReview && !manualReviewConfirmed}
+              className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Calculate yield
             </button>

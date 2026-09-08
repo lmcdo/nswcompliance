@@ -144,3 +144,38 @@ describe('ConfirmationPanel — count control is connected', () => {
     expect(screen.queryByText(/the detector's own figure/i)).toBeNull();
   });
 });
+
+describe('ConfirmationPanel — a zero/unvalidated detection cannot silently calculate', () => {
+  // Recall is measured at 0.368 against a 0.70 floor (2026-08-12): detection
+  // misses roughly two of every three real structures. When it finds nothing,
+  // or was never validated, the submitted count silently defaulted to 1 with
+  // nothing forcing a human check first — this is exactly the "2 apparent
+  // disagreements were the page's `: 1` fallback" this file's header already
+  // documented as measured, but did not yet gate against.
+
+  it('disables Calculate yield when detection found zero structures, until the checkbox is ticked', () => {
+    renderPanel({
+      detectResult: { ...DETECT, detected_structures: [] } as never,
+    });
+    const button = screen.getByRole('button', { name: /Calculate yield/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(button).not.toBeDisabled();
+  });
+
+  it('disables Calculate yield when detection was never validated, until the checkbox is ticked', () => {
+    renderPanel({
+      detectResult: { ...DETECT, samgeo_validated: false } as never,
+    });
+    const button = screen.getByRole('button', { name: /Calculate yield/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(button).not.toBeDisabled();
+  });
+
+  it('leaves Calculate yield enabled by default when detection succeeded normally', () => {
+    renderPanel();
+    expect(screen.getByRole('button', { name: /Calculate yield/i })).not.toBeDisabled();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+});
