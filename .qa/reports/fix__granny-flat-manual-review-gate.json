@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Fixes a real defect on a monetized calculation flow (granny-flat yield report): the submitted structure count silently defaulted to 1 (main dwelling only) when detection found nothing or was unvalidated, with no UI enforcement despite text claiming manual entry was required. Detection recall is measured at 0.368 (2026-08-12) -- roughly two of three real structures missed -- so a real secondary structure could be silently treated as nonexistent in a paid yield calculation. Standard, not critical: no DB write, no schema change, purely a client-side gate that changes WHEN the existing submit path can fire, not what it submits.",
-  "commit_hash": "72faee68",
+  "commit_hash": "177f3e49",
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/app/granny-flat-confirm-wiring.test.tsx -q",
     "fails_when": "the 6 new tests in the 'zero/unvalidated detection cannot silently calculate' describe block would fail without this fix: 'Calculate yield' was previously rendered with no disabled attribute at all in any state -- including a main-dwelling-only detection and an unanswered multi-structure detection -- so every disabled/enabled assertion in that block would fail on unpatched code.",
@@ -62,6 +62,13 @@
       "mitigated": true,
       "how": "Checked directly, not assumed: the Brief's card does NOT have this defect. Its zero-detection state renders the plain, honest sentence 'No buildings were detected on the aerial image — the calculation will run on that basis' (GrannyFlatBriefCard.tsx:384-387) -- it never claims manual entry is required and then silently ignores that claim, so there is no gap between what the text promises and what the code enforces. No change needed there.",
       "repro": "Read frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:384-387."
+    },
+    {
+      "scenario": "Sol HIGH 0.99 on the second push: the checkbox text asserted 'there are no other structures on this lot' with no way to say otherwise. A person who genuinely found a real structure on SIX Maps that detection missed had no input to correct the number -- they had to either tick a false statement to proceed, or stay permanently stuck even after doing the right check.",
+      "what_happens": "The exact review this gate exists to require could not actually be acted on: finding a real missed structure led to a dead end, not a corrected submission.",
+      "mitigated": true,
+      "how": "Added ManualStructureCount, a real number input wired to the existing onCountChange prop, in all three manual-review states (unvalidated, zero-detected, main-dwelling-only). Checkbox wording changed to a neutral attestation ('the count above reflects what I found') that is true whether the person found nothing extra or corrected the number upward -- page.tsx:989-1007 (component), 1141, 1206, 1225 (usage).",
+      "repro": "cd frontend-nextjs && npx jest __tests__/app/granny-flat-confirm-wiring.test.tsx -q; manual: on a zero-detection result, type 2 into the new count field, tick the checkbox, confirm Calculate yield enables and submits count=2, not 1."
     }
   ],
   "post_merge": {

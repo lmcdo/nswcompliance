@@ -986,6 +986,30 @@ function getPositionLabel(bbox_pixel: number[], tileHeight: number | undefined):
   return 'mid-lot';
 }
 
+// Sol HIGH 0.99: the manual-review checkbox next to this used to assert "no
+// other structures" with no way to say otherwise — a person who genuinely
+// found something extra on SIX Maps had to either tick a false statement to
+// proceed, or stay stuck with no way to correct the number at all. This
+// gives them an actual field to enter what they found; the checkbox beside
+// it now just attests the number is accurate, true in either direction.
+function ManualStructureCount({ confirmedCount, onCountChange }: { confirmedCount: number; onCountChange: (n: number) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor="manual-structure-count" className="text-xs text-gray-600">
+        Total structures on this lot (including the main dwelling):
+      </label>
+      <input
+        id="manual-structure-count"
+        type="number"
+        min={1}
+        value={confirmedCount}
+        onChange={(e) => onCountChange(Math.max(1, Number(e.target.value) || 1))}
+        className="w-16 px-2 py-1 rounded border border-gray-300 text-xs"
+      />
+    </div>
+  );
+}
+
 // Exported for test only. The regression this guards is specific: onCountChange
 // was a prop this component accepted and never called, so the "user-confirmed"
 // structure count could only repeat the detector for the tool's whole life.
@@ -1114,6 +1138,7 @@ export function ConfirmationPanel({
         {!detectResult.samgeo_validated ? (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4 space-y-2">
             <p>Aerial detection is in pre-validation mode. Please verify the structure count manually using the SIX Maps viewer before proceeding.</p>
+            <ManualStructureCount confirmedCount={confirmedCount} onCountChange={onCountChange} />
             <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -1121,7 +1146,7 @@ export function ConfirmationPanel({
                 onChange={(e) => setManualReviewConfirmed(e.target.checked)}
                 className="mt-0.5"
               />
-              <span>I&apos;ve checked SIX Maps and reviewed the structures on this lot.</span>
+              <span>I&apos;ve checked SIX Maps and the count above reflects what I found.</span>
             </label>
           </div>
         ) : detectResult.detected_structures.length > 0 ? (
@@ -1177,15 +1202,18 @@ export function ConfirmationPanel({
                       detection, not the per-structure flow, since there is
                       nothing here to answer questions about. */}
                   {secondaryStructures.length === 0 && (
-                    <label className="mt-2 flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={manualReviewConfirmed}
-                        onChange={(e) => setManualReviewConfirmed(e.target.checked)}
-                        className="mt-0.5"
-                      />
-                      <span>I&apos;ve checked SIX Maps and there are no other structures on this lot.</span>
-                    </label>
+                    <div className="mt-2 space-y-2">
+                      <ManualStructureCount confirmedCount={confirmedCount} onCountChange={onCountChange} />
+                      <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={manualReviewConfirmed}
+                          onChange={(e) => setManualReviewConfirmed(e.target.checked)}
+                          className="mt-0.5"
+                        />
+                        <span>I&apos;ve checked SIX Maps and the count above reflects what I found.</span>
+                      </label>
+                    </div>
                   )}
                 </>
               );
@@ -1194,6 +1222,7 @@ export function ConfirmationPanel({
         ) : (
           <div className="mb-4 space-y-2">
             <p className="text-sm text-gray-500">No structures detected — enter count manually.</p>
+            <ManualStructureCount confirmedCount={confirmedCount} onCountChange={onCountChange} />
             <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
               <input
                 type="checkbox"
@@ -1201,7 +1230,7 @@ export function ConfirmationPanel({
                 onChange={(e) => setManualReviewConfirmed(e.target.checked)}
                 className="mt-0.5"
               />
-              <span>I&apos;ve checked SIX Maps and there are no other structures on this lot.</span>
+              <span>I&apos;ve checked SIX Maps and the count above reflects what I found.</span>
             </label>
           </div>
         )}
