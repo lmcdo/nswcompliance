@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Renames the flood product's public-facing name from 'Flood Risk' to 'Flood Screening' across nav, footer, ~20 marketing/blog pages, SEO metadata (title/description/OpenGraph/Twitter/JSON-LD), and adds a new prominent near-headline caveat to the live tool. Standard, not minor: this changes indexed page titles/metadata on live, search-ranked pages and adds new user-facing liability-adjacent copy -- both carry real (if modest) business risk beyond a pure copy tidy. Not critical: no logic, no DB, no schema, and URL paths/slugs are explicitly untouched (user decision) so there is no redirect/404 risk.",
-  "commit_hash": "d725981f",
+  "commit_hash": "88dffc1d",
   "falsifiable_check": {
     "command": "bash -c \"grep -rc 'Flood Risk' frontend-nextjs --include='*.tsx' --include='*.ts' | grep -v ':0' || echo CLEAN\"",
     "fails_when": "before this change, that grep found 23 matches across 23 files (the exact list this PR's files[] covers). After this change it must print CLEAN -- any surviving 'Flood Risk' (title case, i.e. a display string, not the untouched /flood-risk URL slug which is lowercase-hyphenated and does not match this pattern) means a rename was missed.",
@@ -70,7 +70,7 @@
       "what_happens": "Inconsistent messaging about the same underlying uncertainty in two places on one page.",
       "mitigated": true,
       "how": "The new line is short and distinct in purpose from the footer ('Screening signal, not a scored risk' vs the footer's 'not a legal flood determination... Section 10.7 certificate') -- one addresses the accuracy/calibration question, the other addresses the legal-standing question, not overlapping claims. Wording was checked against the liability-language grep and against the 2026-09-01 calibration rerun's actual finding (statistically indistinguishable from its own pass mark, no specificity figure) rather than invented.",
-      "repro": "Read frontend-nextjs/components/tools/FloodTool.tsx around the new paragraph and the existing footer paragraph -- confirm they state two different things, not a restatement."
+      "repro": "Compare the near-headline caveat and the footer disclaimer in frontend-nextjs/components/tools/FloodTool.tsx -- fail if they make overlapping or contradictory claims about the same fact."
     }
   ],
   "post_merge": {
