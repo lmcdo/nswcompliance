@@ -1,0 +1,82 @@
+{
+  "tier": "standard",
+  "justification": "Renames the flood product's public-facing name from 'Flood Risk' to 'Flood Screening' across nav, footer, ~20 marketing/blog pages, SEO metadata (title/description/OpenGraph/Twitter/JSON-LD), and adds a new prominent near-headline caveat to the live tool. Standard, not minor: this changes indexed page titles/metadata on live, search-ranked pages and adds new user-facing liability-adjacent copy -- both carry real (if modest) business risk beyond a pure copy tidy. Not critical: no logic, no DB, no schema, and URL paths/slugs are explicitly untouched (user decision) so there is no redirect/404 risk.",
+  "commit_hash": "PENDING",
+  "falsifiable_check": {
+    "command": "bash -c \"grep -rc 'Flood Risk' frontend-nextjs --include='*.tsx' --include='*.ts' | grep -v ':0' || echo CLEAN\"",
+    "fails_when": "before this change, that grep found 23 matches across 23 files (the exact list this PR's files[] covers). After this change it must print CLEAN -- any surviving 'Flood Risk' (title case, i.e. a display string, not the untouched /flood-risk URL slug which is lowercase-hyphenated and does not match this pattern) means a rename was missed.",
+    "observed_red": "Actually run before writing the fix, not hypothetical: the same grep returned 23 file matches with the exact counts recorded in this report's files[] list before any edit was made."
+  },
+  "files": [
+    "frontend-nextjs/app/(tools)/flood-risk/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
+    "frontend-nextjs/app/(tools)/layout.tsx",
+    "frontend-nextjs/app/blog/is-my-house-in-a-flood-zone-nsw/page.tsx",
+    "frontend-nextjs/app/blog/regional-property-conveyancing-nsw/page.tsx",
+    "frontend-nextjs/app/blog/section-10-7-flood-risk-nsw/page.tsx",
+    "frontend-nextjs/app/blog/uninsurable-households-australia-2050/page.tsx",
+    "frontend-nextjs/app/for/builders/page.tsx",
+    "frontend-nextjs/app/for/buyers-agents/page.tsx",
+    "frontend-nextjs/app/for/homebuyers/page.tsx",
+    "frontend-nextjs/app/not-found.tsx",
+    "frontend-nextjs/app/page.tsx",
+    "frontend-nextjs/app/partner/page.tsx",
+    "frontend-nextjs/app/pricing/page.tsx",
+    "frontend-nextjs/app/reports/flood/[report_id]/page.tsx",
+    "frontend-nextjs/app/reports/flood/page.tsx",
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
+    "frontend-nextjs/app/reports/layout.tsx",
+    "frontend-nextjs/app/reports/page.tsx",
+    "frontend-nextjs/components/BrowseByArea.tsx",
+    "frontend-nextjs/components/home/PropertyProfile.tsx",
+    "frontend-nextjs/components/marketing/SiteFooter.tsx",
+    "frontend-nextjs/components/reports/landing/data/flood.ts",
+    "frontend-nextjs/components/tools/FloodTool.tsx",
+    "frontend-nextjs/__tests__/components/tools/CrossSellCards.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "No DB interaction -- pure static string changes in TSX/TS source and one Jest assertion. No stored rows reference these strings.",
+    "assumption_mismatch": "The project's own IP/marketing rule (.claude/rules/blog-content.md) already mandated 'flood screening' as the honest external term instead of the internal pipeline name, but the live product never adopted it -- 'Flood Risk' appeared in the nav, footer, every marketing page, blog posts, and indexed SEO metadata, all implying a calculated risk determination rather than the screening signal the footer disclaimer (unchanged) already correctly describes itself as. The Brief's own headline copy (satellite-copy.ts:16, 'Flood screening signal') had already independently converged on the correct wording -- confirmed by reading it, not assumed -- so no change was needed there.",
+    "new_vs_existing": "Applies to every future page render immediately (these are static/build-time strings, not stored data) and to the next crawl of these pages by search engines. Explicitly does NOT touch the /flood-risk URL path/slug or any href/prefix value -- verified by grepping for the exact string 'Flood Risk' (title case with a space), which cannot match the lowercase-hyphenated URL segments (e.g. '/flood-risk', prefix: '/flood-risk') used throughout the same files. No redirects needed, no 404 risk."
+  },
+  "functions": [
+    {
+      "name": "generateMetadata (flood pages)",
+      "file_line": "frontend-nextjs/app/reports/flood/page.tsx:7, frontend-nextjs/app/(tools)/flood-risk/[lga-slug]/page.tsx:24",
+      "input": "static route params (lga slug where applicable)",
+      "output": "the page's <title>/description/OpenGraph/Twitter metadata object -- what search engines index and what a shared link preview shows",
+      "if_none": "no null-input case -- these are static/route-driven metadata functions, not data-dependent"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The mechanical find-replace corrupts a compound phrase, e.g. turning 'Flood Risk Check' into 'Flood Screening Check' (redundant) instead of 'Flood Screening'.",
+      "what_happens": "Awkward, redundant copy shipped to a live indexed page.",
+      "mitigated": true,
+      "how": "The replacement script ran longest-phrase-first in an explicit order (Flood Risk Check / Flood Risk Report / Flood Risk Data / bare Flood Risk), so a compound phrase is fully consumed before the bare-phrase pass could double-replace it. Verified by reading every changed line in the full diff after the script ran, not just trusting the script -- no 'Screening Check', 'Screening Report Report', or similar artifact exists.",
+      "repro": "bash -c \"grep -rn 'Screening Check\\|Screening.*Screening' frontend-nextjs --include='*.tsx' --include='*.ts' || echo none\""
+    },
+    {
+      "scenario": "The URL slug /flood-risk/[lga-slug]/... gets accidentally renamed or a href/prefix pointing at it gets mangled, breaking every indexed council-level flood-screening SEO page (silently, since Next.js would just 404).",
+      "what_happens": "An entire programmatic SEO section (one page per NSW council) goes dark, an outward-facing, hard-to-notice regression.",
+      "mitigated": true,
+      "how": "The replacement targeted only the exact title-case string 'Flood Risk' (with a literal space), which never matches the lowercase-hyphenated URL form used everywhere in these same files (href: '/flood-risk', prefix: '/flood-risk', the [lga-slug] folder name itself). Verified directly: grep for '/flood-risk' across the changed files still returns every original href/prefix unchanged.",
+      "repro": "bash -c \"grep -c \\\"'/flood-risk'\\\" 'frontend-nextjs/app/(tools)/flood-risk/[lga-slug]/page.tsx' frontend-nextjs/components/BrowseByArea.tsx\\\" \" -- confirms the href/prefix strings survived untouched."
+    },
+    {
+      "scenario": "The new near-headline caveat on FloodTool.tsx duplicates or contradicts the existing footer disclaimer, or uses different, less careful wording than the rest of this session's flood-copy work (PRs #1061/#1062) already established.",
+      "what_happens": "Inconsistent messaging about the same underlying uncertainty in two places on one page.",
+      "mitigated": true,
+      "how": "The new line is short and distinct in purpose from the footer ('Screening signal, not a scored risk' vs the footer's 'not a legal flood determination... Section 10.7 certificate') -- one addresses the accuracy/calibration question, the other addresses the legal-standing question, not overlapping claims. Wording was checked against the liability-language grep and against the 2026-09-01 calibration rerun's actual finding (statistically indistinguishable from its own pass mark, no specificity figure) rather than invented.",
+      "repro": "Read frontend-nextjs/components/tools/FloodTool.tsx around the new paragraph and the existing footer paragraph -- confirm they state two different things, not a restatement."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "On the deployed preview: /reports/flood shows 'Flood Screening' in the nav and a new amber caveat line under the headline badge; a council page under /flood-risk/<slug> still resolves (URL unchanged) and shows 'Flood Screening' in its on-page heading/title tag; view-source confirms the <title> tag reads 'Flood Screening — PlotDetect', not 'Flood Risk Check'."
+  }
+}

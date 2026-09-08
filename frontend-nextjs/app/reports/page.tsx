@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 const TOOLS = [
   {
     href: '/reports/flood',
-    title: 'Flood Risk Check',
+    title: 'Flood Screening',
     tagline: 'How deep does it flood — not just whether it floods.',
     description:
       'NSW Government overlays, ESA satellite radar, Bureau of Meteorology river gauges, and council flood model depths cross-referenced for any NSW address.',

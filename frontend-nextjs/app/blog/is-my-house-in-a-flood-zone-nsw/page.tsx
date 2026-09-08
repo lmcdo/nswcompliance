@@ -275,7 +275,7 @@ export default function FloodZoneCheckPage() {
               Check flood risk for any NSW address — free instant results
             </h2>
             <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect&apos;s free Flood Risk Check goes beyond the binary yes/no. Where flood study
+              PlotDetect&apos;s free Flood Screening goes beyond the binary yes/no. Where flood study
               data is available, it shows modelled depth at 1-in-20 through 1-in-500 year return
               intervals — plus LEP flood overlay status from the NSW Planning Portal. No account required.
             </p>

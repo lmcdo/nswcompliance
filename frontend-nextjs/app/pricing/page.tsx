@@ -99,7 +99,7 @@ export default function PricingPage() {
                 { text: 'Solar Yield — $39', sub: 'System sizing, payback period, monthly kWh breakdown' },
                 { text: 'Shadow Analysis — $39', sub: 'Seasonal diagrams, ADG compliance, objection evidence' },
                 { text: 'Bushfire — $39', sub: 'BAL band estimation, AS 3959 requirements, RFS referral guidance' },
-                { text: 'Flood Risk — $49', sub: 'Depth modelling, ARI return periods, BoM history, mitigation' },
+                { text: 'Flood Screening — $49', sub: 'Depth modelling, ARI return periods, BoM history, mitigation' },
                 { text: 'Granny Flat — $49', sub: 'CDC compliance checklist, setbacks, rental yield analysis' },
                 { text: 'Site History — $49', sub: '8-year satellite change detection, DA cross-reference' },
                 { text: 'Conveyancing — $49', sub: 'LEP controls, overlays, DCP setbacks, heritage, feasibility' },

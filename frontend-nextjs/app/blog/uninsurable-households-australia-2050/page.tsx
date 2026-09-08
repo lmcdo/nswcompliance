@@ -656,7 +656,7 @@ export default function UninsurableHouseholds2050Page() {
                   href="/reports/flood"
                   className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
                 >
-                  Flood Risk Check
+                  Flood Screening
                 </Link>{' '}
                 cross-references LEP overlays, flood study modelling, and
                 state data to show depth and frequency information that

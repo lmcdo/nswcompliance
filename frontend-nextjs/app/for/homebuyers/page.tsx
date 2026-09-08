@@ -25,7 +25,7 @@ const SECTIONS = [
     tools: [
       {
         icon: Droplets, iconColor: 'text-blue-600', iconBg: 'bg-blue-500/10',
-        title: 'Flood Risk Check', badge: 'Free + $49',
+        title: 'Flood Screening', badge: 'Free + $49',
         question: 'Does it flood — and how deep?',
         answer: 'Flood status plus modelled depth at different return periods, cross-referenced from council flood studies and satellite records — not just a "flood zone" yes/no.',
         href: '/reports/flood',

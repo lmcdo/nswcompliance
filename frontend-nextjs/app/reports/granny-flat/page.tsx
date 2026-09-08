@@ -1359,7 +1359,7 @@ function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: b
       label: 'Check nearby DAs →',
     },
     {
-      title: 'Flood Risk',
+      title: 'Flood Screening',
       body: 'Verify flood risk before you build — required by certifiers for any new structure.',
       href: `/reports/flood?address=${encoded}`,
       label: 'Check flood risk →',
@@ -1371,7 +1371,7 @@ function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: b
   if (reason.includes('flood')) {
     failCards = [
       {
-        title: 'Flood Risk Report',
+        title: 'Flood Screening Report',
         body: 'Your lot is in a flood control area. Get the full flood study overlay, BOM gauge history, and satellite water extent data — required for any DA on a flood-affected lot.',
         href: `/reports/flood?address=${encoded}`,
         label: 'Get flood report →',
@@ -1432,7 +1432,7 @@ function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: b
         label: 'Check nearby approvals →',
       },
       {
-        title: 'Flood Risk',
+        title: 'Flood Screening',
         body: 'Verify flood risk before pursuing a DA — flood overlay is required in any development application.',
         href: `/reports/flood?address=${encoded}`,
         label: 'Check flood risk →',

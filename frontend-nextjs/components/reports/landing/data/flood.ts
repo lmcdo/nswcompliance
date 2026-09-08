@@ -6,9 +6,9 @@ import type { ProductLandingConfig } from "../types"
 export const floodConfig: ProductLandingConfig = {
   badge: "Powered by satellite + government data",
   badgeIcon: Satellite,
-  title: "Flood Risk Check",
+  title: "Flood Screening",
   subtitle: "Know exactly how deep the water gets — not just whether it floods.",
-  ctaLabel: "Check Risk",
+  ctaLabel: "Check Flooding",
   heroImage: "/images/landing/hero-flood.png",
   heroStats: [
     { value: "71+", label: "LGAs covered" },

@@ -23,7 +23,7 @@ export async function generateMetadata(
 
   const address = data?.address ?? 'Property';
   return {
-    title: `Flood Risk Report — ${address}`,
+    title: `Flood Screening Report — ${address}`,
     description: `Flood risk assessment for ${address}. Cross-referenced from government overlays, satellite imagery, river gauges, and council flood models.`,
     robots: { index: false }, // Don't index individual reports
   };

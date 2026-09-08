@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { TOOLS_LAYOUT_FOOTER } from '@/lib/disclaimers';
 
 const TOOLS = [
-  { label: 'Flood Risk', href: '/reports/flood', emoji: '🌊' },
+  { label: 'Flood Screening', href: '/reports/flood', emoji: '🌊' },
   { label: 'Bushfire Pre-Screen', href: '/reports/bushfire', emoji: '🔥' },
   { label: 'Granny Flat Check', href: '/reports/granny-flat', emoji: '🏡' },
   { label: 'Pre-DA Site History', href: '/reports/pre-da-history', emoji: '🛰' },

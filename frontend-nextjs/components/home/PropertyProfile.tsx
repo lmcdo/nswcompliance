@@ -46,7 +46,7 @@ interface ToolItem {
 const BUYING_TOOLS: ToolItem[] = [
   {
     key: 'flood',
-    title: 'Flood Risk Check',
+    title: 'Flood Screening',
     detail: 'Statutory flood zone, council flood study depths, satellite water history.',
     href: '/reports/flood',
     badge: 'Free + $49 report',
