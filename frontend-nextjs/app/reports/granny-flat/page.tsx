@@ -1020,14 +1020,19 @@ export function ConfirmationPanel({
   const usePerStructureQuestions = detectResult.samgeo_validated && secondaryStructures.length > 0;
 
   // Detection recall is measured at 0.368 against a 0.70 floor (2026-08-12) —
-  // it misses roughly two of every three real structures. When it finds
-  // nothing, or hasn't been validated at all, the submitted count silently
-  // defaulted to 1 (main dwelling only) with nothing forcing a person to
-  // actually check SIX Maps first, despite the on-screen text telling them
-  // to. A missed structure could then be treated as "doesn't exist" in the
-  // yield calculation. Requiring an explicit tick before Calculate yield is
-  // enabled closes that gap without changing what gets submitted.
-  const needsManualReview = !detectResult.samgeo_validated || detectResult.detected_structures.length === 0;
+  // it misses roughly two of every three real structures. Sol HIGH 0.98: a
+  // validated scan that finds ONLY the main dwelling (secondaryStructures
+  // empty) is the single most likely shape for a missed granny flat or shed
+  // to take, and it triggered neither this gate nor usePerStructureQuestions
+  // (which needs secondaryStructures.length > 0) — so "found nothing extra"
+  // and "missed something" were indistinguishable and both submitted
+  // unreviewed. Gate on secondaryStructures, not the raw detected array:
+  // this also subsumes the true zero-detection case (secondaryStructures is
+  // empty whenever detected_structures is). When secondary structures WERE
+  // found, the existing per-structure review (allSecondaryAnswered) is what
+  // must be complete instead — it existed before this fix but nothing
+  // enforced it either.
+  const needsManualReview = !detectResult.samgeo_validated || secondaryStructures.length === 0;
   const [manualReviewConfirmed, setManualReviewConfirmed] = useState(false);
 
   const handleStructureType = (idx: number, type: StructureTypeAnswer) => {
@@ -1062,6 +1067,11 @@ export function ConfirmationPanel({
   const answeredCount = secondaryStructures.filter(s => s.index in structureTypes).length;
   const allSecondaryAnswered = secondaryStructures.length > 0 &&
     answeredCount === secondaryStructures.length;
+
+  // needsManualReview false implies samgeo_validated AND
+  // secondaryStructures.length > 0 (see its definition above) — exactly
+  // usePerStructureQuestions — so these two branches are exhaustive.
+  const calculateBlocked = needsManualReview ? !manualReviewConfirmed : !allSecondaryAnswered;
 
   const canonical = detectResult.address;
   const showCanonical = canonical && canonical.toLowerCase() !== inputAddress.toLowerCase();
@@ -1160,6 +1170,23 @@ export function ConfirmationPanel({
                       </div>
                     ))}
                   </div>
+                  {/* Only the main dwelling was found — no secondary structure
+                      to review against, but a real one may simply have been
+                      missed (this is the shape a missed detection actually
+                      takes). Same manual-review requirement as an empty
+                      detection, not the per-structure flow, since there is
+                      nothing here to answer questions about. */}
+                  {secondaryStructures.length === 0 && (
+                    <label className="mt-2 flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={manualReviewConfirmed}
+                        onChange={(e) => setManualReviewConfirmed(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>I&apos;ve checked SIX Maps and there are no other structures on this lot.</span>
+                    </label>
+                  )}
                 </>
               );
             })()}
@@ -1349,13 +1376,17 @@ export function ConfirmationPanel({
             </div>
           )}
 
-          {needsManualReview && !manualReviewConfirmed && (
-            <p className="text-xs text-amber-700">Tick the box above to continue — detection here needs a human check before a yield can be calculated.</p>
+          {calculateBlocked && (
+            <p className="text-xs text-amber-700">
+              {needsManualReview
+                ? 'Tick the box above to continue — detection here needs a human check before a yield can be calculated.'
+                : 'Answer for every detected structure above to continue — a human check is needed before a yield can be calculated.'}
+            </p>
           )}
           <div className="flex gap-3">
             <button
               type="submit"
-              disabled={needsManualReview && !manualReviewConfirmed}
+              disabled={calculateBlocked}
               className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Calculate yield
