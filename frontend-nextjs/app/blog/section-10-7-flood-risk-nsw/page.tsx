@@ -7,7 +7,7 @@ import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
-    'Why Your Section 10.7 Certificate Might Not Show Flood Screening — PlotDetect',
+    'Why Your Section 10.7 Certificate Might Not Show Flood Risk — PlotDetect',
   description:
     'NSW flood overlays were removed from LEPs in 2021 and 2023. Your s10.7 planning certificate now shows less flood information than it used to. Here is what changed and what to do about it.',
   keywords: [
