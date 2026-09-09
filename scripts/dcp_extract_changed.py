@@ -3967,8 +3967,11 @@ def main() -> None:
                 # the summary line above looked like a clean pass either way. Make
                 # partial coverage visible instead of letting totals imply completeness.
                 if unchecked:
-                    print(f"  ⚠ {len(unchecked)} chapter(s) NOT graded "
-                          f"(no active registry row, or a malformed identifier):")
+                    # Sol cross-review LOW 0.99: this wording must match the query in
+                    # run_fidelity_gate exactly -- it rejects an active row with a NULL
+                    # r2_current_path too, not just a missing/inactive row.
+                    print(f"  ⚠ {len(unchecked)} chapter(s) NOT graded (no matching active "
+                          f"registry row with a source PDF, or a malformed identifier):")
                     for _c, _k in unchecked:
                         print(f"      - {_c}/{_k}")
             except Exception as exc:  # noqa: BLE001 — grading is advisory; keep the queued rows

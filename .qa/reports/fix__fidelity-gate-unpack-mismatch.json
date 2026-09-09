@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Fixes a real, live crash in the --review production write path: every fidelity-grading call for a freshly re-extracted chapter was silently failing (advisory try/except swallowed the exception), leaving newly-enqueued dcp_review_queue rows permanently ungraded. Not Critical: no schema/query change, the fix only corrects how many return values are unpacked from an already-existing, already-tested function. Not Minor: this was actively breaking a real safety mechanism in production, discovered live.",
-  "commit_hash": "0e0378f5",
+  "commit_hash": "d7337422",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_extract_changed_real_db.py"
