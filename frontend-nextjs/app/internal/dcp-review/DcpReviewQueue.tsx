@@ -60,6 +60,35 @@ export interface NumberSightings {
   embedded: string[];
 }
 
+// A unit sitting right after a number is what separates a planning control
+// ("1.8m", "600mm", "50%") from a figure number, a page footer or ordinary
+// prose ("Figure 3.18", "2.4-15", "24 hour activity"). Measured across the 410
+// flagged rows on 2026-09-09: 56 carried a unit, 354 did not — so this is the
+// difference between a worklist a person can finish and one they cannot.
+// NOTE the split alternation: a word-shaped unit needs a trailing \b so "m"
+// does not match "must", but a SYMBOL unit must not have one — \b after "%"
+// requires a word character next, so "50% or" never matched and every
+// percentage control was silently classified as noise. Caught by the 50% test
+// below; it had already skewed the first measurement of this queue.
+const UNIT_AFTER_NUMBER =
+  /^\s*(?:(?:mm|m2|sqm|metres?|meters?|per\s?cent|percent|storeys?|degrees?|hectares?|ha|m)\b|%|m²)/i;
+
+/** True when this unmatched number is followed closely by a unit, i.e. it could
+ *  be a real control value rather than a reference or a stray digit. */
+export function looksLikeAControl(num: string, text: string | null): boolean {
+  if (typeof text !== 'string' || typeof num !== 'string' || !text || !num) return false;
+  let from = 0;
+  for (;;) {
+    const i = text.indexOf(num, from);
+    if (i === -1) return false;
+    from = i + num.length;
+    const after = text.slice(i + num.length, i + num.length + 14);
+    // "3.18" — the ".18" continuation is a longer number, not a unit.
+    if (/^\s*\.\d/.test(after)) continue;
+    if (UNIT_AFTER_NUMBER.test(after)) return true;
+  }
+}
+
 export function occurrencesOf(num: string, text: string | null): NumberSightings {
   // new_text arrives from the API as untyped JSON: a non-string (a number, an
   // object) would throw on .indexOf/.slice and blank the whole review panel,
@@ -113,7 +142,9 @@ export default function DcpReviewQueue() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPdf, setShowPdf] = useState(false);
+  // Open by default: the PDF is the only thing a reviewer can actually check a
+  // rule against, so it should not be a click away on every row.
+  const [showPdf, setShowPdf] = useState(true);
   const [total, setTotal] = useState(0); // total pending on the server (queue caps loads at 500)
   const [editText, setEditText] = useState(''); // inline correction of the current row's text
 
@@ -419,6 +450,37 @@ export default function DcpReviewQueue() {
 
           {item.fidelity_status === 'flagged' && (
             <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+              {(() => {
+                // The single most useful thing this panel can say: is the number
+                // the gate could not match capable of being a planning control at
+                // all? If no unit follows it, it is a figure number / page footer /
+                // ordinary prose and there is nothing to measure.
+                const nums = missingNumbers(item.fidelity_detail);
+                const controlNums = nums.filter((n) => looksLikeAControl(n, item.new_text));
+                if (nums.length === 0) return null;
+                return controlNums.length > 0 ? (
+                  <div className="mb-2 rounded border-2 border-red-400 bg-red-50 px-3 py-2 text-red-900">
+                    <div className="font-semibold">
+                      ⚠ CHECK THIS ONE — {controlNums.join(', ')} reads like a measurement.
+                    </div>
+                    <div className="mt-0.5 text-xs">
+                      A unit follows it, so it may be a real control (setback, height, area).
+                      Find it in the PDF on the right and confirm the value before approving.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-2 rounded border-2 border-gray-300 bg-gray-50 px-3 py-2 text-gray-800">
+                    <div className="font-semibold">
+                      Probably nothing to fix — no unit follows{' '}
+                      {nums.length === 1 ? 'this number' : 'these numbers'}.
+                    </div>
+                    <div className="mt-0.5 text-xs">
+                      It is a figure number, page footer, section reference or ordinary text, not a
+                      measurement. Skim the rule against the PDF and approve.
+                    </div>
+                  </div>
+                );
+              })()}
               <p className="font-semibold">⚠ This rule needs a human check.</p>
               <p className="mt-1">
                 The source check could not match {item.fidelity_detail?.includes('number') ? 'a number' : 'some wording'} in
@@ -510,44 +572,61 @@ export default function DcpReviewQueue() {
             <p className="mb-3 rounded bg-blue-50 px-3 py-2 text-sm">{item.summary}</p>
           )}
 
+          {/* The decision is NEW text vs the council's own page — so those two sit
+              side by side. Until 2026-09-09 the layout was OLD|NEW with the PDF
+              stacked full-width underneath, which meant a reviewer could never see
+              the rule and its source at the same time and had to scroll between
+              them for every row. OLD is only useful for seeing WHAT changed, and
+              when the previous extraction is shredded it is not even that, so it
+              moves into a collapsed block below. */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="mb-1 text-xs font-semibold text-gray-500">
-                OLD {item.old_page ? `(p.${item.old_page})` : ''}
+              <div className="mb-1 flex items-center justify-between text-xs font-semibold text-gray-500">
+                <span>NEW {item.new_page ? `(p.${item.new_page})` : ''} — the rule as extracted</span>
+                {item.pdf_url && (
+                  <button
+                    onClick={() => setShowPdf((v) => !v)}
+                    className="rounded border px-2 py-0.5 font-medium"
+                  >
+                    {showPdf ? 'Hide PDF' : 'Show PDF'}
+                  </button>
+                )}
               </div>
-              <pre className="min-h-[8rem] whitespace-pre-wrap rounded border bg-red-50/40 p-3 text-sm">
-                {item.old_text ?? '—'}
-              </pre>
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-semibold text-gray-500">
-                NEW {item.new_page ? `(p.${item.new_page})` : ''}
-              </div>
-              <pre className="min-h-[8rem] whitespace-pre-wrap rounded border bg-green-50/40 p-3 text-sm">
+              <pre className="h-[70vh] overflow-auto whitespace-pre-wrap rounded border bg-green-50/40 p-3 text-sm">
                 {item.new_text ?? '—'}
               </pre>
             </div>
-          </div>
-
-          {/* Source PDF — verify the NEW text against the actual council page.
-              The page is approximate (extraction records the chunk's first page). */}
-          {item.pdf_url && (
-            <div className="mt-4 border-t pt-4">
-              <button
-                onClick={() => setShowPdf((v) => !v)}
-                className="rounded border px-3 py-1.5 text-sm font-medium"
-              >
-                {showPdf ? 'Hide' : 'Show'} source PDF (near p.{item.new_page ?? item.old_page ?? 1})
-              </button>
-              {showPdf && (
+            <div>
+              <div className="mb-1 text-xs font-semibold text-gray-500">
+                COUNCIL&apos;S PDF{' '}
+                {item.pdf_url ? `(opens near p.${item.new_page ?? item.old_page ?? 1})` : ''} — the
+                source of truth
+              </div>
+              {item.pdf_url && showPdf ? (
                 <iframe
                   title="source PDF page"
                   src={`${item.pdf_url}#page=${item.new_page ?? item.old_page ?? 1}&view=FitH`}
-                  className="mt-3 h-[70vh] w-full rounded border"
+                  className="h-[70vh] w-full rounded border"
                 />
+              ) : (
+                <div className="flex h-[70vh] items-center justify-center rounded border bg-gray-50 p-4 text-center text-sm text-gray-500">
+                  {item.pdf_url
+                    ? 'PDF hidden — use Show PDF to compare against the source.'
+                    : 'No source PDF is linked for this chapter, so this rule cannot be checked against the council document here.'}
+                </div>
               )}
             </div>
-          )}
+          </div>
+
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-semibold text-gray-500">
+              Show the OLD text being replaced {item.old_page ? `(p.${item.old_page})` : ''} — only
+              useful for seeing what changed, not for checking correctness
+            </summary>
+            <pre className="mt-2 max-h-[40vh] overflow-auto whitespace-pre-wrap rounded border bg-red-50/40 p-3 text-sm">
+              {item.old_text ?? '—'}
+            </pre>
+          </details>
 
           <div className="mt-4 flex gap-2">
             <button

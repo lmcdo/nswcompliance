@@ -248,6 +248,53 @@ def _blank_verified_references(text: str, whole_chapter: str) -> str:
     return "".join(out)
 
 
+# prior-art-checked: reuses vf._content_words and vf._norm (this project's existing
+# word-extraction and normalisation helpers, already used throughout this module) --
+# no new text pipeline. Only the straddle-rescue rule below is new.
+_CONTEXT_WORDS = 6      # words either side of the number that must travel with it
+_CONTEXT_MATCH = 0.6    # share of them that must appear beside the number in the chapter
+
+
+def _straddle_grounded(num: str, text: str, whole_chapter: str) -> bool:
+    """True when a number ruled absent from its narrow page window is found
+    elsewhere in the SAME chapter carrying enough of its own surrounding words
+    to be the same clause, not a coincidence.
+
+    Why this exists: _number_window deliberately checks numbers against the
+    anchor page only, because a +-1 page window let an unrelated identical value
+    on a neighbouring page mask a wrong one (see that function's docstring). The
+    accepted cost was that a clause straddling a page break gets wrongly flagged.
+    Measured 2026-09-09, that cost was not small: of 433 flagged rows, 428 were
+    this false alarm and 5 were real -- a 1.2% true-positive rate that made the
+    human queue unworkable, so nothing got reviewed at all.
+
+    Widening the window alone would reinstate the masking bug. Requiring the
+    number to bring its own context does not: an unrelated '11.5' elsewhere in
+    the chapter will not be surrounded by this clause's words. Verified against
+    both directions on real data -- ku_ring_gai's '3 storey (11.5 metres) street
+    wall' grounds in the St Ives chapter (whose PDF contains that exact phrase)
+    and stays flagged in Gordon and Roseville (whose PDFs contain neither '11.5'
+    nor 'consistent 3 storey'), which is a genuine cross-precinct copy error.
+    """
+    if not num or not text or not whole_chapter:
+        return False
+    hay = vf._norm(whole_chapter)
+    for m in re.finditer(re.escape(num), text):
+        before = vf._content_words(text[max(0, m.start() - 120): m.start()])[-_CONTEXT_WORDS:]
+        after = vf._content_words(text[m.end(): m.end() + 120])[:_CONTEXT_WORDS]
+        context = [w for w in (before + after) if w]
+        if not context:
+            continue
+        # The number must appear in the chapter WITH its neighbours nearby, so
+        # scan each occurrence's own local span rather than the whole document.
+        for hm in re.finditer(re.escape(num), hay):
+            span = hay[max(0, hm.start() - 260): hm.end() + 260]
+            hit = sum(1 for w in context if w in span)
+            if hit / len(context) >= _CONTEXT_MATCH:
+                return True
+    return False
+
+
 def ground_row(text: str, ref_number: str, pages: dict) -> dict:
     """Grade one row. Returns dict(status, detail, verified_page)."""
     prov_words = set(vf._content_words(text))
@@ -264,6 +311,13 @@ def ground_row(text: str, ref_number: str, pages: dict) -> dict:
     nums = [n for n in vf._numbers(cleaned_text) if n not in code_nums]
     absent = [r["v"] for r in vf.value_absent_from_source(
         [{"v": n, "src": number_source} for n in nums], value_field="v", source_field="src")]
+    # Straddle rescue: a number missing from the narrow anchor-page window is not
+    # yet wrong -- the clause may simply continue onto the next page. Keep it
+    # flagged only if it cannot be found elsewhere in this chapter carrying its
+    # own surrounding words. See _straddle_grounded for why context is required
+    # rather than just widening the window.
+    if absent:
+        absent = [n for n in absent if not _straddle_grounded(n, cleaned_text, whole_chapter)]
     grounded_words = sum(1 for w in prov_words if w in word_source)
     ground_ratio = grounded_words / len(prov_words) if prov_words else 1.0
 
