@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Test-only addition (tests/test_columnar_reader.py). No production code changed. Extends this repo's existing, already-adopted Hypothesis pattern (tests/test_flood_truth.py) to the exact function fixed earlier this session (_columnar_text), same file the two Sol-caught issues in the prior PR (#1065) came from.",
-  "commit_hash": "5fd54643",
+  "commit_hash": "3e083517",
   "files": [
     "tests/test_columnar_reader.py"
   ],
