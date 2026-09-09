@@ -2972,32 +2972,51 @@ def extract_chapter(
             # entirely under dry_run: that flag's whole contract is "no DB
             # writes".
             if not dry_run:
+                # prior-art-checked: reuse not viable -- this fixes the
+                # is_active filter on THIS SAME guard's own SELECT/UPDATE
+                # (added a few commits ago on this branch), not a new query
+                # against a different table; the flagged files' overlap is
+                # shared domain vocabulary (chapter/registry/suspect), not a
+                # reusable function for this specific read-then-conditionally
+                # -write.
+                # Sol MEDIUM 0.94: a chapter can be deactivated (is_active=FALSE)
+                # between batch selection and this code running -- without the
+                # filter, this block would still alert about and mutate an
+                # inactive row's status for a chapter no longer served. Both
+                # the read and the write are scoped to is_active=TRUE; if the
+                # row isn't active any more, skip the alert AND the write
+                # entirely rather than acting on stale membership.
                 skip_key = f"{chapter.get('content_hash') or 'nohash'}::oversized_pdf({pdf_bytes})"
                 try:
                     _c = conn.cursor()
                     _c.execute(
-                        "SELECT last_suspect_alert_key FROM dcp_chapter_registry WHERE id = %s",
+                        "SELECT last_suspect_alert_key FROM dcp_chapter_registry "
+                        "WHERE id = %s AND is_active = TRUE",
                         (chapter_id,),
                     )
                     row = _c.fetchone()
-                    if not row or row[0] != skip_key:
-                        try:
-                            from run_monitors import send_telegram
-                            send_telegram(
-                                f"⚠️ dcp-extract: {council}/{chapter_key} SKIPPED — "
-                                f"{pdf_bytes:,} bytes exceeds the {OVERSIZED_PDF_SKIP_BYTES:,}-"
-                                f"byte OOM-risk guard (DQ-98). Source content may be stale "
-                                f"until chunked extraction ships."
-                            )
-                        except Exception as exc:
-                            print(f"    [warn] oversized-skip Telegram alert not sent: {exc}")
-                    _c.execute(
-                        "UPDATE dcp_chapter_registry "
-                        "SET last_suspect_alert_key = %s, last_suspect_alert_at = NOW() "
-                        "WHERE id = %s",
-                        (skip_key, chapter_id),
-                    )
-                    conn.commit()
+                    if row is None:
+                        print(f"    [info] {council}/{chapter_key} no longer active — "
+                              f"skip-status not recorded")
+                    else:
+                        if row[0] != skip_key:
+                            try:
+                                from run_monitors import send_telegram
+                                send_telegram(
+                                    f"⚠️ dcp-extract: {council}/{chapter_key} SKIPPED — "
+                                    f"{pdf_bytes:,} bytes exceeds the {OVERSIZED_PDF_SKIP_BYTES:,}-"
+                                    f"byte OOM-risk guard (DQ-98). Source content may be stale "
+                                    f"until chunked extraction ships."
+                                )
+                            except Exception as exc:
+                                print(f"    [warn] oversized-skip Telegram alert not sent: {exc}")
+                        _c.execute(
+                            "UPDATE dcp_chapter_registry "
+                            "SET last_suspect_alert_key = %s, last_suspect_alert_at = NOW() "
+                            "WHERE id = %s AND is_active = TRUE",
+                            (skip_key, chapter_id),
+                        )
+                        conn.commit()
                     _c.close()
                 except Exception as exc:
                     print(f"    [warn] could not record oversized-skip status: {exc}")

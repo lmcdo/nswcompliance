@@ -107,7 +107,11 @@ def test_oversized_pdf_alerts_and_records_status_when_not_previously_alerted(mon
     s3.download_file.side_effect = _fake_download_to_size(dx.OVERSIZED_PDF_SKIP_BYTES + 1)
 
     cur = MagicMock()
-    cur.fetchone.return_value = None  # never alerted before
+    # Row exists (active chapter, real id) but last_suspect_alert_key is NULL
+    # -- fetchone() on a found row with a NULL column returns (None,), NOT
+    # bare None. Bare None means "no row found" (see the is_active test
+    # below) -- a DIFFERENT condition this test must not be confused with.
+    cur.fetchone.return_value = (None,)
     conn = MagicMock()
     conn.cursor.return_value = cur
 
@@ -163,6 +167,37 @@ def test_oversized_pdf_does_not_realert_on_the_same_unchanged_file(monkeypatch):
     assert sent == []  # no duplicate alert
     update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
     assert len(update_calls) == 1  # status row still refreshed
+
+
+def test_oversized_pdf_skips_alert_and_write_when_chapter_no_longer_active(monkeypatch):
+    """Sol MEDIUM 0.94: a chapter can be deactivated (is_active=FALSE) between
+    batch selection and this code running. The SELECT is scoped to
+    is_active=TRUE, so it returns no row for a deactivated chapter -- must
+    skip BOTH the Telegram alert and the status write entirely, not act on
+    stale batch membership."""
+
+    s3 = MagicMock()
+    s3.download_file.side_effect = _fake_download_to_size(dx.OVERSIZED_PDF_SKIP_BYTES + 1)
+
+    cur = MagicMock()
+    cur.fetchone.return_value = None  # is_active=TRUE filter excluded the row
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+
+    sent = []
+    fake_run_monitors = MagicMock()
+    fake_run_monitors.send_telegram.side_effect = lambda msg: sent.append(msg)
+    monkeypatch.setitem(sys.modules, "run_monitors", fake_run_monitors)
+
+    ok, review_data = dx.extract_chapter(
+        _chapter(content_hash="abc123"), s3, conn, dry_run=False, review=False,
+    )
+
+    assert (ok, review_data) == (False, None)
+    assert sent == []  # no alert for an inactive chapter
+    update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
+    assert update_calls == []  # no write for an inactive chapter
+    conn.commit.assert_not_called()
 
 
 def test_pdf_under_threshold_is_not_skipped(monkeypatch):
