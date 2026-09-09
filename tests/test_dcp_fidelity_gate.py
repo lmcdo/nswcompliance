@@ -494,3 +494,113 @@ class TestChaptersQueryScopesToLiveChapters:
 
     def test_skipped_count_is_reported_not_silently_dropped(self):
         assert "non-actionable rows skipped, not graded" in self._main_src()
+
+
+class TestStraddleRescue:
+    """_straddle_grounded — the fix for the gate's dominant false-alarm class.
+
+    Measured 2026-09-09 against the live queue: of 433 flagged rows, 428 were a
+    clause straddling a page break (the number sits on the next page, outside
+    _number_window's deliberately narrow anchor-page scope) and 5 were real.
+    A 1.2% true-positive rate made the human queue unworkable, so nothing was
+    reviewed at all — the opposite of the safety this gate exists to provide.
+
+    Widening the window would reinstate the masking bug _number_window's own
+    docstring documents, so the rescue requires the number to bring its own
+    surrounding words with it. These four cases are real production strings and
+    pin both directions.
+    """
+
+    RULE_11_5 = (
+        "Create a consistent 3 storey (11.5 metres) street wall that is built "
+        "parallel to the street alignment of Pacific Highway."
+    )
+
+    def test_rescues_a_clause_that_continues_on_another_page(self):
+        # ku_ring_gai St Ives: the chapter PDF really does carry this phrase.
+        st_ives = (
+            "BUILT FORM ... consistent 3 storey (11.5 metres) street wall that is built "
+            "55 57 59 18 parallel to the street alignment of Mona Vale Road ..."
+        )
+        assert _gate._straddle_grounded("11.5", self.RULE_11_5, st_ives) is True
+
+    def test_still_flags_a_value_the_chapter_never_states(self):
+        # ku_ring_gai Gordon: PDF says "3 storey street wall" with NO metric, and
+        # contains neither "11.5" nor "consistent 3 storey". The 11.5 was carried
+        # across from St Ives by extraction — a real, served-facing error, and the
+        # only genuine defect in all 433 flagged rows.
+        gordon = (
+            "BUILT FORM Objectives Controls 1 To maintain a consistent street wall height "
+            "with reference to existing buildings. - 3 storey street wall - 2m upper level "
+            "setback above street wall height"
+        )
+        assert _gate._straddle_grounded("11.5", self.RULE_11_5, gordon) is False
+
+    def test_does_not_reinstate_the_masking_bug(self):
+        # The reason numbers were narrowed to the anchor page in the first place:
+        # an unrelated, coincidentally-identical value must not ground this one.
+        rule = "The maximum building height is 9.9 metres above natural ground level."
+        unrelated = (
+            "Deep soil zones must be a minimum of 9.9 square metres in area for corner "
+            "allotments."
+        )
+        assert _gate._straddle_grounded("9.9", rule, unrelated) is False
+
+    def test_rescues_a_number_inside_ordinary_prose(self):
+        rule = "uses to ensure 24 hour activity and surveillance of the streetscape."
+        next_page = (
+            "... mix of commercial and residential uses above active ground floor uses to "
+            "ensure 24 hour activity and surveillance of the streetscape. Sydney DCP 2012"
+        )
+        assert _gate._straddle_grounded("24", rule, next_page) is True
+
+    def test_empty_and_missing_inputs_are_safe(self):
+        assert _gate._straddle_grounded("", "text", "chapter") is False
+        assert _gate._straddle_grounded("5", "", "chapter") is False
+        assert _gate._straddle_grounded("5", "text", "") is False
+
+    def test_a_shorter_number_is_not_grounded_by_a_longer_one(self):
+        """Sol HIGH 0.99: a bare substring search made the rescue reintroduce
+        the very masking bug this module exists to prevent. A rule saying '5
+        metres' must NOT ground against a chapter saying '15 metres', even
+        though every surrounding word is identical."""
+        rule = "The minimum setback is 5 metres from the front boundary."
+        chapter = "The minimum setback is 15 metres from the front boundary."
+        assert _gate._straddle_grounded("5", rule, chapter) is False
+
+    def test_a_number_is_not_grounded_by_a_decimal_containing_it(self):
+        assert _gate._straddle_grounded("5", "a 5 metre wall", "a 11.5 metre wall") is False
+
+    def test_the_same_number_still_grounds_against_itself(self):
+        rule = "The minimum setback is 5 metres from the front boundary."
+        assert _gate._straddle_grounded("5", rule, rule) is True
+
+    def test_a_number_ending_a_sentence_still_grounds(self):
+        assert _gate._straddle_grounded("6", "must be set back 6.", "the wall must be set back 6.") is True
+
+    def test_a_thousands_separated_value_is_a_different_number(self):
+        """Sol HIGH 0.97, second round: digit/decimal boundaries alone still let
+        '500' match inside '1,500', so a rule stating a 500 sqm minimum lot size
+        grounded against a chapter stating 1,500 sqm -- three times the control,
+        marked source-verified."""
+        assert _gate._straddle_grounded(
+            "500",
+            "The minimum lot size is 500 square metres",
+            "The minimum lot size is 1,500 square metres",
+        ) is False
+
+    def test_a_number_starting_a_thousands_group_is_not_that_number(self):
+        assert _gate._straddle_grounded(
+            "5", "a 5 metre setback applies", "a 5,000 metre setback applies"
+        ) is False
+
+    def test_a_signed_value_is_not_the_unsigned_one(self):
+        assert _gate._straddle_grounded(
+            "5", "a 5 metre setback applies", "a -5 metre setback applies"
+        ) is False
+
+    def test_a_comma_in_ordinary_prose_still_grounds(self):
+        """The guard must reject thousands separators without rejecting a number
+        that merely follows a comma in a list."""
+        text = "sizes of 3, 5 and 7 metres apply"
+        assert _gate._straddle_grounded("5", text, text) is True

@@ -178,14 +178,14 @@ def digits(text: str) -> str:
 # minimal transform is also what makes the invariant provable.
 _UNIT_RULES: list[tuple[re.Pattern, str]] = [
     # 900 m m -> 900 mm
-    (re.compile(r"(?<=[0-9])(\s+)m\s+m\b"), r"\1mm"),
+    (re.compile(r"(?<=[0-9])([ \t]+)m[ \t]+m\b"), r"\1mm"),
     # 900 m 2 -> 900 m2   (metres split from a squared/cubed exponent)
-    (re.compile(r"(?<=[0-9])(\s+)m\s+([23])\b"), r"\1m\2"),
+    (re.compile(r"(?<=[0-9])([ \t]+)m[ \t]+([23])\b"), r"\1m\2"),
     # 7 p m -> 7 pm, 8 a m -> 8 am
-    (re.compile(r"(?<=[0-9])(\s+)([ap])\s+m\b"), r"\1\2m"),
+    (re.compile(r"(?<=[0-9])([ \t]+)([ap])[ \t]+m\b"), r"\1\2m"),
     # 20 t h -> 20th. The one place a space next to a digit is removed, because
     # "th" is an ordinal suffix rather than a unit.
-    (re.compile(r"(?<=[0-9])\s+t\s+h\b"), "th"),
+    (re.compile(r"(?<=[0-9])[ \t]+t[ \t]+h\b"), "th"),
 ]
 
 
@@ -226,10 +226,10 @@ def _connect():
 
 #: Must stay identical to PROBES['DQ-77'] in dq_probe_live.py.
 UNIT_PREDICATE = (
-    r"provision_text ~ '[0-9]\s+m\s+m\M' "
-    r"OR provision_text ~ '[0-9]\s+m\s+[23]\M' "
-    r"OR provision_text ~ '[0-9]\s+[ap]\s+m\M' "
-    r"OR provision_text ~ '[0-9]\s+t\s+h\M'"
+    r"provision_text ~ '[0-9][ \t]+m[ \t]+m\M' "
+    r"OR provision_text ~ '[0-9][ \t]+m[ \t]+[23]\M' "
+    r"OR provision_text ~ '[0-9][ \t]+[ap][ \t]+m\M' "
+    r"OR provision_text ~ '[0-9][ \t]+t[ \t]+h\M'"
 )
 
 #: name -> (row id, predicate, transform, invariant, what the invariant means)

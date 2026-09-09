@@ -13,7 +13,11 @@
  * rule carries 150, i.e. a control value potentially wrong by a factor of ten —
  * behind reassuring copy about harmless checker splitting.
  */
-import { missingNumbers, occurrencesOf } from '@/app/internal/dcp-review/DcpReviewQueue';
+import {
+  looksLikeAControl,
+  missingNumbers,
+  occurrencesOf,
+} from '@/app/internal/dcp-review/DcpReviewQueue';
 
 describe('missingNumbers', () => {
   it('pulls the tokens out of the gate detail string', () => {
@@ -70,5 +74,59 @@ describe('occurrencesOf', () => {
     expect(occurrencesOf('15', null)).toEqual({ standalone: [], embedded: [] });
     expect(occurrencesOf('15', 12345 as unknown as string)).toEqual({ standalone: [], embedded: [] });
     expect(occurrencesOf('', 'some text')).toEqual({ standalone: [], embedded: [] });
+  });
+});
+
+describe('looksLikeAControl', () => {
+  // These are the real strings, taken verbatim from the pending queue on
+  // 2026-09-09 — the split this function drives is 56 rows that need a human
+  // against 354 that do not, so a wrong answer here either buries a real
+  // control or manufactures work.
+  it.each([
+    ['1.8', 'The height of side boundary fencing is not to exceed 1.8m.'],
+    ['600', 'no higher than 600mm above the ground level abutting the wall'],
+    ['0.2', 'the outer edge of the excavation is within 0.2m of the footings'],
+    ['11.5', 'Create a consistent 3 storey (11.5 metres) street wall'],
+    ['50', 'sunlight is provided to at least 50% or 35m2 with minimum dimensions'],
+    ['20', 'Landscaped street setback 20m min Landscaped side/rear setback'],
+  ])('treats %s as a possible control', (num, text) => {
+    expect(looksLikeAControl(num, text)).toBe(true);
+  });
+
+  it.each([
+    ['18', 'Figure 3.18 Glebe Town Hall is an example of an early community building'],
+    ['15', 'Sydney DCP 2012 - December 2012 2.4-15'],
+    ['24', 'uses to ensure 24 hour activity and surveillance of the streetscape'],
+    ['0', 'Surry Hills North ![](images/0.jpg)'],
+    ['1893', 'the terraces were built between 1893 and 1905'],
+  ])('treats %s as NOT a control', (num, text) => {
+    expect(looksLikeAControl(num, text)).toBe(false);
+  });
+
+  it('does not mistake a longer decimal for a unit', () => {
+    // "3.18" — the ".18" continuation must not read as a unit on "3".
+    expect(looksLikeAControl('3', 'see Figure 3.18 for detail')).toBe(false);
+  });
+
+  it('survives untyped input', () => {
+    expect(looksLikeAControl('15', null)).toBe(false);
+    expect(looksLikeAControl('15', 999 as unknown as string)).toBe(false);
+  });
+});
+
+describe('looksLikeAControl — numeric boundaries (Sol MEDIUM 0.96)', () => {
+  it('does not judge the flagged number by a longer number containing it', () => {
+    // The gate flagged 5. The rule mentions 5 as a page reference and separately
+    // carries an unrelated 15m. Without a leading boundary the scan finds the "5"
+    // inside "15m" and wrongly tells the reviewer the flagged 5 is a measurement.
+    expect(looksLikeAControl('5', 'see page 5 for detail; the wall is 15m high')).toBe(false);
+  });
+
+  it('still detects the number when it is genuinely the measurement', () => {
+    expect(looksLikeAControl('5', 'the wall is 5m high')).toBe(true);
+  });
+
+  it('is not fooled by a decimal that merely starts with the flagged number', () => {
+    expect(looksLikeAControl('11', 'a street wall of 11.5 metres applies')).toBe(false);
   });
 });

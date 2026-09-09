@@ -1,0 +1,181 @@
+{
+  "tier": "critical",
+  "justification": "Changes when the fidelity gate declares an extracted regulatory number GROUNDED against its source PDF -- the check that decides whether a provision reaches a human as trustworthy or suspect. A wrong loosening here ships a false 'this is correct' signal on a planning control. Measured cause: the gate scoped number-checking to a single anchor page, so any clause straddling a page break was wrongly flagged. Of 433 flagged rows in the live queue, 428 were that false alarm and 5 were real errors -- a 1.2% true-positive rate that made the human queue unworkable, so it went unreviewed for days and the gate delivered no safety at all.",
+  "commit_hash": "acf862b7",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts",
+    "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx",
+    "scripts/dcp_fidelity_gate.py",
+    "scripts/dq_probe_live.py",
+    "scripts/repair_tex_residue.py",
+    "tests/test_dcp_fidelity_gate.py",
+    "tests/test_repair_matches_probe.py"
+  ],
+  "pre_impl": {
+    "existing_data": "The `pages` dict already fetched by gate_chapter via vf._page_text_for_chapter, and the row's own new_text. No new query, no new table, no new column, no additional R2 fetch.",
+    "assumption_mismatch": "The prior assumption was that a provision's numbers live on the page _best_page anchors to. False for real DCPs: clauses routinely continue across a page break, which _number_window's own docstring already predicted as an accepted residual. This corrects the assumption without widening the window that the masking guard depends on.",
+    "new_vs_existing": "Applies to every future gate run for every council. Does NOT retroactively re-grade rows already graded; the current queue was cleared separately by direct source verification.",
+    "external_source_error": "The source is the council's own PDF text layer, already fetched. If that text layer is garbled (a real condition for map-heavy chapters), a genuinely-present number can still fail to match and the row stays flagged -- the safe direction. The change never turns a garbled-source read into a GROUNDED verdict on its own; the context requirement must also be met.",
+    "frontend_type": "N/A -- no API or component change in this PR.",
+    "user_failure_mode": "If this rescue were too loose, a fabricated control value would be marked grounded and reach a reviewer labelled 'matched to source', which is the exact false-confidence this gate exists to prevent. Guarded by requiring the number to carry >=60% of its own surrounding content words within a 260-character span of the candidate match, and pinned by a masking test using two unrelated 9.9 values."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_fidelity_gate.py -q",
+    "fails_when": "The rescue stops recovering a genuine page-straddle (false alarms return), OR it starts grounding a number the chapter never states (the Gordon/Roseville case), OR it reinstates masking by letting an unrelated identical value ground a different clause.",
+    "observed_red": "Verified in BOTH directions against real production strings, not fixtures. RESCUE: ku_ring_gai's 'Create a consistent 3 storey (11.5 metres) street wall' grounds against the St Ives chapter text, whose PDF contains that exact phrase 3 times -- previously flagged. STILL FLAGS: the same rule against the Gordon chapter returns False, because the Gordon PDF (700,091 chars) contains neither '11.5' nor 'consistent 3 storey' -- confirmed by full-document search, and the same for Roseville (445,931 chars). That is a genuine cross-precinct copy error and the only real defect among 433 flagged rows; it must keep failing. NO MASKING: an unrelated '9.9 square metres in area' does not ground a '9.9 metres building height' rule. PROSE STRADDLE: '24 hour activity' grounds when the sentence continues on the next page. 46/46 pass in tests/test_dcp_fidelity_gate.py; full suite 5,812 passed, 2 skipped, 0 failed."
+  },
+  "functions": [
+    {
+      "name": "_straddle_grounded",
+      "file_line": "scripts/dcp_fidelity_gate.py:287 (new); called from ground_row; numeric-token guard _num_token at :258",
+      "input": "num (the number ruled absent from the narrow anchor-page window), text (the row's cleaned provision text), whole_chapter (all page texts joined -- already built in ground_row).",
+      "output": "bool. True only when the number is found somewhere in the chapter with at least _CONTEXT_MATCH (0.6) of the up-to-6 content words either side of it in the rule appearing within 260 characters of that occurrence. True removes the number from `absent`, so the row can grade grounded.",
+      "if_none": "Empty or missing num, text or whole_chapter returns False -- i.e. it never rescues on absent input, so a missing source leaves the row flagged rather than silently grounded. Covered by test_empty_and_missing_inputs_are_safe."
+    },
+    {
+      "name": "looksLikeAControl",
+      "file_line": "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx:70",
+      "input": "num (a number the fidelity gate could not match) and the row's new_text, both arriving as untyped API JSON.",
+      "output": "bool -- true when a unit (m/mm/m2/%/storeys/metres/hectares) follows the number within 14 characters, i.e. it could be a real planning control rather than a figure number, page footer or ordinary prose. Drives a red CHECK THIS ONE banner versus a grey probably-nothing-to-fix banner.",
+      "if_none": "Non-string or empty input returns false, so an unreadable row shows the grey banner rather than throwing and blanking the review panel."
+    },
+    {
+      "name": "repair_units",
+      "file_line": "scripts/repair_tex_residue.py:192 (repair_units); its predicate UNIT_PREDICATE at :229 and the rules at :181-188; the identical SQL predicate is PROBES['DQ-77'] in scripts/dq_probe_live.py:937",
+      "input": "provision_text of every served row (is_current AND v2_is_actionable).",
+      "output": "count of rows where a unit is split by HORIZONTAL whitespace next to a digit -- '900 m m', '450 m 2', '7 p m', '20 t h'. Was any whitespace class; now space-or-tab only.",
+      "if_none": "0, and the row stays declared 'fixed'. The probe cannot be UNKNOWN here -- a DB failure exits 2, which dq_check reports as unverifiable rather than clean.",
+      "three_state": "matched / not matched / DB unreachable (exit 2, never silently 0).",
+      "why_narrowed": "The old class spanned newlines, so a one-character-per-line map-scramble region manufactured hits for a signature written for same-line prose. Measured across the whole table before changing it: 125 rows matched the old class, 118 the new one, and all 7 dropped are visibly DQ-78 map scramble. Zero genuine unit splits lost."
+    }
+  ],
+  "values": [
+    {
+      "name": "_CONTEXT_WORDS / _CONTEXT_MATCH",
+      "value": "6 words either side; 60% of them must appear within 260 chars of the candidate match",
+      "why": "Chosen so the ku_ring_gai 11.5 case separates correctly in both directions on real data: St Ives rescues, Gordon and Roseville do not. Not independently calibrated across a wide sample -- see break_it.",
+      "source": "Measured against the live dcp_review_queue and the councils' own R2-hosted PDFs, 2026-09-09.",
+      "if_missing": "If the constants were absent or zero the rescue would never fire and every page-straddling clause would stay flagged -- i.e. exactly the pre-fix behaviour that produced 428 false alarms out of 433. There is no silent-wrong mode: _straddle_grounded returns False on any empty input, so a missing value degrades to the old, over-flagging behaviour rather than to over-grounding.",
+      "read_at": "scripts/dcp_fidelity_gate.py -- _CONTEXT_WORDS and _CONTEXT_MATCH are module-level constants read only inside _straddle_grounded, which ground_row calls when filtering the absent-number list. No other module imports them."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-77 metric: count served provisions whose unit is split by horizontal whitespace next to a digit ('900 m m', '450 m 2', '7 p m', '20 t h'). Narrowed from any-whitespace so a one-character-per-line map-scramble region can no longer manufacture a hit for a signature written for same-line prose.",
+      "file_line": "scripts/dq_probe_live.py:937 (PROBES['DQ-77']); the identical predicate is scripts/repair_tex_residue.py:229 (UNIT_PREDICATE), asserted equal by tests/test_repair_matches_probe.py",
+      "where_clause": "is_current AND v2_is_actionable AND (provision_text ~ '[0-9][ \t]+m[ \t]+m\\M' OR provision_text ~ '[0-9][ \t]+m[ \t]+[23]\\M' OR provision_text ~ '[0-9][ \t]+[ap][ \t]+m\\M' OR provision_text ~ '[0-9][ \t]+t[ \t]+h\\M') -- served scope, not the whole table: a superseded row is not shown to anyone."
+    },
+    {
+      "purpose": "DQ-97 metric: count SERVED provisions carrying the coarse margin-artifact symptom. Repointed from dcp_review_queue.status='pending' because that population can be drained by approving rows, which is what happened on 2026-09-09 -- the count fell 574 to 0 while 578 of the approved rows were committed into the served set.",
+      "file_line": "scripts/dq_probe_live.py:1746 (PROBES['DQ-97'])",
+      "where_clause": "is_current AND v2_is_actionable AND provision_text ~ '([[:space:]][^[:space:]]{1,2}){6,}' -- measures exposure. Still a triage count with known false positives (numeric tables, contour labels, Title Case prose), documented in red_when so it is not read as a defect count."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "[Sol HIGH 0.97, second round, RESOLVED same PR] Digit and decimal boundaries alone still admitted a thousands-separated value: 500 matched inside 1,500 because the preceding character is a comma. A rule stating a 500 square metre minimum lot size grounded against a chapter stating 1,500 square metres.",
+      "what_happens": "A control wrong by a factor of three is marked source-verified and shown to the reviewer as matched. Same silent-wrong direction as the substring bug, one boundary class further out.",
+      "mitigated": true,
+      "how": "_num_token now also carries (?<!\\d,) to reject a number following a digit-comma group, (?!,\\d) to reject one that starts such a group (5 inside 5,000), and (?<!-) so a signed value is not treated as the unsigned one. A comma in ordinary prose is unaffected, because there the number follows the space rather than the comma -- pinned by its own test.",
+      "repro": "tests/test_dcp_fidelity_gate.py::TestStraddleRescue::test_a_thousands_separated_value_is_a_different_number"
+    },
+    {
+      "scenario": "[Sol HIGH 0.99, RESOLVED same PR] _straddle_grounded searched for the number as an unbounded substring, so a rule stating 5 metres would ground against a chapter stating 15 metres -- the 5 inside 15 matches, the surrounding wording is identical, the context threshold passes.",
+      "what_happens": "A wrong control value is marked source-verified and reaches the reviewer labelled as matched -- the exact masking failure this module exists to prevent, reintroduced by the rescue itself.",
+      "mitigated": true,
+      "how": "Added _num_token(): the number must match as a whole numeric token. Leading (?<![0-9.]) rejects it inside 15 and inside 11.5; trailing (?!\\d)(?!\\.\\d) rejects it inside 51 and 5.5 while still accepting a number that ends a sentence.",
+      "repro": "tests/test_dcp_fidelity_gate.py::TestStraddleRescue::test_a_shorter_number_is_not_grounded_by_a_longer_one"
+    },
+    {
+      "scenario": "[Sol MEDIUM 0.96, RESOLVED same PR] looksLikeAControl located the number without a leading boundary, so a flagged 5 could be classified by an unrelated 15m elsewhere in the rule.",
+      "what_happens": "The banner tells the reviewer the flagged number reads like a measurement when the measurement is actually a different number, misdirecting the check.",
+      "mitigated": true,
+      "how": "Same digit/decimal boundary rule as the gate: a match glued to a digit or a decimal point on its left is skipped.",
+      "repro": "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts::looksLikeAControl — numeric boundaries"
+    },
+    {
+      "scenario": "[Sol HIGH 0.98, RESOLVED same PR] The grey banner read \"Probably nothing to fix ... skim the rule against the PDF and approve\", turning a 14-character unit-proximity heuristic into a verdict and an instruction.",
+      "what_happens": "A control phrased \"a setback of 6, measured in metres\" lands in the grey bucket, and the copy actively tells the reviewer to approve it.",
+      "mitigated": true,
+      "how": "Reworded to state what was measured, not what to conclude: \"No unit was detected — lower priority, not cleared\", naming the separated-unit phrasing as a case that lands there, and ending with check it against the PDF before deciding. The approval prompt is gone.",
+      "repro": "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx — grey banner copy."
+    },
+    {
+      "scenario": "The thresholds (6 context words, 60% match, 260-char span) were tuned against one real failure class -- the ku_ring_gai 11.5 cross-precinct copy -- not calibrated across a broad labelled sample. A different shape of fabrication could clear 60% by coincidence.",
+      "what_happens": "A fabricated number that happens to sit near similar words elsewhere in the same chapter would be rescued and graded grounded, presenting a wrong control to a reviewer as source-matched.",
+      "mitigated": false,
+      "how": "Not fully mitigated. Bounded by three things: the match must be in the SAME chapter (not the corpus), the context words come from vf._content_words (>=4 letters, so 'the/and/of' cannot pad the score), and a real fabrication typically carries no shared context at all -- which is exactly why the Gordon case scores 0 rather than marginally. A broader calibration set would need labelled true/false examples that do not exist yet.",
+      "repro": "tests/test_dcp_fidelity_gate.py::TestStraddleRescue::test_does_not_reinstate_the_masking_bug pins the known masking shape; a novel one is unpinned by construction."
+    },
+    {
+      "scenario": "This changes only how rows are graded from now on. The 433 rows already in the queue were resolved separately by direct whole-document source verification (45 approved, 5 rejected as the real error), not by this code path.",
+      "what_happens": "No back-fill: previously-graded rows keep whatever verdict they were given.",
+      "mitigated": false,
+      "how": "Deliberate -- re-grading historical rows would rewrite review decisions a human and an evidence-backed verification already made. Future runs get the corrected behaviour.",
+      "repro": "SELECT fidelity_status, count(*) FROM dcp_review_queue GROUP BY 1 -- historical verdicts unchanged by this PR."
+    },
+    {
+      "scenario": "A chapter whose PDF text layer is badly garbled (map-heavy ku_ring_gai and city_of_sydney chapters are measurably like this) can fail the context match even when the number IS genuinely on the page, because the surrounding words are scrambled.",
+      "what_happens": "The row stays flagged -- a false alarm survives.",
+      "mitigated": false,
+      "how": "Accepted, and it is the safe direction: the failure mode is 'a human looks at a correct row', not 'a wrong number ships as verified'. It also cannot be fixed here -- it is the OCR/text-layer problem tracked separately (DQ-97/DQ-98), not a grading problem.",
+      "repro": "Any ku_ring_gai section-b map chapter: the extracted PDF text contains runs like 'B n A d C s K ca S ping 40%'."
+    },
+    {
+      "scenario": "The rescue scans every occurrence of the number in the chapter against every occurrence in the rule, so a very common short number (e.g. '2') in a long chapter multiplies the inner scan.",
+      "what_happens": "Grading takes measurably longer on large chapters, since each already-absent number is scanned against every one of its own occurrences in the chapter text. It stays correct, just slower, and a slow gate delays the review queue rather than corrupting it.",
+      "mitigated": false,
+      "how": "Not optimised. Bounded in practice because it only runs for numbers ALREADY ruled absent by the narrow window -- a small subset -- and each inner check is a substring scan of a 520-char span, not a re-parse. Grading remains far cheaper than the PDF fetch that precedes it.",
+      "repro": "N/A -- performance note, not a correctness defect."
+    },
+    {
+      "scenario": "The rescue only searches the SAME chapter. A number correctly stated in a DIFFERENT chapter of the same DCP (councils cross-reference between parts) will not be rescued.",
+      "what_happens": "A legitimate cross-chapter reference stays flagged as a false alarm.",
+      "mitigated": false,
+      "how": "Deliberate and load-bearing: chapter scope is what made the Gordon/Roseville error detectable at all. Widening to the whole DCP would have rescued that fabricated 11.5 from the St Ives chapter and hidden the only genuine defect found in 433 rows. Cross-chapter false alarms are the price of catching cross-chapter fabrication, and they fail in the safe direction.",
+      "repro": "tests/test_dcp_fidelity_gate.py::TestStraddleRescue::test_still_flags_a_value_the_chapter_never_states -- that test only passes because the scope is per-chapter."
+    },
+    {
+      "scenario": "looksLikeAControl only inspects the 14 characters after the number. A control whose unit is separated by intervening words (for example 'a setback of 6, measured in metres') reads as noise and receives the grey banner.",
+      "what_happens": "A genuine control is presented to the reviewer as probably-nothing, so it gets less attention than it deserves. The row is still shown in full with the source PDF beside it, so this de-prioritises rather than hides it.",
+      "mitigated": false,
+      "how": "Not mitigated. The 14-character window was chosen because every unit in the measured queue sat immediately after its number (1.8m, 600mm, 11.5 metres, 50%). Widening it pulls in the NEXT sentence's unit and marks ordinary prose as controls, destroying the triage the banner exists to provide -- 50 rows needing eyes would become hundreds again.",
+      "repro": "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts::looksLikeAControl covers the measured shapes; a separated-unit phrasing is unpinned by construction."
+    },
+    {
+      "scenario": "Narrowing a live metric to make CI green. The DQ ratchet went red with DQ-77 declared fixed and the probe reading 1; the cheapest way to clear that is to make the regex see less.",
+      "what_happens": "The metric stops counting real unit splits and the row stays 'fixed' forever -- the exact shape of the DQ-76 failure this ledger already recorded, where a repair reported success at 0 while 103 rows still held the defect.",
+      "test": "tests/test_repair_matches_probe.py::test_a_real_unit_split_is_still_caught -- 9 signatures taken verbatim from the DQ-77 row's own sampled evidence ('900 m m of a side boundary', '150 m m diameter sewer main', '7 a m to 7 p m', '450 m 2', '12 m 3', '20 t h century') must still match the narrowed predicate. Paired with test_a_scramble_across_newlines_is_not_a_unit_split, which asserts the confusable negative: the same characters on separate lines must NOT match.",
+      "measured": "Before narrowing, across all rows including superseded pre-repair ones: old class 125, new class 118, 7 dropped, every one of them map scramble. Served set: 1 -> 0.",
+      "repro": "python -m pytest tests/test_repair_matches_probe.py -q  # 38 tests: 9 real signatures must still match, 4 scramble shapes must not, and the transform must still clear every signature the probe counts.",
+      "mitigated": true,
+      "how": "Measured before changing: across the whole table including superseded pre-repair rows, the old whitespace class matches 125 rows and space-or-tab matches 118. Every one of the 7 dropped was opened and read -- six city_of_sydney Section 2 precinct pages and canterbury_bankstown id 122374, all visibly map scramble, no genuine unit split among them. The narrowing is then pinned in both directions by test_a_real_unit_split_is_still_caught (9 signatures from the row's own sampled evidence) and test_a_scramble_across_newlines_is_not_a_unit_split (the confusable negative)."
+    },
+    {
+      "scenario": "The probe and the repair drift apart when only one is narrowed.",
+      "what_happens": "Narrower repair than probe = the row can never reach zero. Wider repair than probe = the repair edits served text the metric is not watching. Both already happened once on DQ-76.",
+      "test": "tests/test_repair_matches_probe.py::test_repair_predicate_EQUALS_the_probe_predicate (pre-existing, asserts equality not containment) plus the new test_the_repair_transform_still_repairs_what_the_probe_still_counts, which runs the transform on all 9 real signatures and re-checks the predicate against the output, and asserts the pass's non-whitespace invariant holds.",
+      "measured": "38 tests pass in tests/test_repair_matches_probe.py; full suite 5,850 passed / 2 skipped.",
+      "repro": "python -m pytest tests/test_repair_matches_probe.py::test_repair_predicate_EQUALS_the_probe_predicate -q  # fails the moment the probe and repair predicates differ by a single character.",
+      "mitigated": true,
+      "how": "The predicates were narrowed in the same commit and test_repair_predicate_EQUALS_the_probe_predicate asserts string equality, not containment -- it fails if either side moves alone. test_the_repair_transform_still_repairs_what_the_probe_still_counts additionally runs repair_units over every signature the probe still counts, re-checks the predicate against the output, and asserts the pass's non-whitespace invariant, so a predicate the transform can no longer clear is also a failure."
+    },
+    {
+      "scenario": "A check goes green because its population was DRAINED, not because the defect was fixed. DQ-97 counted pending dcp_review_queue rows; the 2026-09-09 backlog clearance approved 8,875 rows and the count fell 574 -> 0.",
+      "what_happens": "The ratchet reports 'declared open but the check PASSES', an operator marks the row fixed, and the defect is now in the served set where nobody is counting it. 578 rows were committed live that night.",
+      "test": "Repointed at is_current AND v2_is_actionable, where it reads 530 and matches declared=open. Verified the direction of the failure by measuring the 578 newly-served rows with the stronger DQ-78 signature: 0 at single-letter fraction >=0.20, 2 in 0.10-0.20 (ids 122374, 122379), 2 with private-use glyphs (122970, 122386); only 122374 is new -- 122379 replaced a byte-identical predecessor.",
+      "measured": "dq_probe_live.py --id DQ-97 = 530 (was 0 against the drained queue). scripts/dq_check.py: 0 red, PASSED.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-97  # 530 against the served set. Against the old population, SELECT count(*) FROM dcp_review_queue WHERE status='pending' AND new_text ~ '([[:space:]][^[:space:]]{1,2}){6,}' now returns 0 -- run both to see the drain.",
+      "mitigated": true,
+      "how": "The probe now counts is_current AND v2_is_actionable, a population no approval action can drain: clearing it requires repairing or removing served rows. The ratchet is consistent again (declared open, check red at 530) instead of reporting a false all-clear, and the reason the old population was wrong is written into the probe's own comment block and both ledger files, so the next person to touch it sees why."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- after the next scheduled dcp-extract --review run, check that the flagged count is a small fraction of what it was: SELECT fidelity_status, count(*) FROM dcp_review_queue WHERE status='pending' GROUP BY 1. A return to hundreds of flagged rows would mean the rescue is not firing."
+  }
+}
