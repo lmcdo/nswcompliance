@@ -1,0 +1,61 @@
+{
+  "tier": "minor",
+  "justification": "Test-only addition (tests/test_columnar_reader.py). No production code changed. Extends this repo's existing, already-adopted Hypothesis pattern (tests/test_flood_truth.py) to the exact function fixed earlier this session (_columnar_text), same file the two Sol-caught issues in the prior PR (#1065) came from.",
+  "commit_hash": "3e083517",
+  "files": [
+    "tests/test_columnar_reader.py"
+  ],
+  "pre_impl": {
+    "existing_data": "None -- test file only, no DB table/query/join touched.",
+    "assumption_mismatch": "N/A.",
+    "new_vs_existing": "N/A -- no rows, no migration.",
+    "external_source_error": "N/A -- Critical-only field.",
+    "frontend_type": "N/A -- Critical-only field.",
+    "user_failure_mode": "N/A -- Critical-only field."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_columnar_reader.py -v ; python -m pytest tests/ -k \"dcp or extract or column\" -q",
+    "fails_when": "Any test fails or a Hypothesis property test finds a falsifying example.",
+    "observed_red": "First draft of the property strategy had two real bugs, both in the TEST, not the code under test: (1) out.count(f\"R{i}\") does substring matching, so 'R1' matched inside 'R10'..'R19', producing a phantom 'duplicate' failure on genuinely correct output -- fixed by tokenising the output and counting exact matches. (2) two_column_page()'s default min_words=6 let Hypothesis generate fewer than 30 total words, and _find_gutter hard-requires >=30 before it will even look for a gutter -- every such case was silently discarded via assume(), tripping Hypothesis's FailedHealthCheck (0-8 successful generations out of 50 attempts) rather than testing anything. Fixed by raising the strategy's default floor to 32. After both fixes: 12/12 tests pass, the 3 property tests each explore 200-300 randomized layouts (varying word count, stagger, gutter position, page width) with zero real code defects found -- expected, since the function under test was already fixed and independently verified against real production PDFs earlier this session; the property tests exist to catch REGRESSIONS on this function going forward, not to re-find tonight's already-fixed bug."
+  },
+  "functions": [
+    {
+      "name": "test_hyp_no_word_lost_or_duplicated / test_hyp_left_column_precedes_right_column / test_hyp_straddling_heading_always_intact",
+      "file_line": "tests/test_columnar_reader.py:230-300ish",
+      "input": "randomly generated two-column word layouts via the two_column_page Hypothesis strategy",
+      "output": "pass, or a minimal falsifying example printed by Hypothesis on failure",
+      "if_none": "N/A -- these are the tests, not the code under test"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A future edit to _columnar_text drops or duplicates a word under some randomized layout the 9 hand-picked tests don't cover.",
+      "what_happens": "Previously: silent, ships unnoticed until a real PDF surfaces it (exactly how tonight's original bug was found -- by accident, reading real extraction output, not by a test).",
+      "mitigated": true,
+      "how": "test_hyp_no_word_lost_or_duplicated runs 300 randomized layouts per CI run and asserts every input word appears exactly once in the output.",
+      "repro": "Introduce a word-dropping bug in _columnar_text (e.g. skip appending to block['left'] under some condition) and re-run this test -- it fails within the first few dozen generated examples."
+    },
+    {
+      "scenario": "A future edit reintroduces the exact ordering bug fixed tonight (single-sided lines interleaved instead of grouped) for some stagger amount or word count the 3 hand-picked staggered-row tests don't happen to hit.",
+      "what_happens": "Previously: silent, same as above.",
+      "mitigated": true,
+      "how": "test_hyp_left_column_precedes_right_column runs 300 randomized stagger/word-count/gutter-position combinations, not just the one hand-picked shape.",
+      "repro": "Revert the block-accumulation logic to require same-band left+right pairs (the pre-fix version) and re-run -- fails immediately."
+    },
+    {
+      "scenario": "The property tests themselves have a construction bug that makes them pass vacuously (e.g. filtering out all real two-column cases via an overly broad assume(), the exact failure mode both draft versions of this file hit before landing on the current strategy).",
+      "what_happens": "Tests report green but never actually exercise the two-column grouping logic, giving false confidence.",
+      "mitigated": true,
+      "how": "Verified directly: printed Hypothesis's own statistics during development (successful vs filtered generation counts) and confirmed a FailedHealthCheck when filtering exceeded ~50%, twice, before fixing the underlying strategy construction. The committed version generates successfully on every one of 300 attempts per test (no assume() failures observed in the final run).",
+      "repro": "python -m pytest tests/test_columnar_reader.py -v --tb=short -- a construction bug that filters too aggressively raises hypothesis.errors.FailedHealthCheck rather than passing silently, so this class of failure is self-detecting."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
