@@ -3782,7 +3782,13 @@ def write_review_file(council: str, chapters: list[dict]) -> Path:
 # gate_module.gate_chapter() and dcp_chapter_registry are both pre-existing
 # and unchanged by this refactor, only relocated + given a stubbable seam.
 
-def run_fidelity_gate(conn, s3, review_chapters: list[dict], gate_module) -> tuple[int, int, int]:
+def run_fidelity_gate(
+    conn, s3, review_chapters: list[dict], gate_module
+) -> tuple[int, int, int, list[tuple[str, str]]]:
+    # prior-art-checked: not a new capability -- widens this same, already-
+    # justified function's return contract (adds an unchecked-pairs list)
+    # per Sol cross-review, HIGH 0.99 / MEDIUM 0.96, 2026-09-09. No new data
+    # source, no new query beyond the one this function already ran.
     """Grade every chapter just enqueued by --review against its source PDF.
 
     Extracted from main()'s inline try/except block: the tuple-unpacking
@@ -3792,16 +3798,36 @@ def run_fidelity_gate(conn, s3, review_chapters: list[dict], gate_module) -> tup
     with gate_module stubbed, can. gate_module is passed in (not imported
     here) so a test can substitute a fake with a literal 3-tuple return.
 
-    Returns (grounded, flagged, skipped_not_actionable) totals across every
-    (council, chapter_key) pair in review_chapters. Raises on the first
-    unexpected failure -- callers keep the same advisory try/except they
-    already had; this function's job is only to be independently testable,
-    not to change the failure-handling contract."""
-    pairs = sorted({(ch.get("council"), ch.get("chapter_key")) for ch in review_chapters})
+    Returns (grounded, flagged, skipped_not_actionable, unchecked) --
+    unchecked lists every (council, chapter_key) pair that was enqueued
+    this run but could NOT be graded (a malformed identifier, or no
+    active registry row with a source PDF). Sol cross-review (HIGH 0.99 /
+    MEDIUM 0.96): silently `continue`-ing on either case let a caller's
+    success summary ("N grounded, M flagged") hide chapters that were
+    never actually checked at all -- the caller is responsible for
+    surfacing this list, not silently dropping it. A malformed identifier
+    (missing/non-string council or chapter_key) is recorded here rather
+    than raised, because one bad dict in review_chapters must not prevent
+    every OTHER chapter in the same run from being graded.
+
+    Raises on the first unexpected failure from gate_module.gate_chapter()
+    itself -- callers keep the same advisory try/except they already had;
+    this function's job is only to be independently testable and to make
+    partial coverage visible, not to change the failure-handling contract."""
+    pairs: set[tuple[str, str]] = set()
+    unchecked: list[tuple[str, str]] = []
+    for ch in review_chapters:
+        council = ch.get("council")
+        chapter_key = ch.get("chapter_key")
+        if not isinstance(council, str) or not council or not isinstance(chapter_key, str) or not chapter_key:
+            unchecked.append((str(council), str(chapter_key)))
+            continue
+        pairs.add((council, chapter_key))
+
     gcur = conn.cursor()
     g_tot = f_tot = s_tot = 0
     try:
-        for g_council, g_chapter in pairs:
+        for g_council, g_chapter in sorted(pairs):
             gcur.execute(
                 "SELECT r2_current_path FROM dcp_chapter_registry "
                 "WHERE council=%s AND chapter_key=%s AND r2_current_path IS NOT NULL "
@@ -3810,6 +3836,7 @@ def run_fidelity_gate(conn, s3, review_chapters: list[dict], gate_module) -> tup
             )
             r2row = gcur.fetchone()
             if not r2row:
+                unchecked.append((g_council, g_chapter))
                 continue
             # gate_chapter returns (grounded, flagged, skipped_not_actionable) as of
             # the 2026-09-07 auto-scoping fix (#1057) -- the pre-fix version of this
@@ -3824,7 +3851,7 @@ def run_fidelity_gate(conn, s3, review_chapters: list[dict], gate_module) -> tup
             s_tot += s
     finally:
         gcur.close()
-    return g_tot, f_tot, s_tot
+    return g_tot, f_tot, s_tot, unchecked
 
 
 # ── Main ────────────────────────────────────────────────────────────────────
@@ -3932,9 +3959,18 @@ def main() -> None:
         if fidelity_gate_enabled():
             try:
                 import dcp_fidelity_gate as _gate
-                g_tot, f_tot, s_tot = run_fidelity_gate(conn, s3, review_chapters, _gate)
+                g_tot, f_tot, s_tot, unchecked = run_fidelity_gate(conn, s3, review_chapters, _gate)
                 print(f"  Fidelity gate: {g_tot} grounded, {f_tot} flagged for human review, "
                       f"{s_tot} skipped (not actionable content).")
+                # Sol cross-review HIGH 0.99, 2026-09-09: a chapter with no active
+                # registry row (or a malformed identifier) was silently dropped —
+                # the summary line above looked like a clean pass either way. Make
+                # partial coverage visible instead of letting totals imply completeness.
+                if unchecked:
+                    print(f"  ⚠ {len(unchecked)} chapter(s) NOT graded "
+                          f"(no active registry row, or a malformed identifier):")
+                    for _c, _k in unchecked:
+                        print(f"      - {_c}/{_k}")
             except Exception as exc:  # noqa: BLE001 — grading is advisory; keep the queued rows
                 print(f"  [warn] fidelity gate skipped ({exc}); rows queued but ungraded.")
 

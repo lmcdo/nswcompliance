@@ -144,9 +144,10 @@ class TestRunFidelityGateCallSite:
         conn = _real_conn()
         try:
             review_chapters = [{"council": "ashfield", "chapter_key": "chapter-d-precinct-guidelines"}]
-            g, f, s = dx.run_fidelity_gate(conn, s3=None, review_chapters=review_chapters,
-                                            gate_module=_StubGate)
+            g, f, s, unchecked = dx.run_fidelity_gate(conn, s3=None, review_chapters=review_chapters,
+                                                       gate_module=_StubGate)
             assert (g, f, s) == (5, 2, 1)
+            assert unchecked == [], "a successfully-graded chapter must not appear in unchecked"
             assert len(_StubGate.calls) == 1
             called_council, called_chapter, called_r2_path = _StubGate.calls[0]
             assert (called_council, called_chapter) == ("ashfield", "chapter-d-precinct-guidelines")
@@ -155,11 +156,13 @@ class TestRunFidelityGateCallSite:
             conn.rollback()
             conn.close()
 
-    def test_run_fidelity_gate_skips_a_chapter_with_no_active_registry_row(self):
+    def test_run_fidelity_gate_reports_a_chapter_with_no_active_registry_row_as_unchecked(self):
         """is_active = TRUE (Sol MEDIUM 0.9, this project's own pre-pr-review
-        rule #1) -- a chapter with no matching ACTIVE row must be silently
-        skipped (continue), not crash, and gate_chapter must never be called
-        for it."""
+        rule #1) -- a chapter with no matching ACTIVE row must be skipped
+        (gate_chapter never called for it), but Sol HIGH 0.99 (2026-09-09,
+        a LATER round on this same PR): it must NOT vanish silently -- the
+        caller needs to know this chapter was never actually checked, not
+        just see clean-looking totals."""
         _skip_if_no_real_db()
 
         class _StubGate:
@@ -176,10 +179,45 @@ class TestRunFidelityGateCallSite:
                 "council": "ashfield",
                 "chapter_key": "this-chapter-key-has-never-existed-in-either-table",
             }]
-            g, f, s = dx.run_fidelity_gate(conn, s3=None, review_chapters=review_chapters,
-                                            gate_module=_StubGate)
+            g, f, s, unchecked = dx.run_fidelity_gate(conn, s3=None, review_chapters=review_chapters,
+                                                       gate_module=_StubGate)
             assert (g, f, s) == (0, 0, 0)
+            assert unchecked == [("ashfield", "this-chapter-key-has-never-existed-in-either-table")]
             assert _StubGate.calls == [], "gate_chapter must not be called for an unregistered chapter"
+        finally:
+            conn.rollback()
+            conn.close()
+
+    def test_run_fidelity_gate_reports_a_malformed_identifier_as_unchecked_without_crashing(self):
+        """Sol MEDIUM 0.96, 2026-09-09: review_chapters entries used .get()
+        with no validation, so a dict missing chapter_key produced a
+        (str, None) tuple mixed with (str, str) tuples in the same set --
+        sorted() on that mix raises TypeError in Python 3 before ANY
+        chapter gets graded, and the caller's advisory except would have
+        swallowed that as a generic 'fidelity gate skipped', identical in
+        the logs to this session's original bug. One malformed dict must
+        not block every OTHER chapter in the same run."""
+        _skip_if_no_real_db()
+
+        class _StubGate:
+            calls = []
+
+            @staticmethod
+            def gate_chapter(cur, s3, council, chapter_key, r2_path):
+                _StubGate.calls.append((council, chapter_key))
+                return (1, 0, 0)
+
+        conn = _real_conn()
+        try:
+            review_chapters = [
+                {"council": "ashfield", "chapter_key": None},  # malformed -- must not crash sorted()
+                {"council": "ashfield", "chapter_key": "chapter-d-precinct-guidelines"},  # valid, must still grade
+            ]
+            g, f, s, unchecked = dx.run_fidelity_gate(conn, s3=None, review_chapters=review_chapters,
+                                                       gate_module=_StubGate)
+            assert (g, f, s) == (1, 0, 0), "the one valid chapter must still be graded"
+            assert ("ashfield", "None") in unchecked, "the malformed entry must be reported, not silently dropped"
+            assert _StubGate.calls == [("ashfield", "chapter-d-precinct-guidelines")]
         finally:
             conn.rollback()
             conn.close()

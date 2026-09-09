@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Fixes a real, live crash in the --review production write path: every fidelity-grading call for a freshly re-extracted chapter was silently failing (advisory try/except swallowed the exception), leaving newly-enqueued dcp_review_queue rows permanently ungraded. Not Critical: no schema/query change, the fix only corrects how many return values are unpacked from an already-existing, already-tested function. Not Minor: this was actively breaking a real safety mechanism in production, discovered live.",
-  "commit_hash": "016771c6",
+  "commit_hash": "0e0378f5",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_extract_changed_real_db.py"
@@ -24,8 +24,8 @@
       "name": "run_fidelity_gate",
       "file_line": "scripts/dcp_extract_changed.py:3785 (extracted from main()'s inline block, Sol MEDIUM 0.99)",
       "input": "conn (open psycopg2 connection), s3 (boto3 client), review_chapters (list of dicts with council/chapter_key), gate_module (dcp_fidelity_gate or a test stub)",
-      "output": "tuple[int,int,int] (grounded, flagged, skipped_not_actionable) totals; side effect is gate_module.gate_chapter()'s own UPDATE writing fidelity_status per row",
-      "if_none": "a (council, chapter_key) pair with no active (is_active=TRUE) dcp_chapter_registry row is silently skipped via continue -- gate_module.gate_chapter is never called for it"
+      "output": "tuple[int,int,int,list[tuple[str,str]]] (grounded, flagged, skipped_not_actionable, unchecked) totals plus a list of (council, chapter_key) pairs that could NOT be graded; side effect is gate_module.gate_chapter()'s own UPDATE writing fidelity_status per row",
+      "if_none": "a (council, chapter_key) pair with no active (is_active=TRUE) dcp_chapter_registry row, or a malformed (missing/non-string) council or chapter_key, is skipped and recorded in the returned unchecked list -- gate_module.gate_chapter is never called for it, and the caller prints it explicitly (Sol HIGH 0.99: was previously silent)"
     }
   ],
   "values": [],
@@ -37,6 +37,13 @@
       "mitigated": true,
       "how": "Sol cross-review (MEDIUM 0.99) caught that the first version of this fix's own test called gate_chapter() directly, not the actual call site. Extracted the loop out of main() into run_fidelity_gate(conn, s3, review_chapters, gate_module) -- a named, independently-importable function with gate_module passed in (not imported), so a test can stub gate_chapter to return a literal 3-tuple. tests/test_dcp_extract_changed_real_db.py::TestRunFidelityGateCallSite now exercises this exact call site with a stub, catching a future arity regression even if gate_chapter's real signature never changes again.",
       "repro": "tests/test_dcp_extract_changed_real_db.py::TestRunFidelityGateCallSite::test_run_fidelity_gate_unpacks_and_sums_a_stubbed_three_tuple"
+    },
+    {
+      "scenario": "[RESOLVED, same PR, later round] A chapter with no active registry row was silently `continue`d, and a malformed (None) chapter_key could crash sorted() (mixing str/None) or be silently dropped -- either way the caller's success summary gave no indication some chapters were never checked.",
+      "what_happens": "A reviewer reading 'Fidelity gate: 50 grounded, 2 flagged, 10 skipped' would reasonably assume full coverage; some chapters could have been silently un-graded, or the whole gate step could raise and get swallowed by the outer advisory except with a generic message identical to this session's original bug.",
+      "mitigated": true,
+      "how": "Sol cross-review (HIGH 0.99 + MEDIUM 0.96, later round on this same push): run_fidelity_gate now returns a 4th value, unchecked: list[tuple[str,str]], covering both a missing/inactive registry row AND a malformed identifier (validated before sorting, so one bad dict can no longer crash the whole batch). main() prints unchecked chapters explicitly rather than only a clean-looking summary. 2 new tests cover both cases with a stub, verifying the valid chapter in a mixed-validity batch still gets graded.",
+      "repro": "tests/test_dcp_extract_changed_real_db.py::TestRunFidelityGateCallSite::test_run_fidelity_gate_reports_a_malformed_identifier_as_unchecked_without_crashing and ::test_run_fidelity_gate_reports_a_chapter_with_no_active_registry_row_as_unchecked"
     },
     {
       "scenario": "The advisory try/except (line 3901, unchanged by this fix) swallows ANY exception from the whole gate loop, not just an unpacking mismatch -- a genuinely different future bug in gate_chapter() itself would also print the generic 'skipped' warning and leave rows ungraded, silently.",
