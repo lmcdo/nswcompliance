@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Fixes a real, live, recurring production crash: Railway's dcp-extract cron OOM-killed (exit -9) three separate nights (2026-09-08/09) while opening a 139MB canterbury_bankstown PDF with pdfplumber, and because there was no size check before that call, the OS kill took the WHOLE process down mid-batch -- every other queued chapter (46 of 47 that night) silently never got extracted, not just the oversized one. Not Critical: no schema/query change, purely an early-return guard using a value already computed one line above. Not Minor: this was actively breaking a real production pipeline nightly.",
-  "commit_hash": "4dbbd4ac",
+  "commit_hash": "123160e3",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_extract_changed.py"
