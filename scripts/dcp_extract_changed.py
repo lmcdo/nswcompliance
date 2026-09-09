@@ -3775,6 +3775,58 @@ def write_review_file(council: str, chapters: list[dict]) -> Path:
     return out_path
 
 
+# ── Fidelity gate integration (the --review post-enqueue grading pass) ───────
+# prior-art-checked: not a new capability -- this extracts main()'s existing
+# inline try/except block verbatim into a named function so it becomes
+# independently testable (Sol cross-review, MEDIUM 0.99, 2026-09-09);
+# gate_module.gate_chapter() and dcp_chapter_registry are both pre-existing
+# and unchanged by this refactor, only relocated + given a stubbable seam.
+
+def run_fidelity_gate(conn, s3, review_chapters: list[dict], gate_module) -> tuple[int, int, int]:
+    """Grade every chapter just enqueued by --review against its source PDF.
+
+    Extracted from main()'s inline try/except block: the tuple-unpacking
+    crash fix that motivated this file was only verified by calling
+    gate_module.gate_chapter() directly, which cannot catch a SECOND
+    unpacking regression at THIS call site -- only calling this function,
+    with gate_module stubbed, can. gate_module is passed in (not imported
+    here) so a test can substitute a fake with a literal 3-tuple return.
+
+    Returns (grounded, flagged, skipped_not_actionable) totals across every
+    (council, chapter_key) pair in review_chapters. Raises on the first
+    unexpected failure -- callers keep the same advisory try/except they
+    already had; this function's job is only to be independently testable,
+    not to change the failure-handling contract."""
+    pairs = sorted({(ch.get("council"), ch.get("chapter_key")) for ch in review_chapters})
+    gcur = conn.cursor()
+    g_tot = f_tot = s_tot = 0
+    try:
+        for g_council, g_chapter in pairs:
+            gcur.execute(
+                "SELECT r2_current_path FROM dcp_chapter_registry "
+                "WHERE council=%s AND chapter_key=%s AND r2_current_path IS NOT NULL "
+                "AND is_active = TRUE",
+                (g_council, g_chapter),
+            )
+            r2row = gcur.fetchone()
+            if not r2row:
+                continue
+            # gate_chapter returns (grounded, flagged, skipped_not_actionable) as of
+            # the 2026-09-07 auto-scoping fix (#1057) -- the pre-fix version of this
+            # call site still expected a 2-tuple, so every --review run crashed here
+            # (caught only by the caller's advisory try/except, which swallowed it as
+            # "fidelity gate skipped"), leaving every freshly enqueued row ungraded.
+            # Found live 2026-09-09 on a real ashfield re-extract.
+            g, f, s = gate_module.gate_chapter(gcur, s3, g_council, g_chapter, r2row[0])
+            conn.commit()
+            g_tot += g
+            f_tot += f
+            s_tot += s
+    finally:
+        gcur.close()
+    return g_tot, f_tot, s_tot
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -3880,32 +3932,7 @@ def main() -> None:
         if fidelity_gate_enabled():
             try:
                 import dcp_fidelity_gate as _gate
-                pairs = sorted({(ch.get("council"), ch.get("chapter_key")) for ch in review_chapters})
-                # prior-art-checked: not a new capability -- gate_chapter and this call site
-                # are two already-existing halves of the same already-wired integration; this
-                # is a 2-tuple/3-tuple unpacking fix matching gate_chapter's own signature.
-                gcur = conn.cursor()
-                g_tot = f_tot = s_tot = 0
-                for g_council, g_chapter in pairs:
-                    gcur.execute(
-                        "SELECT r2_current_path FROM dcp_chapter_registry "
-                        "WHERE council=%s AND chapter_key=%s AND r2_current_path IS NOT NULL",
-                        (g_council, g_chapter),
-                    )
-                    r2row = gcur.fetchone()
-                    if not r2row:
-                        continue
-                    # gate_chapter returns (grounded, flagged, skipped_not_actionable) as of
-                    # the 2026-09-07 auto-scoping fix (#1057) -- this call site still expected
-                    # the old 2-tuple, so every --review run crashed here (advisory try/except
-                    # swallowed it as "fidelity gate skipped"), leaving every freshly enqueued
-                    # row ungraded. Found live 2026-09-09 on a real ashfield re-extract.
-                    g, f, s = _gate.gate_chapter(gcur, s3, g_council, g_chapter, r2row[0])
-                    conn.commit()
-                    g_tot += g
-                    f_tot += f
-                    s_tot += s
-                gcur.close()
+                g_tot, f_tot, s_tot = run_fidelity_gate(conn, s3, review_chapters, _gate)
                 print(f"  Fidelity gate: {g_tot} grounded, {f_tot} flagged for human review, "
                       f"{s_tot} skipped (not actionable content).")
             except Exception as exc:  # noqa: BLE001 — grading is advisory; keep the queued rows

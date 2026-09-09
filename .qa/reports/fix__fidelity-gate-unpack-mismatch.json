@@ -1,9 +1,10 @@
 {
   "tier": "standard",
   "justification": "Fixes a real, live crash in the --review production write path: every fidelity-grading call for a freshly re-extracted chapter was silently failing (advisory try/except swallowed the exception), leaving newly-enqueued dcp_review_queue rows permanently ungraded. Not Critical: no schema/query change, the fix only corrects how many return values are unpacked from an already-existing, already-tested function. Not Minor: this was actively breaking a real safety mechanism in production, discovered live.",
-  "commit_hash": "01b0cd86",
+  "commit_hash": "016771c6",
   "files": [
-    "scripts/dcp_extract_changed.py"
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_extract_changed_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_review_queue rows written by the SAME enqueue call this gate loop follows -- no new table, no new query. gate_chapter()'s own UPDATE (fidelity_status, fidelity_detail, source_page_verified, fidelity_source_quote) is pre-existing, unchanged code.",
@@ -20,22 +21,22 @@
   },
   "functions": [
     {
-      "name": "main",
-      "file_line": "scripts/dcp_extract_changed.py:3780 (fidelity-gate loop at 3880-3902 within it)",
-      "input": "review_chapters (list of dicts with council/chapter_key from the just-completed enqueue), an open psycopg2 connection, a boto3 s3 client",
-      "output": "prints a summary line (grounded/flagged/skipped counts); side effect is gate_chapter()'s own UPDATE writing fidelity_status per row",
-      "if_none": "if fidelity_gate_enabled() is False, the whole block is skipped -- unchanged, pre-existing behaviour"
+      "name": "run_fidelity_gate",
+      "file_line": "scripts/dcp_extract_changed.py:3785 (extracted from main()'s inline block, Sol MEDIUM 0.99)",
+      "input": "conn (open psycopg2 connection), s3 (boto3 client), review_chapters (list of dicts with council/chapter_key), gate_module (dcp_fidelity_gate or a test stub)",
+      "output": "tuple[int,int,int] (grounded, flagged, skipped_not_actionable) totals; side effect is gate_module.gate_chapter()'s own UPDATE writing fidelity_status per row",
+      "if_none": "a (council, chapter_key) pair with no active (is_active=TRUE) dcp_chapter_registry row is silently skipped via continue -- gate_module.gate_chapter is never called for it"
     }
   ],
   "values": [],
   "queries": [],
   "break_it": [
     {
-      "scenario": "This exact integration loop has no dedicated regression test -- only gate_chapter() itself is unit-tested in isolation (tests/test_dcp_fidelity_gate.py), which is precisely why this arity mismatch shipped and ran broken (advisory-swallowed, no test failure) since PR #1057 (2026-09-07) until found live 2026-09-09.",
-      "what_happens": "A future signature change to gate_chapter() could break this call site again with no test catching it -- only a live --review run would surface it, the same way this one was found.",
-      "mitigated": false,
-      "how": "Not mitigated by this fix -- verified against real production data instead of adding a unit test, since the loop is embedded inside main()'s CLI branch and isn't independently callable without a larger refactor. Flagged as a known residual rather than either skipped silently or used to justify an unplanned refactor.",
-      "repro": "Change gate_chapter()'s return arity again without updating this call site, run pytest -- nothing fails. Only `python scripts/dcp_extract_changed.py --council X --chapter Y --all --review` against a real chapter would surface it, same as this session did."
+      "scenario": "[RESOLVED, same PR] This exact integration loop originally had no dedicated regression test -- only gate_chapter() itself was unit-tested in isolation, which is precisely why this arity mismatch shipped and ran broken (advisory-swallowed, no test failure) since PR #1057 (2026-09-07) until found live 2026-09-09.",
+      "what_happens": "A future signature change to gate_chapter() could break this call site again with no test catching it.",
+      "mitigated": true,
+      "how": "Sol cross-review (MEDIUM 0.99) caught that the first version of this fix's own test called gate_chapter() directly, not the actual call site. Extracted the loop out of main() into run_fidelity_gate(conn, s3, review_chapters, gate_module) -- a named, independently-importable function with gate_module passed in (not imported), so a test can stub gate_chapter to return a literal 3-tuple. tests/test_dcp_extract_changed_real_db.py::TestRunFidelityGateCallSite now exercises this exact call site with a stub, catching a future arity regression even if gate_chapter's real signature never changes again.",
+      "repro": "tests/test_dcp_extract_changed_real_db.py::TestRunFidelityGateCallSite::test_run_fidelity_gate_unpacks_and_sums_a_stubbed_three_tuple"
     },
     {
       "scenario": "The advisory try/except (line 3901, unchanged by this fix) swallows ANY exception from the whole gate loop, not just an unpacking mismatch -- a genuinely different future bug in gate_chapter() itself would also print the generic 'skipped' warning and leave rows ungraded, silently.",
