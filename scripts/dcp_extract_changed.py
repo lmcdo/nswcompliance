@@ -1218,6 +1218,44 @@ def _strip_vertical_margin_label(page: Any) -> Any:
     )
 
 
+def _release_page(page: Any) -> None:
+    """Drop everything pdfplumber cached for this page, once we are done with it.
+
+    MEASURED, on the real file that OOM-killed production
+    (canterbury_bankstown/chapter-7-6-belmore-and-lakemba, 139,006,750 bytes,
+    142 pages), two full passes as the pipeline actually runs them:
+
+        nothing released                     1,356 MB peak
+        flush_cache() only                     626 MB
+        get_textmap.cache_clear() only       1,325 MB
+        both                                   426 MB
+
+    So both calls are needed and neither is redundant: flush_cache drops the
+    per-page object lists, and the textmap lru_cache holds a separate structure
+    that survives it. pdfplumber keeps both for the lifetime of the PDF object,
+    which is fine for a few-MB chapter and fatal for a 139MB one.
+
+    THIS CANNOT CHANGE WHAT IS EXTRACTED. Both calls only discard caches that
+    pdfplumber would rebuild on demand from the same source bytes, so the text
+    and tables are identical -- asserted on real chapters in
+    tests/test_pdf_page_release.py rather than argued here. That property is
+    the reason this fix was chosen over the chunked-PDF split in DQ-98: a split
+    has to decide where to cut, and a clause straddling the cut is a real
+    correctness risk. Releasing a cache decides nothing.
+
+    Best-effort: a pdfplumber version without one of these must not take the
+    extraction down with it, since the fallback is merely using more memory.
+    """
+    try:
+        page.flush_cache()
+    except Exception:  # noqa: BLE001 - a missing cache API is not an extraction error
+        pass
+    try:
+        page.get_textmap.cache_clear()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _extract_page_text(page: Any, council: str | None) -> str:
     """
     Extract text from a PDF page, handling two-column layouts for councils
@@ -1367,10 +1405,11 @@ class DCPExtractor:
         those page ranges."""
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
-            page_texts = [
-                _clean_page_text(self._page_text(p, i + 1), self.council)
-                for i, p in enumerate(pdf.pages)
-            ]
+            page_texts = []
+            for i, p in enumerate(pdf.pages):
+                page_texts.append(
+                    _clean_page_text(self._page_text(p, i + 1), self.council))
+                _release_page(p)
         entries = parse_toc_entries(page_texts)
         seq_codes = [(s.get("section_number") or "") for s in sequential]
         if not toc_disagrees_with_sequential(seq_codes, [c for c, _ in entries]):
@@ -1413,6 +1452,9 @@ class DCPExtractor:
                 # OCR mode: tables arrive inline in the page text (flattened
                 # markup) — pdfplumber's table finder reads the garbled layer.
                 page_tables = [] if self.ocr_pages else (page.extract_tables() or [])
+                # Everything this loop needs is now in `text` and `page_tables`;
+                # the page object itself is dead weight from here on.
+                _release_page(page)
 
                 section_re = COUNCIL_SECTION_RE_OVERRIDES.get(self.council, self.SECTION_RE)
                 # TOC / section-divider page guard: skip all section detection on a
@@ -1563,7 +1605,10 @@ class DCPExtractor:
         if self.ocr_pages is not None or not os.getenv("MODAL_OCR_URL", "").strip():
             return
         with pdfplumber.open(self.pdf_path) as _pdf:
-            _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
+            _raw = []
+            for _p in _pdf.pages:
+                _raw.append(_extract_page_text(_p, self.council) or "")
+                _release_page(_p)
         # Empty text layers are as unreadable as garbled ones: scanned pages
         # yield no text at all (Marrickville part9 chapters, 2026-07-29) and
         # previously never triggered OCR because the garble heuristic needs
@@ -1616,6 +1661,12 @@ class DCPExtractor:
                             html = self._table_to_html(tbl)
                             if html:
                                 tables.append({"html": html, "page": page_num})
+                    # Ranges may overlap, so a released page can be revisited
+                    # by a later section. That costs a re-parse of that page,
+                    # not a wrong result -- the cache is rebuilt from the same
+                    # bytes. Holding every page of a 142-page chapter to avoid
+                    # the re-parse is what ran the batch out of memory.
+                    _release_page(page)
 
                 if subsection_patterns:
                     # First pattern splits the raw page-range content
@@ -2206,6 +2257,7 @@ def preflight_layout(pdf_path, council: str) -> dict:
                     words = []
                 if len(words) < 12:
                     empty += 1
+                    _release_page(page)
                     continue
                 text_pages += 1
                 spans = [(w["x0"], w["x1"]) for w in words]
@@ -2218,6 +2270,10 @@ def preflight_layout(pdf_path, council: str) -> dict:
                         rotated += 1
                 if _garble_evidence(page.extract_text() or ""):
                     garbled += 1
+                # Last use of this page. Both exits from the loop body
+                # release -- the early `continue` above does too, because a
+                # near-empty page still carries its parsed char objects.
+                _release_page(page)
         report = {
             "total_pages": total,
             "text_pages": text_pages,
