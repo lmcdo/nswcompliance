@@ -17,5 +17,18 @@ dockerfilePath = "Dockerfile.monitors"
 
 [deploy]
 startCommand = "python scripts/run_monitors.py"
-cronSchedule = "0 2 1 * *"   # monthly: 1st of month 02:00 UTC (demoted from weekly)
+cronSchedule = "0 2 1,15 * *"   # fortnightly: 1st and 15th, 02:00 UTC
+# Was monthly. Raised to fortnightly 2026-09-10 after measuring the real change
+# rate: excluding the March and May 2026 onboarding spikes, 15-30 of 564 active
+# chapters change per month (~3-5%), so something changes most weeks but any one
+# chapter rarely. Monthly meant up to 30 days of staleness on a change that
+# matters; weekly doubles single-IP rate-limit pressure for little gain. A
+# fortnight caps staleness at 14 days.
+#
+# NOTE the live Railway value overrode this file for months without anyone
+# noticing: on 2026-09-10 six of eight services ran a different schedule from
+# their own config file (dcp-extract weekly when the file said daily,
+# dcp-extract-all weekly when the file said quarterly, and four with no cron at
+# all). Config-as-code only wins where no dashboard value is set. Changing this
+# file is NOT sufficient on its own -- check the live value afterwards.
 restartPolicyType = "NEVER"  # cron job: run to completion, do not restart
