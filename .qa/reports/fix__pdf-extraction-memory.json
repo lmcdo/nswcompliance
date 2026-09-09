@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Touches the extraction path that produces every served provision. If releasing a page cache changed a single character of extracted text, wrong regulatory content would reach a reader silently. The change is chosen because it provably cannot do that, and the proof is byte-level comparison on three real council chapters -- but the blast radius is the whole corpus, so critical.",
-  "commit_hash": "75ef901d",
+  "commit_hash": "5d412a28",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_pdf_page_release.py"
