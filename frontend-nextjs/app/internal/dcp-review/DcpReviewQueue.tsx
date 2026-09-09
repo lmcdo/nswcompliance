@@ -37,7 +37,7 @@ type Action = 'approve' | 'reject' | 'needs-info';
 
 // The fidelity gate records what it could not match as
 // "numbers not in source: 15, 2.4". Pull those tokens back out.
-function missingNumbers(detail: string | null): string[] {
+export function missingNumbers(detail: string | null): string[] {
   if (!detail) return [];
   const m = /numbers not in source:\s*(.*)/i.exec(detail);
   if (!m) return [];
@@ -53,30 +53,58 @@ function missingNumbers(detail: string | null): string[] {
 // page footer. Showing the context answers that at a glance. Deliberately
 // only SHOWS the surrounding text — it makes no judgement about whether the
 // number is a real control, which is exactly what the human is here for.
-function occurrencesOf(num: string, text: string | null): string[] {
+export interface NumberSightings {
+  /** The number standing on its own, with the words around it. */
+  standalone: string[];
+  /** The LONGER numbers it is embedded in, e.g. "15" found only inside "150". */
+  embedded: string[];
+}
+
+export function occurrencesOf(num: string, text: string | null): NumberSightings {
   // new_text arrives from the API as untyped JSON: a non-string (a number, an
   // object) would throw on .indexOf/.slice and blank the whole review panel,
   // which is the one screen the human gate depends on. Guard the type, don't
   // just null-check it.
-  if (typeof text !== 'string' || typeof num !== 'string' || !text || !num) return [];
-  const out: string[] = [];
+  const none: NumberSightings = { standalone: [], embedded: [] };
+  if (typeof text !== 'string' || typeof num !== 'string' || !text || !num) return none;
+  const standalone: string[] = [];
+  const embedded = new Set<string>();
   let from = 0;
-  while (out.length < 4) {
+  while (standalone.length < 4) {
     const i = text.indexOf(num, from);
     if (i === -1) break;
     from = i + num.length;
-    // Skip a match that is part of a longer number ("15" inside "150"), but
-    // KEEP one preceded by "." or "-" — "2.4-15" is precisely the page-footer
-    // case a reviewer most needs to see.
     const before = text[i - 1] ?? ' ';
     const after = text[i + num.length] ?? ' ';
-    if (/\d/.test(before) || /\d/.test(after)) continue;
+    // A match glued to another digit is part of a LONGER number ("15" inside
+    // "150"). Sol HIGH-review 2026-09-09: an earlier version silently dropped
+    // these and then told the reviewer the number "does not appear at all",
+    // which buries the single most dangerous case — the gate flagged 15, the
+    // rule says 150, i.e. a control value that may have changed by a factor of
+    // ten. Capture the longer token instead of discarding it.
+    //
+    // A decimal point counts as part of the number too, but ONLY when a digit
+    // sits on its far side: "12" in "12.5 m" is embedded (the rule's real value
+    // is 12.5), while "15" in the "2.4-15" page footer and a number ending a
+    // sentence ("...set back 6.") are not. Caught by the 12.5 test below —
+    // a bare /\d/ adjacency check let "12" through as standalone.
+    const embeddedLeft = /\d/.test(before) || (before === '.' && /\d/.test(text[i - 2] ?? ''));
+    const embeddedRight =
+      /\d/.test(after) || (after === '.' && /\d/.test(text[i + num.length + 1] ?? ''));
+    if (embeddedLeft || embeddedRight) {
+      let s = i;
+      let e = i + num.length;
+      while (s > 0 && /[\d.]/.test(text[s - 1])) s -= 1;
+      while (e < text.length && /[\d.]/.test(text[e])) e += 1;
+      embedded.add(text.slice(s, e));
+      continue;
+    }
     const start = Math.max(0, i - 70);
     const end = Math.min(text.length, i + num.length + 70);
     const snippet = text.slice(start, end).replace(/\s+/g, ' ').trim();
-    out.push(`${start > 0 ? '…' : ''}${snippet}${end < text.length ? '…' : ''}`);
+    standalone.push(`${start > 0 ? '…' : ''}${snippet}${end < text.length ? '…' : ''}`);
   }
-  return out;
+  return { standalone, embedded: [...embedded].slice(0, 4) };
 }
 
 export default function DcpReviewQueue() {
@@ -417,20 +445,28 @@ export default function DcpReviewQueue() {
                         <span className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-semibold">
                           {num}
                         </span>
-                        {ctx.length === 0 ? (
-                          <div className="mt-1 text-xs text-gray-600">
-                            Does not appear in the rule text at all — usually means the checker
-                            split it out of something else (a section number like 9.13, a date).
+                        {ctx.standalone.map((c, i) => (
+                          <div
+                            key={i}
+                            className="mt-1 border-l-2 border-amber-300 pl-2 font-mono text-xs leading-relaxed text-gray-700"
+                          >
+                            {c}
                           </div>
-                        ) : (
-                          ctx.map((c, i) => (
-                            <div
-                              key={i}
-                              className="mt-1 border-l-2 border-amber-300 pl-2 font-mono text-xs leading-relaxed text-gray-700"
-                            >
-                              {c}
-                            </div>
-                          ))
+                        ))}
+                        {ctx.standalone.length === 0 && ctx.embedded.length > 0 && (
+                          <div className="mt-1 rounded border border-red-300 bg-red-50 px-2 py-1.5 text-xs text-red-900">
+                            <b>Only found inside a longer number:</b>{' '}
+                            <span className="font-mono">{ctx.embedded.join(', ')}</span>. The check
+                            looked for <span className="font-mono">{num}</span> and the rule carries
+                            a different value — compare both against the PDF before deciding.
+                          </div>
+                        )}
+                        {ctx.standalone.length === 0 && ctx.embedded.length === 0 && (
+                          <div className="mt-1 text-xs text-gray-600">
+                            Does not appear as a standalone number in the rule text — often the
+                            checker split it out of something else (a section number like 9.13, a
+                            date). Confirm against the PDF.
+                          </div>
                         )}
                       </div>
                     );
@@ -439,10 +475,14 @@ export default function DcpReviewQueue() {
               )}
 
               <p className="mt-2 text-xs">
-                Read the snippets above: if the number is a page footer (e.g. <b>2.4-15</b>), a
-                section number, or a street address, the rule is fine — just <b>Approve</b>. If it
-                is a real control (a setback, height, area, percentage), check it against the PDF
-                and, if it is wrong, fix it in the box below and <b>Save correction &amp; approve</b>.
+                The snippets show <i>where</i> each number sits — they do not confirm it is
+                correct. Check the value against the PDF pane before deciding: the source check
+                failed, so this number is unconfirmed whatever it looks like. A number that reads
+                like a page footer (e.g. <b>2.4-15</b>), a section number, or a street address is
+                usually not a planning control, but OCR can also invent text that looks exactly
+                like one — so confirm it is in the PDF rather than assuming from its shape. If the
+                value is wrong, or the text carries content that is not in the source at all, fix
+                it in the box below and <b>Save correction &amp; approve</b>, or <b>Reject</b>.
               </p>
               <textarea
                 value={editText}

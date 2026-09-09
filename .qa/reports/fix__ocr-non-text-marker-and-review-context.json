@@ -1,11 +1,12 @@
 {
   "tier": "standard",
   "justification": "Two independent fixes found while clearing the live DCP review backlog. (1) The OCR model's [Non-Text] block marker was never stripped, so it landed mid-sentence inside real regulatory rules -- measured: 44 rows in dcp_review_queue, 0 live in regulatory_provisions. (2) The review UI told a human 'a number in this rule is not in the PDF' without showing where that number sits, forcing a manual search of a 170-page PDF per row across 433 flagged rows. Not Critical: no schema change, no query change, no change to which provisions are served; the OCR fix only deletes a marker string and the UI change is presentational. Not Minor: the marker reached real rule text in production data, and the UI gap was actively blocking the human review the whole pipeline depends on.",
-  "commit_hash": "fe180c85",
+  "commit_hash": "5abe2f23",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_ocr_fallback.py",
-    "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx"
+    "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx",
+    "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts"
   ],
   "pre_impl": {
     "existing_data": "dcp_review_queue.new_text / fidelity_detail and regulatory_provisions.provision_text -- all read-only measurement, no new table or column. _OCR_DET_TAG is the pre-existing regex that already strips the model's other block markers; this adds one alternative to it.",
@@ -32,6 +33,20 @@
   "values": [],
   "queries": [],
   "break_it": [
+    {
+      "scenario": "[Sol HIGH 0.98, RESOLVED same PR] The panel copy told reviewers that a number which LOOKS like a page footer, section number or street address meant \"the rule is fine — just Approve\", with no source check. OCR can invent text shaped exactly like a footer (this PR documents a real hallucinated row carrying \"Palo Alto, CA 94304\"), so shape is not evidence.",
+      "what_happens": "A reviewer follows the on-screen instruction and promotes unverified — possibly hallucinated — text into served regulatory provisions.",
+      "mitigated": true,
+      "how": "Copy rewritten to state that the snippets show WHERE a number sits and do not confirm it is correct, that the number is unconfirmed whatever its shape because the source check failed, and that it must be checked against the PDF pane before deciding. Reject is named alongside correct-and-approve.",
+      "repro": "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx — flagged-row guidance paragraph."
+    },
+    {
+      "scenario": "[Sol MEDIUM 0.96, RESOLVED same PR] occurrencesOf() discarded a match glued to another digit (\"15\" inside \"150\") and the panel then reported the number as absent from the rule entirely — burying the most consequential case: the gate looked for 15, the rule carries 150, a control value potentially wrong by a factor of ten.",
+      "what_happens": "A real numeric discrepancy was presented to the reviewer as benign checker noise, in reassuring grey text.",
+      "mitigated": true,
+      "how": "occurrencesOf now returns {standalone, embedded}: an embedded hit captures the FULL longer token and renders in a red panel saying the rule carries a different value and both must be compared against the PDF. The absent case is reworded to \"does not appear as a standalone number ... Confirm against the PDF.\" Writing the tests then caught a further gap in that fix — a decimal point is part of the number too, so \"12\" in \"12.5 m\" was still passing as standalone; the boundary check now treats a dot with a digit on its far side as embedded.",
+      "repro": "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts — SURFACES a number found only inside a longer one / captures the whole longer token including decimals."
+    },
     {
       "scenario": "A too-greedy marker pattern could eat a legitimate word that merely starts the same way, e.g. a rule discussing '[Non-Textual] elements' — silently deleting real regulatory content, which is far worse than leaving a cosmetic marker.",
       "what_happens": "Regulatory text would be silently truncated with no signal to anyone.",
