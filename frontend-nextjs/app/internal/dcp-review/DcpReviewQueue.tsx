@@ -35,6 +35,78 @@ interface ChapterGroup {
 
 type Action = 'approve' | 'reject' | 'needs-info';
 
+// The fidelity gate records what it could not match as
+// "numbers not in source: 15, 2.4". Pull those tokens back out.
+export function missingNumbers(detail: string | null): string[] {
+  if (!detail) return [];
+  const m = /numbers not in source:\s*(.*)/i.exec(detail);
+  if (!m) return [];
+  return m[1]
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// Every place a flagged number actually appears in the rule text, with the
+// words around it. Without this a reviewer is told "15 is not in the PDF" and
+// has to search a whole page to find out that the 15 came from the "2.4-15"
+// page footer. Showing the context answers that at a glance. Deliberately
+// only SHOWS the surrounding text — it makes no judgement about whether the
+// number is a real control, which is exactly what the human is here for.
+export interface NumberSightings {
+  /** The number standing on its own, with the words around it. */
+  standalone: string[];
+  /** The LONGER numbers it is embedded in, e.g. "15" found only inside "150". */
+  embedded: string[];
+}
+
+export function occurrencesOf(num: string, text: string | null): NumberSightings {
+  // new_text arrives from the API as untyped JSON: a non-string (a number, an
+  // object) would throw on .indexOf/.slice and blank the whole review panel,
+  // which is the one screen the human gate depends on. Guard the type, don't
+  // just null-check it.
+  const none: NumberSightings = { standalone: [], embedded: [] };
+  if (typeof text !== 'string' || typeof num !== 'string' || !text || !num) return none;
+  const standalone: string[] = [];
+  const embedded = new Set<string>();
+  let from = 0;
+  while (standalone.length < 4) {
+    const i = text.indexOf(num, from);
+    if (i === -1) break;
+    from = i + num.length;
+    const before = text[i - 1] ?? ' ';
+    const after = text[i + num.length] ?? ' ';
+    // A match glued to another digit is part of a LONGER number ("15" inside
+    // "150"). Sol HIGH-review 2026-09-09: an earlier version silently dropped
+    // these and then told the reviewer the number "does not appear at all",
+    // which buries the single most dangerous case — the gate flagged 15, the
+    // rule says 150, i.e. a control value that may have changed by a factor of
+    // ten. Capture the longer token instead of discarding it.
+    //
+    // A decimal point counts as part of the number too, but ONLY when a digit
+    // sits on its far side: "12" in "12.5 m" is embedded (the rule's real value
+    // is 12.5), while "15" in the "2.4-15" page footer and a number ending a
+    // sentence ("...set back 6.") are not. Caught by the 12.5 test below —
+    // a bare /\d/ adjacency check let "12" through as standalone.
+    const embeddedLeft = /\d/.test(before) || (before === '.' && /\d/.test(text[i - 2] ?? ''));
+    const embeddedRight =
+      /\d/.test(after) || (after === '.' && /\d/.test(text[i + num.length + 1] ?? ''));
+    if (embeddedLeft || embeddedRight) {
+      let s = i;
+      let e = i + num.length;
+      while (s > 0 && /[\d.]/.test(text[s - 1])) s -= 1;
+      while (e < text.length && /[\d.]/.test(text[e])) e += 1;
+      embedded.add(text.slice(s, e));
+      continue;
+    }
+    const start = Math.max(0, i - 70);
+    const end = Math.min(text.length, i + num.length + 70);
+    const snippet = text.slice(start, end).replace(/\s+/g, ' ').trim();
+    standalone.push(`${start > 0 ? '…' : ''}${snippet}${end < text.length ? '…' : ''}`);
+  }
+  return { standalone, embedded: [...embedded].slice(0, 4) };
+}
+
 export default function DcpReviewQueue() {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [idx, setIdx] = useState(0);
@@ -360,10 +432,57 @@ export default function DcpReviewQueue() {
                   <div className="mt-1 italic">&ldquo;{item.fidelity_source_quote}&rdquo;</div>
                 </div>
               )}
+
+              {missingNumbers(item.fidelity_detail).length > 0 && (
+                <div className="mt-2 rounded border border-amber-200 bg-white px-3 py-2 text-gray-800">
+                  <div className="text-xs font-semibold text-gray-500">
+                    Where each unmatched number sits in this rule:
+                  </div>
+                  {missingNumbers(item.fidelity_detail).map((num) => {
+                    const ctx = occurrencesOf(num, item.new_text);
+                    return (
+                      <div key={num} className="mt-2">
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-semibold">
+                          {num}
+                        </span>
+                        {ctx.standalone.map((c, i) => (
+                          <div
+                            key={i}
+                            className="mt-1 border-l-2 border-amber-300 pl-2 font-mono text-xs leading-relaxed text-gray-700"
+                          >
+                            {c}
+                          </div>
+                        ))}
+                        {ctx.standalone.length === 0 && ctx.embedded.length > 0 && (
+                          <div className="mt-1 rounded border border-red-300 bg-red-50 px-2 py-1.5 text-xs text-red-900">
+                            <b>Only found inside a longer number:</b>{' '}
+                            <span className="font-mono">{ctx.embedded.join(', ')}</span>. The check
+                            looked for <span className="font-mono">{num}</span> and the rule carries
+                            a different value — compare both against the PDF before deciding.
+                          </div>
+                        )}
+                        {ctx.standalone.length === 0 && ctx.embedded.length === 0 && (
+                          <div className="mt-1 text-xs text-gray-600">
+                            Does not appear as a standalone number in the rule text — often the
+                            checker split it out of something else (a section number like 9.13, a
+                            date). Confirm against the PDF.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <p className="mt-2 text-xs">
-                Compare it to the rule text on the right. If the AI got a value wrong, fix it in
-                the box below and <b>Save correction &amp; approve</b>. If the rule is actually
-                fine (e.g. the number is a street address), just <b>Approve</b>.
+                The snippets show <i>where</i> each number sits — they do not confirm it is
+                correct. Check the value against the PDF pane before deciding: the source check
+                failed, so this number is unconfirmed whatever it looks like. A number that reads
+                like a page footer (e.g. <b>2.4-15</b>), a section number, or a street address is
+                usually not a planning control, but OCR can also invent text that looks exactly
+                like one — so confirm it is in the PDF rather than assuming from its shape. If the
+                value is wrong, or the text carries content that is not in the source at all, fix
+                it in the box below and <b>Save correction &amp; approve</b>, or <b>Reject</b>.
               </p>
               <textarea
                 value={editText}

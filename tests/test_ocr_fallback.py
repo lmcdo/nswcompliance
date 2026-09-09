@@ -70,6 +70,29 @@ class TestNormaliseOcrPage:
         setback_row = next(l for l in out.splitlines() if "Setback" in l)
         assert re.search(r"Setback \|\s+\| 3m", setback_row), setback_row  # empty Zone A slot kept
 
+    def test_non_text_block_marker_stripped(self):
+        """The model labels a region it read as non-textual (map, photo,
+        figure) with a bare [Non-Text] placeholder. Same class of block marker
+        as the <|det|> tags above, but it was never stripped, so it landed
+        mid-sentence inside real rules — measured 2026-09-09: 44 rows in
+        dcp_review_queue carried it."""
+        raw = "The desired future character is: [Non-Text] detached dwellings with face brick."
+        out = normalise_ocr_page(raw)
+        assert "Non-Text" not in out
+        assert "detached dwellings with face brick." in out
+
+    def test_non_text_marker_variants_stripped(self):
+        """The model is inconsistent about case and the hyphen."""
+        for raw in ("a [non-text] b", "a [Non Text] b", "a [NON-TEXT] b"):
+            out = normalise_ocr_page(raw)
+            assert "on-text" not in out.lower() and "on text" not in out.lower(), raw
+
+    def test_confusable_real_word_survives(self):
+        """The confusable negative: [Non-Textual] is not the block marker and
+        must not be eaten by a too-greedy pattern."""
+        out = normalise_ocr_page("keep [Non-Textual] intact")
+        assert "[Non-Textual]" in out
+
     def test_empty_and_none_safe(self):
         assert normalise_ocr_page("") == ""
         assert normalise_ocr_page(None) == ""

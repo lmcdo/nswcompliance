@@ -2251,6 +2251,15 @@ def preflight_layout(pdf_path, council: str) -> dict:
 _OCR_DET_TAG = re.compile(
     r"<\|det\|>\s*[a-z_]+\s*\[\d+(?:,\s*\d+){3}\]\s*<\|/det\|>"   # full unit: tag + block type + coords
     r"|<\|/?(?:det|image(?:_caption)?)\|>|\[\d+(?:,\s*\d+){3}\]"  # any stragglers
+    # The model also labels a region it read as non-textual (a map, a photo,
+    # a figure) with a bare [Non-Text] placeholder. Same class of block marker
+    # as the tags above and equally not council text, but it was never stripped,
+    # so it landed mid-sentence in real rules -- measured 2026-09-09: 44 rows in
+    # dcp_review_queue carried it (0 live in regulatory_provisions; the fidelity
+    # gate had flagged them). Hyphen-optional and scoped-case-insensitive
+    # because the model is not consistent about either; the (?i:...) group
+    # keeps that leniency off the alternatives above, which match exactly.
+    r"|(?i:\[Non[- ]?Text\])"
 )
 _OCR_ROW_TAG = re.compile(r"</tr>|<tr[^>]*>", re.IGNORECASE)
 _OCR_CELL = re.compile(r"</?t[dh][^>]*>", re.IGNORECASE)
