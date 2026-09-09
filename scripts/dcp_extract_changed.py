@@ -2880,6 +2880,27 @@ def _auto_verify_controls(
 
 # ── Per-chapter extraction ──────────────────────────────────────────────────
 
+# DQ-98 stability guard (registered .claude/DATA_QUALITY_TRACKER.md, 2026-09-07;
+# real crash: Railway dcp-extract, 2026-09-06 03:21 UTC, exit -9/SIGKILL, on
+# canterbury_bankstown/chapter-7-6-belmore-and-lakemba, 139,006,750 bytes).
+# DCPExtractor and preflight_layout() each open the downloaded PDF with
+# pdfplumber and hold every page's char/line/table/image objects in memory for
+# the pass's lifetime; a file this large exhausts the container and the OS
+# kills the WHOLE process — not just this chapter. Confirmed live 2026-09-08/09
+# (three separate cron firings, all exit -9): the crash takes every OTHER
+# chapter queued in the same run down with it, so none of that night's batch
+# gets extracted, not only the oversized one.
+# Same 30MB heuristic as scripts/dq_probe_oversized_pdf_oom_risk.py (kept as a
+# separate literal, not imported — that script is a standalone advisory probe,
+# not a module meant to be imported into the pipeline it's reporting on).
+# This is NOT the DQ-98 fix (chunked extraction, not yet built, real design
+# risk around clauses straddling a chunk boundary) — it only stops one
+# oversized chapter from silently crash-looping the entire nightly batch.
+# needs_extraction stays TRUE (existing failure convention below), so the
+# chapter keeps surfacing here, loudly, every run until the real fix ships.
+OVERSIZED_PDF_SKIP_BYTES = 30 * 1024 * 1024
+
+
 def extract_chapter(
     chapter: dict,
     s3,
@@ -2916,7 +2937,115 @@ def extract_chapter(
             print(f"    [ERROR] R2 download failed: {exc}")
             return False, None
 
-        print(f"    Downloaded {pdf_path.stat().st_size:,} bytes")
+        pdf_bytes = pdf_path.stat().st_size
+        print(f"    Downloaded {pdf_bytes:,} bytes")
+
+        if pdf_bytes > OVERSIZED_PDF_SKIP_BYTES:
+            print(
+                f"    [SKIP] {pdf_bytes:,} bytes exceeds the "
+                f"{OVERSIZED_PDF_SKIP_BYTES:,}-byte OOM-risk threshold (DQ-98) — "
+                f"skipping this chapter to protect the rest of tonight's batch. "
+                f"needs_extraction stays TRUE; this chapter needs chunked "
+                f"extraction (DQ-98, not yet built) to ever complete."
+            )
+            # Sol HIGH 0.96: a skipped chapter must leave a DB-visible,
+            # distinct trace, not just a log line -- otherwise stale
+            # regulatory content keeps being served with zero signal that a
+            # source update was ever seen and silently dropped.
+            # prior-art-checked: reuse not viable as a function call -- this
+            # DELIBERATELY reuses the SAME last_suspect_alert_key/_at columns,
+            # the SAME send_telegram() sender, and the SAME dedup-by-key idea
+            # the existing suspect-alert block in main() already uses (below,
+            # ~line 4040), but that block only fires for chapters that made
+            # it through extract_chapter() successfully with review_data
+            # populated -- an oversized-skip never reaches that point (it
+            # returns before DCPExtractor even runs), so there is no shared
+            # function to call into; inlining the same pattern here is the
+            # only way to alert on a chapter that specifically never extracts.
+            # A distinct "oversized_pdf" reason string so this can never
+            # collide with an extraction-produced suspect_reason. Keyed to
+            # content_hash (already on the registry row, reflects the CURRENT
+            # source PDF regardless of extraction success) so a re-check of
+            # the SAME too-big file doesn't re-alert every night -- the exact
+            # failure mode unalerted_suspects() above was built to stop --
+            # but a genuinely NEW oversized replacement does alert. Skipped
+            # entirely under dry_run: that flag's whole contract is "no DB
+            # writes".
+            if not dry_run:
+                # prior-art-checked: reuse not viable -- this fixes the
+                # is_active filter on THIS SAME guard's own SELECT/UPDATE
+                # (added a few commits ago on this branch), not a new query
+                # against a different table; the flagged files' overlap is
+                # shared domain vocabulary (chapter/registry/suspect), not a
+                # reusable function for this specific read-then-conditionally
+                # -write.
+                # prior-art-checked: reuse not viable -- this is a third,
+                # incremental hardening of the SAME guard block above on this
+                # SAME branch (FOR UPDATE row-locking, added to close a race
+                # Sol found in the immediately-prior is_active fix), not a new
+                # transaction/extraction capability; the sepp_full_text_
+                # extraction/* matches surfaced by the prior-art scan are an
+                # unrelated one-off import pipeline, not something this
+                # ongoing DCP chapter registry guard could reuse.
+                # Sol MEDIUM 0.94: a chapter can be deactivated (is_active=FALSE)
+                # between batch selection and this code running -- without the
+                # filter, this block would still alert about and mutate an
+                # inactive row's status for a chapter no longer served. Both
+                # the read and the write are scoped to is_active=TRUE; if the
+                # row isn't active any more, skip the alert AND the write
+                # entirely rather than acting on stale membership.
+                # Sol MEDIUM 0.98 (next push): the is_active check above still
+                # left a time-of-check/time-of-use gap -- deactivation landing
+                # between the SELECT and the Telegram send would still fire the
+                # alert (already decided), even though the later UPDATE would
+                # then correctly match zero rows. FOR UPDATE closes it: it row-
+                # locks this one chapter from the SELECT through conn.commit(),
+                # so a concurrent `is_active = FALSE` write on the SAME row
+                # blocks until this transaction ends -- no other transaction
+                # can flip this row's is_active while we're deciding on it.
+                # Deliberately still send-then-write, not write-then-send (a
+                # single atomic "UPDATE ... RETURNING" was considered and
+                # rejected: it would mark the row alerted before the Telegram
+                # call succeeds, silently swallowing a failed send instead of
+                # retrying it next run -- the exact failure mode the EXISTING
+                # suspect-alert block's own comment above warns against).
+                skip_key = f"{chapter.get('content_hash') or 'nohash'}::oversized_pdf({pdf_bytes})"
+                try:
+                    _c = conn.cursor()
+                    _c.execute(
+                        "SELECT last_suspect_alert_key FROM dcp_chapter_registry "
+                        "WHERE id = %s AND is_active = TRUE FOR UPDATE",
+                        (chapter_id,),
+                    )
+                    row = _c.fetchone()
+                    if row is None:
+                        print(f"    [info] {council}/{chapter_key} no longer active — "
+                              f"skip-status not recorded")
+                        conn.rollback()
+                    else:
+                        if row[0] != skip_key:
+                            try:
+                                from run_monitors import send_telegram
+                                send_telegram(
+                                    f"⚠️ dcp-extract: {council}/{chapter_key} SKIPPED — "
+                                    f"{pdf_bytes:,} bytes exceeds the {OVERSIZED_PDF_SKIP_BYTES:,}-"
+                                    f"byte OOM-risk guard (DQ-98). Source content may be stale "
+                                    f"until chunked extraction ships."
+                                )
+                            except Exception as exc:
+                                print(f"    [warn] oversized-skip Telegram alert not sent: {exc}")
+                        _c.execute(
+                            "UPDATE dcp_chapter_registry "
+                            "SET last_suspect_alert_key = %s, last_suspect_alert_at = NOW() "
+                            "WHERE id = %s AND is_active = TRUE",
+                            (skip_key, chapter_id),
+                        )
+                        conn.commit()  # releases the FOR UPDATE row lock
+                    _c.close()
+                except Exception as exc:
+                    print(f"    [warn] could not record oversized-skip status: {exc}")
+                    conn.rollback()
+            return False, None
 
         # 2. Extract sections
         cur = conn.cursor()
