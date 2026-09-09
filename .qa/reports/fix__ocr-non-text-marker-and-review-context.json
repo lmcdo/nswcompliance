@@ -1,0 +1,70 @@
+{
+  "tier": "standard",
+  "justification": "Two independent fixes found while clearing the live DCP review backlog. (1) The OCR model's [Non-Text] block marker was never stripped, so it landed mid-sentence inside real regulatory rules -- measured: 44 rows in dcp_review_queue, 0 live in regulatory_provisions. (2) The review UI told a human 'a number in this rule is not in the PDF' without showing where that number sits, forcing a manual search of a 170-page PDF per row across 433 flagged rows. Not Critical: no schema change, no query change, no change to which provisions are served; the OCR fix only deletes a marker string and the UI change is presentational. Not Minor: the marker reached real rule text in production data, and the UI gap was actively blocking the human review the whole pipeline depends on.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_ocr_fallback.py",
+    "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue.new_text / fidelity_detail and regulatory_provisions.provision_text -- all read-only measurement, no new table or column. _OCR_DET_TAG is the pre-existing regex that already strips the model's other block markers; this adds one alternative to it.",
+    "assumption_mismatch": "N/A -- no data assumption changed. The UI change consumes new_text and fidelity_detail, both already fetched by the existing /api/dcp-review route; no new API call or field was added.",
+    "new_vs_existing": "The OCR fix applies to every future OCR-routed extraction, any council. It does NOT retroactively clean the 44 already-queued rows -- those keep the marker until their chapter is re-extracted, and are cosmetic (median ~1,500 chars of legitimate content around the marker).",
+    "external_source_error": "N/A -- Critical-only field.",
+    "frontend_type": "N/A -- Critical-only field.",
+    "user_failure_mode": "N/A -- Critical-only field."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_ocr_fallback.py -q",
+    "fails_when": "normalise_ocr_page stops stripping the [Non-Text] marker (or a case/hyphen variant), OR starts eating the confusable real word [Non-Textual].",
+    "observed_red": "BEFORE: normalise_ocr_page('The desired future character is: [Non-Text] detached dwellings') returned the marker verbatim -- confirmed against real production data, 44 dcp_review_queue rows contain it mid-sentence (e.g. marrickville/part9-p04-newtown-north '# 9.4.2 Desired future character ... is: [Non-Text] detached or terrace dwellings'). AFTER: marker stripped, surrounding rule text intact; [Non-Textual] still survives. 21/21 pass in tests/test_ocr_fallback.py. Scope measured with the same regex against both tables: 44 queue rows carry the marker, 0 rows in regulatory_provisions (is_current) do -- the fidelity gate had already flagged them, so none reached a served provision."
+  },
+  "functions": [
+    {
+      "name": "normalise_ocr_page",
+      "file_line": "scripts/dcp_extract_changed.py:2291 (function); _OCR_DET_TAG pattern extended at :2251",
+      "input": "text: str | None -- one page of raw OCR model output.",
+      "output": "str -- same normalisation as before, plus the model's [Non-Text] block placeholder removed. Hyphen-optional and scoped-case-insensitive via an inline (?i:...) group, so the leniency does not leak onto the other alternatives in the same pattern, which still match exactly.",
+      "if_none": "Unchanged: None input still returns '' (pre-existing `text or \"\"` guard, covered by test_empty_and_none_safe)."
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A too-greedy marker pattern could eat a legitimate word that merely starts the same way, e.g. a rule discussing '[Non-Textual] elements' — silently deleting real regulatory content, which is far worse than leaving a cosmetic marker.",
+      "what_happens": "Regulatory text would be silently truncated with no signal to anyone.",
+      "mitigated": true,
+      "how": "The pattern anchors on the closing bracket (\\[Non[- ]?Text\\]), so it cannot match [Non-Textual]. Covered by an explicit confusable-negative test rather than only positive cases.",
+      "repro": "tests/test_ocr_fallback.py::TestNormaliseOcrPage::test_confusable_real_word_survives"
+    },
+    {
+      "scenario": "The 44 rows already sitting in dcp_review_queue still contain the marker — this fix is forward-only and does not clean them.",
+      "what_happens": "A reviewer working those rows still sees [Non-Text] mid-sentence until that chapter is re-extracted.",
+      "mitigated": false,
+      "how": "Deliberately not back-filled: rewriting stored extraction output in place would edit regulatory text outside the extract-and-review pipeline that exists to gate exactly that. They are cosmetic (the surrounding rule text is intact and correct) and are corrected naturally on the chapter's next extraction.",
+      "repro": "SELECT count(*) FROM dcp_review_queue WHERE new_text LIKE '%[Non-Text]%' -- 44 at time of writing, unchanged by this PR."
+    },
+    {
+      "scenario": "The deeper cause is untouched: the OCR model HALLUCINATES on image/map-dominated pages. One row (city_of_sydney/Sydney_DCP_2012__section_2_locality_statements__2, the Section 2 locality MAP page) contains invented GIS drawing-block metadata — 'Projection: MDA Zone 66', 'City of San Diego, 2019', 'Palo Alto, CA 94304' — plus mangled suburb names ('Stury Hills' for Surry Hills, 'Globe and Forest Lodge' for Glebe). Stripping a marker does not stop a model inventing text from a picture.",
+      "what_happens": "A map page routed through OCR can yield plausible-looking text that is not in the council's document at all.",
+      "mitigated": false,
+      "how": "Not fixed here, and deliberately not: you cannot regex away hallucination. It IS contained by the existing fidelity gate, which compares extracted text against the source PDF and flagged this row — measured 0 such rows in live regulatory_provisions, 1 pending and flagged. A real fix (refuse OCR output for image-dominated pages) needs its own design and measurement across more than one observed instance.",
+      "repro": "SELECT council, ref_number FROM dcp_review_queue WHERE new_text ~* 'Palo Alto|San Diego|Projection: MDA' -- 1 row, status pending, fidelity_status flagged."
+    },
+    {
+      "scenario": "The UI's 'where each unmatched number sits' panel reads new_text, not the council's PDF. If the extraction dropped a number entirely, the panel correctly says 'does not appear in the rule text at all' — but it cannot show what the PDF says at that point.",
+      "what_happens": "For that case the reviewer still needs the PDF pane to decide, as before.",
+      "mitigated": false,
+      "how": "Accepted scope: the panel's purpose is to end the needle-in-a-haystack search for numbers that ARE present (the common case — page footers like '2.4-15', section numbers, street addresses). The embedded PDF viewer, already synced to the claimed page, remains the tool for the rest. The panel states this case explicitly rather than showing an empty box.",
+      "repro": "Open any flagged row whose fidelity_detail names a number not present in new_text (e.g. '913' derived from section 9.13)."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- the 44 queued rows keep the marker until their chapters are next extracted; re-check with the break_it #2 query after the next dcp-extract run."
+  }
+}

@@ -35,6 +35,46 @@ interface ChapterGroup {
 
 type Action = 'approve' | 'reject' | 'needs-info';
 
+// The fidelity gate records what it could not match as
+// "numbers not in source: 15, 2.4". Pull those tokens back out.
+function missingNumbers(detail: string | null): string[] {
+  if (!detail) return [];
+  const m = /numbers not in source:\s*(.*)/i.exec(detail);
+  if (!m) return [];
+  return m[1]
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// Every place a flagged number actually appears in the rule text, with the
+// words around it. Without this a reviewer is told "15 is not in the PDF" and
+// has to search a whole page to find out that the 15 came from the "2.4-15"
+// page footer. Showing the context answers that at a glance. Deliberately
+// only SHOWS the surrounding text — it makes no judgement about whether the
+// number is a real control, which is exactly what the human is here for.
+function occurrencesOf(num: string, text: string | null): string[] {
+  if (!text || !num) return [];
+  const out: string[] = [];
+  let from = 0;
+  while (out.length < 4) {
+    const i = text.indexOf(num, from);
+    if (i === -1) break;
+    from = i + num.length;
+    // Skip a match that is part of a longer number ("15" inside "150"), but
+    // KEEP one preceded by "." or "-" — "2.4-15" is precisely the page-footer
+    // case a reviewer most needs to see.
+    const before = text[i - 1] ?? ' ';
+    const after = text[i + num.length] ?? ' ';
+    if (/\d/.test(before) || /\d/.test(after)) continue;
+    const start = Math.max(0, i - 70);
+    const end = Math.min(text.length, i + num.length + 70);
+    const snippet = text.slice(start, end).replace(/\s+/g, ' ').trim();
+    out.push(`${start > 0 ? '…' : ''}${snippet}${end < text.length ? '…' : ''}`);
+  }
+  return out;
+}
+
 export default function DcpReviewQueue() {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [idx, setIdx] = useState(0);
@@ -360,10 +400,45 @@ export default function DcpReviewQueue() {
                   <div className="mt-1 italic">&ldquo;{item.fidelity_source_quote}&rdquo;</div>
                 </div>
               )}
+
+              {missingNumbers(item.fidelity_detail).length > 0 && (
+                <div className="mt-2 rounded border border-amber-200 bg-white px-3 py-2 text-gray-800">
+                  <div className="text-xs font-semibold text-gray-500">
+                    Where each unmatched number sits in this rule:
+                  </div>
+                  {missingNumbers(item.fidelity_detail).map((num) => {
+                    const ctx = occurrencesOf(num, item.new_text);
+                    return (
+                      <div key={num} className="mt-2">
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-semibold">
+                          {num}
+                        </span>
+                        {ctx.length === 0 ? (
+                          <div className="mt-1 text-xs text-gray-600">
+                            Does not appear in the rule text at all — usually means the checker
+                            split it out of something else (a section number like 9.13, a date).
+                          </div>
+                        ) : (
+                          ctx.map((c, i) => (
+                            <div
+                              key={i}
+                              className="mt-1 border-l-2 border-amber-300 pl-2 font-mono text-xs leading-relaxed text-gray-700"
+                            >
+                              {c}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <p className="mt-2 text-xs">
-                Compare it to the rule text on the right. If the AI got a value wrong, fix it in
-                the box below and <b>Save correction &amp; approve</b>. If the rule is actually
-                fine (e.g. the number is a street address), just <b>Approve</b>.
+                Read the snippets above: if the number is a page footer (e.g. <b>2.4-15</b>), a
+                section number, or a street address, the rule is fine — just <b>Approve</b>. If it
+                is a real control (a setback, height, area, percentage), check it against the PDF
+                and, if it is wrong, fix it in the box below and <b>Save correction &amp; approve</b>.
               </p>
               <textarea
                 value={editText}
