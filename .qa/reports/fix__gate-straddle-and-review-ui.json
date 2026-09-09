@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes when the fidelity gate declares an extracted regulatory number GROUNDED against its source PDF -- the check that decides whether a provision reaches a human as trustworthy or suspect. A wrong loosening here ships a false 'this is correct' signal on a planning control. Measured cause: the gate scoped number-checking to a single anchor page, so any clause straddling a page break was wrongly flagged. Of 433 flagged rows in the live queue, 428 were that false alarm and 5 were real errors -- a 1.2% true-positive rate that made the human queue unworkable, so it went unreviewed for days and the gate delivered no safety at all.",
-  "commit_hash": "9874a625",
+  "commit_hash": "cc3f15f0",
   "files": [
     "scripts/dcp_fidelity_gate.py",
     "tests/test_dcp_fidelity_gate.py",
