@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes an operator alert, not served data. No provision, control or report content moves. The failure mode is an alert that misleads rather than wrong data reaching a reader, so standard rather than critical.",
-  "commit_hash": "3a140080",
+  "commit_hash": "a044a469",
   "files": [
     ".github/workflows/gates.yml",
     "railway.dcp-monitor.toml",
