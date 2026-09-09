@@ -766,6 +766,18 @@ def _columnar_text(page: Any) -> str | None:
     cx = _find_gutter(words, W)
     if cx is None:
         return None
+    # ⚠ KNOWN PRE-EXISTING LIMITATION (Sol cross-review, HIGH 0.96, 2026-09-09,
+    # against this restored check -- the threshold itself predates this fix,
+    # not introduced by it): fixed at 30px / 5% of page width. A genuine
+    # two-column page whose real gutter is narrower than that would have
+    # every row misclassified as full-width, defeating the grouping this
+    # function exists to do. Not observed on any real page sampled from the
+    # four councils this function currently serves (ashfield, marrickville,
+    # hornsby, city_of_sydney) -- their column gutters all measured wider
+    # than this. A page-specific baseline derived from the page's own
+    # repeated body-row gaps would be more robust; not built here. Logged,
+    # not chased -- same discipline as the 98 unrecovered section numbers in
+    # the marrickville TOC-guard fix.
     gap_min = max(30.0, W * 0.05)
     lines: dict[int, list[dict]] = defaultdict(list)
     for w in words:

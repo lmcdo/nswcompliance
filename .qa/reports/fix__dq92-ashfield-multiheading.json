@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Real logic fix in the shared two-column reader (_columnar_text) used by four councils' DCP extraction (GEOMETRIC_COLUMN_COUNCILS: ashfield, marrickville, city_of_sydney, hornsby). Not Critical: this commit does not write to the database -- it only changes a pure text function; the actual re-extraction/approval into dcp_review_queue is a separate, later, human-gated step through the existing --review workflow. Not Minor: it changes extracted text content for real production PDFs across four councils, not wording/comments/docs.",
-  "commit_hash": "d82195e5",
+  "commit_hash": "24751f77",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_columnar_reader.py"
@@ -51,6 +51,13 @@
       "mitigated": false,
       "how": "Not mitigated by this fix. The four real chapters sampled did not exhibit this shape (each two-column run is followed by real body prose, which straddles), so it wasn't observed, but the algorithm has no vertical-gap-based break, only the straddle test -- a known residual, not silently hidden.",
       "repro": "Construct a FakePage with two two-column blocks separated by a large top-coordinate gap and no straddling line between them; assert the second block's left/right pairing is preserved -- not currently tested."
+    },
+    {
+      "scenario": "Sol cross-review (HIGH 0.96, 2nd push): gap_min is a fixed 30px/5%-of-page threshold. A genuine two-column page whose real gutter is narrower than that would have every row's gap < gap_min, so every row gets misclassified as full-width and emitted per-row -- the same symptom as the original bug, via a different path.",
+      "what_happens": "Reading order would revert to interleaved left/right rows on any page with a narrow real gutter.",
+      "mitigated": false,
+      "how": "PRE-EXISTING, not introduced by this fix -- confirmed via `git show d82195e5 -- scripts/dcp_extract_changed.py`, gap_min=max(30.0,W*0.05) is a deletion (existed before this branch) that commit 24751f77 restored verbatim. Not observed on any real page sampled from the four councils this function serves -- their column gutters all measured wider than 30px. A page-specific baseline derived from the page's own repeated body-row gaps would be more robust; that is a separate, larger algorithm change deserving its own validation round, not bundled into this fix. Documented in code at scripts/dcp_extract_changed.py:769-779.",
+      "repro": "Construct a FakePage with a genuine two-column layout whose gutter gap is e.g. 15px and assert the columns are still grouped correctly -- not currently tested; known residual."
     }
   ],
   "post_merge": {
