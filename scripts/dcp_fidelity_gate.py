@@ -268,8 +268,20 @@ def _num_token(num: str) -> re.Pattern:
     Leading (?<![\\d.]) rejects '5' inside '15' and inside '11.5'. Trailing
     (?!\\d)(?!\\.\\d) rejects '5' inside '51' and inside '5.5', while still
     accepting a number that legitimately ends a sentence ('set back 6.').
+
+    Sol cross-review HIGH 0.97, second round: those two guards still let a
+    THOUSANDS-SEPARATED value through -- '500' matched inside '1,500' because
+    the preceding character is a comma, so a rule saying 'minimum lot size is
+    500 square metres' grounded against a chapter saying '1,500 square metres'.
+    (?<!\\d,) rejects a number sitting after a digit-comma group, and (?!,\\d)
+    rejects one that STARTS such a group ('5' inside '5,000'). A leading sign is
+    excluded too: '-5' is not the same value as '5'. A comma in ordinary prose
+    ('3, 5 and 7') is unaffected, because there the number follows the space,
+    not the comma.
     """
-    return re.compile(r"(?<![\d.])" + re.escape(num) + r"(?!\d)(?!\.\d)")
+    return re.compile(
+        r"(?<![\d.])(?<!\d,)(?<!-)" + re.escape(num) + r"(?!\d)(?!\.\d)(?!,\d)"
+    )
 
 
 def _straddle_grounded(num: str, text: str, whole_chapter: str) -> bool:
