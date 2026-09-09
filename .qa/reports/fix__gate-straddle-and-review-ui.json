@@ -1,12 +1,17 @@
 {
   "tier": "critical",
   "justification": "Changes when the fidelity gate declares an extracted regulatory number GROUNDED against its source PDF -- the check that decides whether a provision reaches a human as trustworthy or suspect. A wrong loosening here ships a false 'this is correct' signal on a planning control. Measured cause: the gate scoped number-checking to a single anchor page, so any clause straddling a page break was wrongly flagged. Of 433 flagged rows in the live queue, 428 were that false alarm and 5 were real errors -- a 1.2% true-positive rate that made the human queue unworkable, so it went unreviewed for days and the gate delivered no safety at all.",
-  "commit_hash": "cc3f15f0",
+  "commit_hash": "f72d6980",
   "files": [
-    "scripts/dcp_fidelity_gate.py",
-    "tests/test_dcp_fidelity_gate.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts",
     "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx",
-    "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts"
+    "scripts/dcp_fidelity_gate.py",
+    "scripts/dq_probe_live.py",
+    "scripts/repair_tex_residue.py",
+    "tests/test_dcp_fidelity_gate.py",
+    "tests/test_repair_matches_probe.py"
   ],
   "pre_impl": {
     "existing_data": "The `pages` dict already fetched by gate_chapter via vf._page_text_for_chapter, and the row's own new_text. No new query, no new table, no new column, no additional R2 fetch.",
@@ -35,6 +40,15 @@
       "input": "num (a number the fidelity gate could not match) and the row's new_text, both arriving as untyped API JSON.",
       "output": "bool -- true when a unit (m/mm/m2/%/storeys/metres/hectares) follows the number within 14 characters, i.e. it could be a real planning control rather than a figure number, page footer or ordinary prose. Drives a red CHECK THIS ONE banner versus a grey probably-nothing-to-fix banner.",
       "if_none": "Non-string or empty input returns false, so an unreadable row shows the grey banner rather than throwing and blanking the review panel."
+    },
+    {
+      "name": "repair_units",
+      "file_line": "scripts/repair_tex_residue.py:192 (repair_units); its predicate UNIT_PREDICATE at :229 and the rules at :181-188; the identical SQL predicate is PROBES['DQ-77'] in scripts/dq_probe_live.py:937",
+      "input": "provision_text of every served row (is_current AND v2_is_actionable).",
+      "output": "count of rows where a unit is split by HORIZONTAL whitespace next to a digit -- '900 m m', '450 m 2', '7 p m', '20 t h'. Was any whitespace class; now space-or-tab only.",
+      "if_none": "0, and the row stays declared 'fixed'. The probe cannot be UNKNOWN here -- a DB failure exits 2, which dq_check reports as unverifiable rather than clean.",
+      "three_state": "matched / not matched / DB unreachable (exit 2, never silently 0).",
+      "why_narrowed": "The old class spanned newlines, so a one-character-per-line map-scramble region manufactured hits for a signature written for same-line prose. Measured across the whole table before changing it: 125 rows matched the old class, 118 the new one, and all 7 dropped are visibly DQ-78 map scramble. Zero genuine unit splits lost."
     }
   ],
   "values": [
@@ -47,7 +61,18 @@
       "read_at": "scripts/dcp_fidelity_gate.py -- _CONTEXT_WORDS and _CONTEXT_MATCH are module-level constants read only inside _straddle_grounded, which ground_row calls when filtering the absent-number list. No other module imports them."
     }
   ],
-  "queries": [],
+  "queries": [
+    {
+      "purpose": "DQ-77 metric: count served provisions whose unit is split by horizontal whitespace next to a digit ('900 m m', '450 m 2', '7 p m', '20 t h'). Narrowed from any-whitespace so a one-character-per-line map-scramble region can no longer manufacture a hit for a signature written for same-line prose.",
+      "file_line": "scripts/dq_probe_live.py:937 (PROBES['DQ-77']); the identical predicate is scripts/repair_tex_residue.py:229 (UNIT_PREDICATE), asserted equal by tests/test_repair_matches_probe.py",
+      "where_clause": "is_current AND v2_is_actionable AND (provision_text ~ '[0-9][ \t]+m[ \t]+m\\M' OR provision_text ~ '[0-9][ \t]+m[ \t]+[23]\\M' OR provision_text ~ '[0-9][ \t]+[ap][ \t]+m\\M' OR provision_text ~ '[0-9][ \t]+t[ \t]+h\\M') -- served scope, not the whole table: a superseded row is not shown to anyone."
+    },
+    {
+      "purpose": "DQ-97 metric: count SERVED provisions carrying the coarse margin-artifact symptom. Repointed from dcp_review_queue.status='pending' because that population can be drained by approving rows, which is what happened on 2026-09-09 -- the count fell 574 to 0 while 578 of the approved rows were committed into the served set.",
+      "file_line": "scripts/dq_probe_live.py:1746 (PROBES['DQ-97'])",
+      "where_clause": "is_current AND v2_is_actionable AND provision_text ~ '([[:space:]][^[:space:]]{1,2}){6,}' -- measures exposure. Still a triage count with known false positives (numeric tables, contour labels, Title Case prose), documented in red_when so it is not read as a defect count."
+    }
+  ],
   "break_it": [
     {
       "scenario": "[Sol HIGH 0.97, second round, RESOLVED same PR] Digit and decimal boundaries alone still admitted a thousands-separated value: 500 matched inside 1,500 because the preceding character is a comma. A rule stating a 500 square metre minimum lot size grounded against a chapter stating 1,500 square metres.",
@@ -118,6 +143,33 @@
       "mitigated": false,
       "how": "Not mitigated. The 14-character window was chosen because every unit in the measured queue sat immediately after its number (1.8m, 600mm, 11.5 metres, 50%). Widening it pulls in the NEXT sentence's unit and marks ordinary prose as controls, destroying the triage the banner exists to provide -- 50 rows needing eyes would become hundreds again.",
       "repro": "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts::looksLikeAControl covers the measured shapes; a separated-unit phrasing is unpinned by construction."
+    },
+    {
+      "scenario": "Narrowing a live metric to make CI green. The DQ ratchet went red with DQ-77 declared fixed and the probe reading 1; the cheapest way to clear that is to make the regex see less.",
+      "what_happens": "The metric stops counting real unit splits and the row stays 'fixed' forever -- the exact shape of the DQ-76 failure this ledger already recorded, where a repair reported success at 0 while 103 rows still held the defect.",
+      "test": "tests/test_repair_matches_probe.py::test_a_real_unit_split_is_still_caught -- 9 signatures taken verbatim from the DQ-77 row's own sampled evidence ('900 m m of a side boundary', '150 m m diameter sewer main', '7 a m to 7 p m', '450 m 2', '12 m 3', '20 t h century') must still match the narrowed predicate. Paired with test_a_scramble_across_newlines_is_not_a_unit_split, which asserts the confusable negative: the same characters on separate lines must NOT match.",
+      "measured": "Before narrowing, across all rows including superseded pre-repair ones: old class 125, new class 118, 7 dropped, every one of them map scramble. Served set: 1 -> 0.",
+      "repro": "python -m pytest tests/test_repair_matches_probe.py -q  # 38 tests: 9 real signatures must still match, 4 scramble shapes must not, and the transform must still clear every signature the probe counts.",
+      "mitigated": true,
+      "how": "Measured before changing: across the whole table including superseded pre-repair rows, the old whitespace class matches 125 rows and space-or-tab matches 118. Every one of the 7 dropped was opened and read -- six city_of_sydney Section 2 precinct pages and canterbury_bankstown id 122374, all visibly map scramble, no genuine unit split among them. The narrowing is then pinned in both directions by test_a_real_unit_split_is_still_caught (9 signatures from the row's own sampled evidence) and test_a_scramble_across_newlines_is_not_a_unit_split (the confusable negative)."
+    },
+    {
+      "scenario": "The probe and the repair drift apart when only one is narrowed.",
+      "what_happens": "Narrower repair than probe = the row can never reach zero. Wider repair than probe = the repair edits served text the metric is not watching. Both already happened once on DQ-76.",
+      "test": "tests/test_repair_matches_probe.py::test_repair_predicate_EQUALS_the_probe_predicate (pre-existing, asserts equality not containment) plus the new test_the_repair_transform_still_repairs_what_the_probe_still_counts, which runs the transform on all 9 real signatures and re-checks the predicate against the output, and asserts the pass's non-whitespace invariant holds.",
+      "measured": "38 tests pass in tests/test_repair_matches_probe.py; full suite 5,850 passed / 2 skipped.",
+      "repro": "python -m pytest tests/test_repair_matches_probe.py::test_repair_predicate_EQUALS_the_probe_predicate -q  # fails the moment the probe and repair predicates differ by a single character.",
+      "mitigated": true,
+      "how": "The predicates were narrowed in the same commit and test_repair_predicate_EQUALS_the_probe_predicate asserts string equality, not containment -- it fails if either side moves alone. test_the_repair_transform_still_repairs_what_the_probe_still_counts additionally runs repair_units over every signature the probe still counts, re-checks the predicate against the output, and asserts the pass's non-whitespace invariant, so a predicate the transform can no longer clear is also a failure."
+    },
+    {
+      "scenario": "A check goes green because its population was DRAINED, not because the defect was fixed. DQ-97 counted pending dcp_review_queue rows; the 2026-09-09 backlog clearance approved 8,875 rows and the count fell 574 -> 0.",
+      "what_happens": "The ratchet reports 'declared open but the check PASSES', an operator marks the row fixed, and the defect is now in the served set where nobody is counting it. 578 rows were committed live that night.",
+      "test": "Repointed at is_current AND v2_is_actionable, where it reads 530 and matches declared=open. Verified the direction of the failure by measuring the 578 newly-served rows with the stronger DQ-78 signature: 0 at single-letter fraction >=0.20, 2 in 0.10-0.20 (ids 122374, 122379), 2 with private-use glyphs (122970, 122386); only 122374 is new -- 122379 replaced a byte-identical predecessor.",
+      "measured": "dq_probe_live.py --id DQ-97 = 530 (was 0 against the drained queue). scripts/dq_check.py: 0 red, PASSED.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-97  # 530 against the served set. Against the old population, SELECT count(*) FROM dcp_review_queue WHERE status='pending' AND new_text ~ '([[:space:]][^[:space:]]{1,2}){6,}' now returns 0 -- run both to see the drain.",
+      "mitigated": true,
+      "how": "The probe now counts is_current AND v2_is_actionable, a population no approval action can drain: clearing it requires repairing or removing served rows. The ratchet is consistent again (declared open, check red at 530) instead of reporting a false all-clear, and the reason the old population was wrong is written into the probe's own comment block and both ledger files, so the next person to touch it sees why."
     }
   ],
   "post_merge": {

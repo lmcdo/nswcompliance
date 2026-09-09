@@ -910,12 +910,34 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # to '900mm' deletes a space between characters, which is safe, but
         # joining 'F o o d A c t' to 'Food Act' requires deciding where the word
         # boundaries are. Those are different risks and want different review.
+        #
+        # HORIZONTAL whitespace only (space or tab), never the regex class
+        # \s -- narrowed 2026-09-10 after the ratchet went red with
+        # declared=fixed and a count of 1. That one row was NOT a recurrence:
+        # id 122374 (canterbury_bankstown riverwood-estate, committed to the
+        # served set on 2026-09-09) is DQ-78's map scramble, and the '[ap] m'
+        # signature fired on a '2' / 'a' / 'm' sitting on three CONSECUTIVE
+        # LINES -- a fragment of '...boundary' interleaved off a map figure.
+        # \s spans newlines, so any one-character-per-line scramble region can
+        # manufacture a hit for a signature written for same-line prose
+        # ('900 m m', '7 p m').
+        #
+        # MEASURED BEFORE NARROWING, not assumed, because a metric loosened to
+        # go green is the exact failure this ledger exists to catch. Across the
+        # whole table (superseded pre-repair rows included, so the population
+        # the 2026-08-15 repair actually cleared): the old class matches 125
+        # rows, space-or-tab matches 118, and all 7 dropped are visibly map
+        # scramble -- six city_of_sydney Section 2 precinct pages plus 122374.
+        # Zero genuine unit splits are lost. This implements the separation the
+        # paragraph above already declares: DQ-77 owns the unit split, DQ-78
+        # owns the map scramble, and a metric that mixes them can be driven to
+        # zero by neither remedy.
         "SELECT count(*) FROM regulatory_provisions "
         "WHERE is_current AND v2_is_actionable AND ("
-        r"provision_text ~ '[0-9]\s+m\s+m\M' "
-        r"OR provision_text ~ '[0-9]\s+m\s+[23]\M' "
-        r"OR provision_text ~ '[0-9]\s+[ap]\s+m\M' "
-        r"OR provision_text ~ '[0-9]\s+t\s+h\M')",
+        r"provision_text ~ '[0-9][ \t]+m[ \t]+m\M' "
+        r"OR provision_text ~ '[0-9][ \t]+m[ \t]+[23]\M' "
+        r"OR provision_text ~ '[0-9][ \t]+[ap][ \t]+m\M' "
+        r"OR provision_text ~ '[0-9][ \t]+t[ \t]+h\M')",
         (),
         "Each row shows a measurement whose unit has been split by the PDF "
         "extractor, so '900mm' reaches the reader as '900 m m' and '7pm' as "
@@ -1701,7 +1723,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "message), not attempted here.",
     ),
     "DQ-97": (
-        "Pending review-queue rows carrying the margin-artifact SYMPTOM "
+        "SERVED provisions carrying the margin-artifact SYMPTOM "
         "(coarse SQL proxy for the Python has_margin_artifact scan)",
         # See ~/.claude/plans/ce-margin-artifact-census-2026-09-06.md for the
         # full per-chapter census this count summarises.
@@ -1738,11 +1760,23 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         # not true whole-token length) and over-counts by ~10% against it
         # (574 vs. the Python census's 519 on 2026-09-06) -- a triage upper
         # bound, not the per-row-verified count.
-        "SELECT count(*) FROM dcp_review_queue "
-        "WHERE status = 'pending' "
-        r"AND new_text ~ '([[:space:]][^[:space:]]{1,2}){6,}'",
+        # POPULATION CHANGED 2026-09-10, from pending queue rows to SERVED
+        # provisions. The old query counted dcp_review_queue WHERE status =
+        # 'pending'. On 2026-09-09 the review backlog was cleared -- 8,875 rows
+        # approved in one night -- and this count fell from 574 to 0, so the
+        # ratchet read "declared open but the check PASSES: it appears to be
+        # fixed". Nothing was fixed. The rows were approved out of the queue and
+        # 578 of them were committed into the served set, which is where the
+        # symptom now sits: the check was watching a population an operator can
+        # drain without repairing anything, and it went green by the defect
+        # moving downstream. Exactly feedback-a-check-can-watch-the-field-the-
+        # fix-abandoned, and feedback-audit-rows-are-not-live-claims: a queue is
+        # a workflow state, exposure is what a reader can actually see.
+        "SELECT count(*) FROM regulatory_provisions "
+        "WHERE is_current AND v2_is_actionable "
+        r"AND provision_text ~ '([[:space:]][^[:space:]]{1,2}){6,}'",
         (),
-        "A pending row matches the coarse short-token-run symptom. Per the "
+        "A SERVED provision matches the coarse short-token-run symptom. Per the "
         "2026-09-06 census this is mostly ONE real, unfixed cause (woollahra's "
         "reversed-order repeal stamp) plus a smaller distinct cause "
         "(canterbury_bankstown's map-label interleave) plus a substantial "
