@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Fixes a real, live, recurring production crash: Railway's dcp-extract cron OOM-killed (exit -9) three separate nights (2026-09-08/09) while opening a 139MB canterbury_bankstown PDF with pdfplumber, and because there was no size check before that call, the OS kill took the WHOLE process down mid-batch -- every other queued chapter (46 of 47 that night) silently never got extracted, not just the oversized one. Not Critical: no schema/query change, purely an early-return guard using a value already computed one line above. Not Minor: this was actively breaking a real production pipeline nightly.",
-  "commit_hash": "PENDING",
+  "commit_hash": "5dcbb5f7",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_extract_changed.py"
@@ -21,8 +21,8 @@
   },
   "functions": [
     {
-      "name": "extract_chapter (new guard block only; function itself pre-existing)",
-      "file_line": "scripts/dcp_extract_changed.py:2919-2929 (guard), :2883 (OVERSIZED_PDF_SKIP_BYTES constant, module scope)",
+      "name": "extract_chapter",
+      "file_line": "scripts/dcp_extract_changed.py:2904 (function def; guard block added at 2934-2944, OVERSIZED_PDF_SKIP_BYTES constant at module scope just above the def)",
       "input": "Same as before -- chapter dict, s3 client, conn, dry_run, review. New: reads pdf_path.stat().st_size (already computed for the existing log line) once more for the comparison.",
       "output": "Unchanged return shape: tuple[bool, dict|None]. New early-exit path returns (False, None) -- identical shape to the pre-existing R2-download-failure early exit 3 lines above it.",
       "if_none": "N/A -- no new None-producing input; the guard is a size comparison on a value that always exists once the download succeeds."
