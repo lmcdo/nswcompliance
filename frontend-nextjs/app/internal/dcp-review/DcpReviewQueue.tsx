@@ -54,7 +54,11 @@ function missingNumbers(detail: string | null): string[] {
 // only SHOWS the surrounding text — it makes no judgement about whether the
 // number is a real control, which is exactly what the human is here for.
 function occurrencesOf(num: string, text: string | null): string[] {
-  if (!text || !num) return [];
+  // new_text arrives from the API as untyped JSON: a non-string (a number, an
+  // object) would throw on .indexOf/.slice and blank the whole review panel,
+  // which is the one screen the human gate depends on. Guard the type, don't
+  // just null-check it.
+  if (typeof text !== 'string' || typeof num !== 'string' || !text || !num) return [];
   const out: string[] = [];
   let from = 0;
   while (out.length < 4) {
