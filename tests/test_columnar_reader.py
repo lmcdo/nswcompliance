@@ -118,6 +118,29 @@ def test_columnar_staggered_rows_still_grouped_by_column():
     )
 
 
+def test_columnar_narrow_gap_heading_stays_full_width():
+    """Sol cross-review (HIGH 0.99, 2026-09-09): a full-width heading like
+    '5.2.4 Local Infrastructure' can have words on BOTH sides of the gutter
+    with ordinary word-spacing between them, no single word individually
+    straddling cx. The word-straddle test alone misses this and would split
+    it into the left/right buffers, corrupting reading order -- this is the
+    ONLY full-width test the pre-fix version had (the `gap_min` check) and
+    it must survive this fix, not just the new staggered-row behaviour."""
+    ws = two_col_words()
+    cx = find_gutter(ws, 600)
+    assert cx is not None
+    # Two words straddling NEITHER cx-5..cx+5 individually, but with a
+    # narrow (~6px) gap between them -- well under gap_min (30 for W=600).
+    ws.append(word("LeftHead", cx - 20, cx - 8, 300))
+    ws.append(word("RightHead", cx + 2, cx + 20, 300))
+    out = columnar(FakePage(ws, width=600))
+    assert out is not None
+    lines = out.split("\n")
+    assert "LeftHead RightHead" in lines, (
+        f"narrow-gap heading must be emitted as one full-width line, got: {lines}"
+    )
+
+
 def test_columnar_straddle_still_breaks_a_staggered_run():
     """A genuine full-width line (straddles the gutter) must still end the
     two-column run even when the run's own rows never had same-band

@@ -749,13 +749,24 @@ def _columnar_text(page: Any) -> str | None:
     line-by-line in raw Y order, not grouped by column at all. A single-sided
     line is now accumulated into whichever side it falls on for the current
     run; a run only breaks (flush) on a line that genuinely STRADDLES the
-    gutter — real full-width text, not just a momentarily-empty other side."""
+    gutter — real full-width text, not just a momentarily-empty other side.
+
+    A line counts as straddling either when one word's own span crosses the
+    gutter, OR when both sides hold words but the gap between the rightmost
+    left word and leftmost right word is too narrow to be a real column
+    gutter (e.g. "5.2.4 Local Infrastructure" — separate words on both sides
+    of cx, ordinary word-spacing between them, no individual word touching
+    cx). Sol cross-review (HIGH 0.99, 2026-09-09) caught that this second
+    case — the ONLY full-width test the pre-fix version had — was dropped
+    entirely in the first version of this fix, which would have silently
+    reordered every such heading into the column buffers."""
     from collections import defaultdict
     words = page.extract_words() or []
     W = float(page.width or 0)
     cx = _find_gutter(words, W)
     if cx is None:
         return None
+    gap_min = max(30.0, W * 0.05)
     lines: dict[int, list[dict]] = defaultdict(list)
     for w in words:
         lines[round(w["top"] / 3.0)].append(w)
@@ -776,8 +787,12 @@ def _columnar_text(page: Any) -> str | None:
     for _, lw in sorted(lines.items()):
         left = [w for w in lw if (w["x0"] + w["x1"]) / 2 < cx]
         right = [w for w in lw if (w["x0"] + w["x1"]) / 2 >= cx]
-        straddle = any(w["x0"] < cx - 5 and w["x1"] > cx + 5 for w in lw)
-        if straddle:
+        word_straddle = any(w["x0"] < cx - 5 and w["x1"] > cx + 5 for w in lw)
+        narrow_gap = False
+        if left and right and not word_straddle:
+            gap = min(w["x0"] for w in right) - max(w["x1"] for w in left)
+            narrow_gap = gap < gap_min
+        if word_straddle or narrow_gap:
             # Genuine full-width text (a heading, a table caption) — end
             # whatever two-column run was in progress, emit left-then-right,
             # then this line in its own Y position.

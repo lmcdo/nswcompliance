@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Real logic fix in the shared two-column reader (_columnar_text) used by four councils' DCP extraction (GEOMETRIC_COLUMN_COUNCILS: ashfield, marrickville, city_of_sydney, hornsby). Not Critical: this commit does not write to the database -- it only changes a pure text function; the actual re-extraction/approval into dcp_review_queue is a separate, later, human-gated step through the existing --review workflow. Not Minor: it changes extracted text content for real production PDFs across four councils, not wording/comments/docs.",
-  "commit_hash": "6c531d59",
+  "commit_hash": "d82195e5",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_columnar_reader.py"
@@ -32,11 +32,11 @@
   "queries": [],
   "break_it": [
     {
-      "scenario": "A page has a genuine full-width heading positioned entirely on one side of the gutter (e.g. right-aligned), never straddling it -- could be wrongly folded into the two-column block instead of staying in reading position.",
-      "what_happens": "The heading would be interleaved into the column body text instead of standing alone.",
-      "mitigated": false,
-      "how": "Not fully mitigated -- the straddle test (a word whose x0/x1 span both sides of the gutter) is the only break signal; a heading that never straddles is indistinguishable from column body text by this algorithm. Checked against real pages from all four affected councils (ashfield, marrickville, hornsby, city_of_sydney) plus the existing + 2 new unit tests -- no case in the real data sampled exhibited this, but it isn't structurally impossible on a page not sampled.",
-      "repro": "Construct a FakePage where a full-width heading's words all fall on one side of cx (never straddling) and assert it stays out of the left/right blocks -- not currently tested; flagged as a known residual, not silently hidden."
+      "scenario": "A full-width heading has words on BOTH sides of the gutter with ordinary word-spacing but no single word individually straddling it (e.g. '5.2.4 Local Infrastructure') -- the only full-width test the pre-fix version had (a narrow-gap check), dropped entirely in the first version of this fix.",
+      "what_happens": "The heading would be split into the left/right column buffers and emitted out of sentence order with surrounding column content, silently corrupting extracted text.",
+      "mitigated": true,
+      "how": "CAUGHT by Sol cross-review (HIGH 0.99) on push, not by this session's own testing -- restored the narrow-gap full-width test (gap between rightmost-left-word and leftmost-right-word < gap_min) alongside the word-straddle test. New regression test test_columnar_narrow_gap_heading_stays_full_width pins this exact shape. Re-verified against the real ashfield pages (4, 42, 59) after the correction -- unchanged, coherent. Dry-run section count on the target chapter shifted 744 -> 695 after this correction -- expected, not a regression: some of the 744 were spurious extra splits from headings the first (incomplete) fix still mis-treated as column content; raw count was never the correctness signal here, real-page text comparison was.",
+      "repro": "tests/test_columnar_reader.py::test_columnar_narrow_gap_heading_stays_full_width"
     },
     {
       "scenario": "Existing behaviour that DID depend on the old same-band requirement (a page where treating single-sided lines as breaks was coincidentally correct) regresses.",
