@@ -161,3 +161,131 @@ def test_columnar_straddle_still_breaks_a_staggered_run():
     # L0 (top=100) was well before the straddle; L19 (top=290) was well after.
     assert "L0" in before and "L0" not in after
     assert "L19" in after and "L19" not in before
+
+
+# ===========================================================================
+# Hypothesis property-based invariants
+#
+# Added 2026-09-09, same session as the DQ-92 fix above: every hand-picked
+# test in this file was written AFTER a specific real-PDF failure was found
+# (mine, or one of the two Sol cross-review caught on push). Hand-picked
+# cases only cover shapes someone already thought of. These generate random
+# word geometries -- word counts, stagger amounts, gutter position, page
+# width -- searching for a shape nobody picked by hand, same discipline as
+# tests/test_flood_truth.py's existing Hypothesis suite (that file's
+# established pattern: try/except HAS_HYPOTHESIS gate, @given + @settings,
+# one INVARIANT per test, reused verbatim below rather than inventing a new
+# style for this file).
+# ===========================================================================
+
+try:
+    from hypothesis import given, strategies as st, settings, assume
+    HAS_HYPOTHESIS = True
+except ImportError:
+    HAS_HYPOTHESIS = False
+
+if HAS_HYPOTHESIS:
+
+    _TOKEN_RE = __import__("re").compile(r"\S+")
+
+    def _tokens(text: str) -> list[str]:
+        """Exact-token split, so 'R1' checks never accidentally match inside
+        'R10'..'R19' via substring search -- .count()/in on the raw string
+        would silently pass a real bug (or, as first written, fail on a
+        phantom one). Word text here never contains internal whitespace."""
+        return _TOKEN_RE.findall(text)
+
+    @st.composite
+    def two_column_page(draw, min_words=32, max_words=48):
+        """A random valid two-column word layout: n_left words on the left,
+        n_right on the right, each row's top position independently jittered
+        (mimicking real PDFs, where the two columns' lines are NOT
+        vertically synced -- the exact shape that broke the pre-fix
+        version). No straddling line. Left/right x-ranges are pinned to the
+        outer 30% of the page on each side, well clear of the 40-60% band
+        _find_gutter scans -- guarantees a real gutter is always detected,
+        so tests don't spend their budget on unrepresentative layouts where
+        detection itself is the coin flip rather than the grouping logic
+        under test. min_words defaults to 32, not lower: _find_gutter
+        hard-requires len(words) >= 30 (scripts/dcp_extract_changed.py:714)
+        before it even looks for a gutter -- a lower floor here just makes
+        Hypothesis discard nearly every case as "no gutter", a
+        test-construction bug rather than a code finding (this file's own
+        FailedHealthCheck history, twice, before landing on this floor).
+        Returns (words, page_width, n_left, n_right)."""
+        page_width = draw(st.floats(min_value=400, max_value=1000))
+        n_left = draw(st.integers(min_value=max(1, min_words // 2), max_value=max_words // 2))
+        n_right = draw(st.integers(min_value=max(1, min_words // 2), max_value=max_words // 2))
+        left_x0 = draw(st.floats(min_value=page_width * 0.02, max_value=page_width * 0.15))
+        left_x1 = draw(st.floats(min_value=left_x0 + 5, max_value=page_width * 0.30))
+        right_x0 = draw(st.floats(min_value=page_width * 0.70, max_value=page_width * 0.85))
+        right_x1 = draw(st.floats(min_value=right_x0 + 5, max_value=page_width * 0.98))
+        words = []
+        top = 100.0
+        for i in range(n_left):
+            jitter = draw(st.floats(min_value=0, max_value=9))
+            words.append(word(f"L{i}", left_x0, left_x1, top + jitter))
+            top += draw(st.floats(min_value=8, max_value=14))
+        top = 100.0
+        for i in range(n_right):
+            jitter = draw(st.floats(min_value=0, max_value=9))
+            words.append(word(f"R{i}", right_x0, right_x1, top + jitter))
+            top += draw(st.floats(min_value=8, max_value=14))
+        return words, page_width, n_left, n_right
+
+    @given(data=two_column_page())
+    @settings(max_examples=300)
+    def test_hyp_no_word_lost_or_duplicated(data):
+        """INVARIANT: every word that goes in comes out exactly once,
+        regardless of stagger, word count, or gutter position -- whether
+        columnar() groups by column or (correctly, per test above) falls
+        back to plain extraction, the STRING CONTENT must be conserved."""
+        words, width, n_left, n_right = data
+        out = columnar(FakePage(words, width=width))
+        assume(out is not None)  # only a real two-column page is in scope here
+        toks = _tokens(out)
+        for i in range(n_left):
+            assert toks.count(f"L{i}") == 1, f"L{i} lost or duplicated: {out!r}"
+        for i in range(n_right):
+            assert toks.count(f"R{i}") == 1, f"R{i} lost or duplicated: {out!r}"
+
+    @given(data=two_column_page())
+    @settings(max_examples=300)
+    def test_hyp_left_column_precedes_right_column(data):
+        """INVARIANT: the exact bug this session found and fixed, generalised.
+        With no straddling line anywhere on the page, every left-column word
+        must appear before every right-column word in the output -- for ANY
+        stagger amount, word count, or gutter position, not just the one
+        hand-picked shape in test_columnar_staggered_rows_still_grouped_by_column."""
+        words, width, n_left, n_right = data
+        out = columnar(FakePage(words, width=width))
+        assume(out is not None)
+        toks = _tokens(out)
+        last_left = max(toks.index(f"L{i}") for i in range(n_left))
+        first_right = min(toks.index(f"R{i}") for i in range(n_right))
+        assert last_left < first_right, (
+            f"a right-column word appeared before the left column finished "
+            f"(n_left={n_left}, n_right={n_right}, width={width}): {out!r}"
+        )
+
+    @given(
+        data=two_column_page(),
+        heading_gap=st.floats(min_value=0, max_value=200),
+    )
+    @settings(max_examples=200)
+    def test_hyp_straddling_heading_always_intact(data, heading_gap):
+        """INVARIANT: Sol's finding, generalised. A line whose words span
+        both sides of the gutter (individually straddling) must always
+        appear as one intact, unfragmented line -- for any heading
+        position, not just the one hand-picked mid-run insertion in
+        test_columnar_straddle_still_breaks_a_staggered_run."""
+        words, width, n_left, n_right = data
+        cx = find_gutter(words, width)
+        assume(cx is not None)  # construction pins this true nearly always
+        heading_top = 100 + heading_gap
+        words = list(words) + [word("HEADSTRADDLE", cx - 15, cx + 15, heading_top)]
+        out = columnar(FakePage(words, width=width))
+        assume(out is not None)
+        assert "HEADSTRADDLE" in _tokens(out), (
+            f"straddling heading was fragmented instead of staying intact: {out!r}"
+        )
