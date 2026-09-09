@@ -176,3 +176,100 @@ def test_extraction_still_returns_the_same_shape(tmp_path):
     for s in sections:
         assert "content" in s and "section_number" in s
         assert isinstance(s.get("tables", []), list)
+
+
+# ---------------------------------------------------------------------------
+# One bad chapter must not take the batch with it.
+#
+# The 30MB byte-size guard existed to stop that, and it was the wrong signal:
+# measured after the page-release fix, ku_ring_gai/section-b-part-14e is 35MB
+# and peaks at 726 MB, while canterbury_bankstown/chapter-7-6 is 139MB and
+# peaks at 440 MB. Size does not predict memory. The guard blocked seven
+# chapters that extract fine and would have let the heaviest one through.
+#
+# It is replaced by running the PDF work in its own process, because a SIGKILL
+# cannot be caught in-process -- no try/except reaches it -- so the only way
+# for the batch to survive is for the chapter to be somewhere else.
+# ---------------------------------------------------------------------------
+
+GOOD = {"ok": True, "preflight": {}, "sections": [{"section_number": "1"}],
+        "page_count": 3, "ranged": False}
+
+
+def test_a_child_killed_by_a_signal_is_a_chapter_failure_not_a_batch_failure():
+    """The case the whole change exists for, and the message matters.
+
+    exitcode -9 is SIGKILL, which is what the OOM killer sends and what the
+    production logs recorded three runs running. The operator reading this
+    alert has to know the other 46 chapters still ran, or they will go looking
+    for a night's work that is not actually lost.
+    """
+    m = _extractor_module()
+    payload, err = m.interpret_isolated_result(None, -9)
+    assert payload is None
+    assert "killed by signal 9" in err
+    assert "rest of the batch is unaffected" in err
+
+
+def test_a_timed_out_child_is_reported_with_its_exit_code():
+    m = _extractor_module()
+    payload, err = m.interpret_isolated_result(None, 1)
+    assert payload is None
+    assert "no result within" in err and "exit code 1" in err
+
+
+def test_a_child_that_exits_cleanly_with_no_payload_is_called_a_bug():
+    """Confusable negative: exit 0 with nothing returned is NOT a chapter problem.
+
+    Reporting it as one would send someone to look at the council PDF for a
+    fault in our own plumbing. It is separated deliberately.
+    """
+    m = _extractor_module()
+    payload, err = m.interpret_isolated_result(None, 0)
+    assert payload is None
+    assert "bug, not a chapter problem" in err
+
+
+def test_an_error_from_inside_the_child_is_passed_through():
+    m = _extractor_module()
+    payload, err = m.interpret_isolated_result(
+        {"ok": False, "error": "PdfReadError: xref damaged"}, 0)
+    assert payload is None
+    assert "xref damaged" in err
+
+
+@pytest.mark.parametrize("missing", ["preflight", "sections", "page_count", "ranged"])
+def test_an_incomplete_payload_fails_instead_of_extracting_half_a_chapter(missing):
+    """Silent-partial is the worst outcome, so it is refused.
+
+    If a key went missing and the caller carried on, the chapter would commit
+    with whatever survived -- fewer sections than the source has, looking like
+    a clean run. Failing loudly leaves the old content live, which is the
+    correct direction.
+    """
+    m = _extractor_module()
+    payload = {k: v for k, v in GOOD.items() if k != missing}
+    got, err = m.interpret_isolated_result(payload, 0)
+    assert got is None
+    assert missing in err
+
+
+def test_a_good_payload_passes_through_unchanged():
+    m = _extractor_module()
+    got, err = m.interpret_isolated_result(dict(GOOD), 0)
+    assert err is None
+    assert got["sections"] == GOOD["sections"]
+    assert got["page_count"] == 3
+
+
+def test_the_size_guard_is_gone_from_the_extraction_path():
+    """The seven blocked chapters must actually be unblocked.
+
+    Removing a constant is easy to do halfway -- leaving the definition and
+    the skip in place while believing it is gone. This asserts no code path
+    still compares a PDF's byte size against it.
+    """
+    src = (ROOT / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
+    assert "pdf_bytes > OVERSIZED_PDF_SKIP_BYTES" not in src, (
+        "the byte-size skip is still in the extraction path"
+    )
