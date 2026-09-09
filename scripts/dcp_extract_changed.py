@@ -2979,6 +2979,14 @@ def extract_chapter(
                 # shared domain vocabulary (chapter/registry/suspect), not a
                 # reusable function for this specific read-then-conditionally
                 # -write.
+                # prior-art-checked: reuse not viable -- this is a third,
+                # incremental hardening of the SAME guard block above on this
+                # SAME branch (FOR UPDATE row-locking, added to close a race
+                # Sol found in the immediately-prior is_active fix), not a new
+                # transaction/extraction capability; the sepp_full_text_
+                # extraction/* matches surfaced by the prior-art scan are an
+                # unrelated one-off import pipeline, not something this
+                # ongoing DCP chapter registry guard could reuse.
                 # Sol MEDIUM 0.94: a chapter can be deactivated (is_active=FALSE)
                 # between batch selection and this code running -- without the
                 # filter, this block would still alert about and mutate an
@@ -2986,18 +2994,34 @@ def extract_chapter(
                 # the read and the write are scoped to is_active=TRUE; if the
                 # row isn't active any more, skip the alert AND the write
                 # entirely rather than acting on stale membership.
+                # Sol MEDIUM 0.98 (next push): the is_active check above still
+                # left a time-of-check/time-of-use gap -- deactivation landing
+                # between the SELECT and the Telegram send would still fire the
+                # alert (already decided), even though the later UPDATE would
+                # then correctly match zero rows. FOR UPDATE closes it: it row-
+                # locks this one chapter from the SELECT through conn.commit(),
+                # so a concurrent `is_active = FALSE` write on the SAME row
+                # blocks until this transaction ends -- no other transaction
+                # can flip this row's is_active while we're deciding on it.
+                # Deliberately still send-then-write, not write-then-send (a
+                # single atomic "UPDATE ... RETURNING" was considered and
+                # rejected: it would mark the row alerted before the Telegram
+                # call succeeds, silently swallowing a failed send instead of
+                # retrying it next run -- the exact failure mode the EXISTING
+                # suspect-alert block's own comment above warns against).
                 skip_key = f"{chapter.get('content_hash') or 'nohash'}::oversized_pdf({pdf_bytes})"
                 try:
                     _c = conn.cursor()
                     _c.execute(
                         "SELECT last_suspect_alert_key FROM dcp_chapter_registry "
-                        "WHERE id = %s AND is_active = TRUE",
+                        "WHERE id = %s AND is_active = TRUE FOR UPDATE",
                         (chapter_id,),
                     )
                     row = _c.fetchone()
                     if row is None:
                         print(f"    [info] {council}/{chapter_key} no longer active — "
                               f"skip-status not recorded")
+                        conn.rollback()
                     else:
                         if row[0] != skip_key:
                             try:
@@ -3016,10 +3040,11 @@ def extract_chapter(
                             "WHERE id = %s AND is_active = TRUE",
                             (skip_key, chapter_id),
                         )
-                        conn.commit()
+                        conn.commit()  # releases the FOR UPDATE row lock
                     _c.close()
                 except Exception as exc:
                     print(f"    [warn] could not record oversized-skip status: {exc}")
+                    conn.rollback()
             return False, None
 
         # 2. Extract sections

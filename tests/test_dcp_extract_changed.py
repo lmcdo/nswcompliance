@@ -129,7 +129,7 @@ def test_oversized_pdf_alerts_and_records_status_when_not_previously_alerted(mon
     assert "canterbury_bankstown" in sent[0]
     assert "chapter-7-6-belmore-and-lakemba" in sent[0]
 
-    update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
+    update_calls = [c for c in cur.execute.call_args_list if c.args[0].strip().upper().startswith("UPDATE ")]
     assert len(update_calls) == 1
     params = update_calls[0].args[1]
     assert params[0] == f"abc123::oversized_pdf({dx.OVERSIZED_PDF_SKIP_BYTES + 1})"
@@ -165,7 +165,7 @@ def test_oversized_pdf_does_not_realert_on_the_same_unchanged_file(monkeypatch):
 
     assert (ok, review_data) == (False, None)
     assert sent == []  # no duplicate alert
-    update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
+    update_calls = [c for c in cur.execute.call_args_list if c.args[0].strip().upper().startswith("UPDATE ")]
     assert len(update_calls) == 1  # status row still refreshed
 
 
@@ -195,9 +195,35 @@ def test_oversized_pdf_skips_alert_and_write_when_chapter_no_longer_active(monke
 
     assert (ok, review_data) == (False, None)
     assert sent == []  # no alert for an inactive chapter
-    update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
+    update_calls = [c for c in cur.execute.call_args_list if c.args[0].strip().upper().startswith("UPDATE ")]
     assert update_calls == []  # no write for an inactive chapter
     conn.commit.assert_not_called()
+    conn.rollback.assert_called_once()  # releases any lock, resets transaction state
+
+
+def test_oversized_pdf_select_locks_the_row_for_update(monkeypatch):
+    """Sol MEDIUM 0.98: the read must row-lock (FOR UPDATE) so no other
+    transaction can flip is_active on THIS row between the read and the
+    write -- without the lock, a deactivation landing in that window would
+    still let the (already-decided) Telegram alert fire for a chapter that's
+    no longer served."""
+
+    s3 = MagicMock()
+    s3.download_file.side_effect = _fake_download_to_size(dx.OVERSIZED_PDF_SKIP_BYTES + 1)
+
+    cur = MagicMock()
+    cur.fetchone.return_value = (None,)
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+    monkeypatch.setitem(sys.modules, "run_monitors", MagicMock())
+
+    dx.extract_chapter(_chapter(content_hash="abc123"), s3, conn, dry_run=False, review=False)
+
+    select_calls = [c for c in cur.execute.call_args_list if c.args[0].strip().upper().startswith("SELECT ")]
+    assert len(select_calls) == 1
+    sql = select_calls[0].args[0].upper()
+    assert "FOR UPDATE" in sql
+    assert "IS_ACTIVE = TRUE" in sql
 
 
 def test_pdf_under_threshold_is_not_skipped(monkeypatch):
