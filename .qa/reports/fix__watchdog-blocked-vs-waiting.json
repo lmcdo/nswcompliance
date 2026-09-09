@@ -1,11 +1,14 @@
 {
   "tier": "standard",
   "justification": "Changes an operator alert, not served data. No provision, control or report content moves. The failure mode is an alert that misleads rather than wrong data reaching a reader, so standard rather than critical.",
-  "commit_hash": "4fe846d0",
+  "commit_hash": "3a140080",
   "files": [
+    ".github/workflows/gates.yml",
+    "railway.dcp-monitor.toml",
+    "scripts/check_railway_cron_drift.py",
     "scripts/dcp_watchdog.py",
     "tests/test_dcp_watchdog_blocked.py",
-    "railway.dcp-monitor.toml"
+    "tests/test_railway_cron_drift.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_chapter_registry.url_content_length, already populated by the dcp-monitor HEAD check and already read for exactly this purpose by scripts/dq_probe_oversized_pdf_oom_risk.py. No new query, no new data source, no R2 call. The threshold is the same 30MB the extractor's own guard uses.",
@@ -14,11 +17,11 @@
     "prior_art": "Searched for an existing blocked/skipped concept before adding one: dcp_extract_changed.py records the skip to last_suspect_alert_key/_at and sends its own per-file Telegram alert, but nothing feeds that back into the watchdog's stuck list -- which is why the same chapters read as pending work. dq_probe_oversized_pdf_oom_risk.py already counts them but is an advisory probe, not wired to the alert."
   },
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_dcp_watchdog_blocked.py -v",
+    "command": "python -m pytest tests/test_dcp_watchdog_blocked.py tests/test_railway_cron_drift.py -v",
     "external_authority": "Not self-referential: the threshold assertion parses OVERSIZED_PDF_SKIP_BYTES out of scripts/dcp_extract_changed.py -- a DIFFERENT module, the one that actually performs the skip -- and the size cases are the real byte counts of real chapters taken from production (139,006,750 canterbury_bankstown/chapter-7-6, the row that crashed the job with exit -9; 117,829,367 chapter-6-2; 32,888,474 chapter-7-5; 20,607,908 ashfield/chapter-d, which extracted fine). The watchdog is checked against the extractor's behaviour and against measured production data, not against itself.",
     "fails_when": "The watchdog's threshold stops matching the extractor's OVERSIZED_PDF_SKIP_BYTES in either direction; is_oversized starts treating an unmeasured NULL size as blocked; a real chapter's measured size lands on the wrong side of the boundary; or the blocked line reverts to reading like ordinary pending work.",
     "observed_red": "Forced, not assumed. Editing OVERSIZED_PDF_SKIP_BYTES in scripts/dcp_extract_changed.py to 50MB makes test_the_watchdog_threshold_equals_the_extractors fail; asserting the pre-change label makes test_the_blocked_line_says_the_action_will_not_work fail on the 'awaiting extraction' string. The rounding assertion caught a real error on first run -- 139,006,750 bytes renders as 133MB in MiB, not the 132MB first written -- which is a check failing on something true before it was made to pass.",
-    "measured": "10 tests pass. Full suite 5,096 passed, 2 skipped."
+    "measured": "25 tests pass (10 watchdog + 15 drift). Full suite 5,112 passed, 2 skipped. The drift check run live against Railway reads: 7 services match their config file, 1 intentionally off."
   },
   "functions": [
     {
@@ -91,9 +94,9 @@
     {
       "scenario": "railway.dcp-monitor.toml is edited to fortnightly and everyone assumes the schedule changed.",
       "what_happens": "Nothing changes. Railway only applies config-as-code where no dashboard value is set, and on 2026-09-10 six of eight services were running a schedule different from their own file -- dcp-extract weekly when its file said daily, dcp-extract-all weekly when its file said quarterly, and four with no cron at all.",
-      "mitigated": false,
-      "how": "Not mitigated in code. The live values for dcp-extract (daily), dcp-extract-all (quarterly) and dcp-monitor (fortnightly) were set directly through the Railway API and verified by re-reading them, and the file now carries a comment saying editing it is not sufficient on its own. A real fix is a check that compares every railway toml against the live schedule and fails on drift; it needs a RAILWAY_TOKEN in CI, so it is named here rather than half-built.",
-      "repro": "A railway api project services query returning cronSchedule per serviceInstance, compared against the cronSchedule lines in the railway toml files."
+      "mitigated": true,
+      "how": "BUILT, not named. scripts/check_railway_cron_drift.py reads every railway*.toml, resolves each to its Railway service, and compares the declared cron against the live one via the public GraphQL API; it runs in gates as 'Railway cron matches config-as-code'. All four failure paths were forced by hand before wiring: no token locally SKIPS (exit 0), no token in CI FAILS (a gate that passes without its credential is not a gate), a bad token FAILS (unreachable is not clean), and an injected mismatch FAILS naming both values. property-alerts is the one live exception, listed with its reason, and that list runs both ways -- if it ever gains a cron the check fails and tells you to remove the exception, so it cannot rot into agreeing with whatever is true.",
+      "repro": "RAILWAY_TOKEN=... python scripts/check_railway_cron_drift.py, or edit a cronSchedule line in any railway*.toml and re-run -- it fails naming the file value and the live value. python -m pytest tests/test_railway_cron_drift.py covers the comparison logic without a network call."
     },
     {
       "scenario": "The FAIL_GRACE_DAYS threshold of 3 for download failures is left alone while the monitor cadence changes from daily to fortnightly.",
@@ -101,6 +104,13 @@
       "mitigated": false,
       "how": "Deliberately not changed. Retuning it silently would be picking a number to match a cadence rather than a decision about how long a dead council URL may go unreported -- and at a fortnightly cadence there is no good value. The stale comment claiming the monitor runs daily is corrected in place to state the real arithmetic, so the next reader sees the gap instead of inheriting the wrong premise.",
       "repro": "Read the FAIL_GRACE_DAYS comment block in scripts/dcp_watchdog.py against the live cron for dcp-monitor."
+    },
+    {
+      "scenario": "The drift check itself cannot reach Railway -- Cloudflare rejects it, the token is the wrong type, or the API is down -- and the check treats that as clean.",
+      "what_happens": "The gate goes green while watching nothing, which is worse than not having it: the next schedule drift is invisible AND believed to be checked. The first run hit exactly this: HTTP 403 'error code: 1010' from Cloudflare, because urllib sends 'Python-urllib/3.x' as its User-Agent. That is indistinguishable from a bad token if you only read the status code.",
+      "mitigated": true,
+      "how": "Any failure to read the live schedules exits 1 with the underlying error printed -- unreachable is not clean. The User-Agent is set explicitly with a comment recording why, so it cannot be tidied away. The token-type trap is documented in the module docstring: an account token works via Authorization Bearer, while a project-scoped token authenticates but returns HTTP 200 with an errors array for the project query, so the wrong token looks like a broken query rather than a permissions problem.",
+      "repro": "RAILWAY_TOKEN=not-a-real-token python scripts/check_railway_cron_drift.py -- exits 1, printing the Not Authorized error rather than passing."
     }
   ],
   "post_merge": {

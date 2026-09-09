@@ -320,6 +320,21 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/dq_check.py
 
+      # Railway cron drift. On 2026-09-10 SIX of eight services ran a schedule
+      # different from their own railway.*.toml and nobody knew: extraction had
+      # been demoted from nightly to weekly, so flagged council chapters sat
+      # unprocessed for days while the watchdog reported them as "stuck >48h"
+      # every week -- an alarm nothing could satisfy. Railway applies
+      # config-as-code only where no dashboard value is set, so a file can read
+      # like configuration while being pure decoration. Nothing detected that.
+      # A missing RAILWAY_TOKEN FAILS here rather than skipping: this repo has
+      # already had a gate stop enforcing because an absent input exited 0.
+      - name: Railway cron matches config-as-code
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: python scripts/check_railway_cron_drift.py
+
       # Doc-claim ratchet. Built weeks ago with a baseline, --compare and
       # --strict, and wired into NOTHING — its own docstring said so. Thirteen
       # new violations accumulated in the fortnight after the last baseline.
