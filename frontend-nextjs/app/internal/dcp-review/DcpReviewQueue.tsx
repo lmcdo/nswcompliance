@@ -82,7 +82,13 @@ export function looksLikeAControl(num: string, text: string | null): boolean {
     const i = text.indexOf(num, from);
     if (i === -1) return false;
     from = i + num.length;
+    const before = text[i - 1] ?? ' ';
     const after = text.slice(i + num.length, i + num.length + 14);
+    // Sol MEDIUM 0.96: this must judge the FLAGGED number, not a longer number
+    // that happens to contain it. Without a leading boundary, a flagged "5"
+    // finds itself inside an unrelated "15m" and the row is wrongly labelled a
+    // measurement. Same digit/decimal boundary rule the gate uses.
+    if (/[\d.]/.test(before)) continue;
     // "3.18" — the ".18" continuation is a longer number, not a unit.
     if (/^\s*\.\d/.test(after)) continue;
     if (UNIT_AFTER_NUMBER.test(after)) return true;
@@ -471,12 +477,20 @@ export default function DcpReviewQueue() {
                 ) : (
                   <div className="mb-2 rounded border-2 border-gray-300 bg-gray-50 px-3 py-2 text-gray-800">
                     <div className="font-semibold">
-                      Probably nothing to fix — no unit follows{' '}
-                      {nums.length === 1 ? 'this number' : 'these numbers'}.
+                      No unit was detected after{' '}
+                      {nums.length === 1 ? 'this number' : 'these numbers'} — lower priority, not
+                      cleared.
                     </div>
+                    {/* Sol HIGH 0.98: this is a 14-character unit-proximity heuristic, not a
+                        verdict. A control phrased "a setback of 6, measured in metres" lands
+                        here. Earlier wording said "probably nothing to fix ... approve", which
+                        turned the heuristic into an instruction. Say what was measured and
+                        leave the decision with the reviewer. */}
                     <div className="mt-0.5 text-xs">
-                      It is a figure number, page footer, section reference or ordinary text, not a
-                      measurement. Skim the rule against the PDF and approve.
+                      Usually that means a figure number, page footer, section reference or
+                      ordinary text. But a control written as &ldquo;a setback of 6, measured in
+                      metres&rdquo; also lands here, so check the number against the PDF before
+                      deciding.
                     </div>
                   </div>
                 );

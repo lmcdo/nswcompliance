@@ -255,6 +255,23 @@ _CONTEXT_WORDS = 6      # words either side of the number that must travel with 
 _CONTEXT_MATCH = 0.6    # share of them that must appear beside the number in the chapter
 
 
+def _num_token(num: str) -> re.Pattern:
+    """`num` as a whole numeric token, never a fragment of a longer one.
+
+    Sol cross-review HIGH 0.99: a bare re.escape(num) search is an unbounded
+    substring match, so a rule saying '5 metres' would ground against a chapter
+    saying '15 metres' -- the '5' inside '15' matches, the surrounding wording is
+    identical, the context threshold passes, and a WRONG control is marked
+    source-verified. That is the masking failure this whole module exists to
+    prevent, reintroduced in a new place.
+
+    Leading (?<![\\d.]) rejects '5' inside '15' and inside '11.5'. Trailing
+    (?!\\d)(?!\\.\\d) rejects '5' inside '51' and inside '5.5', while still
+    accepting a number that legitimately ends a sentence ('set back 6.').
+    """
+    return re.compile(r"(?<![\d.])" + re.escape(num) + r"(?!\d)(?!\.\d)")
+
+
 def _straddle_grounded(num: str, text: str, whole_chapter: str) -> bool:
     """True when a number ruled absent from its narrow page window is found
     elsewhere in the SAME chapter carrying enough of its own surrounding words
@@ -279,7 +296,8 @@ def _straddle_grounded(num: str, text: str, whole_chapter: str) -> bool:
     if not num or not text or not whole_chapter:
         return False
     hay = vf._norm(whole_chapter)
-    for m in re.finditer(re.escape(num), text):
+    token = _num_token(num)
+    for m in token.finditer(text):
         before = vf._content_words(text[max(0, m.start() - 120): m.start()])[-_CONTEXT_WORDS:]
         after = vf._content_words(text[m.end(): m.end() + 120])[:_CONTEXT_WORDS]
         context = [w for w in (before + after) if w]
@@ -287,7 +305,7 @@ def _straddle_grounded(num: str, text: str, whole_chapter: str) -> bool:
             continue
         # The number must appear in the chapter WITH its neighbours nearby, so
         # scan each occurrence's own local span rather than the whole document.
-        for hm in re.finditer(re.escape(num), hay):
+        for hm in token.finditer(hay):
             span = hay[max(0, hm.start() - 260): hm.end() + 260]
             hit = sum(1 for w in context if w in span)
             if hit / len(context) >= _CONTEXT_MATCH:

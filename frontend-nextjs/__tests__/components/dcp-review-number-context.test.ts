@@ -113,3 +113,20 @@ describe('looksLikeAControl', () => {
     expect(looksLikeAControl('15', 999 as unknown as string)).toBe(false);
   });
 });
+
+describe('looksLikeAControl — numeric boundaries (Sol MEDIUM 0.96)', () => {
+  it('does not judge the flagged number by a longer number containing it', () => {
+    // The gate flagged 5. The rule mentions 5 as a page reference and separately
+    // carries an unrelated 15m. Without a leading boundary the scan finds the "5"
+    // inside "15m" and wrongly tells the reviewer the flagged 5 is a measurement.
+    expect(looksLikeAControl('5', 'see page 5 for detail; the wall is 15m high')).toBe(false);
+  });
+
+  it('still detects the number when it is genuinely the measurement', () => {
+    expect(looksLikeAControl('5', 'the wall is 5m high')).toBe(true);
+  });
+
+  it('is not fooled by a decimal that merely starts with the flagged number', () => {
+    expect(looksLikeAControl('11', 'a street wall of 11.5 metres applies')).toBe(false);
+  });
+});

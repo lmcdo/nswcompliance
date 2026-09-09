@@ -558,3 +558,22 @@ class TestStraddleRescue:
         assert _gate._straddle_grounded("", "text", "chapter") is False
         assert _gate._straddle_grounded("5", "", "chapter") is False
         assert _gate._straddle_grounded("5", "text", "") is False
+
+    def test_a_shorter_number_is_not_grounded_by_a_longer_one(self):
+        """Sol HIGH 0.99: a bare substring search made the rescue reintroduce
+        the very masking bug this module exists to prevent. A rule saying '5
+        metres' must NOT ground against a chapter saying '15 metres', even
+        though every surrounding word is identical."""
+        rule = "The minimum setback is 5 metres from the front boundary."
+        chapter = "The minimum setback is 15 metres from the front boundary."
+        assert _gate._straddle_grounded("5", rule, chapter) is False
+
+    def test_a_number_is_not_grounded_by_a_decimal_containing_it(self):
+        assert _gate._straddle_grounded("5", "a 5 metre wall", "a 11.5 metre wall") is False
+
+    def test_the_same_number_still_grounds_against_itself(self):
+        rule = "The minimum setback is 5 metres from the front boundary."
+        assert _gate._straddle_grounded("5", rule, rule) is True
+
+    def test_a_number_ending_a_sentence_still_grounds(self):
+        assert _gate._straddle_grounded("6", "must be set back 6.", "the wall must be set back 6.") is True

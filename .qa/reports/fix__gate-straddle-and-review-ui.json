@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes when the fidelity gate declares an extracted regulatory number GROUNDED against its source PDF -- the check that decides whether a provision reaches a human as trustworthy or suspect. A wrong loosening here ships a false 'this is correct' signal on a planning control. Measured cause: the gate scoped number-checking to a single anchor page, so any clause straddling a page break was wrongly flagged. Of 433 flagged rows in the live queue, 428 were that false alarm and 5 were real errors -- a 1.2% true-positive rate that made the human queue unworkable, so it went unreviewed for days and the gate delivered no safety at all.",
-  "commit_hash": "aba57f65",
+  "commit_hash": "762fcd26",
   "files": [
     "scripts/dcp_fidelity_gate.py",
     "tests/test_dcp_fidelity_gate.py",
@@ -24,7 +24,7 @@
   "functions": [
     {
       "name": "_straddle_grounded",
-      "file_line": "scripts/dcp_fidelity_gate.py:258 (new); called from ground_row at :298",
+      "file_line": "scripts/dcp_fidelity_gate.py:275 (new); called from ground_row; numeric-token guard _num_token at :258",
       "input": "num (the number ruled absent from the narrow anchor-page window), text (the row's cleaned provision text), whole_chapter (all page texts joined -- already built in ground_row).",
       "output": "bool. True only when the number is found somewhere in the chapter with at least _CONTEXT_MATCH (0.6) of the up-to-6 content words either side of it in the rule appearing within 260 characters of that occurrence. True removes the number from `absent`, so the row can grade grounded.",
       "if_none": "Empty or missing num, text or whole_chapter returns False -- i.e. it never rescues on absent input, so a missing source leaves the row flagged rather than silently grounded. Covered by test_empty_and_missing_inputs_are_safe."
@@ -49,6 +49,27 @@
   ],
   "queries": [],
   "break_it": [
+    {
+      "scenario": "[Sol HIGH 0.99, RESOLVED same PR] _straddle_grounded searched for the number as an unbounded substring, so a rule stating 5 metres would ground against a chapter stating 15 metres -- the 5 inside 15 matches, the surrounding wording is identical, the context threshold passes.",
+      "what_happens": "A wrong control value is marked source-verified and reaches the reviewer labelled as matched -- the exact masking failure this module exists to prevent, reintroduced by the rescue itself.",
+      "mitigated": true,
+      "how": "Added _num_token(): the number must match as a whole numeric token. Leading (?<![0-9.]) rejects it inside 15 and inside 11.5; trailing (?!\\d)(?!\\.\\d) rejects it inside 51 and 5.5 while still accepting a number that ends a sentence.",
+      "repro": "tests/test_dcp_fidelity_gate.py::TestStraddleRescue::test_a_shorter_number_is_not_grounded_by_a_longer_one"
+    },
+    {
+      "scenario": "[Sol MEDIUM 0.96, RESOLVED same PR] looksLikeAControl located the number without a leading boundary, so a flagged 5 could be classified by an unrelated 15m elsewhere in the rule.",
+      "what_happens": "The banner tells the reviewer the flagged number reads like a measurement when the measurement is actually a different number, misdirecting the check.",
+      "mitigated": true,
+      "how": "Same digit/decimal boundary rule as the gate: a match glued to a digit or a decimal point on its left is skipped.",
+      "repro": "frontend-nextjs/__tests__/components/dcp-review-number-context.test.ts::looksLikeAControl — numeric boundaries"
+    },
+    {
+      "scenario": "[Sol HIGH 0.98, RESOLVED same PR] The grey banner read \"Probably nothing to fix ... skim the rule against the PDF and approve\", turning a 14-character unit-proximity heuristic into a verdict and an instruction.",
+      "what_happens": "A control phrased \"a setback of 6, measured in metres\" lands in the grey bucket, and the copy actively tells the reviewer to approve it.",
+      "mitigated": true,
+      "how": "Reworded to state what was measured, not what to conclude: \"No unit was detected — lower priority, not cleared\", naming the separated-unit phrasing as a case that lands there, and ending with check it against the PDF before deciding. The approval prompt is gone.",
+      "repro": "frontend-nextjs/app/internal/dcp-review/DcpReviewQueue.tsx — grey banner copy."
+    },
     {
       "scenario": "The thresholds (6 context words, 60% match, 260-char span) were tuned against one real failure class -- the ku_ring_gai 11.5 cross-precinct copy -- not calibrated across a broad labelled sample. A different shape of fabrication could clear 60% by coincidence.",
       "what_happens": "A fabricated number that happens to sit near similar words elsewhere in the same chapter would be rescued and graded grounded, presenting a wrong control to a reviewer as source-matched.",
