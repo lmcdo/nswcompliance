@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "Real logic fix in the shared two-column reader (_columnar_text) used by four councils' DCP extraction (GEOMETRIC_COLUMN_COUNCILS: ashfield, marrickville, city_of_sydney, hornsby). Not Critical: this commit does not write to the database -- it only changes a pure text function; the actual re-extraction/approval into dcp_review_queue is a separate, later, human-gated step through the existing --review workflow. Not Minor: it changes extracted text content for real production PDFs across four councils, not wording/comments/docs.",
+  "commit_hash": "24751f77",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_columnar_reader.py"
+  ],
+  "pre_impl": {
+    "existing_data": "None -- _columnar_text is a pure function (pdfplumber Page -> str | None), no DB table, no query, no join key. Full reasoning recorded in .claude/.pre-impl-done.json (trivial exemption, DB-risk protocol inapplicable).",
+    "assumption_mismatch": "N/A -- no data assumption, this is a PDF word-geometry algorithm.",
+    "new_vs_existing": "Applies identically to any page passed through this function, old or new -- no per-row state.",
+    "external_source_error": "N/A -- Critical-only field.",
+    "frontend_type": "N/A -- Critical-only field.",
+    "user_failure_mode": "N/A -- Critical-only field."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_columnar_reader.py -v ; python -m pytest tests/ -k \"dcp or extract or column\" -q ; python scripts/dcp_extract_changed.py --council ashfield --chapter chapter-d-precinct-guidelines --all --dry-run",
+    "fails_when": "Any test regresses, or the dry-run's extracted section count drops instead of improving.",
+    "observed_red": "BEFORE fix: downloaded the real ashfield chapter-d-precinct-guidelines.pdf from R2 and ran _extract_page_text against real pages (4, 42, 59) -- output was a garbled line-by-line interleave of the left and right columns (e.g. 'Application' heading appearing mid-sentence inside the OTHER column's bullet list). Traced the cause with a line-by-line classification dump: on real body text, left and right column lines almost never share the same 3px row band, so the original two_col test (both sides present in the SAME band) was false on nearly every line, and the page fell through to a plain top-to-bottom read. AFTER fix: same three pages now read as one coherent left-column passage followed by the right column -- verified by eye against the real PDF text, not assumed. Dry-run section count on the target chapter: 718 -> 744 (real improvement; does not fully close the 1,027-row baseline gap -- a second, undiagnosed cause remains in this same chapter, reported to the user rather than guessed at)."
+  },
+  "functions": [
+    {
+      "name": "_columnar_text",
+      "file_line": "scripts/dcp_extract_changed.py:733",
+      "input": "a pdfplumber Page object for one PDF page",
+      "output": "str (reordered column text) or None when the page isn't clearly two-column",
+      "if_none": "caller (_extract_page_text) falls back to page.extract_text() unchanged -- same behaviour as before this fix"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A full-width heading has words on BOTH sides of the gutter with ordinary word-spacing but no single word individually straddling it (e.g. '5.2.4 Local Infrastructure') -- the only full-width test the pre-fix version had (a narrow-gap check), dropped entirely in the first version of this fix.",
+      "what_happens": "The heading would be split into the left/right column buffers and emitted out of sentence order with surrounding column content, silently corrupting extracted text.",
+      "mitigated": true,
+      "how": "CAUGHT by Sol cross-review (HIGH 0.99) on push, not by this session's own testing -- restored the narrow-gap full-width test (gap between rightmost-left-word and leftmost-right-word < gap_min) alongside the word-straddle test. New regression test test_columnar_narrow_gap_heading_stays_full_width pins this exact shape. Re-verified against the real ashfield pages (4, 42, 59) after the correction -- unchanged, coherent. Dry-run section count on the target chapter shifted 744 -> 695 after this correction -- expected, not a regression: some of the 744 were spurious extra splits from headings the first (incomplete) fix still mis-treated as column content; raw count was never the correctness signal here, real-page text comparison was.",
+      "repro": "tests/test_columnar_reader.py::test_columnar_narrow_gap_heading_stays_full_width"
+    },
+    {
+      "scenario": "Existing behaviour that DID depend on the old same-band requirement (a page where treating single-sided lines as breaks was coincidentally correct) regresses.",
+      "what_happens": "Output for that page gets worse, not better.",
+      "mitigated": true,
+      "how": "Spot-checked real pages from marrickville (part2-s06-privacy), hornsby (part-1-general), and city_of_sydney (section-2-locality-statements) with the fix applied -- all coherent, no garbling introduced. One known-bad city_of_sydney page (a rotated map-label diagram, page 85) was compared byte-for-byte before/after via git stash -- identical garbling, confirmed pre-existing and unrelated (a different, already-documented defect class), not a regression.",
+      "repro": "git stash the fix, run _extract_page_text against the same pages, diff against the fixed output."
+    },
+    {
+      "scenario": "A run of two-column lines is long enough that words from a later, unrelated block get mixed into an earlier block's left/right buffers because nothing except a straddling line ever flushes -- e.g. a page with two separate two-column tables stacked vertically, separated only by whitespace, no full-width text between them.",
+      "what_happens": "Content from the second table would be appended after the first table's left column but before its right column, instead of forming its own block.",
+      "mitigated": false,
+      "how": "Not mitigated by this fix. The four real chapters sampled did not exhibit this shape (each two-column run is followed by real body prose, which straddles), so it wasn't observed, but the algorithm has no vertical-gap-based break, only the straddle test -- a known residual, not silently hidden.",
+      "repro": "Construct a FakePage with two two-column blocks separated by a large top-coordinate gap and no straddling line between them; assert the second block's left/right pairing is preserved -- not currently tested."
+    },
+    {
+      "scenario": "Sol cross-review (HIGH 0.96, 2nd push): gap_min is a fixed 30px/5%-of-page threshold. A genuine two-column page whose real gutter is narrower than that would have every row's gap < gap_min, so every row gets misclassified as full-width and emitted per-row -- the same symptom as the original bug, via a different path.",
+      "what_happens": "Reading order would revert to interleaved left/right rows on any page with a narrow real gutter.",
+      "mitigated": false,
+      "how": "PRE-EXISTING, not introduced by this fix -- confirmed via `git show d82195e5 -- scripts/dcp_extract_changed.py`, gap_min=max(30.0,W*0.05) is a deletion (existed before this branch) that commit 24751f77 restored verbatim. Not observed on any real page sampled from the four councils this function serves -- their column gutters all measured wider than 30px. A page-specific baseline derived from the page's own repeated body-row gaps would be more robust; that is a separate, larger algorithm change deserving its own validation round, not bundled into this fix. Documented in code at scripts/dcp_extract_changed.py:769-779.",
+      "repro": "Construct a FakePage with a genuine two-column layout whose gutter gap is e.g. 15px and assert the columns are still grouped correctly -- not currently tested; known residual."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- but the remaining ~283-row gap on this specific chapter (744 vs 1,027 baseline) is NOT resolved by this fix and needs its own follow-up before ashfield/chapter-d-precinct-guidelines is re-extracted and approved."
+  }
+}

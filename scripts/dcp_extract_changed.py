@@ -736,19 +736,48 @@ def _columnar_text(page: Any) -> str | None:
 
     Returns None when the page is not clearly two-column, so the caller falls
     back to plain extract_text(). Band algorithm: group words into lines, a line
-    that spans the gutter is a full-width break; runs of non-spanning lines
-    between breaks are emitted left-then-right. Pure aside from extract_words()."""
+    that spans the gutter is a full-width break; runs of lines that don't span
+    it between breaks are emitted left-then-right. Pure aside from extract_words().
+
+    ⚠ FIXED 2026-09-09 (ashfield/chapter-d-precinct-guidelines, DQ-92): the
+    original version required BOTH sides to hold words on the SAME 3px row
+    band to register a line as two-column. Checked against the real PDF: real
+    two-column body text almost never wraps that precisely in sync between
+    columns, so nearly every row had content on only ONE side at its own
+    band, `two_col` was false almost everywhere, and the page fell through to
+    a plain top-to-bottom read — left- and right-column lines interleaved
+    line-by-line in raw Y order, not grouped by column at all. A single-sided
+    line is now accumulated into whichever side it falls on for the current
+    run; a run only breaks (flush) on a line that genuinely STRADDLES the
+    gutter — real full-width text, not just a momentarily-empty other side.
+
+    A line counts as straddling either when one word's own span crosses the
+    gutter, OR when both sides hold words but the gap between the rightmost
+    left word and leftmost right word is too narrow to be a real column
+    gutter (e.g. "5.2.4 Local Infrastructure" — separate words on both sides
+    of cx, ordinary word-spacing between them, no individual word touching
+    cx). Sol cross-review (HIGH 0.99, 2026-09-09) caught that this second
+    case — the ONLY full-width test the pre-fix version had — was dropped
+    entirely in the first version of this fix, which would have silently
+    reordered every such heading into the column buffers."""
     from collections import defaultdict
     words = page.extract_words() or []
     W = float(page.width or 0)
     cx = _find_gutter(words, W)
     if cx is None:
         return None
-    # A line is TWO-COLUMN when it has words on both sides of cx AND a wide empty
-    # gap at the gutter; it is FULL-WIDTH (heading) when text runs continuously
-    # across cx (a straddling word, or only a normal word-space gap). This gap
-    # test is what separates "5.2.4 Local Infrastructure" (heading) from an
-    # "L… | R…" body row that shares the same y.
+    # ⚠ KNOWN PRE-EXISTING LIMITATION (Sol cross-review, HIGH 0.96, 2026-09-09,
+    # against this restored check -- the threshold itself predates this fix,
+    # not introduced by it): fixed at 30px / 5% of page width. A genuine
+    # two-column page whose real gutter is narrower than that would have
+    # every row misclassified as full-width, defeating the grouping this
+    # function exists to do. Not observed on any real page sampled from the
+    # four councils this function currently serves (ashfield, marrickville,
+    # hornsby, city_of_sydney) -- their column gutters all measured wider
+    # than this. A page-specific baseline derived from the page's own
+    # repeated body-row gaps would be more robust; not built here. Logged,
+    # not chased -- same discipline as the 98 unrecovered section numbers in
+    # the marrickville TOC-guard fix.
     gap_min = max(30.0, W * 0.05)
     lines: dict[int, list[dict]] = defaultdict(list)
     for w in words:
@@ -770,19 +799,26 @@ def _columnar_text(page: Any) -> str | None:
     for _, lw in sorted(lines.items()):
         left = [w for w in lw if (w["x0"] + w["x1"]) / 2 < cx]
         right = [w for w in lw if (w["x0"] + w["x1"]) / 2 >= cx]
-        straddle = any(w["x0"] < cx - 5 and w["x1"] > cx + 5 for w in lw)
-        two_col = False
-        if left and right and not straddle:
+        word_straddle = any(w["x0"] < cx - 5 and w["x1"] > cx + 5 for w in lw)
+        narrow_gap = False
+        if left and right and not word_straddle:
             gap = min(w["x0"] for w in right) - max(w["x1"] for w in left)
-            two_col = gap >= gap_min
-        if two_col:
-            if block is None:
-                block = {"left": [], "right": []}
-            block["left"].append(left)
-            block["right"].append(right)
-        else:
+            narrow_gap = gap < gap_min
+        if word_straddle or narrow_gap:
+            # Genuine full-width text (a heading, a table caption) — end
+            # whatever two-column run was in progress, emit left-then-right,
+            # then this line in its own Y position.
             flush()
             out.append(line_text(lw))
+            continue
+        if not left and not right:
+            continue
+        if block is None:
+            block = {"left": [], "right": []}
+        if left:
+            block["left"].append(left)
+        if right:
+            block["right"].append(right)
     flush()
     return "\n".join(out)
 
