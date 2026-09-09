@@ -736,20 +736,26 @@ def _columnar_text(page: Any) -> str | None:
 
     Returns None when the page is not clearly two-column, so the caller falls
     back to plain extract_text(). Band algorithm: group words into lines, a line
-    that spans the gutter is a full-width break; runs of non-spanning lines
-    between breaks are emitted left-then-right. Pure aside from extract_words()."""
+    that spans the gutter is a full-width break; runs of lines that don't span
+    it between breaks are emitted left-then-right. Pure aside from extract_words().
+
+    ⚠ FIXED 2026-09-09 (ashfield/chapter-d-precinct-guidelines, DQ-92): the
+    original version required BOTH sides to hold words on the SAME 3px row
+    band to register a line as two-column. Checked against the real PDF: real
+    two-column body text almost never wraps that precisely in sync between
+    columns, so nearly every row had content on only ONE side at its own
+    band, `two_col` was false almost everywhere, and the page fell through to
+    a plain top-to-bottom read — left- and right-column lines interleaved
+    line-by-line in raw Y order, not grouped by column at all. A single-sided
+    line is now accumulated into whichever side it falls on for the current
+    run; a run only breaks (flush) on a line that genuinely STRADDLES the
+    gutter — real full-width text, not just a momentarily-empty other side."""
     from collections import defaultdict
     words = page.extract_words() or []
     W = float(page.width or 0)
     cx = _find_gutter(words, W)
     if cx is None:
         return None
-    # A line is TWO-COLUMN when it has words on both sides of cx AND a wide empty
-    # gap at the gutter; it is FULL-WIDTH (heading) when text runs continuously
-    # across cx (a straddling word, or only a normal word-space gap). This gap
-    # test is what separates "5.2.4 Local Infrastructure" (heading) from an
-    # "L… | R…" body row that shares the same y.
-    gap_min = max(30.0, W * 0.05)
     lines: dict[int, list[dict]] = defaultdict(list)
     for w in words:
         lines[round(w["top"] / 3.0)].append(w)
@@ -771,18 +777,21 @@ def _columnar_text(page: Any) -> str | None:
         left = [w for w in lw if (w["x0"] + w["x1"]) / 2 < cx]
         right = [w for w in lw if (w["x0"] + w["x1"]) / 2 >= cx]
         straddle = any(w["x0"] < cx - 5 and w["x1"] > cx + 5 for w in lw)
-        two_col = False
-        if left and right and not straddle:
-            gap = min(w["x0"] for w in right) - max(w["x1"] for w in left)
-            two_col = gap >= gap_min
-        if two_col:
-            if block is None:
-                block = {"left": [], "right": []}
-            block["left"].append(left)
-            block["right"].append(right)
-        else:
+        if straddle:
+            # Genuine full-width text (a heading, a table caption) — end
+            # whatever two-column run was in progress, emit left-then-right,
+            # then this line in its own Y position.
             flush()
             out.append(line_text(lw))
+            continue
+        if not left and not right:
+            continue
+        if block is None:
+            block = {"left": [], "right": []}
+        if left:
+            block["left"].append(left)
+        if right:
+            block["right"].append(right)
     flush()
     return "\n".join(out)
 
