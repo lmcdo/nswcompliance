@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes an operator alert, not served data. No provision, control or report content moves. The failure mode is an alert that misleads rather than wrong data reaching a reader, so standard rather than critical.",
-  "commit_hash": "542ce196",
+  "commit_hash": "4fe846d0",
   "files": [
     "scripts/dcp_watchdog.py",
     "tests/test_dcp_watchdog_blocked.py",
