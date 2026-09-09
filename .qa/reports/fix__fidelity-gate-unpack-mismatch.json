@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "Fixes a real, live crash in the --review production write path: every fidelity-grading call for a freshly re-extracted chapter was silently failing (advisory try/except swallowed the exception), leaving newly-enqueued dcp_review_queue rows permanently ungraded. Not Critical: no schema/query change, the fix only corrects how many return values are unpacked from an already-existing, already-tested function. Not Minor: this was actively breaking a real safety mechanism in production, discovered live.",
+  "commit_hash": "d7337422",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_extract_changed_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_review_queue rows written by the SAME enqueue call this gate loop follows -- no new table, no new query. gate_chapter()'s own UPDATE (fidelity_status, fidelity_detail, source_page_verified, fidelity_source_quote) is pre-existing, unchanged code.",
+    "assumption_mismatch": "N/A -- fix corrects a tuple-unpacking arity mismatch against gate_chapter()'s own documented return type (tuple[int,int,int]), not a data assumption.",
+    "new_vs_existing": "Applies to every future --review run for every council/chapter, not just ashfield -- the call site is shared across all chapters. Retroactively fixable for already-broken past runs by re-invoking gate_chapter() per chapter (done live for ashfield/chapter-d-precinct-guidelines as part of verification, see falsifiable_check).",
+    "external_source_error": "N/A -- Critical-only field.",
+    "frontend_type": "N/A -- Critical-only field.",
+    "user_failure_mode": "N/A -- Critical-only field."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_fidelity_gate.py tests/ -k \"dcp or extract or fidelity\" -q",
+    "fails_when": "Any of the listed pytest files regresses, or gate_chapter() raises again.",
+    "observed_red": "BEFORE fix: ran the real --review command against ashfield/chapter-d-precinct-guidelines (the same chapter re-extracted earlier this session) and reproduced the exact production crash: '[warn] fidelity gate skipped (too many values to unpack (expected 2)); rows queued but ungraded.' 1,668 rows were enqueued to dcp_review_queue with zero fidelity grading. AFTER fix: called gate_chapter() directly against the same real chapter (not a mock) -- returned (348, 8, 285) with no exception, and the call correctly retroactively graded the 1,668 rows left ungraded by the pre-fix run (they were still status='pending', so gate_chapter's own query picked them straight up). Verified this is the ONLY broken call site: grep for gate_chapter( across the repo found exactly one other reference outside dcp_fidelity_gate.py itself and this call site -- tests/test_dcp_fidelity_gate.py, which already correctly unpacks 3 values, proving the test suite was written against the CORRECT signature but never covered this integration point, which only runs during --review, not --dry-run."
+  },
+  "functions": [
+    {
+      "name": "run_fidelity_gate",
+      "file_line": "scripts/dcp_extract_changed.py:3785 (extracted from main()'s inline block, Sol MEDIUM 0.99)",
+      "input": "conn (open psycopg2 connection), s3 (boto3 client), review_chapters (list of dicts with council/chapter_key), gate_module (dcp_fidelity_gate or a test stub)",
+      "output": "tuple[int,int,int,list[tuple[str,str]]] (grounded, flagged, skipped_not_actionable, unchecked) totals plus a list of (council, chapter_key) pairs that could NOT be graded; side effect is gate_module.gate_chapter()'s own UPDATE writing fidelity_status per row",
+      "if_none": "a (council, chapter_key) pair with no active (is_active=TRUE) dcp_chapter_registry row, or a malformed (missing/non-string) council or chapter_key, is skipped and recorded in the returned unchecked list -- gate_module.gate_chapter is never called for it, and the caller prints it explicitly (Sol HIGH 0.99: was previously silent)"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "[RESOLVED, same PR] This exact integration loop originally had no dedicated regression test -- only gate_chapter() itself was unit-tested in isolation, which is precisely why this arity mismatch shipped and ran broken (advisory-swallowed, no test failure) since PR #1057 (2026-09-07) until found live 2026-09-09.",
+      "what_happens": "A future signature change to gate_chapter() could break this call site again with no test catching it.",
+      "mitigated": true,
+      "how": "Sol cross-review (MEDIUM 0.99) caught that the first version of this fix's own test called gate_chapter() directly, not the actual call site. Extracted the loop out of main() into run_fidelity_gate(conn, s3, review_chapters, gate_module) -- a named, independently-importable function with gate_module passed in (not imported), so a test can stub gate_chapter to return a literal 3-tuple. tests/test_dcp_extract_changed_real_db.py::TestRunFidelityGateCallSite now exercises this exact call site with a stub, catching a future arity regression even if gate_chapter's real signature never changes again.",
+      "repro": "tests/test_dcp_extract_changed_real_db.py::TestRunFidelityGateCallSite::test_run_fidelity_gate_unpacks_and_sums_a_stubbed_three_tuple"
+    },
+    {
+      "scenario": "[RESOLVED, same PR, later round] A chapter with no active registry row was silently `continue`d, and a malformed (None) chapter_key could crash sorted() (mixing str/None) or be silently dropped -- either way the caller's success summary gave no indication some chapters were never checked.",
+      "what_happens": "A reviewer reading 'Fidelity gate: 50 grounded, 2 flagged, 10 skipped' would reasonably assume full coverage; some chapters could have been silently un-graded, or the whole gate step could raise and get swallowed by the outer advisory except with a generic message identical to this session's original bug.",
+      "mitigated": true,
+      "how": "Sol cross-review (HIGH 0.99 + MEDIUM 0.96, later round on this same push): run_fidelity_gate now returns a 4th value, unchecked: list[tuple[str,str]], covering both a missing/inactive registry row AND a malformed identifier (validated before sorting, so one bad dict can no longer crash the whole batch). main() prints unchecked chapters explicitly rather than only a clean-looking summary. 2 new tests cover both cases with a stub, verifying the valid chapter in a mixed-validity batch still gets graded.",
+      "repro": "tests/test_dcp_extract_changed_real_db.py::TestRunFidelityGateCallSite::test_run_fidelity_gate_reports_a_malformed_identifier_as_unchecked_without_crashing and ::test_run_fidelity_gate_reports_a_chapter_with_no_active_registry_row_as_unchecked"
+    },
+    {
+      "scenario": "The advisory try/except (line 3901, unchanged by this fix) swallows ANY exception from the whole gate loop, not just an unpacking mismatch -- a genuinely different future bug in gate_chapter() itself would also print the generic 'skipped' warning and leave rows ungraded, silently.",
+      "what_happens": "A real grading failure looks identical in the logs to 'grading is advisory and skipped by design' -- no distinction between expected skip and unexpected crash.",
+      "mitigated": false,
+      "how": "Not mitigated -- this fix corrects the ONE known-broken case, it doesn't change the broad except Exception. Considered narrowing it while here; decided against scope-creeping a crash fix into an error-handling redesign without the user's go-ahead on that separate decision.",
+      "repro": "Raise any other exception inside gate_chapter() (e.g. a real DB error) and observe the same generic '[warn] fidelity gate skipped (...)' message with no way to distinguish it from this bug from the log alone."
+    },
+    {
+      "scenario": "Rows enqueued by past --review runs since PR #1057 (2026-09-07) landed, for chapters OTHER than ashfield/chapter-d-precinct-guidelines, are still sitting ungraded in dcp_review_queue right now -- this fix does not retroactively grade them, only the one chapter manually re-run during verification.",
+      "what_happens": "Reviewers looking at those other chapters' queue rows currently see no fidelity_status at all, not wrongly-graded, but not graded either.",
+      "mitigated": false,
+      "how": "Not mitigated by this PR -- fixing the crash is necessary but not sufficient to backfill past damage. A backfill (re-run gate_chapter() for every chapter with pending, ungraded rows since 2026-09-07) is separate follow-up work, not done here.",
+      "repro": "SELECT council, chapter_key, count(*) FROM dcp_review_queue WHERE status='pending' AND fidelity_status IS NULL GROUP BY 1,2 -- any chapter re-extracted via --review since #1057 and not manually re-graded will show up."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- a backfill re-grading pass for chapters re-extracted since 2026-09-07 (other than ashfield/chapter-d) is recommended follow-up, not done in this PR."
+  }
+}
