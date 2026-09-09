@@ -45,25 +45,35 @@ class _ReachedExtractor(Exception):
     past the size guard, without running a real extraction."""
 
 
-def test_oversized_pdf_is_skipped_without_touching_db_or_extractor(monkeypatch, tmp_path):
-    """A PDF over OVERSIZED_PDF_SKIP_BYTES is skipped cleanly: extract_chapter
-    returns (False, None), and NOTHING downstream of the size check runs --
-    not DCPExtractor, not preflight_layout, not even conn.cursor(). This is
-    what actually stops the process-wide crash: the guard fires before the
-    memory-heavy pdfplumber.open() calls, not after."""
-
-    big_size = dx.OVERSIZED_PDF_SKIP_BYTES + 1
-
-    def fake_download_file(bucket, key, local_path):
+def _fake_download_to_size(target_size: int):
+    """Write a REAL file of exactly target_size bytes (sparse via seek+write
+    of the last byte) -- Sol LOW 0.99 on an earlier version of this file:
+    a test claiming to exercise the ~30MB boundary but only ever writing 4KB
+    would still pass if the threshold silently drifted to e.g. 20MB while
+    the 30MB constant stayed put in the docstring. Exact size matters."""
+    def _download(bucket, key, local_path):
         with open(local_path, "wb") as f:
-            f.seek(big_size - 1)
-            f.write(b"\0")
+            if target_size > 0:
+                f.seek(target_size - 1)
+                f.write(b"\0")
+    return _download
+
+
+def test_oversized_pdf_is_skipped_without_touching_db_or_extractor_under_dry_run(monkeypatch, tmp_path):
+    """dry_run=True: A PDF over OVERSIZED_PDF_SKIP_BYTES is skipped cleanly:
+    extract_chapter returns (False, None), and NOTHING downstream of the size
+    check runs -- not DCPExtractor, not preflight_layout, not even
+    conn.cursor(). This is what actually stops the process-wide crash: the
+    guard fires before the memory-heavy pdfplumber.open() calls, not after.
+    dry_run=True also proves the "no DB writes" contract of that flag holds
+    for the new skip-status write added below (Sol HIGH 0.96), not just the
+    original guard."""
 
     s3 = MagicMock()
-    s3.download_file.side_effect = fake_download_file
+    s3.download_file.side_effect = _fake_download_to_size(dx.OVERSIZED_PDF_SKIP_BYTES + 1)
 
     # conn that raises if ANYTHING touches it -- proves the guard returns
-    # before extract_chapter reaches `cur = conn.cursor()`.
+    # before extract_chapter reaches conn.cursor(), under dry_run OR not.
     conn = MagicMock()
     conn.cursor.side_effect = AssertionError(
         "conn.cursor() was called -- the oversized-PDF guard did not short-circuit"
@@ -85,19 +95,104 @@ def test_oversized_pdf_is_skipped_without_touching_db_or_extractor(monkeypatch, 
     conn.cursor.assert_not_called()
 
 
-def test_pdf_under_threshold_is_not_skipped(monkeypatch, tmp_path):
-    """The guard must not false-positive on ordinary, correctly-sized chapters
-    -- it should let a normal-sized PDF proceed past the check and reach
-    DCPExtractor exactly as before this fix existed."""
-
-    small_size = dx.OVERSIZED_PDF_SKIP_BYTES - 1
-
-    def fake_download_file(bucket, key, local_path):
-        with open(local_path, "wb") as f:
-            f.write(b"\0" * min(small_size, 4096))  # content irrelevant; only size matters, and only a small real write
+def test_oversized_pdf_alerts_and_records_status_when_not_previously_alerted(monkeypatch):
+    """Sol HIGH 0.96: not dry_run, and this is the FIRST time this exact
+    content_hash+size has been seen -- must send a Telegram alert (so a
+    human actually sees "this chapter is stuck stale", not just an operator
+    reading Railway logs) and persist a distinct oversized_pdf status to
+    last_suspect_alert_key/_at (so the staleness is DB-queryable, not just a
+    one-shot alert)."""
 
     s3 = MagicMock()
-    s3.download_file.side_effect = fake_download_file
+    s3.download_file.side_effect = _fake_download_to_size(dx.OVERSIZED_PDF_SKIP_BYTES + 1)
+
+    cur = MagicMock()
+    cur.fetchone.return_value = None  # never alerted before
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+
+    sent = []
+    fake_run_monitors = MagicMock()
+    fake_run_monitors.send_telegram.side_effect = lambda msg: sent.append(msg)
+    monkeypatch.setitem(sys.modules, "run_monitors", fake_run_monitors)
+
+    ok, review_data = dx.extract_chapter(
+        _chapter(content_hash="abc123"), s3, conn, dry_run=False, review=False,
+    )
+
+    assert (ok, review_data) == (False, None)
+    assert len(sent) == 1
+    assert "canterbury_bankstown" in sent[0]
+    assert "chapter-7-6-belmore-and-lakemba" in sent[0]
+
+    update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
+    assert len(update_calls) == 1
+    params = update_calls[0].args[1]
+    assert params[0] == f"abc123::oversized_pdf({dx.OVERSIZED_PDF_SKIP_BYTES + 1})"
+    conn.commit.assert_called_once()
+
+
+def test_oversized_pdf_does_not_realert_on_the_same_unchanged_file(monkeypatch):
+    """Sol HIGH 0.96, dedup half: re-checking the SAME too-big PDF (same
+    content_hash, same size) every night must NOT spam a fresh Telegram
+    alert every time -- exactly the failure mode unalerted_suspects()'s own
+    docstring documents happening for weeks with a different alert class
+    ("the channel stopped being read"). The status row should still be
+    touched (to refresh last_suspect_alert_at / prove it's still live),
+    just without a duplicate send."""
+
+    s3 = MagicMock()
+    s3.download_file.side_effect = _fake_download_to_size(dx.OVERSIZED_PDF_SKIP_BYTES + 1)
+
+    already_key = f"abc123::oversized_pdf({dx.OVERSIZED_PDF_SKIP_BYTES + 1})"
+    cur = MagicMock()
+    cur.fetchone.return_value = (already_key,)
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+
+    sent = []
+    fake_run_monitors = MagicMock()
+    fake_run_monitors.send_telegram.side_effect = lambda msg: sent.append(msg)
+    monkeypatch.setitem(sys.modules, "run_monitors", fake_run_monitors)
+
+    ok, review_data = dx.extract_chapter(
+        _chapter(content_hash="abc123"), s3, conn, dry_run=False, review=False,
+    )
+
+    assert (ok, review_data) == (False, None)
+    assert sent == []  # no duplicate alert
+    update_calls = [c for c in cur.execute.call_args_list if "UPDATE" in c.args[0]]
+    assert len(update_calls) == 1  # status row still refreshed
+
+
+def test_pdf_under_threshold_is_not_skipped(monkeypatch):
+    """The guard must not false-positive on ordinary, correctly-sized chapters
+    -- it should let a normal-sized PDF proceed past the check and reach
+    DCPExtractor exactly as before this fix existed. Writes a REAL file at
+    exactly threshold-1 bytes (not a 4KB stand-in, Sol LOW 0.99) so a future
+    threshold change that silently drifts the boundary would actually be
+    caught here."""
+
+    s3 = MagicMock()
+    s3.download_file.side_effect = _fake_download_to_size(dx.OVERSIZED_PDF_SKIP_BYTES - 1)
+
+    monkeypatch.setattr(
+        dx, "DCPExtractor",
+        MagicMock(side_effect=_ReachedExtractor("reached DCPExtractor as expected")),
+    )
+
+    conn = MagicMock()
+
+    with pytest.raises(_ReachedExtractor):
+        dx.extract_chapter(_chapter(), s3, conn, dry_run=True, review=False)
+
+
+def test_pdf_at_exact_threshold_is_not_skipped(monkeypatch):
+    """Boundary case: the guard is strictly-greater-than (`>`), so a PDF at
+    EXACTLY OVERSIZED_PDF_SKIP_BYTES must still proceed, not be skipped."""
+
+    s3 = MagicMock()
+    s3.download_file.side_effect = _fake_download_to_size(dx.OVERSIZED_PDF_SKIP_BYTES)
 
     monkeypatch.setattr(
         dx, "DCPExtractor",

@@ -2948,6 +2948,59 @@ def extract_chapter(
                 f"needs_extraction stays TRUE; this chapter needs chunked "
                 f"extraction (DQ-98, not yet built) to ever complete."
             )
+            # Sol HIGH 0.96: a skipped chapter must leave a DB-visible,
+            # distinct trace, not just a log line -- otherwise stale
+            # regulatory content keeps being served with zero signal that a
+            # source update was ever seen and silently dropped.
+            # prior-art-checked: reuse not viable as a function call -- this
+            # DELIBERATELY reuses the SAME last_suspect_alert_key/_at columns,
+            # the SAME send_telegram() sender, and the SAME dedup-by-key idea
+            # the existing suspect-alert block in main() already uses (below,
+            # ~line 4040), but that block only fires for chapters that made
+            # it through extract_chapter() successfully with review_data
+            # populated -- an oversized-skip never reaches that point (it
+            # returns before DCPExtractor even runs), so there is no shared
+            # function to call into; inlining the same pattern here is the
+            # only way to alert on a chapter that specifically never extracts.
+            # A distinct "oversized_pdf" reason string so this can never
+            # collide with an extraction-produced suspect_reason. Keyed to
+            # content_hash (already on the registry row, reflects the CURRENT
+            # source PDF regardless of extraction success) so a re-check of
+            # the SAME too-big file doesn't re-alert every night -- the exact
+            # failure mode unalerted_suspects() above was built to stop --
+            # but a genuinely NEW oversized replacement does alert. Skipped
+            # entirely under dry_run: that flag's whole contract is "no DB
+            # writes".
+            if not dry_run:
+                skip_key = f"{chapter.get('content_hash') or 'nohash'}::oversized_pdf({pdf_bytes})"
+                try:
+                    _c = conn.cursor()
+                    _c.execute(
+                        "SELECT last_suspect_alert_key FROM dcp_chapter_registry WHERE id = %s",
+                        (chapter_id,),
+                    )
+                    row = _c.fetchone()
+                    if not row or row[0] != skip_key:
+                        try:
+                            from run_monitors import send_telegram
+                            send_telegram(
+                                f"⚠️ dcp-extract: {council}/{chapter_key} SKIPPED — "
+                                f"{pdf_bytes:,} bytes exceeds the {OVERSIZED_PDF_SKIP_BYTES:,}-"
+                                f"byte OOM-risk guard (DQ-98). Source content may be stale "
+                                f"until chunked extraction ships."
+                            )
+                        except Exception as exc:
+                            print(f"    [warn] oversized-skip Telegram alert not sent: {exc}")
+                    _c.execute(
+                        "UPDATE dcp_chapter_registry "
+                        "SET last_suspect_alert_key = %s, last_suspect_alert_at = NOW() "
+                        "WHERE id = %s",
+                        (skip_key, chapter_id),
+                    )
+                    conn.commit()
+                    _c.close()
+                except Exception as exc:
+                    print(f"    [warn] could not record oversized-skip status: {exc}")
             return False, None
 
         # 2. Extract sections

@@ -1,10 +1,11 @@
 {
   "tier": "standard",
   "justification": "Fixes a real, live, recurring production crash: Railway's dcp-extract cron OOM-killed (exit -9) three separate nights (2026-09-08/09) while opening a 139MB canterbury_bankstown PDF with pdfplumber, and because there was no size check before that call, the OS kill took the WHOLE process down mid-batch -- every other queued chapter (46 of 47 that night) silently never got extracted, not just the oversized one. Not Critical: no schema/query change, purely an early-return guard using a value already computed one line above. Not Minor: this was actively breaking a real production pipeline nightly.",
-  "commit_hash": "123160e3",
+  "commit_hash": "9549ce5c",
   "files": [
     "scripts/dcp_extract_changed.py",
-    "tests/test_dcp_extract_changed.py"
+    "tests/test_dcp_extract_changed.py",
+    ".claude/DATA_QUALITY_TRACKER.md"
   ],
   "pre_impl": {
     "existing_data": "url_content_length / downloaded pdf_path.stat().st_size -- both already computed, no new query. Reuses the exact 30MB threshold already documented and used advisorily by scripts/dq_probe_oversized_pdf_oom_risk.py (DQ-98, registered 2026-09-07).",
@@ -16,34 +17,48 @@
   },
   "falsifiable_check": {
     "command": "python -m pytest tests/test_dcp_extract_changed.py -v",
-    "fails_when": "The guard stops firing (an oversized PDF reaches DCPExtractor/preflight_layout again), or it false-positives on a normal-sized PDF (blocks legitimate small chapters).",
-    "observed_red": "BEFORE this fix: no test existed for this path at all -- the only evidence of the bug is the real Railway crash log (exit -9, 2026-09-06/08/09) and the DQ-98 tracker entry. AFTER fix: 3 new tests -- (1) a PDF just over the 30MB threshold is skipped, returns (False, None), and never touches conn.cursor() or DCPExtractor/preflight_layout (proven via monkeypatched sentinels that raise if called -- not just asserted not-called on a plain Mock, an actual construction attempt would fail the test); (2) a PDF just under the threshold proceeds and reaches DCPExtractor exactly as before this change (proven the same way, inverted -- pytest.raises catches the sentinel exception); (3) the constant literally equals 30*1024*1024, guarding against silent drift from the probe script's own literal. All 3 pass."
+    "fails_when": "The guard stops firing (an oversized PDF reaches DCPExtractor/preflight_layout again), it false-positives on a normal-sized PDF (blocks legitimate small chapters), the skip-status DB write/alert stops firing or dedup breaks (re-alerts on an unchanged file, or never alerts at all), or dry_run stops being a real no-DB-writes guarantee.",
+    "observed_red": "BEFORE this fix: no test existed for this path at all -- the only evidence of the bug is the real Railway crash log (exit -9, 2026-09-06/08/09) and the DQ-98 tracker entry. AFTER fix: 6 tests -- (1) dry_run=True: an over-threshold PDF is skipped, returns (False, None), and NEVER touches conn.cursor() or DCPExtractor/preflight_layout (monkeypatched sentinels that raise if called, not a plain Mock().assert_not_called()); (2) not dry_run, never-alerted-before: sends exactly one Telegram alert naming the council/chapter and writes the oversized_pdf status key + conn.commit(); (3) not dry_run, SAME content_hash+size already recorded: sends ZERO alerts (dedup) but still refreshes the status row's timestamp; (4) an under-threshold PDF (real file at exactly threshold-1 bytes, not a 4KB stand-in -- Sol LOW 0.99 on an earlier version) proceeds to DCPExtractor exactly as before; (5) a PDF at EXACTLY the threshold also proceeds (boundary is strict >); (6) the constant literally equals 30*1024*1024, guarding against silent drift from the probe script's own literal. All 6 pass."
   },
   "functions": [
     {
       "name": "extract_chapter",
-      "file_line": "scripts/dcp_extract_changed.py:2904 (function def; guard block added at 2934-2944, OVERSIZED_PDF_SKIP_BYTES constant at module scope just above the def)",
-      "input": "Same as before -- chapter dict, s3 client, conn, dry_run, review. New: reads pdf_path.stat().st_size (already computed for the existing log line) once more for the comparison.",
-      "output": "Unchanged return shape: tuple[bool, dict|None]. New early-exit path returns (False, None) -- identical shape to the pre-existing R2-download-failure early exit 3 lines above it.",
-      "if_none": "N/A -- no new None-producing input; the guard is a size comparison on a value that always exists once the download succeeds."
+      "file_line": "scripts/dcp_extract_changed.py:2904 (function def; size guard + skip-status write added inside the existing early-return block starting ~2934, OVERSIZED_PDF_SKIP_BYTES constant at module scope just above the def)",
+      "input": "Same as before -- chapter dict, s3 client, conn, dry_run, review. New: reads pdf_path.stat().st_size (already computed for the existing log line) once more for the comparison; on the oversized+not-dry_run path only, also reads chapter['content_hash'] and chapter['id'] (both already present on every chapter dict from _pending_chapters_sql -- no new query).",
+      "output": "Unchanged return shape: tuple[bool, dict|None]. New early-exit path returns (False, None) -- identical shape to the pre-existing R2-download-failure early exit 3 lines above it. Side effect added (Sol HIGH 0.96, not dry_run only): UPDATE dcp_chapter_registry SET last_suspect_alert_key/_at WHERE id=chapter_id, and a best-effort Telegram send via run_monitors.send_telegram, deduped against the row's existing last_suspect_alert_key so an unchanged oversized file doesn't re-alert every run.",
+      "if_none": "N/A -- no new None-producing input; the guard is a size comparison on a value that always exists once the download succeeds. content_hash defaults to the literal string 'nohash' in the alert key if the registry row genuinely has none, rather than erroring."
     }
   ],
   "values": [],
   "queries": [],
   "break_it": [
     {
+      "scenario": "[Sol HIGH 0.96, RESOLVED same PR] A skipped chapter left no DB-visible trace -- only a Railway log line -- so stale regulatory content kept being served with zero signal that a real source update was ever seen and dropped (e.g. a genuinely valid 31MB replacement PDF with real amended controls would be silently skipped forever).",
+      "what_happens": "A reviewer or operator checking why a chapter hasn't updated would find nothing in the database pointing at the real cause.",
+      "mitigated": true,
+      "how": "extract_chapter() now writes a distinct oversized_pdf status to dcp_chapter_registry.last_suspect_alert_key/_at (reusing the existing suspect-alert columns/convention, a separate reason namespace so it can never collide with an extraction-produced suspect_reason) and sends one Telegram alert per distinct (content_hash, size) -- deduped so an unchanged oversized file doesn't spam the channel every night, but a genuinely new oversized replacement does alert. Full UI-level staleness surfacing (a badge in the review/public UI) is still NOT built -- that's a separate, larger feature, not folded into this stability patch.",
+      "repro": "tests/test_dcp_extract_changed.py::test_oversized_pdf_alerts_and_records_status_when_not_previously_alerted and ::test_oversized_pdf_does_not_realert_on_the_same_unchanged_file"
+    },
+    {
+      "scenario": "[Sol HIGH 0.91, ACKNOWLEDGED not fixed -- was already this report's break_it #2] Compressed PDF byte size does not bound pdfplumber's DECODED memory use -- a file under 30MB with pathological compression, large content streams, or many page objects could still pass the guard and OOM-kill the whole batch.",
+      "what_happens": "A pathological small-but-complex PDF still crashes the whole batch exactly as before this PR, just less often (only chapters the byte-size proxy happens to miss).",
+      "mitigated": false,
+      "how": "Not fixed here -- confirmed as a real, structural limit of a byte-size-only guard, same caveat the existing probe script already documents (page count / layout complexity / embedded raster images likely matter as much as raw bytes). Sol's suggested real fix -- per-chapter subprocess isolation with an enforced memory limit, OR the chunking approach -- IS the actual DQ-98 fix, and the user already explicitly chose to register DQ-98 and build its real fix as separate follow-up work rather than design it now. Folding subprocess isolation into what was meant to be a narrow stability patch would re-open that already-made scope decision unilaterally. Recorded in .claude/DATA_QUALITY_TRACKER.md's DQ-98 entry (2026-09-09 update) so the fix direction reflects this refinement.",
+      "repro": "N/A -- inherent to a byte-size heuristic; no code change to demonstrate. See DQ-98 tracker entry."
+    },
+    {
+      "scenario": "[Sol LOW 0.99, RESOLVED same PR] The original under-threshold test only wrote a 4KB file, not a real file near the 30MB boundary -- a future threshold change (e.g. quietly narrowed to 20MB) would not have been caught by that test.",
+      "what_happens": "The boundary itself could silently drift without any test failing.",
+      "mitigated": true,
+      "how": "Rewrote to write a REAL file of exactly threshold-1 bytes via seek+write (sparse, fast, but a genuine file of that size on disk), and added a same-shape exact-threshold test (size == OVERSIZED_PDF_SKIP_BYTES must still proceed, since the guard is strictly-greater-than).",
+      "repro": "tests/test_dcp_extract_changed.py::test_pdf_under_threshold_is_not_skipped and ::test_pdf_at_exact_threshold_is_not_skipped"
+    },
+    {
       "scenario": "This is a STABILITY guard, not the DQ-98 fix -- chapters over 30MB (7 active right now, canterbury_bankstown's the majority) will now be skipped, loudly, forever, until chunked extraction is actually built. They will never complete extraction under this fix alone.",
       "what_happens": "Those specific chapters' regulatory content can never be refreshed via the automated pipeline -- same limitation DQ-98 already documents (P2, 'those specific chapters can never be kept current via the automated pipeline until this is fixed'), unchanged by this PR.",
       "mitigated": false,
       "how": "Deliberately out of scope -- DQ-98's full fix (chunked extraction via pypdf/pikepdf page-range slicing, with the named clause-boundary risk) was explicitly registered as separate follow-up work by the user's own prior decision, not re-litigated here. This PR only stops the crash from taking down the OTHER 40 chapters in the same nightly batch.",
       "repro": "python scripts/dq_probe_oversized_pdf_oom_risk.py -- still reports the same active oversized chapters after this PR merges; that count is expected to stay non-zero until DQ-98 itself ships."
-    },
-    {
-      "scenario": "30MB is the same rough heuristic dq_probe_oversized_pdf_oom_risk.py already documents as imprecise (page count, two-column layout, and embedded raster images likely matter as much as raw byte size) -- a genuinely fine 35MB chapter could be skipped unnecessarily, or a pathological 25MB one could still OOM.",
-      "what_happens": "A small number of chapters near the threshold could be misclassified either direction.",
-      "mitigated": false,
-      "how": "Accepted -- same caveat the existing probe script already carries for the same number; recalibrating the threshold itself is not this PR's scope, and there's no better signal available yet (page count / layout complexity aren't currently measured pre-download).",
-      "repro": "N/A -- inherent to a byte-size heuristic, not a code defect."
     },
     {
       "scenario": "The guard fires AFTER the full R2 download completes (pdf_path.stat().st_size needs the file on disk), not before -- a 139MB download still happens over the network every night before being discarded.",
