@@ -92,9 +92,50 @@ def stuck_review_line(
             f"flagged {age_d}d ago")
 
 
+#: Must stay identical to OVERSIZED_PDF_SKIP_BYTES in scripts/dcp_extract_changed.py.
+#: Duplicated rather than imported, following the same convention as
+#: scripts/dq_probe_oversized_pdf_oom_risk.py -- importing the extractor would
+#: pull pdfplumber and boto3 into every watchdog run. Equality is asserted by
+#: tests/test_dcp_watchdog_blocked.py, because a comment is not a guard.
+OVERSIZED_PDF_SKIP_BYTES = 30 * 1024 * 1024
+
+
+def stuck_blocked_line(council: str, chapter_key: str, size_bytes: int) -> str:
+    """One alert line for a chapter extraction SKIPS rather than has not reached.
+
+    WHY THIS EXISTS. The alert had two states -- awaiting REVIEW and awaiting
+    extraction -- and an oversized chapter was reported as the second. It is
+    neither. extract_chapter() skips it before pdfplumber opens it (the 30MB
+    guard), on every run, deliberately, and needs_extraction stays TRUE. So it
+    reappears in this alert every single time, under a label that tells the
+    operator to run extraction, which will skip it again.
+
+    That is a line item that can never clear by doing what it asks. Three of
+    the 36 chapters in the 2026-09-09 alert were this, and the alert cannot be
+    read as a work list while they are mixed in with real work.
+
+    Pure -- no DB, no clock.
+    """
+    mb = size_bytes / (1024 * 1024)
+    return (f"  [{council}/{chapter_key}] BLOCKED, not waiting -- PDF is {mb:.0f}MB, "
+            f"above the {OVERSIZED_PDF_SKIP_BYTES / (1024 * 1024):.0f}MB extraction "
+            f"guard. Running extraction will skip it again (DQ-98).")
+
+
+def is_oversized(size_bytes) -> bool:
+    """True when extract_chapter() will skip this chapter on size.
+
+    NULL url_content_length means the monitor has never recorded a size, which
+    is not the same as small -- it is unknown. Unknown is reported as ordinary
+    awaiting-extraction rather than blocked, because claiming a chapter is
+    permanently blocked on a size nobody measured would be the worse error.
+    """
+    return size_bytes is not None and size_bytes > OVERSIZED_PDF_SKIP_BYTES
+
+
 # ── Check 1: Chapters flagged for extraction but not processed in >25 hours ──
 cur.execute("""
-    SELECT council, chapter_key, url_last_changed
+    SELECT council, chapter_key, url_last_changed, url_content_length
     FROM dcp_chapter_registry
     WHERE needs_extraction = TRUE
       AND (last_extracted_at IS NULL OR url_last_changed > last_extracted_at)
@@ -104,7 +145,13 @@ cur.execute("""
 stuck = cur.fetchall()
 
 # ── Check 2: Chapters with repeated download failures (grace period) ────────
-# The monitor runs daily, so check_failures >= 3 implies ~3+ days of failures.
+# check_failures counts CHECKS, not days, and the name of the constant below
+# says days. Those agreed while dcp-monitor ran daily. It runs FORTNIGHTLY as
+# of 2026-09-10 (Railway cron 0 2 1,15 * *), so 3 failures is now ~6 weeks of
+# a dead council URL before anyone is told, not 3 days. The value is left
+# alone rather than quietly retuned: at a fortnightly cadence there is no good
+# number here, and the fix is either a separate cheap URL liveness check or a
+# faster monitor cadence — a decision, not a constant edit.
 # Only alert at >= FAIL_GRACE_DAYS failures to filter transient outages.
 cur.execute("""
     SELECT council, chapter_key, check_failures, url_last_checked
@@ -187,30 +234,50 @@ if stuck:
     now = datetime.now(timezone.utc)
     critical = [(c, k, d) for c, k, d in stuck if (now - d).total_seconds() > 48 * 3600]
     chapter_list = "\n".join(f"  [{c}/{k}] changed {d}" for c, k, d in stuck)
-    # A stuck chapter is either awaiting EXTRACTION (no queued rows yet — the
-    # Monday cron or a manual run fixes it) or awaiting REVIEW (rows sit
-    # pending in dcp_review_queue — only a human ruling unblocks it). The old
-    # alert told operators to run extraction either way, which was wrong
+    # The old alert told operators to run extraction either way, which was wrong
     # advice for the 2026-07 backlog: extraction had run; 307 rows sat
-    # unreviewed for weeks while the same alert repeated.
+    # unreviewed for weeks while the same alert repeated. The three states are
+    # split below.
     if critical:
+        # THREE states, not two. A stuck chapter is awaiting REVIEW (rows sit in
+        # dcp_review_queue, only a human ruling unblocks it), awaiting EXTRACTION
+        # (the nightly cron or a manual run fixes it), or BLOCKED — extraction
+        # deliberately skips it every run on the 30MB guard, so telling anyone to
+        # run extraction is telling them to reproduce the skip. Splitting the
+        # third out is what makes the remainder a work list.
         lines = []
         review_blocked = 0
-        for c, k, flagged_at in critical:
+        size_blocked = 0
+        for c, k, flagged_at, size_bytes in critical:
             pend = pending_by_chapter.get((c, k))
             if pend:
                 n, _queue_oldest = pend
                 lines.append(stuck_review_line(c, k, flagged_at, n, now))
                 review_blocked += 1
+            elif is_oversized(size_bytes):
+                lines.append(stuck_blocked_line(c, k, size_bytes))
+                size_blocked += 1
             else:
                 lines.append(f"  [{c}/{k}] awaiting extraction")
+        extraction_pending = len(critical) - review_blocked - size_blocked
         runbook = []
         if review_blocked:
             runbook.append("  Review: /internal/dcp-review")
-        if review_blocked < len(critical):
+        if extraction_pending:
             runbook.append("  Extract: python scripts/dcp_extract_changed.py")
+        if size_blocked:
+            runbook.append(
+                f"  {size_blocked} blocked on PDF size — no operator action clears "
+                f"these; they need the DQ-98 split-extraction fix."
+            )
+        # The headline counts what someone can actually act on. Reporting 36 when
+        # 3 are permanently unactionable trains the reader to ignore the number.
+        headline = f"{len(critical)} chapters stuck >48h"
+        if size_blocked:
+            headline += (f" ({extraction_pending + review_blocked} actionable, "
+                         f"{size_blocked} blocked on PDF size)")
         critical_issues.append(
-            f"{len(critical)} chapters stuck >48h — stale data may be served:\n"
+            headline + " — stale data may be served:\n"
             + "\n".join(lines) + "\n" + "\n".join(runbook)
         )
     non_critical = [x for x in stuck if x not in critical]
@@ -220,7 +287,7 @@ if stuck:
             + "\n".join(f"  [{c}/{k}]" for c, k, _ in non_critical)
         )
     print(f"STUCK CHAPTERS: {len(stuck)} ({len(critical)} critical >48h)")
-    for c, k, d in stuck:
+    for c, k, d, _n in stuck:
         age_h = (now - d).total_seconds() / 3600
         tag = " [CRITICAL]" if age_h > 48 else ""
         print(f"  [{c}] {k} — changed {d} ({age_h:.0f}h ago){tag}")

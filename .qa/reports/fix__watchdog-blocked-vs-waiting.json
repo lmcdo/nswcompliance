@@ -1,0 +1,112 @@
+{
+  "tier": "standard",
+  "justification": "Changes an operator alert, not served data. No provision, control or report content moves. The failure mode is an alert that misleads rather than wrong data reaching a reader, so standard rather than critical.",
+  "commit_hash": "542ce196",
+  "files": [
+    "scripts/dcp_watchdog.py",
+    "tests/test_dcp_watchdog_blocked.py",
+    "railway.dcp-monitor.toml"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry.url_content_length, already populated by the dcp-monitor HEAD check and already read for exactly this purpose by scripts/dq_probe_oversized_pdf_oom_risk.py. No new query, no new data source, no R2 call. The threshold is the same 30MB the extractor's own guard uses.",
+    "assumption_mismatch": "One, and it is the reason for the change: the alert assumed a chapter with no queued review rows is awaiting extraction. For an oversized chapter that is false -- extract_chapter skips it before pdfplumber opens it, deliberately, every run, and needs_extraction stays TRUE by design.",
+    "new_vs_existing": "Extends the existing two-state classification in the stuck-chapter alert to three. Reuses stuck_review_line's shape (pure, no DB, no clock) for the new line builder.",
+    "prior_art": "Searched for an existing blocked/skipped concept before adding one: dcp_extract_changed.py records the skip to last_suspect_alert_key/_at and sends its own per-file Telegram alert, but nothing feeds that back into the watchdog's stuck list -- which is why the same chapters read as pending work. dq_probe_oversized_pdf_oom_risk.py already counts them but is an advisory probe, not wired to the alert."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_watchdog_blocked.py -v",
+    "external_authority": "Not self-referential: the threshold assertion parses OVERSIZED_PDF_SKIP_BYTES out of scripts/dcp_extract_changed.py -- a DIFFERENT module, the one that actually performs the skip -- and the size cases are the real byte counts of real chapters taken from production (139,006,750 canterbury_bankstown/chapter-7-6, the row that crashed the job with exit -9; 117,829,367 chapter-6-2; 32,888,474 chapter-7-5; 20,607,908 ashfield/chapter-d, which extracted fine). The watchdog is checked against the extractor's behaviour and against measured production data, not against itself.",
+    "fails_when": "The watchdog's threshold stops matching the extractor's OVERSIZED_PDF_SKIP_BYTES in either direction; is_oversized starts treating an unmeasured NULL size as blocked; a real chapter's measured size lands on the wrong side of the boundary; or the blocked line reverts to reading like ordinary pending work.",
+    "observed_red": "Forced, not assumed. Editing OVERSIZED_PDF_SKIP_BYTES in scripts/dcp_extract_changed.py to 50MB makes test_the_watchdog_threshold_equals_the_extractors fail; asserting the pre-change label makes test_the_blocked_line_says_the_action_will_not_work fail on the 'awaiting extraction' string. The rounding assertion caught a real error on first run -- 139,006,750 bytes renders as 133MB in MiB, not the 132MB first written -- which is a check failing on something true before it was made to pass.",
+    "measured": "10 tests pass. Full suite 5,096 passed, 2 skipped."
+  },
+  "functions": [
+    {
+      "name": "is_oversized",
+      "file_line": "scripts/dcp_watchdog.py (helper block above Check 1)",
+      "input": "url_content_length for one chapter: an int, or None when the monitor has never recorded a size.",
+      "output": "bool. True only when a size is known AND exceeds 30MB, which is precisely when extract_chapter will skip the chapter.",
+      "if_none": "False. NULL is UNKNOWN, not small and not blocked -- the chapter falls through to ordinary awaiting-extraction. Parking real work as permanently impossible on a size nobody measured is the worse error, so the unknown case is deliberately the safe one.",
+      "three_state": "known-and-over / known-and-under / size unknown. The third collapses into the second for reporting, on purpose, and the test names why."
+    },
+    {
+      "name": "stuck_blocked_line",
+      "file_line": "scripts/dcp_watchdog.py (helper block above Check 1)",
+      "input": "council, chapter_key, size_bytes for a chapter classified as blocked.",
+      "output": "One alert line naming the size, the guard it exceeds, that running extraction will skip it again, and DQ-98 as the fix that would clear it.",
+      "if_none": "Not called when size is None -- is_oversized gates it, so the formatting never sees an unknown size.",
+      "three_state": "N/A -- pure string builder, no DB, no clock, called only on the blocked branch."
+    }
+  ],
+  "values": [
+    {
+      "value": "30MB (OVERSIZED_PDF_SKIP_BYTES). Duplicated in dcp_watchdog.py rather than imported, following the convention dq_probe_oversized_pdf_oom_risk.py already set -- importing dcp_extract_changed would pull pdfplumber and boto3 into every watchdog run.",
+      "read_at": "Module import, from a literal. Its equality with the extractor's constant is asserted at test time by parsing dcp_extract_changed.py, so the duplication cannot drift silently.",
+      "if_missing": "N/A -- a literal. The test fails loudly if the extractor's constant moves or is renamed."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Check 1 of the watchdog: chapters flagged for extraction and not processed. Widened by one column so the alert can tell blocked from waiting.",
+      "file_line": "scripts/dcp_watchdog.py, Check 1",
+      "where_clause": "needs_extraction = TRUE AND (last_extracted_at IS NULL OR url_last_changed > last_extracted_at) AND url_last_changed < NOW() - INTERVAL '25 hours' -- unchanged. Only the SELECT list gained url_content_length; no row that was reported before is dropped, and none is added."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The extractor's 30MB guard is later retuned (say to 50MB, or replaced by a page-count test) and the watchdog's copy is not.",
+      "what_happens": "The alert calls a chapter blocked that the extractor would now happily process, so real work is parked as impossible -- or the reverse, and a permanently-skipped chapter is reported as pending forever, which is the exact bug this change exists to fix.",
+      "mitigated": true,
+      "how": "test_the_watchdog_threshold_equals_the_extractors parses OVERSIZED_PDF_SKIP_BYTES out of dcp_extract_changed.py and asserts equality. This repo has already been burned by two copies of a predicate drifting -- the DQ-76 repair and its probe carried different brace classes and 103 rows sat unrepaired while the metric read 0 -- so the duplication is allowed only with the assertion attached.",
+      "repro": "Change OVERSIZED_PDF_SKIP_BYTES in scripts/dcp_extract_changed.py and run python -m pytest tests/test_dcp_watchdog_blocked.py -- it fails."
+    },
+    {
+      "scenario": "A chapter has never been sized (url_content_length IS NULL) and a naive size-greater-than-threshold comparison is written against None.",
+      "what_happens": "On Python that is a TypeError and the whole watchdog run dies, taking every other check with it. Written the other way round, NULL silently compares as small and nothing is misreported -- but a genuinely oversized chapter that the monitor never sized would be reported as ordinary pending work forever.",
+      "mitigated": true,
+      "how": "is_oversized returns False for None explicitly, and test_an_unmeasured_size_is_not_reported_as_blocked pins it. The choice is deliberate and stated in the docstring: unknown falls through to awaiting-extraction, because claiming a chapter is permanently blocked on an unmeasured size parks real work as impossible.",
+      "repro": "python -m pytest tests/test_dcp_watchdog_blocked.py::test_an_unmeasured_size_is_not_reported_as_blocked"
+    },
+    {
+      "scenario": "The boundary is written as greater-or-equal rather than greater-than, or the MB conversion uses 1000 rather than 1024, so a chapter exactly at the guard is classified differently by the alert than by the extractor.",
+      "what_happens": "A single chapter sitting on the line is reported as blocked while extraction actually processes it, or vice versa. Small, but it is the class of error that makes an operator stop trusting the label.",
+      "mitigated": true,
+      "how": "Parametrised on the real measured sizes plus both sides of the boundary: 30MB exactly is not oversized, 30MB plus one byte is, matching the extractor's comparison. The rendered MB figure is asserted against a real chapter (139,006,750 bytes reads as 133MB, MiB not MB).",
+      "repro": "python -m pytest tests/test_dcp_watchdog_blocked.py -k is_oversized"
+    },
+    {
+      "scenario": "The headline count still reports every stuck chapter as one number, so the change makes the body honest but leaves the number that people actually read unchanged.",
+      "what_happens": "The alert says 36 when 3 of them can never be cleared. The reader learns the number is noise and stops opening it -- which is the state this alert was already in.",
+      "mitigated": true,
+      "how": "The headline splits into actionable and blocked counts. The runbook also drops the Extract line when nothing is actually extraction-pending, so it can no longer prescribe an action that would only reproduce the skip.",
+      "repro": "Inspect the constructed headline in scripts/dcp_watchdog.py -- extraction_pending is len(critical) minus both blocked counts, and the Extract runbook line is gated on it being non-zero."
+    },
+    {
+      "scenario": "The stuck query gained a column, and one of the several places that unpack its tuples is missed.",
+      "what_happens": "ValueError at runtime inside the cron, so the watchdog dies and every alert it carries goes silent -- a monitor failing closed with no output looks exactly like a quiet night.",
+      "mitigated": true,
+      "how": "All four unpack sites were widened together (critical, chapter_list, non_critical, and the stdout loop) and the module parses. The full suite passes, and the helpers are exercised by tests that execute the real source rather than a copy.",
+      "repro": "python -m pytest tests/test_dcp_watchdog_blocked.py and an ast.parse of scripts/dcp_watchdog.py"
+    },
+    {
+      "scenario": "railway.dcp-monitor.toml is edited to fortnightly and everyone assumes the schedule changed.",
+      "what_happens": "Nothing changes. Railway only applies config-as-code where no dashboard value is set, and on 2026-09-10 six of eight services were running a schedule different from their own file -- dcp-extract weekly when its file said daily, dcp-extract-all weekly when its file said quarterly, and four with no cron at all.",
+      "mitigated": false,
+      "how": "Not mitigated in code. The live values for dcp-extract (daily), dcp-extract-all (quarterly) and dcp-monitor (fortnightly) were set directly through the Railway API and verified by re-reading them, and the file now carries a comment saying editing it is not sufficient on its own. A real fix is a check that compares every railway toml against the live schedule and fails on drift; it needs a RAILWAY_TOKEN in CI, so it is named here rather than half-built.",
+      "repro": "A railway api project services query returning cronSchedule per serviceInstance, compared against the cronSchedule lines in the railway toml files."
+    },
+    {
+      "scenario": "The FAIL_GRACE_DAYS threshold of 3 for download failures is left alone while the monitor cadence changes from daily to fortnightly.",
+      "what_happens": "check_failures counts checks, not days. At a fortnightly cadence 3 failures is about 6 weeks of a dead council URL before anyone is told, under a constant whose name says 3 days.",
+      "mitigated": false,
+      "how": "Deliberately not changed. Retuning it silently would be picking a number to match a cadence rather than a decision about how long a dead council URL may go unreported -- and at a fortnightly cadence there is no good value. The stale comment claiming the monitor runs daily is corrected in place to state the real arithmetic, so the next reader sees the gap instead of inheriting the wrong premise.",
+      "repro": "Read the FAIL_GRACE_DAYS comment block in scripts/dcp_watchdog.py against the live cron for dcp-monitor."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- the next monitor-watchdog run (Wednesdays 10:00 UTC) should list the canterbury_bankstown 7-5, 7-6 and 6-2 chapters as BLOCKED rather than awaiting extraction, and the headline should separate actionable from blocked. Also confirm the live Railway cron for dcp-monitor still reads the fortnightly value after any redeploy, since config-as-code and the dashboard value can diverge."
+  }
+}
