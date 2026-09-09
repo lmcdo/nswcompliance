@@ -3881,8 +3881,11 @@ def main() -> None:
             try:
                 import dcp_fidelity_gate as _gate
                 pairs = sorted({(ch.get("council"), ch.get("chapter_key")) for ch in review_chapters})
+                # prior-art-checked: not a new capability -- gate_chapter and this call site
+                # are two already-existing halves of the same already-wired integration; this
+                # is a 2-tuple/3-tuple unpacking fix matching gate_chapter's own signature.
                 gcur = conn.cursor()
-                g_tot = f_tot = 0
+                g_tot = f_tot = s_tot = 0
                 for g_council, g_chapter in pairs:
                     gcur.execute(
                         "SELECT r2_current_path FROM dcp_chapter_registry "
@@ -3892,12 +3895,19 @@ def main() -> None:
                     r2row = gcur.fetchone()
                     if not r2row:
                         continue
-                    g, f = _gate.gate_chapter(gcur, s3, g_council, g_chapter, r2row[0])
+                    # gate_chapter returns (grounded, flagged, skipped_not_actionable) as of
+                    # the 2026-09-07 auto-scoping fix (#1057) -- this call site still expected
+                    # the old 2-tuple, so every --review run crashed here (advisory try/except
+                    # swallowed it as "fidelity gate skipped"), leaving every freshly enqueued
+                    # row ungraded. Found live 2026-09-09 on a real ashfield re-extract.
+                    g, f, s = _gate.gate_chapter(gcur, s3, g_council, g_chapter, r2row[0])
                     conn.commit()
                     g_tot += g
                     f_tot += f
+                    s_tot += s
                 gcur.close()
-                print(f"  Fidelity gate: {g_tot} grounded, {f_tot} flagged for human review.")
+                print(f"  Fidelity gate: {g_tot} grounded, {f_tot} flagged for human review, "
+                      f"{s_tot} skipped (not actionable content).")
             except Exception as exc:  # noqa: BLE001 — grading is advisory; keep the queued rows
                 print(f"  [warn] fidelity gate skipped ({exc}); rows queued but ungraded.")
 
