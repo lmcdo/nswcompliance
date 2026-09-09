@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Touches the extraction path that produces every served provision. If releasing a page cache changed a single character of extracted text, wrong regulatory content would reach a reader silently. The change is chosen because it provably cannot do that, and the proof is byte-level comparison on three real council chapters -- but the blast radius is the whole corpus, so critical.",
-  "commit_hash": "5d412a28",
+  "commit_hash": "eddc5fd2",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_pdf_page_release.py"
@@ -46,7 +46,7 @@
       "what_happens": "The worst possible outcome for this repo: silently wrong provisions, served, with a green build. Nothing downstream would catch it -- the fidelity gate compares extracted text against the same PDF, so a systematically different extraction would agree with itself.",
       "mitigated": true,
       "how": "Proven, not argued. The previous extractor was loaded from origin/main as a separate module and run against the new one on three real council PDFs covering both code paths: canterbury_bankstown/chapter-7-6 (139MB, sequential path, 65 sections), woollahra/chapter-d5 (9.4MB, TOC-override path, 42 sections) and ashfield/chapter-a (4.3MB, 2 sections). sha256 over the section list and sha256 over the tables were IDENTICAL in all three. The mechanism supports this: both calls discard only caches pdfplumber rebuilds from the same bytes.",
-      "repro": "git show origin/main:scripts/dcp_extract_changed.py > old.py, load both modules, run DCPExtractor(pdf, council).extract() on the same file, hash the results and compare."
+      "repro": "Write origin/main's extractor to a scratch path with git show, load both it and the working-tree module with importlib.util.spec_from_file_location, run DCPExtractor(pdf, council).extract() on the same council PDF through each, and compare sha256 over the section list and over the tables."
     },
     {
       "scenario": "A page is released while a later loop iteration still needs it -- extract_by_page_ranges can revisit a page when section ranges overlap.",

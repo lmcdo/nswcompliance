@@ -101,3 +101,12 @@ matplotlib==3.11.1
 # first run — the tests would have skipped silently in CI, so the guard against a
 # misdirecting alarm would itself have been dark. Pinned to match.
 PyYAML==6.0.3
+
+# reportlab: tests/test_pdf_page_release.py builds small real PDFs to prove the
+# extractor releases every page it reads. Already in requirements.txt:137, which
+# CI does not install -- the same gap this file records for pvlib, PyMuPDF and
+# PyYAML. Caught by the dependency-skip ratchet on the first push: without this
+# the test would have SKIPPED in CI, and a skip is green, so the guard against
+# the OOM regression would have been dark from the day it was written. Pinned to
+# match requirements.txt.
+reportlab==5.0.0
