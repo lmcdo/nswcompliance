@@ -2880,6 +2880,27 @@ def _auto_verify_controls(
 
 # ── Per-chapter extraction ──────────────────────────────────────────────────
 
+# DQ-98 stability guard (registered .claude/DATA_QUALITY_TRACKER.md, 2026-09-07;
+# real crash: Railway dcp-extract, 2026-09-06 03:21 UTC, exit -9/SIGKILL, on
+# canterbury_bankstown/chapter-7-6-belmore-and-lakemba, 139,006,750 bytes).
+# DCPExtractor and preflight_layout() each open the downloaded PDF with
+# pdfplumber and hold every page's char/line/table/image objects in memory for
+# the pass's lifetime; a file this large exhausts the container and the OS
+# kills the WHOLE process — not just this chapter. Confirmed live 2026-09-08/09
+# (three separate cron firings, all exit -9): the crash takes every OTHER
+# chapter queued in the same run down with it, so none of that night's batch
+# gets extracted, not only the oversized one.
+# Same 30MB heuristic as scripts/dq_probe_oversized_pdf_oom_risk.py (kept as a
+# separate literal, not imported — that script is a standalone advisory probe,
+# not a module meant to be imported into the pipeline it's reporting on).
+# This is NOT the DQ-98 fix (chunked extraction, not yet built, real design
+# risk around clauses straddling a chunk boundary) — it only stops one
+# oversized chapter from silently crash-looping the entire nightly batch.
+# needs_extraction stays TRUE (existing failure convention below), so the
+# chapter keeps surfacing here, loudly, every run until the real fix ships.
+OVERSIZED_PDF_SKIP_BYTES = 30 * 1024 * 1024
+
+
 def extract_chapter(
     chapter: dict,
     s3,
@@ -2916,7 +2937,18 @@ def extract_chapter(
             print(f"    [ERROR] R2 download failed: {exc}")
             return False, None
 
-        print(f"    Downloaded {pdf_path.stat().st_size:,} bytes")
+        pdf_bytes = pdf_path.stat().st_size
+        print(f"    Downloaded {pdf_bytes:,} bytes")
+
+        if pdf_bytes > OVERSIZED_PDF_SKIP_BYTES:
+            print(
+                f"    [SKIP] {pdf_bytes:,} bytes exceeds the "
+                f"{OVERSIZED_PDF_SKIP_BYTES:,}-byte OOM-risk threshold (DQ-98) — "
+                f"skipping this chapter to protect the rest of tonight's batch. "
+                f"needs_extraction stays TRUE; this chapter needs chunked "
+                f"extraction (DQ-98, not yet built) to ever complete."
+            )
+            return False, None
 
         # 2. Extract sections
         cur = conn.cursor()
