@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Two independent fixes found while clearing the live DCP review backlog. (1) The OCR model's [Non-Text] block marker was never stripped, so it landed mid-sentence inside real regulatory rules -- measured: 44 rows in dcp_review_queue, 0 live in regulatory_provisions. (2) The review UI told a human 'a number in this rule is not in the PDF' without showing where that number sits, forcing a manual search of a 170-page PDF per row across 433 flagged rows. Not Critical: no schema change, no query change, no change to which provisions are served; the OCR fix only deletes a marker string and the UI change is presentational. Not Minor: the marker reached real rule text in production data, and the UI gap was actively blocking the human review the whole pipeline depends on.",
-  "commit_hash": "5abe2f23",
+  "commit_hash": "6df1f37b",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_ocr_fallback.py",
