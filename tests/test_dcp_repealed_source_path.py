@@ -198,13 +198,35 @@ def test_a_missing_council_url_is_reported_rather_than_passed_silently():
 
 def test_the_narrow_warning_names_which_column_was_missing():
     """Two different gaps, two different messages -- 'nothing was read at all'
-    is a worse state than 'only the mirrored key was read', and an operator
+    is a worse state than 'only one location was read', and an operator
     triaging a log has to be able to tell them apart."""
     one_column = dx.repealed_check_coverage(None, CLEAN_R2_KEY)
     neither = dx.repealed_check_coverage(None, None)
     assert "council_url" in one_column
     assert one_column != neither
     assert "nothing" in neither.lower()
+
+
+def test_a_missing_mirrored_path_is_reported_too_not_only_a_missing_url():
+    """Sol cross-review round 2, 2026-09-10. Accepted.
+
+    The first version returned 'full coverage' whenever council_url was
+    populated, which describes a one-column check as a clean two-column one.
+    39 active rows have no r2_current_path, 5 of them with a URL. Today the
+    pending query filters them out with r2_current_path IS NOT NULL, so they
+    never reach the caller -- but a function whose whole job is reporting
+    coverage honestly must not depend on a caller's WHERE clause to stay true,
+    and there is separate in-flight work on exactly that filter.
+    """
+    warning = dx.repealed_check_coverage(CLEAN_URL, None)
+    assert warning, (
+        "a chapter with no mirrored path reported full coverage -- the check "
+        "read one location and the log said it read both"
+    )
+    assert "r2_current_path" in warning
+    assert dx.repealed_check_coverage(CLEAN_URL, "   ") is not None
+    # and the two one-column gaps are still distinguishable from each other
+    assert warning != dx.repealed_check_coverage(None, CLEAN_R2_KEY)
 
 
 def test_a_missing_council_url_does_not_stop_the_chapter_extracting(capsys):

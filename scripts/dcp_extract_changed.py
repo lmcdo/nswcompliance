@@ -2261,22 +2261,35 @@ def detect_repealed_source(council_url, r2_path):
 def repealed_check_coverage(council_url, r2_path):
     """Say which locations the repealed check was actually able to read.
 
-    A NULL council_url is a coverage gap, not evidence of a repeal, so it must
+    A missing column is a coverage gap, not evidence of a repeal, so it must
     not reject -- 36 of the 564 active registry rows have no source URL, spread
     across 17 councils, and failing closed on them would stall a corpus over a
-    missing field. But it must not be SILENT either: with no URL the check has
+    blank field. But it must not be SILENT either: with no URL the check has
     only the mirrored key, and that is precisely the column a council's archive
-    marker never reaches. Returns a warning so the log says the check ran narrow
-    rather than implying it ran clean. Raised by Sol cross-review, 2026-09-10.
+    marker never reaches.
+
+    Both columns are reported INDEPENDENTLY. An earlier version returned "full
+    coverage" whenever council_url was populated, which described a one-column
+    check as a clean two-column one whenever r2_current_path was absent. 39
+    active rows have no mirrored path (5 of them with a URL); today the pending
+    query filters them out with r2_current_path IS NOT NULL, so they never
+    reach here -- but a function whose entire job is reporting coverage
+    honestly must not depend on a caller's WHERE clause to stay true.
+    Raised by Sol cross-review, 2026-09-10, in two rounds.
     """
-    if council_url and str(council_url).strip():
+    missing = [
+        name for name, value in (("council_url", council_url),
+                                 ("r2_current_path", r2_path))
+        if not (value and str(value).strip())
+    ]
+    if not missing:
         return None
-    if r2_path and str(r2_path).strip():
-        return ("no council_url on this registry row - the repealed-source check "
-                "could only read the mirrored key, which is the column a "
-                "council's archive marker usually never reaches")
-    return ("neither council_url nor r2_current_path is set - the "
-            "repealed-source check read nothing at all")
+    if len(missing) == 2:
+        return ("neither council_url nor r2_current_path is set - the "
+                "repealed-source check read nothing at all")
+    return (f"no {missing[0]} on this registry row - the repealed-source check "
+            f"could only read one of its two locations, and a council's archive "
+            f"marker does not reliably appear in both")
 
 
 # Councils whose two-column/margin layout handling is PROVEN by a full source
