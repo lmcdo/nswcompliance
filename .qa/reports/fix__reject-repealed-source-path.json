@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "This is admission control on the regulatory source corpus: it decides whether a council document the council itself has withdrawn may be parsed into served planning controls. Wrong in one direction it serves repealed setbacks and heights as current law, which is the liability case the whole project is built to avoid; wrong in the other it rejects the live corpus and the nightly extraction stops for every council. Measured on 2026-09-10: 19 of Woollahra's 27 active chapters point into the council's /repealed-dcps/ folder, 357 of its 739 served provisions trace to those chapters, and that day's run queued 478 more rows from them. The existing repealed guard passed all 19 because it reads page text and Woollahra declares the repeal only in the path. This is a recurrence of the 2026-07-29 Woollahra failure class, not a new one.",
-  "commit_hash": "PENDING",
+  "commit_hash": "cab6d1e3",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_repealed_source_path.py"
