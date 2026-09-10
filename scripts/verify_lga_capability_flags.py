@@ -81,6 +81,16 @@ def db_slug(ts_slug: str) -> str:
     return SLUG_OVERRIDE.get(ts_slug, ts_slug.replace("-", "_"))
 
 
+# spatial_overlays.lga_name for two councils that do not equal their own
+# display name upper-cased. Confirmed live on 2026-09-10 (SELECT DISTINCT
+# lga_name FROM spatial_overlays WHERE layer_type='flood' contains
+# 'CITY OF PARRAMATTA' and 'SYDNEY', never 'PARRAMATTA' or 'CITY OF SYDNEY').
+# Added after Sol cross-review (MEDIUM 0.99, 2026-09-10) pointed out that a
+# future True on either council's hasFloodData would otherwise search for the
+# wrong name and raise a false alarm.
+NAME_OVERRIDE = {"Parramatta": "CITY OF PARRAMATTA", "City of Sydney": "SYDNEY"}
+
+
 # Flags recorded as deliberately NOT checked here, with why. Do not add a flag
 # to the checks below without either moving its entry out of this list or
 # adding a matching new entry when a new flag is discovered.
@@ -229,7 +239,8 @@ def check_has_dcp_data(cur, slug: str) -> tuple[int, str]:
 
 def check_has_flood_data(cur, name: str) -> tuple[int, str]:
     """Ground truth for granny-flat-lgas.ts's hasFloodData: at least one row in
-    spatial_overlays for layer_type='flood' under this council's ALL-CAPS name.
+    spatial_overlays for layer_type='flood' under this council's spatial_overlays
+    name.
 
     Matches flood-lgas.ts's own doc comment on floodFeatureCount ("Total flood
     features in spatial_overlays"): every entry checked in granny-flat-lgas.ts
@@ -237,20 +248,23 @@ def check_has_flood_data(cur, name: str) -> tuple[int, str]:
     in flood-lgas.ts > 0), so this checks the same underlying claim directly
     against the table floodFeatureCount is itself drawn from.
 
-    KNOWN GAP, left as a comment rather than a guessed fix: spatial_overlays.
-    lga_name does not always match a council's display name -- it holds
-    'CITY OF PARRAMATTA' and 'SYDNEY', not 'PARRAMATTA' or 'CITY OF SYDNEY'.
-    Neither council currently claims hasFloodData: true in granny-flat-lgas.ts,
-    so this does not affect today's result, but a future True on either would
-    need a name override added here, not assumed to work.
+    NAME_OVERRIDE (added after Sol cross-review, 2026-09-10, MEDIUM 0.99):
+    spatial_overlays.lga_name does not always match a council's display name
+    upper-cased -- it holds 'CITY OF PARRAMATTA' and 'SYDNEY', confirmed live,
+    never 'PARRAMATTA' or 'CITY OF SYDNEY'. Without this override, a future
+    True on either council's hasFloodData would search for the wrong name,
+    find zero rows, and raise a false alarm on a council that may genuinely
+    have flood coverage. Both exceptions were confirmed against the live table
+    before being added here -- neither is a guess.
     """
+    live_name = NAME_OVERRIDE.get(name, name.upper())
     cur.execute(
         """SELECT COUNT(*) FROM spatial_overlays
            WHERE layer_type = 'flood' AND lga_name = %s""",
-        (name.upper(),),
+        (live_name,),
     )
     cnt = cur.fetchone()[0]
-    return cnt, f"{cnt} spatial_overlays flood row(s) for lga_name '{name.upper()}'"
+    return cnt, f"{cnt} spatial_overlays flood row(s) for lga_name '{live_name}'"
 
 
 def main() -> int:
@@ -293,7 +307,14 @@ def main() -> int:
         for d in find_drift(verify_entries, "hasDcpData", verify_live_counts)
     )
 
-    granny_entries = parse_flag_entries(GRANNY_FLAT_LGAS_TS, ["hasFloodData", "hasAriData"])
+    # Requesting ONLY hasFloodData here is deliberate (Sol cross-review, HIGH
+    # 0.99, 2026-09-10): parse_flag_entries drops an entire entry if any ONE
+    # requested flag is missing or reformatted. hasAriData is never checked
+    # (see NOT_CHECKED_FLAGS) -- coupling it to this parse call meant a
+    # malformed/renamed hasAriData field on one council would silently drop
+    # that council's hasFloodData claim from verification too, with the loose
+    # >=15 minimum-count guard too coarse to notice one missing entry.
+    granny_entries = parse_flag_entries(GRANNY_FLAT_LGAS_TS, ["hasFloodData"])
     if len(granny_entries) < 15:
         print(
             f"ERROR: only parsed {len(granny_entries)} entries from "
