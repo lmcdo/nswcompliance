@@ -30,6 +30,14 @@ COPY scripts/run_monitors.py ./scripts/run_monitors.py
 # which dcp_extract_changed imports.
 COPY scripts/dcp_extract_changed.py ./scripts/dcp_extract_changed.py
 COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
+# dcp_commit_approved re-derives v2_precinct_id for each council it commits -- a
+# committed provision is inserted with that field UNSET, exactly like the three
+# enrichment fields, so without this the keys stay NULL until a human runs the
+# derivation by hand (measured 2026-09-10: Ashfield down to 118 keyed rows of 2,041).
+# The json is NOT optional: derive_precinct_keys reads it at MODULE level, so the
+# import itself fails without it -- and a FileNotFoundError is not an ImportError.
+COPY scripts/derive_precinct_keys.py ./scripts/derive_precinct_keys.py
+COPY data/cos_precinct_page_ranges.json ./data/cos_precinct_page_ranges.json
 # Sibling modules dcp_extract_changed imports at runtime: check_provision (review
 # path) and check_gate (commit-path quality gate). Without these the worker
 # ModuleNotFounds mid-run (review path crashed on verify_dcp_formatting).
