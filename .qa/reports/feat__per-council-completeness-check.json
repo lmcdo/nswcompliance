@@ -1,7 +1,7 @@
 {
   "tier": "Critical",
   "justification": "Three PRs on 2026-09-10 (#1079 repealed source path, #1080 precinct keys wiped on every commit, #1081 retired zone codes written fresh) fixed one defect appearing in three fields: a council update silently dropping what its provisions carry. The two that were caught were the only two with a check watching them. Ashfield served 2,041 provisions with 118 precinct keys and Marrickville 2,403 with 37, and nothing reported it -- a person found it two months later, because a precinct lookup returning council-wide controls instead of the precinct's own produces no error anywhere. Every existing per-council check asserts an ABSOLUTE invariant (validate_dcp_health: enrichment gap = 0, duplicates = 0, registry fanout = 0), which cannot see a field that legitimately sits at 36% and falls to 6%. This adds the comparison against the council's own last recording, the only form that can catch a field nobody has predicted -- measured: ref_number is 93% filled corpus-wide and nothing in the repo knows what fills the other 7%. Critical rather than Standard because it writes to production, it is called from the path that inserts live provisions, and its failure mode is silence.",
-  "commit_hash": "4341e5ed",
+  "commit_hash": "07cfec05",
   "files": [
     "migrations/068_council_field_snapshot.sql",
     "scripts/check_council_completeness.py",
