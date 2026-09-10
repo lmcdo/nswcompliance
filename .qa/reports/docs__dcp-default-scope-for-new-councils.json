@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Documentation only. One markdown file, no code, no query, no served data, no schema. It changes what a person decides to register for the next council, not what any machine does.",
-  "commit_hash": "e1768a9c",
+  "commit_hash": "271ccb65",
   "files": [
     "docs/DCP_SCOPE_CONFIG_REFERENCE.md"
   ],

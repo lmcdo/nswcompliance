@@ -100,9 +100,26 @@ Strathfield, Canada Bay, Liverpool, Ryde, Randwick, Camden — all the same shap
 Somebody already picked residential + parking + landscaping for these councils.
 **None of them has a mirrored PDF**, so nothing can be extracted.
 
-**50 chapters across 22 councils have no mirrored PDF. Only 15 of those even carry a
-`council_url` to fetch from** — the other 35 need the source document located first.
-That, not chapter selection, is the work.
+**⚠ CORRECTED 2026-09-10, same day.** A first pass here said "50 chapters across 22
+councils have no mirrored PDF", counting `r2_public_pdf_url IS NULL`. That is the wrong
+column. Extraction reads **`r2_current_path`** — `extract_chapter` calls
+`s3.download_file(R2_BUCKET_NAME, r2_path, ...)` with it — and a chapter can be mirrored
+while the public-URL field is empty. Wingecarribee's three town plans are exactly that:
+mirrored, extractable, and reported as missing by the wrong query.
+
+Measured on the right column:
+
+- **39 chapters cannot be extracted** — no `r2_current_path`. Of those only **5** carry a
+  `council_url` the monitor could fetch from; the other **34** need the source document
+  located by a person.
+- **53 chapters ARE mirrored, have never been extracted, and are not flagged for
+  extraction.** Nothing needs fetching for these — canterbury_bankstown 20, marrickville
+  12, leichhardt 10, wingecarribee 3, and singles elsewhere. They are the cheapest work
+  available and the first pass missed them entirely by reading the wrong field.
+
+The lesson is the one this file already carries for chapter titles: a plausible column
+name is not the column the pipeline uses, and checking which one the code actually reads
+takes one grep.
 
 | Council | Registered | Core areas covered | Blocker |
 |---|---|---|---|
@@ -119,7 +136,8 @@ That, not chapter selection, is the work.
 | Waverley | 4 | general, parking, landscaping | landscaping and transport have no PDF |
 | Northern Beaches | 4 | one consolidated DCP extracted | the three part-level entries have no PDF |
 | Parramatta | 2 | one consolidated DCP extracted | transport part has no PDF |
-| Bayside, Burwood, Camden, Canada Bay, Fairfield, Liverpool, Randwick, Ryde, Strathfield, Sutherland Shire, The Hills, Wingecarribee | 1–3 each | **already the right ones** | **no PDF mirrored, on any of them** |
+| Bayside, Burwood, Camden, Canada Bay, Fairfield, Liverpool, Randwick, Ryde, Strathfield, Sutherland Shire, The Hills | 1–3 each | **already the right ones** | no mirrored PDF — the document must be found. Liverpool is the exception: it has URLs, but the council's firewall returns HTTP 403 to the fetcher |
+| Wingecarribee | 3 | town plans | **mirrored already** — needs extracting, not fetching. Listed as missing in the first pass, wrongly |
 
 ### Two things this pass corrected
 
