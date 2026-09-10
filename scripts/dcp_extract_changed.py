@@ -32,6 +32,7 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
@@ -2213,17 +2214,35 @@ _REPEALED_STAMP = re.compile(r"^\s*repealed\s+by\b", re.IGNORECASE)
 #       AND status='pending' AND chapter_key = ANY(<19 keys>);
 # The stamp check passed every one, because the word never appears in the text.
 #
+# prior-art-checked: reuse not viable because the one existing repealed detector
+# is r2_monitor.classify_chapter, which matches '^repealed' against the chapter
+# LABEL at registration time. Woollahra's labels read "Chapter C1 Paddington
+# HCA" -- the word is nowhere in them -- which is exactly why all 19 registered
+# as active and reached extraction. That classifier and confirm_chapter's
+# --reject-repealed act on a stored category at registration; this reads the
+# source LOCATION at extraction time, the layer where the evidence exists.
+# Complementary, not duplicate. (The coverage/probe modules the guard also
+# flagged -- dq_probe_live, check_dcp_as_at_coverage, lib/coverage.ts -- measure
+# and report; none is an admission check and none reads council_url.)
+#
 # Anchored to a path or filename TOKEN, not a bare substring, so a slug that
 # merely mentions repealed instruments cannot false-positive ('notrepealedstuff',
-# 'unrepealed-dcps', 'repealedish' all stay clean). Both sides take the same
-# delimiter set: an earlier version allowed '.' only on the trailing side, so
-# 'chapter-a1.repealed.pdf' slipped through. '$' closes the extensionless
-# directory form '.../dcps-repealed'.
+# 'unrepealed-dcps', 'repealedish' all stay clean).
+#
+# The boundary is "not a letter or digit" rather than an explicit delimiter set.
+# An explicit set is what a first version used, and it kept missing separators:
+# it allowed '.' only on the trailing side, so 'chapter-a1.repealed.pdf' slipped
+# through, and it knew nothing about '%20' or a literal space. That matters here
+# -- 197 of the 564 active registry rows already carry a '%' or a space in one of
+# these two columns, so percent-encoding is ordinary in this corpus, not exotic.
+# Enumerating separators is a losing game; naming the two characters that must
+# NOT be there is not. unquote() runs first so an encoded separator ('%5F') is
+# decoded before the boundary is applied. Raised by Sol cross-review, 2026-09-10.
 #
 # Checked against all 564 active registry rows, both columns: it selects the
 # same 19 rows a bare '%repealed%' substring scan does -- no miss, and no
 # false positive on the other 545.
-_REPEALED_PATH = re.compile(r"(^|[/_.-])repealed([/_.-]|$)", re.IGNORECASE)
+_REPEALED_PATH = re.compile(r"(?<![a-z0-9])repealed(?![a-z0-9])", re.IGNORECASE)
 
 
 def detect_repealed_source(council_url, r2_path):
@@ -2234,9 +2253,30 @@ def detect_repealed_source(council_url, r2_path):
     old file until the next mirror, so either alone would let it through.
     """
     for label, value in (("source URL", council_url), ("mirrored file", r2_path)):
-        if value and _REPEALED_PATH.search(value):
+        if value and _REPEALED_PATH.search(unquote(value)):
             return f"{label} is in a repealed location: {value[-110:]}"
     return None
+
+
+def repealed_check_coverage(council_url, r2_path):
+    """Say which locations the repealed check was actually able to read.
+
+    A NULL council_url is a coverage gap, not evidence of a repeal, so it must
+    not reject -- 36 of the 564 active registry rows have no source URL, spread
+    across 17 councils, and failing closed on them would stall a corpus over a
+    missing field. But it must not be SILENT either: with no URL the check has
+    only the mirrored key, and that is precisely the column a council's archive
+    marker never reaches. Returns a warning so the log says the check ran narrow
+    rather than implying it ran clean. Raised by Sol cross-review, 2026-09-10.
+    """
+    if council_url and str(council_url).strip():
+        return None
+    if r2_path and str(r2_path).strip():
+        return ("no council_url on this registry row - the repealed-source check "
+                "could only read the mirrored key, which is the column a "
+                "council's archive marker usually never reaches")
+    return ("neither council_url nor r2_current_path is set - the "
+            "repealed-source check read nothing at all")
 
 
 # Councils whose two-column/margin layout handling is PROVEN by a full source
@@ -3190,6 +3230,15 @@ def extract_chapter(
         print("    [preflight] chapter REJECTED - re-point council_url at "
               "the in-force chapter, re-mirror, then re-run")
         return False, None
+
+    # Not a reject: a missing council_url is a registry gap, not an archive
+    # document, and refusing on it would stall 36 active rows across 17
+    # councils over a blank field. But the check then ran on one column
+    # instead of two, and a narrow pass must not read as a clean one.
+    narrow = repealed_check_coverage(
+        chapter.get("council_url"), chapter.get("r2_current_path"))
+    if narrow:
+        print(f"    [preflight] repealed check ran NARROW: {narrow}")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         pdf_path = Path(tmpdir) / f"{chapter_key}.pdf"

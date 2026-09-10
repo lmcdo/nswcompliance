@@ -100,10 +100,30 @@ def test_a_repealed_location_is_detected(url):
 
 
 @pytest.mark.parametrize("url", [
+    "https://council.example/plans/repealed%20dcps/chapter-a1.pdf",   # encoded space
+    "https://council.example/plans/repealed dcps/chapter-a1.pdf",     # literal space
+    "https://council.example/plans/dcp%5Frepealed%5F2020.pdf",        # encoded _
+    "https://council.example/plans/repealed%2Ddcps/chapter.pdf",      # encoded -
+])
+def test_an_encoded_or_spaced_separator_is_still_a_repealed_location(url):
+    """Sol cross-review, 2026-09-10. An explicit delimiter set kept missing cases.
+
+    This is not hypothetical for this corpus: 197 of the 564 active registry
+    rows already carry a '%' or a literal space in one of the two columns, so
+    a pattern that only understands / _ - . would go quietly blind on a real
+    council the day one of them publishes an archive folder with a space in it.
+    The boundary is now 'not a letter or digit', and unquote runs first.
+    """
+    assert dx.detect_repealed_source(url, None), url
+
+
+@pytest.mark.parametrize("url", [
     CLEAN_URL,
     "https://council.example/plans/notrepealedstuff/chapter-a1.pdf",
     "https://council.example/plans/unrepealed-dcps/chapter-a1.pdf",
     "https://council.example/plans/repealedish/chapter-a1.pdf",
+    "https://council.example/plans/prerepealed/chapter-a1.pdf",
+    "https://council.example/plans/NotRepealedStuff/chapter-a1.pdf",   # mixed case
     "https://council.example/plans/chapter-c1-paddington-hca.pdf",
 ])
 def test_the_word_inside_a_longer_token_is_not_a_repealed_location(url):
@@ -147,6 +167,68 @@ def test_missing_values_are_not_a_repealed_source(args):
     given a source URL yet.
     """
     assert dx.detect_repealed_source(*args) is None
+
+
+# ---------------------------------------------------------------------------
+# 1b. A narrow check must not read as a clean one
+# ---------------------------------------------------------------------------
+
+def test_a_missing_council_url_is_reported_rather_than_passed_silently():
+    """Sol cross-review, 2026-09-10, accepted in part.
+
+    Sol's finding was right: with no council_url the check reads only the
+    mirrored key, and that is the column a council's archive marker never
+    reaches -- so the chapter passes on evidence that was never there.
+
+    Sol's prescribed fix was to reject. Measured against production before
+    accepting it: 36 of 564 active rows have no council_url, across 17
+    councils. Rejecting them would stall a corpus over a blank field, which is
+    the exact 'guard rejects the corpus' failure the confusable negatives above
+    exist to prevent. So it stays a pass -- but a LOUD one.
+    """
+    assert dx.repealed_check_coverage(None, CLEAN_R2_KEY)
+    assert dx.repealed_check_coverage("", CLEAN_R2_KEY)
+    assert dx.repealed_check_coverage("   ", CLEAN_R2_KEY)
+    assert dx.repealed_check_coverage(None, None)
+    # a populated URL is full coverage and must stay quiet, or the warning
+    # becomes noise on 528 of 564 rows and stops being read at all
+    assert dx.repealed_check_coverage(CLEAN_URL, CLEAN_R2_KEY) is None
+    assert dx.repealed_check_coverage(REAL_REPEALED_URL, CLEAN_R2_KEY) is None
+
+
+def test_the_narrow_warning_names_which_column_was_missing():
+    """Two different gaps, two different messages -- 'nothing was read at all'
+    is a worse state than 'only the mirrored key was read', and an operator
+    triaging a log has to be able to tell them apart."""
+    one_column = dx.repealed_check_coverage(None, CLEAN_R2_KEY)
+    neither = dx.repealed_check_coverage(None, None)
+    assert "council_url" in one_column
+    assert one_column != neither
+    assert "nothing" in neither.lower()
+
+
+def test_a_missing_council_url_does_not_stop_the_chapter_extracting(capsys):
+    """The warning is a warning. It must print, and it must not reject."""
+    s3 = _RecordingS3()
+    real = dx.extract_pdf_isolated
+    real_resolve = dx.resolve_document_id
+    dx.extract_pdf_isolated = lambda *a, **kw: (None, "stopped here on purpose")
+    dx.resolve_document_id = lambda *a, **kw: 1
+    try:
+        dx.extract_chapter(_chapter(council_url=None), s3, MagicMock(),
+                           dry_run=True, review=True)
+    finally:
+        dx.extract_pdf_isolated = real
+        dx.resolve_document_id = real_resolve
+
+    assert s3.downloads == [CLEAN_R2_KEY], (
+        "a chapter with no council_url was rejected -- 36 active rows across 17 "
+        "councils would stall on a blank field"
+    )
+    assert "NARROW" in capsys.readouterr().out, (
+        "the reduced check passed silently, which is how a coverage gap reads "
+        "as a clean result"
+    )
 
 
 # ---------------------------------------------------------------------------
