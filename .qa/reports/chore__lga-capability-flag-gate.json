@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New read-only script (scripts/verify_lga_capability_flags.py) that checks per-council boolean capability flags in frontend-nextjs/lib/lga-data/*.ts against the live database, modeled on scripts/verify_coverage_stats.py, and wires it into the daily .github/workflows/data-watch.yml. Not critical-tier: it reads and reports, it never writes, and a wrong result delays a fix rather than corrupting served data. Not minor: it required real schema investigation (lga_registry, dcp_setback_controls, spatial_overlays), a merger-slug edge case, and its first real run against the live database found 8 genuine pre-existing overclaims in verify-lgas.ts (lane-cove, hawkesbury, wollongong, clarence-valley, yass-valley, bathurst-regional, tamworth-regional, forbes all claim hasDcpData: true with zero supporting rows).",
-  "commit_hash": "6eff051c",
+  "commit_hash": "5b922bf2",
   "files": [
     "scripts/verify_lga_capability_flags.py",
     "tests/test_verify_lga_capability_flags.py",
