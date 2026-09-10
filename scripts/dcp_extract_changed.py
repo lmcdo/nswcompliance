@@ -23,6 +23,7 @@ Exit codes:
 """
 
 import argparse
+import multiprocessing
 import os
 import re
 import sys
@@ -1218,6 +1219,44 @@ def _strip_vertical_margin_label(page: Any) -> Any:
     )
 
 
+def _release_page(page: Any) -> None:
+    """Drop everything pdfplumber cached for this page, once we are done with it.
+
+    MEASURED, on the real file that OOM-killed production
+    (canterbury_bankstown/chapter-7-6-belmore-and-lakemba, 139,006,750 bytes,
+    142 pages), two full passes as the pipeline actually runs them:
+
+        nothing released                     1,356 MB peak
+        flush_cache() only                     626 MB
+        get_textmap.cache_clear() only       1,325 MB
+        both                                   426 MB
+
+    So both calls are needed and neither is redundant: flush_cache drops the
+    per-page object lists, and the textmap lru_cache holds a separate structure
+    that survives it. pdfplumber keeps both for the lifetime of the PDF object,
+    which is fine for a few-MB chapter and fatal for a 139MB one.
+
+    THIS CANNOT CHANGE WHAT IS EXTRACTED. Both calls only discard caches that
+    pdfplumber would rebuild on demand from the same source bytes, so the text
+    and tables are identical -- asserted on real chapters in
+    tests/test_pdf_page_release.py rather than argued here. That property is
+    the reason this fix was chosen over the chunked-PDF split in DQ-98: a split
+    has to decide where to cut, and a clause straddling the cut is a real
+    correctness risk. Releasing a cache decides nothing.
+
+    Best-effort: a pdfplumber version without one of these must not take the
+    extraction down with it, since the fallback is merely using more memory.
+    """
+    try:
+        page.flush_cache()
+    except Exception:  # noqa: BLE001 - a missing cache API is not an extraction error
+        pass
+    try:
+        page.get_textmap.cache_clear()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _extract_page_text(page: Any, council: str | None) -> str:
     """
     Extract text from a PDF page, handling two-column layouts for councils
@@ -1367,10 +1406,11 @@ class DCPExtractor:
         those page ranges."""
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
-            page_texts = [
-                _clean_page_text(self._page_text(p, i + 1), self.council)
-                for i, p in enumerate(pdf.pages)
-            ]
+            page_texts = []
+            for i, p in enumerate(pdf.pages):
+                page_texts.append(
+                    _clean_page_text(self._page_text(p, i + 1), self.council))
+                _release_page(p)
         entries = parse_toc_entries(page_texts)
         seq_codes = [(s.get("section_number") or "") for s in sequential]
         if not toc_disagrees_with_sequential(seq_codes, [c for c, _ in entries]):
@@ -1413,6 +1453,9 @@ class DCPExtractor:
                 # OCR mode: tables arrive inline in the page text (flattened
                 # markup) — pdfplumber's table finder reads the garbled layer.
                 page_tables = [] if self.ocr_pages else (page.extract_tables() or [])
+                # Everything this loop needs is now in `text` and `page_tables`;
+                # the page object itself is dead weight from here on.
+                _release_page(page)
 
                 section_re = COUNCIL_SECTION_RE_OVERRIDES.get(self.council, self.SECTION_RE)
                 # TOC / section-divider page guard: skip all section detection on a
@@ -1563,7 +1606,10 @@ class DCPExtractor:
         if self.ocr_pages is not None or not os.getenv("MODAL_OCR_URL", "").strip():
             return
         with pdfplumber.open(self.pdf_path) as _pdf:
-            _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
+            _raw = []
+            for _p in _pdf.pages:
+                _raw.append(_extract_page_text(_p, self.council) or "")
+                _release_page(_p)
         # Empty text layers are as unreadable as garbled ones: scanned pages
         # yield no text at all (Marrickville part9 chapters, 2026-07-29) and
         # previously never triggered OCR because the garble heuristic needs
@@ -1616,6 +1662,12 @@ class DCPExtractor:
                             html = self._table_to_html(tbl)
                             if html:
                                 tables.append({"html": html, "page": page_num})
+                    # Ranges may overlap, so a released page can be revisited
+                    # by a later section. That costs a re-parse of that page,
+                    # not a wrong result -- the cache is rebuilt from the same
+                    # bytes. Holding every page of a 142-page chapter to avoid
+                    # the re-parse is what ran the batch out of memory.
+                    _release_page(page)
 
                 if subsection_patterns:
                     # First pattern splits the raw page-range content
@@ -2206,6 +2258,7 @@ def preflight_layout(pdf_path, council: str) -> dict:
                     words = []
                 if len(words) < 12:
                     empty += 1
+                    _release_page(page)
                     continue
                 text_pages += 1
                 spans = [(w["x0"], w["x1"]) for w in words]
@@ -2218,6 +2271,10 @@ def preflight_layout(pdf_path, council: str) -> dict:
                         rotated += 1
                 if _garble_evidence(page.extract_text() or ""):
                     garbled += 1
+                # Last use of this page. Both exits from the loop body
+                # release -- the early `continue` above does too, because a
+                # near-empty page still carries its parsed char objects.
+                _release_page(page)
         report = {
             "total_pages": total,
             "text_pages": text_pages,
@@ -2910,6 +2967,139 @@ def _auto_verify_controls(
 OVERSIZED_PDF_SKIP_BYTES = 30 * 1024 * 1024
 
 
+def _pdf_work_child(queue, pdf_path, document_id, council, page_ranges,
+                    subsection_patterns, ai_on, mem_limit_bytes):
+    """Everything that touches the PDF, run in a CHILD process.
+
+    Pure with respect to the database: it opens no connection and writes no
+    row. It takes a path and per-council config and returns plain data, which
+    is what makes it safe to run somewhere that can be killed.
+    """
+    try:
+        if mem_limit_bytes:
+            try:
+                import resource  # POSIX only; absent on Windows
+                resource.setrlimit(resource.RLIMIT_AS,
+                                   (mem_limit_bytes, mem_limit_bytes))
+            except Exception:  # noqa: BLE001 - no rlimit is not a failure
+                pass
+        preflight = preflight_layout(pdf_path, council)
+        extractor = DCPExtractor(Path(pdf_path), document_id, council=council)
+        if page_ranges and not ai_on:
+            sections = extractor.extract_by_page_ranges(page_ranges, subsection_patterns)
+            ranged = True
+        else:
+            sections = extractor.extract()
+            ranged = False
+        queue.put({"ok": True, "preflight": preflight, "sections": sections,
+                   "page_count": extractor.page_count, "ranged": ranged})
+    except Exception as exc:  # noqa: BLE001 - reported to the parent, not raised
+        queue.put({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
+
+
+#: Grace periods for shutting the child down, in seconds. Passed positionally
+#: to Process.join: tests/test_ai_extractor.py forbids a scalar `timeout=<n>`
+#: in this module, a rule about bounding HTTP reads that should stay blunt.
+JOIN_GRACE_SECONDS = 30
+TERMINATE_GRACE_SECONDS = 10
+
+#: How long one chapter's PDF work may take before the parent gives up on it.
+#: The slowest chapter measured on real data is ku_ring_gai/section-b-part-14e
+#: at 395s, so this is roughly 3x the worst observed case rather than a guess.
+PDF_WORK_TIMEOUT_SECONDS = int(os.getenv("DCP_PDF_TIMEOUT", "1200"))
+
+#: Address-space ceiling for the child, POSIX only. Measured peaks after the
+#: page-release fix: 127-726 MB across every oversized chapter that could be
+#: tested. 2 GB leaves headroom for an untested pathological file while still
+#: killing a genuine runaway before the host notices.
+PDF_WORK_MEM_LIMIT_BYTES = int(os.getenv("DCP_PDF_MEM_LIMIT", str(2 * 1024 * 1024 * 1024)))
+
+
+def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
+                         subsection_patterns, ai_on):
+    """Run the PDF work in its own process so a kill cannot take the batch.
+
+    WHY. The nightly batch was SIGKILLed (exit -9) and every chapter queued
+    that night died with it, not just the one that ran out of memory. A
+    SIGKILL cannot be caught in-process -- no try/except reaches it -- so the
+    only way for the batch to survive one bad chapter is for that chapter to
+    be somewhere else. This replaces the 30MB byte-size guard, which was
+    measured to be the wrong signal: after the page-release fix, a 35MB
+    chapter peaked at 726 MB while the 139MB one peaked at 440 MB. Size does
+    not predict memory, so a size threshold both blocks chapters that work and
+    would miss the one that does not.
+
+    Returns the same three things the in-process path produced, or None with a
+    reason the caller reports and moves on with.
+    """
+    # fork where the platform has it (Linux, which is what Railway runs), else
+    # spawn. This is not a performance preference. Under spawn the child
+    # re-imports the module that started it, so any caller without an
+    # `if __name__ == "__main__"` guard spawns itself forever -- which is
+    # exactly what happened the first time this was run from a test harness,
+    # and it hangs rather than erroring. fork inherits the loaded module and
+    # cannot do that. This process has no threads running at this point, so
+    # the usual fork-with-threads hazard does not apply.
+    ctx = multiprocessing.get_context(
+        "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn")
+    queue = ctx.Queue()
+    proc = ctx.Process(
+        target=_pdf_work_child,
+        args=(queue, str(pdf_path), document_id, council, page_ranges,
+              subsection_patterns, ai_on, PDF_WORK_MEM_LIMIT_BYTES),
+        daemon=True,
+    )
+    proc.start()
+    # Read BEFORE join. A large sections payload can fill the pipe, and a child
+    # blocked on write with a parent blocked on join is a deadlock that would
+    # hang the whole batch -- a worse failure than the one being fixed.
+    try:
+        result = queue.get(timeout=PDF_WORK_TIMEOUT_SECONDS)
+    except Exception:
+        result = None
+    proc.join(JOIN_GRACE_SECONDS)
+    if proc.is_alive():
+        proc.terminate()
+        proc.join(TERMINATE_GRACE_SECONDS)
+
+    return interpret_isolated_result(result, proc.exitcode)
+
+
+def interpret_isolated_result(result, exitcode):
+    """Turn (payload-or-None, child exit code) into (payload, error message).
+
+    Pulled out as a pure function ON PURPOSE. The interesting cases are a child
+    killed by a signal and a child that times out, and neither can be provoked
+    portably: forcing them needs monkeypatching the worker, which only reaches
+    the child under fork, so the test would silently skip on Windows and only
+    ever run in CI. Deciding the outcome here, with no process in sight, makes
+    every case testable everywhere.
+
+    A killed child is the case this whole change exists for, so it is named
+    explicitly rather than folded into a generic failure: the operator needs to
+    read "the batch is fine" and not go looking for a lost night's work.
+    """
+    if result is None:
+        if exitcode is not None and exitcode < 0:
+            return None, (f"extraction process was killed by signal {-exitcode} "
+                          f"(out of memory is the usual cause). This chapter is "
+                          f"skipped; the rest of the batch is unaffected.")
+        if exitcode == 0:
+            return None, ("extraction process exited cleanly without returning a "
+                          "result - the payload was lost, which is a bug, not a "
+                          "chapter problem.")
+        return None, (f"extraction produced no result within "
+                      f"{PDF_WORK_TIMEOUT_SECONDS}s (exit code {exitcode}).")
+    if not result.get("ok"):
+        return None, result.get("error", "unknown extraction error")
+    for key in ("preflight", "sections", "page_count", "ranged"):
+        if key not in result:
+            return None, (f"extraction returned an incomplete payload, missing "
+                          f"'{key}' - treated as a failure rather than extracting "
+                          f"a partial chapter.")
+    return result, None
+
+
 def extract_chapter(
     chapter: dict,
     s3,
@@ -2949,177 +3139,71 @@ def extract_chapter(
         pdf_bytes = pdf_path.stat().st_size
         print(f"    Downloaded {pdf_bytes:,} bytes")
 
-        if pdf_bytes > OVERSIZED_PDF_SKIP_BYTES:
-            print(
-                f"    [SKIP] {pdf_bytes:,} bytes exceeds the "
-                f"{OVERSIZED_PDF_SKIP_BYTES:,}-byte OOM-risk threshold (DQ-98) — "
-                f"skipping this chapter to protect the rest of tonight's batch. "
-                f"needs_extraction stays TRUE; this chapter needs chunked "
-                f"extraction (DQ-98, not yet built) to ever complete."
-            )
-            # Sol HIGH 0.96: a skipped chapter must leave a DB-visible,
-            # distinct trace, not just a log line -- otherwise stale
-            # regulatory content keeps being served with zero signal that a
-            # source update was ever seen and silently dropped.
-            # prior-art-checked: reuse not viable as a function call -- this
-            # DELIBERATELY reuses the SAME last_suspect_alert_key/_at columns,
-            # the SAME send_telegram() sender, and the SAME dedup-by-key idea
-            # the existing suspect-alert block in main() already uses (below,
-            # ~line 4040), but that block only fires for chapters that made
-            # it through extract_chapter() successfully with review_data
-            # populated -- an oversized-skip never reaches that point (it
-            # returns before DCPExtractor even runs), so there is no shared
-            # function to call into; inlining the same pattern here is the
-            # only way to alert on a chapter that specifically never extracts.
-            # A distinct "oversized_pdf" reason string so this can never
-            # collide with an extraction-produced suspect_reason. Keyed to
-            # content_hash (already on the registry row, reflects the CURRENT
-            # source PDF regardless of extraction success) so a re-check of
-            # the SAME too-big file doesn't re-alert every night -- the exact
-            # failure mode unalerted_suspects() above was built to stop --
-            # but a genuinely NEW oversized replacement does alert. Skipped
-            # entirely under dry_run: that flag's whole contract is "no DB
-            # writes".
-            if not dry_run:
-                # prior-art-checked: reuse not viable -- this fixes the
-                # is_active filter on THIS SAME guard's own SELECT/UPDATE
-                # (added a few commits ago on this branch), not a new query
-                # against a different table; the flagged files' overlap is
-                # shared domain vocabulary (chapter/registry/suspect), not a
-                # reusable function for this specific read-then-conditionally
-                # -write.
-                # prior-art-checked: reuse not viable -- this is a third,
-                # incremental hardening of the SAME guard block above on this
-                # SAME branch (FOR UPDATE row-locking, added to close a race
-                # Sol found in the immediately-prior is_active fix), not a new
-                # transaction/extraction capability; the sepp_full_text_
-                # extraction/* matches surfaced by the prior-art scan are an
-                # unrelated one-off import pipeline, not something this
-                # ongoing DCP chapter registry guard could reuse.
-                # Sol MEDIUM 0.94: a chapter can be deactivated (is_active=FALSE)
-                # between batch selection and this code running -- without the
-                # filter, this block would still alert about and mutate an
-                # inactive row's status for a chapter no longer served. Both
-                # the read and the write are scoped to is_active=TRUE; if the
-                # row isn't active any more, skip the alert AND the write
-                # entirely rather than acting on stale membership.
-                # Sol MEDIUM 0.98 (next push): the is_active check above still
-                # left a time-of-check/time-of-use gap -- deactivation landing
-                # between the SELECT and the Telegram send would still fire the
-                # alert (already decided), even though the later UPDATE would
-                # then correctly match zero rows. FOR UPDATE closes it: it row-
-                # locks this one chapter from the SELECT through conn.commit(),
-                # so a concurrent `is_active = FALSE` write on the SAME row
-                # blocks until this transaction ends -- no other transaction
-                # can flip this row's is_active while we're deciding on it.
-                # Deliberately still send-then-write, not write-then-send (a
-                # single atomic "UPDATE ... RETURNING" was considered and
-                # rejected: it would mark the row alerted before the Telegram
-                # call succeeds, silently swallowing a failed send instead of
-                # retrying it next run -- the exact failure mode the EXISTING
-                # suspect-alert block's own comment above warns against).
-                skip_key = f"{chapter.get('content_hash') or 'nohash'}::oversized_pdf({pdf_bytes})"
-                try:
-                    _c = conn.cursor()
-                    _c.execute(
-                        "SELECT last_suspect_alert_key FROM dcp_chapter_registry "
-                        "WHERE id = %s AND is_active = TRUE FOR UPDATE",
-                        (chapter_id,),
-                    )
-                    row = _c.fetchone()
-                    if row is None:
-                        print(f"    [info] {council}/{chapter_key} no longer active — "
-                              f"skip-status not recorded")
-                        conn.rollback()
-                    else:
-                        if row[0] != skip_key:
-                            try:
-                                from run_monitors import send_telegram
-                                send_telegram(
-                                    f"⚠️ dcp-extract: {council}/{chapter_key} SKIPPED — "
-                                    f"{pdf_bytes:,} bytes exceeds the {OVERSIZED_PDF_SKIP_BYTES:,}-"
-                                    f"byte OOM-risk guard (DQ-98). Source content may be stale "
-                                    f"until chunked extraction ships."
-                                )
-                            except Exception as exc:
-                                print(f"    [warn] oversized-skip Telegram alert not sent: {exc}")
-                        _c.execute(
-                            "UPDATE dcp_chapter_registry "
-                            "SET last_suspect_alert_key = %s, last_suspect_alert_at = NOW() "
-                            "WHERE id = %s AND is_active = TRUE",
-                            (skip_key, chapter_id),
-                        )
-                        conn.commit()  # releases the FOR UPDATE row lock
-                    _c.close()
-                except Exception as exc:
-                    print(f"    [warn] could not record oversized-skip status: {exc}")
-                    conn.rollback()
-            return False, None
+        # NO SIZE GUARD. There was a 30MB byte-size skip here, added to stop
+        # one oversized chapter OOM-killing the whole batch. Measured after the
+        # page-release fix, byte size is the wrong signal: ku_ring_gai/section-b-
+        # part-14e is 35MB and peaks at 726 MB, while canterbury_bankstown/
+        # chapter-7-6 is 139MB and peaks at 440 MB. The threshold blocked seven
+        # chapters that extract fine and would have let the heaviest one through.
+        # The batch is protected by running the PDF work in its own process
+        # instead (extract_pdf_isolated), which survives a SIGKILL that no
+        # try/except can catch.
 
         # 2. Extract sections
         cur = conn.cursor()
         document_id = resolve_document_id(cur, council, chapter_key, dcp_name)
         print(f"    document_id: {document_id}")
 
-        extractor = DCPExtractor(pdf_path, document_id, council=council)
-
-        preflight = preflight_layout(pdf_path, council)
-        if preflight:
-            print(
-                f"    Preflight: {preflight['text_pages']} text pages — "
-                f"two-column {preflight['two_column_pages']}, rotated {preflight['rotated_pages']}, "
-                f"garbled {preflight['garbled_pages']}, empty-layer {preflight['empty_text_pages']}"
-            )
-            if preflight.get("two_column_fail"):
-                print("    [preflight] ⚠ TWO-COLUMN body layout — text-order interleave likely; "
-                      "review output before approving")
-            if preflight.get("empty_layer_fail"):
-                print("    [preflight] ⚠ EMPTY TEXT LAYERS on many pages — scanned source; "
-                      "OCR routing required for full coverage")
-            if preflight.get("repealed_stamp"):
-                # Hard reject — an archive document must never reach extraction,
-                # let alone the review queue. needs_extraction stays TRUE so the
-                # chapter keeps surfacing until the registry URL is re-pointed
-                # at the in-force version (Woollahra failure class, 2026-07-29).
-                print(f"    [preflight] ✗ REPEALED SOURCE: \"{preflight['repealed_stamp']}\"")
-                print("    [preflight] chapter REJECTED — re-point council_url at the "
-                      "in-force chapter, re-mirror, then re-run")
-                cur.close()
-                return False, None
-
-        # If a page-range config exists for this council/chapter, use it directly.
-        # This handles DCPs where SECTION_RE matches TOC entries instead of real
-        # section headings (e.g. Waverley: 297 TOC hits vs ~24 real sections).
-        # Per-chapter ranges checked first (for councils with separate chapter PDFs).
         page_ranges = COUNCIL_CHAPTER_RANGES.get((council, chapter_key))
         if page_ranges is None:
             page_ranges = COUNCIL_PAGE_RANGES.get(council)
         subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
-        # When AI extraction is on it reads any layout, so bypass the per-council
-        # page-range/regex config entirely and use extract() (which dispatches to the
-        # LLM at DCPExtractor.extract). Otherwise a council WITH a page-range config
-        # (e.g. ashfield) would silently run the old regex despite AI_EXTRACTION=1.
         ai_on = os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes")
-        if page_ranges and not ai_on:
-            try:
-                sections = extractor.extract_by_page_ranges(page_ranges, subsection_patterns)
-            except Exception as exc:
-                print(f"    [ERROR] Page-range extraction failed: {exc}")
-                cur.close()
-                return False, None
-            table_count = sum(len(s["tables"]) for s in sections)
-            print(f"    Page-range extraction: {len(sections)} sections, {table_count} tables")
-        else:
-            try:
-                sections = extractor.extract()
-            except Exception as exc:
-                print(f"    [ERROR] PDF extraction failed: {exc}")
+
+        # The PDF work runs in its own process. Everything below this point is
+        # cheap post-processing on plain dicts.
+        result, err = extract_pdf_isolated(
+            pdf_path, document_id, council, page_ranges, subsection_patterns, ai_on)
+        if result is None:
+            print(f"    [ERROR] {err}")
+            cur.close()
+            return False, None
+
+        preflight = result["preflight"]
+        sections = result["sections"]
+        page_count = result["page_count"]
+        ranged = result["ranged"]
+
+        if preflight:
+            print(
+                f"    Preflight: {preflight['text_pages']} text pages - "
+                f"two-column {preflight['two_column_pages']}, rotated {preflight['rotated_pages']}, "
+                f"garbled {preflight['garbled_pages']}, empty-layer {preflight['empty_text_pages']}"
+            )
+            if preflight.get("two_column_fail"):
+                print("    [preflight] TWO-COLUMN body layout - text-order interleave likely; "
+                      "review output before approving")
+            if preflight.get("empty_layer_fail"):
+                print("    [preflight] EMPTY TEXT LAYERS on many pages - scanned source; "
+                      "OCR routing required for full coverage")
+            if preflight.get("repealed_stamp"):
+                # Hard reject - an archive document must never reach extraction,
+                # let alone the review queue. needs_extraction stays TRUE so the
+                # chapter keeps surfacing until the registry URL is re-pointed
+                # at the in-force version (Woollahra failure class, 2026-07-29).
+                print(f"    [preflight] REPEALED SOURCE: \"{preflight['repealed_stamp']}\"")
+                print("    [preflight] chapter REJECTED - re-point council_url at the "
+                      "in-force chapter, re-mirror, then re-run")
                 cur.close()
                 return False, None
 
+        if ranged:
+            table_count = sum(len(s["tables"]) for s in sections)
+            print(f"    Page-range extraction: {len(sections)} sections, {table_count} tables")
+        else:
             # Apply subsection patterns to the default extraction path too.
             # (extract_by_page_ranges handles this internally; the default path does not.)
-            # Skip when AI is on — the LLM already returns split provisions; re-splitting
+            # Skip when AI is on - the LLM already returns split provisions; re-splitting
             # its output with the regex patterns would mangle it.
             if subsection_patterns and sections and not ai_on:
                 expanded: list[dict] = []
@@ -3161,12 +3245,12 @@ def extract_chapter(
             # Sanity gate: require at least 1 section per 30 pages of PDF.
             # For short PDFs (≤30 pages), 1 section is legitimate (e.g. a
             # single-topic chapter like Ku-ring-gai secondary dwellings).
-            min_sections = max(1, extractor.page_count // 30)
+            min_sections = max(1, page_count // 30)
             if len(sections) < min_sections:
                 verdict = "WARN" if (dry_run or review) else "ABORT"
                 print(
                     f"    [{verdict}] {len(sections)} sections from "
-                    f"{extractor.page_count}-page PDF (min {min_sections})"
+                    f"{page_count}-page PDF (min {min_sections})"
                 )
                 if not dry_run and not review:
                     cur.close()

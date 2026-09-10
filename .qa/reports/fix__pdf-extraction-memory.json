@@ -1,0 +1,139 @@
+{
+  "tier": "critical",
+  "justification": "Touches the extraction path that produces every served provision. If releasing a page cache changed a single character of extracted text, wrong regulatory content would reach a reader silently. The change is chosen because it provably cannot do that, and the proof is byte-level comparison on three real council chapters -- but the blast radius is the whole corpus, so critical.",
+  "commit_hash": "aa11266f",
+  "files": [
+    "requirements-test.txt",
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_extract_changed.py",
+    "tests/test_pdf_page_release.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No new data source. pdfplumber's own Page.flush_cache() and the per-page get_textmap lru_cache, both already present in the pinned version (0.11.10). No query, no download, no schema change.",
+    "assumption_mismatch": "The registered DQ-98 diagnosis is wrong in two ways and this measurement corrects both. (1) It names _maybe_toc_override() and _extract_sequential() as the two full passes over the PDF. _maybe_toc_override only runs for TOC_DRIVEN_COUNCILS = {woollahra, leichhardt}; canterbury_bankstown, whose chapter actually crashed production, is not in that set. The real second pass there is _maybe_route_via_ocr(), which opens the PDF and reads every page to decide whether the text layer is garbled. (2) It frames the problem as an oversized-PDF problem. Measured, every chapter leaks: a 4.3MB ashfield chapter peaked at 611MB and left 214MB resident.",
+    "new_vs_existing": "Adds one helper, _release_page, called at five existing page loops. No control flow changes, no new loop, no new pass over the document.",
+    "prior_art": "Checked before writing a splitter: DQ-98 proposes chunked extraction with overlapping boundaries and de-duplication, and Sol's review of the 30MB guard PR added per-chapter subprocess isolation as an alternative. Neither had been built. Neither is needed if the memory is simply released -- and both carry risk this does not: a split has to decide where to cut, and a clause straddling the cut is a correctness bug of exactly the shape this pipeline already shipped one level down in the fidelity checker.",
+    "external_source_error": "The only external input is the council PDF itself, read from a local path the caller already downloaded. This change adds no fetch. A malformed or truncated PDF fails exactly as before -- pdfplumber raises on open and extract_chapter's existing handler records the failure; releasing a cache is downstream of that and cannot mask it. The one new external dependency is pdfplumber's own cache API, and a version that removes it degrades to the old memory profile rather than raising, covered by test_release_is_best_effort_on_a_page_without_the_api.",
+    "frontend_type": "N/A -- no frontend surface, no API response shape, no DB column touched. The extractor returns the same list-of-section-dicts it did before, proven by identical sha256 over the section list and over the tables on three real chapters, so every downstream consumer (diff, enqueue, fidelity gate, the review UI) sees byte-identical input.",
+    "user_failure_mode": "Visible, and it already was. When the batch ran out of memory the process was SIGKILLed (exit -9), the Railway job went red and Telegram alerted -- loud, not silent. What it did quietly was take the OTHER ~40 chapters in the same run down with it, so those simply did not update and the only trace was the stuck-chapter alert nobody could act on. If this fix were wrong in the other direction -- changed text rather than memory -- it WOULD be silent, which is why the equality proof is byte-level against the previous code rather than a shape check."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_pdf_page_release.py tests/test_dcp_extract_changed.py -v",
+    "external_authority": "Not self-referential. The output equality was checked against the PREVIOUS code (git show origin/main:scripts/dcp_extract_changed.py, loaded as a separate module) running on the same real council PDFs pulled from R2, comparing sha256 over the section list and over the tables separately. The memory figures come from psutil RSS sampling of a real process, not from anything the code under test reports about itself.",
+    "fails_when": "A page loop reads a page and does not release it (the invariant test spies on pdfplumber's own Page.extract_text and Page.flush_cache, so it catches a loop added later); the release helper raises instead of degrading; or extraction stops returning sections at all.",
+    "observed_red": "Forced twice, and the first version of the test FAILED to fail. Deleting the release from _extract_sequential left the call-counting version passing, because two code paths touch each page and one release per page survived the >= assertion. That was found by deleting the line and re-running, not by reading the test. Rewritten to assert the invariant (every page READ must be released) it then failed correctly: '5 of 10 pages were read and never released'. Restored, it passes.",
+    "measured": "21 tests pass (14 release + 7 isolation). Full suite 5,160 passed, 2 skipped. Isolated output verified identical to the in-process path on real chapters (ashfield chapter-a and woollahra chapter-d5, same section counts and same hashes)."
+  },
+  "functions": [
+    {
+      "name": "_release_page",
+      "file_line": "scripts/dcp_extract_changed.py, beside _extract_page_text; called at 5 sites (OCR pre-check, _maybe_toc_override, _extract_sequential, extract_by_page_ranges, the preflight scan)",
+      "input": "One pdfplumber Page, after the caller has taken its text and tables.",
+      "output": "None. Drops the page's cached object lists and its textmap lru_cache.",
+      "if_none": "Both calls are wrapped: a page object without either API, or one whose API raises, is a no-op. The fallback for a failed release is using more memory, which is strictly better than an extraction that raises -- a release helper that propagates would be worse than no release helper at all.",
+      "three_state": "released / partially released (one API present) / not released. All three are correct outcomes; only the memory differs. No caller branches on the result."
+    },
+    {
+      "name": "interpret_isolated_result",
+      "file_line": "scripts/dcp_extract_changed.py, beside extract_pdf_isolated",
+      "input": "The child's returned payload (or None if nothing came back) and its exit code.",
+      "output": "(payload, None) on success, (None, human-readable reason) otherwise.",
+      "if_none": "None payload with a negative exit code is reported as a signal kill and explicitly says the rest of the batch is unaffected; None with exit 0 is called a bug in our own plumbing rather than a chapter problem, so nobody goes looking at the council PDF; a payload missing any expected key is refused rather than half-extracted.",
+      "three_state": "success / contained chapter failure / our-own-bug. Pulled out as a pure function precisely so all three are testable everywhere -- forcing a real signal kill needs monkeypatching the worker, which only reaches the child under fork, so those tests would silently skip on Windows and run only in CI."
+    },
+    {
+      "name": "extract_pdf_isolated",
+      "file_line": "scripts/dcp_extract_changed.py, above extract_chapter",
+      "input": "PDF path, document id, council, page ranges, subsection patterns, ai_on.",
+      "output": "The same preflight/sections/page_count the in-process path produced, from a child process.",
+      "if_none": "Any failure returns (None, reason) and the caller returns (False, None) -- the same shape as the existing R2-download-failure path, so the batch loop continues.",
+      "three_state": "returned / child died / child never answered within the timeout."
+    }
+  ],
+  "values": [
+    {
+      "value": "Peak RSS on canterbury_bankstown/chapter-7-6-belmore-and-lakemba (139,006,750 bytes, 142 pages): 1,358 MB before, 440 MB after. Three chapters in one process, as the nightly batch runs them: peak 1,361 -> 443 MB, and resident memory after the third chapter 628 -> 134 MB. Isolated: flush_cache alone 626 MB, get_textmap.cache_clear alone 1,325 MB, both 426 MB, neither 1,356 MB.",
+      "read_at": "Measured by sampling psutil RSS at 50ms in the extracting process, each mode in its own process so peaks do not contaminate each other. Old code loaded from git show origin/main so both sides ran on the same machine, same pdfplumber, same file.",
+      "if_missing": "N/A -- measurements, recorded here and in the helper's docstring. They are the justification for choosing this over the chunked split, so they belong next to the code."
+    }
+  ],
+  "queries": "N/A -- no database access in this change.",
+  "break_it": [
+    {
+      "scenario": "Releasing a cache changes what is extracted, so wrong regulatory text reaches a reader while every test still passes.",
+      "what_happens": "The worst possible outcome for this repo: silently wrong provisions, served, with a green build. Nothing downstream would catch it -- the fidelity gate compares extracted text against the same PDF, so a systematically different extraction would agree with itself.",
+      "mitigated": true,
+      "how": "Proven, not argued. The previous extractor was loaded from origin/main as a separate module and run against the new one on three real council PDFs covering both code paths: canterbury_bankstown/chapter-7-6 (139MB, sequential path, 65 sections), woollahra/chapter-d5 (9.4MB, TOC-override path, 42 sections) and ashfield/chapter-a (4.3MB, 2 sections). sha256 over the section list and sha256 over the tables were IDENTICAL in all three. The mechanism supports this: both calls discard only caches pdfplumber rebuilds from the same bytes.",
+      "repro": "Write origin/main's extractor to a scratch path with git show, load both it and the working-tree module with importlib.util.spec_from_file_location, run DCPExtractor(pdf, council).extract() on the same council PDF through each, and compare sha256 over the section list and over the tables."
+    },
+    {
+      "scenario": "A page is released while a later loop iteration still needs it -- extract_by_page_ranges can revisit a page when section ranges overlap.",
+      "what_happens": "If a released page returned empty or partial content on revisit, sections after the first overlapping one would silently lose text.",
+      "mitigated": true,
+      "how": "flush_cache drops a cache, it does not close or invalidate the page: the next access re-parses from the same bytes and returns the same result. That is what makes the revisit cost a re-parse rather than a wrong answer, and it is stated in a comment at that call site. The woollahra chapter in the equality check exercises the page-range path and matched byte for byte.",
+      "repro": "python -m pytest tests/test_pdf_page_release.py::test_extraction_still_returns_the_same_shape, plus the woollahra sha comparison above."
+    },
+    {
+      "scenario": "A page loop is added later without a release, and the fix silently stops covering the whole document.",
+      "what_happens": "Memory creeps back to where it was, over months, with no signal -- the same way it got here.",
+      "mitigated": true,
+      "how": "test_every_page_that_is_READ_is_also_released spies on pdfplumber's own Page.extract_text and Page.flush_cache and asserts the set difference is empty. It is refactor-proof (move, merge or add a loop and it still holds) and it fails on exactly the defect. Its first version did NOT have this property -- see observed_red.",
+      "repro": "Delete any _release_page call from scripts/dcp_extract_changed.py and run python -m pytest tests/test_pdf_page_release.py -- it fails naming how many pages leaked."
+    },
+    {
+      "scenario": "A pdfplumber upgrade renames or removes flush_cache or the textmap cache.",
+      "what_happens": "If the helper propagated, every extraction would raise and the whole nightly batch would fail -- turning a memory optimisation into an outage.",
+      "mitigated": true,
+      "how": "Both calls are individually wrapped and the helper is best-effort by design, covered by test_release_is_best_effort_on_a_page_without_the_api with two shapes: an object with neither attribute, and one whose attributes raise. Degrading to the old memory profile is the correct failure.",
+      "repro": "python -m pytest tests/test_pdf_page_release.py::test_release_is_best_effort_on_a_page_without_the_api"
+    },
+    {
+      "scenario": "Only one of the two cache calls is kept, on the assumption they overlap.",
+      "what_happens": "Most of the benefit is lost and nobody notices, because the change still 'works' and still looks like a memory fix.",
+      "mitigated": true,
+      "how": "Measured separately rather than assumed: flush_cache alone 626 MB, textmap alone 1,325 MB, both 426 MB, against 1,356 MB with neither. Neither call is redundant. The figures are in the helper docstring and asserted structurally by test_release_calls_both_caches.",
+      "repro": "python -m pytest tests/test_pdf_page_release.py::test_release_calls_both_caches"
+    },
+    {
+      "scenario": "The size guard is raised or removed on one file's measurement, when compressed byte size does not bound decoded memory.",
+      "what_happens": "The seven oversized chapters would start extracting again on a threshold nobody re-measured. Sol's point on the guard PR stands: compressed byte size does not bound decoded memory, so a file under any byte threshold can still be pathological. Removing the guard on one file's measurement would be choosing a value, which is the risk direction that can create a new failure.",
+      "mitigated": true,
+      "how": "Not raised -- removed, and replaced with something that does not depend on predicting memory from size at all. The measurement that justifies it covers every oversized chapter that could be tested: 139MB->440MB, 117MB->508MB, 50MB->127MB, 35MB->726MB, 33MB->515MB. That set is precisely why a threshold cannot work: the 35MB chapter is the heaviest. Two city_of_sydney chapters have no R2 URL and could not be tested, which is exactly the untested-file case process isolation exists to survive.",
+      "repro": "python -m pytest tests/test_dcp_extract_changed.py::test_a_139mb_pdf_is_no_longer_skipped_on_size"
+    },
+    {
+      "scenario": "The size guard is removed and nothing replaces it, so the next pathological chapter kills the batch exactly as before.",
+      "what_happens": "A repeat of the original incident: 46 of 47 chapters silently not extracted, with only a stuck-chapter alert nobody can act on.",
+      "mitigated": true,
+      "how": "The PDF work moved into a child process, which is the only thing that survives a SIGKILL -- no try/except reaches one. A child that dies returns a contained per-chapter failure with the same shape as the R2-download-failure path, asserted for signals 9 and 6 and for a plain non-zero exit. test_the_pdf_work_really_runs_in_another_process checks the payload came from a different pid, so a quiet refactor back to an in-process call fails rather than passing everything else.",
+      "repro": "python -m pytest tests/test_dcp_extract_changed.py -q"
+    },
+    {
+      "scenario": "Under spawn, the child re-imports the module that started it, so any caller without an `if __name__ == \"__main__\"` guard spawns itself forever.",
+      "what_happens": "It hangs rather than erroring, which is the worst kind of failure in a cron: the job never finishes and never reports. This happened on the first run of the harness, not in theory.",
+      "mitigated": true,
+      "how": "fork is used where the platform has it (Linux, which is what Railway runs) and spawn only as the fallback; a forked child inherits the loaded module and cannot recurse. The reason is written at the call site so it does not get 'simplified' back to a hardcoded spawn.",
+      "repro": "Call extract_pdf_isolated from a script with no main guard on a spawn-only platform -- it recurses. With fork, it does not."
+    },
+    {
+      "scenario": "A large sections payload fills the pipe while the parent is blocked in join(), deadlocking the batch.",
+      "what_happens": "The nightly job hangs indefinitely on one chapter -- again, a silent non-finish rather than a visible failure.",
+      "mitigated": true,
+      "how": "The queue is drained BEFORE join, with a timeout, and the comment at that line says why. A child still alive after the read is terminated with a grace period.",
+      "repro": "Reorder the get() after the join() and run a chapter with a large section list."
+    },
+    {
+      "scenario": "The child re-reads AI_EXTRACTION from the environment and disagrees with the parent about which extraction mode is running.",
+      "what_happens": "Parent and child make different decisions about the same chapter -- the child extracts with the LLM while the parent then re-splits the output with regex patterns, mangling it.",
+      "mitigated": true,
+      "how": "ai_on is computed once in the parent and passed down; the child reads no environment to make that decision. Caught by tests/test_ai_extractor.py, which counts the legitimate AI_EXTRACTION read sites and failed when this change added a fourth.",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k no_longer_reads"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- dcp-extract runs nightly at 03:00 UTC. Confirm the run completes and that the seven previously-skipped chapters now extract; watch memory on the Railway service for the two city_of_sydney chapters that could not be tested locally because they have no R2 URL."
+  }
+}
