@@ -821,8 +821,10 @@ def run_applicability_tagging(
                 lga_key = _zone_slugs.get(prov.get('source_council'))
                 filtered = keep_only_zones_valid_in_lga(zones, _zone_truth.get(lga_key, set()))
                 if filtered != zones:
+                    # `or 0`, not a .get default: a key present with value None
+                    # would sail past the default and raise on None + 1.
                     stats['zones_dropped_not_in_lga'] = (
-                        stats.get('zones_dropped_not_in_lga', 0) + 1)
+                        (stats.get('zones_dropped_not_in_lga') or 0) + 1)
                     print(f"  [zone-guard] provision {prov['id']} "
                           f"({prov.get('source_council')}): {zones} -> {filtered} "
                           f"(codes absent from lep_zone_coverage for {lga_key!r})")
