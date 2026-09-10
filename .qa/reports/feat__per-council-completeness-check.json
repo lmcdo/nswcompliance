@@ -1,7 +1,7 @@
 {
   "tier": "Critical",
   "justification": "Three PRs on 2026-09-10 (#1079 repealed source path, #1080 precinct keys wiped on every commit, #1081 retired zone codes written fresh) fixed one defect appearing in three fields: a council update silently dropping what its provisions carry. The two that were caught were the only two with a check watching them. Ashfield served 2,041 provisions with 118 precinct keys and Marrickville 2,403 with 37, and nothing reported it -- a person found it two months later, because a precinct lookup returning council-wide controls instead of the precinct's own produces no error anywhere. Every existing per-council check asserts an ABSOLUTE invariant (validate_dcp_health: enrichment gap = 0, duplicates = 0, registry fanout = 0), which cannot see a field that legitimately sits at 36% and falls to 6%. This adds the comparison against the council's own last recording, the only form that can catch a field nobody has predicted -- measured: ref_number is 93% filled corpus-wide and nothing in the repo knows what fills the other 7%. Critical rather than Standard because it writes to production, it is called from the path that inserts live provisions, and its failure mode is silence.",
-  "commit_hash": "b6ce94f1",
+  "commit_hash": "0297f655",
   "files": [
     "migrations/068_council_field_snapshot.sql",
     "scripts/check_council_completeness.py",
@@ -13,7 +13,7 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_check_council_completeness.py tests/test_dockerfile_monitors_imports.py -q, plus the real layer PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest -m database tests/test_check_council_completeness_real_db.py -q -o addopts=",
-    "expected": "20 pure-logic tests pass and 6 real-database tests pass; without the opt-in flag the 6 are deselected rather than silently green.",
+    "expected": "24 pure-logic tests pass and 6 real-database tests pass; without the opt-in flag the 6 are deselected rather than silently green.",
     "fails_when": "a watched field's fill ratio for a council falls at least 5 percentage points against that council's own previous recording, or its served rows fall more than 10 percent, or a council that was recorded now serves nothing at all, or validate_zone_code_validity.py exits non-zero, or the set of LGAs exposed to precinct un-keying grows.",
     "observed_red": "Yes, forced red three separate ways against production data rather than reasoned about. First: a synthetic baseline row claiming ashfield carried 2,041 precinct keys made the check exit 2 and print CRITICAL ashfield/v2_precinct_id 100.0% -> 35.9% of served rows (2041/2041 -> 733/2041, -64.1pp), and a sentinel council with a 500-row baseline and no live rows printed CRITICAL served 500 rows at the last recording and now has no served rows at all; both rows were deleted by id afterwards and re-counted to zero. Second: waverley was given a baseline identical to reality in the same run and produced NO finding, which is the confusable negative -- without it, firing proves only that it fires. Third: deleting the audit_precinct_keying_coverage COPY line from Dockerfile.monitors turned the new packaging test red naming the missing file, and the Dockerfile was restored byte-identical."
   },
@@ -28,14 +28,14 @@
   "functions": [
     {
       "name": "compare",
-      "file_line": "scripts/check_council_completeness.py:242",
+      "file_line": "scripts/check_council_completeness.py:227",
       "input": "The council slug, that council's previous snapshot as a dict or None when it has never been recorded, and the current measurement of served rows plus per-field fill counts.",
       "output": "A list of finding dicts, each carrying severity CRITICAL, STANDARD or INFO and state DROP or NO_BASELINE, with a message quoting both ratios, both raw counts and the size of the fall. It is pure -- no database, no clock, no network -- which is why the judgement can be tested against numbers production has never produced.",
       "if_none": "A None previous snapshot yields exactly one INFO finding marked NO_BASELINE and nothing actionable, because a first recording is not evidence of anything. A field absent from the older snapshot is likewise NO_BASELINE and never zero: reading a missing key as zero would manufacture a hundred percent gain on the first run and a fabricated drop the day a field leaves the watch list."
     },
     {
       "name": "run",
-      "file_line": "scripts/check_council_completeness.py:367",
+      "file_line": "scripts/check_council_completeness.py:371",
       "input": "The trigger source recorded on the snapshot row, an optional list of councils to scope to, and three flags controlling whether it records a baseline, sends Telegram, and prints JSON instead of a table.",
       "output": "Returns 0 when nothing went backwards, 2 when there are findings with Telegram sent for CRITICAL and STANDARD, and 1 when the check itself could not run. Those are the same three codes r2_monitor, dcp_watchdog and dcp_extract_changed already use, which run_monitors.py treats as healthy, healthy-with-findings and failed respectively.",
       "if_none": "A council that was recorded before and is absent from the current measurement is found by comparing the recorded set against the measured set, because iterating over what exists could never find something that stopped existing. A missing DATABASE_URL returns 1 and says so rather than exiting 0 on no data, since a credential-less pass is how the QA report gate stopped enforcing for ten weeks."
@@ -74,13 +74,13 @@
   "queries": [
     {
       "purpose": "Counts served provisions per council and how many of them populate each watched field, in a single pass.",
-      "file_line": "scripts/check_council_completeness.py:194 (measure)",
+      "file_line": "scripts/check_council_completeness.py:179 (measure)",
       "where_clause": "WHERE is_current AND v2_is_actionable, with an optional HAVING COALESCE(source_council, sentinel) = ANY(%s) when scoped to named councils.",
       "why": "is_current AND v2_is_actionable is the SERVED set, the rows the UI actually shows. Counting anything wider would measure rows no user can reach and could hide a drop in the ones they can. Column names are interpolated because a column cannot be a bind parameter and they come only from the module's own WATCHED_FIELDS constant; --council, the one value that comes from outside, is a bind parameter, and a real-database test asserts the scoped form returns exactly that council."
     },
     {
       "purpose": "Read a council's most recent snapshot to compare the current measurement against.",
-      "file_line": "scripts/check_council_completeness.py:224 (load_previous)",
+      "file_line": "scripts/check_council_completeness.py:209 (load_previous)",
       "where_clause": "WHERE council = %s ORDER BY taken_at DESC, id DESC LIMIT 1",
       "why": "The id tiebreak matters: two snapshots written in the same transaction share a taken_at default, and ordering by timestamp alone would pick between them arbitrarily. A counts value that is not a dict returns None so the caller sees no baseline, because a corrupt baseline must never read as a snapshot of zeros."
     }
@@ -148,6 +148,13 @@
       "repro": "PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest -m database tests/test_check_council_completeness_real_db.py::test_measure_returns_real_councils_with_the_watched_fields -q -o addopts=",
       "mitigated": "Mitigated: a real-database test executes every predicate and asserts each count sits between zero and the served total.",
       "how": "A predicate that no longer matches the schema raises at execute time, and the real-DB test additionally rejects any fill count above its own denominator -- the shape a wrong predicate produces when it still parses."
+    },
+    {
+      "scenario": "An exposed LGA whose name contains spaces, such as City of Parramatta, appears in the audit.",
+      "what_happens": "The full name is recovered from the audit's summary line, instead of the first token off a fixed-width table row turning it into City.",
+      "repro": "python -m pytest tests/test_check_council_completeness.py::test_a_multi_word_lga_name_survives_parsing -q",
+      "mitigated": "Mitigated: parse_exposed reads the comma-separated summary line, never the table.",
+      "how": "Found by the pre-push adversarial check, which flagged the original split()[0] on subprocess output. The IndexError it named was unreachable, but looking at the line showed a worse live bug: a truncated name matches nothing, so it would read as a NEW exposure next run and a disappearance the run after -- an alert manufacturing its own churn. Rewritten to parse the summary line and covered by four parser tests."
     }
   ],
   "mutation_analysis": "Nine reversions of the comparison logic, run against a baseline confirmed GREEN first (full suite 5,257 passed, 2 skipped, 88.94s) -- a score against a red baseline is void and was treated as such rather than reported. 9 of 9 killed: compare returning nothing at all; the material-drop threshold made exclusive so the boundary case escapes; every drop demoted to STANDARD so severity never escalates; a field missing from the baseline read as zero; the served-zero short-circuit removed so per-field noise follows it; any served drop at all reported instead of the ten percent threshold; the small-council path reporting a field loss even when the council itself shrank; no-baseline returning an empty list instead of an INFO finding; half a council disappearing demoted from CRITICAL to STANDARD. The harness rewrites the file for each mutant and restores it in a finally, then re-runs to confirm the baseline is green again.",

@@ -232,6 +232,44 @@ def test_zone_fill_is_not_watched():
     assert "v2_applicable_zones" not in ccc.WATCHED_FIELDS
 
 
+# --- parsing the precinct-exposure audit ----------------------------------
+
+_AUDIT_OUTPUT = """LGA                   bounds  conn  keyed councils                   rule?  status
+------------------------------------------------------------------------------
+City of Parramatta        89    47  parramatta                       YES    protected
+Woollahra                 14    14  woollahra                        NO     EXPOSED - re-extract un-keys it
+
+>>> 1 LGA(s) EXPOSED (keyed, no reproducible rule): Woollahra
+>>> Add a rule to scripts/derive_precinct_keys.py RULES, or do not re-extract them.
+"""
+
+
+def test_exposed_lgas_come_from_the_summary_line():
+    assert ccc.parse_exposed(_AUDIT_OUTPUT) == {"Woollahra"}
+
+
+def test_a_multi_word_lga_name_survives_parsing():
+    """The bug this parser replaced: taking the first token off a table row turns
+    'City of Parramatta' into 'City'. That name matches nothing, so it would read
+    as a NEW exposure on the next run and a disappearance on the one after --
+    an alert that invents its own churn."""
+    out = _AUDIT_OUTPUT.replace(
+        ">>> 1 LGA(s) EXPOSED (keyed, no reproducible rule): Woollahra",
+        ">>> 2 LGA(s) EXPOSED (keyed, no reproducible rule): City of Parramatta, Woollahra")
+    assert ccc.parse_exposed(out) == {"City of Parramatta", "Woollahra"}
+
+
+def test_no_exposure_parses_to_an_empty_set():
+    assert ccc.parse_exposed("All keyed LGAs have a reproducible rule.\n") == set()
+
+
+def test_empty_output_does_not_raise():
+    """The audit could fail to run at all; the parser must return, not explode,
+    so the caller can report the failure as a finding."""
+    assert ccc.parse_exposed("") == set()
+    assert ccc.parse_exposed("   \n\n  \n") == set()
+
+
 def test_the_watched_fields_are_the_ones_a_commit_writes():
     assert set(ccc.WATCHED_FIELDS) == {
         "v2_precinct_id", "ref_number", "pdf_page",

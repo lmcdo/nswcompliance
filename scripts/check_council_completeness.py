@@ -31,24 +31,19 @@ previous one.
 
 THREE STATES, NEVER TWO
 -----------------------
-Every (council, field) lands in exactly one of:
-
-  OK           measured now, measured before, no material fall
-  DROP         measured both times and fell -- the finding
-  NO_BASELINE  not measured before (first run, new council, newly watched field)
-
-NO_BASELINE is never folded into OK. A check that reports "fine" when it has
-nothing to compare against is how DQ-30 stayed marked Fixed for a month on the
+Every (council, field) is OK (measured both times, no material fall), DROP (the
+finding), or NO_BASELINE (not measured before -- first run, new council, newly
+watched field). NO_BASELINE is never folded into OK: a check that reports "fine"
+when it has nothing to compare against is how DQ-30 stayed marked Fixed on the
 strength of a self-comparison that could not fail.
 
 WHAT IT DOES NOT MEASURE, AND WHY
 ---------------------------------
 Zone codes are NOT watched as a fill count. Measured 2026-09-11:
-v2_applicable_zones is populated on 100.0% of served rows for all 18 councils,
-because the #1081 write guard falls back to ['ALL'] rather than leaving the column
-empty. A fill count there cannot move, so watching it would be a check that cannot
-fail. Zone health comes from calling scripts/validate_zone_code_validity.py, which
-compares stored codes against the live per-LGA land-use table and can fail.
+v2_applicable_zones is populated on 100.0% of served rows for all 18 councils --
+the #1081 write guard falls back to ['ALL'] rather than leaving it empty -- so a
+fill count there cannot move, and would be a check that cannot fail. Zone health
+comes from calling scripts/validate_zone_code_validity.py, which can.
 
 Exit codes (matching r2_monitor / dcp_watchdog / dcp_extract_changed, which
 run_monitors.py already treats this way):
@@ -75,16 +70,12 @@ from dotenv import load_dotenv  # noqa: E402
 
 
 def _load_env() -> None:
-    """Find .env, including when running from inside a git worktree.
-
-    A worktree has no .env of its own -- it is not tracked -- so `ROOT/.env` is
-    simply absent there and every DB call fails with "DATABASE_URL is not set".
-    The main checkout is the parent of the shared git common dir.
+    """Find .env, including from inside a git worktree, which has none of its own.
 
     Resolved inline rather than by importing scripts/dq_db.main_checkout(): dq_db
     is NOT copied into Dockerfile.monitors, so importing it would trade a local
-    inconvenience for a production ImportError. On Railway both files are absent
-    and the real env vars are already set, so this whole function is a no-op.
+    inconvenience for a production ImportError. On Railway the env vars are
+    already set, so this whole function returns early.
     """
     load_dotenv(ROOT / ".env")
     if os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL"):
@@ -119,24 +110,18 @@ DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-#: source_council is NULL for statewide instruments (7,268 served rows measured
-#: 2026-09-11). They are still worth watching -- a statewide instrument losing its
-#: citations is the same defect -- so NULL is recorded under this sentinel.
-#: Verified the same day that ZERO served rows carry an empty-string
-#: source_council, so this cannot collide with a real council slug.
+#: source_council is NULL for statewide instruments (7,268 served rows, 2026-09-11);
+#: one losing its citations is the same defect, so NULL is recorded under this
+#: sentinel. Verified the same day: ZERO served rows carry an empty-string
+#: source_council, so it cannot collide with a real slug.
 STATEWIDE = "(statewide)"
 
-#: field name -> the SQL predicate meaning "this row populates the field".
-#:
-#: These are OUR OWN identifiers, interpolated into the SELECT because a column
-#: name cannot be a bind parameter. Nothing here comes from input; --council does,
-#: and is passed as a bind parameter.
-#:
-#: v2_applicable_dev_types is watched even though the plan's list stopped at
-#: topic/type: DQ-30 was an applicability-tagger defect, the column is on the
-#: served set, and adding a field to this dict costs nothing because `counts` is
-#: JSONB. The cheapness is the point -- a field that is expensive to start
-#: watching is a field that does not get watched.
+#: field name -> the SQL predicate meaning "this row populates the field". These
+#: are OUR OWN identifiers, interpolated into the SELECT because a column name
+#: cannot be a bind parameter; --council, the one value from outside, is bound.
+#: Adding a field here costs nothing because `counts` is JSONB, and that
+#: cheapness is the point -- a field expensive to start watching does not get
+#: watched. v2_applicable_dev_types is here because DQ-30 was a tagger defect.
 WATCHED_FIELDS: dict[str, str] = {
     "v2_precinct_id": "v2_precinct_id IS NOT NULL",
     "ref_number": "ref_number IS NOT NULL AND ref_number <> ''",
@@ -346,22 +331,41 @@ def zone_validity_finding() -> dict | None:
     }
 
 
-def precinct_exposure() -> tuple[set[str], str]:
-    """LGAs that are precinct-keyed but have no reproducible derivation rule.
+def parse_exposed(out: str) -> set[str]:
+    """LGA names from audit_precinct_keying_coverage.py's summary line.
 
-    Returned as a SET to be compared against the previous run, not asserted to be
-    empty. Woollahra is exposed today and has been for months; making that a hard
-    failure would produce an alarm nobody can satisfy, which is precisely how the
-    daily SUSPECT alert taught an operator to stop reading the channel
-    (migrations/066). Growth of this set is the signal.
+    From the SUMMARY line, not the per-LGA table. The table left-justifies the
+    name into a fixed-width column, so taking the first token off a table row
+    turns "City of Parramatta" into "City" -- a name that matches nothing, and
+    which would then look like a NEW exposure on the very next run and a
+    disappearance on the one after. The summary line lists full names,
+    comma-separated, after a colon:
+
+        >>> 1 LGA(s) EXPOSED (keyed, no reproducible rule): Woollahra
+
+    No summary line means nothing is exposed, which is a legitimate empty set --
+    the caller reports growth, never absence.
+    """
+    exposed: set[str] = set()
+    for line in out.splitlines():
+        if not (line.startswith(">>>") and "EXPOSED" in line and ":" in line):
+            continue
+        for name in line.split(":", 1)[1].split(","):
+            if name.strip():
+                exposed.add(name.strip())
+    return exposed
+
+
+def precinct_exposure() -> tuple[set[str], str]:
+    """Exposed LGAs, as a set to compare against the previous run.
+
+    Not asserted empty: Woollahra is exposed today and has been for months, and
+    making that a hard failure would produce an alarm nobody can satisfy --
+    precisely how the daily SUSPECT alert taught an operator to stop reading the
+    channel (migrations/066). Growth of this set is the signal.
     """
     rc, out = _run_sibling("audit_precinct_keying_coverage.py")
-    exposed = {
-        line.split()[0]
-        for line in out.splitlines()
-        if "EXPOSED" in line and not line.startswith(">>>")
-    }
-    return exposed, out if rc not in (0,) else ""
+    return parse_exposed(out), out if rc not in (0,) else ""
 
 
 def run(trigger_source: str = "manual", councils: list[str] | None = None,
