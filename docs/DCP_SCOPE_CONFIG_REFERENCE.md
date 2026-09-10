@@ -1,10 +1,100 @@
 # DCP Scope Config Reference
 
-**Last updated:** 2026-03-23
+**Last updated:** 2026-09-10
 **Source:** Research across 13 NSW councils (Inner West × 3, Inner East × 4, future pipeline × 6+)
 
 This document defines the `universalPartKeys` and `devTypeGatedPartKeys` values for each council's
 `lib/council-configs/{council}.json`. These are the only two fields that drive DA mode scope behaviour.
+
+---
+
+## Default scope for a NEW council — extract ~6 chapters, not the whole DCP
+
+**Added 2026-09-10.** Everything above describes councils already onboarded, where the
+whole DCP was registered and extracted. That is the wrong default for the next one, and
+the measurement says so plainly.
+
+### What the product actually consumes
+
+Every numeric control the app renders is **residential**, measured across all 1,071
+current rows of `dcp_setback_controls`:
+
+| dev_type | rows |
+|---|---|
+| dwelling_house | 308 |
+| residential_flat_building | 253 |
+| multi_dwelling_housing | 166 |
+| dual_occupancy | 103 |
+| secondary_dwelling | 52 |
+| shop_top_housing | 37 |
+
+No industrial, no childcare, no sex services, no places of worship. The chapters that
+produced them are equally narrow: parking chapters, landscaping chapters, low/medium
+density residential chapters, transport chapters.
+
+### What a full DCP extraction actually yields
+
+Measured across the 11,952 served council provisions on 2026-09-10:
+
+| topic | share |
+|---|---|
+| heritage | **19.9%** |
+| building_form | 8.0% |
+| parking | 7.8% |
+| **signage** | **7.5%** |
+| residential | 6.5% |
+| site_analysis | 5.6% |
+| height | 3.9% |
+| landscaping | 3.8% |
+| setbacks | 3.6% |
+| waste / roofing / fencing / safety | ~9% combined |
+
+So the four control topics the product renders are about a fifth of the text, while
+heritage alone is a fifth and signage is another 7.5%. Registering and extracting a whole
+DCP spends most of the effort on content no common use case reaches.
+
+### The default scope
+
+For a new council, register and extract these and nothing else:
+
+1. **General / introductory part** — how the DCP applies, definitions, site analysis.
+2. **Low and medium density residential** — the source of setbacks, height, site coverage,
+   private open space.
+3. **Residential flat buildings**, where the council separates it.
+4. **Parking and transport.**
+5. **Landscaping and trees.**
+6. **Heritage — second priority, not skipped.** It is the largest single topic and the
+   spatial layer already answers *whether* a property sits in a conservation area. What
+   the DCP adds is what that means for a design, which is a real question. Do it after
+   the first five, not instead of them.
+
+**Explicitly out of scope on a first pass:** signage, industrial, waste management,
+childcare, educational establishments, places of worship, licensed premises,
+telecommunications, sex services, outdoor dining — and any registry entry that is a
+**map sheet**. City of Sydney alone carries 234 registered map sheets that can never
+produce a provision; they inflate every backlog count that reads the registry.
+
+That is roughly six chapters instead of forty: five to six times less registration,
+extraction and review for the part people actually use.
+
+### ⚠ Narrowing the scope creates a claim problem — handle it in the same change
+
+A council with six extracted chapters does **not** have "DCP controls". Labelling it that
+way is the same overclaim removed on 2026-09-10, when eight councils were found asserting
+`hasDcpData: true` with zero rows behind them (PR #1075). Partial scope must surface as
+partial: "residential development controls", not "DCP".
+
+`scripts/verify_lga_capability_flags.py` runs daily and fails when a per-council flag
+claims something the database does not support. Setting a council's flag before its
+provisions land will turn that job red the next morning.
+
+### What this does NOT change
+
+Precinct and heritage parts still self-gate through the for-property API layer system
+(`v2_dcp_layer` = condition / precinct) and still do not belong in either array. Zone-tier
+parts are still handled by the API `use_specific` layer. The two fields below drive DA
+mode scope behaviour exactly as before — this section narrows what gets *registered and
+extracted*, not how scope is expressed once it is in.
 
 ---
 
