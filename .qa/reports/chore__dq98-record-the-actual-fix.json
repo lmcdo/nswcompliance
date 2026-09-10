@@ -3,9 +3,10 @@
   "justification": "Changes a data-quality ledger row and the probe behind it. No served data moves. But the probe is a gate input, and a ledger row that describes a fix nobody built is how this repo has been wrong before, so it is not trivial.",
   "commit_hash": "167f5ca1",
   "files": [
-    "scripts/dq_probe_oversized_pdf_oom_risk.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    "scripts/dq_probe_oversized_pdf_oom_risk.py",
+    "tests/test_dq_probe_oversized_pdf_oom_risk_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_chapter_registry.url_content_length and last_extracted_at, both already read by this probe or its neighbours. No new query shape, no new table.",
@@ -21,7 +22,7 @@
     "external_authority": "Not self-referential: the count comes from dcp_chapter_registry in the production database, written by the extraction pipeline, not by anything in this change. The memory figures quoted in the ledger text were measured with psutil against real council PDFs pulled from R2, comparing the current extractor against the previous one loaded from origin/main.",
     "fails_when": "A chapter PDF over the 30MB heuristic has never been extracted. It reaches 0 when those chapters extract -- which the previous version could not do at all, because it counted chapters that were merely large.",
     "observed_red": "Reads 3 today and named them: canterbury_bankstown chapters 7-6, 6-2 and 7-5. Before the WHERE clause was added it read 7, including four chapters that HAVE extracted (parramatta, two city_of_sydney, ku_ring_gai) -- so the old count was four-sevenths noise. Both numbers observed by running it.",
-    "measured": "Probe = 3. dq_check.py: 0 red, 1 unverifiable, PASSED. Full suite 5,171 passed, 2 skipped."
+    "measured": "Probe = 3. dq_check.py: 0 red, 1 unverifiable, PASSED. Full suite 5,171 passed, 2 skipped. Real-database tests: 3 passed with credentials loaded (they skip without, and a skip is green, so they were run properly)."
   },
   "functions": [
     {
@@ -75,6 +76,13 @@
       "mitigated": false,
       "how": "Not mitigated here, and named rather than glossed. That case is already covered by a different signal -- dcp_watchdog's stuck-chapter alert fires when url_last_changed is newer than last_extracted_at, which is exactly a chapter that used to extract and now does not. Duplicating it in this probe would give two counts for one condition. If that alert is ever removed, this gap becomes real.",
       "repro": "Set last_extracted_at to a past date on an oversized chapter and re-run: this probe passes, the watchdog reports it."
+    },
+    {
+      "scenario": "The probe's new WHERE clause names a column that does not exist, or compares the wrong type, and the mocked test suite passes anyway.",
+      "what_happens": "conftest_mocks.py stubs psycopg2, so a broken query returns a MagicMock and the probe reports CLEAN. The ledger would then say DQ-98 is resolved because nobody looked. That is strictly worse than no probe, and it matters more now than before: the old probe could never reach 0, so a false 0 was impossible; this one can, so a false 0 is a live risk.",
+      "mitigated": true,
+      "how": "tests/test_dq_probe_oversized_pdf_oom_risk_real_db.py runs the query against the real database under @pytest.mark.database. It also asserts the added clause DISCRIMINATES -- that some large chapters have last_extracted_at set and some do not. Both degenerate cases (column never populated, column always populated) would leave a probe that looks like it works: one keeps counting mere size, the other returns 0 forever. Verified actually running, not skipping: 3 passed with PYTEST_REAL_DB=1 and DATABASE_URL loaded. A bare run skips, and a skip is green, so it was run properly before being written up.",
+      "repro": "PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest -m database tests/test_dq_probe_oversized_pdf_oom_risk_real_db.py -o addopts="
     }
   ],
   "post_merge": {
