@@ -1,7 +1,7 @@
 {
   "tier": "Critical",
   "justification": "A committed provision is inserted with v2_precinct_id UNSET. Nothing set it. Measured against production 2026-09-10: ashfield served 2,041 provisions with 118 keyed, marrickville 2,403 with 37, ku_ring_gai 337 with 0. The precincts had not changed -- the keys had been wiped by a re-extraction, exactly as derive_precinct_keys' own docstring predicts ('applied to rows BY HAND, so every re-extraction nulled them and the manual work recurred'). The July fix made the keys DERIVABLE but wired nothing to derive them: a repo-wide search of every .yml/.toml/.py/.json/.sh outside .claude/worktrees found no pipeline, cron or CI step that calls it. The user-visible effect is silent and wrong-shaped: a precinct lookup for an affected council returns council-wide controls instead of the precinct's own, with no error anywhere. This is the same failure class as DQ-30 (a one-time data cleanup with nothing guarding the write path that keeps re-breaking it).",
-  "commit_hash": "9fa346d1",
+  "commit_hash": "b5061f2c",
   "files": [
     "scripts/dcp_commit_approved.py",
     "Dockerfile.monitors",
