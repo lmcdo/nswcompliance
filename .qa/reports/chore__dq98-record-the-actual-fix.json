@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes a data-quality ledger row and the probe behind it. No served data moves. But the probe is a gate input, and a ledger row that describes a fix nobody built is how this repo has been wrong before, so it is not trivial.",
-  "commit_hash": "702e2ba2",
+  "commit_hash": "167f5ca1",
   "files": [
     "scripts/dq_probe_oversized_pdf_oom_risk.py",
     ".claude/dq_checks.json",
