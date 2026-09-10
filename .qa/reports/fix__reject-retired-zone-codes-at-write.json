@@ -1,0 +1,110 @@
+{
+  "tier": "Critical",
+  "justification": "DQ-30 was declared fixed on 2026-08-12. On 2026-09-10 it was RED again with six freshly-written ku_ring_gai provisions tagged 'B2', a zone code NSW retired in 2022 -- nothing is zoned B2 any more, so those rows are served and unreachable by any current-zone lookup. They were NEW rows, not survivors of the August cleanup: that repair fixed the rows that existed then and nothing guarded the WRITE, so the next extraction created more. This PR moves the check from after the fact to before the store. The cause is not a bad zone list but a false positive already documented in scripts/backfill_invalid_zone_codes.py -- the tagger's blind text-regex fallback matches 'Part B3' in DCP prose as zone B3, which is also why re-running the tagger repaired 0 of 241 such rows: it reproduces its own output, the same self-comparison that let the old '0% drift' check report success while 112 live rows stayed broken.",
+  "commit_hash": "db2b95b1",
+  "files": [
+    "enrichment/pipeline.py",
+    "tests/test_zone_guard_at_write.py",
+    "tests/test_pipeline_zone_guard_real_db.py",
+    "Dockerfile.monitors"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_zone_guard_at_write.py -q, then re-run against nine separate reversions (guard never called; filter made a no-op; EMPTY ground truth treated as 'everything invalid'; wildcard ALL no longer preserved; fallback returns [] instead of ['ALL']; source_council dropped from the SELECT; filter applied after the row is queued; ground truth reloaded per row; non-string entry crashes instead of being skipped). Real layer, opt-in: PYTEST_REAL_DB=1 DATABASE_URL=... pytest -m database tests/test_pipeline_zone_guard_real_db.py -o addopts=\"\".",
+    "fails_when": "Any reversion leaves the suite green. The one that matters most is not the obvious one: treating an EMPTY valid-set as 'every code is invalid' would empty the zones of every council that has not been scraped yet -- the guard causing a far larger version of the defect it exists to prevent -- so absence of ground truth must mean 'do nothing', and a test asserts exactly that.",
+    "observed_red": "9 of 9 reversions went red. IMPORTANT PROCESS NOTE: the FIRST mutation run reported 9/9 and was VOID, because the baseline itself had one failing test -- every mutant 'failed' for a reason unrelated to the mutation. That was caught, the baseline was fixed, and the re-run against a green baseline gave the true result: 6 of 9, with three survivors. Two were genuine WEAK tests and were strengthened rather than explained away: (a) keep(['ALL']) returns ['ALL'] whether or not the wildcard clause exists, because dropping it empties the list and the fallback puts ['ALL'] back -- an identical result from broken logic, so the mixed case keep(['ALL','R2']) was added, which collapses to ['R2'] when the clause is removed; (b) the wiring test checked only the POSITION of the filter call, so deleting `zones = filtered` left the guard computing a value and discarding it -- an assertion on that assignment was added. After both fixes the re-run is 9/9 killed. Two further test bugs were found by running rather than assuming: a naive count matched the function's own `def` line, and `while processed < total:` matched an EARLIER function's loop because the search was not scoped to run_applicability_tagging. Full suite: 5,188 passed, 2 skipped, 0 failed in 100s. A tenth reversion was added after the packaging gap was found -- removing the Dockerfile COPY -- and is killed. Final: 10 of 10 against a green baseline, 18 unit tests, 6 real-layer tests, full suite 5,188 passed.",
+    "real_data_check": "Run against production before any code was written: the six live defect rows ['B2'] resolve to ['ALL'], and the confusable negatives are untouched -- ashfield ['ALL'] x2041 SAME, waverley ['R2'] x21 SAME, ku_ring_gai ['R1','R2','R3','R4','R5'] x11 SAME, ku_ring_gai ['R2'] x8 SAME. ku_ring_gai resolves to LGA 'ku-ring-gai' with 17 live zones, none of them a retired business code. The real-layer file then found a genuine problem BEFORE shipping: an assertion that the guard is a no-op on all stored rows FAILED, naming 33 canterbury_bankstown rows. Investigated rather than relaxed -- Canterbury-Bankstown's live list holds R1-R4 and no R5 while those rows store R1-R5. The assertion's premise was wrong, not the guard: the tagger selects WHERE v2_applicable_zones IS NULL, so it never sees a row that already has zones. The test was reframed to pin that containment plus the invariant that actually bounds the damage -- every change is a strict SUBSET of the input, never an addition.",
+    "external_authority": "lep_zone_coverage, queried live, filtered to is_complete = TRUE. This is not self-referential: the guard's verdict is decided by a per-LGA land-use table scraped from the LEP, entirely independently of the tagger whose output it judges -- which is the precise failure of the old '0% drift' check that re-ran the tagger and compared it with itself. The slug-to-LGA resolution is not reimplemented either: scripts/validate_zone_code_validity.py already resolves it, including the part that is easy to get wrong (an abolished council's rows are assessed against the CURRENT amalgamated LGA -- Marrickville against Inner West), and this imports that rather than keeping a second copy free to diverge from the checker that reports on it."
+  },
+  "pre_impl": {
+    "existing_data": "regulatory_provisions.v2_applicable_zones (text[]) and .source_council; lep_zone_coverage(lga, zone, is_complete) -- 26 LGAs carry a complete list; lga_registry(slug, display_name, parent_lga) for amalgamated-council resolution. All confirmed live, and the loader was executed against production before the code was written.",
+    "assumption_mismatch": "The tagger's SELECT pulls only (id, provision_text, document_id) -- source_council had to be ADDED, exactly like the repealed-source guard needing council_url. Without it the LGA is unknown, the valid set is empty, and the guard silently never fires: a fix that passes every unit test and does nothing. A test asserts the column is in the SELECT.",
+    "new_vs_existing": "No new capability and no new semantic. scripts/validate_zone_code_validity.py already DETECTS this defect (read-only) and scripts/backfill_invalid_zone_codes.py already REPAIRS stored rows with exactly this rule -- intersect against lep_zone_coverage, fall back to ['ALL'] when nothing survives. Neither runs at write time, which is the gap. This applies the same rule at the one place that stops new rows being born broken, and imports the existing ground-truth and slug resolvers rather than copying them.",
+    "external_source_error": "The ground-truth load is wrapped and returns ({}, {}) on any failure -- a missing checker module, an import error, an unreachable database. An empty result makes the filter a no-op, so enrichment continues and writes exactly what it writes today; it prints a warning naming the verification command. The alternative (fail closed) would stop the whole enrichment pipeline over a read of a reference table, and the alternative-alternative (treat empty as 'all invalid') would empty every council's zones, which is the single most damaging thing this code could do.",
+    "frontend_type": "No frontend change and no type change -- v2_applicable_zones stays text[], and ['ALL'] is a value the column already holds and every consumer already handles (it is what the tagger stores when it finds no zone evidence). The user-visible difference is that a provision which previously carried an unmatchable code now carries the honest wildcard, so it is served council-wide instead of appearing zone-specific and matching nothing.",
+    "user_failure_mode": "Too loose (a retired code still stored): a provision looks zone-specific, matches no current zone, and is silently absent from the controls shown for a property -- invisible, and the reason DQ-30 exists. Too tight (a valid code dropped): applicability widens to ['ALL'], so the provision is shown council-wide instead of for its zone -- over-inclusive, visible to a reader, and the direction the memory rule on repair calibration prefers, since removing a code cannot invent applicability while adding one can. The design is deliberately biased to the second, and the strict-narrowing invariant is asserted against every distinct stored combination in production."
+  },
+  "functions": [
+    {
+      "name": "keep_only_zones_valid_in_lga",
+      "file_line": "enrichment/pipeline.py:656",
+      "input": "zones: the codes the tagger derived for one provision. valid_zones: the upper-cased set of codes that exist in that row's LGA, or an EMPTY set when the LGA has no complete scrape. Pure -- opens nothing, queries nothing.",
+      "output": "list[str]. The surviving codes, or ['ALL'] when none survive. 'ALL' in the input is always preserved: it is the undetermined marker, not a zone code, and is not present in lep_zone_coverage.",
+      "if_none": "zones None or empty is returned unchanged. An EMPTY valid_zones returns the input UNTOUCHED -- absence of ground truth is not evidence a code is wrong, and this is the single most important branch in the function. A non-string entry in the array is skipped rather than raising, so one malformed row cannot end an enrichment batch."
+    },
+    {
+      "name": "_load_zone_ground_truth",
+      "file_line": "enrichment/pipeline.py:699",
+      "input": "An open psycopg2 connection. Called ONCE per tagging run, before the batch loop -- per-row loading would issue a query per provision across roughly 20k rows.",
+      "output": "(per-LGA valid zone sets, slug -> LGA key). Both come from scripts/validate_zone_code_validity.py's load_ground_truth and load_slug_resolution, imported rather than reimplemented.",
+      "if_none": "Returns ({}, {}) on ANY exception and prints a warning naming the verification command. The caller then filters nothing, so a broken reference read degrades to today's behaviour instead of either halting enrichment or emptying every council's zones."
+    },
+    {
+      "name": "run_applicability_tagging",
+      "file_line": "enrichment/pipeline.py:730",
+      "input": "Unchanged signature. Its SELECT gains source_council, and it keeps its existing WHERE v2_applicable_zones IS NULL.",
+      "output": "Unchanged stats dict, plus a zones_dropped_not_in_lga counter and a per-row line naming the provision, council, before/after and LGA whenever the guard changes something -- a silent guard is indistinguishable from an absent one.",
+      "if_none": "That WHERE clause is the containment: the guard only ever sees rows being written for the FIRST time, so no stored row is rewritten regardless of what the guard would decide about it. A real-layer test pins the clause, because losing it would silently expand the blast radius from new rows to every provision."
+    }
+  ],
+  "values": [
+    {
+      "value": "['ALL'] as the fallback",
+      "read_at": "enrichment/pipeline.py, keep_only_zones_valid_in_lga",
+      "if_missing": "Returning [] instead would store an empty array, a state no consumer expects and which is not the same as 'undetermined'. ['ALL'] is the value the tagger and backfill_invalid_zone_codes already store, so nothing downstream sees a new shape. A mutant returning [] is killed."
+    }
+  ],
+  "queries": [
+    {
+      "query": "SELECT zone FROM lep_zone_coverage WHERE lga = %s AND is_complete = TRUE",
+      "purpose": "Fetch the live set of zone codes that actually exist in one LGA, so a code the tagger derived from prose can be checked against reality before it is stored. This is the external authority the whole guard rests on -- without it the check would be the tagger judging its own output, which is the exact self-comparison that let DQ-30 be declared fixed while 112 live rows stayed broken.",
+      "file_line": "scripts/validate_zone_code_validity.py:load_ground_truth, imported by enrichment/pipeline.py:_load_zone_ground_truth",
+      "where_clause": "is_complete = TRUE is load-bearing: an interrupted scrape must not be read as the complete valid list for an LGA, or the guard would drop real zones that simply had not been fetched yet. lga IS NOT NULL and zone IS NOT NULL exclude partial rows. There is no council scope on the query itself -- the full map is loaded once per run and indexed in memory, because per-row querying would issue one round trip per provision across roughly 20k rows.",
+      "filters": "is_complete = TRUE, lga IS NOT NULL, zone IS NOT NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "An LGA has not been scraped yet, so lep_zone_coverage returns no complete zone list for it at all.",
+      "what_happens": "If the guard treated that as 'every code is invalid' it would replace the zones of every provision for every un-onboarded council with ['ALL'] on the first run -- vastly worse than the six rows this was built for.",
+      "mitigated": true,
+      "how": "keep_only_zones_valid_in_lga returns the input untouched on an empty valid set, and _load_zone_ground_truth returns empty on any failure so the same branch covers a broken read.",
+      "repro": "test_an_lga_with_no_ground_truth_is_left_completely_alone; the mutant that deletes the empty-set branch is killed."
+    },
+    {
+      "scenario": "The tagger stops selecting source_council, or the column is renamed at some later point.",
+      "what_happens": "Every row resolves to an unknown LGA, every valid set is empty, and the guard silently does nothing while continuing to log nothing -- a fix that passes its own unit tests and protects no one.",
+      "mitigated": true,
+      "how": "A test asserts the exact SELECT text, and the mutant that removes the column is killed.",
+      "repro": "test_the_tagger_reads_source_council."
+    },
+    {
+      "scenario": "A council legitimately still uses one of the codes this treats as retired.",
+      "what_happens": "The guard would delete real applicability, and being a removal it would be quiet.",
+      "mitigated": true,
+      "how": "Not assumed -- asserted against production. A real-layer test scans every complete LGA zone list for any surviving retired business code and fails loudly if one exists, which is the falsifiable form of the PR's central premise.",
+      "repro": "test_no_lga_still_lists_a_retired_business_zone."
+    },
+    {
+      "scenario": "Someone later removes the WHERE v2_applicable_zones IS NULL clause from the tagger's fetch.",
+      "what_happens": "The guard's reach jumps from new rows to every provision in the corpus. Measured: 39 stored rows would narrow if re-tagged, e.g. canterbury_bankstown stores R1-R5 while its live list has R1-R4 and no R5.",
+      "mitigated": true,
+      "how": "A real-layer test pins the clause, and a second asserts the invariant that bounds any such change -- the output is always a subset of the input, never an addition or substitution.",
+      "repro": "test_the_guard_never_touches_a_row_that_already_has_zones and test_any_change_the_guard_makes_is_a_strict_narrowing."
+    },
+    {
+      "scenario": "The Railway image does not contain the checker module that enrichment/pipeline.py imports for its ground truth.",
+      "what_happens": "The import raises, _load_zone_ground_truth returns empty by design, and the guard degrades to a no-op -- correct behaviour for unreadable reference data, but it means the fix is OFF on every nightly run while every unit test still passes locally. It announces itself only in a warning line.",
+      "mitigated": true,
+      "how": "Found by checking rather than assuming: Dockerfile.monitors did NOT copy scripts/validate_zone_code_validity.py. Added, plus a test that asserts the COPY exists. The identical omission was found in the preceding precinct-keys PR, which is why it was checked at all.",
+      "repro": "test_the_image_ships_the_checker_the_guard_imports; delete the COPY line and it goes red."
+    }
+  ],
+  "mutation_analysis": "Nine reversions, run twice. The first run's 9/9 was VOID -- the baseline had a failing test, so every mutant 'died' for the wrong reason; this is recorded because a mutation score against a red baseline is worse than no score, it is a false assurance of exactly the kind this project keeps finding. Against a green baseline the true first result was 6/9. All three survivors were investigated: two were genuinely WEAK assertions and were strengthened (the ALL-wildcard case was satisfied by a coincidence of the fallback; the wiring assertion checked position but not the assignment, so the guard could compute a value and discard it), and the third shared a root cause with the second. Re-run after strengthening: 9/9 killed. A further two test bugs were exposed by running rather than assuming -- a count that matched the function's own def line, and a source search that matched an earlier function's loop because it was not scoped.",
+  "residual_risk": "1) The guard only defends the WRITE. The 6 live rows found on 2026-09-10 are still there and this PR does not touch them -- repairing them is scripts/backfill_invalid_zone_codes.py --apply, a separate deliberate act with its own backup, and DQ-30 stays RED until someone runs it. Shipping this without that leaves the check failing. 2) It only covers rows written through run_applicability_tagging. A direct insert, a manual backfill or any other writer can still store anything; nothing asserts corpus-wide that every served row's codes exist in its LGA at rest -- scripts/validate_zone_code_validity.py does exactly that and is run by nothing on a schedule. 3) 39 stored rows would narrow if they were ever re-tagged (canterbury_bankstown R5 being most of them). That is the guard working as designed on a code the LGA does not list, not a false positive, but it means a future decision to re-tag those councils is a data change and should be treated as one. 4) The root cause is untouched: the tagger still reads 'Part B3' as zone B3. This stops the bad value being stored; it does not stop the tagger producing it, so the provenance column still records a zone_source that claims text evidence for a code the LGA does not have.",
+  "post_merge": {
+    "db_reset": "None from this PR -- it changes no existing data. Separately, DQ-30's six live rows still need scripts/backfill_invalid_zone_codes.py --apply (creates its own backup table first) before the check goes green.",
+    "secrets": "None added. The loader uses the DATABASE_URL the enrichment pipeline already holds.",
+    "other_repo": "None.",
+    "manual_verify": "After the next enrichment run, confirm the log shows 'Zone guard active: N LGAs with a complete zone list' and no '[warn] zone ground truth unavailable' line -- that warning would mean the guard is a no-op. Then run python scripts/validate_zone_code_validity.py and confirm no NEW invalid rows have appeared since this deployed."
+  }
+}

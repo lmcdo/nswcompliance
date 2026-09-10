@@ -46,6 +46,12 @@ COPY scripts/dcp_quality_report.py ./scripts/dcp_quality_report.py
 # AI extraction engine (AI_EXTRACTION=1) — dcp_extract_changed imports it at runtime.
 COPY scripts/ai_extractor.py ./scripts/ai_extractor.py
 COPY enrichment/ ./enrichment/
+# enrichment/pipeline.py imports load_ground_truth + load_slug_resolution from this
+# checker to decide whether a derived zone code exists in the row's LGA (DQ-30).
+# Without it the import fails, the guard degrades to a NO-OP, and retired codes are
+# written again -- silently, because failing soft is the correct behaviour when the
+# reference data cannot be read. Only stdlib beyond psycopg2, already present.
+COPY scripts/validate_zone_code_validity.py ./scripts/validate_zone_code_validity.py
 
 # Property-alerts dispatcher (MONITOR_NAME=property-alerts). It reuses the existing
 # threat_radar subscription/check helpers, which live in the FastAPI router module

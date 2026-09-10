@@ -650,6 +650,83 @@ def run_type_classification(
     return stats
 
 
+WILDCARD_ZONE = "ALL"
+
+
+def keep_only_zones_valid_in_lga(zones, valid_zones):
+    """Drop zone codes that do not exist in this row's LGA, before they are stored.
+
+    DQ-30 RECURRENCE, measured 2026-09-10. Six freshly written ku_ring_gai rows were
+    tagged 'B2' -- a code NSW retired in 2022, so nothing is zoned B2 any more and the
+    row can never match a current-zone lookup. The August 2026 repair cleaned the rows
+    that existed then; nothing guarded the WRITE, so the next extraction created more.
+
+    The cause is not a bad zone list, it is a false positive:
+    scripts/backfill_invalid_zone_codes.py records it as the tagger's blind text-regex
+    fallback matching "Part B3" in DCP prose as zone B3. That is also why re-running
+    the tagger repaired 0 of 241 rows -- it reproduces its own output, the same
+    self-comparison that let the old "0% drift" check report success.
+
+    Ground truth is lep_zone_coverage, queried live, NOT a table in this file. A
+    committed constant would be hardcoded regulatory data and wrong within months --
+    which LGAs are onboarded changes independently of deploys.
+
+    Args:
+        zones: the codes the tagger derived for this provision.
+        valid_zones: upper-cased set of codes that exist in the row's LGA, or an
+            EMPTY set when that LGA has no complete scrape.
+
+    Returns:
+        The surviving codes, or ['ALL'] if none survive -- the same honest
+        "applicability undetermined" value backfill_invalid_zone_codes stores and the
+        tagger itself produces when it finds no zone evidence, so this introduces no
+        new semantic downstream.
+
+        An EMPTY valid_zones means "we have not scraped this LGA", which is NOT
+        evidence that any code is wrong. In that case the input is returned untouched.
+        Emptying a council's zones over a coverage gap would be the guard doing the
+        damage it exists to prevent.
+    """
+    if not valid_zones:
+        return zones
+    if not zones:
+        return zones
+    kept = [z for z in zones
+            if isinstance(z, str) and (z.upper() in valid_zones or z.upper() == WILDCARD_ZONE)]
+    return kept or [WILDCARD_ZONE]
+
+
+def _load_zone_ground_truth(conn):
+    """(per-LGA valid zone sets, slug -> LGA key) for the zone guard above.
+
+    prior-art-checked: reuse, not reinvention. scripts/validate_zone_code_validity.py
+    already resolves both -- including the part that is easy to get wrong, mapping an
+    abolished council's slug to the CURRENT amalgamated LGA whose zones actually apply
+    (Marrickville provisions are assessed against Inner West). Re-deriving that here
+    would be a second copy free to drift from the checker that reports on it.
+
+    Returns ({}, {}) on any failure. The caller then skips filtering entirely rather
+    than treating "no ground truth" as "every code is invalid".
+    """
+    try:
+        import sys as _sys
+        from pathlib import Path as _Path
+        _scripts = str(_Path(__file__).resolve().parent.parent / "scripts")
+        if _scripts not in _sys.path:
+            _sys.path.insert(0, _scripts)
+        from validate_zone_code_validity import load_ground_truth, load_slug_resolution
+        cur = conn.cursor()
+        truth = load_ground_truth(cur)
+        slugs = load_slug_resolution(cur, truth)
+        cur.close()
+        return truth, slugs
+    except Exception as exc:  # noqa: BLE001 — a missing checker must not stop tagging
+        print(f"  [warn] zone ground truth unavailable ({exc}); zone validation SKIPPED "
+              f"for this run. Retired codes can be written until this is fixed; "
+              f"verify with python scripts/validate_zone_code_validity.py")
+        return {}, {}
+
+
 def run_applicability_tagging(
     limit: Optional[int] = None,
     dry_run: bool = False,
@@ -665,6 +742,13 @@ def run_applicability_tagging(
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     tagger = ApplicabilityTagger()
+
+    # Loaded ONCE per run, not per row: lep_zone_coverage changes only when an LGA is
+    # re-scraped. Empty on any failure, which makes the filter a no-op rather than
+    # letting "no ground truth" read as "every code is invalid".
+    _zone_truth, _zone_slugs = _load_zone_ground_truth(conn)
+    if _zone_truth:
+        print(f"Zone guard active: {len(_zone_truth)} LGAs with a complete zone list")
 
     actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
 
@@ -704,7 +788,7 @@ def run_applicability_tagging(
 
     while processed < total:
         fetch_sql = f"""
-            SELECT id, provision_text, document_id
+            SELECT id, provision_text, document_id, source_council
             FROM regulatory_provisions
             WHERE v2_applicable_zones IS NULL
               AND provision_text IS NOT NULL
@@ -727,6 +811,25 @@ def run_applicability_tagging(
             try:
                 zones, dev_types, prov_src = tagger.tag_with_provenance(
                     prov['provision_text'], prov['document_id'])
+
+                # DQ-30: never STORE a code that does not exist in this row's LGA.
+                # The tagger reads prose, and "Part B3" reads as zone B3. Filtering
+                # here rather than inside the tagger keeps the tagger's provenance
+                # honest about what the text said, while the stored value stays
+                # answerable against lep_zone_coverage. Skipped entirely when the LGA
+                # has no complete scrape -- see keep_only_zones_valid_in_lga.
+                lga_key = _zone_slugs.get(prov.get('source_council'))
+                filtered = keep_only_zones_valid_in_lga(zones, _zone_truth.get(lga_key, set()))
+                if filtered != zones:
+                    # `or 0`, not a .get default: a key present with value None
+                    # would sail past the default and raise on None + 1.
+                    stats['zones_dropped_not_in_lga'] = (
+                        (stats.get('zones_dropped_not_in_lga') or 0) + 1)
+                    print(f"  [zone-guard] provision {prov['id']} "
+                          f"({prov.get('source_council')}): {zones} -> {filtered} "
+                          f"(codes absent from lep_zone_coverage for {lga_key!r})")
+                zones = filtered
+
                 updates.append((zones, dev_types,
                                 prov_src['zone_source'], prov_src['dev_type_source'],
                                 prov['id']))
