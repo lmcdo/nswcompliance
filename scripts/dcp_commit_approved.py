@@ -368,12 +368,34 @@ def main() -> int:
                   f"scripts/derive_precinct_keys.py AND data/cos_precinct_page_ranges.json.")
         for council in sorted(committed_councils if derive_precinct_keys else ()):
             try:
-                derive_precinct_keys(council=council, apply=True, validate=False)
+                rc = derive_precinct_keys(council=council, apply=True, validate=False)
             except Exception as exc:  # noqa: BLE001 — never fail a committed provision
                 print(f"  [warn] precinct re-derivation failed for {council}: {exc}. "
                       f"Provisions ARE committed but unkeyed; run "
                       f"`python scripts/derive_precinct_keys.py --council {council} --apply`. "
                       f"Until then a precinct lookup for {council} serves council-wide only.")
+                continue
+            # run() signals failure by RETURN VALUE as well as by raising, and a
+            # non-zero return would otherwise slide past the except and let the job
+            # print its normal success summary over an unkeyed council. Raised by
+            # cross-review on the pre-push run.
+            #
+            # Verified rather than assumed: today run() returns 1 on exactly one path
+            # (`if validate and validation_failures`), which this call cannot reach
+            # because it passes validate=False. So this branch is forward-looking --
+            # it costs nothing and stops the next non-zero path being silent.
+            #
+            # It is NOT the fix for the genuinely silent case, and saying so here so
+            # nobody reads it as one: a page_range rule whose PDF has been re-paginated
+            # FAILS CLOSED, writes no keys, and returns 0. That is correct behaviour
+            # (better council-wide than confidently wrong-precinct) but it is invisible
+            # from this side. Detecting it needs a coverage assertion over the corpus --
+            # see scripts/audit_precinct_keying_coverage.py, which is itself unwired.
+            if rc:
+                print(f"  [warn] precinct re-derivation reported failure (exit {rc}) for "
+                      f"{council}. Provisions ARE committed but may be unkeyed; run "
+                      f"`python scripts/derive_precinct_keys.py --council {council} --apply` "
+                      f"and read its output.")
 
     print("-" * 60)
     verb = "would commit" if dry_run else "committed"

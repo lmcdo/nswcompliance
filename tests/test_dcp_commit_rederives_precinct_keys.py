@@ -369,3 +369,60 @@ def test_the_image_ships_the_json_the_derivation_reads_at_import():
         "derive_precinct_keys open()s this at module level, so the import fails "
         "without it -- the .py COPY alone is a half fix"
     )
+
+
+# ---------------------------------------------------------------------------
+# 7. Failure by RETURN VALUE, not just by raising
+# ---------------------------------------------------------------------------
+
+def test_a_nonzero_return_is_reported_not_swallowed(monkeypatch, capsys):
+    """run() signals failure two ways. An except block only catches one.
+
+    Raised by cross-review on the pre-push run: a non-zero return slides past the
+    exception handler, so the job prints its ordinary success summary over a council
+    whose keys were never written.
+
+    Checked rather than taken on trust: today run() returns 1 on exactly one path
+    (`if validate and validation_failures`) which this call cannot reach, because it
+    passes validate=False. So this pins a forward-looking guard -- it costs nothing
+    and stops the NEXT non-zero path being silent. It is deliberately not sold as
+    the fix for the fingerprint case, which fails closed and returns 0.
+    """
+    events = _wire(monkeypatch, ["ashfield", "marrickville"])
+
+    failing = type(sys)("derive_precinct_keys")
+    def _rc1(council, apply, validate):
+        events.append(("derive", council, apply, validate))
+        return 1
+    failing.run = _rc1
+    monkeypatch.setitem(sys.modules, "derive_precinct_keys", failing)
+    monkeypatch.setitem(sys.modules, "scripts.derive_precinct_keys", failing)
+    monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit"])
+
+    dca.main()
+
+    out = capsys.readouterr().out
+    assert "exit 1" in out, (
+        "a non-zero return must be reported; without this the run looks clean and "
+        "the council stays unkeyed"
+    )
+    assert out.count("--council") >= 2, (
+        "each failing council needs its own re-run command, not one generic line"
+    )
+    assert len(_derives(events)) == 2, (
+        "a non-zero return for one council must not stop the next being attempted"
+    )
+
+
+def test_a_zero_return_prints_no_warning(monkeypatch, capsys):
+    """The confusable negative. If the success path also warned, the warning would
+    be noise on every run and stop being read -- which is how the original bug
+    survived two months of nightly logs."""
+    _wire(monkeypatch, ["ashfield"])
+    monkeypatch.setattr(sys, "argv", ["dcp_commit_approved.py", "--commit"])
+
+    dca.main()
+
+    out = capsys.readouterr().out
+    assert "precinct re-derivation reported failure" not in out
+    assert "[warn] precinct re-derivation failed" not in out
