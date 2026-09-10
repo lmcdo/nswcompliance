@@ -88,6 +88,56 @@ partial: "residential development controls", not "DCP".
 claims something the database does not support. Setting a council's flag before its
 provisions land will turn that job red the next morning.
 
+### Per-council status, measured 2026-09-10
+
+A pass over every registered chapter title in `dcp_chapter_registry`. The finding
+that matters: **for most councils the scope was already chosen correctly, and the
+blocker is not scope at all.**
+
+Burwood has `part-4-residential`, `s4-landscaping`, `s4-table-4-parking`. Fairfield
+has `chapter-5-dwelling-houses`, `landscaping-controls`, `parking-controls`.
+Strathfield, Canada Bay, Liverpool, Ryde, Randwick, Camden — all the same shape.
+Somebody already picked residential + parking + landscaping for these councils.
+**None of them has a mirrored PDF**, so nothing can be extracted.
+
+**50 chapters across 22 councils have no mirrored PDF. Only 15 of those even carry a
+`council_url` to fetch from** — the other 35 need the source document located first.
+That, not chapter selection, is the work.
+
+| Council | Registered | Core areas covered | Blocker |
+|---|---|---|---|
+| Ku-ring-gai | 38 | all six | none — see the yield note below |
+| Woollahra | 27 | five (no RFB part) | none |
+| City of Sydney | 8 + 234 map sheets | all six, inside sections 3 and 4 | none. Its DCP is structured by section, not topic — a topic-keyword scan reports it as empty, wrongly |
+| Canterbury-Bankstown | 68 | five (no RFB part) | 29 chapters awaiting extraction; **6 duplicate registrations** of the same waste chapter |
+| Penrith | 2 | parking, residential | needs general, landscaping, heritage |
+| Hornsby | 2 | residential, general | needs parking, landscaping, heritage |
+| Blacktown | 2 | residential, parking | needs general, landscaping, heritage |
+| Campbelltown | 2 | residential, RFB | needs general, parking, landscaping |
+| Georges River | 2 | general, residential | needs parking, landscaping, heritage |
+| Cumberland | 2 | residential, parking | parking chapter has no PDF |
+| Waverley | 4 | general, parking, landscaping | landscaping and transport have no PDF |
+| Northern Beaches | 4 | one consolidated DCP extracted | the three part-level entries have no PDF |
+| Parramatta | 2 | one consolidated DCP extracted | transport part has no PDF |
+| Bayside, Burwood, Camden, Canada Bay, Fairfield, Liverpool, Randwick, Ryde, Strathfield, Sutherland Shire, The Hills, Wingecarribee | 1–3 each | **already the right ones** | **no PDF mirrored, on any of them** |
+
+### Two things this pass corrected
+
+**Ku-ring-gai's low yield is mostly chapter mix, not an extraction defect.** It produces
+358 provisions from 38 chapters where Woollahra produces 739 from 27. But **15 of its 38
+chapters are site-specific** `section-b-part-14a` … `14o` local-centre and single-site
+parts (Pymble Golf Club, 45–47 Tennyson Avenue), and they account for 115 of the 358.
+The remaining 23 general chapters yield about 10 provisions each against Woollahra's 27,
+so a gap remains — but it is much smaller than the headline suggests, and calling it a
+defect on the raw ratio would have been wrong.
+
+**A keyword scan cannot classify these chapters reliably.** Applied to City of Sydney it
+reported no residential, no parking and no landscaping, because their sections are named
+structurally. All three are present inside `section-3-general-provisions` and
+`section-4-development-types`. Any future automated scope audit must read chapter
+CONTENT or a human must read the titles — matching on the title text alone produces
+confident wrong answers on exactly the councils whose structure differs most.
+
 ### What this does NOT change
 
 Precinct and heritage parts still self-gate through the for-property API layer system
