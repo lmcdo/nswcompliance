@@ -1,0 +1,133 @@
+{
+  "tier": "standard",
+  "justification": "New read-only script (scripts/verify_lga_capability_flags.py) that checks per-council boolean capability flags in frontend-nextjs/lib/lga-data/*.ts against the live database, modeled on scripts/verify_coverage_stats.py, and wires it into the daily .github/workflows/data-watch.yml. Not critical-tier: it reads and reports, it never writes, and a wrong result delays a fix rather than corrupting served data. Not minor: it required real schema investigation (lga_registry, dcp_setback_controls, spatial_overlays), a merger-slug edge case, and its first real run against the live database found 8 genuine pre-existing overclaims in verify-lgas.ts (lane-cove, hawkesbury, wollongong, clarence-valley, yass-valley, bathurst-regional, tamworth-regional, forbes all claim hasDcpData: true with zero supporting rows).",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/verify_lga_capability_flags.py",
+    "tests/test_verify_lga_capability_flags.py",
+    "tests/test_verify_lga_capability_flags_real_db.py",
+    ".github/workflows/data-watch.yml"
+  ],
+  "pre_impl": {
+    "existing_data": "scripts/dq_db.py's connect()/session() already resolves DATABASE_URL from the main checkout's .env (even from inside this worktree) and returns a read-only, statement-timeout-bounded, canary-checked connection -- the same helper scripts/verify_coverage_stats.py already uses. Reused directly rather than hand-rolling a second connection path. All schema facts (lga_registry's 30 rows and columns, dcp_setback_controls.lga's exact slug vocabulary, spatial_overlays.lga_name's ALL-CAPS values, regulatory_provisions.document_id's real naming) were read live via this connection before writing a single line of the check, not assumed from DB_SCHEMA.md or memory.",
+    "assumption_mismatch": "Two assumptions failed on contact with the real data. First, verify-lgas.ts's hyphenated slugs do not all become lga_registry's underscored slugs by a plain hyphen-to-underscore swap: 'the-hills-shire' must map to 'the_hills', not 'the_hills_shire' -- found by querying lga_registry directly, not guessed. Second, replaying the /planning-controls page's own document_id regex (its literal production logic for deciding hasDcpData) as this check's ground truth looked like the most faithful option, but testing it against all 34 councils showed it already misses real data for Northern Beaches (whose only matching document is named 'Warringah_DCP_2011', not matched by the page's own 'Northern_Beaches' pattern) and produces 20 zero-count councils instead of the real 8 -- so it was rejected as a ground truth and dcp_setback_controls/lga_registry (the table scripts/verify_coverage_stats.py already trusts for the same purpose) was used instead.",
+    "new_vs_existing": "New coverage, not a duplicate: scripts/verify_coverage_stats.py reconciles frontend-nextjs/lib/coverage.ts's AGGREGATE figures against the database (total provision counts, council counts) and does not read frontend-nextjs/lib/lga-data/ at all. This script reconciles PER-COUNCIL boolean claims in two of the ~10 files there. A stale flag on one council does not move any aggregate enough to trip the existing check, which is exactly the gap this closes. Wired into the same data-watch.yml workflow as its own step, alongside coverage_stats, not merged into it."
+  },
+  "functions": [
+    {
+      "name": "find_drift",
+      "file_line": "scripts/verify_lga_capability_flags.py:160",
+      "input": "entries (list of {name, slug, _live_key, <flag>: bool} dicts from parse_flag_entries), flag_name (str), live_counts (a plain {key: int} dict the caller has already fetched from the database -- no cursor, no connection).",
+      "output": "list[str] of human-readable descriptions, one per TRUE claim whose live_counts entry is absent or zero. Empty list means every TRUE claim in entries is supported.",
+      "if_none": "An entry missing the flag key raises via .get(flag_name) returning None which is falsy -- treated as FALSE, never checked (cannot overclaim). A key absent from live_counts uses .get(key, 0), so a council the database has never heard of is treated identically to one with a confirmed zero count, rather than raising KeyError."
+    },
+    {
+      "name": "check_has_dcp_data",
+      "file_line": "scripts/verify_lga_capability_flags.py:195",
+      "input": "cur (a live, read-only psycopg2 cursor from dq_db.connect()), slug (the hyphenated verify-lgas.ts slug, e.g. 'the-hills-shire').",
+      "output": "tuple[int, str] -- the live COUNT(*) of current, non-needs_review, active-registry dcp_setback_controls rows for this council or any council whose parent_lga is this slug, plus a human-readable detail string for the printed table.",
+      "if_none": "A slug with no lga_registry row at all (8 real councils today) or zero matching rows returns (0, detail) -- never raises, so main()'s loop always gets a comparable integer."
+    },
+    {
+      "name": "check_has_flood_data",
+      "file_line": "scripts/verify_lga_capability_flags.py:230",
+      "input": "cur (live read-only cursor), name (the council's display name from granny-flat-lgas.ts, e.g. 'Campbelltown').",
+      "output": "tuple[int, str] -- the live COUNT(*) of spatial_overlays rows with layer_type='flood' and lga_name equal to name.upper(), plus a detail string.",
+      "if_none": "A council whose ALL-CAPS name never appears in spatial_overlays (confirmed for Blacktown, used as the injection proof in break_it) returns (0, detail)."
+    },
+    {
+      "name": "parse_flag_entries",
+      "file_line": "scripts/verify_lga_capability_flags.py:123",
+      "input": "path (a lga-data/*.ts file path), flag_names (list of the boolean flag keys to extract, e.g. ['hasFloodData', 'hasAriData']).",
+      "output": "list[dict] of {name, slug, <flag>: bool for each requested flag} -- one per top-level array object literal in the file, found via regex rather than a full TS/JS parser (this repo has no such dependency; verify_coverage_stats.py takes the same regex approach against coverage.ts).",
+      "if_none": "An object literal missing name, slug, or any requested flag is silently skipped rather than raising -- caught instead by main()'s minimum-entry-count sanity check (>=30 for verify-lgas.ts, >=15 for granny-flat-lgas.ts), which fails loudly if the parser and the file's format have drifted apart."
+    },
+    {
+      "name": "db_slug",
+      "file_line": "scripts/verify_lga_capability_flags.py:80",
+      "input": "ts_slug (a hyphenated lga-data slug string).",
+      "output": "str -- the SLUG_OVERRIDE dict's value if present, else ts_slug with every hyphen replaced by an underscore.",
+      "if_none": "N/A -- a plain string function with a total default branch; there is no input for which it raises."
+    }
+  ],
+  "values": [
+    {
+      "name": "8 councils confirmed with zero database backing for hasDcpData: true",
+      "value": "lane-cove, hawkesbury, wollongong, clarence-valley, yass-valley, bathurst-regional, tamworth-regional, forbes -- zero rows in lga_registry/dcp_setback_controls under any slug mapping AND zero rows in regulatory_provisions under any document_id naming pattern for that council, confirmed two independent ways",
+      "read_at": "Live SELECT against dcp_setback_controls JOIN lga_registry (2026-09-10), cross-checked against a second, independent query replaying the /planning-controls page's own document_id regex -- both agree these 8 have no supporting rows",
+      "if_missing": "This is not a missing-value case -- the absence of any row IS the finding. If a future run of this script no longer flags one of these 8, it means real DCP data was added for that council; verify-lgas.ts's hasDcpData claim would then be correct rather than the check being broken."
+    },
+    {
+      "name": "the-hills-shire -> the_hills slug override",
+      "value": "lga_registry.slug for The Hills Shire is 'the_hills', not the naive hyphen-swap 'the_hills_shire'",
+      "read_at": "SELECT slug, display_name FROM lga_registry ORDER BY slug (2026-09-10) -- 'the_hills' | 'The Hills Shire' is the only Hills Shire row",
+      "if_missing": "Without SLUG_OVERRIDE, check_has_dcp_data('the-hills-shire') would look up a slug that has never existed in lga_registry, join to zero rows, and wrongly report a real, currently-served council (21 current setback controls) as an overclaim -- pinned by test_the_hills_shire_slug_override_resolves."
+    },
+    {
+      "name": "spatial_overlays.lga_name naming quirk (CITY OF PARRAMATTA / SYDNEY)",
+      "value": "spatial_overlays holds 'CITY OF PARRAMATTA' and 'SYDNEY' as lga_name values, not 'PARRAMATTA' or 'CITY OF SYDNEY' -- the exact upper-cased display names those two councils use everywhere else in this codebase",
+      "read_at": "SELECT DISTINCT lga_name FROM spatial_overlays WHERE layer_type ~* 'flood' (2026-09-10), full unlimited list, compared against verify-lgas.ts/granny-flat-lgas.ts's own 'name' fields",
+      "if_missing": "Neither Parramatta nor City of Sydney currently claims hasFloodData: true in granny-flat-lgas.ts, so this naming quirk does not affect today's result. Documented as a code comment in check_has_flood_data rather than guessed at, so a future True on either council is investigated rather than silently mismatched."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Ground truth for verify-lgas.ts's hasDcpData: does this council (or a former council merged into it) have at least one current, reviewed, active-registry structured DCP setback control?",
+      "file_line": "scripts/verify_lga_capability_flags.py:216-224 (check_has_dcp_data)",
+      "where_clause": "c.is_current = TRUE AND (c.needs_review IS NULL OR c.needs_review = FALSE) AND r.is_active = TRUE AND (r.slug = %s OR r.parent_lga = %s) -- the parent_lga branch is required because Inner West's OWN dcp_setback_controls rows are not current (0 of 29); its current controls live under ashfield/leichhardt/marrickville, the councils it absorbed in the 2016 merger."
+    },
+    {
+      "purpose": "Ground truth for granny-flat-lgas.ts's hasFloodData: does this council have at least one row in the flood overlay layer?",
+      "file_line": "scripts/verify_lga_capability_flags.py:246-249 (check_has_flood_data)",
+      "where_clause": "layer_type = 'flood' AND lga_name = %s (the council's name, upper-cased) -- matches flood-lgas.ts's own doc comment on floodFeatureCount ('Total flood features in spatial_overlays'), the same table hasFloodData is itself derived from in every entry checked."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council's ts slug is a MERGED council (inner-west) whose own dcp_setback_controls rows are not current -- its real, live-served coverage sits entirely under the former councils it absorbed (ashfield, leichhardt, marrickville).",
+      "what_happens": "A query checking only r.slug = target (no parent_lga branch) would find zero current rows for 'inner_west' itself and wrongly report a real, currently-served council's hasDcpData claim as unsupported -- the exact false-positive class that made scripts/verify_coverage_stats.py's dcpNumericCouncils query need the same parent/child handling.",
+      "mitigated": true,
+      "how": "check_has_dcp_data's WHERE clause ORs r.parent_lga = %s alongside r.slug = %s, so any active child council's current rows credit the merged parent. Confirmed live: Inner West returns 99 current rows via this path, versus 0 if only its own slug were checked.",
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_verify_lga_capability_flags_real_db.py::TestHasDcpDataAgainstRealSchema::test_inner_west_merger_credit_reaches_its_absorbed_councils -v"
+    },
+    {
+      "scenario": "verify-lgas.ts's slug for The Hills Shire ('the-hills-shire') does not become lga_registry's real slug ('the_hills') under a naive hyphen-to-underscore swap.",
+      "what_happens": "db_slug('the-hills-shire') would return 'the_hills_shire', a slug lga_registry has never contained, so the JOIN would return zero rows for a real, currently-served council (21 current setback controls) and wrongly flag it alongside the 8 genuine overclaims -- burying a real finding in a false one.",
+      "mitigated": true,
+      "how": "SLUG_OVERRIDE = {'the-hills-shire': 'the_hills'} intercepts this one confirmed exception before the default hyphen swap runs.",
+      "repro": "python -c \"import importlib.util; s=importlib.util.spec_from_file_location('m','scripts/verify_lga_capability_flags.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); assert m.db_slug('the-hills-shire')=='the_hills'\""
+    },
+    {
+      "scenario": "Replaying the /planning-controls page's OWN document_id regex (SLUG_TO_DOC_PATTERN) as this check's ground truth for hasDcpData, instead of dcp_setback_controls/lga_registry.",
+      "what_happens": "That regex is itself already wrong for at least one council today -- Northern Beaches' only matching regulatory_provisions document is named 'Warringah_DCP_2011', which the page's own 'Northern_Beaches' pattern does not match -- so basing this check on it would inherit the same fragility. Measured directly: replaying it against all 34 councils produced 20 zero-count councils, not the real 8, which would have drowned the genuine finding in false positives and made the very first run of this script look broken rather than correct.",
+      "mitigated": true,
+      "how": "dcp_setback_controls/lga_registry -- an independently-maintained table this repo already trusts for the identical purpose in scripts/verify_coverage_stats.py -- was used as the ground truth instead. The document_id regex's unreliability is recorded as a comment in check_has_dcp_data's own docstring rather than silently discovered again later.",
+      "repro": "Ad hoc: for each of the 34 verify-lgas.ts councils, SELECT COUNT(*) FROM regulatory_provisions WHERE v2_is_actionable AND document_id ~* '<SLUG_TO_DOC_PATTERN mapping>' AND document_id !~* 'SEPP|LEP' -- Northern Beaches returns 0 under 'Northern_Beaches' but the same table shows a 'Warringah_DCP_2011' document exists (SELECT DISTINCT document_id FROM regulatory_provisions WHERE document_id ~* 'Warringah')."
+    },
+    {
+      "scenario": "A council parsed from a lga-data file has NO entry at all in live_counts (its slug/name was never returned by any query -- e.g. it has zero rows in lga_registry, so nothing was ever inserted into the dict for it), as opposed to an entry present with the value 0.",
+      "what_happens": "A comparison written as live_counts[key] would raise KeyError the first time it hit a genuinely-missing council -- which is most of the real findings this script exists to surface -- crashing the whole run with a traceback and exit code from an unhandled exception, not the clean, documented exit 1 the task requires.",
+      "mitigated": true,
+      "how": "find_drift reads live_counts.get(key, 0) or 0, treating an absent key exactly like an explicit zero: both mean 'nothing backs this claim'.",
+      "repro": "pytest tests/test_verify_lga_capability_flags.py::test_council_in_file_missing_from_database_is_drift -v -- passes an empty live_counts dict and asserts a clean result, no exception."
+    },
+    {
+      "scenario": "spatial_overlays.lga_name does not literally equal every council's own display name upper-cased -- 'CITY OF PARRAMATTA' and 'SYDNEY' are the live values for Parramatta and City of Sydney, not 'PARRAMATTA' or 'CITY OF SYDNEY'.",
+      "what_happens": "If either council's hasFloodData in granny-flat-lgas.ts is ever set to true, the plain name.upper() lookup would find zero spatial_overlays rows and wrongly report an overclaim on a council that may genuinely have flood coverage recorded under its live-database name -- a false alarm indistinguishable in the output from a real one.",
+      "mitigated": false,
+      "how": "Not structurally prevented -- documented instead, as a comment inside check_has_flood_data naming both exact live values, precisely so a future True on either council gets investigated against this known quirk rather than trusted or dismissed on sight. Neither council claims the flag today, so nothing is silently wrong in the meantime; this is a recorded, watched gap, not a fixed one.",
+      "repro": "SELECT DISTINCT lga_name FROM spatial_overlays WHERE layer_type = 'flood' AND lga_name ~* 'parramatta|sydney' -- returns 'CITY OF PARRAMATTA' and 'SYDNEY', never 'PARRAMATTA' or 'CITY OF SYDNEY'."
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/verify_lga_capability_flags.py",
+    "fails_when": "Running it exits 1 and names the exact council and flag whenever a TRUE capability claim in verify-lgas.ts (hasDcpData) or granny-flat-lgas.ts (hasFloodData) has zero supporting rows in the live database's dcp_setback_controls/lga_registry or spatial_overlays tables -- an external authority table, never a re-run of this script's own prior output.",
+    "observed_red": "Two independent red observations, pasted verbatim. (1) UNMODIFIED repo, real pre-existing finding: 'DRIFT DETECTED (8 flag(s)) -- verify-lgas.ts: 'Lane Cove' (lane-cove) claims hasDcpData=true but 0 live row(s) back it ... Hawkesbury ... Wollongong ... Clarence Valley ... Yass Valley ... Bathurst Regional ... Tamworth Regional ... Forbes', exit code 1. (2) Deliberate injection proof: granny-flat-lgas.ts's Blacktown hasFloodData temporarily edited false -> true (Blacktown has zero 'BLACKTOWN' rows in spatial_overlays' flood layer, confirmed separately) produced 'DRIFT DETECTED (9 flag(s)) ... - granny-flat-lgas.ts: 'Blacktown' (blacktown) claims hasFloodData=true but 0 spatial_overlays flood row(s) for lga_name 'BLACKTOWN'', exit code 1; the file was then restored (git diff confirmed byte-identical to before) and the count returned to exactly the same 8 real findings from (1), with Blacktown showing OK again."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- this script's first scheduled data-watch.yml run will report 8 failing councils on verify-lgas.ts's hasDcpData that are real and pre-existing, not caused by this PR. Someone should either correct those 8 councils' hasDcpData claim to false in verify-lgas.ts, or confirm real DCP data exists for them under a naming this check has not found, before the daily alarm is treated as noise."
+  }
+}

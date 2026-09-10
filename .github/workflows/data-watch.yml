@@ -91,6 +91,13 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/verify_coverage_stats.py
 
+      - name: Per-council capability flags match the database
+        id: lga_flags
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/verify_lga_capability_flags.py
+
       - name: Schema contract (code vs live catalog)
         id: schema
         if: always()
@@ -134,13 +141,14 @@ jobs:
         uses: actions/github-script@v7
         env:
           FAILED: >-
-            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }}
+            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }}
         with:
           script: |
             const { owner, repo } = context.repo;
             const title = process.env.ISSUE_TITLE;
             const names = ['defect ledger', 'DCP as-at coverage',
                            'satellite manifests', 'published figures',
+                           'LGA capability flags',
                            'schema contract', 'controls provenance',
                            'control source values', 'served-answer quality'];
             const outcomes = (process.env.FAILED || '').split(',');
