@@ -433,8 +433,28 @@ def main() -> int:
                       f"Provisions ARE committed; run "
                       f"`python scripts/check_council_completeness.py` and read its output.")
         except Exception as exc:  # noqa: BLE001 — never fail a committed provision
+            completeness_rc = 1
             print(f"  [warn] completeness check failed: {exc}. Provisions ARE committed; "
                   f"nothing compared this run.")
+            # ALERT ON THE CHECK'S OWN ABSENCE. On a day that did commit, the exit
+            # code stays 2 (see below), so without this the fact that nothing was
+            # verified would reach no one -- a monitoring job whose monitoring
+            # silently stopped, which is the shape of every bug on this branch.
+            try:
+                from scripts.check_council_completeness import send_telegram
+            except ImportError:
+                try:
+                    from check_council_completeness import send_telegram
+                except ImportError:
+                    send_telegram = None
+            if send_telegram:
+                send_telegram(
+                    "DCP commit: the completeness check did NOT run\n\n"
+                    f"{type(exc).__name__}: {exc}\n\n"
+                    "Provisions are committed and unaffected, but nothing was compared "
+                    "against the last recording. Run "
+                    "`python scripts/check_council_completeness.py` and read its output."
+                )
 
     print("-" * 60)
     verb = "would commit" if dry_run else "committed"
@@ -442,9 +462,17 @@ def main() -> int:
 
     if failed:
         return 1
+    # A check that could not RUN is not a clean day -- but only when there is
+    # nothing else to report. The invariant from #1080 still holds and is tested:
+    # a post-commit step failing must NOT turn a successful commit into a failure,
+    # so on a day that committed, this stays 2 and the Telegram sent above is the
+    # signal. On a day with nothing to commit, 0 would be indistinguishable from a
+    # verified-clean run, which is the silence this whole branch exists to remove.
+    if completeness_rc == 1 and not committed:
+        return 1
     # 2 is "ran fine, found something" throughout this pipeline. A completeness
     # finding on a day with nothing to commit is still a finding, so it must not
-    # exit 0 -- run_monitors would report that as a clean run.
+    # exit 0.
     return 2 if (committed or completeness_rc == 2) else 0
 
 

@@ -1,10 +1,11 @@
 {
   "tier": "Critical",
   "justification": "Three PRs on 2026-09-10 (#1079 repealed source path, #1080 precinct keys wiped on every commit, #1081 retired zone codes written fresh) fixed one defect appearing in three fields: a council update silently dropping what its provisions carry. The two that were caught were the only two with a check watching them. Ashfield served 2,041 provisions with 118 precinct keys and Marrickville 2,403 with 37, and nothing reported it -- a person found it two months later, because a precinct lookup returning council-wide controls instead of the precinct's own produces no error anywhere. Every existing per-council check asserts an ABSOLUTE invariant (validate_dcp_health: enrichment gap = 0, duplicates = 0, registry fanout = 0), which cannot see a field that legitimately sits at 36% and falls to 6%. This adds the comparison against the council's own last recording, the only form that can catch a field nobody has predicted -- measured: ref_number is 93% filled corpus-wide and nothing in the repo knows what fills the other 7%. Critical rather than Standard because it writes to production, it is called from the path that inserts live provisions, and its failure mode is silence.",
-  "commit_hash": "3525b914",
+  "commit_hash": "4341e5ed",
   "files": [
     "migrations/068_council_field_snapshot.sql",
     "scripts/check_council_completeness.py",
+    "scripts/council_completeness_rules.py",
     "scripts/dcp_commit_approved.py",
     "Dockerfile.monitors",
     "tests/test_check_council_completeness.py",
@@ -28,14 +29,14 @@
   "functions": [
     {
       "name": "compare",
-      "file_line": "scripts/check_council_completeness.py:227",
+      "file_line": "scripts/council_completeness_rules.py:59",
       "input": "The council slug, that council's previous snapshot as a dict or None when it has never been recorded, and the current measurement of served rows plus per-field fill counts.",
       "output": "A list of finding dicts, each carrying severity CRITICAL, STANDARD or INFO and state DROP or NO_BASELINE, with a message quoting both ratios, both raw counts and the size of the fall. It is pure -- no database, no clock, no network -- which is why the judgement can be tested against numbers production has never produced.",
       "if_none": "A None previous snapshot yields exactly one INFO finding marked NO_BASELINE and nothing actionable, because a first recording is not evidence of anything. A field absent from the older snapshot is likewise NO_BASELINE and never zero: reading a missing key as zero would manufacture a hundred percent gain on the first run and a fabricated drop the day a field leaves the watch list."
     },
     {
       "name": "run",
-      "file_line": "scripts/check_council_completeness.py:371",
+      "file_line": "scripts/check_council_completeness.py:254",
       "input": "The trigger source recorded on the snapshot row, an optional list of councils to scope to, and three flags controlling whether it records a baseline, sends Telegram, and prints JSON instead of a table.",
       "output": "Returns 0 when nothing went backwards, 2 when there are findings with Telegram sent for CRITICAL and STANDARD, and 1 when the check itself could not run. Those are the same three codes r2_monitor, dcp_watchdog and dcp_extract_changed already use, which run_monitors.py treats as healthy, healthy-with-findings and failed respectively.",
       "if_none": "A council that was recorded before and is absent from the current measurement is found by comparing the recorded set against the measured set, because iterating over what exists could never find something that stopped existing. A missing DATABASE_URL returns 1 and says so rather than exiting 0 on no data, since a credential-less pass is how the QA report gate stopped enforcing for ten weeks."
@@ -74,13 +75,13 @@
   "queries": [
     {
       "purpose": "Counts served provisions per council and how many of them populate each watched field, in a single pass.",
-      "file_line": "scripts/check_council_completeness.py:179 (measure)",
+      "file_line": "scripts/check_council_completeness.py:154 (measure)",
       "where_clause": "WHERE is_current AND v2_is_actionable, with an optional HAVING COALESCE(source_council, sentinel) = ANY(%s) when scoped to named councils.",
       "why": "is_current AND v2_is_actionable is the SERVED set, the rows the UI actually shows. Counting anything wider would measure rows no user can reach and could hide a drop in the ones they can. Column names are interpolated because a column cannot be a bind parameter and they come only from the module's own WATCHED_FIELDS constant; --council, the one value that comes from outside, is a bind parameter, and a real-database test asserts the scoped form returns exactly that council."
     },
     {
       "purpose": "Read a council's most recent snapshot to compare the current measurement against.",
-      "file_line": "scripts/check_council_completeness.py:209 (load_previous)",
+      "file_line": "scripts/check_council_completeness.py:184 (load_previous)",
       "where_clause": "WHERE council = %s ORDER BY taken_at DESC, id DESC LIMIT 1",
       "why": "The id tiebreak matters: two snapshots written in the same transaction share a taken_at default, and ordering by timestamp alone would pick between them arbitrarily. A counts value that is not a dict returns None so the caller sees no baseline, because a corrupt baseline must never read as a snapshot of zeros."
     }
@@ -155,10 +156,24 @@
       "repro": "python -m pytest tests/test_check_council_completeness.py::test_a_multi_word_lga_name_survives_parsing -q",
       "mitigated": "Mitigated: parse_exposed reads the comma-separated summary line, never the table.",
       "how": "Found by the pre-push adversarial check, which flagged the original split()[0] on subprocess output. The IndexError it named was unreachable, but looking at the line showed a worse live bug: a truncated name matches nothing, so it would read as a NEW exposure next run and a disappearance the run after -- an alert manufacturing its own churn. Rewritten to parse the summary line and covered by four parser tests."
+    },
+    {
+      "scenario": "The precinct audit keeps exiting zero but rewords the summary line it prints.",
+      "what_happens": "Parsing returns None rather than an empty set, a STANDARD finding says exposure was not checked, and the stored exposed set is left untouched instead of being overwritten with nothing.",
+      "repro": "python -m pytest tests/test_check_council_completeness.py::test_unrecognised_output_is_none_not_an_empty_set tests/test_check_council_completeness.py::test_the_caller_does_not_overwrite_the_stored_set_when_parsing_failed -q",
+      "mitigated": "Mitigated: parse_exposed is three-state and the snapshot write is guarded on a successful parse.",
+      "how": "Raised by cross-review as HIGH. An unrecognised format collapsing to an empty set would have switched exposure detection off AND erased the baseline that makes growth answerable, so the exposure could never be reported again."
+    },
+    {
+      "scenario": "Nothing needs committing and the completeness check itself raises or cannot reach the database.",
+      "what_happens": "The job exits 1 instead of 0 so run_monitors reports a failure, and a Telegram says the check did not run; on a day that DID commit the exit code stays 2 and the Telegram is the signal.",
+      "repro": "python -m pytest tests/test_check_council_completeness.py::test_a_completeness_failure_cannot_exit_zero_from_the_commit_job tests/test_dcp_commit_rederives_precinct_keys.py -q",
+      "mitigated": "Mitigated: the failure sets a return code on an idle day and always alerts.",
+      "how": "Raised by cross-review as HIGH. The first fix returned 1 unconditionally and broke the #1080 invariant that a post-commit step failing must not turn a successful commit into a failure -- its test caught that, so the alert carries the signal on commit days instead."
     }
   ],
-  "mutation_analysis": "Nine reversions of the comparison logic, run against a baseline confirmed GREEN first (full suite 5,257 passed, 2 skipped, 88.94s) -- a score against a red baseline is void and was treated as such rather than reported. 9 of 9 killed: compare returning nothing at all; the material-drop threshold made exclusive so the boundary case escapes; every drop demoted to STANDARD so severity never escalates; a field missing from the baseline read as zero; the served-zero short-circuit removed so per-field noise follows it; any served drop at all reported instead of the ten percent threshold; the small-council path reporting a field loss even when the council itself shrank; no-baseline returning an empty list instead of an INFO finding; half a council disappearing demoted from CRITICAL to STANDARD. The harness rewrites the file for each mutant and restores it in a finally, then re-runs to confirm the baseline is green again.",
-  "residual_risk": "1) THE ONE THAT MATTERS MOST: the comparison is against the LAST RECORDING, so nothing establishes what the numbers SHOULD be -- only that they stopped changing. A defect present in the very first baseline is recorded as normal and reads as healthy forever after. That baseline was taken 2026-09-11 with marrickville at 3.2 percent v2_provision_type and canterbury_bankstown at 0 percent, which are real gaps (the unwired enrichment phases, plan item 3) now enshrined as the norm. Wiring those phases will register as a GAIN, and gains are deliberately not reported, so it will pass quietly. 2) Telegram is the only alerting channel, and the monitor-watchdog service carries no HC_PING_URL, so if the dcp-commit job stopped running the check would stop with it and nothing would say so; measured this session and recorded in the plan ledger rather than fixed here. 3) The precinct-exposure set is stored on the statewide snapshot row, so a run scoped with --council to a subset never refreshes it -- the production call is unscoped, but a human running --council compares against a stale exposure list. 4) audit_precinct_keying_coverage.py still exits 0 whatever it finds, so its output is parsed for EXPOSED lines rather than trusted to a return code; a change to its print format would break that silently. Giving it a real exit code was deliberately left out of this PR rather than widening the change.",
+  "mutation_analysis": "Nine reversions of the comparison logic in scripts/council_completeness_rules.py, run against a baseline confirmed GREEN first (full suite 5,257 passed, 2 skipped, 88.94s) -- a score against a red baseline is void and was treated as such rather than reported. 9 of 9 killed: compare returning nothing at all; the material-drop threshold made exclusive so the boundary case escapes; every drop demoted to STANDARD so severity never escalates; a field missing from the baseline read as zero; the served-zero short-circuit removed so per-field noise follows it; any served drop at all reported instead of the ten percent threshold; the small-council path reporting a field loss even when the council itself shrank; no-baseline returning an empty list instead of an INFO finding; half a council disappearing demoted from CRITICAL to STANDARD. The harness rewrites the file for each mutant and restores it in a finally, then re-runs to confirm the baseline is green again. Re-run after the comparison logic was split into its own module: still 9 of 9, against a baseline re-confirmed green (5,264 passed).",
+  "residual_risk": "1) THE ONE THAT MATTERS MOST: the comparison is against the LAST RECORDING, so nothing establishes what the numbers SHOULD be -- only that they stopped changing. A defect present in the very first baseline is recorded as normal and reads as healthy forever after. That baseline was taken 2026-09-11 with marrickville at 3.2 percent v2_provision_type and canterbury_bankstown at 0 percent, which are real gaps (the unwired enrichment phases, plan item 3) now enshrined as the norm. Wiring those phases will register as a GAIN, and gains are deliberately not reported, so it will pass quietly. 2) Telegram is the only alerting channel, and the monitor-watchdog service carries no HC_PING_URL, so if the dcp-commit job stopped running the check would stop with it and nothing would say so; measured this session and recorded in the plan ledger rather than fixed here. 3) The precinct-exposure set is stored on the statewide snapshot row, so a run scoped with --council to a subset never refreshes it -- the production call is unscoped, but a human running --council compares against a stale exposure list. 4) audit_precinct_keying_coverage.py still exits 0 whatever it finds, so its output is parsed rather than trusted to a return code. A format change no longer breaks this silently -- unrecognised output is now a STANDARD finding and the stored set is not overwritten -- but the coupling to its wording remains. Giving it a real exit code was deliberately left out of this PR rather than widening the change.",
   "post_merge": {
     "db_reset": "None required. migrations/068_council_field_snapshot.sql was applied to production this session and is additive -- one new table and one index, no existing data read or written. The table was confirmed absent beforehand. Baseline snapshots for all 18 councils are recorded, and every synthetic test row was deleted by id and re-counted to zero.",
     "secrets": "None added. DATABASE_URL, TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are already set on the dcp-commit Railway service; no new credential is introduced.",

@@ -59,6 +59,7 @@ COPY scripts/validate_zone_code_validity.py ./scripts/validate_zone_code_validit
 # which is the same silence it exists to remove. audit_precinct_keying_coverage
 # additionally loads derive_precinct_keys by path (COPYed above).
 COPY scripts/check_council_completeness.py ./scripts/check_council_completeness.py
+COPY scripts/council_completeness_rules.py ./scripts/council_completeness_rules.py
 COPY scripts/audit_precinct_keying_coverage.py ./scripts/audit_precinct_keying_coverage.py
 
 # Property-alerts dispatcher (MONITOR_NAME=property-alerts). It reuses the existing

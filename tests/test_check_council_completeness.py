@@ -263,11 +263,54 @@ def test_no_exposure_parses_to_an_empty_set():
     assert ccc.parse_exposed("All keyed LGAs have a reproducible rule.\n") == set()
 
 
-def test_empty_output_does_not_raise():
-    """The audit could fail to run at all; the parser must return, not explode,
-    so the caller can report the failure as a finding."""
-    assert ccc.parse_exposed("") == set()
-    assert ccc.parse_exposed("   \n\n  \n") == set()
+def test_unrecognised_output_is_none_not_an_empty_set():
+    """The third state, and the reason it exists.
+
+    An empty set means the audit ran and found nothing exposed. If unrecognised
+    output collapsed to the same value, a reworded summary line in the sibling
+    script would switch exposure detection off AND overwrite the stored set with
+    an empty one -- so the exposure could never be reported again, by a check
+    whose entire signal is growth against that stored set.
+    """
+    assert ccc.parse_exposed("") is None
+    assert ccc.parse_exposed("   \n\n  \n") is None
+    assert ccc.parse_exposed("Traceback (most recent call last): ...") is None
+
+
+def test_the_caller_does_not_overwrite_the_stored_set_when_parsing_failed():
+    """Source-level, because the write is one branch inside a database run.
+
+    The guard that matters is `exposed is not None` on the line that stores
+    exposed_lgas: without it an unparseable run records an empty list, and the
+    baseline that makes "newly exposed" answerable is gone.
+    """
+    src = (Path(__file__).resolve().parent.parent
+           / "scripts" / "check_council_completeness.py").read_text(encoding="utf-8")
+    assert "if council == STATEWIDE and exposed is not None:" in src, (
+        "the exposed_lgas write is no longer guarded on a successful parse"
+    )
+
+
+def test_a_completeness_failure_cannot_exit_zero_from_the_commit_job():
+    """Source-level for the same reason: the branch ends a run needing a database
+    and R2 credentials.
+
+    Raised by cross-review as a HIGH silent-failure: on a day with nothing to
+    commit, an exception in the check printed a warning and the job still exited
+    0, which run_monitors reports as a clean run. Verification is now part of
+    this job's contract, so its absence has to be visible; the provisions are
+    already committed either way and are never rolled back.
+    """
+    src = (Path(__file__).resolve().parent.parent
+           / "scripts" / "dcp_commit_approved.py").read_text(encoding="utf-8")
+    assert "completeness_rc = 1" in src, "the exception handler no longer records the failure"
+    assert "if completeness_rc == 1 and not committed:" in src, (
+        "a day with nothing to commit and a check that could not run must not exit 0"
+    )
+    assert "the completeness check did NOT run" in src, (
+        "on a day that DID commit the exit code stays 2 (the #1080 invariant), so the "
+        "Telegram is the only signal that nothing was verified -- it cannot be removed"
+    )
 
 
 def test_the_watched_fields_are_the_ones_a_commit_writes():

@@ -110,47 +110,22 @@ DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-#: source_council is NULL for statewide instruments (7,268 served rows, 2026-09-11);
-#: one losing its citations is the same defect, so NULL is recorded under this
-#: sentinel. Verified the same day: ZERO served rows carry an empty-string
-#: source_council, so it cannot collide with a real slug.
-STATEWIDE = "(statewide)"
-
-#: field name -> the SQL predicate meaning "this row populates the field". These
-#: are OUR OWN identifiers, interpolated into the SELECT because a column name
-#: cannot be a bind parameter; --council, the one value from outside, is bound.
-#: Adding a field here costs nothing because `counts` is JSONB, and that
-#: cheapness is the point -- a field expensive to start watching does not get
-#: watched. v2_applicable_dev_types is here because DQ-30 was a tagger defect.
-WATCHED_FIELDS: dict[str, str] = {
-    "v2_precinct_id": "v2_precinct_id IS NOT NULL",
-    "ref_number": "ref_number IS NOT NULL AND ref_number <> ''",
-    "pdf_page": "pdf_page IS NOT NULL",
-    "v2_topic": "v2_topic IS NOT NULL AND v2_topic <> ''",
-    "v2_provision_type": "v2_provision_type IS NOT NULL AND v2_provision_type <> ''",
-    "v2_applicable_dev_types": (
-        "v2_applicable_dev_types IS NOT NULL "
-        "AND array_length(v2_applicable_dev_types, 1) > 0"
-    ),
-}
-
-#: A fill ratio falling by this many percentage points is a finding. Calibrated
-#: against the defect this exists to catch, not picked round: Ashfield's precinct
-#: fill went 35.9% -> 5.8% (30.1pp) and Marrickville's 32.7% -> 1.5% (31.2pp).
-#: 5pp is far enough below both to catch a partial version of the same failure,
-#: and far enough above the movement a normal re-extraction produces.
-MATERIAL_DROP_PP = 5.0
-#: A fall this large is not a regression, it is a field being emptied.
-CRITICAL_DROP_PP = 25.0
-#: Served rows legitimately move on re-extraction (a chapter re-extracted to 739
-#: live rows from 680 is normal). A tenth of a council disappearing is not.
-SERVED_DROP_PCT = 10.0
-#: Below this many served rows a single row is worth several percentage points,
-#: so ratios are noise. Small councils are compared on absolute counts instead.
-#: inner_west serves 11 rows; one row there is 9.1pp.
-MIN_SERVED_FOR_RATIO = 20
-
-CRITICAL, STANDARD, INFO = "CRITICAL", "STANDARD", "INFO"
+# The judgement lives in a sibling so it can be tested without a database. Both
+# import styles are supported because this file is run as `python scripts/x.py`
+# and imported as `scripts.x` by dcp_commit_approved. Re-exported by name so the
+# constants keep their existing spelling at every call site.
+try:
+    from scripts.council_completeness_rules import (  # noqa: F401
+        CRITICAL, INFO, STANDARD, CRITICAL_DROP_PP, MATERIAL_DROP_PP,
+        MIN_SERVED_FOR_RATIO, SERVED_DROP_PCT, STATEWIDE, WATCHED_FIELDS,
+        compare, parse_exposed,
+    )
+except ImportError:  # invoked as `python scripts/check_council_completeness.py`
+    from council_completeness_rules import (  # noqa: F401
+        CRITICAL, INFO, STANDARD, CRITICAL_DROP_PP, MATERIAL_DROP_PP,
+        MIN_SERVED_FOR_RATIO, SERVED_DROP_PCT, STATEWIDE, WATCHED_FIELDS,
+        compare, parse_exposed,
+    )
 
 
 def send_telegram(msg: str) -> None:
@@ -224,78 +199,6 @@ def load_previous(cur, council: str) -> dict | None:
     return {"served": served, "counts": counts, "taken_at": taken_at}
 
 
-def compare(council: str, prev: dict | None, now: dict) -> list[dict]:
-    """Findings for one council. Empty list means nothing went backwards."""
-    findings: list[dict] = []
-    served_now = now["served"]
-
-    if prev is None:
-        findings.append({
-            "severity": INFO, "council": council, "field": "-", "state": "NO_BASELINE",
-            "message": f"first recording ({served_now} served rows) -- nothing to compare yet",
-        })
-        return findings
-
-    served_before = prev["served"]
-
-    # A council that served rows and now serves none is the largest possible drop,
-    # and it is reported before any per-field comparison: every ratio below would
-    # be 0/0, which must not read as "no change".
-    if served_before > 0 and served_now == 0:
-        findings.append({
-            "severity": CRITICAL, "council": council, "field": "served", "state": "DROP",
-            "message": f"served {served_before} -> 0 -- this council serves nothing",
-        })
-        return findings
-
-    if served_before > 0:
-        pct = 100.0 * (served_before - served_now) / served_before
-        if pct > SERVED_DROP_PCT:
-            findings.append({
-                "severity": CRITICAL if pct >= 50 else STANDARD,
-                "council": council, "field": "served", "state": "DROP",
-                "message": f"served {served_before} -> {served_now} ({pct:.1f}% fewer)",
-            })
-
-    for field in WATCHED_FIELDS:
-        before = prev["counts"].get(field)
-        after = now["counts"].get(field)
-        # Absent from the older snapshot means it was not measured then. It does
-        # NOT mean zero, and treating it as zero would manufacture a 100% "gain"
-        # now and a false drop the moment the field is removed from the watch list.
-        if before is None or after is None:
-            findings.append({
-                "severity": INFO, "council": council, "field": field, "state": "NO_BASELINE",
-                "message": f"not measured in the previous snapshot (now {after})",
-            })
-            continue
-
-        # Small councils: a single row is worth several points, so ratios are
-        # noise. Compare absolute counts, and only when the denominator did not
-        # itself shrink -- otherwise a legitimate smaller re-extraction reads as
-        # a field loss.
-        if served_before < MIN_SERVED_FOR_RATIO or served_now < MIN_SERVED_FOR_RATIO:
-            if after < before and served_now >= served_before:
-                findings.append({
-                    "severity": STANDARD, "council": council, "field": field, "state": "DROP",
-                    "message": (f"{before} -> {after} rows carry it, while served held at "
-                                f"{served_now} (small council -- absolute comparison)"),
-                })
-            continue
-
-        ratio_before = 100.0 * before / served_before
-        ratio_after = 100.0 * after / served_now
-        fall = ratio_before - ratio_after
-        if fall >= MATERIAL_DROP_PP:
-            findings.append({
-                "severity": CRITICAL if fall >= CRITICAL_DROP_PP else STANDARD,
-                "council": council, "field": field, "state": "DROP",
-                "message": (f"{ratio_before:.1f}% -> {ratio_after:.1f}% of served rows "
-                            f"({before}/{served_before} -> {after}/{served_now}, -{fall:.1f}pp)"),
-            })
-    return findings
-
-
 def _run_sibling(script: str, args: list[str] | None = None) -> tuple[int, str]:
     """Run another checker and return (exit code, stdout+stderr).
 
@@ -331,38 +234,18 @@ def zone_validity_finding() -> dict | None:
     }
 
 
-def parse_exposed(out: str) -> set[str]:
-    """LGA names from audit_precinct_keying_coverage.py's summary line.
-
-    From the SUMMARY line, not the per-LGA table. The table left-justifies the
-    name into a fixed-width column, so taking the first token off a table row
-    turns "City of Parramatta" into "City" -- a name that matches nothing, and
-    which would then look like a NEW exposure on the very next run and a
-    disappearance on the one after. The summary line lists full names,
-    comma-separated, after a colon:
-
-        >>> 1 LGA(s) EXPOSED (keyed, no reproducible rule): Woollahra
-
-    No summary line means nothing is exposed, which is a legitimate empty set --
-    the caller reports growth, never absence.
-    """
-    exposed: set[str] = set()
-    for line in out.splitlines():
-        if not (line.startswith(">>>") and "EXPOSED" in line and ":" in line):
-            continue
-        for name in line.split(":", 1)[1].split(","):
-            if name.strip():
-                exposed.add(name.strip())
-    return exposed
 
 
-def precinct_exposure() -> tuple[set[str], str]:
-    """Exposed LGAs, as a set to compare against the previous run.
+def precinct_exposure() -> tuple[set[str] | None, str]:
+    """Exposed LGAs as a set to compare against the previous run, or None.
 
     Not asserted empty: Woollahra is exposed today and has been for months, and
     making that a hard failure would produce an alarm nobody can satisfy --
     precisely how the daily SUSPECT alert taught an operator to stop reading the
     channel (migrations/066). Growth of this set is the signal.
+
+    None means the audit's output was not recognised at all, which the caller
+    must not treat as "nothing is exposed" -- see parse_exposed.
     """
     rc, out = _run_sibling("audit_precinct_keying_coverage.py")
     return parse_exposed(out), out if rc not in (0,) else ""
@@ -423,7 +306,19 @@ def run(trigger_source: str = "manual", councils: list[str] | None = None,
                     (STATEWIDE,))
         row = cur.fetchone()
         prev_exposed = set(row[0]) if row and isinstance(row[0], list) else None
-        if prev_exposed is not None and exposed - prev_exposed:
+        if exposed is None:
+            # Unrecognised output. Reported, and the stored set is left alone
+            # below: overwriting it with an empty set would erase the baseline
+            # that makes "newly exposed" answerable, and would then read as
+            # clean forever.
+            findings.append({
+                "severity": STANDARD, "council": "(all)", "field": "v2_precinct_id",
+                "state": "NO_BASELINE",
+                "message": ("precinct-rule audit output was not recognised, so exposure "
+                            "was NOT checked this run -- has audit_precinct_keying_coverage.py "
+                            "changed its summary line?"),
+            })
+        elif prev_exposed is not None and exposed - prev_exposed:
             findings.append({
                 "severity": CRITICAL, "council": "(all)", "field": "v2_precinct_id",
                 "state": "DROP",
@@ -435,7 +330,7 @@ def run(trigger_source: str = "manual", councils: list[str] | None = None,
         if record:
             for council, m in sorted(now.items()):
                 counts = dict(m["counts"])
-                if council == STATEWIDE:
+                if council == STATEWIDE and exposed is not None:
                     # Piggy-backed on the statewide row because it is corpus-wide,
                     # not per-council, and a second table for one list would be a
                     # parallel surface with its own drift.
