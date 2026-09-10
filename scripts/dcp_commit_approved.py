@@ -397,13 +397,55 @@ def main() -> int:
                       f"`python scripts/derive_precinct_keys.py --council {council} --apply` "
                       f"and read its output.")
 
+    # Completeness: did anything a council carries go BACKWARDS?
+    #
+    # The three fixes of 2026-09-10 (#1079 repealed source, #1080 precinct keys,
+    # #1081 retired zone codes) were one defect in three fields, and the two that
+    # were caught were the only two with a check watching them. Every block above
+    # protects a field somebody already thought of. This one compares the council
+    # against its own last recording, which is answerable for a field nobody has
+    # thought of yet.
+    #
+    # RECORD ONLY WHEN SOMETHING WAS COMMITTED. This is the load-bearing part.
+    # If the daily run recorded a new baseline every day, a field bleeding a few
+    # percent per day would walk the baseline along with it and never trip the
+    # threshold. Recording on commit only means the baseline is the last known
+    # state a human approved, and the daily no-record run compares today against
+    # THAT, however many days ago it was.
+    #
+    # Wrapped, like the two blocks above it: provisions are already live and a
+    # measurement failing must not roll them back or fail the job.
+    completeness_rc = 0
+    if not dry_run:
+        try:
+            try:
+                from scripts.check_council_completeness import run as completeness
+            except ImportError:  # invoked as `python scripts/dcp_commit_approved.py`
+                from check_council_completeness import run as completeness
+            completeness_rc = rc = completeness(
+                trigger_source="commit" if committed else "monitor",
+                record=bool(committed),
+            )
+            if rc == 2:
+                print("  [completeness] a field went backwards -- see the alert above.")
+            elif rc:
+                print(f"  [warn] completeness check could not run (exit {rc}). "
+                      f"Provisions ARE committed; run "
+                      f"`python scripts/check_council_completeness.py` and read its output.")
+        except Exception as exc:  # noqa: BLE001 — never fail a committed provision
+            print(f"  [warn] completeness check failed: {exc}. Provisions ARE committed; "
+                  f"nothing compared this run.")
+
     print("-" * 60)
     verb = "would commit" if dry_run else "committed"
     print(f"  {verb}: {committed}   failed: {failed}   skipped: {skipped}")
 
     if failed:
         return 1
-    return 2 if committed else 0
+    # 2 is "ran fine, found something" throughout this pipeline. A completeness
+    # finding on a day with nothing to commit is still a finding, so it must not
+    # exit 0 -- run_monitors would report that as a clean run.
+    return 2 if (committed or completeness_rc == 2) else 0
 
 
 if __name__ == "__main__":

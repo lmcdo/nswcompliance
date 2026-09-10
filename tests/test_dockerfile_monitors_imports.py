@@ -46,6 +46,27 @@ def test_the_two_known_review_loop_deps_are_present():
     assert "COPY scripts/dcp_quality_report.py" in docker
 
 
+def test_scripts_invoked_as_subprocesses_are_copied_too():
+    """The import scan above cannot see a sibling that is RUN rather than imported.
+
+    check_council_completeness shells out to the two existing checkers instead of
+    copying their logic, so they are runtime dependencies of the commit job with
+    no `import` line to find them by. A missing one does not crash: _run_sibling
+    returns 127 and the run degrades to a warning, which is the silence the whole
+    check exists to remove. The list is derived from the source, so adding a third
+    sibling without its COPY fails here rather than in production.
+    """
+    src = (REPO / "scripts" / "check_council_completeness.py").read_text(encoding="utf-8")
+    called = set(re.findall(r"_run_sibling\(\s*[\"'](\w+\.py)[\"']", src))
+    assert called, "no _run_sibling calls found -- has the call form changed?"
+    docker = (REPO / "Dockerfile.monitors").read_text(encoding="utf-8")
+    missing = [s for s in sorted(called) if f"COPY scripts/{s}" not in docker]
+    assert not missing, (
+        "check_council_completeness runs these but Dockerfile.monitors does not COPY them: "
+        + ", ".join(missing)
+    )
+
+
 # ── Same bug class, second image: deploy/flyio-legislation-monitor ────────────
 # That image is FLAT (`COPY x.py .`), so the imports are bare module names and
 # the Dockerfile.monitors regex above cannot see them. It bit live: #504 added
