@@ -1983,7 +1983,10 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
         params.append(chapter_filter)
     query = (
         "SELECT id, council, chapter_key, chapter_label, "
-        "r2_current_path, r2_version_label, dcp_name, content_hash "
+        "r2_current_path, r2_version_label, dcp_name, content_hash, "
+        # council_url carries the only evidence of a repealed source: the
+        # mirrored R2 key is a tidy path with no marker in it.
+        "council_url "
         "FROM dcp_chapter_registry WHERE " + " AND ".join(conds)
         + " ORDER BY council, sort_order"
     )
@@ -2188,6 +2191,53 @@ PREFLIGHT_EMPTY_RATIO = 0.30     # >=30% of pages with no text layer -> flag
 # repealed by Amendment 5") cannot false-positive; only front matter is read.
 PREFLIGHT_REPEALED_PAGES = 4
 _REPEALED_STAMP = re.compile(r"^\s*repealed\s+by\b", re.IGNORECASE)
+
+# The stamp check above reads the first four PAGES. It cannot see a council
+# that declares the repeal in the FILE PATH instead, and Woollahra does
+# exactly that:
+#   .../development-control-plans/repealed-dcps/
+#       woollahra_dcp_2015_repealed_12_october_2020_chapter_c1_paddington_hca.pdf
+#
+# Measured 2026-09-10 (re-run these rather than trusting the numbers):
+#   19 of Woollahra's 27 active chapters point into that folder
+#     SELECT count(*) FILTER (WHERE council_url ILIKE '%repealed%'), count(*)
+#       FROM dcp_chapter_registry WHERE is_active AND council='woollahra';
+#   and only Woollahra's -- 19 of 564 active rows corpus-wide, no other council
+#     SELECT council, count(*) FROM dcp_chapter_registry
+#      WHERE is_active AND council_url ILIKE '%repealed%' GROUP BY 1;
+#   357 of Woollahra's 739 SERVED provisions trace to those chapters
+#     SELECT count(*) FROM regulatory_provisions WHERE source_council='woollahra'
+#       AND is_current AND v2_is_actionable AND source_chapter_key = ANY(<19 keys>);
+#   and that day's run queued 478 more from them
+#     SELECT count(*) FROM dcp_review_queue WHERE council='woollahra'
+#       AND status='pending' AND chapter_key = ANY(<19 keys>);
+# The stamp check passed every one, because the word never appears in the text.
+#
+# Anchored to a path or filename TOKEN, not a bare substring, so a slug that
+# merely mentions repealed instruments cannot false-positive ('notrepealedstuff',
+# 'unrepealed-dcps', 'repealedish' all stay clean). Both sides take the same
+# delimiter set: an earlier version allowed '.' only on the trailing side, so
+# 'chapter-a1.repealed.pdf' slipped through. '$' closes the extensionless
+# directory form '.../dcps-repealed'.
+#
+# Checked against all 564 active registry rows, both columns: it selects the
+# same 19 rows a bare '%repealed%' substring scan does -- no miss, and no
+# false positive on the other 545.
+_REPEALED_PATH = re.compile(r"(^|[/_.-])repealed([/_.-]|$)", re.IGNORECASE)
+
+
+def detect_repealed_source(council_url, r2_path):
+    """Return the offending location when the SOURCE declares itself repealed.
+
+    Pure. Checks BOTH the URL the chapter mirrors from and the R2 key it landed
+    at: a registry re-point fixes the first while the second keeps serving the
+    old file until the next mirror, so either alone would let it through.
+    """
+    for label, value in (("source URL", council_url), ("mirrored file", r2_path)):
+        if value and _REPEALED_PATH.search(value):
+            return f"{label} is in a repealed location: {value[-110:]}"
+    return None
+
 
 # Councils whose two-column/margin layout handling is PROVEN by a full source
 # fidelity sweep — the geometric detector still measures them, but the suspect
@@ -3124,6 +3174,22 @@ def extract_chapter(
 
     print(f"\n  [{council}/{chapter_key}]")
     print(f"    r2: {r2_path}")
+
+    # Repealed-source reject, BEFORE the download. This one needs no PDF: the
+    # evidence is in the registry row, so there is nothing to learn by fetching
+    # and parsing an archive document first. Deliberately NOT folded into the
+    # preflight block below — that block is skipped entirely when
+    # preflight_layout returns {} (it swallows every error), which would take
+    # this guard down with it exactly when the source file is unreadable.
+    # needs_extraction stays TRUE, so the fix is always a registry re-point,
+    # never an approval.
+    repealed_source = detect_repealed_source(
+        chapter.get("council_url"), chapter.get("r2_current_path"))
+    if repealed_source:
+        print(f"    [preflight] REPEALED SOURCE: {repealed_source}")
+        print("    [preflight] chapter REJECTED - re-point council_url at "
+              "the in-force chapter, re-mirror, then re-run")
+        return False, None
 
     with tempfile.TemporaryDirectory() as tmpdir:
         pdf_path = Path(tmpdir) / f"{chapter_key}.pdf"

@@ -1,0 +1,128 @@
+{
+  "tier": "critical",
+  "justification": "This is admission control on the regulatory source corpus: it decides whether a council document the council itself has withdrawn may be parsed into served planning controls. Wrong in one direction it serves repealed setbacks and heights as current law, which is the liability case the whole project is built to avoid; wrong in the other it rejects the live corpus and the nightly extraction stops for every council. Measured on 2026-09-10: 19 of Woollahra's 27 active chapters point into the council's /repealed-dcps/ folder, 357 of its 739 served provisions trace to those chapters, and that day's run queued 478 more rows from them. The existing repealed guard passed all 19 because it reads page text and Woollahra declares the repeal only in the path. This is a recurrence of the 2026-07-29 Woollahra failure class, not a new one.",
+  "commit_hash": "PENDING",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_repealed_source_path.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry.council_url and dcp_chapter_registry.r2_current_path, both already on every row the extractor selects. No new table, no new column, no new query, no extra network call -- council_url was simply missing from the extractor's existing SELECT and is added to it.",
+    "assumption_mismatch": "The prior assumption was that a repealed source always announces itself in the first four pages of PDF text, which is what detect_repealed_stamp reads. Woollahra breaks that assumption completely: it announces the repeal in the folder name and the filename and never on the page, so the stamp check returned clean for all 19 affected chapters while they extracted normally into the review queue. The second assumption worth stating is that council_url is populated; where it is NULL the detector returns None rather than rejecting, so a registry gap does not masquerade as an archive document.",
+    "new_vs_existing": "Applies to every future extraction run for every council, from the next nightly onward. It changes NOTHING already in the database: the 357 live provisions and the 478 pending queue rows already sourced from repealed chapters are untouched by this PR and are listed as an open decision in the handoff, not resolved here. The mechanism is a hard return before the R2 download, which leaves needs_extraction TRUE, so an affected chapter keeps surfacing in the pending query every run until a human re-points council_url at the in-force document.",
+    "external_source_error": "The external source is Cloudflare R2 and, upstream of it, the council's own website. This guard runs BEFORE either is contacted, so an R2 outage, a 404, or a council site returning an error page cannot influence its verdict -- it reads only two strings already fetched from our own database. The failure it must not have is the inverse: if the registry row were somehow empty, detect_repealed_source returns None and extraction proceeds exactly as it does today, so a missing value degrades to the pre-fix behaviour rather than to a corpus-wide block.",
+    "frontend_type": "N/A -- no API route, no component and no response shape changes in this PR. The frontend surface that displays these provisions (/internal/dcp-review) reads dcp_review_queue, which this change only ever writes FEWER rows into; it never alters a row's shape.",
+    "user_failure_mode": "If the guard were too loose, a planning consultant reads a setback or height control from a DCP chapter Woollahra repealed on 12 October 2020 and is shown it as a current control with a citation, which is the exact false-authority failure the liability position forbids. If it were too tight, the visible symptom is the opposite and much louder: the nightly extraction log prints REPEALED SOURCE and rejects chapters, provision counts stop growing, and the dcp_watchdog stuck-chapter alert fires -- nothing is silently wrong, an operator is told."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_repealed_source_path.py -q, then re-run it against eight separate reversions of the fix (guard block deleted, detector stubbed to return None, regex reduced to a bare substring, council_url-only, r2_current_path-only, council_url dropped from the SELECT, guard moved back inside the `if preflight:` block, reject downgraded to a print-and-continue).",
+    "fails_when": "Any reversion of the guard leaves the suite green. The three that matter most: a bare-substring regex must turn the confusable-negative cases red (a council slug reading notrepealedstuff is NOT a repealed location), checking only one of the two columns must turn its partner case red, and moving the guard back inside the preflight block must turn the unparseable-PDF case red because preflight_layout returns {} on any error and that block is then skipped entirely.",
+    "observed_red": "All eight reversions went red; zero survived. Counts printed by each run, against 23 tests: guard block deleted 4 failed / 19 passed; detector always returns None 11 failed / 12 passed; regex is a bare substring 3 failed / 20 passed; only council_url checked 3 failed / 20 passed; only r2_current_path checked 10 failed / 13 passed; council_url dropped from the SELECT 1 failed / 22 passed; guard moved back inside `if preflight:` 4 failed / 19 passed; reject downgraded to a warning 4 failed / 19 passed. Separately, the pre-fix state of this branch was executed directly and raised KeyError: 'text_pages' on a chapter whose preflight came back empty -- an uncaught exception in the batch loop, i.e. the whole night's run, not one chapter. Full suite after the fix: 5,194 passed, 2 skipped, 0 failed in 146s.",
+    "real_data_check": "python scripts/../ (read-only psycopg2 session) against production dcp_chapter_registry: the regex was run over all 564 active rows, both columns, and selects exactly the same 19 rows a bare '%repealed%' ILIKE scan selects -- no miss and no false positive on the other 545. All 19 are Woollahra; no other council has the word in either column."
+  },
+  "functions": [
+    {
+      "name": "detect_repealed_source",
+      "file_line": "scripts/dcp_extract_changed.py:2229",
+      "input": "council_url and r2_path, the two location strings on a dcp_chapter_registry row, both arriving from fetch_pending_chapters as plain str or None. Pure: it opens nothing and reads no global state.",
+      "output": "str or None. A str naming which of the two columns is offending plus the last 110 characters of the value, printed straight into the extraction log so an operator knows which field to re-point; None when neither location declares itself an archive. Truthiness is the whole contract, so the message can be reworded without touching callers.",
+      "if_none": "Both arguments None, or both empty strings, returns None -- extraction proceeds exactly as before. This is deliberate and is the difference between a guard and a corpus-wide block: a NULL council_url means the registry row has never been given a source URL, which is a coverage gap for someone to fill, not evidence that the document is repealed. Pinned by test_missing_values_are_not_a_repealed_source across all four empty combinations."
+    },
+    {
+      "name": "extract_chapter",
+      "file_line": "scripts/dcp_extract_changed.py:3153",
+      "input": "One chapter dict from fetch_pending_chapters (now carrying council_url), an s3 client, a live psycopg2 connection, and the dry_run/review flags. The new guard consumes only the two registry strings out of that dict.",
+      "output": "Unchanged tuple[bool, dict | None]. A repealed source now returns (False, None) at line 3186, before the temporary directory is created, before R2 is contacted and before any cursor is opened -- the same contained per-chapter failure shape the R2-download-failure path already returns, so the batch loop above counts it as one failure and moves to the next chapter.",
+      "if_none": "A chapter dict with no council_url key at all (an older caller, or a hand-built dict in a test) reaches chapter.get('council_url') as None, detect_repealed_source returns None, and the function behaves exactly as it does on main. It cannot raise KeyError on the new field, which is the specific way the previous draft of this guard broke the batch."
+    },
+    {
+      "name": "_pending_chapters_sql",
+      "file_line": "scripts/dcp_extract_changed.py:1946",
+      "input": "council_filter, all_chapters and chapter_filter, unchanged. The only edit is one more column in the SELECT list.",
+      "output": "The (query, params) pair, with council_url now among the selected columns. fetch_pending_chapters builds its dicts by zipping cur.description against each row, so the new column arrives under the key extract_chapter reads without any further change.",
+      "if_none": "council_url is nullable in dcp_chapter_registry and a NULL arrives as Python None, which detect_repealed_source treats as no evidence. There is no path where adding this column narrows or reorders the result set -- the WHERE clause and ORDER BY are untouched, so the set of chapters selected is identical to before."
+    }
+  ],
+  "values": [
+    {
+      "name": "_REPEALED_PATH",
+      "value": "re.compile(r\"(^|[/_.-])repealed([/_.-]|$)\", re.IGNORECASE) at scripts/dcp_extract_changed.py:2226",
+      "why": "The word has to be matched as a path TOKEN, not as a substring. A bare 'repealed' would reject any council whose folder is named after the instruments it superseded, and one false positive on a live council turns the guard off for everyone. Both delimiter classes are identical on purpose: an earlier version allowed '.' only on the trailing side and let 'chapter-a1.repealed.pdf' through, and '$' closes the extensionless directory form '.../dcps-repealed'.",
+      "source": "Verified against production, not invented: run over all 564 active dcp_chapter_registry rows across both council_url and r2_current_path, it selects exactly the same 19 rows a bare '%repealed%' scan selects. No miss, no false positive on the remaining 545.",
+      "read_at": "scripts/dcp_extract_changed.py:2226 -- module-level constant, read only inside detect_repealed_source. No other module imports it.",
+      "if_missing": "If the pattern were broadened to a bare substring the extractor would begin rejecting live chapters and provision counts would stop growing corpus-wide, loudly and visibly in the nightly log. If it were narrowed so it matched nothing, extraction would silently return to the pre-fix behaviour and repealed Woollahra chapters would flow into the review queue again -- the silent direction, which is why the confusable negatives are pinned by test rather than left to the comment."
+    },
+    {
+      "name": "repealed_source",
+      "value": "Local in extract_chapter at scripts/dcp_extract_changed.py:3186 -- the detector's verdict, checked before the download",
+      "why": "Placed above the download rather than inside the preflight block because the evidence lives in the registry row, not in the file. Two things follow: there is nothing to learn by fetching and parsing an archive document first, and the guard cannot be disabled by a preflight that failed.",
+      "source": "Position chosen after executing the previous draft and watching it raise; see falsifiable_check.observed_red.",
+      "read_at": "scripts/dcp_extract_changed.py:3186",
+      "if_missing": "If the assignment were removed the guard is gone and Woollahra's 19 chapters extract again on the next nightly run, adding several hundred more provisions traceable to documents repealed in 2020. Detected by test_a_repealed_chapter_is_rejected_without_touching_r2_or_the_database, which fails when the block is deleted."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Select the chapters due for extraction, now also fetching the council_url column that carries the repealed-location evidence.",
+      "file_line": "scripts/dcp_extract_changed.py:1946",
+      "where_clause": "is_active = TRUE AND r2_current_path IS NOT NULL, plus needs_extraction = TRUE on the default path (or, under --all, an EXISTS on regulatory_provisions scoped to rp.source_council = council, rp.source_chapter_key = chapter_key AND rp.is_current = TRUE), plus the optional council = %s and chapter_key = %s filters. Unchanged by this PR -- only the SELECT list grew, so the set of rows returned is identical.",
+      "if_zero": "The extractor already prints 'Nothing to extract' and exits 0. Adding a column to the SELECT list cannot change the row count, so this PR cannot turn a populated result into an empty one.",
+      "if_wrong": "If council_url were dropped from the SELECT again the guard reads None on every chapter, finds nothing, and every repealed chapter passes silently -- the exact shape of the second of the three bugs the first draft of this guard shipped with. Pinned by test_the_extractor_actually_selects_the_column_the_guard_reads, which asserts both that the SQL names the column and that fetch_pending_chapters delivers it under that key."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council names a folder after the instruments it supersedes -- '/notrepealedstuff/', '/unrepealed-dcps/', '/repealedish/' -- and a substring match rejects its live chapters. The extractor stops producing provisions for a council whose documents are all perfectly current.",
+      "what_happens": "Coverage for that council silently stops growing while the log fills with REPEALED SOURCE lines that are all wrong. The first such false positive is what gets the guard switched off entirely, taking the real protection with it.",
+      "mitigated": true,
+      "how": "scripts/dcp_extract_changed.py:2226 -- the pattern requires a path delimiter or a string boundary on BOTH sides of the word, so it never matches inside a longer token. Verified over all 564 active registry rows: it fires on exactly the 19 genuine Woollahra rows and none of the other 545.",
+      "repro": "python -m pytest tests/test_dcp_repealed_source_path.py::test_the_word_inside_a_longer_token_is_not_a_repealed_location -q"
+    },
+    {
+      "scenario": "The guard checks only the mirrored R2 key. Woollahra's R2 keys are tidy slugs like dcp/woollahra/chapter-c1-paddington-hca.pdf with no marker anywhere in them, so the check finds nothing on all 19 affected chapters and the pipeline behaves as if the guard did not exist.",
+      "what_happens": "A guard that is present, reviewed, merged and catching precisely zero of the cases it was written for. Nothing in the log distinguishes this from a clean corpus, so it would have gone unnoticed indefinitely.",
+      "mitigated": true,
+      "how": "scripts/dcp_extract_changed.py:2229 -- detect_repealed_source checks council_url first and r2_current_path second, and returns on either. This was the third of the three bugs the first draft shipped with, which is why it is pinned rather than trusted.",
+      "repro": "python -m pytest tests/test_dcp_repealed_source_path.py::test_both_columns_are_checked_because_either_alone_misses_a_real_case -q"
+    },
+    {
+      "scenario": "The guard checks only council_url. Someone re-points the registry at the in-force chapter but the mirror has not re-run, so R2 still holds the archive copy under a repealed prefix and that is the file extraction actually downloads and parses.",
+      "what_happens": "The registry now looks correct to anyone inspecting it, while the provisions being extracted still come from the repealed document. Wrong data with a clean-looking audit trail is worse than wrong data with a dirty one.",
+      "mitigated": true,
+      "how": "scripts/dcp_extract_changed.py:2229 -- the same loop covers r2_current_path, so the stale mirror is rejected until it is re-mirrored.",
+      "repro": "python -m pytest tests/test_dcp_repealed_source_path.py::test_a_chapter_mirrored_under_a_repealed_prefix_is_rejected_too -q"
+    },
+    {
+      "scenario": "The guard lives inside the `if preflight:` block, as the previous draft of this branch had it. preflight_layout catches every exception and returns {}, so that block is skipped whenever the PDF cannot be opened or parsed -- and a chapter that is BOTH repealed and unparseable is the most likely combination there is, because archive PDFs are exactly the ones councils stop maintaining.",
+      "what_happens": "The repealed document is downloaded, parsed and extracted with no guard applied at all. Worse, that draft also assigned a key INTO the empty dict, which flipped it truthy and then raised KeyError: 'text_pages' on the first line inside the block. The batch loop has no try/except, so that is not one lost chapter -- it is the whole night's run, and the same 'one bad chapter takes the batch' incident this file's other tests exist to prevent.",
+      "mitigated": true,
+      "how": "scripts/dcp_extract_changed.py:3186 -- the guard sits above the download and outside the preflight block entirely, and preflight is no longer mutated. Both halves are pinned: the reversion that moves it back turns 4 tests red.",
+      "repro": "python -m pytest tests/test_dcp_repealed_source_path.py::test_the_guard_survives_a_preflight_that_returned_nothing -q"
+    },
+    {
+      "scenario": "The rejection is downgraded to a warning during a later refactor -- it prints REPEALED SOURCE and carries on extracting -- or it writes needs_extraction = FALSE so the noisy chapter stops reappearing in the nightly log.",
+      "what_happens": "Either way the repealed chapter reaches the review queue, where it is graded by the fidelity gate like any other row. The fidelity gate checks a provision against ITS OWN source PDF, so a faithfully extracted repealed control grades GROUNDED and arrives in front of a human labelled source-verified. A reviewer approving it makes repealed planning law live, and the only remaining trace is a printed line in a log nobody re-reads.",
+      "mitigated": true,
+      "how": "scripts/dcp_extract_changed.py:3186 returns (False, None) with no DB write of any kind, so needs_extraction stays TRUE and the only way to clear the chapter is to re-point council_url. test_rejection_leaves_needs_extraction_alone_so_the_fix_must_be_a_re_point asserts the absence of a write against the source text, because an absence is what silently comes back in a refactor.",
+      "repro": "python -m pytest tests/test_dcp_repealed_source_path.py::test_rejection_leaves_needs_extraction_alone_so_the_fix_must_be_a_re_point -q"
+    },
+    {
+      "scenario": "The guard rejects everything -- a regex typo, a stubbed detector that always returns a string, an inverted condition. Every chapter for every council returns (False, None) before the download.",
+      "what_happens": "The nightly extraction produces nothing at all, corpus-wide. A test suite that only proves repealed chapters are rejected would pass this state completely, which is why the opposite direction is asserted separately.",
+      "mitigated": true,
+      "how": "test_a_clean_chapter_is_not_rejected_and_does_reach_the_download asserts a clean chapter's R2 key really is requested and extraction really is reached, using a recording fake rather than a mock that answers anything.",
+      "repro": "python -m pytest tests/test_dcp_repealed_source_path.py::test_a_clean_chapter_is_not_rejected_and_does_reach_the_download -q"
+    }
+  ],
+  "real_layer_exempt": {
+    "detect_repealed_source": "Pure string predicate. It opens no connection, issues no query and makes no outbound call -- its two arguments are plain strings the caller already holds. There is no real layer for it to touch. It IS verified against real production data, but as data rather than as a live connection: the pattern was run over all 564 active dcp_chapter_registry rows, both columns, and selects exactly the 19 rows a bare '%repealed%' scan selects.",
+    "extract_chapter": "The changed lines are above every database and network call in the function -- the guard returns before tempfile.TemporaryDirectory, before s3.download_file and before conn.cursor(). A real-DB test would exercise none of the changed code. The property that matters is precisely that no real layer is touched, and it is asserted directly by passing conn=None and a recording S3 stand-in that fails the test if it is ever asked for a file.",
+    "_pending_chapters_sql": "A pure SQL string builder that takes filters and returns (query, params); it holds no cursor and executes nothing. Its one changed line adds a column to a SELECT list, and the column's arrival under the expected key is asserted against a cursor description in test_the_extractor_actually_selects_the_column_the_guard_reads. The query itself was executed read-only against production while measuring the finding above."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- this PR stops the bleeding but repairs nothing that already landed. Three items stay open and are the user's decisions, not this branch's: the 478 pending Woollahra review rows sourced from repealed chapters must NOT be approved; the 19 registry entries need re-pointing at Woollahra's in-force chapters, which is the actual repair; and the 357 live served provisions traced to those chapters must be pulled or left pending that re-point. Also still unproven: whether those 357 were extracted FROM the repealed files or from then-current files the council later moved into /repealed-dcps/, which decides whether repealed controls are being served right now or the system was merely set up to serve them next run."
+  }
+}
