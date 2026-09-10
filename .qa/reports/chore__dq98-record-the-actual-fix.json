@@ -1,0 +1,86 @@
+{
+  "tier": "standard",
+  "justification": "Changes a data-quality ledger row and the probe behind it. No served data moves. But the probe is a gate input, and a ledger row that describes a fix nobody built is how this repo has been wrong before, so it is not trivial.",
+  "commit_hash": "702e2ba2",
+  "files": [
+    "scripts/dq_probe_oversized_pdf_oom_risk.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry.url_content_length and last_extracted_at, both already read by this probe or its neighbours. No new query shape, no new table.",
+    "assumption_mismatch": "Two, both in the ledger row this change corrects. The row named _maybe_toc_override() and _extract_sequential() as the two full PDF passes, but _maybe_toc_override only runs for TOC_DRIVEN_COUNCILS = {woollahra, leichhardt}, so for canterbury_bankstown -- the council whose chapter actually crashed production -- the second pass is _maybe_route_via_ocr(). And it framed the crash as an oversized-PDF problem when a 4.3MB chapter peaked at 611 MB.",
+    "new_vs_existing": "Same probe id, same file, same threshold constant. One added WHERE clause and a rewritten narrative. Nothing new is built.",
+    "prior_art": "The probe already existed and was already wired into dq_check.py; this does not add a check, it corrects one. Confirmed no second oversized-PDF probe exists by grepping scripts/ for OVERSIZED and for oom.",
+    "external_source_error": "N/A -- no external service. The probe reads the production database through the shared dq_db helper, which already exits 2 (unverifiable) rather than 0 when the database is unreachable.",
+    "frontend_type": "N/A -- no frontend surface, no API, no served content touched.",
+    "user_failure_mode": "Visible either way, and that is the point of the change. The old probe returned 7 forever, so DQ-98 could never close and the row stayed red as background noise. The new one returns 3 and reaches 0 when the chapters extract, so red means something happened."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_oversized_pdf_oom_risk.py",
+    "external_authority": "Not self-referential: the count comes from dcp_chapter_registry in the production database, written by the extraction pipeline, not by anything in this change. The memory figures quoted in the ledger text were measured with psutil against real council PDFs pulled from R2, comparing the current extractor against the previous one loaded from origin/main.",
+    "fails_when": "A chapter PDF over the 30MB heuristic has never been extracted. It reaches 0 when those chapters extract -- which the previous version could not do at all, because it counted chapters that were merely large.",
+    "observed_red": "Reads 3 today and named them: canterbury_bankstown chapters 7-6, 6-2 and 7-5. Before the WHERE clause was added it read 7, including four chapters that HAVE extracted (parramatta, two city_of_sydney, ku_ring_gai) -- so the old count was four-sevenths noise. Both numbers observed by running it.",
+    "measured": "Probe = 3. dq_check.py: 0 red, 1 unverifiable, PASSED. Full suite 5,171 passed, 2 skipped."
+  },
+  "functions": [
+    {
+      "name": "run",
+      "file_line": "scripts/dq_probe_oversized_pdf_oom_risk.py",
+      "input": "None. Reads dcp_chapter_registry through dq_db.session().",
+      "output": "0 when every large chapter PDF has been extracted at least once; 1 with the offending chapters listed otherwise.",
+      "if_none": "No rows returned is the PASS case and says so explicitly rather than printing an empty list. A database failure is exit 2 via the shared helper, never a silent 0.",
+      "three_state": "clean / large chapters still unextracted / database unreachable. The third is deliberately not folded into the second -- collapsing them turned main red once before (PR #939)."
+    }
+  ],
+  "values": [
+    {
+      "value": "30MB heuristic threshold, unchanged. It is now used ONLY to decide which chapters are worth watching, never to skip one -- the extraction guard that used it was removed in PR #1073 after measurement showed size does not predict memory (35MB chapter peaked at 726 MB, 139MB chapter at 440 MB).",
+      "read_at": "Module import, from a literal in the probe.",
+      "if_missing": "N/A -- a literal."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Count large chapter PDFs that have never been extracted -- the actual harm DQ-98 describes, rather than the count of chapters that happen to be big.",
+      "file_line": "scripts/dq_probe_oversized_pdf_oom_risk.py, run()",
+      "where_clause": "is_active AND url_content_length > 30MB AND last_extracted_at IS NULL -- the last clause is the whole change. Without it the count includes chapters that extract perfectly well and can never reach 0."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The row is marked fixed on the strength of measurements taken on a developer machine.",
+      "what_happens": "Production has different memory limits and a different Python build. Closing the row before a real run proves it would be asserting something unmeasured -- and the original DQ-98 text is itself an example of a confident diagnosis that turned out wrong in two places.",
+      "mitigated": true,
+      "how": "Deliberately left declared OPEN. The row says why: everything measured so far was local, and the nightly production run at 03:00 UTC is what would justify closing it. The probe reaching 0 is the evidence to wait for.",
+      "repro": "Read the declared field in .claude/dq_checks.json -- still 'open'."
+    },
+    {
+      "scenario": "Someone reads the original DQ-98 text later, does not notice the correction, and builds the chunked splitter anyway.",
+      "what_happens": "Weeks spent on a fix for a mechanism that was measured not to be the cause, and a split introduces a real correctness risk -- a clause straddling the cut point -- that the shipped fix does not have.",
+      "mitigated": true,
+      "how": "The correction is placed at the TOP of the row, before the original text, and the original is explicitly labelled as kept for the record and wrong in the places named. The two specific factual errors are called out individually rather than the row being quietly reworded, so a reader who already knows the old version can see exactly what changed.",
+      "repro": "Read the DQ-98 row in .claude/DATA_QUALITY_TRACKER.md -- the correction precedes the original text."
+    },
+    {
+      "scenario": "The 30MB size guard is reintroduced by someone solving a future memory problem the obvious way.",
+      "what_happens": "Seven chapters silently stop extracting again, including the three that have never extracted at all, and the heaviest chapter in the corpus still would not be caught -- because it is 35MB.",
+      "mitigated": true,
+      "how": "Both the ledger row and the probe docstring state the measurement that kills the idea: 35MB peaks at 726 MB, 139MB peaks at 440 MB, so size does not predict memory. The row says 'must not return' in those words. Not enforced by a test, which is the honest limit of this change -- the enforcement is that the removal itself is asserted in tests/test_dcp_extract_changed.py.",
+      "repro": "grep for 'pdf_bytes > OVERSIZED_PDF_SKIP_BYTES' -- the test asserts it is absent."
+    },
+    {
+      "scenario": "The new WHERE clause hides a real problem: a chapter that extracted once, long ago, and now cannot.",
+      "what_happens": "last_extracted_at is non-NULL forever after the first success, so a chapter that starts failing again would drop out of this count and look clean.",
+      "mitigated": false,
+      "how": "Not mitigated here, and named rather than glossed. That case is already covered by a different signal -- dcp_watchdog's stuck-chapter alert fires when url_last_changed is newer than last_extracted_at, which is exactly a chapter that used to extract and now does not. Duplicating it in this probe would give two counts for one condition. If that alert is ever removed, this gap becomes real.",
+      "repro": "Set last_extracted_at to a past date on an oversized chapter and re-run: this probe passes, the watchdog reports it."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- after the 03:00 UTC nightly run, re-run the probe. If it reads 0, the three canterbury_bankstown chapters extracted for the first time and DQ-98 can be closed with production evidence rather than local measurement. If it still reads 3, the run did not reach them and the reason needs finding before anything is closed."
+  }
+}
