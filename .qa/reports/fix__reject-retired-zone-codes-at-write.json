@@ -1,7 +1,7 @@
 {
   "tier": "Critical",
   "justification": "DQ-30 was declared fixed on 2026-08-12. On 2026-09-10 it was RED again with six freshly-written ku_ring_gai provisions tagged 'B2', a zone code NSW retired in 2022 -- nothing is zoned B2 any more, so those rows are served and unreachable by any current-zone lookup. They were NEW rows, not survivors of the August cleanup: that repair fixed the rows that existed then and nothing guarded the WRITE, so the next extraction created more. This PR moves the check from after the fact to before the store. The cause is not a bad zone list but a false positive already documented in scripts/backfill_invalid_zone_codes.py -- the tagger's blind text-regex fallback matches 'Part B3' in DCP prose as zone B3, which is also why re-running the tagger repaired 0 of 241 such rows: it reproduces its own output, the same self-comparison that let the old '0% drift' check report success while 112 live rows stayed broken.",
-  "commit_hash": "561a41a5",
+  "commit_hash": "db2b95b1",
   "files": [
     "enrichment/pipeline.py",
     "tests/test_zone_guard_at_write.py",
