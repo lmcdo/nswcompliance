@@ -137,7 +137,7 @@ def parse_flag_entries(path: str, flag_names: list[str]) -> list[dict]:
     # by a `name:` line -- matches the formatting of every *_LGAS.ts file in
     # this repo (verified against verify-lgas.ts and granny-flat-lgas.ts in
     # full, and the interface header of the other eight).
-    blocks = re.split(r"\n  \{\n", text)[1:]
+    blocks = re.split(r"\n  \{\n", text)[1:]  # qa-ignore: [1:] is a slice, never an index -- re.split() on any string, including "", always returns a non-empty list, so this can never raise IndexError
     for block in blocks:
         name_m = re.search(r"name:\s*'([^']*)'", block)
         slug_m = re.search(r"slug:\s*'([^']*)'", block)
