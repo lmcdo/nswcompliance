@@ -146,7 +146,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Lane Cove',
     slug: 'lane-cove',
-    hasDcpData: true,
+    hasDcpData: false,
     relatedSlugs: ['ryde', 'inner-west', 'northern-beaches'],
     faqs: [
       { q: 'What planning controls apply in Lane Cove?', a: 'Lane Cove properties are governed by the Lane Cove LEP 2009 and Lane Cove DCP. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Enter your address for the specific controls with clause citations.' },
@@ -235,7 +235,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Hawkesbury',
     slug: 'hawkesbury',
-    hasDcpData: true,
+    hasDcpData: false,
     relatedSlugs: ['penrith', 'the-hills-shire', 'blacktown'],
     faqs: [
       { q: 'What planning controls apply in Hawkesbury?', a: 'Hawkesbury properties are governed by the Hawkesbury LEP 2012 and Hawkesbury DCP. Controls cover height, FSR, setbacks, flood, heritage, and rural land management. Flood controls are particularly significant throughout the Hawkesbury-Nepean valley.' },
@@ -314,7 +314,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Wollongong',
     slug: 'wollongong',
-    hasDcpData: true,
+    hasDcpData: false,
     relatedSlugs: ['wingecarribee', 'campbelltown', 'sutherland-shire'],
     faqs: [
       { q: 'What planning controls apply in Wollongong?', a: 'Wollongong properties are governed by the Wollongong LEP 2009 and Wollongong DCP 2009. Controls cover height, FSR, setbacks, parking, landscaping, bushfire, and coastal hazards.' },
@@ -336,7 +336,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Clarence Valley',
     slug: 'clarence-valley',
-    hasDcpData: true,
+    hasDcpData: false,
     relatedSlugs: ['yass-valley', 'tamworth-regional', 'bathurst-regional'],
     faqs: [
       { q: 'What planning controls apply in Clarence Valley?', a: 'Clarence Valley properties are governed by the Clarence Valley LEP 2011 and Clarence Valley DCP. Controls cover height, setbacks, parking, flood, and environmental management. Flood controls are significant near the Clarence River.' },
@@ -347,7 +347,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Yass Valley',
     slug: 'yass-valley',
-    hasDcpData: true,
+    hasDcpData: false,
     relatedSlugs: ['wingecarribee', 'clarence-valley', 'bathurst-regional'],
     faqs: [
       { q: 'What planning controls apply in Yass Valley?', a: 'Yass Valley properties are governed by the Yass Valley LEP 2013 and Yass Valley DCP. Controls cover height, setbacks, parking, landscaping, heritage, and rural land management.' },
@@ -358,7 +358,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Bathurst Regional',
     slug: 'bathurst-regional',
-    hasDcpData: true,
+    hasDcpData: false,
     relatedSlugs: ['forbes', 'yass-valley', 'tamworth-regional'],
     faqs: [
       { q: 'What planning controls apply in Bathurst Regional?', a: 'Bathurst Regional properties are governed by the Bathurst Regional LEP 2014 and Bathurst Regional DCP. Controls cover height, setbacks, parking, heritage, and rural land management.' },
@@ -369,7 +369,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Tamworth Regional',
     slug: 'tamworth-regional',
-    hasDcpData: true,
+    hasDcpData: false,
     relatedSlugs: ['bathurst-regional', 'clarence-valley', 'forbes'],
     faqs: [
       { q: 'What planning controls apply in Tamworth Regional?', a: 'Tamworth Regional properties are governed by the Tamworth Regional LEP 2010 and Tamworth Regional DCP. Controls cover height, setbacks, parking, and rural land management.' },
@@ -380,7 +380,7 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Forbes',
     slug: 'forbes',
-    hasDcpData: true,
+    hasDcpData: false,
     relatedSlugs: ['bathurst-regional', 'tamworth-regional', 'yass-valley'],
     faqs: [
       { q: 'What planning controls apply in Forbes?', a: 'Forbes properties are governed by the Forbes LEP 2013 and Forbes DCP. Controls cover height, setbacks, parking, heritage, and flood. Flood controls are significant near the Lachlan River.' },

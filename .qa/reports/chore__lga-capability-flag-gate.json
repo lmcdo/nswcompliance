@@ -1,12 +1,13 @@
 {
   "tier": "standard",
   "justification": "New read-only script (scripts/verify_lga_capability_flags.py) that checks per-council boolean capability flags in frontend-nextjs/lib/lga-data/*.ts against the live database, modeled on scripts/verify_coverage_stats.py, and wires it into the daily .github/workflows/data-watch.yml. Not critical-tier: it reads and reports, it never writes, and a wrong result delays a fix rather than corrupting served data. Not minor: it required real schema investigation (lga_registry, dcp_setback_controls, spatial_overlays), a merger-slug edge case, and its first real run against the live database found 8 genuine pre-existing overclaims in verify-lgas.ts (lane-cove, hawkesbury, wollongong, clarence-valley, yass-valley, bathurst-regional, tamworth-regional, forbes all claim hasDcpData: true with zero supporting rows).",
-  "commit_hash": "0d3378b5",
+  "commit_hash": "c13d4a82",
   "files": [
+    ".github/workflows/data-watch.yml",
+    "frontend-nextjs/lib/lga-data/verify-lgas.ts",
     "scripts/verify_lga_capability_flags.py",
     "tests/test_verify_lga_capability_flags.py",
-    "tests/test_verify_lga_capability_flags_real_db.py",
-    ".github/workflows/data-watch.yml"
+    "tests/test_verify_lga_capability_flags_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "scripts/dq_db.py's connect()/session() already resolves DATABASE_URL from the main checkout's .env (even from inside this worktree) and returns a read-only, statement-timeout-bounded, canary-checked connection -- the same helper scripts/verify_coverage_stats.py already uses. Reused directly rather than hand-rolling a second connection path. All schema facts (lga_registry's 30 rows and columns, dcp_setback_controls.lga's exact slug vocabulary, spatial_overlays.lga_name's ALL-CAPS values, regulatory_provisions.document_id's real naming) were read live via this connection before writing a single line of the check, not assumed from DB_SCHEMA.md or memory.",
@@ -124,6 +125,13 @@
       "mitigated": true,
       "how": "The parse call for granny-flat-lgas.ts now requests only ['hasFloodData'] -- the one flag this script actually checks -- so a malformed hasAriData field on some other line of the same object can no longer drop the entry this script cares about. hasAriData stays entirely unread by this script, matching its NOT_CHECKED_FLAGS entry.",
       "repro": "python scripts/verify_lga_capability_flags.py -- unchanged 8-finding result after the fix (confirms no entries were being lost today); the coupling itself was a latent risk, not a check that was live-failing before the fix."
+    },
+    {
+      "scenario": "The check ships while the data it checks is already wrong, so the daily job is red from the first run.",
+      "what_happens": "A check that is red on day one gets muted or ignored, and then it is decoration. That is the exact failure this repo hit with the stuck-chapter alert, which fired every week about work nobody could do until it stopped being read.",
+      "mitigated": true,
+      "how": "The eight false flags the check found on its first run are corrected in the same PR, so the job starts green and any future red is a real change. Verified: with the corrections, exit 0; flipping one back, exit 1 naming that council; restored, exit 0 again. The corrections are the safe direction -- removing a claim the data does not support cannot create a new false claim. The alternative fix, sourcing DCP data for those eight councils, is real work and is left as a separate decision.",
+      "repro": "python scripts/verify_lga_capability_flags.py -- exit 0. Flip any corrected flag back to true and it exits 1."
     }
   ],
   "falsifiable_check": {
