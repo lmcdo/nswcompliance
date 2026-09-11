@@ -359,8 +359,11 @@ python enrichment/pipeline.py --phase site_condition
 # 3. Type classification (control/objective/definition/note)
 python enrichment/pipeline.py --phase type
 
-# 4. Numeric extraction (heights, setbacks, percentages)
-python enrichment/pipeline.py --phase numeric
+# 4. Numeric rule extraction (heights, setbacks, percentages)
+#    `--phase numeric` was DELETED 2026-09-11: it targeted v2_enriched_at /
+#    v2_extracted_values, columns that exist on no table. The live path writes
+#    v2_extracted_rules and is a separate pipeline:
+python -m enrichment.rule_extraction_pipeline --phase deterministic --council <council>
 
 # 5. Check status
 python enrichment/pipeline.py --phase status
