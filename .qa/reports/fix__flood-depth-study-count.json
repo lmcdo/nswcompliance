@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Five live public surfaces claimed modelled flood DEPTH from 4 council studies, and /for/conveyancers named all four: 'Hawkesbury, Tweed, Wollongong, Redbank'. Hawkesbury's FLOOD_STUDIES entry carries has_depth=False -- its rasters hold water LEVEL only, with no pre-computed depth band -- so it cannot answer a depth question at any address. The true figure is three. The number was not unchecked: verify_coverage_stats.py compared the published 4 against len(FLOOD_STUDIES), which is 4, so the check passed while the claim it existed to protect was false. That is the aim file's rule 10, 'a check can PASS on the wrong artifact, which is worse than not running', and it is the same shape as the floodLgas:71 defect it replaced -- a count from one layer of the coverage ladder attached to a capability from another. Standard, not Critical: copy plus one derived constant plus one check; no data is written and no logic changes. Direction of travel is claim-narrowing, which per project-defect-repair-calibration-2026-08 cannot create a new false claim.",
-  "commit_hash": "66f67ba1",
+  "commit_hash": "2343aff0",
   "files": [
     "frontend-nextjs/lib/coverage.ts",
     "frontend-nextjs/app/for/conveyancers/page.tsx",
