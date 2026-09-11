@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Six of the sixteen numbers published in frontend-nextjs/lib/coverage.ts had no check of any kind. The file classed them 'editorial/config-derived facts ... not auto-verifiable', which was true of the mechanism and false of the facts — each is a count of something concrete. That exemption is exactly what let lgasCovered:130 sit on the homepage claiming more councils than NSW contains. This wires five of the six and corrects one live wrong number: seppStandards was published as 33 while housing_sepp_standards holds 45 AND /planning-standards renders all 45 live from the same table with no filter, so two public pages stated two different values for one fact. The sixth, riskLayers, has no source anywhere in the repo and is left unverified and documented as such rather than given an invented query. Standard, not Critical: one constant corrected, two queries added, one test file; no production data is written and no logic changes.",
-  "commit_hash": "PENDING",
+  "commit_hash": "a7457286",
   "files": [
     "frontend-nextjs/lib/coverage.ts",
     "scripts/verify_coverage_stats.py",
