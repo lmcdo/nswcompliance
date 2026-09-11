@@ -154,7 +154,7 @@ TRUNCATION_MIN_CHARS = 40   # a provision shorter than this (and not a bare ref)
 TRUNCATION_RATIO = 0.10     # flag when > this fraction of provisions look truncated/thin
 
 
-def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float, list[str]]:
+def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float | None, list[str]]:
     """Fraction (and list) of TOC section codes NOT covered by the extraction. A TOC
     code (e.g. "C4.1") is covered if an extracted code:
       - equals it exactly ("C4.1"), OR
@@ -162,9 +162,24 @@ def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float,
       - has it as the leading token before the first space ("C4.1 O1", "C4.1 C3") —
         the AI emits provisions as "<section> <objective/control>", so this is the
         common case and its absence was the source of false coverage_fail alerts.
-    Pure. Returns (0.0, []) when the TOC is too small to judge."""
+    Pure.
+
+    Returns **None** as the ratio when the TOC is too small to judge — NOT 0.0.
+
+    WHY THIS CHANGED (2026-09-12)
+    -----------------------------
+    It returned ``(0.0, [])`` here, which every caller read as "judged, and
+    nothing is missing". Combined with a TOC regex that matched 0 of 10 real
+    Waverley contents lines, that made this function report a clean pass every
+    single time it FAILED TO READ the document — for two and a half months,
+    while 11 parts were absent and 54 rows were mislabelled.
+
+    "Could not judge" and "judged and found nothing" are different answers, and
+    collapsing them is the defect. None forces the caller to say which it meant;
+    the call site in dcp_extract_changed treats it as suspect, not as clean.
+    """
     if len(toc_codes) < COVERAGE_MIN_TOC:
-        return 0.0, []
+        return None, []
     section_tokens = {e.split(" ", 1)[0] for e in extracted_codes}
     missing = [
         c for c in toc_codes
@@ -191,19 +206,34 @@ def truncation_rate(texts: list[str]) -> tuple[float, int]:
     return flagged / len(texts), flagged
 
 
-def toc_codes_from_pdf(pdf_path, max_scan: int = 12) -> set[str]:
+def toc_codes_from_pdf(pdf_path, max_scan: int = 14) -> set[str]:
     """Return the set of section codes listed in the chapter's TOC, for the coverage
-    guard. Reuses dcp_extract_changed.parse_toc_entries. Returns an empty set if the
-    PDF can't be read or has no parseable TOC (guard then no-ops)."""
+    guard. Returns an empty set if the PDF can't be read or has no parseable TOC —
+    which coverage_gap now reports as "could not judge", not as a pass.
+
+    REPOINTED 2026-09-12 from dcp_extract_changed.parse_toc_entries to
+    dcp_toc_parse.parse_contents. The old parser requires dot leaders or double
+    spacing before a trailing page number, and real DCP contents pages come in at
+    least six shapes — it matched 0 of 10 Waverley lines and could not read
+    canterbury_bankstown or ku_ring_gai at all (73 of 113 unreadable chapters
+    between them).
+
+    Only this GUARD is repointed. parse_toc_entries still drives EXTRACTION for
+    TOC_DRIVEN_COUNCILS (woollahra, leichhardt) and is deliberately untouched:
+    changing what those councils extract is Phase C work, gated on each chapter
+    having a measured state first.
+    """
     try:
         import pdfplumber
-        from scripts.dcp_extract_changed import parse_toc_entries
+
+        from scripts.dcp_toc_parse import parse_contents
     except Exception:
         return set()
     try:
         with pdfplumber.open(str(pdf_path)) as pdf:
             texts = [(p.extract_text() or "") for p in pdf.pages[:max_scan]]
-        return {code for code, _ in parse_toc_entries(texts, max_scan=max_scan)}
+        _status, codes, _entries = parse_contents(texts, max_scan=max_scan)
+        return codes
     except Exception:
         return set()
 

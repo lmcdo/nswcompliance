@@ -47,6 +47,11 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from enrichment.pipeline import phase_failures, run_standard_enrichment
 
+# The fail-closed page-map guard. Imported rather than inlined so the same three
+# checks serve the pipeline and the standalone sweep -- a guard with two copies
+# drifts, and drift is the defect it exists to catch.
+from scripts.dcp_page_map_gate import PageMapUnusable, assert_map_usable
+
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 R2_ACCOUNT_ID        = os.environ["R2_ACCOUNT_ID"]
@@ -2660,6 +2665,14 @@ def suspect_reason(review_data: dict) -> str | None:
     if review_data.get("schema_fail"):
         return (f"schema_fail ({review_data.get('serious_artifact_provisions')}/"
                 f"{review_data.get('total_provisions')} provisions with serious artifacts)")
+    if review_data.get("coverage_unknown"):
+        # Distinct from coverage_fail on purpose. "We could not read this
+        # document's contents page" and "we read it and sections are missing"
+        # need different words, because the first one is a reason to go and look
+        # and the second is a finding. Collapsing them into a clean pass is the
+        # defect this whole guard is being repaired for.
+        return (f"coverage_unknown (contents page unreadable — "
+                f"{review_data.get('coverage_toc')} codes parsed, too few to judge)")
     if review_data.get("coverage_fail"):
         return (f"coverage_fail ({review_data.get('coverage_missing')}/"
                 f"{review_data.get('coverage_toc')} TOC sections missing)")
@@ -3284,6 +3297,30 @@ def extract_chapter(
         subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
         ai_on = os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes")
 
+        # A hardcoded page map is only valid for the document it was written
+        # against, and nothing tied the two together. waverley's map describes a
+        # 473-page PDF; the one in R2 is 448 pages, so F1-F5 (460-473) extracted
+        # NOTHING for months and five parts went missing with no error anywhere.
+        #
+        # Checked HERE rather than after extract_pdf_isolated returns page_count,
+        # even though the count is free there: under AI_EXTRACTION the extraction
+        # this would validate has already been paid for in API credit by then.
+        # Page count is cheap on its own -- pdfplumber parses pages lazily.
+        if page_ranges:
+            with pdfplumber.open(pdf_path) as _pdf:
+                _pdf_pages = len(_pdf.pages)
+            try:
+                assert_map_usable(council, chapter_key, page_ranges, _pdf_pages)
+            except PageMapUnusable as exc:
+                # Same shape as the repealed-source reject below: refuse the
+                # chapter, leave needs_extraction TRUE so it keeps surfacing, and
+                # write nothing. A stale map does not get quietly re-applied.
+                print(f"    [page-map] {exc}")
+                print("    [page-map] chapter REJECTED - fix the map or derive "
+                      "parts from the running header, then re-run")
+                cur.close()
+                return False, None
+
         # The PDF work runs in its own process. Everything below this point is
         # cheap post-processing on plain dicts.
         result, err = extract_pdf_isolated(
@@ -3431,7 +3468,7 @@ def extract_chapter(
 
             # AI-path railguards (absolute-quality; only when AI extraction is on).
             # LLMs can silently drop whole sections or truncate a provision mid-text.
-            coverage_fail = truncation_fail = False
+            coverage_fail = truncation_fail = coverage_unknown = False
             coverage_toc = coverage_missing = truncation_flagged = 0
             if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
                 from scripts.ai_extractor import (
@@ -3445,7 +3482,13 @@ def extract_chapter(
                 }
                 cov_ratio, missing = coverage_gap(extracted_codes, toc)
                 coverage_toc, coverage_missing = len(toc), len(missing)
-                coverage_fail = cov_ratio > COVERAGE_MISS_RATIO
+                # FAIL CLOSED. cov_ratio is None when the contents page could not
+                # be read well enough to judge, and "could not judge" is now
+                # SUSPECT rather than clean. Reading it as clean is exactly how
+                # this guard reported "all present" for two and a half months
+                # while waverley was missing 11 parts.
+                coverage_unknown = cov_ratio is None
+                coverage_fail = coverage_unknown or cov_ratio > COVERAGE_MISS_RATIO
                 trunc_ratio, truncation_flagged = truncation_rate(provision_texts)
                 truncation_fail = (
                     len(provision_texts) >= SCHEMA_FAIL_MIN_PROVISIONS
@@ -3472,6 +3515,7 @@ def extract_chapter(
                 "serious_artifact_provisions": serious_flagged,
                 "schema_fail": schema_fail,
                 "coverage_fail": coverage_fail,
+                "coverage_unknown": coverage_unknown,
                 "coverage_missing": coverage_missing,
                 "coverage_toc": coverage_toc,
                 "truncation_fail": truncation_fail,

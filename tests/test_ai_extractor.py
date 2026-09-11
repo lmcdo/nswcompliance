@@ -98,10 +98,32 @@ class TestCoverageGap:
         assert ratio == 0.6
         assert "10.1" in missing
 
-    def test_small_toc_never_judged(self):
-        # below COVERAGE_MIN_TOC -> no opinion (avoids false positives on tiny chapters)
+    def test_small_toc_returns_None_not_a_clean_pass(self):
+        # CHANGED 2026-09-12. This asserted `== (0.0, [])` -- that "too small to
+        # judge" reads as "judged, nothing missing". Combined with a TOC regex
+        # that matched 0 of 10 real Waverley contents lines, that made this
+        # function report a clean pass every time it FAILED TO READ the document,
+        # for two and a half months, while 11 parts were absent.
+        #
+        # None is not 0.0. The caller must decide what "could not judge" means,
+        # and dcp_extract_changed now treats it as suspect.
         toc = {f"{i}.1" for i in range(1, COVERAGE_MIN_TOC)}
-        assert coverage_gap(set(), toc) == (0.0, [])
+        ratio, missing = coverage_gap(set(), toc)
+        assert ratio is None, "a TOC too small to judge must not report 0.0"
+        assert missing == []
+
+    def test_an_unreadable_toc_is_not_reported_as_full_coverage(self):
+        # The exact Waverley shape: the parser returns nothing, so the TOC is
+        # empty. An empty TOC must not mean "everything present".
+        ratio, missing = coverage_gap({"B1", "B2"}, set())  # noqa: zone-codes  (DCP Part codes, not NSW zone codes)
+        assert ratio is None
+
+    def test_a_judgeable_toc_still_returns_a_number(self):
+        # Guards the other direction: returning None unconditionally would make
+        # every chapter suspect and the guard useless.
+        toc = {f"{i}.1" for i in range(1, COVERAGE_MIN_TOC + 3)}
+        ratio, _ = coverage_gap(set(), toc)
+        assert ratio == 1.0
 
     def test_section_space_subitem_codes_count_as_covered(self):
         # regression: the AI emits "<section> <objective/control>" (e.g. "C4.1 O1"),
@@ -196,6 +218,15 @@ class TestSuspectReasonNewGuards:
         assert suspect_reason(cov).startswith("coverage_fail")
         assert suspect_reason(trunc).startswith("truncation_fail")
         assert suspect_reason({"diff": {"status": "ok"}, "schema_fail": False}) is None
+
+        # "could not read the contents page" gets its OWN reason, distinct from
+        # "read it and sections are missing". The first is a reason to go and
+        # look; the second is a finding. Collapsing them into a clean pass is
+        # the defect being repaired here.
+        unknown = {"diff": {"status": "ok"}, "schema_fail": False,
+                   "coverage_fail": True, "coverage_unknown": True,
+                   "coverage_missing": 0, "coverage_toc": 2}
+        assert suspect_reason(unknown).startswith("coverage_unknown")
 
 
 class TestFidelityGateIsDecoupled:

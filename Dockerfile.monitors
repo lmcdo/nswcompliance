@@ -45,6 +45,13 @@ COPY scripts/verify_dcp_formatting.py ./scripts/verify_dcp_formatting.py
 COPY scripts/dcp_quality_report.py ./scripts/dcp_quality_report.py
 # AI extraction engine (AI_EXTRACTION=1) — dcp_extract_changed imports it at runtime.
 COPY scripts/ai_extractor.py ./scripts/ai_extractor.py
+# The fail-closed page-map guard. dcp_extract_changed imports it at MODULE level
+# and refuses a chapter whose hardcoded page ranges point past the end of its own
+# PDF, so a missing COPY here is not a degraded check — it is an ImportError that
+# stops the extract monitor dead.
+COPY scripts/dcp_page_map_gate.py ./scripts/dcp_page_map_gate.py
+# The contents parser used by ai_extractor.toc_codes_from_pdf (the coverage guard).
+COPY scripts/dcp_toc_parse.py ./scripts/dcp_toc_parse.py
 COPY enrichment/ ./enrichment/
 # enrichment/pipeline.py imports load_ground_truth + load_slug_resolution from this
 # checker to decide whether a derived zone code exists in the row's LGA (DQ-30).

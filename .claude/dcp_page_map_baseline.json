@@ -1,0 +1,262 @@
+{
+  "_comment": "Ratchet floor for scripts/dcp_page_map_gate.py. These counts may go DOWN, never UP. Freezing them is what lets a fail-closed check go live without failing on defects that already exist and are already recorded. It is not an acceptance of them.",
+  "recorded_at": "2026-09-11T22:40:32.742755+00:00",
+  "per_map": {
+    "waverley": {
+      "check1_violations": 5,
+      "check2_violations": 14,
+      "check3_rows_disagree": 54,
+      "check1_status": "FAIL",
+      "check2_status": "FAIL",
+      "check3_status": "FAIL"
+    },
+    "ashfield/chapter-a-miscellaneous": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ashfield/chapter-b-public-domain": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ashfield/chapter-c-sustainability": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ashfield/chapter-d-precinct-guidelines": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ashfield/chapter-e1-heritage": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ashfield/chapter-e2-haberfield": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ashfield/chapter-f-dev-category": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-a-part-3-subdivision": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-a-part-4-dwelling-houses": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-a-part-4-1-secondary-dwellings": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-a-part-5-dual-occupancy": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-a-part-7-residential-flat-buildings": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-a-part-8-mixed-use": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-a-part-9-non-residential": {
+      "check1_violations": 1,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "FAIL",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14a-st-ives-local-centre": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14b-turramurra-local-centre": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14c-pymble-local-centre": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14d-gordon-local-centre": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14e-lindfield-local-centre": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14f-roseville-local-centre": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14g-pymble-business-park": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14h-screen-australia-site": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14i-killara-golf-club": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14j-holford-crescent-gordon": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14k-45-47-tennyson-avenue-and-105-eastern-road-turramurra": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14l-62-and-64-66-pacific-highway-roseville": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14m-47-warrane-road-roseville-chase": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14n-8a-14-16-buckingham-road-killara": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-14o-pymble-golf-club": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-b-part-19-heritage": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    },
+    "ku_ring_gai/section-c-part-24-water": {
+      "check1_violations": 0,
+      "check2_violations": 0,
+      "check3_rows_disagree": 0,
+      "check1_status": "PASS",
+      "check2_status": "UNKNOWN",
+      "check3_status": "UNKNOWN"
+    }
+  }
+}
