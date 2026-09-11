@@ -74,6 +74,16 @@
  *   seppStandards / adgCriteria  SEPP (Housing) 2021 + Apartment Design Guide
  *   secondaryDwellingCouncils  councils in the Planning Portal open-data secondary-dwelling feed
  *   floodStudies               COUNCIL FLOOD STUDIES ingested (NOT an LGA count).
+ *   floodDepthStudies          Of those, the ones that can answer DEPTH: the studies whose
+ *                                FLOOD_STUDIES entry carries has_depth=True. THREE — tweed,
+ *                                wollongong, redbank. Hawkesbury's rasters are water LEVEL
+ *                                only (h, no pre-computed d), so it cannot answer a depth
+ *                                question. Five surfaces said "modelled flood depth ... 4
+ *                                studies" and one named Hawkesbury among them; the count was
+ *                                verified against len(FLOOD_STUDIES), which is the number of
+ *                                studies INGESTED, not the number that deliver depth — so the
+ *                                check passed on the wrong artifact. Use floodStudies for
+ *                                "studies ingested" and floodDepthStudies for any DEPTH claim.
  *                                services/flood_truth.py FLOOD_STUDIES holds exactly four:
  *                                hawkesbury, tweed, wollongong, redbank. This was published
  *                                as "71 LGAs of flood depth" until 2026-08-24 — 71 is the
@@ -106,6 +116,7 @@ export const COVERAGE = {
   adgCriteria: 23,
   secondaryDwellingCouncils: 102,
   floodStudies: 4,
+  floodDepthStudies: 3,
   totalNswCouncils: 128,
   lgasCovered: 128,
   riskLayers: 8,
@@ -129,6 +140,7 @@ export const COVERAGE_DISPLAY = {
   adgCriteria: '23',
   secondaryDwellingCouncils: '102',
   floodStudies: '4',
+  floodDepthStudies: '3',
   totalNswCouncils: '128',
   lgasCovered: '128',
   riskLayers: '8',

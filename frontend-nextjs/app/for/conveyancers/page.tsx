@@ -44,7 +44,7 @@ export default function ConveyancersPage() {
               icon: Droplets,
               iconColor: 'text-blue-600',
               title: 'Flood depth modelling',
-              description: `Not just "flood zone" — modelled depth at ARI return periods where a council flood study has been ingested (${COVERAGE_DISPLAY.floodStudies} studies: Hawkesbury, Tweed, Wollongong, Redbank). Elsewhere, the mapped flood planning area.`,
+              description: `Not just "flood zone" — modelled depth at ARI return periods for the ${COVERAGE_DISPLAY.floodDepthStudies} ingested council studies that carry depth (Tweed, Wollongong, Redbank). Hawkesbury is water level, not depth. Elsewhere, the mapped flood planning area.`,
             },
             {
               icon: Flame,

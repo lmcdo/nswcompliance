@@ -85,7 +85,7 @@ const DOMAINS: { domain: string; items: Capability[] }[] = [
         title: 'Flood depth',
         data: 'Modelled flood depth at different return periods — not just a flood-zone yes/no.',
         youCanDo: 'See how deep it floods before you commit.',
-        coverage: `${COVERAGE_DISPLAY.floodStudies} council flood studies`,
+        coverage: `${COVERAGE_DISPLAY.floodDepthStudies} council flood studies with depth`,
         source: 'Council flood studies + satellite',
         href: '/reports/flood',
         personas: ['owner', 'conveyancer', 'agent'],
