@@ -1,0 +1,56 @@
+{
+  "tier": "Minor",
+  "justification": "Documentation only — one markdown file, no code, no data, no query. docs/RAILWAY_MONITORS.md carried a table of 4 Railway services while 12 monitor names exist and 11 services run; it listed dcp-extract and dcp-commit as 'local/on-demand scripts' when both have been daily crons for months, and gave dcp-monitor a weekly schedule it has not had. Every correction here removes a false statement rather than adding a new claim, which per project-defect-repair-calibration-2026-08 is the direction that cannot create a new false claim. The stale table is replaced by the commands that produce the live answer, so the same drift cannot recur — a transcribed list is exactly how this file went wrong.",
+  "commit_hash": "PENDING",
+  "files": [
+    "docs/RAILWAY_MONITORS.md"
+  ],
+  "falsifiable_check": {
+    "command": "The three commands the document now tells the reader to run: grep -n '\": {$' scripts/run_monitors.py ; grep -H cronSchedule railway*.toml ; railway status --json piped through the one-liner in the doc.",
+    "expected": "The first lists the monitor names run_monitors.py accepts; the second the schedules declared in version control; the third what Railway actually runs. The document asserts no counts of its own, so there is nothing in it left to drift.",
+    "fails_when": "A reader following the document reaches a different service list or schedule from the three commands. The document can no longer be wrong about the list, because it no longer states one.",
+    "observed_red": "The pre-fix document WAS the red state and it was observed directly this session, not inferred: the live query returned 11 service instances against the document's 4, dcp-monitor running 0 2 1,15 * * against the document's 0 2 * * 1, and monitor-watchdog confirmed running (Wed 2026-09-09 10:01 UTC, exit 2, Telegram sent) while the document gave no way to check. The replacement commands were each run to confirm they return what the document says they return."
+  },
+  "pre_impl": "N/A — documentation only. No schema, no query, no data path. The facts written in were measured live this session via the Railway API and the repo's own files, not copied from another document.",
+  "functions": "N/A — no code changed.",
+  "values": "N/A — the change REMOVES transcribed values and replaces them with the commands that produce them. That is the point: rule 5 of ce-CURRENT-AIM, 'a number without its query is how this file was wrong for months. If you are about to write a count into any document, write the command instead.'",
+  "queries": "N/A — no database query added or changed.",
+  "break_it": [
+    {
+      "scenario": "A new monitor service is added and nobody updates this document.",
+      "what_happens": "Nothing goes stale, because the document names no services. The reader runs the grep and sees the new one.",
+      "repro": "Add an entry to the MONITORS dict in scripts/run_monitors.py and re-read the document.",
+      "mitigated": "Mitigated: the list was deleted rather than corrected.",
+      "how": "Correcting 4 to 12 would have bought months, not a fix. The failure mode was transcription itself."
+    },
+    {
+      "scenario": "A schedule is typed into the Railway dashboard and diverges from its railway.toml.",
+      "what_happens": "The document now says explicitly that a dashboard value wins over the file permanently, names scripts/check_railway_cron_drift.py as the check, and names the two services that check CANNOT see.",
+      "repro": "python scripts/check_railway_cron_drift.py (needs RAILWAY_TOKEN; skips loudly without one).",
+      "mitigated": "Partly. The drift checker covers the services whose toml declares a cron; monitor-satellite and monitor-watchdog share railway.monitors.toml, which declares none.",
+      "how": "Recorded as a named gap in the document rather than left for the next person to rediscover. That gap cost a real error earlier in this session: a toml was read from the wrong branch and production was changed on the strength of it."
+    },
+    {
+      "scenario": "Someone sets an env var on the wrong one of a dozen similarly-named services.",
+      "what_happens": "The document now leads the env-var section with the fact that Railway variables are per-service, and cites the 2026-09-07 incident where HC_PING_URL was set on a sibling and alerts reported it missing for three consecutive daily runs.",
+      "repro": "railway variables --service <name> --json",
+      "mitigated": "Mitigated by warning, not by mechanism.",
+      "how": "It also records that run_monitors.py prints 'Env missing: [...]' on every failure alert regardless of cause, which is what made an unrelated OOM read as if the missing variable caused it."
+    },
+    {
+      "scenario": "monitor-watchdog silently stops firing.",
+      "what_happens": "Nothing reports it, and the document now says so: no HC_PING_URL, so no dead-man's switch, and silence is indistinguishable from health.",
+      "repro": "Compare railway status --json nextCronRunAt against the deploy log of the deployment live at the last scheduled slot.",
+      "mitigated": "No",
+      "how": "Stated, not fixed. Wiring a healthcheck ping is a config change on a live service and is not in scope for a documentation PR."
+    }
+  ],
+  "mutation_analysis": "N/A at this tier, and it would be meaningless here: the change removes assertions rather than adding logic. The equivalent discipline was applied instead — every fact written in was obtained by running a command this session (Railway API for the live service list and schedules, the repo files for the declared ones, the deploy log for the watchdog run), and the stale claims were each confirmed false before deletion rather than assumed stale.",
+  "residual_risk": "1) The document still describes a Railway dashboard workflow for creating services, which is correct today but sits on config-as-code — and the Railway CLI now warns that railway.json/railway.toml are deprecated in favour of .railway/railway.ts, working only until 2026-12-01. The document records the deadline; it does not migrate anything. 2) monitor-satellite and monitor-watchdog remain unverifiable by check_railway_cron_drift.py because they share a toml that declares no cron. Named in the document, not fixed. 3) monitor-watchdog still has no HC_PING_URL. Named, not fixed. 4) The document's claim that 11 services run is a dated observation, not a live check — but it is written as an observation with the command beside it, not as a fact to be trusted.",
+  "post_merge": {
+    "db_reset": "None. No data, no schema, no query.",
+    "secrets": "None. The document names environment variables by name only, never values.",
+    "other_repo": "None.",
+    "manual_verify": "Run the three commands in the '⚠ DO NOT ASK THIS FILE' section and confirm each returns what the document says it returns. The third needs the Railway CLI logged in."
+  }
+}
