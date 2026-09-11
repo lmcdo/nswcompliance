@@ -46,23 +46,52 @@ def test_numeric_is_not_an_offered_phase():
     )
 
 
-def test_no_query_in_the_pipeline_references_a_column_that_does_not_exist():
-    """Comments may NAME the dead columns -- explaining why they are gone is the
-    point of those comments. What must not survive is a reference inside code.
+def test_the_module_docstring_does_not_advertise_the_deleted_command():
+    """Caught only because a late grep listed line 8 of this very file.
 
-    Scoped to non-comment lines, and to SQL-ish context, so the explanatory
-    comment above STANDARD_ENRICHMENT_PHASES does not fail its own explanation.
+    The module's own Usage block still read
+    `python enrichment/pipeline.py --phase numeric`, so the file documented a
+    command it no longer accepts. The choices-list test above does not see a
+    docstring, and the dead-column test skips comment lines by design -- between
+    them they left the most-read line in the file uncovered.
+    """
+    head = PIPELINE_SRC.split('"""')[1]
+    advertised = [
+        line.strip() for line in head.splitlines()
+        if line.strip().startswith("python ") and "--phase numeric" in line
+    ]
+    assert not advertised, (
+        "the module docstring offers a deleted command as something to run:\n  "
+        + "\n  ".join(advertised)
+    )
+
+
+#: A line only matters if it could reach the database. Prose may NAME the dead
+#: columns -- recording why they are gone is the entire point of those notes, and
+#: an earlier version of this test failed on its own explanation, twice.
+_SQL_CONTEXT = ("SELECT", "WHERE", "SET ", "COUNT(", "CASE WHEN", "INSERT", "UPDATE", "FROM ")
+
+
+def test_no_query_in_the_pipeline_references_a_column_that_does_not_exist():
+    """The failure mode is a QUERY naming a column that does not exist.
+
+    So this looks for the dead names in SQL context, not anywhere in the file.
+    Narrower than "the string never appears", and deliberately: a test that
+    forbids mentioning the problem forbids documenting it, and the documentation
+    is what stops the next person reintroducing it.
     """
     offenders = []
     for n, line in enumerate(PIPELINE_SRC.splitlines(), 1):
         stripped = line.strip()
         if stripped.startswith("#"):
             continue
+        if not any(tok in line.upper() for tok in (t.upper() for t in _SQL_CONTEXT)):
+            continue
         for col in DEAD_COLUMNS:
             if col in line:
                 offenders.append(f"{n}: {stripped[:90]}")
     assert not offenders, (
-        "these lines reference a column that exists on no table:\n  "
+        "these lines put a column that exists on no table into SQL:\n  "
         + "\n  ".join(offenders)
     )
 

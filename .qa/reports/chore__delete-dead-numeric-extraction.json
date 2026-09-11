@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Item 6 asked what populates v2_extracted_rules and whether run_numeric_extraction is fixable or should be deleted. Answered: enrichment/rule_extraction_pipeline.py populates it, and run_numeric_extraction should be deleted -- it filters on v2_enriched_at and writes v2_extracted_values, v2_enrichment_version and v2_enriched_at, and none of those three columns exists on any table (checked against information_schema). It targets a four-column schema replaced by the v2_extracted_rules + v2_extraction_status pair. Found while removing it: get_enrichment_status() counted the same dead column, so `python enrichment/pipeline.py --phase status` raised UndefinedColumn on every invocation -- and two warning messages added yesterday (#1084) tell operators to run exactly that command when enrichment fails, so the instruction given at the moment something goes wrong pointed at a command that crashed. Standard rather than Critical: no production data is written or changed by this PR, and the deleted code could not execute.",
-  "commit_hash": "c13b52cc",
+  "commit_hash": "32461769",
   "files": [
     "enrichment/pipeline.py",
     "tests/test_dead_numeric_phase_removed.py",
@@ -12,7 +12,7 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_dead_numeric_phase_removed.py -q, plus the real layer PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest -m database tests/test_pipeline_status_real_db.py -q -o addopts=, and the command itself: python enrichment/pipeline.py --phase status",
-    "expected": "5 removal tests pass, 2 real-database tests pass, and --phase status exits 0 printing the corpus figures. Full suite 5,293 passed, 2 skipped.",
+    "expected": "6 removal tests pass, 2 real-database tests pass, and --phase status exits 0 printing the corpus figures. Full suite 5,294 passed, 2 skipped.",
     "fails_when": "run_numeric_extraction is reintroduced, `--phase numeric` reappears as a command-line choice, any non-comment line in enrichment/pipeline.py references v2_enriched_at or v2_extracted_values or v2_enrichment_version, the status report stops returning a key the CLI prints, or the removed enriched/pending/enrichment_pct metrics come back.",
     "observed_red": "Yes, forced both directions against the live database. Before the fix, `python enrichment/pipeline.py --phase status` exited 1 with psycopg2.errors.UndefinedColumn: column \"v2_enriched_at\" does not exist -- captured, not inferred. After the fix it exits 0. Then the dead column was re-inserted into the status query and the new real-database test was re-run: it went red naming the same UndefinedColumn, and the file was restored byte-identical (asserted in the harness). Without that second step the test would only prove the query runs today, not that it would catch the defect returning."
   },
@@ -24,7 +24,7 @@
   "functions": [
     {
       "name": "get_enrichment_status",
-      "file_line": "enrichment/pipeline.py:1029",
+      "file_line": "enrichment/pipeline.py:1041",
       "input": "No arguments. Opens its own connection and runs one aggregate over regulatory_provisions.",
       "output": "A dict of corpus counts. Three keys were REMOVED -- enriched, pending and enrichment_pct -- because they were computed from a count of v2_enriched_at, a column that exists on no table, which made the entire report raise rather than return.",
       "if_none": "The removed metrics were deleted rather than repointed at a surviving column. Inventing a new definition of 'enriched' is choosing a value; deleting a metric that measured nothing only removes a claim, which is the safer of the two directions. The live coverage signals, site_condition_tagged and type_classified, were already in the same report and now read 44,898 of 44,898 after #1084."
@@ -49,7 +49,7 @@
   "queries": [
     {
       "purpose": "Counts corpus enrichment coverage for the status report that the commit and extract workers tell operators to run.",
-      "file_line": "enrichment/pipeline.py:1031 (get_enrichment_status)",
+      "file_line": "enrichment/pipeline.py:1043 (get_enrichment_status)",
       "where_clause": "No WHERE clause by design -- it is a whole-corpus census, and every metric carries its own `CASE WHEN v2_is_actionable = true` filter inside the aggregate.",
       "why": "The absent WHERE is deliberate and is why the DB-guard lint does not apply: this is a census over all rows, not a serving query. The defect was never a missing filter -- it was one CASE expression naming a column that does not exist, which made the whole statement raise."
     }
@@ -96,9 +96,16 @@
       "repro": "grep -rn 'pipeline.py --phase numeric' --include=*.md .",
       "mitigated": "Mitigated: docs updated in the same change that removed the command.",
       "how": "A fourth document, .claude/docs/LGA_EXTRACTION_RUNBOOK.md, already said 'Skip --phase numeric (v2_enriched_at column not in current DB schema)' -- the breakage was known and worked around rather than removed, which is why three other documents still pointed at it."
+    },
+    {
+      "scenario": "The module docstring keeps offering the deleted command as something to run.",
+      "what_happens": "A test fails naming the line, so the most-read part of the file cannot go on documenting a command the parser no longer accepts.",
+      "repro": "python -m pytest tests/test_dead_numeric_phase_removed.py::test_the_module_docstring_does_not_advertise_the_deleted_command -q",
+      "mitigated": "Mitigated: the docstring's Usage block is asserted, not just the argparse choices list.",
+      "how": "Missed on the first pass and caught by a stray grep listing line 8 of the file itself: the choices test cannot see a docstring and the dead-column test skips prose, so between them the Usage block was uncovered. Both loosened tests were then forced red to confirm they still bite."
     }
   ],
-  "mutation_analysis": "The change is a deletion, so the meaningful mutation is restoring what was deleted, and that was run against the live database rather than a mock: re-inserting the v2_enriched_at count into the status query turned tests/test_pipeline_status_real_db.py red with the original UndefinedColumn error, and the file was restored byte-identical afterwards (asserted in the harness). The five removal tests were additionally checked to be non-vacuous by confirming each names a specific symbol or line rather than asserting a count. Full suite green before and after: 5,293 passed, 2 skipped.",
+  "mutation_analysis": "The change is a deletion, so the meaningful mutation is restoring what was deleted, and that was run against the live database rather than a mock: re-inserting the v2_enriched_at count into the status query turned tests/test_pipeline_status_real_db.py red with the original UndefinedColumn error, and the file was restored byte-identical afterwards (asserted in the harness). The five removal tests were additionally checked to be non-vacuous by confirming each names a specific symbol or line rather than asserting a count. Full suite green before and after: 5,293 passed, 2 skipped. Two further mutants after the docstring fix, both KILLED: re-advertising `--phase numeric` in the module Usage block, and returning a dead column to the status query. Both tests had just been narrowed to look at runnable code rather than any mention of the names -- an earlier version failed on its own explanation -- so confirming they still fail was the point.",
   "residual_risk": "1) THE ONE THAT MATTERS MOST, found while doing this and deliberately NOT fixed: scripts/validate_schema_contract.py is the repo's gate for exactly this defect class -- 'every table and column referenced in code exists in the database', wired into CI as 'Schema contract (code vs live catalog)'. Its DEFAULT_ROOTS are only frontend-nextjs/app/api and services. It does not scan enrichment/ or scripts/, which is where most database-writing code lives, and is why v2_enriched_at survived there. Measured the cost of widening it rather than guessing: running it with --root enrichment --root scripts reports 54 INVALID references naming objects the database does not have. Widening the gate is therefore a 54-finding job of its own and belongs in its own PR; recorded in the plan ledger. 2) v2_extracted_rules is written by a pipeline invoked only from scripts/onboard_council.py -- not the commit path, not the extractor, not any cron -- and has not run since 2026-03-29. Whether it SHOULD run on a schedule is a product question this PR does not answer. 3) That pipeline selects all served rows without checking whether rules already exist, so a re-run overwrites rather than fills blanks. Not exercised here, but it means 'just re-run it' is not a safe instruction. 4) The three councils with rules are statewide, city_of_sydney and ku_ring_gai only; the deep-coverage DCP councils have none. This PR measures that and changes nothing about it.",
   "post_merge": {
     "db_reset": "None. This PR writes no data and changes no schema. The deleted code could not execute, so nothing that ran before stops running.",

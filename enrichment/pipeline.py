@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
 """
-Enrichment Pipeline - Phase 1: Numeric Extraction
+Enrichment Pipeline — the post-write phases that tag provisions.
 
-Runs numeric extraction on all provisions and updates v2_ columns.
+Six phases, run in one mandatory order by run_standard_enrichment() and invoked
+from scripts/dcp_commit_approved.py and scripts/dcp_extract_changed.py:
+actionability, layer + topic, applicability, site condition, provision type,
+applicability provenance. See STANDARD_ENRICHMENT_PHASES for why the order is
+load-bearing.
 
 Usage:
-    python enrichment/pipeline.py --phase numeric [--limit 100] [--dry-run]
+    python enrichment/pipeline.py --phase status
+    python enrichment/pipeline.py --phase type [--limit 100] [--dry-run]
+
+NOT HERE: numeric rule extraction. The `--phase numeric` this file used to offer
+was deleted 2026-09-11 — it wrote v2_extracted_values / v2_enrichment_version /
+v2_enriched_at, three columns that exist on no table. The live path writes
+v2_extracted_rules and is a separate pipeline:
+
+    python -m enrichment.rule_extraction_pipeline --phase deterministic --council <council>
 """
 
 import os
