@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Item 6 asked what populates v2_extracted_rules and whether run_numeric_extraction is fixable or should be deleted. Answered: enrichment/rule_extraction_pipeline.py populates it, and run_numeric_extraction should be deleted -- it filters on v2_enriched_at and writes v2_extracted_values, v2_enrichment_version and v2_enriched_at, and none of those three columns exists on any table (checked against information_schema). It targets a four-column schema replaced by the v2_extracted_rules + v2_extraction_status pair. Found while removing it: get_enrichment_status() counted the same dead column, so `python enrichment/pipeline.py --phase status` raised UndefinedColumn on every invocation -- and two warning messages added yesterday (#1084) tell operators to run exactly that command when enrichment fails, so the instruction given at the moment something goes wrong pointed at a command that crashed. Standard rather than Critical: no production data is written or changed by this PR, and the deleted code could not execute.",
-  "commit_hash": "32461769",
+  "commit_hash": "e395a9b5",
   "files": [
     "enrichment/pipeline.py",
     "tests/test_dead_numeric_phase_removed.py",
