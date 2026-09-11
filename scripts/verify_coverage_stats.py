@@ -86,6 +86,18 @@ QUERIES: dict[str, tuple[str, str]] = {
         "LGAs covered (statewide layer)",
         "SELECT COUNT(DISTINCT lga_name) FROM spatial_overlays WHERE layer_type = 'zone'",
     ),
+    "seppStandards": (
+        "SEPP Housing numeric standards",
+        # No filter, deliberately: /planning-standards renders this table with no
+        # WHERE clause either, so the page and the published figure must agree.
+        # They did not -- coverage.ts said 33 while the page rendered 45.
+        "SELECT COUNT(*) FROM housing_sepp_standards",
+    ),
+    "adgCriteria": (
+        "ADG design criteria",
+        "SELECT COUNT(*) FROM sepp_adg_requirements "
+        "WHERE requirement_type = 'design_criteria'",
+    ),
     "dcpSetbackTripleCouncils": (
         "Councils w/ front+side+rear setback",
         "WITH t AS (SELECT lga, "

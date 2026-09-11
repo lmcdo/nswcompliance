@@ -1,0 +1,114 @@
+{
+  "tier": "Standard",
+  "justification": "Six of the sixteen numbers published in frontend-nextjs/lib/coverage.ts had no check of any kind. The file classed them 'editorial/config-derived facts ... not auto-verifiable', which was true of the mechanism and false of the facts — each is a count of something concrete. That exemption is exactly what let lgasCovered:130 sit on the homepage claiming more councils than NSW contains. This wires five of the six and corrects one live wrong number: seppStandards was published as 33 while housing_sepp_standards holds 45 AND /planning-standards renders all 45 live from the same table with no filter, so two public pages stated two different values for one fact. The sixth, riskLayers, has no source anywhere in the repo and is left unverified and documented as such rather than given an invented query. Standard, not Critical: one constant corrected, two queries added, one test file; no production data is written and no logic changes.",
+  "commit_hash": "PENDING",
+  "files": [
+    "frontend-nextjs/lib/coverage.ts",
+    "scripts/verify_coverage_stats.py",
+    "tests/test_coverage_source_derived_stats.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/verify_coverage_stats.py (already wired into gates.yml, data-watch.yml and .githooks/pre-push), plus python -m pytest tests/test_coverage_source_derived_stats.py -q",
+    "expected": "The verifier now prints twelve rows including 'SEPP Housing numeric standards 45 45 OK' and 'ADG design criteria 23 23 OK', and exits 0. Five source-derived tests pass.",
+    "fails_when": "seppStandards or adgCriteria drifts from its table; govDataSources stops matching the DATA_SOURCES list the homepage renders; secondaryDwellingCouncils stops matching the generated stats file; dcpFullCouncils stops matching the configs that exist; the secondary-dwelling file loses its DATA_AS_OF stamp; or riskLayers is edited without being grounded.",
+    "observed_red": "Yes, six forcings, all KILLED, every file restored byte-identical afterwards. (1) seppStandards reverted to the stale 33 — the exact live wrong value this PR corrects — verifier exit 1. (2) adgCriteria nudged to 24 — exit 1. (3) govDataSources set to 9 — test fails naming the seven the homepage lists. (4) 'Copernicus EMS' deleted from the homepage array, leaving the number untouched — test fails, so the check catches drift from EITHER side. (5) secondaryDwellingCouncils set to 103 — fails. (6) the waverley entry removed from COUNCIL_CONFIGS — dcpFullCouncils test fails naming the configs that remain."
+  },
+  "pre_impl": {
+    "existing_data": "Measured live before any edit. housing_sepp_standards = 45 rows; sepp_adg_requirements = 23, all requirement_type='design_criteria'. coverage.ts published 33 and 23. The homepage DATA_SOURCES array holds 7 names; the generated secondary-dwelling file holds 102 distinct councils and carries DATA_AS_OF '2026-06-14'. enrichment/config COUNCIL_CONFIGS has SIX keys but FOUR distinct config objects — sydney_dcp and ku-ring-gai are aliases pointing at the same objects as their siblings — plus three Inner West configs imported separately, which is the 7.",
+    "assumption_mismatch": "Two. FIRST, dcpFullCouncils:7 was flagged earlier in the session as possibly contradicting the claim inventory's 'full DCP browsing = 3'. It does not: 7 counts councils with a structured DCP config, 3 counts the deep browsing tier with page images and precincts. Different rungs, both true. The flag was correctly raised as UNKNOWN rather than WRONG, and the measurement resolved it. SECOND, and the opposite direction: seppStandards was assumed to be a deliberate subset. It is not — /planning-standards queries the same table with no WHERE clause and renders every row, so the product itself already displays 45 while the marketing constant said 33.",
+    "new_vs_existing": "No new mechanism. Two stats join the existing QUERIES dict in the existing verifier that already runs three ways in CI. The three source-derived stats get a test file rather than a new script, because they are counts of arrays and dicts in this repo, not database facts.",
+    "external_source_error": "secondaryDwellingCouncils is the one figure whose upstream is outside this system — a separate, separately-credentialed Supabase project, last regenerated 2026-06-14. The check deliberately verifies only that the PUBLISHED number matches the data actually shipped, and a second test asserts the DATA_AS_OF stamp is still present so staleness stays visible. 'We publish what we ship' is checkable here; 'what we ship is current' is not, and the report does not claim it.",
+    "frontend_type": "coverage.ts exports two parallel objects, COVERAGE (numbers) and COVERAGE_DISPLAY (strings). Both were updated for seppStandards; a mismatch between them would render one value while verifying another. Confirmed both objects still hold identical key sets, 17 each.",
+    "user_failure_mode": "A reader comparing /open-data ('33 SEPP standards') with /planning-standards (which rendered 45) saw the site contradict itself about its own catalogue. Nothing flagged it because the number was exempted from checking. After this, the two agree and drift in either direction fails CI. The residual user-facing risk moves to riskLayers, a headline stat on three pages that no longer claims to be verified but is still published."
+  },
+  "functions": "N/A — no function added or changed. Two entries added to an existing QUERIES dict; the rest is a new test module and comment corrections.",
+  "values": [
+    {
+      "name": "seppStandards",
+      "value": "45 (was 33)",
+      "read_at": "frontend-nextjs/lib/coverage.ts, verified on every verifier run against SELECT COUNT(*) FROM housing_sepp_standards.",
+      "if_missing": "Absent from coverage.ts is reported as MISSING from the COVERAGE object and counted as drift, the verifier's existing behaviour for a declared-but-absent stat.",
+      "why": "Corrected rather than chosen: /planning-standards already renders every row of that table with no filter, so 45 is the number the product itself shows. Matching the constant to it removes a contradiction rather than introducing a new figure. The change also happens to be an increase, so it cannot be an overclaim."
+    },
+    {
+      "name": "adgCriteria",
+      "value": "23, unchanged",
+      "read_at": "Same file, now verified against sepp_adg_requirements WHERE requirement_type='design_criteria'.",
+      "if_missing": "Same MISSING-is-drift handling.",
+      "why": "Already correct; it simply had no check. The filter is explicit because the table also holds other requirement types, and counting all rows would silently pass today while breaking the moment a non-criteria row is added."
+    },
+    {
+      "name": "dcpFullCouncils",
+      "value": "7 = 4 distinct COUNCIL_CONFIGS objects + 3 Inner West configs",
+      "read_at": "enrichment/config/__init__.py, asserted by test.",
+      "if_missing": "The test fails naming which configs were found.",
+      "why": "Counting registry KEYS would publish 9 — two entries are aliases whose values are the same config object. The test counts distinct config objects, which is what 'councils with a structured config' means."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Counts the SEPP Housing numeric standards the site publishes as a catalogue figure.",
+      "file_line": "scripts/verify_coverage_stats.py, QUERIES['seppStandards']",
+      "where_clause": "None, deliberately.",
+      "why": "The absence of a filter is the point and is commented as such: /planning-standards fetches this table with no WHERE clause either, so any filter here would verify a different number from the one the product displays — which is precisely how 33 and 45 came to coexist."
+    },
+    {
+      "purpose": "Counts the Apartment Design Guide design criteria.",
+      "file_line": "scripts/verify_coverage_stats.py, QUERIES['adgCriteria']",
+      "where_clause": "WHERE requirement_type = 'design_criteria'",
+      "why": "The table holds more than design criteria. All 23 rows happen to be design_criteria today, so an unfiltered count would agree by accident and stop agreeing the moment another type is added — a check that passes for the wrong reason."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A SEPP Housing standard is added or removed from the database and the site is not updated.",
+      "what_happens": "The verifier reports DRIFT naming the published and live values, in CI and on pre-push.",
+      "repro": "python scripts/verify_coverage_stats.py after changing coverage.ts to 33",
+      "mitigated": "Mitigated: forced red on exactly the historical wrong value.",
+      "how": "That is the state this PR found in production: 33 published against 45 live."
+    },
+    {
+      "scenario": "A name is deleted from the homepage's DATA_SOURCES list and the stat is left alone.",
+      "what_happens": "The test fails, because it compares the number against the array rather than trusting either.",
+      "repro": "Delete 'Copernicus EMS' from frontend-nextjs/app/page.tsx, then python -m pytest tests/test_coverage_source_derived_stats.py -q",
+      "mitigated": "Mitigated: drift is caught from EITHER side, not only when the number is edited.",
+      "how": "Forced exactly that way; the file was restored byte-identical."
+    },
+    {
+      "scenario": "A council config is removed from COUNCIL_CONFIGS, so fewer councils have structured provisions.",
+      "what_happens": "The dcpFullCouncils test fails naming the configs that remain.",
+      "repro": "Remove the waverley entry from enrichment/config/__init__.py and run the test file.",
+      "mitigated": "Mitigated.",
+      "how": "This is not hypothetical erosion: waverley currently serves 153 rows of a 2,965-row history, 111 of its 264 current rows being garbled heading stubs, and it is counted among the 7. The config existing is now checked; whether the council still serves good content is a different question this check does not answer."
+    },
+    {
+      "scenario": "An alias is added to COUNCIL_CONFIGS for a council that already has a config.",
+      "what_happens": "Nothing breaks — the test counts distinct config objects, not keys, so an alias does not inflate the figure.",
+      "repro": "Add a second key pointing at WAVERLEY_CONFIG and run the test.",
+      "mitigated": "Mitigated by construction.",
+      "how": "Counting keys would have published 9 against a real 7; two of the six existing keys are already aliases."
+    },
+    {
+      "scenario": "The secondary-dwelling stats file is regenerated with a different set of councils.",
+      "what_happens": "The test fails unless the published number moves with it.",
+      "repro": "python -m pytest tests/test_coverage_source_derived_stats.py::test_secondary_dwelling_councils_matches_the_generated_file -q",
+      "mitigated": "Partly. It verifies the published number against the shipped file, NOT the file against the Planning Portal.",
+      "how": "The upstream is a separate credentialed project. A second test asserts the DATA_AS_OF stamp is present so the snapshot cannot silently read as current."
+    },
+    {
+      "scenario": "Someone 'fixes' riskLayers by editing 8 to another number that looks right.",
+      "what_happens": "The test fails and says not to do that — an unverifiable number should be grounded against a real list or removed, not adjusted.",
+      "repro": "Change riskLayers in coverage.ts and run the test file.",
+      "mitigated": "No — the number is still published and still unverified.",
+      "how": "Deliberate. Asserting a value I could not source would manufacture exactly the appearance of measurement this whole exercise exists to remove. The test pins the open decision instead of hiding it."
+    }
+  ],
+  "mutation_analysis": "Six reversions against a baseline confirmed green first (full suite 5,450 passed, 2 skipped), every one KILLED, every file restored byte-identical and asserted so by the harness: seppStandards reverted to the historical 33; adgCriteria nudged to 24; govDataSources set to 9; a source name deleted from the homepage array with the number untouched (proving the check catches drift from either side); secondaryDwellingCouncils set to 103; a council config removed from the registry. Two of the six mutate a file OTHER than the one holding the number, which is the case a naive self-consistent check would miss.",
+  "residual_risk": "1) riskLayers: 8 remains published on the homepage and two audience pages with no source. Searched: CLIMATE_HAZARDS (4), the /climate-risk hazards section (5), the open-data catalogue (7), the capability tiles, and every table whose name contains 'risk' — none is 8, and no such table exists. Deciding what a 'risk layer' is, is a product call, not a measurement, so it is documented and left. 2) dcpFullCouncils now verifies that seven CONFIGS exist. It does not verify those councils still serve usable provisions — waverley is counted while serving 153 rows of a 2,965-row history. Config existence and content health are different claims and only the first is checked. 3) secondaryDwellingCouncils is verified against a shipped snapshot, not against the Planning Portal; the snapshot is dated 2026-06-14 and nothing enforces an acceptable age. 4) This PR verifies numbers that flow from coverage.ts. A claim hardcoded as a literal string on an unaudited page is still invisible to all of it — the standing gap that let '130+' survive on the homepage.",
+  "post_merge": {
+    "db_reset": "None. No data written, no schema change. The only database contact is the existing read-only verifier.",
+    "secrets": "None added or changed.",
+    "other_repo": "None — but note secondaryDwellingCouncils originates in a separate ETL project; regenerating it there is what would move this number.",
+    "manual_verify": "After deploy, open /open-data and /planning-standards together and confirm both now say 45 SEPP standards. Then run python scripts/verify_coverage_stats.py and confirm twelve rows, all OK."
+  }
+}
