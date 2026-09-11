@@ -112,13 +112,22 @@ def _wire(monkeypatch, councils, *, fail_on=(), derive_raises=False):
 
     monkeypatch.setattr(dca, "commit_reviewed_from_queue", _commit)
 
-    # The three enrichment phases main() imports from enrichment.pipeline.
+    # The enrichment sequence main() imports from enrichment.pipeline. It used to
+    # import the three phases individually; they now live in one ordered list
+    # inside the pipeline module, shared with dcp_extract_changed.py, because the
+    # duplicated copy is how three further phases came to be called by neither
+    # file. The fake records the same events so the ORDER assertions below --
+    # layer tagging before precinct derivation (#1080) -- still mean what they did.
     fake_pipeline = type(sys)("enrichment.pipeline")
-    fake_pipeline.run_actionability_classification = (
-        lambda **kw: events.append("actionability"))
-    fake_pipeline.run_layer_tagging = lambda **kw: events.append("layer")
-    fake_pipeline.run_applicability_tagging = (
-        lambda **kw: events.append("applicability"))
+
+    def _standard(**kw):
+        events.extend(["actionability", "layer", "applicability",
+                       "site_condition", "provision_type", "provenance"])
+        return {"actionability": {}, "layer + topic": {}, "applicability": {},
+                "site condition": {}, "provision type": {},
+                "applicability provenance": {}}
+
+    fake_pipeline.run_standard_enrichment = _standard
     monkeypatch.setitem(sys.modules, "enrichment.pipeline", fake_pipeline)
 
     def _derive(council, apply, validate):

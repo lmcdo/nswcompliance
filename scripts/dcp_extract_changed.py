@@ -45,11 +45,7 @@ from dotenv import load_dotenv
 # Enrichment pipeline — imported here so extraction + enrichment run as one command.
 # sys.path is extended so this script can be run from any working directory.
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from enrichment.pipeline import (
-    run_actionability_classification,
-    run_layer_tagging,
-    run_applicability_tagging,
-)
+from enrichment.pipeline import run_standard_enrichment
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -4453,21 +4449,19 @@ def main() -> None:
     # ── Enrichment pipeline ──────────────────────────────────────────────────
     # Run automatically after any successful extraction so new provisions are
     # fully enriched without needing a separate manual command.
-    # Phase order is mandatory: actionability must run before layer/applicability
-    # because those phases filter WHERE v2_is_actionable = TRUE.
+    # The phase list and its mandatory order live in enrichment.pipeline, shared
+    # with scripts/dcp_commit_approved.py. They were previously duplicated here,
+    # and three phases that exist and work were wired into neither copy.
     if passed:
         print(f"\n{'='*60}")
         print("ENRICHMENT PIPELINE")
         print(f"{'='*60}")
 
-        print("\n[1/3] Actionability classification...")
-        run_actionability_classification(batch_size=500)
-
-        print("\n[2/3] Layer + topic tagging...")
-        run_layer_tagging(batch_size=500)
-
-        print("\n[3/3] Applicability tagging...")
-        run_applicability_tagging(batch_size=500)
+        results = run_standard_enrichment(batch_size=500)
+        broken = [k for k, v in results.items() if isinstance(v, dict) and v.get("error")]
+        if broken:
+            print(f"\n  [warn] {len(broken)} enrichment phase(s) failed: {', '.join(broken)}. "
+                  f"The rest still ran; provisions are extracted but partially tagged.")
     else:
         print("\n  Skipping enrichment — quality gate did not pass.")
 

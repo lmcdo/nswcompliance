@@ -1,0 +1,146 @@
+{
+  "tier": "Critical",
+  "justification": "Seven enrichment phases exist. Four were called by nothing -- not the extractor, not the commit worker, not any script outside enrichment/. Three of those four work and are deterministic, and the cost of their absence was measured on 2026-09-11 before any change: v2_provision_type NULL on 3,216 served rows, v2_site_condition_required on another 3,216, v2_dev_type_source on 1,142. Marrickville carried 2,326 of the provision_type gap -- 97% of that council's served provisions had no type at all, so nothing downstream could tell a binding control from an objective or a note. The cause is structural rather than an oversight: the phase list was three lines COPIED into scripts/dcp_commit_approved.py and scripts/dcp_extract_changed.py, so there was no single list anyone could read and find short. This change makes the sequence one ordered fact both callers use, appends the three working phases to it, and clears the backlog. Critical because it writes to production, it runs inside the path that commits live provisions, and its previous failure mode was silence.",
+  "commit_hash": "PENDING",
+  "files": [
+    "enrichment/pipeline.py",
+    "scripts/dcp_commit_approved.py",
+    "scripts/dcp_extract_changed.py",
+    "tests/test_standard_enrichment_sequence.py",
+    "tests/test_dcp_commit_rederives_precinct_keys.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_standard_enrichment_sequence.py tests/test_dcp_commit_rederives_precinct_keys.py -q, then the full suite python -m pytest -q",
+    "expected": "13 sequence tests and 13 precinct-ordering tests pass; full suite 5,277 passed, 2 skipped.",
+    "fails_when": "any of the six phases is dropped from STANDARD_ENRICHMENT_PHASES or names a function that does not exist, actionability stops running first, layer tagging moves after the appended phases, the dead run_numeric_extraction is added, a raising phase aborts the sequence instead of being isolated, a missing phase is skipped without being recorded, or either call site stops inspecting the per-phase results and so reports a partial enrichment as complete.",
+    "observed_red": "Yes, three ways. Eight reversions were applied one at a time and every one turned the tests red -- see mutation_analysis. Error isolation was additionally forced live before wiring: a deliberately raising phase and a phase naming a function that does not exist were both run through run_standard_enrichment against the real module, and both were recorded as errors while the following phase still executed. And the backlog run itself is the observable check: the three columns were counted before and after, so the claim that the phases now run is a measured delta rather than an inference from the code."
+  },
+  "pre_impl": {
+    "existing_data": "Measured live and read-only before any edit. Served set (is_current AND v2_is_actionable AND provision_text non-empty) = 18,312 rows; the phases themselves filter on v2_is_actionable WITHOUT is_current, so their real work volume is 44,898. Backlog: v2_site_condition_required NULL 3,216 served / 3,372 actionable; v2_provision_type NULL 3,216 / 3,372; v2_dev_type_source NULL 1,142 / 1,390. Per-council provision_type gap: marrickville 2,326, ashfield 615, canterbury_bankstown 187, ku_ring_gai 87, woollahra 1 -- which cross-checks exactly against the per-council baseline recorded by the item-2 completeness check the day before.",
+    "assumption_mismatch": "The plan assumed all three phases would clear their backlog. Two did. run_applicability_provenance did NOT and correctly wrote nothing: it recomputes tags from today's config and writes a source only where the recomputation MATCHES what is stored, refusing otherwise, because overwriting a live applicability decision on a changed config is choosing a value rather than removing a false claim. Run against all 1,390 rows it matched 0 and refused 1,390. A 100% refusal rate says today's config no longer reproduces any of those stored tags -- a real finding about the config, recorded in the plan ledger, not something this change papers over. Also checked and found: of those 1,390 rows, ZERO have v2_applicable_zones NULL, which is exactly why the sibling run_applicability_tagging cannot reach them and reports 'Processed: 0'.",
+    "new_vs_existing": "No new capability and no new phase written. All three functions already existed in enrichment/pipeline.py with matching signatures; they were called by nothing. Confirmed by grep across scripts/, services/, src/, enrichment/ and the Railway configs. The only new code is the ordered list and the runner that walks it, which replaces two duplicated copies of that order.",
+    "external_source_error": "No external service is involved -- all three phases are deterministic local classifiers over provision_text, no LLM and no network, which is why the whole backlog cost 185 seconds. The failure mode that matters is a phase raising mid-sequence, and that is isolated: each is wrapped, its error recorded against its name, and the remaining phases still run. A phase whose function has been renamed away is recorded as an error rather than skipped, because silently skipping is the exact condition this change exists to end.",
+    "frontend_type": "No frontend file is touched, but the frontend is the consumer that made this worth doing: the UI filters and groups by the v2_ tags, so a provision with v2_provision_type NULL cannot be shown as a control. The types crossing the boundary are unchanged -- these columns are TEXT and the phases write the same vocabulary they always did (control/objective/definition/note/procedural; heritage/flood/bushfire/general). Nothing that was previously non-null changed type or value.",
+    "user_failure_mode": "Before: a user looking at marrickville saw provisions with no type, so a binding numeric control and a background objective were indistinguishable -- and nothing anywhere reported a problem, because an unset column is not an error. After: the risk inverts to a wrong tag rather than no tag, which is why the phases are fill-blanks-only and why the sample was checked before the full run (200 rows: 175 control, 21 objective, 4 definition, 0 errors; full run 3,154 control, 170 objective, 32 definition, 12 note, 4 procedural, 0 errors). The other direction, a phase failing silently and leaving a council half-tagged, is handled by reporting per-phase failures at both call sites instead of printing 'enrichment complete' over them."
+  },
+  "functions": [
+    {
+      "name": "run_standard_enrichment",
+      "file_line": "enrichment/pipeline.py:1259",
+      "input": "batch_size, and an optional phases override used only by tests so the sequence can be exercised without touching a database.",
+      "output": "A dict mapping each phase label to that phase's own stats dict, or to {'error': ...} when it failed. The caller decides what to do with a failure; this function runs everything it can and hides nothing.",
+      "if_none": "A phase named in the list whose function does not exist in the module is recorded as an error and the sequence continues -- never skipped quietly, because a renamed phase going missing without a sound is precisely the defect being repaired. A phase that raises is caught, recorded against its name, and the phases after it still run, because the caller has already committed provisions to the live table."
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/dcp_commit_approved.py:211",
+      "input": "Unchanged command-line arguments; internally it now calls the shared sequence instead of naming three phases itself.",
+      "output": "Commit behaviour unchanged. The enrichment block now runs all six phases and inspects the returned per-phase results, printing which phases failed rather than a blanket 'enrichment complete'.",
+      "if_none": "Still wrapped, so an enrichment failure can never roll back provisions that are already live; it degrades to a warning naming the command to re-run. A partially failed enrichment is reported as partial, because run_standard_enrichment isolating failures would otherwise become a new way to be silent."
+    },
+    {
+      "name": "run_applicability_provenance",
+      "file_line": "enrichment/pipeline.py:907",
+      "input": "batch_size, and optional limit and dry_run. Selects rows carrying applicability tags but no recorded source.",
+      "output": "Writes v2_zone_source and v2_dev_type_source ONLY where recomputing from today's config reproduces the stored tags. On the full 1,390-row backlog it matched 0 and refused 1,390, so it wrote nothing at all.",
+      "if_none": "A mismatch is refused by design: the row keeps its NULL source and is counted and sampled. Refusing is the correct behaviour -- writing a source that describes a value we did not store would be a false provenance claim, which is worse than an absent one."
+    }
+  ],
+  "values": [
+    {
+      "name": "batch_size",
+      "value": "500 at both call sites",
+      "read_at": "Passed by scripts/dcp_commit_approved.py and scripts/dcp_extract_changed.py into run_standard_enrichment, which forwards it to every phase.",
+      "if_missing": "Not optional -- it is a literal at the call site with a default of 500 on the function, so there is no lookup that can come back empty.",
+      "why": "Unchanged from what the three existing phases already used. Keeping it identical means this change cannot be blamed for a timing or memory difference in the commit job."
+    },
+    {
+      "name": "measured backlog cleared",
+      "value": "v2_site_condition_required 3,372 -> 0 and v2_provision_type 3,372 -> 0 (actionable set, both 0 errors); v2_dev_type_source 1,390 -> 1,390, unchanged by design",
+      "read_at": "Counted against production immediately before and immediately after the run, 2026-09-11.",
+      "if_missing": "Not applicable -- these are measurements, not configuration. Both counts were taken with the same query so the delta is comparable.",
+      "why": "Recorded because the plan predicted all three would clear and one did not. Stating the number that did not move is the point: run_applicability_provenance refused every row, which is a finding about the applicability config rather than a failure of the wiring."
+    },
+    {
+      "name": "run duration",
+      "value": "94.6s site condition, 84.6s provision type, 6.2s provenance -- 185s total for the whole backlog",
+      "read_at": "Timed during the production backfill run.",
+      "if_missing": "Not applicable -- a measurement.",
+      "why": "Confirms these phases are cheap enough to run on every commit rather than on a separate schedule, which is what makes wiring them into the commit path reasonable at all."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Counts provisions that still have no value in each enriched column, which is the backlog each phase works through.",
+      "file_line": "enrichment/pipeline.py:433, :550, :907 (each phase's own count_sql)",
+      "where_clause": "WHERE <the phase's own column> IS NULL AND provision_text IS NOT NULL AND provision_text != '' AND v2_is_actionable = true",
+      "why": "The IS NULL on the phase's own column is what makes every phase fill-blanks-only: it can add a value where there was none and can never overwrite one a human or an earlier run established. Note the filter deliberately omits is_current, so superseded rows are enriched too -- that is pre-existing behaviour, verified rather than changed here, and it is why the real work volume is 3,372 rather than the 3,216 served."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A future change renames one of the six phase functions but leaves its name in the ordered list.",
+      "what_happens": "The runner records an explicit error against that phase and the remaining phases still run, and a test fails in CI naming the function that no longer resolves.",
+      "repro": "python -m pytest tests/test_standard_enrichment_sequence.py::test_all_six_phases_are_named_and_every_one_resolves -q",
+      "mitigated": "Mitigated: the list is asserted against the module, so a rename cannot quietly shorten it.",
+      "how": "This is the defect class being repaired -- a phase stopping being called while nothing fails."
+    },
+    {
+      "scenario": "Someone reorders the list so actionability classification no longer runs first.",
+      "what_happens": "Caught in CI. At runtime it would be worse than an error: every later phase filters on v2_is_actionable, so they would process nothing and report success -- a silent no-op indistinguishable from a clean run.",
+      "repro": "python -m pytest tests/test_standard_enrichment_sequence.py::test_actionability_runs_first -q",
+      "mitigated": "Mitigated: the order is asserted by position, and a reordering mutant was confirmed to turn the tests red.",
+      "how": "Killed as a mutant rather than assumed."
+    },
+    {
+      "scenario": "Layer tagging is moved to the end of the sequence, after the three appended phases.",
+      "what_happens": "Caught in CI. It would otherwise overwrite v2_dcp_layer='precinct' that the call site's precinct derivation sets immediately afterwards, re-breaking #1080.",
+      "repro": "python -m pytest tests/test_standard_enrichment_sequence.py::test_layer_tagging_precedes_applicability_and_the_appended_phases tests/test_dcp_commit_rederives_precinct_keys.py -q",
+      "mitigated": "Mitigated: verified that none of the three appended phases writes v2_dcp_layer, so appending was safe and reordering is not.",
+      "how": "Each phase's UPDATE statement was read directly: site condition writes only v2_site_condition_required, type only v2_provision_type, provenance only the two source columns."
+    },
+    {
+      "scenario": "One phase raises part-way through a commit run that has already written provisions to the live table.",
+      "what_happens": "That phase is recorded as failed, the phases after it still run, and the caller prints which phases failed instead of 'enrichment complete'.",
+      "repro": "python -m pytest tests/test_standard_enrichment_sequence.py::test_one_phase_raising_does_not_stop_the_rest -q",
+      "mitigated": "Mitigated: each phase is individually wrapped and both call sites inspect the returned errors.",
+      "how": "Forced live against the real module before wiring, not only in a test."
+    },
+    {
+      "scenario": "run_numeric_extraction is added to the sequence by someone who assumes it works because it looks complete.",
+      "what_happens": "A test fails immediately. At runtime it would raise on its first query: it filters on v2_enriched_at, a column that exists on no table in this database.",
+      "repro": "python -m pytest tests/test_standard_enrichment_sequence.py::test_numeric_extraction_is_not_wired -q",
+      "mitigated": "Mitigated: its absence is pinned by a test that explains why, so adding it has to be a deliberate act.",
+      "how": "Confirmed empirically: information_schema returned no row for column_name = 'v2_enriched_at' anywhere in the database."
+    },
+    {
+      "scenario": "The applicability config drifts further, so provenance refuses even more rows than it does today.",
+      "what_happens": "Nothing is written and nothing is corrupted -- refusal is the designed outcome. It already refuses 100% of the 1,390-row backlog, so the floor is already reached.",
+      "repro": "python enrichment/pipeline.py --phase applicability_provenance --dry-run --limit 50",
+      "mitigated": "Mitigated: the phase never overwrites a stored tag; it only answers whether today's config reproduces one.",
+      "how": "A false provenance claim is worse than an absent one, so refusing is correct. The 100% refusal rate is recorded as a finding about the config in the plan ledger rather than treated as this change's problem."
+    },
+    {
+      "scenario": "A caller ignores the returned per-phase results and prints success regardless.",
+      "what_happens": "A test fails. Without it, isolating phase failures would have created a new way to be silent: a half-tagged council reported as fully enriched.",
+      "repro": "python -m pytest \"tests/test_standard_enrichment_sequence.py::test_both_call_sites_report_a_partially_failed_enrichment\" -q",
+      "mitigated": "Mitigated: both call sites are asserted to inspect the per-phase error keys.",
+      "how": "Mutants that blanked the error list at each call site were both killed."
+    },
+    {
+      "scenario": "The phase list is duplicated back into a call site during a future edit.",
+      "what_happens": "A test fails naming the file that calls a phase directly again, because the duplication is the root cause rather than a style preference.",
+      "repro": "python -m pytest \"tests/test_standard_enrichment_sequence.py::test_both_call_sites_use_the_shared_sequence\" -q",
+      "mitigated": "Mitigated: both call sites are asserted not to name the individual phase functions.",
+      "how": "Two copies of an order that matters is two things to keep in step, and the measurable result was three phases wired into neither copy."
+    }
+  ],
+  "mutation_analysis": "Eight reversions, applied one at a time against a baseline confirmed GREEN first (full suite 5,277 passed, 2 skipped, 89.8s) -- a score against a red baseline is void and was treated as such. 8 of 8 killed: one of the three newly wired phases dropped from the list; actionability no longer first; layer tagging moved after the appended phases; the dead run_numeric_extraction wired in; a raising phase aborting the sequence instead of being isolated; a missing phase skipped silently instead of recorded; the commit call site blanking its per-phase error list; the extractor call site blanking its per-phase error list. The harness restores every mutated file in a finally and re-runs afterwards to confirm the baseline is green again.",
+  "residual_risk": "1) THE ONE THAT MATTERS MOST: run_applicability_provenance refuses 100% of its 1,390-row backlog. That is correct behaviour, but it means the v2_dev_type_source gap is NOT closed by this change and will not close on its own -- and the reason is that today's applicability config no longer reproduces any of those stored tags. Whether the stored tags or the config are the wrong side is unknown and was deliberately not investigated here. Recorded in the plan ledger. 2) The 3,372 rows newly given a provision type were classified by a deterministic classifier whose output was sampled, not individually reviewed; a wrong type is now possible where previously there was no type. The sample was clean (0 errors over 3,372 rows, distribution 3,154 control / 170 objective / 32 definition / 12 note / 4 procedural) and every value is reversible from the rollback record. 3) The enrichment phases filter on v2_is_actionable without is_current, so superseded rows were enriched as well. That is pre-existing behaviour and was verified rather than changed, but it means 156 rows outside the served set were written. 4) Gains are invisible to the item-2 completeness check by design, so this change could not have been verified by waiting for an alert -- it was verified by counting before and after. Anyone repeating this work must do the same. 5) The extraction path still does not re-derive precinct keys after writing provisions; only the commit path does. Found while reading the call sites, recorded in the plan ledger, not fixed here.",
+  "post_merge": {
+    "db_reset": "None required, and the backfill is already done. 3,372 rows gained v2_site_condition_required and 3,372 gained v2_provision_type; 0 rows changed v2_dev_type_source or v2_zone_source because provenance refused them all. Every write was fill-blanks-only, so no pre-existing value was replaced. Rollback record at data/db_rollback_backups/enrichment_phases_wired_2026-09-11.csv -- 9,524 rows listing exactly which ids were NULL in which column beforehand, so the undo is bounded to rows this run could have touched. The item-2 baseline was re-recorded afterwards so a future drop is measured against the improved state.",
+    "secrets": "None added. The phases use DATABASE_URL, already set on both the dcp-commit and dcp-extract Railway services.",
+    "other_repo": "None.",
+    "manual_verify": "After the next dcp-commit or dcp-extract run, confirm the log shows the six phase headings under ENRICHMENT PIPELINE and no '[warn] ... enrichment phase(s) failed' line. Then confirm the backlog has not reopened: SELECT COUNT(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable AND v2_provision_type IS NULL -- it was 0 immediately after this change, and a non-zero number means newly committed rows are arriving untagged again."
+  }
+}
