@@ -1,7 +1,7 @@
 {
   "tier": "Critical",
   "justification": "Seven enrichment phases exist. Four were called by nothing -- not the extractor, not the commit worker, not any script outside enrichment/. Three of those four work and are deterministic, and the cost of their absence was measured on 2026-09-11 before any change: v2_provision_type NULL on 3,216 served rows, v2_site_condition_required on another 3,216, v2_dev_type_source on 1,142. Marrickville carried 2,326 of the provision_type gap -- 97% of that council's served provisions had no type at all, so nothing downstream could tell a binding control from an objective or a note. The cause is structural rather than an oversight: the phase list was three lines COPIED into scripts/dcp_commit_approved.py and scripts/dcp_extract_changed.py, so there was no single list anyone could read and find short. This change makes the sequence one ordered fact both callers use, appends the three working phases to it, and clears the backlog. Critical because it writes to production, it runs inside the path that commits live provisions, and its previous failure mode was silence.",
-  "commit_hash": "4152f9b8",
+  "commit_hash": "9df1aed5",
   "files": [
     "enrichment/pipeline.py",
     "scripts/dcp_commit_approved.py",
