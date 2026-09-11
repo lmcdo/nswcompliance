@@ -1,0 +1,94 @@
+{
+  "tier": "Standard",
+  "justification": "Every coverage check built to date reads frontend-nextjs/lib/coverage.ts. A number typed as a literal on a page is invisible to all of them — the standing gap that let lgasCovered:130 sit on the homepage claiming more councils than NSW contains, and the reason the August audit only ever examined seven /for/ pages. This sweeps all 150 .tsx pages, fixes the two live overstatements it found, and adds a guard so the class cannot return. Standard, not Critical: copy and one test file; no data written, no logic changed, and both corrections narrow a claim rather than widening one.",
+  "commit_hash": "PENDING",
+  "files": [
+    "frontend-nextjs/app/for/students/page.tsx",
+    "frontend-nextjs/app/dcp-browse/layout.tsx",
+    "frontend-nextjs/app/blog/granny-flat/page.tsx",
+    "tests/test_no_hardcoded_council_counts.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_no_hardcoded_council_counts.py -q",
+    "expected": "150 tests: 146 pages clean, 4 allowlisted with a recorded reason.",
+    "fails_when": "any .tsx states a council or LGA count as a literal without reading COVERAGE_DISPLAY and without an allowlist entry; an allowlisted file no longer contains a count; or dcpNumericCouncils is set to the LABEL count 28 instead of the AREA count 26.",
+    "observed_red": "Yes, four forcings, all KILLED, every file restored. (1) The original '28 councils have numeric controls' restored on /for/students — fails naming the file and line. (2) The original '102 NSW councils' restored on the granny-flat blog — fails. (3) dcpNumericCouncils set to 28 — the dedicated test fails saying it now counts Inner West three times and claims two councils that do not exist. (4) An allowlist entry added for a file containing no count — the two-way ratchet fails, so the exception list cannot rot into standing amnesty."
+  },
+  "pre_impl": {
+    "existing_data": "Measured live 2026-09-11 against dcp_setback_controls joined to lga_registry: 28 active LGA rows carry current, not-needs-review controls; 26 council AREAS once Inner West's three former-council labels collapse to their parent. Both figures are real. coverage.ts publishes the area count, 26.",
+    "assumption_mismatch": "The first sweep returned 635 'claims' and was worthless — the pattern was matching Tailwind classes (text-teal-600, bg-gray-400) and prices. Tightened to numbers ADJACENT to a coverage noun, which returned 34, of which most were legitimate: setback examples in blog diagrams, report prices, UI labels. A second false-positive class survived that: four-digit years, because 'the 2019 council flood study' and 'the 2016 NSW council mergers' both read as <number> <council>. Excluding years left the genuine finds. A loose sweep that reports everything is the same as no sweep, because nobody reads 635 lines.",
+    "new_vs_existing": "No new mechanism for the numbers themselves — both fixes point existing copy at the coverage constant every other surface already uses. The guard is new because nothing scanned page text; verify_coverage_stats.py checks the constants, and nothing checked the pages.",
+    "frontend_type": "Three files changed. /for/students gains the coverage import and interpolates in JSX. dcp-browse/layout.tsx exports a static Metadata object, so its two description strings became template literals to interpolate. blog/granny-flat has the same shape: a metadata string and a component prop, both converted. Delimiters were the risk and were checked — prettier parses all three, so the JSX and the template literals are syntactically valid.",
+    "user_failure_mode": "A reader comparing /for/students ('28 councils have numeric controls') with every other surface ('26') saw the site disagree with itself, and the higher number was the wrong one — 28 counts Inner West's three labels as three councils. Same defect as the '25 LGAs' corrected to 24 in August. After this, both read the same constant and a re-introduction fails CI."
+  },
+  "functions": "N/A — no application code changed. Three copy edits and a new test module.",
+  "values": [
+    {
+      "name": "dcpNumericCouncils",
+      "value": "26 council areas (NOT the 28 label count)",
+      "read_at": "frontend-nextjs/lib/coverage.ts, already verified against the database by verify_coverage_stats.py on every CI run.",
+      "if_missing": "The verifier reports it MISSING from the COVERAGE object and counts it as drift.",
+      "why": "28 and 26 are both real and not interchangeable. 28 = active LGA rows with controls; 26 = council areas once Inner West's three former-council labels collapse to their parent. A sentence saying 'N councils' is a claim about councils, so it must use the area count. A new test pins 26 specifically, because setting it to 28 would make every surface wrong at once while every check still passed."
+    },
+    {
+      "name": "secondaryDwellingCouncils",
+      "value": "102, now read from the constant on the granny-flat blog page",
+      "read_at": "Same file; verified against the generated stats file by tests/test_coverage_source_derived_stats.py (#1088).",
+      "if_missing": "That test fails.",
+      "why": "The blog page hard-coded 102 twice — in its metadata description and in a component prop. Correct today, invisible to every check, and would have gone stale silently the next time the ETL regenerates."
+    }
+  ],
+  "queries": "N/A — no query added or changed. The 28-versus-26 distinction was measured once, live, to decide which figure the copy should use; both queries are already in verify_coverage_stats.py.",
+  "break_it": [
+    {
+      "scenario": "Someone writes a fresh page stating a council count as a literal string.",
+      "what_happens": "The parametrised guard fails for that file, naming the line and telling them to use COVERAGE_DISPLAY or add an allowlist entry with a reason.",
+      "repro": "Add '30 councils covered' to any .tsx under frontend-nextjs/app and run the test file.",
+      "mitigated": "Mitigated: one test per page, so a new page is covered the moment it exists.",
+      "how": "This is the class that let '130+' survive on the homepage: coverage.ts was checked, the pages were not."
+    },
+    {
+      "scenario": "A page legitimately states '128 councils in NSW' as a fact about the state.",
+      "what_happens": "Allowed by value, not by file, so any page may state it without an exception entry.",
+      "repro": "python -m pytest tests/test_no_hardcoded_council_counts.py -q — the 128-councils blog passes without an allowlist entry.",
+      "mitigated": "Mitigated by construction.",
+      "how": "128 is the NSW total — the ceiling, not our reach. An earlier draft allowlisted those files AND excluded the value, and the two-way ratchet correctly failed the redundant entries."
+    },
+    {
+      "scenario": "A blog post describes history — '43 councils merged into 20 in 2016'.",
+      "what_happens": "Allowlisted with the reason that it is a past event which must NOT move when our coverage does.",
+      "repro": "Inspect ALLOWED in the test file.",
+      "mitigated": "Mitigated.",
+      "how": "Pointing that sentence at a live constant would be worse than leaving it: the number would change when our coverage changed, silently rewriting history."
+    },
+    {
+      "scenario": "An allowlist entry is added for a file that has no count, or a file's count is later removed.",
+      "what_happens": "The two-way check fails and names the entry to delete.",
+      "repro": "Add an entry for for/planners/page.tsx and run the test.",
+      "mitigated": "Mitigated: forced red exactly that way.",
+      "how": "An exception list that only fails in one direction becomes standing amnesty — the failure mode the DQ ledger's two-way ratchet exists to prevent."
+    },
+    {
+      "scenario": "dcpNumericCouncils is 'corrected' upward to the 28 label count.",
+      "what_happens": "A dedicated test fails explaining that 28 counts Inner West three times and claims two councils that do not exist.",
+      "repro": "Set dcpNumericCouncils to 28 in coverage.ts and run the test file.",
+      "mitigated": "Mitigated.",
+      "how": "This is the likeliest wrong fix, because 28 is a real number from a real query — just not the one a sentence about councils needs."
+    },
+    {
+      "scenario": "A coverage claim is stated in words with no digits — 'every NSW council'.",
+      "what_happens": "NOT CAUGHT. The guard matches digits adjacent to a coverage noun and cannot see a prose absolute.",
+      "repro": "Write 'controls for every NSW council' on a page; the test passes.",
+      "mitigated": "No",
+      "how": "Stated, not fixed. The pre-push liability scan covers absolutes such as 'never a guess' and 'always current' from a different angle, but a worded coverage claim falls between the two. Recorded in the plan ledger."
+    }
+  ],
+  "mutation_analysis": "Four forcings against a baseline confirmed green first (full suite 5,596 passed, 6 skipped), all KILLED, every file restored: the original '28 councils' sentence restored; the original '102 NSW councils' restored; dcpNumericCouncils set to the label count; and an allowlist entry added for a file with no count. The first two mutate PAGE COPY rather than the constant, which is the direction every previous check was blind to and the reason this guard exists.",
+  "residual_risk": "1) The guard sees digits beside a coverage noun. A claim in words — 'every NSW council', 'all councils' — is invisible to it. 2) It covers .tsx under frontend-nextjs/app only; components/, lib/ and any server-rendered copy elsewhere are not scanned. 3) ⚠ FOUND AND NOT RESOLVED: reports/granny-flat/page.tsx states 'Spatial data: 12 LGAs covered' for flood-control-lot data, inside a SERVED report. Nothing in the repo verifies 12. It is allowlisted with an explicit UNVERIFIED reason rather than silently exempted, and the two-way check keeps it visible, but the number remains unverified and is recorded in the plan ledger. 4) The sweep found several numbers that are plausibly claims but were judged incidental — '9 layers' on the conveyancing tool page, 'All 7 standard reports' on pricing, '~11,000 provisions across 3 former councils' on the homepage. Each was read and left; another reader might judge differently, and the judgement is not itself checked.",
+  "post_merge": {
+    "db_reset": "None. No data written, no schema change.",
+    "secrets": "None added or changed.",
+    "other_repo": "None.",
+    "manual_verify": "Load /for/students and confirm it reads '26 council areas have numeric controls extracted'. Load /dcp-browse and check the meta description says 26 council areas rather than '28+ councils'. Then view source on the granny-flat blog post and confirm the description interpolates rather than hard-coding 102."
+  }
+}
