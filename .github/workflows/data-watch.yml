@@ -131,6 +131,31 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/check_served_answer_quality.py --baseline
 
+      # The AUTHORITATIVE page-map check: opens all 32 hardcoded page maps'
+      # actual PDFs in R2 rather than trusting a recorded page count.
+      #
+      # WHY IT IS HERE AND NOT ONLY IN gates. This is the one check in the repo
+      # that can drift with NO COMMIT: a council republishes a shorter PDF, the
+      # map silently starts pointing past its end, and parts stop extracting.
+      # That is exactly what happened to waverley, and nothing raised its hand
+      # for months. gates runs a fast ledger-based version on every PR, but the
+      # ledger is only as fresh as the last sweep -- so if a PDF changed and no
+      # sweep has run, ONLY this job can see it.
+      #
+      # It takes ~10 minutes because it downloads and opens 32 PDFs. That is
+      # affordable nightly and is not affordable on a pull request, which is the
+      # whole reason for the split.
+      - name: DCP page maps still fit their PDFs (authoritative, reads R2)
+        id: page_maps
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: python scripts/dcp_page_map_gate.py --check
+
       # github-script, not `gh`. main-red-alarm spent its entire life failing
       # at `gh: command not found` on the self-hosted runners — 12 runs out of
       # 12 — because those images carry neither `gh` nor `jq`. The alarm that
@@ -141,7 +166,7 @@ jobs:
         uses: actions/github-script@v7
         env:
           FAILED: >-
-            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }}
+            ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -150,7 +175,8 @@ jobs:
                            'satellite manifests', 'published figures',
                            'LGA capability flags',
                            'schema contract', 'controls provenance',
-                           'control source values', 'served-answer quality'];
+                           'control source values', 'served-answer quality',
+                           'DCP page maps vs their PDFs'];
             const outcomes = (process.env.FAILED || '').split(',');
             const failed = names.filter((_, i) => outcomes[i] === 'failure');
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;

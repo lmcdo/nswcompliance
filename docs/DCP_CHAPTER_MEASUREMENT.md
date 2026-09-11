@@ -260,12 +260,9 @@ the ledger rather than counted as clean.
   extraction at `dcp_toc_parse` is Phase C, per council, after measurement.
   Only `ai_extractor.toc_codes_from_pdf` was repointed — it feeds a guard and
   never extraction.
-- **No CI job.** The gate needs R2 credentials to read PDFs and CI has none
-  (`DATABASE_URL` only). Enforcement is `assert_map_usable` inside the extractor
-  on Railway, where the credentials exist. A `--from-ledger` mode reading
-  `pdf_pages` from `dcp_chapter_measurement` would make check 1 CI-runnable once
-  the ledger is populated; it is not built, and claiming CI coverage that does not
-  exist is the failure class this whole exercise is about.
+- ~~No CI job.~~ **Both are wired (2026-09-12).** The earlier note here said CI
+  had no R2 credentials. That was wrong: all four `R2_*` secrets exist in the
+  repository; no *workflow* referenced them.
 - **Nothing is re-extracted.** Waverley's map is still wrong; deleting it and
   deriving parts from the running header is C1, and the re-extraction needs API
   credit the account does not currently have.
@@ -273,6 +270,48 @@ the ledger rather than counted as clean.
   chapters across 19 councils, but 241 are city_of_sydney of which only **7**
   serve any rows. Folding 234 never-extracted chapters in would swamp the ratchet
   with a different problem. `--councils all` reports the wider picture.
+
+---
+
+## How this runs in CI
+
+Two jobs, because one check cannot be both fast and authoritative.
+
+| | where | how | runtime |
+|---|---|---|---|
+| every PR + push | `gates.yml` → schema-contract | `--check --from-ledger` | **2s** |
+| nightly 20:00 UTC | `data-watch.yml` | `--check` (reads R2) | ~10 min |
+
+**The PR job** reads `pdf_pages` from `dcp_chapter_measurement` — no downloads,
+`DATABASE_URL` only. It exits 2 if a map has no ledger row at all: an unmeasured
+map is not a passing map.
+
+**Its limitation, stated plainly:** the page count is only as fresh as the last
+measurement sweep. If a council republishes a shorter PDF and no sweep has run,
+the PR job compares against the old count and misses it. That is the waverley
+failure mode itself, which is why it is not left to this job alone.
+
+**The nightly job** opens the real PDFs in R2 and is the authoritative check. It
+lives in `data-watch` because this is the one check here that can drift *with no
+commit* — a council amends a document and nothing in the repo changes. It is
+wired into that workflow's alarm aggregation (step id `page_maps`, index 10 of
+10); an unwired check that fails silently is this repo's recorded failure class.
+
+The full check takes ~10 minutes because it downloads and opens 32 PDFs. That is
+affordable nightly and not affordable on a pull request — the whole reason for
+the split.
+
+### A fail-open the CI work exposed
+
+Adding `--from-ledger` surfaced a real defect in the ratchet. In ledger mode only
+check 1 runs, so checks 2 and 3 produce no count. `summarise()` emitted **0** for
+them, and the ratchet duly reported waverley going `22 → 0` and `54 → 0` as
+**RATCHET DOWN (good)**. A check that could not run was scoring as a fix.
+
+Fixed: a check whose status is UNKNOWN now contributes **no count at all**, and
+`ratchet()` returns a fourth state — `not_measured` — which prints the baseline it
+could not verify as `UNVERIFIED`. `--record-baseline` also merges rather than
+overwrites, so a run that could not measure something cannot erase its floor.
 
 ---
 

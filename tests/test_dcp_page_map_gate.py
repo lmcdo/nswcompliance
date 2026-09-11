@@ -210,19 +210,19 @@ class TestRatchet:
     def test_a_rise_is_a_regression(self):
         now = {"waverley": {"check1_violations": 6, "check2_violations": 22,
                             "check3_rows_disagree": 54}}
-        reg, imp, nb = ratchet(now, self.BASE)
+        reg, imp, nb, nm = ratchet(now, self.BASE)
         assert len(reg) == 1 and reg[0]["key"] == "check1_violations"
         assert not imp and not nb
 
     def test_a_fall_is_an_improvement_and_does_not_fail(self):
         now = {"waverley": {"check1_violations": 0, "check2_violations": 0,
                             "check3_rows_disagree": 0}}
-        reg, imp, nb = ratchet(now, self.BASE)
+        reg, imp, nb, nm = ratchet(now, self.BASE)
         assert not reg and len(imp) == 3
 
     def test_holding_at_the_baseline_neither_fails_nor_improves(self):
         now = {"waverley": dict(self.BASE["per_map"]["waverley"])}
-        reg, imp, nb = ratchet(now, self.BASE)
+        reg, imp, nb, nm = ratchet(now, self.BASE)
         assert not reg and not imp and not nb
 
     def test_an_unknown_map_is_NO_BASELINE_not_a_pass(self):
@@ -230,7 +230,7 @@ class TestRatchet:
         # not read as fine.
         now = {"newcouncil": {"check1_violations": 3, "check2_violations": 0,
                               "check3_rows_disagree": 0}}
-        reg, imp, nb = ratchet(now, self.BASE)
+        reg, imp, nb, nm = ratchet(now, self.BASE)
         assert not reg and not imp
         assert len(nb) == 3
         assert all(r["map"] == "newcouncil" for r in nb)
@@ -238,5 +238,25 @@ class TestRatchet:
     def test_an_empty_baseline_reports_NO_BASELINE_for_everything(self):
         now = {"waverley": {"check1_violations": 5, "check2_violations": 22,
                             "check3_rows_disagree": 54}}
-        reg, imp, nb = ratchet(now, {})
+        reg, imp, nb, nm = ratchet(now, {})
         assert not reg and len(nb) == 3
+
+    def test_a_check_that_DID_NOT_RUN_is_not_an_improvement(self):
+        # THE FAIL-OPEN THIS CAUGHT. --from-ledger can only run check 1, so
+        # check 2 and 3 are absent from `counts`. An earlier draft emitted 0 for
+        # them, and the ratchet reported waverley 22 -> 0 and 54 -> 0 as RATCHET
+        # DOWN (good) -- an unknown scoring as a fix, which is exactly the defect
+        # this gate exists to stop.
+        now = {"waverley": {"check1_violations": 5}}      # 2 and 3 did not run
+        reg, imp, nb, nm = ratchet(now, self.BASE)
+        assert not imp, "a check that did not run was reported as an improvement"
+        assert not reg
+        assert {r["key"] for r in nm} == {"check2_violations",
+                                          "check3_rows_disagree"}
+        # and the baseline it could not verify is surfaced, not silently dropped
+        assert all(r["was"] for r in nm)
+
+    def test_a_check_that_did_not_run_still_fails_on_the_ones_that_did(self):
+        now = {"waverley": {"check1_violations": 9}}      # worse, 2/3 absent
+        reg, imp, nb, nm = ratchet(now, self.BASE)
+        assert len(reg) == 1 and reg[0]["key"] == "check1_violations"

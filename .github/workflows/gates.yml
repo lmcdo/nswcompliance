@@ -552,6 +552,27 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/validate_control_source_values.py
+      # A hardcoded page map is only valid for the document it was written
+      # against, and until 2026-09-12 nothing tied the two together. Waverley's
+      # map describes a 473-page PDF; the one in R2 is 448 pages, so parts F1-F5
+      # extracted NOTHING for months with no error anywhere.
+      #
+      # --from-ledger, not the full --check, and the difference matters:
+      #   full --check downloads 32 PDFs from R2 and takes over TEN MINUTES,
+      #     which is too slow to sit on every pull request.
+      #   --from-ledger reads the page count dcp_chapter_measurement already
+      #     recorded. Two seconds, DATABASE_URL only.
+      # The cost is freshness: if a council republishes a shorter PDF and no
+      # measurement sweep has run since, this compares against the OLD page
+      # count. That is the waverley failure mode itself, so it is NOT left to
+      # this job alone -- data-watch runs the full R2 check nightly.
+      #
+      # Exits 2 if a map has no ledger row at all. An unmeasured map is not a
+      # passing map.
+      - name: DCP page maps still fit their PDFs (from the measurement ledger)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/dcp_page_map_gate.py --check --from-ledger
       # Also runs nightly in data-watch. It belongs in BOTH because it can
       # regress two different ways: the data can drift with no commit (that is
       # data-watch's job), and a code change to the serve path can drop a field

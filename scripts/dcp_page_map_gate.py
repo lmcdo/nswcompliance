@@ -422,17 +422,132 @@ def sweep(only_council: str | None, log):
     return results
 
 
+# ── check 1 without R2: the page count the ledger already recorded ───────────
+def sweep_from_ledger(only_council: str | None, log):
+    """Run CHECK 1 ONLY, using pdf_pages from dcp_chapter_measurement.
+
+    WHY THIS MODE EXISTS
+    --------------------
+    The full --check downloads 32 PDFs and takes over ten minutes, which is too
+    slow to sit on every pull request. This reads the page count the last
+    measurement sweep already recorded, so it needs DATABASE_URL and nothing
+    else, and finishes in seconds.
+
+    WHAT IT GIVES UP, SAID PLAINLY
+    ------------------------------
+    The page count is as fresh as the last sweep. If a council republishes a
+    shorter PDF and no sweep has run since, this compares the map against the
+    OLD page count and can miss a range that has just gone out of bounds. That
+    is precisely the waverley failure mode, so this mode does not replace the
+    full check -- the full one runs nightly in data-watch against R2, where ten
+    minutes costs nothing.
+
+    A chapter with NO ledger row is UNKNOWN, never a pass, and the caller fails
+    on it: an unmeasured chapter is exactly what this whole exercise is about.
+    """
+    import psycopg2
+
+    _load_env()
+    url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+    if not url:
+        raise SystemExit("FATAL: no DATABASE_URL / SUPABASE_DB_URL")
+    conn = psycopg2.connect(url, connect_timeout=20)
+    cur = conn.cursor()
+    cur.execute("SET statement_timeout='60s'")
+    cur.execute("SELECT to_regclass('dcp_chapter_measurement')")
+    if cur.fetchone()[0] is None:
+        conn.close()
+        raise SystemExit(
+            "FATAL: dcp_chapter_measurement does not exist. Apply "
+            "migrations/069 and run dcp_chapter_measure.py --sweep --write, or "
+            "use the full --check against R2. Refusing to report a pass from a "
+            "table that is not there.")
+    # The newest measurement per chapter.
+    cur.execute("""
+        SELECT DISTINCT ON (council, chapter_key) council, chapter_key,
+               pdf_pages, measured_at
+        FROM dcp_chapter_measurement
+        ORDER BY council, chapter_key, measured_at DESC""")
+    pages, seen_at = {}, {}
+    for council, chapter, n, at in cur.fetchall():
+        pages[(council, chapter)] = n
+        seen_at[(council, chapter)] = at
+    cur.execute("""SELECT council, chapter_key FROM dcp_chapter_registry
+                   WHERE is_active AND r2_current_path IS NOT NULL""")
+    registry = [tuple(r) for r in cur.fetchall()]
+
+    results = []
+    maps = all_page_maps()
+    if only_council:
+        maps = [m for m in maps if m[0] == only_council]
+    log("page maps to check against the ledger: " + str(len(maps)))
+
+    for council, chapter_key, ranges in maps:
+        key = (council, chapter_key)
+        if chapter_key is None:
+            # Same resolution as the full sweep. An earlier draft used
+            # `cands[0] if len(cands) == 1 else None`, which returned None for
+            # waverley (2 registry chapters) -- so its page count was unknown,
+            # its counts were reported as 0, and the ratchet called that a
+            # 5 -> 0 IMPROVEMENT. An unknown scored as a fix is the exact
+            # failure this gate exists to stop.
+            cands = [k for k in registry if k[0] == council]
+            if len(cands) == 1:
+                key = cands[0]
+            else:
+                cur.execute(
+                    "SELECT council, chapter_key FROM dcp_chapter_registry "
+                    "WHERE council=%s AND is_active AND r2_current_path IS NOT NULL "
+                    "ORDER BY (page_end IS NOT NULL) DESC, id LIMIT 1", (council,))
+                row = cur.fetchone()
+                key = tuple(row) if row else None
+        label = council + ("/" + chapter_key if chapter_key else "")
+        rec = {"council": council, "chapter_key": chapter_key, "label": label,
+               "n_ranges": len(ranges), "source": "ledger"}
+        n = pages.get(key) if key else None
+        rec["pdf_pages"] = n
+        rec["measured_at"] = str(seen_at.get(key)) if key in seen_at else None
+        rec["check1"] = check_ranges_within_pdf(ranges, n)
+        # Checks 2 and 3 need page TEXT, which the ledger does not store.
+        for c in ("check2", "check3"):
+            rec[c] = {"status": UNKNOWN,
+                      "reason": "needs page text; run the full --check",
+                      "violations": []}
+        results.append(rec)
+        log("  " + label[:56].ljust(58) + "1:" + rec["check1"]["status"][:4].ljust(6) +
+            "pdf=" + str(n) + "  past-end=" +
+            str(len(rec["check1"].get("violations", []))))
+    conn.close()
+    return results
+
+
 def summarise(results):
+    """Per-map counts for the ratchet.
+
+    A check whose status is UNKNOWN contributes NO count at all -- not 0. This
+    is the single most important line in this function. An earlier draft emitted
+    0 for an unrunnable check, and the ratchet duly reported waverley going from
+    5 violations to 0 as a RATCHET DOWN (good) when in truth its page count was
+    simply missing. "Could not measure" scoring as "fixed" is the same defect as
+    coverage_gap returning a clean pass for a document it never read.
+
+    ratchet() treats an absent key as NO_BASELINE, which is reported and never
+    counted as an improvement.
+    """
     per = {}
     for r in results:
-        per[r["label"]] = {
-            "check1_violations": len(r["check1"].get("violations", [])),
-            "check2_violations": len(r["check2"].get("violations", [])),
-            "check3_rows_disagree": r["check3"].get("rows_disagree", 0),
+        counts = {
             "check1_status": r["check1"]["status"],
             "check2_status": r["check2"]["status"],
             "check3_status": r["check3"]["status"],
         }
+        if r["check1"]["status"] != UNKNOWN:
+            counts["check1_violations"] = len(r["check1"].get("violations", []))
+        if r["check2"]["status"] != UNKNOWN:
+            counts["check2_violations"] = len(r["check2"].get("violations", []))
+        if r["check3"]["status"] != UNKNOWN:
+            counts["check3_rows_disagree"] = r["check3"].get("rows_disagree", 0)
+        per[r["label"]] = counts
     return per
 
 
@@ -440,12 +555,22 @@ RATCHET_KEYS = ("check1_violations", "check2_violations", "check3_rows_disagree"
 
 
 def ratchet(now: dict, baseline: dict):
-    """-> (regressions, improvements, no_baseline). Three states, never two."""
+    """-> (regressions, improvements, no_baseline, not_measured). Four states.
+
+    A key ABSENT from `counts` means that check could not run this time, and is
+    returned as not_measured. It is never compared: comparing a check that did
+    not run against a baseline of 5 would report a 5 -> 0 improvement, which is
+    how an unknown becomes a "fix".
+    """
     base = (baseline or {}).get("per_map", {})
-    regressions, improvements, no_baseline = [], [], []
+    regressions, improvements, no_baseline, not_measured = [], [], [], []
     for label, counts in now.items():
         b = base.get(label)
         for key in RATCHET_KEYS:
+            if key not in counts:
+                not_measured.append({"map": label, "key": key,
+                                     "was": (b or {}).get(key)})
+                continue
             n = counts[key]
             if b is None or key not in b:
                 no_baseline.append({"map": label, "key": key, "now": n})
@@ -454,12 +579,17 @@ def ratchet(now: dict, baseline: dict):
                 regressions.append({"map": label, "key": key, "was": b[key], "now": n})
             elif n < b[key]:
                 improvements.append({"map": label, "key": key, "was": b[key], "now": n})
-    return regressions, improvements, no_baseline
+    return regressions, improvements, no_baseline, not_measured
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--check", action="store_true", help="sweep every page map")
+    ap.add_argument("--from-ledger", action="store_true",
+                    help="CHECK 1 ONLY, from dcp_chapter_measurement.pdf_pages. "
+                         "Seconds instead of ten minutes, no R2. The page count "
+                         "is only as fresh as the last sweep -- the full --check "
+                         "still runs nightly against R2.")
     ap.add_argument("--council", help="restrict to one council")
     ap.add_argument("--out", default="dcp_page_map_check.json")
     ap.add_argument("--record-baseline", action="store_true",
@@ -481,7 +611,8 @@ def main(argv=None) -> int:
         with open(BASELINE_PATH, encoding="utf-8") as fh:
             baseline = json.load(fh)
 
-    results = sweep(args.council, log)
+    results = (sweep_from_ledger(args.council, log) if args.from_ledger
+               else sweep(args.council, log))
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump({"checked_at": datetime.now(timezone.utc).isoformat(),
                    "results": results}, fh, indent=1)
@@ -520,7 +651,18 @@ def main(argv=None) -> int:
             log("   " + r["label"][:50].ljust(52) + str(n) + " of " +
                 str(r["check3"].get("rows_checked", 0)) + " rows mislabelled")
 
-    regressions, improvements, no_baseline = ratchet(now, baseline)
+    unknown_pages = [r for r in results
+                     if r.get("source") == "ledger"
+                     and r["check1"]["status"] == UNKNOWN]
+    if unknown_pages:
+        log("")
+        log("*** " + str(len(unknown_pages)) + " page map(s) have NO ledger row -- "
+            "their page count is unknown and check 1 could not run ***")
+        for r in unknown_pages:
+            log("   " + r["label"][:60])
+        log("Run: python scripts/dcp_chapter_measure.py --sweep --write")
+
+    regressions, improvements, no_baseline, not_measured = ratchet(now, baseline)
     log("")
     if improvements:
         log("RATCHET DOWN (good): " + str(len(improvements)) + " counts fell")
@@ -530,6 +672,14 @@ def main(argv=None) -> int:
     if no_baseline:
         log("NO BASELINE for " + str(len(no_baseline)) +
             " (map, key) pairs -- the floor is being set, this is not a pass.")
+    if not_measured:
+        still_bad = [r for r in not_measured if r["was"]]
+        log("NOT MEASURED this run: " + str(len(not_measured)) +
+            " (map, key) pairs -- these checks did not run, so their baseline "
+            "still stands. NOT an improvement.")
+        for r in still_bad[:10]:
+            log("   " + r["map"][:44].ljust(46) + r["key"].ljust(24) +
+                "baseline " + str(r["was"]) + " UNVERIFIED")
     if regressions:
         log("")
         log("*** GATE FAIL -- " + str(len(regressions)) + " counts rose ***")
@@ -538,6 +688,11 @@ def main(argv=None) -> int:
                 str(r["was"]) + " -> " + str(r["now"]))
 
     if args.record_baseline:
+        # Never let a run that could not measure something erase that thing's
+        # recorded floor. Keys absent from this run keep their previous value.
+        merged = {k: dict(v) for k, v in (baseline.get("per_map") or {}).items()}
+        for label, counts in now.items():
+            merged.setdefault(label, {}).update(counts)
         with open(BASELINE_PATH, "w", encoding="utf-8") as fh:
             json.dump({
                 "_comment": (
@@ -547,13 +702,13 @@ def main(argv=None) -> int:
                     "already exist and are already recorded. It is not an "
                     "acceptance of them."),
                 "recorded_at": datetime.now(timezone.utc).isoformat(),
-                "per_map": now,
+                "per_map": merged,
             }, fh, indent=2)
         log("")
         log("baseline recorded into " + BASELINE_PATH)
         return 0
 
-    return 2 if regressions else 0
+    return 2 if (regressions or unknown_pages) else 0
 
 
 if __name__ == "__main__":

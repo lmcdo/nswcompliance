@@ -546,6 +546,14 @@ def summarise(scored: list[dict]) -> dict:
         if c["contents_verdict"] == "INCOMPLETE":
             k["INCOMPLETE"] += 1
             k["listed_not_served"] += c["n_missing"]
+        if c["contents_verdict"] == "NO_ROWS":
+            # A chapter whose document lists sections and that serves NONE of
+            # them. Counted separately from listed_not_served so the report and
+            # the ledger cannot disagree: SUM(missing_codes) over the ledger is
+            # these two added together, and showing only one invites the reader
+            # to think the other is zero.
+            k["SERVES_NOTHING"] += 1
+            k["not_served_empty_chapters"] += c["n_missing"]
         if str(c["contents_verdict"]).endswith("UNREADABLE"):
             k["CONTENTS_UNREADABLE"] += 1
         if c["gap_verdict"] == "GAPS":
@@ -836,7 +844,13 @@ def report(scored: list[dict], baseline: dict, log) -> int:
     log("-" * len(head))
     log(row("TOTAL", t))
     log("")
-    log("  listed sections not served: " + str(t.get("listed_not_served", 0)))
+    log("  listed sections not served, in chapters that serve something: " +
+        str(t.get("listed_not_served", 0)))
+    log("  listed sections in " + str(t.get("SERVES_NOTHING", 0)) +
+        " chapters that serve NOTHING: " +
+        str(t.get("not_served_empty_chapters", 0)))
+    log("  -> total listed sections not served: " +
+        str(t.get("listed_not_served", 0) + t.get("not_served_empty_chapters", 0)))
     log("  rows contradicting their own page header: " +
         str(t.get("mislabelled_rows", 0)))
     log("  chapters signal 2 could not judge (numbering shared with a sibling): " +
