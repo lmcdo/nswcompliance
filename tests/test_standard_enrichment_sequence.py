@@ -231,6 +231,20 @@ def test_a_raised_error_and_an_error_count_are_both_caught():
     assert any(f.startswith("b") for f in failed)
 
 
+@pytest.mark.parametrize("bad", [None, (), "", 0, ({}, {})])
+def test_a_result_that_is_not_a_dict_is_a_failure_not_a_skip(bad):
+    """A phase whose result cannot be read is not a phase that succeeded.
+
+    Skipping it would rebuild the silence phase_failures exists to remove, one
+    level further in. All six phases return a dict today -- this is the guard for
+    the seventh, or for the day one of them changes shape.
+    """
+    failed = pipeline.phase_failures({"provision type": bad})
+    assert failed, f"a phase returning {bad!r} was treated as a success"
+    assert "unreadable result" in failed[0]
+    assert type(bad).__name__ in failed[0], "the warning must name what came back"
+
+
 def test_an_explicitly_empty_phase_list_runs_nothing():
     """`phases or DEFAULT` would read an empty override as 'run all six against
     the live database' -- the widest possible reading of the narrowest possible

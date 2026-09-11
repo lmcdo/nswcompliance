@@ -1316,6 +1316,13 @@ def phase_failures(results: Dict[str, Any]) -> list:
     failed = []
     for label, stats in results.items():
         if not isinstance(stats, dict):
+            # A phase that returns None, or a tuple, or anything else is a phase
+            # whose result cannot be read -- which is not the same as a phase that
+            # succeeded. Skipping it here would rebuild the silence this function
+            # exists to remove, one level further in. Checked and NOT currently
+            # possible: all six phases return a dict today. This is the guard for
+            # the seventh, or for the day one of them changes shape.
+            failed.append(f"{label} (unreadable result: {type(stats).__name__})")
             continue
         if stats.get("error"):
             failed.append(label)
