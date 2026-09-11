@@ -1,7 +1,7 @@
 {
   "tier": "Minor",
   "justification": "Documentation only — one markdown file, no code, no data, no query. docs/RAILWAY_MONITORS.md carried a table of 4 Railway services while 12 monitor names exist and 11 services run; it listed dcp-extract and dcp-commit as 'local/on-demand scripts' when both have been daily crons for months, and gave dcp-monitor a weekly schedule it has not had. Every correction here removes a false statement rather than adding a new claim, which per project-defect-repair-calibration-2026-08 is the direction that cannot create a new false claim. The stale table is replaced by the commands that produce the live answer, so the same drift cannot recur — a transcribed list is exactly how this file went wrong.",
-  "commit_hash": "PENDING",
+  "commit_hash": "9bdf0a79",
   "files": [
     "docs/RAILWAY_MONITORS.md"
   ],
