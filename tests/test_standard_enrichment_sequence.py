@@ -186,7 +186,73 @@ def test_both_call_sites_report_a_partially_failed_enrichment(path):
     the returned errors would print 'enrichment complete' over a half-tagged
     council -- turning the isolation into a new way to be silent."""
     src = (ROOT / path).read_text(encoding="utf-8")
-    assert 'v.get("error")' in src, (
-        f"{path} does not inspect the per-phase results, so a failed phase would "
-        f"be reported as a clean enrichment"
+    assert "phase_failures(results)" in src, (
+        f"{path} does not use the shared failure definition, so a phase that "
+        f"returns an error COUNT rather than raising would read as success"
+    )
+
+
+# --- a phase can fail without raising --------------------------------------
+
+def test_a_non_zero_error_count_is_a_failure_even_though_nothing_raised():
+    """The shape that would otherwise slip through.
+
+    run_type_classification and run_site_condition_tagging count per-row
+    failures into their own stats and return normally. A run that errored on
+    twelve provisions comes back as {'total_processed': 3372, 'errors': 12} --
+    no exception, no 'error' key. A caller checking only for 'error' reports
+    'enrichment complete' over those twelve rows.
+    """
+    failed = pipeline.phase_failures({
+        "provision type": {"total_processed": 3372, "errors": 12},
+    })
+    assert failed, "a phase reporting 12 row errors was treated as a success"
+    assert "12" in failed[0], "the warning must say how many rows failed"
+
+
+def test_a_clean_phase_is_not_reported_as_failed():
+    """The confusable negative. Every real phase returns an 'errors' key, so if
+    a zero count counted as failure the warning would fire on every clean run
+    and be ignored within a week."""
+    assert pipeline.phase_failures({
+        "provision type": {"total_processed": 3372, "errors": 0},
+        "site condition": {"total_processed": 3372, "errors": 0},
+    }) == []
+
+
+def test_a_raised_error_and_an_error_count_are_both_caught():
+    failed = pipeline.phase_failures({
+        "a": {"error": "RuntimeError: boom"},
+        "b": {"total_processed": 10, "errors": 3},
+        "c": {"total_processed": 10, "errors": 0},
+    })
+    assert len(failed) == 2
+    assert any(f.startswith("a") for f in failed)
+    assert any(f.startswith("b") for f in failed)
+
+
+def test_an_explicitly_empty_phase_list_runs_nothing():
+    """`phases or DEFAULT` would read an empty override as 'run all six against
+    the live database' -- the widest possible reading of the narrowest possible
+    instruction."""
+    assert pipeline.run_standard_enrichment(batch_size=1, phases=()) == {}
+
+
+def test_omitting_the_override_still_uses_the_real_list():
+    """Pairs with the test above: `is None` must not have broken the default."""
+    import inspect
+    src = inspect.getsource(pipeline.run_standard_enrichment)
+    assert "STANDARD_ENRICHMENT_PHASES if phases is None else phases" in src
+
+
+def test_the_extractor_alerts_when_a_phase_fails():
+    """The extraction path ends in sys.exit(2) meaning 'changes found', so the
+    exit code cannot carry an enrichment failure -- and turning it into a
+    failure would report a successful extraction as broken, the same invariant
+    #1080 protects on the commit side. The alert is therefore the only signal,
+    and without it a partially-tagged council is silent."""
+    src = (ROOT / "scripts" / "dcp_extract_changed.py").read_text(encoding="utf-8")
+    assert "enrichment phase(s) failed after extraction" in src
+    assert "send_telegram(f\"DCP extract:" in src, (
+        "the extractor no longer alerts on a failed enrichment phase"
     )

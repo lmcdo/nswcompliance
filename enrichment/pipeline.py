@@ -1272,8 +1272,13 @@ def run_standard_enrichment(batch_size: int = 500, phases=None) -> Dict[str, Any
     Returns {phase_name: stats-or-error-dict}. The caller decides what to do with
     a failure; this function's job is to run everything it can and hide nothing.
     """
+    # `is None`, NOT `or`. An explicitly empty override means "run nothing", and
+    # `phases or DEFAULT` would quietly turn that into "run all six against the
+    # live database" -- the widest possible reading of the narrowest possible
+    # instruction.
+    selected = STANDARD_ENRICHMENT_PHASES if phases is None else phases
     results: Dict[str, Any] = {}
-    for label, fn_name in (phases or STANDARD_ENRICHMENT_PHASES):
+    for label, fn_name in selected:
         fn = globals().get(fn_name)
         if fn is None:
             # A renamed phase must be loud. Silently skipping it would recreate
@@ -1287,10 +1292,36 @@ def run_standard_enrichment(batch_size: int = 500, phases=None) -> Dict[str, Any
         except Exception as exc:  # noqa: BLE001 — one phase must not stop the rest
             results[label] = {"error": f"{type(exc).__name__}: {exc}"}
             print(f"  [ERROR] {label} failed: {type(exc).__name__}: {exc}")
-    failed = [k for k, v in results.items() if isinstance(v, dict) and v.get("error")]
+    failed = phase_failures(results)
     if failed:
         print(f"\n  enrichment finished with {len(failed)} failed phase(s): {', '.join(failed)}")
     return results
+
+
+def phase_failures(results: Dict[str, Any]) -> list:
+    """Phase labels that did not fully succeed. The ONE definition of that.
+
+    A phase can fail in two different shapes and only one of them is an
+    exception. run_type_classification and run_site_condition_tagging both count
+    per-row failures into their own stats and return normally, so a run that
+    errored on twelve provisions comes back as {'total_processed': 3372,
+    'errors': 12} -- truthy, present, and with no 'error' key anywhere. A caller
+    checking only for 'error' reports "enrichment complete" over those twelve
+    rows, which is the silent-failure shape this whole change exists to remove.
+
+    Both call sites use this rather than each writing their own comprehension,
+    because two copies of "what counts as failed" is how the phase list itself
+    came to be wrong in two files at once.
+    """
+    failed = []
+    for label, stats in results.items():
+        if not isinstance(stats, dict):
+            continue
+        if stats.get("error"):
+            failed.append(label)
+        elif stats.get("errors"):  # a non-zero per-row error count
+            failed.append(f"{label} ({stats['errors']} row error(s))")
+    return failed
 
 
 def main():

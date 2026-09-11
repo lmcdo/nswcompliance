@@ -45,7 +45,7 @@ from dotenv import load_dotenv
 # Enrichment pipeline — imported here so extraction + enrichment run as one command.
 # sys.path is extended so this script can be run from any working directory.
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from enrichment.pipeline import run_standard_enrichment
+from enrichment.pipeline import phase_failures, run_standard_enrichment
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -4458,10 +4458,23 @@ def main() -> None:
         print(f"{'='*60}")
 
         results = run_standard_enrichment(batch_size=500)
-        broken = [k for k, v in results.items() if isinstance(v, dict) and v.get("error")]
+        broken = phase_failures(results)
         if broken:
-            print(f"\n  [warn] {len(broken)} enrichment phase(s) failed: {', '.join(broken)}. "
-                  f"The rest still ran; provisions are extracted but partially tagged.")
+            msg = (f"{len(broken)} enrichment phase(s) failed after extraction: "
+                   f"{', '.join(broken)}. The rest still ran; provisions are "
+                   f"extracted but partially tagged. Re-run "
+                   f"`python enrichment/pipeline.py --phase status` to see the gaps.")
+            print(f"\n  [warn] {msg}")
+            # ALERT, because the exit code cannot carry this. This path ends in
+            # sys.exit(2) meaning "changes found", and turning that into a failure
+            # would report a successful extraction as broken -- the same invariant
+            # #1080 protects on the commit side. So the alert IS the signal, and
+            # without it a partially-tagged council is silent.
+            try:
+                from run_monitors import send_telegram
+                send_telegram(f"DCP extract: {msg}")
+            except Exception as exc:  # noqa: BLE001 — alerting must not fail extraction
+                print(f"  [warn] could not send the enrichment alert: {exc}")
     else:
         print("\n  Skipping enrichment — quality gate did not pass.")
 

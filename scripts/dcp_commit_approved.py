@@ -322,11 +322,14 @@ def main() -> int:
             # were wired into neither copy -- 3,216 served rows with no
             # v2_provision_type, 3,216 with no v2_site_condition_required, 1,142
             # with no v2_dev_type_source (measured 2026-09-11).
-            from enrichment.pipeline import run_standard_enrichment
+            from enrichment.pipeline import phase_failures, run_standard_enrichment
 
             results = run_standard_enrichment(batch_size=500)
-            broken = [k for k, v in results.items()
-                      if isinstance(v, dict) and v.get("error")]
+            # phase_failures, not a local comprehension: a phase can fail by
+            # returning {'errors': 12} without raising, and "what counts as
+            # failed" living in two places is how the phase list itself came to
+            # be wrong in two files at once.
+            broken = phase_failures(results)
             if broken:
                 # Partial enrichment is reported, never rounded up to "complete".
                 # run_standard_enrichment isolates each phase so the rest still

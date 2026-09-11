@@ -128,6 +128,12 @@ def _wire(monkeypatch, councils, *, fail_on=(), derive_raises=False):
                 "applicability provenance": {}}
 
     fake_pipeline.run_standard_enrichment = _standard
+    # The caller also imports the shared "what counts as failed" helper, because
+    # a phase can fail by returning an error COUNT without raising.
+    fake_pipeline.phase_failures = lambda results: [
+        k for k, v in results.items()
+        if isinstance(v, dict) and (v.get("error") or v.get("errors"))
+    ]
     monkeypatch.setitem(sys.modules, "enrichment.pipeline", fake_pipeline)
 
     def _derive(council, apply, validate):
