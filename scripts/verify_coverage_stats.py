@@ -120,6 +120,28 @@ def live_flood_study_count() -> int:
     block = text[start:end]
     return len(re.findall(r"^\s{4}[\"']\w+[\"']\s*:\s*\{", block, re.M))
 
+def live_flood_depth_study_count() -> int:
+    """How many studies can actually answer a DEPTH question.
+
+    NOT the same as len(FLOOD_STUDIES), and the difference was a live overclaim.
+    Five surfaces said "modelled flood depth ... 4 studies" and one named
+    Hawkesbury among them, while Hawkesbury's entry carries has_depth=False --
+    its rasters are water LEVEL only, with no pre-computed depth band. The
+    published 4 was verified against the number of studies INGESTED, so the check
+    passed while the claim it was supposed to protect was false. That is the
+    "a check can PASS on the wrong artifact" failure, and this is the artifact it
+    should have been reading.
+    """
+    with open(FLOOD_TRUTH_PY, encoding="utf-8") as fh:
+        text = fh.read()
+    start = text.find("FLOOD_STUDIES: dict[str, dict] = {")
+    if start == -1:
+        raise RuntimeError("FLOOD_STUDIES not found in services/flood_truth.py")
+    end = text.find(chr(10) + "}" + chr(10), start)
+    block = text[start:end]
+    return len(re.findall(r'"has_depth":\s*True', block))
+
+
 # Growing counts are published rounded DOWN (e.g. 53,716 -> "53,000+"). A live
 # value ABOVE the stored integer is fine (the "+" still holds); only a live value
 # BELOW the stored integer means the published claim is now overstated.
@@ -216,6 +238,26 @@ def main() -> int:
               f"{live_fs:>10}   {'OK' if ok else 'DRIFT'}")
         if not ok:
             drift.append(f"floodStudies: published {want_fs} vs FLOOD_STUDIES {live_fs}")
+
+    # floodDepthStudies: the subset that can answer DEPTH. Separate from the
+    # count above ON PURPOSE -- any copy making a depth claim must read this one.
+    want_fd = published.get("floodDepthStudies")
+    try:
+        live_fd = live_flood_depth_study_count()
+    except Exception as exc:  # noqa: BLE001
+        print(f"  {'  ...of those, with DEPTH':<34}{'—':>11}{'—':>10}   UNREADABLE ({exc})")
+        drift.append(f"floodDepthStudies: cannot read FLOOD_STUDIES ({exc})")
+    else:
+        ok = want_fd == live_fd
+        print(f"  {'  ...of those, with DEPTH':<34}{want_fd if want_fd is not None else '—':>11}"
+              f"{live_fd:>10}   {'OK' if ok else 'DRIFT'}")
+        if not ok:
+            drift.append(
+                f"floodDepthStudies: published {want_fd} vs has_depth=True count {live_fd}")
+    if (want_fd is not None and want_fs is not None) and want_fd > want_fs:
+        drift.append(
+            f"floodDepthStudies {want_fd} exceeds floodStudies {want_fs} — "
+            "more studies answer depth than exist")
 
     # lgasCovered can never exceed the number of councils in NSW. This is the
     # check that "130+" needed and did not have.

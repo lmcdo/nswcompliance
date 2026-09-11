@@ -404,7 +404,7 @@ export default function SiteAnalysisReportPage() {
           The data comes from the NSW Planning Portal API, council flood studies, RFS bushfire
           layers, and extracted DCP provisions. Coverage: {COVERAGE_DISPLAY.totalNswCouncils} councils for zone and LEP controls,
           {' '}{COVERAGE_DISPLAY.dcpNumericCouncils} LGAs for DCP numeric controls (with full structured provisions for {COVERAGE_DISPLAY.dcpFullCouncils} councils), and
-          {' '}{COVERAGE_DISPLAY.floodStudies} ingested council flood studies for modelled flood depth.
+          {' '}{COVERAGE_DISPLAY.floodDepthStudies} council flood studies that carry modelled flood depth.
         </p>
         <p className="text-slate-600 leading-relaxed">
           This does not replace professional judgement — it replaces the manual data lookup. The

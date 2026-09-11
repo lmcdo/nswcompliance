@@ -1,0 +1,104 @@
+{
+  "tier": "Standard",
+  "justification": "Five live public surfaces claimed modelled flood DEPTH from 4 council studies, and /for/conveyancers named all four: 'Hawkesbury, Tweed, Wollongong, Redbank'. Hawkesbury's FLOOD_STUDIES entry carries has_depth=False -- its rasters hold water LEVEL only, with no pre-computed depth band -- so it cannot answer a depth question at any address. The true figure is three. The number was not unchecked: verify_coverage_stats.py compared the published 4 against len(FLOOD_STUDIES), which is 4, so the check passed while the claim it existed to protect was false. That is the aim file's rule 10, 'a check can PASS on the wrong artifact, which is worse than not running', and it is the same shape as the floodLgas:71 defect it replaced -- a count from one layer of the coverage ladder attached to a capability from another. Standard, not Critical: copy plus one derived constant plus one check; no data is written and no logic changes. Direction of travel is claim-narrowing, which per project-defect-repair-calibration-2026-08 cannot create a new false claim.",
+  "commit_hash": "PENDING",
+  "files": [
+    "frontend-nextjs/lib/coverage.ts",
+    "frontend-nextjs/app/for/conveyancers/page.tsx",
+    "frontend-nextjs/app/for/planners/page.tsx",
+    "frontend-nextjs/app/developers/page.tsx",
+    "frontend-nextjs/app/what-you-get/CapabilityExplorer.tsx",
+    "frontend-nextjs/app/blog/site-analysis-report-explained/page.tsx",
+    "scripts/verify_coverage_stats.py",
+    "tests/test_flood_depth_claim.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/verify_coverage_stats.py (wired into gates.yml, data-watch.yml and .githooks/pre-push), plus python -m pytest tests/test_flood_depth_claim.py -q",
+    "expected": "The verifier prints '...of those, with DEPTH  3  3  OK' and exits 0; 151 claim tests pass (4 constants plus one per .tsx surface).",
+    "fails_when": "coverage.ts publishes a floodDepthStudies that differs from the number of FLOOD_STUDIES entries with has_depth=True, or floodDepthStudies exceeds floodStudies, or the field is removed, or any .tsx line uses COVERAGE_DISPLAY.floodStudies in the same line as the word 'depth'.",
+    "observed_red": "Yes, four separate forcings, all restored byte-identical afterwards. Against the verifier: publishing floodDepthStudies=4 -- THE EXACT HISTORICAL BAD VALUE, the claim this PR removes -- exits 1 with 'published 4 vs has_depth=True count 3'; publishing 2 also exits 1, so the check fails in BOTH directions rather than only on overstatement; deleting the field exits 1 with 'published None'. Against the surface guard: restoring the original conveyancers sentence verbatim fails naming the file, the line number and the fix ('frontend-nextjs/app/for/conveyancers/page.tsx:47 uses the INGESTED study count in a depth claim. Use floodDepthStudies.')."
+  },
+  "pre_impl": {
+    "existing_data": "Read from source, not assumed. services/flood_truth.py declares exactly four studies: hawkesbury (has_depth False, 'Hawkesbury rasters are water level only (h), no pre-computed depth (d)'), tweed (True), wollongong (True), redbank (True). frontend-nextjs/lib/coverage.ts published floodStudies: 4 and nothing else about depth. Five .tsx surfaces render it, all five in a depth sentence.",
+    "assumption_mismatch": "Two, both corrected before writing code. FIRST: the claim inventory's section 5 says Tweed and Wollongong 'do not resolve, because the Dockerfile omits their env vars', and concludes 'modelled depth is deliverable for Redbank alone'. That is STALE -- origin/main's Dockerfile.python pins all four RASTER_DIR vars and tests/test_flood_raster_deploy.py guards them, fixed by PR #996. Checked against origin/main rather than a working tree, after making exactly that mistake earlier in the session. SECOND: the natural assumption is that the count was simply unchecked, as floodLgas:71 had been. It was checked, and passed. The defect is subtler and worse -- the check read the number of studies INGESTED while the copy claimed DEPTH.",
+    "new_vs_existing": "No new mechanism. coverage.ts is the existing single source every surface already reads, verify_coverage_stats.py is the existing verifier already wired three ways, and the new field sits beside the existing floodStudies with its own assertion. The alternative -- editing five strings and leaving one number -- is what produced this defect."
+  },
+  "functions": [
+    {
+      "name": "live_flood_depth_study_count",
+      "file_line": "scripts/verify_coverage_stats.py:125",
+      "input": "No arguments. Reads services/flood_truth.py as text and counts has_depth=True inside the FLOOD_STUDIES block.",
+      "output": "int -- how many ingested studies can actually answer a depth question. Deliberately a separate function from live_flood_study_count rather than a parameter on it, so a caller cannot pass the wrong one by accident.",
+      "if_none": "If the FLOOD_STUDIES block cannot be found it raises, and the caller records 'cannot read FLOOD_STUDIES' as drift rather than treating an unreadable file as agreement -- matching how the sibling count already behaves."
+    }
+  ],
+  "values": [
+    {
+      "name": "floodDepthStudies",
+      "value": "3 (tweed, wollongong, redbank)",
+      "read_at": "frontend-nextjs/lib/coverage.ts, verified on every run of verify_coverage_stats.py against the has_depth=True count in services/flood_truth.py.",
+      "if_missing": "Absent from coverage.ts is DRIFT, not a pass -- forced and confirmed: 'published None vs has_depth=True count 3', exit 1.",
+      "why": "Depth is water level minus ground level. Hawkesbury's study publishes level, so a depth answer there would have to be computed by us against a terrain model rather than relayed from the council. That is a different rigour class and has not been done, so Hawkesbury is not a depth council."
+    },
+    {
+      "name": "floodStudies",
+      "value": "4, unchanged",
+      "read_at": "Same file, same verifier, existing check against len(FLOOD_STUDIES).",
+      "if_missing": "Unchanged behaviour -- already DRIFT.",
+      "why": "Kept because 'four council flood studies are ingested' is true and is the right number for non-depth statements. The fix is not to lower it; it is to stop depth claims reading it."
+    }
+  ],
+  "queries": "N/A — no database query is added or changed. Both new assertions read source files (services/flood_truth.py, frontend-nextjs/lib/coverage.ts).",
+  "break_it": [
+    {
+      "scenario": "Someone edits the copy back to claiming depth for all four ingested studies.",
+      "what_happens": "The surface guard fails naming the file, the line number and the field to use instead, so the sentence cannot ship.",
+      "repro": "Restore the original conveyancers description, then python -m pytest tests/test_flood_depth_claim.py -q",
+      "mitigated": "Mitigated: one parametrised test per .tsx file under frontend-nextjs/app.",
+      "how": "Forced exactly that way with the original sentence verbatim; the file was restored byte-identical."
+    },
+    {
+      "scenario": "A new council flood study is ingested and coverage.ts is not updated.",
+      "what_happens": "The verifier reports DRIFT on floodStudies, and separately on floodDepthStudies if the new study carries depth.",
+      "repro": "python scripts/verify_coverage_stats.py",
+      "mitigated": "Mitigated: both counts are derived from the same dict the loader reads.",
+      "how": "Already wired into gates.yml, data-watch.yml and pre-push, so it runs without anyone remembering."
+    },
+    {
+      "scenario": "Hawkesbury gains real depth rasters, making the published 3 an understatement.",
+      "what_happens": "Two tests fail -- the count assertion and the explicit hawkesbury has_depth assertion -- so the copy naming Tweed, Wollongong and Redbank gets corrected rather than silently undercounting us.",
+      "repro": "python -m pytest tests/test_flood_depth_claim.py::test_hawkesbury_is_still_the_one_without_depth -q",
+      "mitigated": "Mitigated: the check fails in both directions, not only on overstatement.",
+      "how": "Forced by publishing 2 against a live 3: exit 1. An understated claim is still a claim nobody verified."
+    },
+    {
+      "scenario": "Someone computes depth for Hawkesbury as water level minus a terrain model and flips has_depth.",
+      "what_happens": "The hawkesbury test fails with a message saying to update the copy if real. It cannot happen silently.",
+      "repro": "Set hawkesbury has_depth True in services/flood_truth.py, then run the same test file.",
+      "mitigated": "Mitigated by making it noisy, not by preventing it.",
+      "how": "That change moves flood depth from 'we relay it' to 'we compute it' for that council -- per the assurance position, a different class of claim needing its own validation. A test that fires is the right amount of friction."
+    },
+    {
+      "scenario": "floodDepthStudies is set higher than floodStudies by a typo.",
+      "what_happens": "The verifier reports 'more studies answer depth than exist'.",
+      "repro": "Set floodDepthStudies above floodStudies in coverage.ts and run the verifier.",
+      "mitigated": "Mitigated: a subset-cannot-exceed-its-set invariant, the same shape as lgasCovered <= totalNswCouncils.",
+      "how": "That invariant is what the '130+' overclaim needed and did not have."
+    },
+    {
+      "scenario": "A depth claim is written on a surface that does not read coverage.ts at all, as a hardcoded string.",
+      "what_happens": "NOTHING CATCHES IT. The guard scans for the constant, so a literal '4 studies' typed into a page is invisible to it.",
+      "repro": "Add the words 'modelled flood depth across 4 council studies' to any page without importing COVERAGE_DISPLAY.",
+      "mitigated": "No",
+      "how": "Stated rather than fixed. This is the same blind spot recorded in the claim inventory section 5.6 -- only seven /for/ pages and one blog post have ever been audited, and '130+' survived on the homepage for exactly this reason. A page sweep is its own piece of work; see residual_risk."
+    }
+  ],
+  "mutation_analysis": "Four forcings against the verifier and the guard, every one KILLED, each restored byte-identical afterwards. (1) floodDepthStudies published as 4 -- the exact historical bad value this PR removes -- exit 1. (2) Published as 2, so the check is proven to fail on understatement as well as overstatement -- exit 1. (3) The field deleted entirely -- exit 1, reported as 'published None' rather than skipped. (4) The original conveyancers sentence restored verbatim -- the surface guard fails naming file, line and remedy. The pattern follows the discipline used on the 130/25/71 repairs, where each new check was forced to fail on the exact historical value before being trusted.",
+  "residual_risk": "1) THE BLIND SPOT, stated not fixed: the surface guard only sees lines that reference COVERAGE_DISPLAY.floodStudies. A depth claim hardcoded as a literal string, or phrased across two lines, is invisible to it. The claim inventory records that only the seven /for/ pages and one named blog post have ever been audited, and that lgasCovered:130 sat on the HOMEPAGE -- found only because coverage.ts was the shared source. A full page sweep is the open job. 2) Whether Tweed and Wollongong actually resolve on the production host is still not directly observed. The env vars are pinned on main and guarded by tests/test_flood_raster_deploy.py, but the claim inventory's note that 'whether the R2 download itself succeeds in production was still not observed directly' has not been closed by this PR, and this PR does not claim to close it. If they do not resolve, the honest depth figure is lower than 3 and this change would then be understating the problem rather than causing it. 3) Hawkesbury remains a level-only study. Making it answer depth means computing level minus terrain, which moves it from relay to computation and needs its own validation before any copy changes. 4) This PR corrects five surfaces; it does not verify that the corrected sentences render as intended, because the worktree has no node_modules and Jest could not run locally. CI runs it.",
+  "post_merge": {
+    "db_reset": "None. No data is written or changed; the only database contact is the existing read-only verifier.",
+    "secrets": "None added or changed.",
+    "other_repo": "None.",
+    "manual_verify": "After deploy, load /for/conveyancers and confirm it names three depth councils (Tweed, Wollongong, Redbank) and states that Hawkesbury is water level. Then run python scripts/verify_coverage_stats.py and confirm the line '...of those, with DEPTH  3  3  OK'. Separately, and NOT closed by this PR: confirm on the production host that the Tweed and Wollongong rasters actually resolve, which the claim inventory records as never directly observed."
+  }
+}

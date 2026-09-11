@@ -72,7 +72,7 @@ const DATA_POINTS = [
   },
   {
     label: 'Flood depth modelling',
-    detail: `Modelled flood depth at ARI return periods where a council flood study has been ingested — ${COVERAGE_DISPLAY.floodStudies} studies; the mapped flood planning area elsewhere`,
+    detail: `Modelled flood depth at ARI return periods for the ${COVERAGE_DISPLAY.floodDepthStudies} ingested council studies that carry depth; flood water level for Hawkesbury; the mapped flood planning area elsewhere`,
   },
 ];
 
@@ -251,7 +251,7 @@ export default function DevelopersPage() {
           {[
             { stat: COVERAGE_DISPLAY.totalNswCouncils, label: 'NSW councils', sub: 'Zone + LEP controls' },
             { stat: COVERAGE_DISPLAY.dcpNumericCouncils, label: 'LGAs', sub: 'DCP numeric controls' },
-            { stat: COVERAGE_DISPLAY.floodStudies, label: 'council flood studies', sub: 'Flood depth modelling' },
+            { stat: COVERAGE_DISPLAY.floodDepthStudies, label: 'council flood studies with depth', sub: 'Flood depth modelling' },
             { stat: COVERAGE_DISPLAY.provisionsTotal, label: 'Provisions', sub: 'Extracted & classified' },
           ].map(({ stat, label, sub }) => (
             <div key={label + sub} className="text-center p-4 rounded-xl border border-gray-200">
