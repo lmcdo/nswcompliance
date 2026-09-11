@@ -67,11 +67,30 @@
  *   heritageAreas              SELECT COUNT(*) FROM heritage_conservation_areas
  *   regulatoryDefinitions      SELECT COUNT(*) FROM regulatory_definitions
  *
- * Fields WITHOUT a DB query below are editorial/config-derived facts, frozen here
- * so they stay consistent across pages (not auto-verifiable):
+ * Fields WITHOUT a DB query below are config- or source-derived. "Editorial" was
+ * never a reason a number COULD NOT be verified — only a reason nobody had written
+ * the check, which is how `lgasCovered: 130` claimed more councils than NSW has.
+ * Three of them are now checked against their real source by
+ * tests/test_coverage_source_derived_stats.py: govDataSources (the homepage's own
+ * DATA_SOURCES list), secondaryDwellingCouncils (the generated stats file) and
+ * dcpFullCouncils (the configs that exist).
+ *
+ * ⚠ riskLayers IS UNVERIFIED AND HAS NO SOURCE. Searched 2026-09-11: the
+ * homepage's CLIMATE_HAZARDS (4), the /climate-risk hazards section (5), the
+ * open-data catalogue (7), the capability tiles, and every table whose name
+ * contains 'risk' — nothing produces an 8, and no such table exists. It is a
+ * HEADLINE stat on the homepage and two audience pages. It must be grounded
+ * against a real list or removed; it must not be quietly adjusted to another
+ * guess, which would only make it look measured.
+ *
+ * The remaining fields are frozen here so they stay consistent across pages:
  *   dcpFullCouncils            7 councils with full structured DCP configs
  *                                (3 Inner West _tag_x methods + 4 in COUNCIL_CONFIGS)
- *   seppStandards / adgCriteria  SEPP (Housing) 2021 + Apartment Design Guide
+ *   seppStandards / adgCriteria  NOW DB-VERIFIED, see verify_coverage_stats.py.
+ *                                seppStandards was published as 33 while
+ *                                housing_sepp_standards held 45 AND /planning-standards
+ *                                rendered all 45 live — two pages, one fact, two
+ *                                numbers. Corrected to 45 on 2026-09-11.
  *   secondaryDwellingCouncils  councils in the Planning Portal open-data secondary-dwelling feed
  *   floodStudies               COUNCIL FLOOD STUDIES ingested (NOT an LGA count).
  *   floodDepthStudies          Of those, the ones that can answer DEPTH: the studies whose
@@ -112,7 +131,7 @@ export const COVERAGE = {
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
-  seppStandards: 33,
+  seppStandards: 45,
   adgCriteria: 23,
   secondaryDwellingCouncils: 102,
   floodStudies: 4,
@@ -136,7 +155,7 @@ export const COVERAGE_DISPLAY = {
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',
-  seppStandards: '33',
+  seppStandards: '45',
   adgCriteria: '23',
   secondaryDwellingCouncils: '102',
   floodStudies: '4',
