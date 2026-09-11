@@ -45,11 +45,7 @@ from dotenv import load_dotenv
 # Enrichment pipeline — imported here so extraction + enrichment run as one command.
 # sys.path is extended so this script can be run from any working directory.
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from enrichment.pipeline import (
-    run_actionability_classification,
-    run_layer_tagging,
-    run_applicability_tagging,
-)
+from enrichment.pipeline import phase_failures, run_standard_enrichment
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -4453,21 +4449,32 @@ def main() -> None:
     # ── Enrichment pipeline ──────────────────────────────────────────────────
     # Run automatically after any successful extraction so new provisions are
     # fully enriched without needing a separate manual command.
-    # Phase order is mandatory: actionability must run before layer/applicability
-    # because those phases filter WHERE v2_is_actionable = TRUE.
+    # The phase list and its mandatory order live in enrichment.pipeline, shared
+    # with scripts/dcp_commit_approved.py. They were previously duplicated here,
+    # and three phases that exist and work were wired into neither copy.
     if passed:
         print(f"\n{'='*60}")
         print("ENRICHMENT PIPELINE")
         print(f"{'='*60}")
 
-        print("\n[1/3] Actionability classification...")
-        run_actionability_classification(batch_size=500)
-
-        print("\n[2/3] Layer + topic tagging...")
-        run_layer_tagging(batch_size=500)
-
-        print("\n[3/3] Applicability tagging...")
-        run_applicability_tagging(batch_size=500)
+        results = run_standard_enrichment(batch_size=500)
+        broken = phase_failures(results)
+        if broken:
+            msg = (f"{len(broken)} enrichment phase(s) failed after extraction: "
+                   f"{', '.join(broken)}. The rest still ran; provisions are "
+                   f"extracted but partially tagged. Re-run "
+                   f"`python enrichment/pipeline.py --phase status` to see the gaps.")
+            print(f"\n  [warn] {msg}")
+            # ALERT, because the exit code cannot carry this. This path ends in
+            # sys.exit(2) meaning "changes found", and turning that into a failure
+            # would report a successful extraction as broken -- the same invariant
+            # #1080 protects on the commit side. So the alert IS the signal, and
+            # without it a partially-tagged council is silent.
+            try:
+                from run_monitors import send_telegram
+                send_telegram(f"DCP extract: {msg}")
+            except Exception as exc:  # noqa: BLE001 — alerting must not fail extraction
+                print(f"  [warn] could not send the enrichment alert: {exc}")
     else:
         print("\n  Skipping enrichment — quality gate did not pass.")
 

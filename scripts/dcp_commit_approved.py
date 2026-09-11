@@ -314,17 +314,31 @@ def main() -> int:
     # Wrapped: an enrichment error must NOT fail the already-committed provisions — they can
     # be re-enriched — so it degrades to a loud warning, not a rollback.
     if committed and not dry_run:
-        print("Enriching newly committed provisions (actionability -> topics -> applicability)...")
+        print("Enriching newly committed provisions...")
         try:
-            from enrichment.pipeline import (
-                run_actionability_classification,
-                run_layer_tagging,
-                run_applicability_tagging,
-            )
-            run_actionability_classification(batch_size=500)
-            run_layer_tagging(batch_size=500)
-            run_applicability_tagging(batch_size=500)
-            print("  enrichment complete.")
+            # The phase LIST and its order live in enrichment.pipeline, not here.
+            # They used to be three lines copied into this file and into
+            # dcp_extract_changed.py, and three further phases that exist and work
+            # were wired into neither copy -- 3,216 served rows with no
+            # v2_provision_type, 3,216 with no v2_site_condition_required, 1,142
+            # with no v2_dev_type_source (measured 2026-09-11).
+            from enrichment.pipeline import phase_failures, run_standard_enrichment
+
+            results = run_standard_enrichment(batch_size=500)
+            # phase_failures, not a local comprehension: a phase can fail by
+            # returning {'errors': 12} without raising, and "what counts as
+            # failed" living in two places is how the phase list itself came to
+            # be wrong in two files at once.
+            broken = phase_failures(results)
+            if broken:
+                # Partial enrichment is reported, never rounded up to "complete".
+                # run_standard_enrichment isolates each phase so the rest still
+                # ran; saying so is what stops a half-tagged council looking done.
+                print(f"  [warn] enrichment finished with {len(broken)} failed phase(s): "
+                      f"{', '.join(broken)}. Provisions ARE committed; the remaining "
+                      f"phases did run. Re-run `python enrichment/pipeline.py --phase status`.")
+            else:
+                print("  enrichment complete.")
         except Exception as exc:  # noqa: BLE001 — never fail a committed provision on enrichment
             print(f"  [warn] enrichment failed: {exc}. Provisions ARE committed but untagged; "
                   f"re-run enrichment (they will not show correctly in the UI until you do).")

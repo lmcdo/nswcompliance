@@ -1221,6 +1221,116 @@ def get_enrichment_status() -> Dict[str, Any]:
     }
 
 
+#: The phases that run after provisions are written, in the ONLY order that works.
+#:
+#: WHY THIS LIST IS HERE AND NOT AT THE CALL SITES. It used to be three lines
+#: copied into scripts/dcp_commit_approved.py AND scripts/dcp_extract_changed.py.
+#: Two copies of an order that matters is two things to keep in step, and the
+#: measurable result was that three phases which exist and work were called by
+#: neither: v2_site_condition_required and v2_provision_type were NULL on 3,216
+#: served rows each, and v2_dev_type_source on 1,142 (measured 2026-09-11).
+#: Marrickville alone carried 2,326 of the provision_type gap -- 97% of its
+#: served rows had no type, so the UI could not tell a control from a note.
+#:
+#: THE ORDER IS LOAD-BEARING, in two separate ways:
+#:   1. run_actionability_classification MUST be first. Every phase after it
+#:      filters on `v2_is_actionable = true`, so running it late means the others
+#:      silently process nothing and report success.
+#:   2. run_layer_tagging must come before any precinct derivation at the call
+#:      site. A derived precinct key also sets v2_dcp_layer='precinct', and layer
+#:      tagging would overwrite that if it ran afterwards (#1080).
+#: The three appended phases write only their own columns and never v2_dcp_layer,
+#: which is why appending was safe and reordering would not be.
+#:
+#: NOT HERE, DELIBERATELY: run_numeric_extraction. It filters on `v2_enriched_at`,
+#: a column that exists on NO table in this database (information_schema returned
+#: empty, checked 2026-09-11), so it would raise on its first query. It is dead
+#: code that reads as complete. Do not add it without fixing that first.
+STANDARD_ENRICHMENT_PHASES = (
+    ("actionability", "run_actionability_classification"),
+    ("layer + topic", "run_layer_tagging"),
+    ("applicability", "run_applicability_tagging"),
+    ("site condition", "run_site_condition_tagging"),
+    ("provision type", "run_type_classification"),
+    ("applicability provenance", "run_applicability_provenance"),
+)
+
+
+def run_standard_enrichment(batch_size: int = 500, phases=None) -> Dict[str, Any]:
+    """Run every post-write enrichment phase, in order, and report what each did.
+
+    Each phase is fill-blanks-only -- every one selects on its own column being
+    NULL -- so this is safe to run repeatedly and cannot overwrite a value a human
+    or an earlier run established.
+
+    ERROR ISOLATION IS THE POINT. A phase that raises must not stop the phases
+    after it: the caller has already committed provisions to the live table, and
+    "one tagger broke so five others never ran" is how a partial enrichment turns
+    into a council that is invisible in the UI. Each phase is wrapped, its error
+    recorded against its name, and the sequence continues.
+
+    Returns {phase_name: stats-or-error-dict}. The caller decides what to do with
+    a failure; this function's job is to run everything it can and hide nothing.
+    """
+    # `is None`, NOT `or`. An explicitly empty override means "run nothing", and
+    # `phases or DEFAULT` would quietly turn that into "run all six against the
+    # live database" -- the widest possible reading of the narrowest possible
+    # instruction.
+    selected = STANDARD_ENRICHMENT_PHASES if phases is None else phases
+    results: Dict[str, Any] = {}
+    for label, fn_name in selected:
+        fn = globals().get(fn_name)
+        if fn is None:
+            # A renamed phase must be loud. Silently skipping it would recreate
+            # the exact condition this function was written to end.
+            results[label] = {"error": f"{fn_name} is not defined in enrichment.pipeline"}
+            print(f"  [ERROR] {label}: {fn_name} is not defined")
+            continue
+        print(f"\n  -- {label} --")
+        try:
+            results[label] = fn(batch_size=batch_size)
+        except Exception as exc:  # noqa: BLE001 — one phase must not stop the rest
+            results[label] = {"error": f"{type(exc).__name__}: {exc}"}
+            print(f"  [ERROR] {label} failed: {type(exc).__name__}: {exc}")
+    failed = phase_failures(results)
+    if failed:
+        print(f"\n  enrichment finished with {len(failed)} failed phase(s): {', '.join(failed)}")
+    return results
+
+
+def phase_failures(results: Dict[str, Any]) -> list:
+    """Phase labels that did not fully succeed. The ONE definition of that.
+
+    A phase can fail in two different shapes and only one of them is an
+    exception. run_type_classification and run_site_condition_tagging both count
+    per-row failures into their own stats and return normally, so a run that
+    errored on twelve provisions comes back as {'total_processed': 3372,
+    'errors': 12} -- truthy, present, and with no 'error' key anywhere. A caller
+    checking only for 'error' reports "enrichment complete" over those twelve
+    rows, which is the silent-failure shape this whole change exists to remove.
+
+    Both call sites use this rather than each writing their own comprehension,
+    because two copies of "what counts as failed" is how the phase list itself
+    came to be wrong in two files at once.
+    """
+    failed = []
+    for label, stats in results.items():
+        if not isinstance(stats, dict):
+            # A phase that returns None, or a tuple, or anything else is a phase
+            # whose result cannot be read -- which is not the same as a phase that
+            # succeeded. Skipping it here would rebuild the silence this function
+            # exists to remove, one level further in. Checked and NOT currently
+            # possible: all six phases return a dict today. This is the guard for
+            # the seventh, or for the day one of them changes shape.
+            failed.append(f"{label} (unreadable result: {type(stats).__name__})")
+            continue
+        if stats.get("error"):
+            failed.append(label)
+        elif stats.get("errors"):  # a non-zero per-row error count
+            failed.append(f"{label} ({stats['errors']} row error(s))")
+    return failed
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run enrichment pipeline")
     parser.add_argument("--phase", choices=["actionability", "numeric", "site_condition", "type", "applicability", "applicability_provenance", "layer", "status"], default="status",
