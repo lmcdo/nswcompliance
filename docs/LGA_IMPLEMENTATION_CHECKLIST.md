@@ -63,7 +63,8 @@ Parts extracted: ______________________
 - [ ] Run layer tagging: `python enrichment/pipeline.py --phase layer`
 - [ ] Run site condition tagging: `python enrichment/pipeline.py --phase site_condition`
 - [ ] Run type classification: `python enrichment/pipeline.py --phase type`
-- [ ] Run numeric extraction: `python enrichment/pipeline.py --phase numeric`
+- [ ] Run numeric rule extraction: `python -m enrichment.rule_extraction_pipeline --phase deterministic --council <council>`
+      (`pipeline.py --phase numeric` was deleted 2026-09-11 — it wrote columns that do not exist)
 - [ ] Validate enrichment quality
 
 **Enrichment Stats:**

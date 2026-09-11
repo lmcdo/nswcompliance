@@ -88,8 +88,9 @@ python enrichment/pipeline.py --phase site_condition
 # Type classification
 python enrichment/pipeline.py --phase type
 
-# Numeric extraction
-python enrichment/pipeline.py --phase numeric
+# Numeric rule extraction (--phase numeric was deleted 2026-09-11; it wrote
+# columns that exist on no table. This is the live path.)
+python -m enrichment.rule_extraction_pipeline --phase deterministic --council waverley
 
 # Validate
 python enrichment/pipeline.py --phase status

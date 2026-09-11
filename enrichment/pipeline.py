@@ -23,7 +23,6 @@ from psycopg2.extras import RealDictCursor
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from enrichment.extractors.numeric_extractor import NumericExtractor
 from enrichment.extractors.site_condition_tagger import SiteConditionTagger
 from enrichment.extractors.type_classifier import TypeClassifier
 from enrichment.extractors.applicability_tagger import (
@@ -287,143 +286,6 @@ def run_actionability_classification(
               f"Errors: {stats['errors']}{flip_info}")
 
     stats['total_processed'] = processed
-    cur.close()
-    conn.close()
-
-    return stats
-
-
-def run_numeric_extraction(
-    limit: Optional[int] = None,
-    dry_run: bool = False,
-    batch_size: int = 500,
-    actionable_only: bool = True
-) -> Dict[str, Any]:
-    """
-    Run numeric extraction on provisions.
-
-    Args:
-        limit: Maximum number of provisions to process (None = all)
-        dry_run: If True, don't commit changes
-        batch_size: Number of provisions to process per batch
-        actionable_only: If True, only process actionable provisions (default)
-
-    Returns:
-        Statistics about the run
-    """
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-
-    extractor = NumericExtractor()
-
-    # Get count of provisions to process
-    actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
-    count_sql = f"""
-        SELECT COUNT(*) as total
-        FROM regulatory_provisions
-        WHERE v2_enriched_at IS NULL
-          AND provision_text IS NOT NULL
-          AND provision_text != ''
-          {actionable_filter}
-    """
-    cur.execute(count_sql)
-    total = cur.fetchone()['total']
-
-    if limit:
-        total = min(total, limit)
-
-    print(f"Processing {total} provisions...")
-    print(f"Batch size: {batch_size}")
-    print(f"Dry run: {dry_run}")
-    print("=" * 60)
-
-    stats = {
-        "total_processed": 0,
-        "with_numeric": 0,
-        "without_numeric": 0,
-        "errors": 0,
-        "start_time": datetime.now().isoformat(),
-        "version": ENRICHMENT_VERSION
-    }
-
-    processed = 0
-
-    while processed < total:
-        # Fetch batch of provisions
-        fetch_sql = f"""
-            SELECT id, provision_text
-            FROM regulatory_provisions
-            WHERE v2_enriched_at IS NULL
-              AND provision_text IS NOT NULL
-              AND provision_text != ''
-              {actionable_filter}
-            ORDER BY id
-            LIMIT %s
-        """
-        cur.execute(fetch_sql, (batch_size,))
-        provisions = cur.fetchall()
-
-        if not provisions:
-            break
-
-        # Process each provision
-        updates = []
-        for prov in provisions:
-            if limit and processed >= limit:
-                break
-
-            try:
-                result = extractor.extract(prov['provision_text'])
-
-                updates.append({
-                    'id': prov['id'],
-                    'has_numeric': result['has_numeric'],
-                    'values': json.dumps(result['values']) if result['values'] else None
-                })
-
-                if result['has_numeric']:
-                    stats['with_numeric'] += 1
-                else:
-                    stats['without_numeric'] += 1
-
-                processed += 1
-
-            except Exception as e:
-                print(f"Error processing provision {prov['id']}: {e}")
-                stats['errors'] += 1
-                processed += 1
-
-        # Apply updates
-        if updates and not dry_run:
-            update_sql = """
-                UPDATE regulatory_provisions
-                SET v2_has_numeric_value = %s,
-                    v2_extracted_values = %s,
-                    v2_enrichment_version = %s,
-                    v2_enriched_at = NOW()
-                WHERE id = %s
-            """
-
-            for upd in updates:
-                cur.execute(update_sql, (
-                    upd['has_numeric'],
-                    upd['values'],
-                    ENRICHMENT_VERSION,
-                    upd['id']
-                ))
-
-            conn.commit()
-
-        # Progress update
-        pct = (processed / total) * 100 if total > 0 else 100
-        print(f"Processed {processed}/{total} ({pct:.1f}%) - "
-              f"Numeric: {stats['with_numeric']}, "
-              f"Non-numeric: {stats['without_numeric']}, "
-              f"Errors: {stats['errors']}")
-
-    stats['total_processed'] = processed
-    stats['end_time'] = datetime.now().isoformat()
-
     cur.close()
     conn.close()
 
@@ -1174,7 +1036,6 @@ def get_enrichment_status() -> Dict[str, Any]:
             COUNT(*) as total,
             COUNT(CASE WHEN v2_is_actionable = true THEN 1 END) as actionable,
             COUNT(CASE WHEN v2_is_actionable = false THEN 1 END) as boilerplate,
-            COUNT(CASE WHEN v2_is_actionable = true AND v2_enriched_at IS NOT NULL THEN 1 END) as enriched,
             COUNT(CASE WHEN v2_is_actionable = true AND v2_has_numeric_value = true THEN 1 END) as with_numeric,
             COUNT(CASE WHEN v2_is_actionable = true AND v2_has_numeric_value = false THEN 1 END) as without_numeric,
             COUNT(CASE WHEN v2_is_actionable = true AND v2_site_condition_required = 'heritage' THEN 1 END) as heritage,
@@ -1196,17 +1057,21 @@ def get_enrichment_status() -> Dict[str, Any]:
     conn.close()
 
     actionable = result['actionable']
-    enriched = result['enriched']
 
+    # `enriched`, `pending` and `enrichment_pct` USED TO BE HERE and are gone.
+    # They counted `v2_enriched_at IS NOT NULL`, and that column exists on no
+    # table in the database -- so this whole report raised UndefinedColumn and
+    # `--phase status` had not run for as long as that was true. They are removed
+    # rather than repointed at a surviving column: inventing a new definition of
+    # "enriched" is choosing a value, where deleting a metric that measured
+    # nothing only removes a claim. The live coverage signals are
+    # site_condition_tagged and type_classified, already below.
     return {
         "total_provisions": result['total'],
         "actionable": actionable,
         "boilerplate": result['boilerplate'],
-        "enriched": enriched,
-        "pending": actionable - enriched,
         "with_numeric_values": result['with_numeric'],
         "without_numeric_values": result['without_numeric'],
-        "enrichment_pct": (enriched / actionable * 100) if actionable > 0 else 0,
         "site_condition_tagged": result['site_condition_tagged'],
         "heritage": result['heritage'],
         "flood": result['flood'],
@@ -1242,10 +1107,16 @@ def get_enrichment_status() -> Dict[str, Any]:
 #: The three appended phases write only their own columns and never v2_dcp_layer,
 #: which is why appending was safe and reordering would not be.
 #:
-#: NOT HERE, DELIBERATELY: run_numeric_extraction. It filters on `v2_enriched_at`,
-#: a column that exists on NO table in this database (information_schema returned
-#: empty, checked 2026-09-11), so it would raise on its first query. It is dead
-#: code that reads as complete. Do not add it without fixing that first.
+#: A SEVENTH PHASE, run_numeric_extraction, USED TO EXIST AND WAS DELETED
+#: 2026-09-11. It filtered on `v2_enriched_at` and wrote `v2_extracted_values`,
+#: `v2_enrichment_version` and `v2_enriched_at` -- three columns that exist on NO
+#: table in this database. It targeted a four-column schema that was replaced by
+#: the `v2_extracted_rules` + `v2_extraction_status` pair, which
+#: enrichment/rule_extraction_pipeline.py owns and writes. It could not have run
+#: since that schema changed, and repointing it would have created a SECOND writer
+#: for a field another pipeline already owns -- the duplication that caused the
+#: defect this list exists to prevent. If numeric rule extraction is wanted in this
+#: sequence, wire that pipeline; do not resurrect the wrapper.
 STANDARD_ENRICHMENT_PHASES = (
     ("actionability", "run_actionability_classification"),
     ("layer + topic", "run_layer_tagging"),
@@ -1333,7 +1204,7 @@ def phase_failures(results: Dict[str, Any]) -> list:
 
 def main():
     parser = argparse.ArgumentParser(description="Run enrichment pipeline")
-    parser.add_argument("--phase", choices=["actionability", "numeric", "site_condition", "type", "applicability", "applicability_provenance", "layer", "status"], default="status",
+    parser.add_argument("--phase", choices=["actionability", "site_condition", "type", "applicability", "applicability_provenance", "layer", "status"], default="status",
                        help="Which phase to run (default: status)")
     parser.add_argument("--limit", type=int, help="Limit number of provisions to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't commit changes")
@@ -1381,28 +1252,6 @@ def main():
         print(f"  Definition: {status['type_definition']:,}")
         print(f"  Note: {status['type_note']:,}")
         print(f"  Procedural: {status['type_procedural']:,}")
-
-    elif args.phase == "numeric":
-        print("\n=== Running Numeric Extraction ===")
-        actionable_only = not args.all
-        if actionable_only:
-            print("(Processing actionable provisions only)")
-        else:
-            print("(Processing ALL provisions including boilerplate)")
-        stats = run_numeric_extraction(
-            limit=args.limit,
-            dry_run=args.dry_run,
-            batch_size=args.batch_size,
-            actionable_only=actionable_only
-        )
-        print("\n=== Results ===")
-        print(f"Processed: {stats['total_processed']:,}")
-        print(f"With numeric: {stats['with_numeric']:,}")
-        print(f"Without numeric: {stats['without_numeric']:,}")
-        print(f"Errors: {stats['errors']:,}")
-
-        if args.dry_run:
-            print("\n[DRY RUN - No changes committed]")
 
     elif args.phase == "site_condition":
         print("\n=== Running Site Condition Tagging ===")
