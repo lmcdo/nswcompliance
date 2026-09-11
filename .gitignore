@@ -565,6 +565,12 @@ scripts/**/*.pdf
 !scripts/lint_hardcoded_zone_codes.py
 !scripts/lint_hardcoded_confidence.py
 !scripts/validate_zone_code_validity.py
+# The per-council completeness check and the precinct-rule audit it runs as a
+# subprocess. Both are COPYed into Dockerfile.monitors and called from the
+# dcp-commit job, so an untracked one is a container that cannot compare anything.
+!scripts/check_council_completeness.py
+!scripts/council_completeness_rules.py
+!scripts/audit_precinct_keying_coverage.py
 !scripts/backfill_invalid_zone_codes.py
 !scripts/requirements-monitor.txt
 !scripts/requirements-stats.txt

@@ -53,6 +53,15 @@ COPY enrichment/ ./enrichment/
 # reference data cannot be read. Only stdlib beyond psycopg2, already present.
 COPY scripts/validate_zone_code_validity.py ./scripts/validate_zone_code_validity.py
 
+# Per-council completeness check -- dcp_commit_approved imports it at the end of
+# every non-dry run, and it in turn SUBPROCESSES the two checkers below. All three
+# must be present or the check degrades to a warning and nothing is compared,
+# which is the same silence it exists to remove. audit_precinct_keying_coverage
+# additionally loads derive_precinct_keys by path (COPYed above).
+COPY scripts/check_council_completeness.py ./scripts/check_council_completeness.py
+COPY scripts/council_completeness_rules.py ./scripts/council_completeness_rules.py
+COPY scripts/audit_precinct_keying_coverage.py ./scripts/audit_precinct_keying_coverage.py
+
 # Property-alerts dispatcher (MONITOR_NAME=property-alerts). It reuses the existing
 # threat_radar subscription/check helpers, which live in the FastAPI router module
 # services/threat_radar.py -> imports services/audit_trail.py. Both are copied here;
