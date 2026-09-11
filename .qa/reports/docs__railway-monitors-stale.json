@@ -1,7 +1,7 @@
 {
   "tier": "Minor",
   "justification": "Documentation only — one markdown file, no code, no data, no query. docs/RAILWAY_MONITORS.md carried a table of 4 Railway services while 12 monitor names exist and 11 services run; it listed dcp-extract and dcp-commit as 'local/on-demand scripts' when both have been daily crons for months, and gave dcp-monitor a weekly schedule it has not had. Every correction here removes a false statement rather than adding a new claim, which per project-defect-repair-calibration-2026-08 is the direction that cannot create a new false claim. The stale table is replaced by the commands that produce the live answer, so the same drift cannot recur — a transcribed list is exactly how this file went wrong.",
-  "commit_hash": "9bdf0a79",
+  "commit_hash": "de79453b",
   "files": [
     "docs/RAILWAY_MONITORS.md"
   ],
@@ -46,7 +46,7 @@
     }
   ],
   "mutation_analysis": "N/A at this tier, and it would be meaningless here: the change removes assertions rather than adding logic. The equivalent discipline was applied instead — every fact written in was obtained by running a command this session (Railway API for the live service list and schedules, the repo files for the declared ones, the deploy log for the watchdog run), and the stale claims were each confirmed false before deletion rather than assumed stale.",
-  "residual_risk": "1) The document still describes a Railway dashboard workflow for creating services, which is correct today but sits on config-as-code — and the Railway CLI now warns that railway.json/railway.toml are deprecated in favour of .railway/railway.ts, working only until 2026-12-01. The document records the deadline; it does not migrate anything. 2) monitor-satellite and monitor-watchdog remain unverifiable by check_railway_cron_drift.py because they share a toml that declares no cron. Named in the document, not fixed. 3) monitor-watchdog still has no HC_PING_URL. Named, not fixed. 4) The document's claim that 11 services run is a dated observation, not a live check — but it is written as an observation with the command beside it, not as a fact to be trusted.",
+  "residual_risk": "1) The document still describes a Railway dashboard workflow for creating services, which is correct today but sits on config-as-code — and the Railway CLI now warns that railway.json/railway.toml are deprecated in favour of its newer TypeScript Infrastructure-as-Code format, which this repo does not use, working only until 2026-12-01. The document records the deadline; it does not migrate anything. 2) monitor-satellite and monitor-watchdog remain unverifiable by check_railway_cron_drift.py because they share a toml that declares no cron. Named in the document, not fixed. 3) monitor-watchdog still has no HC_PING_URL. Named, not fixed. 4) The document's claim that 11 services run is a dated observation, not a live check — but it is written as an observation with the command beside it, not as a fact to be trusted.",
   "post_merge": {
     "db_reset": "None. No data, no schema, no query.",
     "secrets": "None. The document names environment variables by name only, never values.",

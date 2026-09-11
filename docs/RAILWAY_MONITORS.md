@@ -39,8 +39,9 @@ because both share `railway.monitors.toml`, which declares no `cronSchedule` of 
 own. Those two are the services whose live schedule nothing in the repo verifies.
 
 **Config-as-code is deprecated.** The Railway CLI now warns that
-`railway.json` / `railway.toml` are superseded by `.railway/railway.ts`; existing
-files keep working until **2026-12-01**.
+`railway.json` / `railway.toml` are superseded by its newer Infrastructure-as-Code
+format (a TypeScript config, which this repo does not use and has no file for yet);
+existing files keep working until **2026-12-01**.
 
 ### Creating Each Service
 
