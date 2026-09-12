@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Measurement, gating and review infrastructure for DCP chapter completeness and numeric control extraction. No production data is written by anything in this branch: every script is read-only or writes JSON, migration 071 is deliberately NOT applied, and no control row is inserted. The risk it carries is the opposite one - a check that silently reads clean. Three separate silent-pass defects were found and fixed within the branch itself (a ratchet that emitted 0 for UNKNOWN, a candidate cap that destroyed the evidence it was selecting, and a review key that collapsed three rows onto one verdict), so the tier reflects that this code's failure mode is under-reporting, not corruption.",
-  "commit_hash": "2dcb4603",
+  "commit_hash": "e5601df0",
   "files": [
     "scripts/dcp_chapter_measure.py",
     "scripts/dcp_toc_parse.py",
@@ -19,7 +19,8 @@
     ".github/workflows/gates.yml",
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
-    "data/dcp_control_proposals/"
+    "data/dcp_control_proposals/",
+    "tests/test_dq_probe_precinct_rows_served_lga_wide_real_db.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/dcp_page_map_gate.py --from-ledger (per PR, in gates.yml) and the full R2 form nightly in data-watch.yml; python scripts/dq_check.py; python scripts/dq_probe_precinct_rows_served_lga_wide.py; python -m pytest",
@@ -219,6 +220,13 @@
       "repro": "python scripts/dcp_page_map_gate.py --from-ledger (2s, DATABASE_URL only) versus python scripts/dcp_page_map_gate.py (full R2 read); the two are expected to agree, and the nightly run is what proves it.",
       "mitigated": "Bounded, not eliminated - and stated rather than hidden.",
       "how": "Deliberate trade: making every PR read R2 would block merges on R2 availability and on four secrets being present, which is how a gate gets disabled. The window is one night, the nightly form is authoritative, and its indices were verified aligned 10 of 10 before wiring."
+    },
+    {
+      "scenario": "scripts/conveyancing_db.fetch_dcp_setbacks changes what it considers SERVED, and the DQ-99 probe keeps its old copied guard.",
+      "what_happens": "tests/test_dq_probe_precinct_rows_served_lga_wide_real_db.py fails, naming the clause that no longer appears on one side.",
+      "repro": "PYTEST_REAL_DB=1 DATABASE_URL=<pooler url> python -m pytest -m database tests/test_dq_probe_precinct_rows_served_lga_wide_real_db.py -o addopts=",
+      "mitigated": "Mitigated, and this is the specific failure the test exists for.",
+      "how": "DQ-97's probe read green for a day on 2026-09-10 because its population was drained by an operator approving rows, not because anything was repaired. A copied guard that rots produces a number which no longer describes what any user is shown, and nothing says so."
     }
   ],
   "mutation_analysis": "Every guard in the branch was forced to fail and observed failing before being relied on, against real production data rather than fixtures. broken_candidates(): mutated a candidate's text to drop its keyword, guard fired; it also fired unprompted on two real max_height rows. window_around(): tested against a synthetic 40k provision whose only clause sits past the old 6,000-char cap, and against a max_height provision whose only nearby number is a percentage. row_key(): asserted that parramatta's three C.04 limbs produce three distinct keys and that a genuine collision is reported rather than absorbed. apply_review(): forced every fail-closed path - unreviewed, unknown verdict, short note, correction out of quote, page not supplied - and separately asserted a clean ACCEPT still passes, so the gate cannot be refusing everything. Both vocabulary drift guards were mutated in-process against the live constraint and both fired. The candidate harness was additionally run over 7 control types and 17 councils; the run is the mutation test, and it produced three defects the unit tests alone did not.",
