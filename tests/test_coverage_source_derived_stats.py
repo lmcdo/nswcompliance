@@ -127,3 +127,53 @@ def test_risk_layers_is_the_one_number_with_no_source():
     assert "riskLayers" in ts and "UNVERIFIED" in ts, (
         "coverage.ts must say in the comment block that riskLayers has no source"
     )
+
+
+# ── the ratchet: no published number may be checked by nothing ───────────────
+# riskLayers is the ONE key allowed to have no source check, and only because it
+# has its own test above keeping that fact visible. Adding to this set is a
+# deliberate act that shows up in review; forgetting to write a check is not.
+UNGROUNDED_BY_DECISION = {"riskLayers"}
+
+VERIFY_SCRIPT = ROOT / "scripts" / "verify_coverage_stats.py"
+THIS_TEST = Path(__file__)
+
+
+def test_every_published_number_is_checked_by_something():
+    """A published figure with no checker passes by OMISSION. That is how both
+    known bad numbers got onto the site.
+
+    `lgasCovered: 130` sat on the homepage claiming more councils than NSW
+    contains, and `riskLayers: 8` is a headline stat nothing in the repo
+    produces. Neither FAILED a check -- neither was checked at all, and the two
+    checkers only verify the keys they already know about. Silence read as
+    approval.
+
+    So the rule is inverted here: every key in COVERAGE must be named by the DB
+    verifier, or by this file, or by UNGROUNDED_BY_DECISION. A key in none of
+    them fails, and the failure names it. Writing a new published number without
+    a check now costs a red test rather than nothing at all.
+    """
+    keys = set(published())
+    db_checked = {k for k in keys if k in VERIFY_SCRIPT.read_text(encoding="utf-8")}
+    source_checked = {k for k in keys if k in THIS_TEST.read_text(encoding="utf-8")}
+    unchecked = keys - db_checked - source_checked - UNGROUNDED_BY_DECISION
+
+    assert not unchecked, (
+        "published in coverage.ts and verified by nothing: " + ", ".join(sorted(unchecked)) +
+        ". Add a query to scripts/verify_coverage_stats.py, or a source check to "
+        "this file, or -- if it genuinely cannot be grounded -- add it to "
+        "UNGROUNDED_BY_DECISION with a test that keeps that visible. Do not leave "
+        "it unchecked: an unchecked number does not fail, it just never gets "
+        "looked at."
+    )
+
+
+def test_the_ungrounded_set_stays_small_and_deliberate():
+    """UNGROUNDED_BY_DECISION is an escape hatch, and an escape hatch that grows
+    quietly is the exemption that let 'editorial' mean 'unverifiable' for months.
+    Every member needs its own visible test, so the set is asserted by name."""
+    assert UNGROUNDED_BY_DECISION == {"riskLayers"}, (
+        "the ungrounded set changed. Each member must have a test keeping its "
+        "open decision visible, like test_risk_layers_is_the_one_number_with_no_source."
+    )
