@@ -315,6 +315,93 @@ overwrites, so a run that could not measure something cannot erase its floor.
 
 ---
 
+## Phase B — marrickville's cause, PROVEN (2026-09-12)
+
+The plan recorded marrickville as "the largest thing nobody can explain": 71
+incomplete chapters, no page-range config, so Waverley's cause cannot apply. Its
+hypothesis was "a chunking or truncation failure — prove it before acting".
+
+**It is two causes, not one, and the hypothesis was the smaller of them.**
+
+### Cause 1 — silent chunk loss (4 chapters, 94 pages of source)
+
+`ai_extract_chapter` splits a chapter into 30-page chunks. A chunk could return
+zero provisions, and the function collected nothing for it and moved on — no
+count, no flag, no error. The chapter was then committed missing that chunk's
+entire content.
+
+Proven the way Waverley's was, from the document itself:
+
+| chapter | pages | chunks | rows sit on | chunk that produced nothing |
+|---|---|---|---|---|
+| `part4-s1-low-density` | 55 | 1–30, 31–55 | **page 31 only** | 1–30 |
+| `part5-commercial-mixed-use` | 46 | 1–30, 31–46 | **page 31 only** | 1–30 |
+| `part2-s21-site-facilities-waste` | 35 | 1–30, 31–35 | **page 31 only** | 1–30 |
+
+Page 31 is the second chunk's first page (`p.setdefault("page", a + 1)`). No row
+anywhere is attributable to the first chunk, so the first chunk returned nothing.
+
+**Where the "missing" sections actually are: in the PDF, inside that empty
+chunk.** Across the three chapters, **42 of 42** sampled missing sections were
+present in the document on pages 3–29; **zero** were absent from it. The contents
+page was not lying — the extractor lost a chunk and said nothing.
+
+Corpus-wide: 15 chapters, 558 pages of source document never extracted.
+
+**Guarded** (`ai_extractor.ChunkLoss`): a chunk returning nothing while holding
+≥1,500 characters of text now raises, and the existing isolated-worker path turns
+that into a chapter rejection with `needs_extraction` left TRUE. A genuinely blank
+chunk — a cover, a plate of maps — still passes silently, and that confusable
+negative is tested.
+
+### Cause 2 — section attribution collapse (48 chapters, 1,350 rows) — the dominant one
+
+`part2-s25-stormwater` serves 40 rows; its document lists 19 sections. All 40 are
+stamped `2.25 Stormwater Management` with a control marker (C5, C9, C10, C17, C24,
+C29 …). The 19 real sub-sections — 2.25.1, 2.25.2, 2.25.3, 2.25.3.1 … 2.25.3.14 —
+are collapsed into their parent.
+
+**The text is not missing.** Capture ratio is 1.0; every character is stored. The
+sections are *unreachable*, because the sub-section level was never recorded.
+Signal 1 calls this INCOMPLETE, which reads as "content absent" and sends it to
+the wrong repair — a re-extraction, when what is wrong is the attribution.
+
+| | listed | distinct codes stored |
+|---|---|---|
+| `part2-s25-stormwater` | 19 | **1** |
+| `part4-s2-multi-dwelling` | 22 | **2** |
+| `part2-s24-contaminated-land` | 28 | **3** |
+| `part6-industrial` | 33 | **4** |
+| `part8-heritage` (healthy) | 366 | 332 |
+| `part2-s10-parking` (healthy) | 19 | 17 |
+
+Collapsed chapters store 5–21% of their listed sections, healthy ones 85–91%. The
+separation is measured, not chosen, and the threshold sits in the empty gap.
+
+Now **signal 5** (`attribution_collapse`), recorded in the ledger by migration 070.
+Corpus-wide: 59 chapters — marrickville 48, ku_ring_gai 5, canterbury_bankstown 3,
+woollahra 1, waverley 1, leichhardt 1.
+
+### Two things this is NOT
+
+- **Not truncation.** Provision text is intact; whole chunks or whole section
+  levels go missing, not the ends of paragraphs.
+- **Not "never extracted".** 46 chapters serve zero rows (canterbury_bankstown 21,
+  marrickville 12, leichhardt 10). That is a third, separate problem and is
+  counted separately — folding it into chunk loss would have claimed 27 chapters
+  where there are 15.
+
+### A method correction worth keeping
+
+`pdf_page` is **not** evidence of which pages were read. It is either a
+model-reported label or the chunk's first page by default. An earlier pass here
+used "pages we stored rows for" as a proxy for "pages the extractor saw" and drew
+a wrong conclusion about Shape B from it. The argument for cause 1 survives only
+because it rests on the *absence* of any row attributable to a chunk whose default
+page is 1 — not on which pages appear.
+
+---
+
 ## Corrections to the plan, found while building
 
 1. **There are 32 hardcoded page maps, not 1.** `COUNCIL_CHAPTER_RANGES` holds 31

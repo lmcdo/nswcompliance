@@ -390,13 +390,60 @@ def capture_ratio(stored_chars: int, pdf_text_chars: int):
     return ("HOLLOW" if ratio < CAPTURE_FLOOR else "CAPTURED"), round(ratio, 4)
 
 
-# ── putting a chapter's four signals together ────────────────────────────────
+# ── signal 5: section attribution collapse ───────────────────────────────────
+# Marrickville's DOMINANT cause, proven 2026-09-12 -- and invisible to every
+# other signal here.
+#
+#   marrickville/part2-s25-stormwater: 40 rows, and the document lists 19
+#   sections. All 40 rows are stamped "2.25 Stormwater Management", with the
+#   control markers C5, C9, C10, C17, C24, C29 ... The 19 real sub-sections
+#   (2.25.1, 2.25.2, 2.25.3, 2.25.3.1 … 2.25.3.14) are collapsed into their
+#   parent, so not one of them can be retrieved.
+#
+# Signal 1 calls this INCOMPLETE, which is true but misleading: it reads as
+# "the content is missing". The content is THERE -- capture ratio 1.0 -- and it
+# is unreachable because the sub-section level was never recorded. The repair is
+# completely different from a re-extraction of absent content, which is why this
+# is its own signal rather than a footnote on signal 1.
+#
+# Measured separation is clean, not a guess: collapsed chapters store 5-21% of
+# the listed sections, healthy ones 85-91%. The threshold sits in the gap.
+#
+# Corpus-wide: 64 chapters, 1,872 rows. marrickville 48 of its 61 judgeable
+# chapters (1,350 rows), ku_ring_gai 10, canterbury_bankstown 3, leichhardt 1,
+# waverley 1, woollahra 1.
+ATTRIBUTION_MIN_LISTED = 5     # fewer listed sections than this cannot be judged
+ATTRIBUTION_MIN_ROWS = 5
+ATTRIBUTION_FLOOR = 0.5        # distinct stored codes / listed sections
+
+
+def attribution_collapse(listed_codes, stored_codes, live_rows: int):
+    """-> (verdict, ratio). COLLAPSED | ATTRIBUTED | NO_STORED_CODES | TOO_FEW_*.
+
+    NO_STORED_CODES is kept separate from COLLAPSED on purpose. A chapter whose
+    rows carry no parseable code at all (woollahra: 24 chapters, 547 rows) is a
+    different defect from one whose rows all carry the SAME code, and folding
+    them together would have reported 98 collapsed chapters where there are 64.
+    """
+    listed, stored = set(listed_codes), set(stored_codes)
+    if len(listed) < ATTRIBUTION_MIN_LISTED:
+        return "TOO_FEW_LISTED", None
+    if live_rows < ATTRIBUTION_MIN_ROWS:
+        return "TOO_FEW_ROWS", None
+    if not stored:
+        return "NO_STORED_CODES", 0.0
+    ratio = len(stored) / len(listed)
+    return ("COLLAPSED" if ratio < ATTRIBUTION_FLOOR else "ATTRIBUTED"), round(ratio, 3)
+
+
+# ── putting a chapter's five signals together ────────────────────────────────
 # A signal that ran and could have failed. Anything else means this chapter is
 # still unknown to that signal, and unknown is never folded into a pass.
 _S1_MEASURED = {"OK", "INCOMPLETE", "NO_ROWS"}
 _S2_MEASURED = {"NO_GAPS", "GAPS"}   # SHARED_NUMBERING/TOO_FEW_CODES did not judge
 _S3_MEASURED = {"CONSISTENT", "MISLABELLED"}
 _S4_MEASURED = {"CAPTURED", "HOLLOW", "OVER_CAPTURED", "NO_ROWS"}
+_S5_MEASURED = {"COLLAPSED", "ATTRIBUTED"}
 
 
 def score_chapter(raw: dict, sibling_codes=frozenset()) -> dict:
@@ -453,11 +500,15 @@ def score_chapter(raw: dict, sibling_codes=frozenset()) -> dict:
     out["capture_verdict"], out["capture_ratio"] = capture_ratio(
         raw.get("stored_chars") or 0, raw.get("pdf_text_chars") or 0)
 
+    out["attribution_verdict"], out["attribution_ratio"] = attribution_collapse(
+        listed, stored, raw.get("live_rows", 0))
+
     ran = [
         out["contents_verdict"] in _S1_MEASURED,
         out["gap_verdict"] in _S2_MEASURED,
         out["header_verdict"] in _S3_MEASURED,
         out["capture_verdict"] in _S4_MEASURED,
+        out["attribution_verdict"] in _S5_MEASURED,
     ]
     out["signals_run"] = sum(ran)
     out["measured"] = any(ran)
@@ -480,6 +531,8 @@ def score_chapter(raw: dict, sibling_codes=frozenset()) -> dict:
         findings.append("hollow:" + str(out["capture_ratio"]))
     if out["capture_verdict"] == "OVER_CAPTURED":
         findings.append("over_captured:" + str(out["capture_ratio"]))
+    if out["attribution_verdict"] == "COLLAPSED":
+        findings.append("attribution_collapsed:" + str(out["attribution_ratio"]))
     out["findings"] = findings
     return out
 
@@ -567,6 +620,9 @@ def summarise(scored: list[dict]) -> dict:
             k["OVER_CAPTURED"] += 1
         if c["gap_verdict"] == "SHARED_NUMBERING":
             k["SHARED_NUMBERING"] += 1
+        if c["attribution_verdict"] == "COLLAPSED":
+            k["COLLAPSED"] += 1
+            k["collapsed_rows"] += c["live_rows"]
     totals = Counter()
     for k in per.values():
         totals.update(k)
@@ -790,9 +846,9 @@ def write_ledger(scored: list[dict], run_source: str, log) -> int:
             " listed_codes, missing_codes, missing_sample, gap_verdict, gap_count,"
             " gap_sample, header_verdict, header_rows_checked, header_rows_disagree,"
             " header_examples, capture_verdict, capture_ratio, pdf_text_chars,"
-            " stored_chars) "
+            " stored_chars, attribution_verdict, attribution_ratio) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
-            "        %s,%s,%s,%s)",
+            "        %s,%s,%s,%s,%s,%s)",
             (run_source, c["council"], c["chapter"], c.get("pdf_content_hash"),
              c.get("pdf_pages"), c["live_rows"], c["measured"], c["signals_run"],
              c.get("contents_status"), c.get("contents_verdict"),
@@ -802,7 +858,8 @@ def write_ledger(scored: list[dict], run_source: str, log) -> int:
              c.get("header_verdict"), c.get("header_rows_checked", 0),
              c.get("header_rows_disagree", 0),
              json.dumps(c.get("header_examples", [])), c.get("capture_verdict"),
-             c.get("capture_ratio"), c.get("pdf_text_chars"), c.get("stored_chars")))
+             c.get("capture_ratio"), c.get("pdf_text_chars"), c.get("stored_chars"),
+             c.get("attribution_verdict"), c.get("attribution_ratio")))
         n += 1
     conn.commit()
     conn.close()
@@ -821,11 +878,11 @@ def load_baseline() -> dict:
 def report(scored: list[dict], baseline: dict, log) -> int:
     summary = summarise(scored)
     cols = ("chapters", "OK", "UNMEASURED", "INCOMPLETE", "CONTENTS_UNREADABLE",
-            "GAPS", "MISLABELLED", "HOLLOW", "OVER_CAPTURED")
+            "GAPS", "MISLABELLED", "HOLLOW", "COLLAPSED")
     head = ("  council".ljust(24) + "chaps".rjust(7) + "OK".rjust(5) +
             "UNMEAS".rjust(8) + "INCOMP".rjust(8) + "UNREAD".rjust(8) +
             "GAPS".rjust(7) + "MISLAB".rjust(8) + "HOLLOW".rjust(8) +
-            "OVERCAP".rjust(9))
+            "COLLAPS".rjust(9))
     log("")
     log("=" * len(head))
     log(head)

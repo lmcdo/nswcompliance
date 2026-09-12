@@ -12,7 +12,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.dcp_chapter_measure import (  # noqa: E402
     CAPTURE_FLOOR, CAPTURE_MIN_PDF_CHARS, RATCHET_KEYS, capture_ratio,
-    chapter_is_ok, compare_codes, dominant_prefix, leading_code, numbering_gaps,
+    attribution_collapse, chapter_is_ok, compare_codes, dominant_prefix,
+    leading_code, numbering_gaps,
     ratchet, score_all, score_chapter, summarise,
 )
 
@@ -223,6 +224,47 @@ class TestCaptureRatio:
         assert capture_ratio(105_000, 100_000)[0] == "CAPTURED"
 
 
+class TestAttributionCollapse:
+    """Marrickville's dominant cause, and invisible to every other signal."""
+
+    def test_the_stormwater_shape_is_COLLAPSED(self):
+        # marrickville/part2-s25-stormwater: 40 rows, 19 listed sections, and
+        # every row stamped "2.25 Stormwater Management" with a control marker.
+        # The 19 sub-sections are collapsed into their parent and none can be
+        # retrieved -- while the text itself is all present (capture 1.0).
+        listed = ["2.25.1", "2.25.2", "2.25.3"] + [
+            "2.25.3." + str(i) for i in range(1, 17)]
+        verdict, ratio = attribution_collapse(listed, {"2.25"}, live_rows=40)
+        assert verdict == "COLLAPSED"
+        assert ratio < 0.1
+
+    def test_a_healthy_chapter_is_ATTRIBUTED(self):
+        # marrickville/part2-s10-parking: 19 listed, 17 distinct stored.
+        listed = [str(i) for i in range(1, 20)]
+        stored = {str(i) for i in range(1, 18)}
+        verdict, ratio = attribution_collapse(listed, stored, live_rows=54)
+        assert verdict == "ATTRIBUTED" and ratio > 0.8
+
+    def test_no_parseable_codes_is_NOT_reported_as_collapse(self):
+        # woollahra (24 chapters, 547 rows) carries no parseable code at all.
+        # That is a different defect, and folding it in reported 98 collapsed
+        # chapters where there are 59.
+        listed = [str(i) for i in range(1, 20)]
+        assert attribution_collapse(listed, set(), live_rows=40)[0] == "NO_STORED_CODES"
+
+    def test_a_chapter_too_small_to_judge_says_so(self):
+        # Three listed sections and one stored code is not evidence of collapse.
+        assert attribution_collapse(["1", "2", "3"], {"1"}, 40)[0] == "TOO_FEW_LISTED"
+        assert attribution_collapse([str(i) for i in range(9)], {"1"}, 2)[0] == "TOO_FEW_ROWS"
+
+    def test_the_verdict_is_not_constant(self):
+        # Mutation guard: a function returning one value always would pass the
+        # positive or the negative above, never both.
+        listed = [str(i) for i in range(1, 21)]
+        assert attribution_collapse(listed, {"1"}, 40)[0] == "COLLAPSED"
+        assert attribution_collapse(listed, set(listed), 40)[0] == "ATTRIBUTED"
+
+
 class TestScoringIsThreeStateNotTwo:
     def _raw(self, **kw):
         base = {"council": "x", "chapter": "y", "live_rows": 10,
@@ -302,6 +344,14 @@ class TestScoringIsThreeStateNotTwo:
         b = score_chapter(self._raw(contents_status="UNREADABLE", listed_codes=[]))
         assert a["contents_verdict"] != b["contents_verdict"]
 
+    def test_collapsed_attribution_becomes_a_finding_and_blocks_OK(self):
+        listed = [str(i) for i in range(1, 21)]
+        s = score_chapter(self._raw(listed_codes=listed, stored_codes=["1"],
+                                    live_rows=40))
+        assert s["attribution_verdict"] == "COLLAPSED"
+        assert any(f.startswith("attribution_collapsed") for f in s["findings"])
+        assert not chapter_is_ok(s)
+
     def test_mislabelled_rows_become_a_finding(self):
         s = score_chapter(self._raw(header={
             "verdict": "MISLABELLED", "rows_checked": 263, "rows_disagree": 54,
@@ -318,13 +368,15 @@ class TestSummariseAndRatchet:
                         "live_rows": 5, "contents_verdict": "OK",
                         "gap_verdict": "NO_GAPS", "header_verdict": "CONSISTENT",
                         "capture_verdict": "CAPTURED", "n_missing": 0,
-                        "header_rows_disagree": 0})
+                        "header_rows_disagree": 0,
+                        "attribution_verdict": "ATTRIBUTED"})
         for _ in range(n_incomplete):
             out.append({"council": council, "measured": True,
                         "findings": ["contents:2/5"], "live_rows": 5,
                         "contents_verdict": "INCOMPLETE", "gap_verdict": "NO_GAPS",
                         "header_verdict": "CONSISTENT", "capture_verdict": "CAPTURED",
-                        "n_missing": 2, "header_rows_disagree": 0})
+                        "n_missing": 2, "header_rows_disagree": 0,
+                        "attribution_verdict": "ATTRIBUTED"})
         for _ in range(n_unmeasured):
             out.append({"council": council, "measured": False, "findings": [],
                         "live_rows": 0,
@@ -332,7 +384,8 @@ class TestSummariseAndRatchet:
                         "gap_verdict": "TOO_FEW_CODES",
                         "header_verdict": "NO_HEADER_TRUTH",
                         "capture_verdict": "NO_TEXT", "n_missing": 0,
-                        "header_rows_disagree": 0})
+                        "header_rows_disagree": 0,
+                        "attribution_verdict": "TOO_FEW_LISTED"})
         return out
 
     def test_summarise_counts_not_ok_and_unmeasured(self):

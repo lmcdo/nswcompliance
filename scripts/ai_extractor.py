@@ -366,6 +366,45 @@ def _call_and_parse_with_empty_retry(model: str, pdf_bytes: bytes, prompt: str) 
     return provs
 
 
+# ── silent chunk loss: the marrickville cause, proven 2026-09-12 ─────────────
+# ai_extract_chapter splits a chapter into AI_CHUNK_PAGES-page chunks. A chunk
+# could return zero provisions and this function simply collected nothing for it
+# and moved on -- no count, no flag, no error. The chapter was then committed
+# missing that chunk's entire content, and nothing anywhere recorded it.
+#
+# PROVEN, not inferred. marrickville/part4-s1-low-density (55pp, chunks 1-30 and
+# 31-55): every stored row sits on page 31, so chunk 1 produced nothing. All 14
+# of its sampled "missing" sections -- 4.1.1, 4.1.10 … 4.1.15.1 -- are present in
+# the PDF on pages 3-29, inside that empty chunk. Across three chapters, 42 of 42
+# checked missing sections were in the document, inside a chunk that yielded
+# nothing; ZERO were absent from the PDF. The contents page was not lying.
+#
+# Chapters affected (2026-09-12): 15 across 7 councils, 558 pages of source
+# document never extracted, of which marrickville is 4 chapters and 94 pages.
+#
+# A chunk that is genuinely blank -- a cover, a plate of maps, a scanned image
+# run -- SHOULD return nothing, so emptiness alone is not the signal. The signal
+# is emptiness from a chunk that demonstrably contains text.
+CHUNK_LOSS_MIN_TEXT_CHARS = 1500   # a 30-page chunk of controls is far above this
+
+
+class ChunkLoss(Exception):
+    """A chunk containing substantial text returned no provisions."""
+
+
+def _chunk_text_chars(reader, a: int, b: int) -> int:
+    """Extractable characters in pages [a, b). Cheap; no model call."""
+    total = 0
+    for i in range(a, min(b, len(reader.pages))):
+        try:
+            total += len(reader.pages[i].extract_text() or "")
+        except Exception:
+            # A page pypdf cannot read is not evidence of emptiness. Treat it as
+            # text-bearing so the guard errs toward reporting loss, not hiding it.
+            total += CHUNK_LOSS_MIN_TEXT_CHARS
+    return total
+
+
 # ── entrypoint ───────────────────────────────────────────────────────────────
 def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None) -> list[dict]:
     """Extract a chapter's provisions via an LLM. Returns section dicts matching
@@ -377,10 +416,19 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
     total = len(reader.pages)
     collected: list[dict] = []
     current_section: str | None = None
+    lost: list[dict] = []
     for (a, b) in chunk_ranges(total):
         pdf_bytes = _subset_bytes(reader, a, b)
         prompt = _build_prompt(current_section)
         chunk_provs = _call_and_parse_with_empty_retry(model, pdf_bytes, prompt)
+        if not chunk_provs:
+            # FAIL CLOSED. Zero provisions from a chunk that holds real text is
+            # content loss, and accepting it silently is what cost marrickville
+            # 94 pages of source document. A genuinely blank chunk has no text
+            # and is passed over without complaint.
+            chars = _chunk_text_chars(reader, a, b)
+            if chars >= CHUNK_LOSS_MIN_TEXT_CHARS:
+                lost.append({"pages": (a + 1, b), "text_chars": chars})
         for p in chunk_provs:
             p.setdefault("page", a + 1)  # approximate: first page of the chunk
             collected.append(p)
@@ -391,4 +439,13 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
             if _SECTION_RE.match(token):
                 current_section = token
                 break
+    if lost:
+        pages = ", ".join(str(x["pages"][0]) + "-" + str(x["pages"][1]) for x in lost)
+        chars = sum(x["text_chars"] for x in lost)
+        raise ChunkLoss(
+            str(len(lost)) + " of " + str(len(chunk_ranges(total))) + " chunks "
+            "returned NO provisions while holding " + str(chars) + " characters "
+            "of text (pages " + pages + "). Refusing to return a partial chapter: "
+            "committing it would silently drop those pages, which is how "
+            "marrickville lost 94 pages of source across 4 chapters.")
     return provisions_to_sections(dedupe_provisions(collected))
