@@ -119,6 +119,35 @@ def numbers_in(text: str) -> set[str]:
     return out
 
 
+def ambiguous_quotes(proposals: list[dict]) -> dict[str, list[dict]]:
+    """Proposals that share one quote while asserting DIFFERENT values.
+
+    Found on the first real run, 2026-09-12. Two hornsby Pound Road rows carried
+    the identical quote -- an interleaved table cell reading "4m, plus any ground
+    floor commercial premises should be setback behind a colonnade ... (i.e. min
+    setback of 7.5m)" -- and claimed 4m and 7.5m respectively. Both passed the
+    per-row checks, because both numbers genuinely appear in that quote.
+
+    That is the limit of a per-row test: the quote is evidence for the row, but
+    where one quote supports two different answers it cannot be evidence for
+    EITHER without the reader also trusting the condition text. Such rows are not
+    rejected -- both may well be right, and a colonnade variant is a real control
+    -- but they are the ones a human should read first, so they are surfaced
+    rather than left to look as settled as an unambiguous row.
+    """
+    by_quote: dict[str, list[dict]] = {}
+    for prop in proposals:
+        key = normalise(str(prop.get("source_text", "")))
+        by_quote.setdefault(key, []).append(prop)
+    out = {}
+    for quote, group in by_quote.items():
+        values = {str(g.get("value_min")) + "/" + str(g.get("value_max"))
+                  for g in group}
+        if len(group) > 1 and len(values) > 1:
+            out[quote] = group
+    return out
+
+
 def check(proposal: dict, page_text: str) -> tuple[str, list[str]]:
     """-> (verdict, reasons). Every reason is a checkable fact about this row."""
     reasons: list[str] = []
@@ -197,6 +226,19 @@ def main(argv=None) -> int:
                   str(prop.get("section_ref", "?"))[:26])
             for r in reasons:
                 print("             " + r)
+    ambiguous = ambiguous_quotes(accepted)
+    if ambiguous:
+        print()
+        print("  AMBIGUOUS -- one quote, more than one asserted value. Accepted,")
+        print("  but read these first: the quote alone does not decide the value.")
+        for group in ambiguous.values():
+            for g in group:
+                print("     " + str(g["council"]).ljust(14) +
+                      str(g["section_ref"])[:30].ljust(32) +
+                      str(g["value_min"]) + str(g.get("unit", "")))
+            print("       shared quote: " +
+                  repr(str(group[0]["source_text"])[:90]))
+
     if accepted:
         print()
         for prop in accepted:

@@ -110,3 +110,35 @@ class TestMutationResistance:
 
     def test_the_verifier_does_not_reject_everything(self):
         assert check(proposal(), PAGE)[0] == ACCEPT
+
+
+class TestAmbiguousQuotes:
+    """One quote supporting two different answers is the limit of a per-row test."""
+
+    def _p(self, vmin, ref, quote):
+        return proposal(value_min=vmin, section_ref=ref, source_text=quote)
+
+    def test_two_values_from_one_quote_are_surfaced(self):
+        from scripts.dcp_verify_extracted_controls import ambiguous_quotes
+        # The real hornsby Pound Road case: an interleaved table cell that
+        # genuinely contains both 4 and 7.5, quoted identically for both rows.
+        q = ("Primary and 4m, plus Secondary Road any ground floor commercial "
+             "premises should be setback behind a colonnade that has a minimum "
+             "depth of 3.5m (i.e. min setback of 7.5m to the road boundary)")
+        out = ambiguous_quotes([self._p(4, "podium", q), self._p(7.5, "colonnade", q)])
+        assert len(out) == 1
+        assert {str(g["value_min"]) for g in list(out.values())[0]} == {"4", "7.5"}
+
+    def test_the_same_value_quoted_twice_is_NOT_ambiguous(self):
+        from scripts.dcp_verify_extracted_controls import ambiguous_quotes
+        # Wingecarribee states the identical clause in all three town plans.
+        # That is repetition, not ambiguity, and must not be flagged.
+        q = "On corner lots a 3m setback applies to the secondary frontage."
+        assert ambiguous_quotes([self._p(3, "bowral", q), self._p(3, "mittagong", q)]) == {}
+
+    def test_distinct_quotes_are_never_ambiguous(self):
+        from scripts.dcp_verify_extracted_controls import ambiguous_quotes
+        assert ambiguous_quotes([
+            self._p(3, "a", "A 3m setback applies to the secondary frontage here."),
+            self._p(6, "b", "A 6m setback applies to the secondary frontage there."),
+        ]) == {}
