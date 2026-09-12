@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Measurement, gating and review infrastructure for DCP chapter completeness and numeric control extraction. No production data is written by anything in this branch: every script is read-only or writes JSON, migration 071 is deliberately NOT applied, and no control row is inserted. The risk it carries is the opposite one - a check that silently reads clean. Three separate silent-pass defects were found and fixed within the branch itself (a ratchet that emitted 0 for UNKNOWN, a candidate cap that destroyed the evidence it was selecting, and a review key that collapsed three rows onto one verdict), so the tier reflects that this code's failure mode is under-reporting, not corruption.",
-  "commit_hash": "e04b7569",
+  "commit_hash": "8653dd78",
   "files": [
     "scripts/dcp_chapter_measure.py",
     "scripts/dcp_toc_parse.py",
@@ -23,8 +23,8 @@
   ],
   "falsifiable_check": {
     "command": "python scripts/dcp_page_map_gate.py --from-ledger (per PR, in gates.yml) and the full R2 form nightly in data-watch.yml; python scripts/dq_check.py; python scripts/dq_probe_precinct_rows_served_lga_wide.py; python -m pytest",
-    "expected": "The page-map gate reports a verdict for all 32 maps with no count emitted for UNKNOWN checks. dq_check reports 0 red across 104 rows. The DQ-99 probe exits 1 listing 7 rows, matching its declared 'open'. Full suite 5,702 passed, 2 skipped.",
-    "fails_when": "A chapter's measured state regresses above the frozen 2026-09-12 baseline; a page map becomes unusable; a proposed control row cites a page it was never given, quotes text that is not on that page, or carries a value absent from its own quote; a reviewed row is corrected to a value that has left its quote; the verifier's vocabulary allowlists drift from the live CHECK constraints.",
+    "expected": "NOT self-referential, and deliberately so: every check here is decided by an authority outside this code. (a) The council's own PDF in R2 is the authority for the page-map gate and for dcp_verify_extracted_controls - a proposed control is accepted only if its quote appears verbatim in the source document and its number appears inside that quote, so the document, not this code, decides. (b) The live CHECK constraints on dcp_setback_controls (control_type_canonical, applicability) are the authority for the vocabulary allowlists; tests/test_control_vocabulary_matches_db.py reads them from pg_constraint and fails on any disagreement. (c) The frozen ~/.claude/plans/ce-dcp-baseline-2026-09-12/baseline.json, written before this branch existed, is the authority for the ratchet - counts may fall, never rise. (d) scripts/conveyancing_db.fetch_dcp_setbacks, which this branch does not modify, is the authority for what 'served' means in the DQ-99 probe. Concretely today: the page-map gate returns a verdict for all 32 maps with no count emitted for UNKNOWN; dq_check reports 0 red across 104 rows; the DQ-99 probe exits 1 listing 7 rows, matching its declared 'open'; full suite 5,702 passed, 2 skipped.",
+    "fails_when": "A chapter's measured state rises above the frozen 2026-09-12 baseline file, which was written before this branch existed; a page map becomes unusable against the council PDF in R2; a proposed control row cites a page it was never given, quotes text that is not present in that source document, or carries a value absent from its own quote; a reviewed row is corrected to a value that is no longer inside its quote in the source; the verifier's vocabulary allowlists stop matching the live CHECK constraints read from pg_constraint; or a row marked precinct_specific passes the guard that scripts/conveyancing_db.fetch_dcp_setbacks applies.",
     "observed_red": "Yes - every guard in this branch was forced to fail against real data before being trusted, and five did so unprompted. (1) The post-condition in dcp_control_candidates fired on two real max_height candidates whose window kept a number and lost the unit. (2) The candidate cap was caught destroying 10 of 100 deep_soil candidates - the keyword that selected them was truncated away - by asserting the emitted text still satisfies the selecting predicate. (3) The max_height second requirement was caught by a test asserting the most obvious case, '8.5m', which a bare word-boundary m cannot match; 97 -> 111 candidates. (4) The review key was caught collapsing parramatta's C.04 a/b/c (8m2/12m2/16m2) onto one verdict before any verdict was written. (5) Both vocabulary drift guards were forced red by mutating the allowlist in-process. The ratchet's UNKNOWN fail-open was found earlier in the branch by the same method."
   },
   "pre_impl": {
@@ -34,7 +34,71 @@
     "external_source_error": "R2 and the council PDFs are the external sources. The nightly gate reads R2 directly; the per-PR gate reads the ledger instead (2s, DATABASE_URL only) so a PR is never blocked on R2 availability. A candidate built with a naive page.extract_text() on a two-column council hands the model worse text than production uses - measured, and the reason GEOMETRIC_COLUMN_COUNCILS and _columnar_text are imported rather than reimplemented.",
     "user_failure_mode": "A user is shown a regulatory number that is right somewhere else - a precinct figure served council-wide, a concession stored as the requirement, an upper-level setback answering a ground-level question. All three were found in real proposals and none is visible to a verbatim-quote check, which is why the reading step exists and is recorded as a file rather than a chat message."
   },
-  "functions": "broken_candidates() and window_around() in dcp_control_candidates.py; apply_review() and row_key() in dcp_review_proposals.py; ambiguous_quotes() and check() in dcp_verify_extracted_controls.py; ratchet() and summarise() in dcp_page_map_gate.py; chapter_is_ok() in dcp_chapter_measure.py; entry_strength() in dcp_toc_parse.py.",
+  "functions": [
+    {
+      "name": "broken_candidates",
+      "file_line": "scripts/dcp_control_candidates.py",
+      "input": "The assembled candidate list and the control-type slug the run selected them with; each candidate is a dict carrying council, chapter, page and text.",
+      "output": "The candidates that no longer satisfy the predicate that selected them, so main() can refuse to write a file a model would read as evidence.",
+      "if_none": "An empty list means every emitted candidate still matches, and main() writes the file; silence here is only meaningful because the function has been shown to speak, firing unprompted on two real max_height rows."
+    },
+    {
+      "name": "window_around",
+      "file_line": "scripts/dcp_control_candidates.py",
+      "input": "One provision's full text, which for these councils runs to 49,322 characters, plus the control-type slug whose pattern decides what to keep.",
+      "output": "The regions of that text around each mention of the control, merged where they overlap and joined with an explicit elision marker so a reader can see something was dropped.",
+      "if_none": "None means the keyword and the evidence are more than 6,000 characters apart even after widening, so they are almost certainly not the same rule; the caller counts the drop rather than dropping it quietly."
+    },
+    {
+      "name": "apply_review",
+      "file_line": "scripts/dcp_review_proposals.py",
+      "input": "The mechanically accepted proposals, the verdict map keyed by row_key, and the candidate pages needed to re-check any corrected value.",
+      "output": "Three lists - rows cleared to the human review surface, rows stopped with their recorded reason, and problems naming each specific row that failed a fail-closed rule.",
+      "if_none": "An empty problems list is the only clean result; an unreviewed row, an unknown verdict, an unexplained ACCEPT, a key collision or a correction that left its own quote all populate it and exit the script non-zero."
+    },
+    {
+      "name": "row_key",
+      "file_line": "scripts/dcp_review_proposals.py",
+      "input": "One proposed control row, from which council, control_type, dev_type, section_ref, source_page and value_min are read.",
+      "output": "The string a verdict uses to name the row it judges, unique per distinct control rather than per clause label.",
+      "if_none": "There is no none case; but omitting value_min and dev_type, as the first version did, collapsed parramatta's three C.04 limbs onto one key so a single verdict would silently have governed all three."
+    },
+    {
+      "name": "ambiguous_quotes",
+      "file_line": "scripts/dcp_verify_extracted_controls.py",
+      "input": "The accepted proposals, grouped by their normalised source quote.",
+      "output": "The groups where one quote is offered as evidence for two different asserted values, surfaced for a human to read before anything else.",
+      "if_none": "An empty map means no quote supports two answers; the rows are not rejected when it is non-empty, because a colonnade variant is a real control, but a quote supporting two values is evidence for neither on its own."
+    },
+    {
+      "name": "check",
+      "file_line": "scripts/dcp_verify_extracted_controls.py",
+      "input": "One proposed control row and the text of the page it cites.",
+      "output": "ACCEPT or REJECT with a list of reasons, each one a checkable fact about that row rather than a score.",
+      "if_none": "A row citing a page that was never supplied never reaches this function; the caller rejects it outright, because a citation outside the supplied set is not a near miss to be corrected."
+    },
+    {
+      "name": "ratchet",
+      "file_line": "scripts/dcp_page_map_gate.py",
+      "input": "Today's per-council page-map verdicts and the frozen 2026-09-12 baseline.",
+      "output": "Four separate lists - regressions, improvements, councils with no baseline, and councils not measured - so an unmeasured council is never counted as an improved one.",
+      "if_none": "No regressions is a pass; the first version emitted 0 for UNKNOWN checks and reported waverley as 5 to 0 improved when nothing had been measured at all."
+    },
+    {
+      "name": "chapter_is_ok",
+      "file_line": "scripts/dcp_chapter_measure.py",
+      "input": "One chapter's five measured signals - contents versus served, numbering gaps, page-header truth, capture ratio and attribution.",
+      "output": "Whether the chapter may be called complete, which requires the contents verdict to be OK because only that signal establishes completeness at all.",
+      "if_none": "A chapter with no parseable stored codes returns NO_STORED_CODES rather than OK; woollahra scored 25 chapters OK on the first version precisely because absence of evidence was read as evidence."
+    },
+    {
+      "name": "entry_strength",
+      "file_line": "scripts/dcp_toc_parse.py",
+      "input": "A candidate contents-line's title, its page number if one was parsed, and the raw line.",
+      "output": "STRONG, WEAK or None, deciding whether a line counts as a contents entry at all.",
+      "if_none": "None means the line is prose, not a contents entry - it ends in sentence punctuation or runs past the title length bound - which is what stops a page of numbered controls being read as a table of contents."
+    }
+  ],
   "values": [
     {
       "name": "MAX_CANDIDATE_CHARS / WINDOW_CHARS",
@@ -148,6 +212,13 @@
       "repro": "tests/test_dcp_page_map_gate.py",
       "mitigated": "Fixed.",
       "how": "The first version emitted 0 for UNKNOWN and reported waverley as '5 -> 0 improved' when nothing had been measured at all."
+    },
+    {
+      "scenario": "The fast per-PR gate reads the measurement ledger instead of R2, so a page map that has ROTTED IN R2 since it was last measured would pass the PR check.",
+      "what_happens": "The per-PR run is explicitly the fast form and is not the authority. The full R2 form runs nightly in data-watch.yml against the actual PDFs and is wired into the existing alarm, so a map that has gone bad in R2 is caught within 24 hours and raises rather than sitting silent.",
+      "repro": "python scripts/dcp_page_map_gate.py --from-ledger (2s, DATABASE_URL only) versus python scripts/dcp_page_map_gate.py (full R2 read); the two are expected to agree, and the nightly run is what proves it.",
+      "mitigated": "Bounded, not eliminated - and stated rather than hidden.",
+      "how": "Deliberate trade: making every PR read R2 would block merges on R2 availability and on four secrets being present, which is how a gate gets disabled. The window is one night, the nightly form is authoritative, and its indices were verified aligned 10 of 10 before wiring."
     }
   ],
   "mutation_analysis": "Every guard in the branch was forced to fail and observed failing before being relied on, against real production data rather than fixtures. broken_candidates(): mutated a candidate's text to drop its keyword, guard fired; it also fired unprompted on two real max_height rows. window_around(): tested against a synthetic 40k provision whose only clause sits past the old 6,000-char cap, and against a max_height provision whose only nearby number is a percentage. row_key(): asserted that parramatta's three C.04 limbs produce three distinct keys and that a genuine collision is reported rather than absorbed. apply_review(): forced every fail-closed path - unreviewed, unknown verdict, short note, correction out of quote, page not supplied - and separately asserted a clean ACCEPT still passes, so the gate cannot be refusing everything. Both vocabulary drift guards were mutated in-process against the live constraint and both fired. The candidate harness was additionally run over 7 control types and 17 councils; the run is the mutation test, and it produced three defects the unit tests alone did not.",
