@@ -418,12 +418,44 @@ ATTRIBUTION_FLOOR = 0.5        # distinct stored codes / listed sections
 
 
 def attribution_collapse(listed_codes, stored_codes, live_rows: int):
-    """-> (verdict, ratio). COLLAPSED | ATTRIBUTED | NO_STORED_CODES | TOO_FEW_*.
+    """-> (verdict, ratio). FEW_DISTINCT_CODES | ATTRIBUTED | NO_STORED_CODES | TOO_FEW_*.
 
-    NO_STORED_CODES is kept separate from COLLAPSED on purpose. A chapter whose
-    rows carry no parseable code at all (woollahra: 24 chapters, 547 rows) is a
-    different defect from one whose rows all carry the SAME code, and folding
-    them together would have reported 98 collapsed chapters where there are 64.
+    THE "COLLAPSED" VERDICT IS RETIRED. Measured 2026-09-13, and this is the
+    reason rather than a preference.
+
+    It fired on **59 chapters and not one of them was a true positive that
+    signal 1 does not already catch.** Four pieces of evidence, each sufficient:
+
+      * Three ku_ring_gai chapters were COLLAPSED with **missing_codes = 0**.
+        Every section the contents page lists IS served. Nothing about that
+        chapter is collapsed, and a reader chasing the flag finds a healthy
+        chapter -- which teaches them to ignore the flag.
+
+      * The ratio is len(distinct stored codes) / len(listed codes) and never
+        asks whether a stored code ADDRESSES a listed one. A chapter storing 20
+        correct codes and a chapter storing 20 unrelated ones score identically,
+        so the number cannot mean what its name says.
+
+      * The case its own docstring cited as proof --
+        marrickville/part2-s25-stormwater, 40 rows filed under 2.25 while the
+        document lists 2.25.3.1 onward -- is reported by SIGNAL 1 as missing 17
+        of 19 listed sections. Signal 1 catches it loudly. The claim that
+        coverage_gap could not see it rested on the dotted-prefix rule working
+        parent-covers-child; it works child-covers-parent, so a chapter filed
+        only under 2.25 leaves every 2.25.x listed and unserved.
+
+      * For the flagged canterbury_bankstown chapters the "listed codes" are
+        bare integers -- '1', '10', '11' -- i.e. contents-page list numbering,
+        not section codes. The denominator is not what it claims to be.
+
+    So the verdict is renamed to FEW_DISTINCT_CODES and removed from findings.
+    The ratio is still recorded, because it is a fact about the chapter; it is
+    no longer reported as a defect, because it never was one.
+
+    NO_STORED_CODES STAYS, and is not the same thing. A chapter whose rows carry
+    no parseable code at all -- woollahra, 24 chapters, 547 rows -- cannot be
+    retrieved by section by anyone, and signal 1 cannot see it: with nothing to
+    compare, coverage has no opinion. That is a real defect and keeps its verdict.
     """
     listed, stored = set(listed_codes), set(stored_codes)
     if len(listed) < ATTRIBUTION_MIN_LISTED:
@@ -433,7 +465,8 @@ def attribution_collapse(listed_codes, stored_codes, live_rows: int):
     if not stored:
         return "NO_STORED_CODES", 0.0
     ratio = len(stored) / len(listed)
-    return ("COLLAPSED" if ratio < ATTRIBUTION_FLOOR else "ATTRIBUTED"), round(ratio, 3)
+    return (("FEW_DISTINCT_CODES" if ratio < ATTRIBUTION_FLOOR else "ATTRIBUTED"),
+            round(ratio, 3))
 
 
 # ── putting a chapter's five signals together ────────────────────────────────
@@ -443,7 +476,7 @@ _S1_MEASURED = {"OK", "INCOMPLETE", "NO_ROWS"}
 _S2_MEASURED = {"NO_GAPS", "GAPS"}   # SHARED_NUMBERING/TOO_FEW_CODES did not judge
 _S3_MEASURED = {"CONSISTENT", "MISLABELLED"}
 _S4_MEASURED = {"CAPTURED", "HOLLOW", "OVER_CAPTURED", "NO_ROWS"}
-_S5_MEASURED = {"COLLAPSED", "ATTRIBUTED"}
+_S5_MEASURED = {"FEW_DISTINCT_CODES", "ATTRIBUTED", "NO_STORED_CODES"}
 
 
 def score_chapter(raw: dict, sibling_codes=frozenset()) -> dict:
@@ -531,8 +564,12 @@ def score_chapter(raw: dict, sibling_codes=frozenset()) -> dict:
         findings.append("hollow:" + str(out["capture_ratio"]))
     if out["capture_verdict"] == "OVER_CAPTURED":
         findings.append("over_captured:" + str(out["capture_ratio"]))
-    if out["attribution_verdict"] == "COLLAPSED":
-        findings.append("attribution_collapsed:" + str(out["attribution_ratio"]))
+    # FEW_DISTINCT_CODES is deliberately NOT a finding. See
+    # attribution_collapse: as a defect flag it produced 59 chapters and 0
+    # true positives, including three that were missing nothing at all. The
+    # ratio stays in the ledger as a fact; it no longer accuses.
+    if out["attribution_verdict"] == "NO_STORED_CODES":
+        findings.append("no_stored_codes")
     out["findings"] = findings
     return out
 
@@ -620,9 +657,14 @@ def summarise(scored: list[dict]) -> dict:
             k["OVER_CAPTURED"] += 1
         if c["gap_verdict"] == "SHARED_NUMBERING":
             k["SHARED_NUMBERING"] += 1
-        if c["attribution_verdict"] == "COLLAPSED":
-            k["COLLAPSED"] += 1
-            k["collapsed_rows"] += c["live_rows"]
+        # NO_STORED_CODES is the surviving attribution defect: rows that
+        # carry no parseable section code at all cannot be retrieved by
+        # section by anyone, and signal 1 cannot see it -- with nothing to
+        # compare, coverage has no opinion. The old COLLAPSED verdict is
+        # retired; see attribution_collapse for the 59-to-0 measurement.
+        if c["attribution_verdict"] == "NO_STORED_CODES":
+            k["NO_STORED_CODES"] += 1
+            k["uncoded_rows"] += c["live_rows"]
     totals = Counter()
     for k in per.values():
         totals.update(k)
@@ -878,11 +920,11 @@ def load_baseline() -> dict:
 def report(scored: list[dict], baseline: dict, log) -> int:
     summary = summarise(scored)
     cols = ("chapters", "OK", "UNMEASURED", "INCOMPLETE", "CONTENTS_UNREADABLE",
-            "GAPS", "MISLABELLED", "HOLLOW", "COLLAPSED")
+            "GAPS", "MISLABELLED", "HOLLOW", "NO_STORED_CODES")
     head = ("  council".ljust(24) + "chaps".rjust(7) + "OK".rjust(5) +
             "UNMEAS".rjust(8) + "INCOMP".rjust(8) + "UNREAD".rjust(8) +
             "GAPS".rjust(7) + "MISLAB".rjust(8) + "HOLLOW".rjust(8) +
-            "COLLAPS".rjust(9))
+            "UNCODED".rjust(9))
     log("")
     log("=" * len(head))
     log(head)

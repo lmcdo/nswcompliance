@@ -32,7 +32,7 @@ is 448 pages (v1.1-2026-03-16). Measured 2026-09-12:
     -20, E1-E6 by -2, F1-F4 by -42. **30 of 33 ranges start on the wrong page**,
     and on **14 of 33** the pages are mostly another part's outright.
     (The plan records "22 of 33 map to the wrong pages". That number could not be
-    reproduced here by either the narrow ^[A-F]\d{1,2}$ header regex the original
+    reproduced here by either the narrow ^[A-F][0-9]{1,2}$ header regex the original
     probe used or the wider one below -- both give 14 majority-wrong and 30
     start-shifted. 22 appears to be a third count from an earlier iteration. The
     finding is unchanged and if anything worse; only the figure differs, and

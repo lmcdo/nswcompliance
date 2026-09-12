@@ -225,18 +225,41 @@ class TestCaptureRatio:
 
 
 class TestAttributionCollapse:
-    """Marrickville's dominant cause, and invisible to every other signal."""
+    """The signal that was retired, and the one defect it still carries.
 
-    def test_the_stormwater_shape_is_COLLAPSED(self):
-        # marrickville/part2-s25-stormwater: 40 rows, 19 listed sections, and
-        # every row stamped "2.25 Stormwater Management" with a control marker.
-        # The 19 sub-sections are collapsed into their parent and none can be
-        # retrieved -- while the text itself is all present (capture 1.0).
+    The COLLAPSED verdict was removed on 2026-09-13 after firing on 59 chapters
+    with zero true positives that signal 1 does not already catch. These tests
+    now pin the corrected behaviour, so re-introducing it has to be deliberate.
+    """
+
+    def test_the_stormwater_shape_is_no_longer_called_a_defect(self):
+        # marrickville/part2-s25-stormwater: 40 rows, 19 listed sections, every
+        # row stamped "2.25 Stormwater Management" with a control marker. The
+        # sub-sections genuinely cannot be retrieved -- but SIGNAL 1 reports that
+        # as 17 of 19 listed sections missing, loudly and by name. This signal
+        # only ever restated it with a worse number, so it now records the ratio
+        # and makes no accusation.
         listed = ["2.25.1", "2.25.2", "2.25.3"] + [
             "2.25.3." + str(i) for i in range(1, 17)]
         verdict, ratio = attribution_collapse(listed, {"2.25"}, live_rows=40)
-        assert verdict == "COLLAPSED"
+        assert verdict == "FEW_DISTINCT_CODES"
         assert ratio < 0.1
+
+    def test_the_ratio_alone_cannot_say_whether_sections_are_addressed(self):
+        """Why the verdict was retired, as an assertion rather than a comment.
+
+        The ratio is len(distinct stored)/len(listed) and never asks whether a
+        stored code ADDRESSES a listed one. These two chapters are identical to
+        it: the first serves six of the twenty listed sections, the second serves
+        six codes that appear nowhere in the contents list at all. One is thin,
+        the other is misfiled, and this number cannot tell them apart -- which is
+        why it must not be the thing that accuses.
+        """
+        listed = [str(i) for i in range(1, 21)]
+        thin = attribution_collapse(listed, set(listed[:6]), live_rows=40)
+        misfiled = attribution_collapse(listed, {"z" + str(i) for i in range(6)},
+                                        live_rows=40)
+        assert thin == misfiled
 
     def test_a_healthy_chapter_is_ATTRIBUTED(self):
         # marrickville/part2-s10-parking: 19 listed, 17 distinct stored.
@@ -261,8 +284,9 @@ class TestAttributionCollapse:
         # Mutation guard: a function returning one value always would pass the
         # positive or the negative above, never both.
         listed = [str(i) for i in range(1, 21)]
-        assert attribution_collapse(listed, {"1"}, 40)[0] == "COLLAPSED"
+        assert attribution_collapse(listed, {"1"}, 40)[0] == "FEW_DISTINCT_CODES"
         assert attribution_collapse(listed, set(listed), 40)[0] == "ATTRIBUTED"
+        assert attribution_collapse(listed, set(), 40)[0] == "NO_STORED_CODES"
 
 
 class TestScoringIsThreeStateNotTwo:
@@ -344,12 +368,26 @@ class TestScoringIsThreeStateNotTwo:
         b = score_chapter(self._raw(contents_status="UNREADABLE", listed_codes=[]))
         assert a["contents_verdict"] != b["contents_verdict"]
 
-    def test_collapsed_attribution_becomes_a_finding_and_blocks_OK(self):
+    def test_few_distinct_codes_alone_is_not_a_finding(self):
+        """Retired 2026-09-13. As a defect flag it produced 59 chapters and no
+        true positive signal 1 was not already reporting -- including three that
+        were missing nothing at all."""
         listed = [str(i) for i in range(1, 21)]
         s = score_chapter(self._raw(listed_codes=listed, stored_codes=["1"],
                                     live_rows=40))
-        assert s["attribution_verdict"] == "COLLAPSED"
-        assert any(f.startswith("attribution_collapsed") for f in s["findings"])
+        assert s["attribution_verdict"] == "FEW_DISTINCT_CODES"
+        assert not any("attribution" in f for f in s["findings"])
+
+    def test_rows_with_no_parseable_code_at_all_still_block_OK(self):
+        """The one attribution defect that survives, and it is real: woollahra,
+        24 chapters, 547 rows carrying no section code. Nobody can retrieve those
+        rows by section, and signal 1 cannot see it -- with nothing to compare,
+        coverage has no opinion."""
+        listed = [str(i) for i in range(1, 21)]
+        s = score_chapter(self._raw(listed_codes=listed, stored_codes=[],
+                                    live_rows=40))
+        assert s["attribution_verdict"] == "NO_STORED_CODES"
+        assert "no_stored_codes" in s["findings"]
         assert not chapter_is_ok(s)
 
     def test_mislabelled_rows_become_a_finding(self):

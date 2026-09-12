@@ -54,13 +54,41 @@ from scripts.dcp_page_map_gate import PageMapUnusable, assert_map_usable
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-R2_ACCOUNT_ID        = os.environ["R2_ACCOUNT_ID"]
-R2_BUCKET_NAME       = os.environ["R2_BUCKET_NAME"]
-R2_ACCESS_KEY_ID     = os.environ["R2_ACCESS_KEY_ID"]
-R2_SECRET_ACCESS_KEY = os.environ["R2_SECRET_ACCESS_KEY"]
-DATABASE_URL         = os.environ.get("DATABASE_URL") or os.environ["SUPABASE_DB_URL"]
+# Read with .get(), NOT os.environ[...]. These are module scope, so a missing
+# key here raises at IMPORT and makes the whole module unimportable -- including
+# for a caller that only wants COUNCIL_PAGE_RANGES, which is plain data and needs
+# no credentials at all.
+#
+# That is not hypothetical. dcp_page_map_gate.all_page_maps() imports this module
+# for exactly those two dicts, and its --from-ledger mode is advertised as
+# needing DATABASE_URL and nothing else. On 2026-09-13 it failed in CI with
+# "FATAL: KeyError: 'R2_ACCOUNT_ID'" before running a single check. It passed
+# locally only because load_dotenv finds a .env in the repo root; CI has none.
+#
+# require_r2() is called where the credentials are actually USED, so a genuine
+# misconfiguration still fails loudly, at the point that can say what it needed.
+R2_ACCOUNT_ID        = os.environ.get("R2_ACCOUNT_ID")
+R2_BUCKET_NAME       = os.environ.get("R2_BUCKET_NAME")
+R2_ACCESS_KEY_ID     = os.environ.get("R2_ACCESS_KEY_ID")
+R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
+DATABASE_URL         = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
 R2_ENDPOINT = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+
+def require_r2() -> None:
+    """Fail loudly, and by name, at the point the credentials are needed."""
+    missing = [n for n, v in (
+        ("R2_ACCOUNT_ID", R2_ACCOUNT_ID), ("R2_BUCKET_NAME", R2_BUCKET_NAME),
+        ("R2_ACCESS_KEY_ID", R2_ACCESS_KEY_ID),
+        ("R2_SECRET_ACCESS_KEY", R2_SECRET_ACCESS_KEY)) if not v]
+    if missing:
+        raise SystemExit("FATAL: missing R2 credentials: " + ", ".join(missing))
+
+
+def require_database_url() -> None:
+    if not DATABASE_URL:
+        raise SystemExit("FATAL: no DATABASE_URL / SUPABASE_DB_URL")
 
 
 # ── Council-specific page range configs ─────────────────────────────────────
@@ -4410,6 +4438,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    require_r2()
+    require_database_url()
     s3 = boto3.client(
         "s3",
         endpoint_url=R2_ENDPOINT,
