@@ -1,0 +1,72 @@
+{
+ "ashfield|flood_freeboard_min|universal_residential|C3.1 DS2.1|13|0.5": {
+  "verdict": "ACCEPT",
+  "note": "NEW, and the cleanest freeboard in the set. 'Floor levels of habitable rooms must be a minimum of 0.5m above the 1% AEP flood level at that location.' DIRECTION is handled correctly: the 300mm minor-overland-flow concession is in the condition, not in value_min, so a consumer gets the requirement rather than the concession. LGA-wide, mandatory wording, and measured above the 1% AEP -- the standard datum the other accepted rows use."
+ },
+ "canterbury_bankstown|flood_freeboard_min|universal_residential|Note (Section 3, interim provisions)|8|500": {
+  "verdict": "DUPLICATE",
+  "note": "Correct, but it is a FALLBACK restatement of the same number, not a second control: it applies only where Council has not yet adopted a floodplain risk management plan for the catchment. Clause 9.8 below states the same 0.5m as the general rule in mandatory terms, so serving both would answer one question twice, and the narrower one carries a condition about Council's own planning progress that a consumer cannot evaluate."
+ },
+ "canterbury_bankstown|flood_freeboard_min|dwelling_house|Schedule 4A, cl (7)(v) / (8)(v) -- 67 & 69 Carinya Road|47|0.5": {
+  "verdict": "REJECT",
+  "note": "SCOPE, twice over. Schedule 4A clause (7)(v)/(8)(v) governs future dwellings on two named lots, 67 and 69 Carinya Road, Picnic Point. DIRECTION as well: 'Minimum floor levels SHOULD be the 100-year flood level plus 0.5m freeboard' is advisory, and storing it as a minimum asserts a requirement the document does not make. The same 0.5m is already carried by clause 9.8 as the general, mandatory rule."
+ },
+ "canterbury_bankstown|flood_freeboard_min|universal_residential|9.8|60|0.5": {
+  "verdict": "ACCEPT",
+  "note": "NEW, and this is Canterbury-Bankstown's general answer: '9.8 Habitable floor levels of all residential and institutional buildings are to be a minimum of 0.5m above the 1 in 100-year flood level.' Mandatory wording, LGA-wide, measured above the 1-in-100-year level. 'all residential and institutional' is why universal_residential is the right dev_type rather than a single dwelling class."
+ },
+ "canterbury_bankstown|flood_freeboard_min|universal_residential|10.2|60|0.5": {
+  "verdict": "DUPLICATE",
+  "note": "Same number as 9.8, weaker in both scope and force. Geographically it is the 1-in-100-year Flood Standard area for Salt Pan Creek and the Cooks River in the former Canterbury LGA -- part of the council, not the council. And the wording is 'Flood levels of all habitable rooms SHOULD be 0.5m or more', advisory where 9.8 is mandatory. Serving it beside 9.8 can only soften the answer; it cannot improve it."
+ },
+ "ku_ring_gai|flood_freeboard_min|universal_residential|24D.3(3)|46|300": {
+  "verdict": "ACCEPT_QUALIFIED",
+  "note": "NEW, and one of a genuine PAIR: Ku-ring-gai sets the freeboard by flow regime, 300mm below 20 cubic metres per second and 500mm above it. Both rows are needed or the LGA has no answer for half its flood-affected land, and neither can be served without its test, so the flow-regime condition is moved to the front. This is a conditional control, not an ambiguous one: the document states the test, it is not being inferred.",
+  "corrections": {
+   "condition": "ONLY WHERE the design flood standard is LESS THAN 20m3/s, or the land is identified as overland flow on the Flood Planning Area Map. Minimum floor level of all enclosed areas and structures, including habitable floor areas, is 300mm above the design flood standard level. See the paired 500mm control for mainstream flow."
+  }
+ },
+ "ku_ring_gai|flood_freeboard_min|universal_residential|24D.3(4)|46|500": {
+  "verdict": "ACCEPT_QUALIFIED",
+  "note": "NEW, and one of a genuine PAIR: Ku-ring-gai sets the freeboard by flow regime, 500mm above 20 cubic metres per second and 300mm below it. Both rows are needed or the LGA has no answer for half its flood-affected land, and neither can be served without its test, so the flow-regime condition is moved to the front. This is a conditional control, not an ambiguous one: the document states the test, it is not being inferred.",
+  "corrections": {
+   "condition": "ONLY WHERE the design flood standard EXCEEDS 20m3/s, or the land is identified as mainstream flow on the Flood Planning Area Map. Minimum floor level for all enclosed areas, including habitable floor areas, is 500mm above the design flood standard level; garages carry a reduced figure. See the paired 300mm control for overland flow."
+  }
+ },
+ "marrickville|flood_freeboard_min|universal_residential|C5|7|500": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "NEW, and the QUOTE was not evidence as proposed. The extraction split this clause: its subject sits in the section header ('C5 Floor Levels (Flood Planning Levels) Of Habitable Rooms Must Be A') and only the predicate ('minimum of 500mm above the 1% AEP flood level at that location') reached source_text. Read alone, the proposed quote never says WHAT must be 500mm above anything -- a reviewer could not check it. Corrected to the contiguous span that carries both halves, sliced from the page rather than retyped, and re-verified. No number changed. Substantively this is the same clause as Ashfield's DS2.1, including the identical 300mm minor-overland-flow concession, which is what two former Inner West councils sharing a drafting lineage looks like.",
+  "corrections": {
+   "source_text": "C5 Floor Levels (Flood Planning Levels) Of Habitable Rooms Must Be A\n# 2.22 Flood Management — C5 Floor Levels (Flood Planning Levels) Of Habitable Rooms Must Be A\n\nminimum of 500mm above the 1% AEP flood level at that location.",
+   "condition": "Floor levels (Flood Planning Levels) of habitable rooms, 500mm above the 1% AEP flood level at that location. For areas of minor overland flow (a depth of 300mm or less, or overland flow of 2 cubic metres per second or less) a lower freeboard of 300mm may be considered on its merits."
+  }
+ },
+ "georges_river|flood_freeboard_min|seniors_housing|3.11, Control 5|19|0.5": {
+  "verdict": "REJECT",
+  "note": "GRAIN, and a forced dev_type. Two faults. First the datum: this freeboard is measured above the PROBABLE MAXIMUM FLOOD, not the 1% AEP that every other accepted row uses. The PMF is a far rarer event and a far higher level, so 0.5m above it is not comparable to 0.5m above the 1% AEP; served in the same column they would read as the same control. Second, the clause governs sensitive land uses -- child care, educational establishments, health services, seniors housing -- and was stored as dev_type seniors_housing because that is the only one of them in our vocabulary. That makes a multi-use control look like a seniors-housing control. A vocabulary gap is a reason to hold a row, never a reason to reshape it until it fits."
+ },
+ "northern_beaches|flood_freeboard_min|universal_residential|62 (Precinct G4 Warringah Mall)|115|500": {
+  "verdict": "REJECT",
+  "note": "SCOPE. clause 62, new buildings and extensions sits in Precinct G4, Warringah Mall -- one named precinct, not the Northern Beaches LGA. Northern Beaches therefore ends this run with no freeboard row, which is the honest result: the passages that do carry a number are all precinct-bound, and the LGA-wide flood matrix references FPL and PMF without ever stating a freeboard figure."
+ },
+ "northern_beaches|flood_freeboard_min|universal_residential|63 (Precinct G4 Warringah Mall)|115|300": {
+  "verdict": "REJECT",
+  "note": "SCOPE. clause 63, significant alterations to existing buildings sits in Precinct G4, Warringah Mall -- one named precinct, not the Northern Beaches LGA. Northern Beaches therefore ends this run with no freeboard row, which is the honest result: the passages that do carry a number are all precinct-bound, and the LGA-wide flood matrix references FPL and PMF without ever stating a freeboard figure."
+ },
+ "parramatta|flood_freeboard_min|universal_residential|8.2.6.1.3 C.02(a)|619|500": {
+  "verdict": "REJECT",
+  "note": "SCOPE. This clause governs Melrose Park Urban Renewal Precinct (Section 8.2.6). Sections 8 and 9 of the Parramatta DCP are the precinct and city-centre parts; a figure from either, served as the LGA answer, would be wrong for every site outside it. Parramatta ends this run with NO LGA-wide freeboard row, and that is the correct finding rather than a gap to be filled: the only general mentions in its text are 'above the 100 year flood level plus freeboard' with no number, and 'this freeboard of RL 17.0', a site datum."
+ },
+ "parramatta|flood_freeboard_min|universal_residential|8.2.6.7.2 C.12-C.13|693|0.5": {
+  "verdict": "REJECT",
+  "note": "SCOPE. This clause governs Melrose Park South Planning Precinct (Section 8.2.6.7). Sections 8 and 9 of the Parramatta DCP are the precinct and city-centre parts; a figure from either, served as the LGA answer, would be wrong for every site outside it. Parramatta ends this run with NO LGA-wide freeboard row, and that is the correct finding rather than a gap to be filled: the only general mentions in its text are 'above the 100 year flood level plus freeboard' with no number, and 'this freeboard of RL 17.0', a site datum."
+ },
+ "parramatta|flood_freeboard_min|universal_residential|9.7.2 C.01|1236|500": {
+  "verdict": "REJECT",
+  "note": "SCOPE. This clause governs Parramatta City Centre (Section 9.7). Sections 8 and 9 of the Parramatta DCP are the precinct and city-centre parts; a figure from either, served as the LGA answer, would be wrong for every site outside it. Parramatta ends this run with NO LGA-wide freeboard row, and that is the correct finding rather than a gap to be filled: the only general mentions in its text are 'above the 100 year flood level plus freeboard' with no number, and 'this freeboard of RL 17.0', a site datum."
+ },
+ "parramatta|flood_freeboard_min|universal_residential|9.10.10.5 C.03|1359|0.5": {
+  "verdict": "REJECT",
+  "note": "SCOPE. This clause governs the named site at 142-154 Macquarie Street / 118 Harris Street / 135 George Street (Section 9.10.10.5). Sections 8 and 9 of the Parramatta DCP are the precinct and city-centre parts; a figure from either, served as the LGA answer, would be wrong for every site outside it. Parramatta ends this run with NO LGA-wide freeboard row, and that is the correct finding rather than a gap to be filled: the only general mentions in its text are 'above the 100 year flood level plus freeboard' with no number, and 'this freeboard of RL 17.0', a site datum."
+ }
+}

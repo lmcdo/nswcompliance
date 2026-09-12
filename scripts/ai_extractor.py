@@ -152,9 +152,13 @@ COVERAGE_MIN_TOC = 8       # only judge coverage when the TOC lists >= this many
 COVERAGE_MISS_RATIO = 0.25  # flag when > this fraction of TOC sections are missing
 TRUNCATION_MIN_CHARS = 40   # a provision shorter than this (and not a bare ref) is thin
 TRUNCATION_RATIO = 0.10     # flag when > this fraction of provisions look truncated/thin
+# Below this share of the document's listed sections actually appearing as
+# distinct extracted section codes, the extraction has collapsed the chapter
+# into a few parent codes. Measured: collapsed 0.05-0.21, healthy 0.85-0.91.
+ATTRIBUTION_MIN_RATIO = 0.5
 
 
-def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float, list[str]]:
+def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float | None, list[str]]:
     """Fraction (and list) of TOC section codes NOT covered by the extraction. A TOC
     code (e.g. "C4.1") is covered if an extracted code:
       - equals it exactly ("C4.1"), OR
@@ -162,9 +166,24 @@ def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float,
       - has it as the leading token before the first space ("C4.1 O1", "C4.1 C3") —
         the AI emits provisions as "<section> <objective/control>", so this is the
         common case and its absence was the source of false coverage_fail alerts.
-    Pure. Returns (0.0, []) when the TOC is too small to judge."""
+    Pure.
+
+    Returns **None** as the ratio when the TOC is too small to judge — NOT 0.0.
+
+    WHY THIS CHANGED (2026-09-12)
+    -----------------------------
+    It returned ``(0.0, [])`` here, which every caller read as "judged, and
+    nothing is missing". Combined with a TOC regex that matched 0 of 10 real
+    Waverley contents lines, that made this function report a clean pass every
+    single time it FAILED TO READ the document — for two and a half months,
+    while 11 parts were absent and 54 rows were mislabelled.
+
+    "Could not judge" and "judged and found nothing" are different answers, and
+    collapsing them is the defect. None forces the caller to say which it meant;
+    the call site in dcp_extract_changed treats it as suspect, not as clean.
+    """
     if len(toc_codes) < COVERAGE_MIN_TOC:
-        return 0.0, []
+        return None, []
     section_tokens = {e.split(" ", 1)[0] for e in extracted_codes}
     missing = [
         c for c in toc_codes
@@ -173,6 +192,38 @@ def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float,
         and not any(e.startswith(c + ".") for e in extracted_codes)
     ]
     return len(missing) / len(toc_codes), sorted(missing)
+
+
+def attribution_collapsed(extracted_codes: set[str], toc_codes: set[str]) -> tuple[bool, int, int]:
+    """Did this extraction file a whole chapter under a handful of section codes?
+
+    -> (collapsed, distinct_sections_extracted, sections_listed)
+
+    MARRICKVILLE'S DOMINANT DEFECT, proven 2026-09-12 and invisible to every
+    other guard here. part2-s25-stormwater stores 40 provisions against a
+    document listing 19 sections, and all 40 carry the code "2.25" with a
+    control marker. The 19 real sub-sections -- 2.25.1 through 2.25.3.14 -- were
+    never recorded, so not one can be retrieved.
+
+    coverage_gap does NOT catch this. It asks whether TOC codes are covered, and
+    a parent code covers its children by the dotted-prefix rule, so a chapter
+    filed entirely under 2.25 looks partially covered rather than collapsed.
+    truncation_rate does not catch it either: the text is complete, it is the
+    ADDRESSING that is gone.
+
+    Measured separation, not a chosen threshold: collapsed chapters carry 5-21%
+    of their listed sections, healthy ones 85-91%.
+
+    Returns collapsed=False when the TOC is too small to judge. That is not a
+    pass being handed out -- coverage_unknown already covers an unreadable
+    contents page, and this guard deliberately does not double-report it.
+    """
+    if len(toc_codes) < COVERAGE_MIN_TOC:
+        return False, 0, len(toc_codes)
+    sections = {e.split(" ", 1)[0] for e in extracted_codes if e}
+    sections = {s for s in sections if s}
+    return (len(sections) / len(toc_codes) < ATTRIBUTION_MIN_RATIO,
+            len(sections), len(toc_codes))
 
 
 def truncation_rate(texts: list[str]) -> tuple[float, int]:
@@ -191,19 +242,34 @@ def truncation_rate(texts: list[str]) -> tuple[float, int]:
     return flagged / len(texts), flagged
 
 
-def toc_codes_from_pdf(pdf_path, max_scan: int = 12) -> set[str]:
+def toc_codes_from_pdf(pdf_path, max_scan: int = 14) -> set[str]:
     """Return the set of section codes listed in the chapter's TOC, for the coverage
-    guard. Reuses dcp_extract_changed.parse_toc_entries. Returns an empty set if the
-    PDF can't be read or has no parseable TOC (guard then no-ops)."""
+    guard. Returns an empty set if the PDF can't be read or has no parseable TOC —
+    which coverage_gap now reports as "could not judge", not as a pass.
+
+    REPOINTED 2026-09-12 from dcp_extract_changed.parse_toc_entries to
+    dcp_toc_parse.parse_contents. The old parser requires dot leaders or double
+    spacing before a trailing page number, and real DCP contents pages come in at
+    least six shapes — it matched 0 of 10 Waverley lines and could not read
+    canterbury_bankstown or ku_ring_gai at all (73 of 113 unreadable chapters
+    between them).
+
+    Only this GUARD is repointed. parse_toc_entries still drives EXTRACTION for
+    TOC_DRIVEN_COUNCILS (woollahra, leichhardt) and is deliberately untouched:
+    changing what those councils extract is Phase C work, gated on each chapter
+    having a measured state first.
+    """
     try:
         import pdfplumber
-        from scripts.dcp_extract_changed import parse_toc_entries
+
+        from scripts.dcp_toc_parse import parse_contents
     except Exception:
         return set()
     try:
         with pdfplumber.open(str(pdf_path)) as pdf:
             texts = [(p.extract_text() or "") for p in pdf.pages[:max_scan]]
-        return {code for code, _ in parse_toc_entries(texts, max_scan=max_scan)}
+        _status, codes, _entries = parse_contents(texts, max_scan=max_scan)
+        return codes
     except Exception:
         return set()
 
@@ -336,6 +402,45 @@ def _call_and_parse_with_empty_retry(model: str, pdf_bytes: bytes, prompt: str) 
     return provs
 
 
+# ── silent chunk loss: the marrickville cause, proven 2026-09-12 ─────────────
+# ai_extract_chapter splits a chapter into AI_CHUNK_PAGES-page chunks. A chunk
+# could return zero provisions and this function simply collected nothing for it
+# and moved on -- no count, no flag, no error. The chapter was then committed
+# missing that chunk's entire content, and nothing anywhere recorded it.
+#
+# PROVEN, not inferred. marrickville/part4-s1-low-density (55pp, chunks 1-30 and
+# 31-55): every stored row sits on page 31, so chunk 1 produced nothing. All 14
+# of its sampled "missing" sections -- 4.1.1, 4.1.10 … 4.1.15.1 -- are present in
+# the PDF on pages 3-29, inside that empty chunk. Across three chapters, 42 of 42
+# checked missing sections were in the document, inside a chunk that yielded
+# nothing; ZERO were absent from the PDF. The contents page was not lying.
+#
+# Chapters affected (2026-09-12): 15 across 7 councils, 558 pages of source
+# document never extracted, of which marrickville is 4 chapters and 94 pages.
+#
+# A chunk that is genuinely blank -- a cover, a plate of maps, a scanned image
+# run -- SHOULD return nothing, so emptiness alone is not the signal. The signal
+# is emptiness from a chunk that demonstrably contains text.
+CHUNK_LOSS_MIN_TEXT_CHARS = 1500   # a 30-page chunk of controls is far above this
+
+
+class ChunkLoss(Exception):
+    """A chunk containing substantial text returned no provisions."""
+
+
+def _chunk_text_chars(reader, a: int, b: int) -> int:
+    """Extractable characters in pages [a, b). Cheap; no model call."""
+    total = 0
+    for i in range(a, min(b, len(reader.pages))):
+        try:
+            total += len(reader.pages[i].extract_text() or "")
+        except Exception:
+            # A page pypdf cannot read is not evidence of emptiness. Treat it as
+            # text-bearing so the guard errs toward reporting loss, not hiding it.
+            total += CHUNK_LOSS_MIN_TEXT_CHARS
+    return total
+
+
 # ── entrypoint ───────────────────────────────────────────────────────────────
 def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None) -> list[dict]:
     """Extract a chapter's provisions via an LLM. Returns section dicts matching
@@ -347,10 +452,19 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
     total = len(reader.pages)
     collected: list[dict] = []
     current_section: str | None = None
+    lost: list[dict] = []
     for (a, b) in chunk_ranges(total):
         pdf_bytes = _subset_bytes(reader, a, b)
         prompt = _build_prompt(current_section)
         chunk_provs = _call_and_parse_with_empty_retry(model, pdf_bytes, prompt)
+        if not chunk_provs:
+            # FAIL CLOSED. Zero provisions from a chunk that holds real text is
+            # content loss, and accepting it silently is what cost marrickville
+            # 94 pages of source document. A genuinely blank chunk has no text
+            # and is passed over without complaint.
+            chars = _chunk_text_chars(reader, a, b)
+            if chars >= CHUNK_LOSS_MIN_TEXT_CHARS:
+                lost.append({"pages": (a + 1, b), "text_chars": chars})
         for p in chunk_provs:
             p.setdefault("page", a + 1)  # approximate: first page of the chunk
             collected.append(p)
@@ -361,4 +475,13 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
             if _SECTION_RE.match(token):
                 current_section = token
                 break
+    if lost:
+        pages = ", ".join(str(x["pages"][0]) + "-" + str(x["pages"][1]) for x in lost)
+        chars = sum(x["text_chars"] for x in lost)
+        raise ChunkLoss(
+            str(len(lost)) + " of " + str(len(chunk_ranges(total))) + " chunks "
+            "returned NO provisions while holding " + str(chars) + " characters "
+            "of text (pages " + pages + "). Refusing to return a partial chapter: "
+            "committing it would silently drop those pages, which is how "
+            "marrickville lost 94 pages of source across 4 chapters.")
     return provisions_to_sections(dedupe_provisions(collected))

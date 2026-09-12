@@ -392,3 +392,107 @@ Northern Beaches address based on the former-council / document_id.
 
 6. **Verify after populating:** run a test DA through the API and check that displayProvisions
    contains the right sections. Compare against the DCP table of contents manually.
+
+---
+
+## AMENDED 2026-09-12 — the scope is FIVE universal chapters plus hazard-by-LGA
+
+The six above is a template, and a template cannot express what makes one council
+different from another. Replacing it with a derived target.
+
+### What was wrong with the fixed six
+
+Only **4 of 29 councils** have any flood, bushfire or contamination chapter
+registered. The other 25 have none — not because they do not need them, but
+because nothing asked for one.
+
+Meanwhile our own spatial data says those hazards are everywhere, and everywhere
+*different*:
+
+| overlay | LGAs it touches |
+|---|---|
+| heritage | 127 |
+| biodiversity | 79 |
+| flood | **72** |
+| riparian | 66 |
+| acid sulfate | 51 |
+| landslide | 6 |
+
+Bayside carries acid sulfate **and** flood; Bega Valley only acid sulfate;
+Campbelltown only flood. A fixed list is blind to all of it.
+
+And where a hazard chapter does exist it is substantial: woollahra's stormwater
+and flood chapter serves **226 provisions**, its second-largest; marrickville's
+four hazard chapters serve 132 between them.
+
+### This document already made the argument and did not generalise it
+
+Heritage was justified above like this:
+
+> *the spatial layer already answers **whether** a property sits in a conservation
+> area. What the DCP adds is what that means for a design*
+
+That is precisely the flood case. We tell a user across 72 LGAs that their site is
+flood-affected, and hold no DCP flood control to say what that means for their
+floor level, their fill, or their garage. We raise the question and cannot answer
+it.
+
+### The method
+
+**A chapter is in scope when it answers a question the product will ask about a
+real property in that council.** Two kinds of question:
+
+**UNIVERSAL — five, every council.** Every property has a zone, a lot and a
+development intent, so every property raises these:
+general · residential · residential flat / mixed use · parking and transport ·
+landscaping and trees.
+
+**CONDITIONAL — derived per council.** A property raises a hazard question only
+when it carries that overlay. Required for a council when `spatial_overlays` shows
+the layer present in its LGA:
+heritage · flood · acid sulfate · bushfire · riparian · biodiversity · landslide.
+
+So a council's target is 5 + *n*, computed, not chosen. Most land at 8–10.
+
+### What "user value" means here, honestly
+
+It is inferred from what the product can **ask and answer**, not from usage data.
+There is no traffic to learn from — the prospector funnel was shelved empty — so
+any claim resting on "users want X" would be invented. What is real is the
+constraint set the frontend surfaces and the overlays a council's properties
+actually carry. If usage data ever exists, it should replace this inference rather
+than sit beside it.
+
+### Measured against the new target
+
+```bash
+python scripts/dcp_scope_coverage.py          # per council, against its OWN target
+python scripts/dcp_scope_coverage.py --gaps   # what is missing, and what blocks it
+```
+
+**No council meets its own target.** The three that read 6/6 under the old
+template do not:
+
+| council | now | missing |
+|---|---|---|
+| marrickville | 9/10 | riparian |
+| ku_ring_gai | 8/9 | acid sulfate |
+| woollahra | 7/9 | acid sulfate, riparian |
+| canterbury_bankstown | 6/10 | rfb/mixed, acid sulfate, riparian, biodiversity |
+| leichhardt | 3/10 | parking, rfb, heritage, flood, acid sulfate, riparian, biodiversity |
+
+Fifteen councils are at zero.
+
+### The trap this introduces
+
+A bucket flips to SERVING on **one row**. The target measures REACH, not quality.
+ku_ring_gai is 8/9 and still has 5 chapters filed wrong and 19 unverified. Pair
+this with `dcp_inscope_status.py` every time, or a council with nine hollow
+chapters reads as complete.
+
+### The claim rule is unchanged and now matters more
+
+A council holding five universal chapters and no flood chapter, in a flood LGA,
+must not be described as having "DCP controls". It has *residential development
+controls*. `verify_lga_capability_flags.py` runs daily and fails on a flag the
+database does not support.

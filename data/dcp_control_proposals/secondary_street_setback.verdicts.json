@@ -1,0 +1,54 @@
+{
+ "parramatta|secondary_street_setback|dwelling_house|3.3.1.2 C.06|60|3.0": {
+  "verdict": "DUPLICATE",
+  "note": "Correct, and ALREADY IN PRODUCTION: dcp_setback_controls holds parramatta / dwelling_house / 3m / section_ref '3.3.1.2 C.06' / pdf_page 60, from the same clause. Not re-inserted. Worth recording that the model reproduced a human-extracted row exactly, from the same page, with the same value - the strongest single check on this harness available."
+ },
+ "parramatta|secondary_street_setback|dual_occupancy|3.3.2.2 C.07|67|3.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. Part 3.3 heading is 'RESIDENTIAL DEVELOPMENT DWELLING HOUSES, SECONDARY DWELLINGS AND DUAL OCCUPANCIES'; 3.3.2 is the dual occupancy sub-part. 'On corner lots, the secondary street setback must also be a minimum of 3 metres' - a minimum, so value_min is the requirement; no concession to strand in the condition; ground level; general to the LGA, not a precinct."
+ },
+ "parramatta|secondary_street_setback|secondary_dwelling|3.3.3.3 C.09|76|3.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. 3.3.3 is the secondary dwellings sub-part of Part 3.3. Clause reads 'On corner lots, the secondary street setback must setback a minimum of 3 metres' - the doubled verb is the document's own wording, not an extraction artifact. applicability secondary_dwelling_specific is right: it is the granny-flat control, not the house control."
+ },
+ "parramatta|secondary_street_setback|multi_dwelling_housing|3.4.1.2 C.08|80|4.0": {
+  "verdict": "DUPLICATE",
+  "note": "Correct, and ALREADY IN PRODUCTION: parramatta / multi_dwelling_housing / 4m / '3.4.1.2 C.08' / pdf_page 80. Same clause, same value, independently reproduced. Not re-inserted."
+ },
+ "parramatta|secondary_street_setback|multi_dwelling_housing|3.4.2.2 C.06|89|4.0": {
+  "verdict": "DUPLICATE",
+  "note": "TERRACE HOUSING (page carries 'Figure 3.4.2.2.1 - Terrace Housing Site Setbacks'). The DCP files terraces under the MULTI-DWELLING HOUSING heading and states the same 4m, so as a served row this is identical to the existing 3.4.1.2 C.08 multi_dwelling_housing 4m row: same dev_type, same value. It corroborates rather than adds, so it stops here. Serving both would hand a consumer two rows that answer one question."
+ },
+ "parramatta|secondary_street_setback|multi_dwelling_housing|3.4.3.2 C.06|96|3.0": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "NEW, and the dev_type was WRONG in a way that would have served a contradiction. The page states 'manor houses shall be a maximum of 2-storeys', so this clause's subject is manor houses - but it sits under the MULTI-DWELLING HOUSING heading and was proposed as dev_type multi_dwelling_housing at 3m. Parramatta already serves multi_dwelling_housing at 4m. Two rows, one dev_type, 4m and 3m, with nothing in dev_type to tell them apart. Corrected to dev_type manor_house, which is the clause's own subject and an existing value in the table's vocabulary. No number changed.",
+  "corrections": {
+   "dev_type": "manor_house",
+   "condition": "Manor houses (Part 3.4.3, filed by the DCP under Multi-Dwelling Housing). On corner lots, to the secondary street frontage."
+  }
+ },
+ "parramatta|secondary_street_setback|residential_flat_building|3.5.1.2 C.04|106|3.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. Page heading 'RESIDENTIAL DEVELOPMENT APARTMENT BUILDINGS', part 3.5.1. 'Buildings must be set back a minimum of 3 metres from the secondary street or laneway frontage'. GRAIN checked: this is the building setback, not an upper-level massing control, and the clause's stated purpose (threshold to ground floor apartments, boundary landscaping) confirms ground level. 'or laneway' is in the condition, correctly - it widens what counts as the secondary frontage, it does not change the number."
+ },
+ "parramatta|secondary_street_setback|residential_flat_building|8.1.1.3.6 Table 8.1.1.3.6.1 (Podium)|460|3.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE and GRAIN, and the quote says so itself. The source is 'Podium Primary and secondary 3m road boundary' - an interleaved table cell from the Oxford Street, Epping precinct, governing the primary AND secondary boundary together at podium level. Three faults at once: precinct-scoped, combined-frontage, and not ground level. Parramatta's real general answer for apartments is the 3m in 3.5.1.2 C.04 above; serving this beside it adds a precinct figure that a consumer cannot distinguish from the general one."
+ },
+ "parramatta|secondary_street_setback|multi_dwelling_housing|8.3.1 C.45|817|3.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Page heading is '8.3.1 HARRIS PARK' - a named precinct. The clause also reads 'Setback from rear lanes and/or secondary streets', conflating a rear-lane setback with a secondary-street setback into one figure, so even within Harris Park it does not answer the question this control_type asks. Two proposals were made from this one clause (multi_dwelling_housing and residential_flat_building); both are rejected on the same ground."
+ },
+ "parramatta|secondary_street_setback|residential_flat_building|8.3.1 C.45|817|3.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Page heading is '8.3.1 HARRIS PARK' - a named precinct. The clause also reads 'Setback from rear lanes and/or secondary streets', conflating a rear-lane setback with a secondary-street setback into one figure, so even within Harris Park it does not answer the question this control_type asks. Two proposals were made from this one clause (multi_dwelling_housing and residential_flat_building); both are rejected on the same ground."
+ },
+ "parramatta|secondary_street_setback|universal_residential|8.3.2.3 C.04|830|5.0": {
+  "verdict": "REJECT",
+  "note": "The clause says 'front setback along Weston and Hope Streets', not secondary setback. Reading it as secondary depends on inferring from a neighbouring clause (C.03, 7m to Arthur Street) which frontage is primary - that is reasoning about the document, not reading it, and this control type must be stated not deduced. Compounded by scope: 'Key Block Three, Harris Park Special Areas' is a named block."
+ },
+ "parramatta|secondary_street_setback|mixed_use|9.10.11.1 Podium Setbacks C.04|1362|4.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE at its narrowest: a control for one address, 33-34 Marion Street, Harris Park, and a podium-level setback at that. 'Minimum 4 metre setback to the south (Peace Lane)' is a correct reading of a site-specific figure. Served as parramatta's secondary street setback it would be wrong for every other site in the LGA."
+ }
+}

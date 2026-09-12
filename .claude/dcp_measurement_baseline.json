@@ -1,0 +1,125 @@
+{
+  "_comment": "Ratchet floor for scripts/dcp_chapter_measure.py. NOT_OK and UNMEASURED may go DOWN, never UP. This is not an acceptance of the defects it records - it is the floor that lets a fail-closed check go live without taking the product dark against chapters already known bad. ratchet.per_council is EMPTY until a first four-signal run is reviewed and recorded with --record-baseline; until then every key reports NO_BASELINE, which is not a pass.",
+  "frozen_signal1": {
+    "measured_at": "2026-09-12",
+    "frozen_by": "user instruction: freeze today's counts as the ratchet baseline",
+    "source": "~/.claude/plans/ce-dcp-baseline-2026-09-12/baseline.json",
+    "signal": "codes listed on the source PDF contents page vs codes we serve",
+    "scope_councils": [
+      "ashfield",
+      "campbelltown",
+      "canterbury_bankstown",
+      "hornsby",
+      "inner_west",
+      "ku_ring_gai",
+      "leichhardt",
+      "marrickville",
+      "waverley",
+      "woollahra"
+    ],
+    "chapters_audited": 270,
+    "totals": {
+      "INCOMPLETE": 95,
+      "UNREADABLE": 113,
+      "NO_ROWS": 46,
+      "OK": 9,
+      "VOCAB_MISMATCH": 7,
+      "listed_sections_not_served": 984
+    },
+    "per_council": {
+      "ashfield": {
+        "chapters": 8,
+        "NOT_OK_signal1": 8
+      },
+      "campbelltown": {
+        "chapters": 2,
+        "NOT_OK_signal1": 2
+      },
+      "canterbury_bankstown": {
+        "chapters": 66,
+        "NOT_OK_signal1": 66
+      },
+      "hornsby": {
+        "chapters": 2,
+        "NOT_OK_signal1": 2
+      },
+      "inner_west": {
+        "chapters": 2,
+        "NOT_OK_signal1": 2
+      },
+      "ku_ring_gai": {
+        "chapters": 38,
+        "NOT_OK_signal1": 38
+      },
+      "leichhardt": {
+        "chapters": 28,
+        "NOT_OK_signal1": 23
+      },
+      "marrickville": {
+        "chapters": 95,
+        "NOT_OK_signal1": 91
+      },
+      "waverley": {
+        "chapters": 2,
+        "NOT_OK_signal1": 2
+      },
+      "woollahra": {
+        "chapters": 27,
+        "NOT_OK_signal1": 27
+      }
+    },
+    "NOT_COMPARABLE_WARNING": "These numbers came from ONE signal and a NARROWER parser. dcp_chapter_measure.py runs four signals and a wider parser: widening moves chapters out of UNREADABLE into a real verdict (so INCOMPLETE legitimately rises), and signals 2-4 can find faults in a chapter signal 1 called OK (so OK legitimately falls). Gating the new numbers against these would fail on exactly the work it exists to protect. Kept as provenance; never gated on."
+  },
+  "ratchet": {
+    "keys": [
+      "NOT_OK",
+      "UNMEASURED"
+    ],
+    "rule": "may go DOWN, never UP",
+    "compared_against": "this code against itself, run N vs run N-1 - never against frozen_signal1",
+    "per_council": {
+      "ashfield": {
+        "NOT_OK": 8,
+        "UNMEASURED": 0
+      },
+      "campbelltown": {
+        "NOT_OK": 2,
+        "UNMEASURED": 0
+      },
+      "canterbury_bankstown": {
+        "NOT_OK": 66,
+        "UNMEASURED": 0
+      },
+      "hornsby": {
+        "NOT_OK": 2,
+        "UNMEASURED": 0
+      },
+      "inner_west": {
+        "NOT_OK": 2,
+        "UNMEASURED": 0
+      },
+      "ku_ring_gai": {
+        "NOT_OK": 38,
+        "UNMEASURED": 1
+      },
+      "leichhardt": {
+        "NOT_OK": 22,
+        "UNMEASURED": 3
+      },
+      "marrickville": {
+        "NOT_OK": 93,
+        "UNMEASURED": 5
+      },
+      "waverley": {
+        "NOT_OK": 2,
+        "UNMEASURED": 0
+      },
+      "woollahra": {
+        "NOT_OK": 27,
+        "UNMEASURED": 0
+      }
+    },
+    "recorded_at": "2026-09-11T22:28:52.204580+00:00",
+    "recorded_from": "C:/Users/lawre/AppData/Local/Temp/claude/C--Users-lawre-Downloads-solvyra-projects-compliance-engine-compliance-engine/fd206d9c-1f07-41fe-bf31-e386d832f35f/scratchpad/sweep_baseline10.json"
+  }
+}

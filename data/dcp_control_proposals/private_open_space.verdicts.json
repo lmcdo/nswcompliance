@@ -1,0 +1,172 @@
+{
+ "city_of_sydney|private_open_space|dwelling_house|4.1.3.5|9|16.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. The clause heading on the page is literally '4.1.3.5 Private open space', inside Part 4.1, whose sub-parts on these pages are dwelling-house and secondary-dwelling controls. 'minimum area of 16sqm' is a requirement, and there is no concession to strand in the condition. 16sqm reads small against Parramatta's 100m2; that is what a dense inner-city LGA states, not an extraction error."
+ },
+ "city_of_sydney|private_open_space|dwelling_house|4.1.6.1(2)|20|16.0": {
+  "verdict": "DUPLICATE",
+  "note": "Correct reading, but not a second control. It restates the SAME 16sqm as 4.1.3.5, in the form of a precondition: a secondary dwelling on a lot under 150sqm is only permitted if the principal dwelling keeps its 16sqm. Served as its own row it would answer the POS question twice with one number, and the second answer would carry a lot-size qualifier that has nothing to do with the POS requirement itself."
+ },
+ "city_of_sydney|private_open_space|residential_flat_building|4.2.3.7(6)(a)|30|25.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. '(a) ground level dwellings: 25sqm with a minimum dimension of 4m' -- unambiguous, and the general apartment control rather than a precinct one. GRAIN checked: the value is the POS area and the 4m dimension correctly stays in the condition instead of being stored as the value."
+ },
+ "city_of_sydney|private_open_space|residential_flat_building|4.2.3.7(6)(b)|30|10.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. '(b) upper level units: 10sqm with a minimum dimension of 2m' -- the same clause's upper-level limb. Ground and upper are genuinely different controls with different numbers, so two rows is right here, unlike the 4.1.6.1(2) restatement above."
+ },
+ "city_of_sydney|private_open_space|boarding_house|4.4.1.4(5)|49|4.0": {
+  "verdict": "ACCEPT_QUALIFIED",
+  "note": "NEW, and the qualifier is load-bearing: this is not 4sqm of POS for every boarding house room. The clause requires 30% OF ALL BEDROOMS to have access to at least 4sqm as a balcony or terrace. A consumer reading value_min without that would apply it to every room. Qualifier moved to the front of the condition so it cannot be missed.",
+  "corrections": {
+   "condition": "APPLIES TO 30% OF ALL BEDROOMS, not every bedroom -- each of that 30% must have access to private open space of at least 4sqm, in the form of a balcony or terrace area."
+  }
+ },
+ "city_of_sydney|private_open_space|residential_flat_building|5.3.4.1 (Figure 5.87)|121|1.2": {
+  "verdict": "REJECT",
+  "note": "SCOPE and GRAIN together. The quote is item 3 of a FIGURE LEGEND in the Epsom Park precinct (Section 5.3), and what it measures is the minimum DEPTH of a ground floor private open space deck, not the private open space a dwelling must have. The general City of Sydney answer is already captured from 4.2.3.7(6), 25sqm ground and 10sqm upper. Serving a precinct deck depth as this control answers a different question with a smaller number."
+ },
+ "city_of_sydney|private_open_space|residential_flat_building|5.5.8.5 (Figure 5.150)|199|1.2": {
+  "verdict": "REJECT",
+  "note": "SCOPE and GRAIN together. The quote is item 3 of a FIGURE LEGEND in the Ashmore precinct (Section 5.5), and what it measures is the minimum DEPTH of a ground floor private open space deck, not the private open space a dwelling must have. The general City of Sydney answer is already captured from 4.2.3.7(6), 25sqm ground and 10sqm upper. Serving a precinct deck depth as this control answers a different question with a smaller number."
+ },
+ "city_of_sydney|private_open_space|residential_flat_building|5.7.2.1 (Figure 5.189)|231|1.2": {
+  "verdict": "REJECT",
+  "note": "SCOPE and GRAIN together. The quote is item 3 of a FIGURE LEGEND in the North Rosebery precinct (Section 5.7), and what it measures is the minimum DEPTH of a ground floor private open space deck, not the private open space a dwelling must have. The general City of Sydney answer is already captured from 4.2.3.7(6), 25sqm ground and 10sqm upper. Serving a precinct deck depth as this control answers a different question with a smaller number."
+ },
+ "city_of_sydney|private_open_space|residential_flat_building|Figure 6.38 / Figure 6.39|62|1.2": {
+  "verdict": "REJECT",
+  "note": "SCOPE and GRAIN together. The quote is item 3 of a FIGURE LEGEND in a named-site figure pair, the Hurley Street interface and the Huntley Street frontage (Section 6), and what it measures is the minimum DEPTH of a ground floor private open space deck, not the private open space a dwelling must have. The general City of Sydney answer is already captured from 4.2.3.7(6), 25sqm ground and 10sqm upper. Serving a precinct deck depth as this control answers a different question with a smaller number."
+ },
+ "city_of_sydney|private_open_space|residential_flat_building|Figure 6.40|62|1.5": {
+  "verdict": "REJECT",
+  "note": "SCOPE and GRAIN together. The quote is item 3 of a FIGURE LEGEND in a named-site figure, the Sydney Park Road frontage (Section 6), and what it measures is the minimum DEPTH of a ground floor private open space deck, not the private open space a dwelling must have. The general City of Sydney answer is already captured from 4.2.3.7(6), 25sqm ground and 10sqm upper. Serving a precinct deck depth as this control answers a different question with a smaller number. This row also asserts a DIFFERENT depth, 1.5m, from the 1.2m on the other frontages of the same site -- exactly the per-frontage detail that cannot be an LGA control."
+ },
+ "parramatta|private_open_space|dwelling_house|3.3.1.4 C.03|62|100.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. Part 3.3.1, heading 'RESIDENTIAL DEVELOPMENT DWELLING HOUSES, SECONDARY DWELLINGS AND DUAL OCCUPANCIES'. 'A minimum 100m2 of private open space must be provided for each dwelling' -- a requirement, not a target. Contiguity, ground level, rear location and the 6m dimension all correctly stay in the condition rather than displacing the value."
+ },
+ "parramatta|private_open_space|dual_occupancy|3.3.2.4 C.03|70|100.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. Part 3.3.2, the dual occupancy sub-part. Same 100m2 as the dwelling house control but a separate clause for a separate dev_type, so unlike the terrace/townhouse pair below this is not a duplicate: a consumer querying dual_occupancy would otherwise get nothing."
+ },
+ "parramatta|private_open_space|secondary_dwelling|3.3.3.4 C.01|77|12.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. Part 3.3.3, secondary dwellings. 'A minimum 12m2 of private open space must be associated with a secondary dwelling. This may be provided as a patio or balcony.' The second sentence widens what counts; it does not change the number, so it belongs in the condition where it is."
+ },
+ "parramatta|private_open_space|multi_dwelling_housing|3.4.1.5 C.03|84|40.0": {
+  "verdict": "ACCEPT",
+  "note": "NEW. Part 3.4.1, 'RESIDENTIAL DEVELOPMENT MULTI-DWELLING HOUSING'. 40m2 per dwelling, contiguous, ground level, rear, minimum dimension 5m. This is Parramatta's general multi-dwelling answer."
+ },
+ "parramatta|private_open_space|multi_dwelling_housing|3.4.2.4 C.03|92|40.0": {
+  "verdict": "DUPLICATE",
+  "note": "TERRACE HOUSING (Part 3.4.2; the page carries 'Figure 3.4.2.2.1 - Terrace Housing Site Setbacks'). The DCP files terraces under the same MULTI-DWELLING HOUSING heading and states the same 40m2 with the same 5m dimension, so as a served row it is identical to 3.4.1.5 C.03: same dev_type, same value. It corroborates and stops here rather than answering one question twice."
+ },
+ "parramatta|private_open_space|multi_dwelling_housing|C.03|100|15.0": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "dev_type CORRECTED to manor_house. Part 3.4.3 is the manor house sub-part -- page 96, clause 3.4.3.2 C.02, states 'manor houses shall be a maximum of 2-storeys' -- and this clause is 3.4.3.6 on page 100, the same sub-part. Proposed as multi_dwelling_housing it would have contradicted the 40m2 multi_dwelling_housing row from 3.4.1.5, with nothing in dev_type to tell the two apart. section_ref also corrected: a bare 'C.03' cites nothing in a 1,400-page DCP. The part number is used and no sub-number is invented, because the page does not state one. No number changed. Ground-level apartments within a manor house: 15m2.",
+  "corrections": {
+   "dev_type": "manor_house",
+   "section_ref": "3.4.3 C.03",
+   "condition": "Manor houses (Part 3.4.3). Apartments at GROUND level; minimum dimension 2 metres."
+  }
+ },
+ "parramatta|private_open_space|multi_dwelling_housing|C.04|100|8.0": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "dev_type CORRECTED to manor_house. Part 3.4.3 is the manor house sub-part -- page 96, clause 3.4.3.2 C.02, states 'manor houses shall be a maximum of 2-storeys' -- and this clause is 3.4.3.6 on page 100, the same sub-part. Proposed as multi_dwelling_housing it would have contradicted the 40m2 multi_dwelling_housing row from 3.4.1.5, with nothing in dev_type to tell the two apart. section_ref also corrected: a bare 'C.04' cites nothing in a 1,400-page DCP. The part number is used and no sub-number is invented, because the page does not state one. No number changed. First-floor 1-bedroom/studio units: 8m2. The three limbs of C.04 are three different minimums and so are three rows, not one.",
+  "corrections": {
+   "dev_type": "manor_house",
+   "section_ref": "3.4.3 C.04",
+   "condition": "Manor houses (Part 3.4.3). FIRST-FLOOR level dwellings, 1-bedroom/studio units; minimum dimension 2 metres."
+  }
+ },
+ "parramatta|private_open_space|multi_dwelling_housing|C.04|100|12.0": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "dev_type CORRECTED to manor_house. Part 3.4.3 is the manor house sub-part -- page 96, clause 3.4.3.2 C.02, states 'manor houses shall be a maximum of 2-storeys' -- and this clause is 3.4.3.6 on page 100, the same sub-part. Proposed as multi_dwelling_housing it would have contradicted the 40m2 multi_dwelling_housing row from 3.4.1.5, with nothing in dev_type to tell the two apart. section_ref also corrected: a bare 'C.04' cites nothing in a 1,400-page DCP. The part number is used and no sub-number is invented, because the page does not state one. No number changed. First-floor 2-bedroom units: 12m2. The three limbs of C.04 are three different minimums and so are three rows, not one.",
+  "corrections": {
+   "dev_type": "manor_house",
+   "section_ref": "3.4.3 C.04",
+   "condition": "Manor houses (Part 3.4.3). FIRST-FLOOR level dwellings, 2-bedroom units; minimum dimension 2 metres."
+  }
+ },
+ "parramatta|private_open_space|multi_dwelling_housing|C.04|100|16.0": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "dev_type CORRECTED to manor_house. Part 3.4.3 is the manor house sub-part -- page 96, clause 3.4.3.2 C.02, states 'manor houses shall be a maximum of 2-storeys' -- and this clause is 3.4.3.6 on page 100, the same sub-part. Proposed as multi_dwelling_housing it would have contradicted the 40m2 multi_dwelling_housing row from 3.4.1.5, with nothing in dev_type to tell the two apart. section_ref also corrected: a bare 'C.04' cites nothing in a 1,400-page DCP. The part number is used and no sub-number is invented, because the page does not state one. No number changed. First-floor 3 or more-bedroom units: 16m2. The three limbs of C.04 are three different minimums and so are three rows, not one.",
+  "corrections": {
+   "dev_type": "manor_house",
+   "section_ref": "3.4.3 C.04",
+   "condition": "Manor houses (Part 3.4.3). FIRST-FLOOR level dwellings, 3 or more-bedroom units; minimum dimension 2 metres."
+  }
+ },
+ "parramatta|private_open_space|residential_flat_building|C.08|110|8.0": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "NEW, and the section_ref was not usable. Part 3.5.1 is 'RESIDENTIAL DEVELOPMENT APARTMENT BUILDINGS' (page heading 3.5.1.5), so residential_flat_building is right -- but a bare 'C.08' cites nothing in a 1,400-page DCP. Corrected to '3.5.1 C.08': the part is provable from the page, the sub-number is not, so none is invented. No number changed. This is the 1-bedroom/studio limb of a three-limb clause.",
+  "corrections": {
+   "section_ref": "3.5.1 C.08",
+   "condition": "Apartment buildings (Part 3.5.1), per dwelling, 1-bedroom/studio units; contiguous area with a minimum dimension of 2 metres."
+  }
+ },
+ "parramatta|private_open_space|residential_flat_building|C.08|110|12.0": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "NEW, and the section_ref was not usable. Part 3.5.1 is 'RESIDENTIAL DEVELOPMENT APARTMENT BUILDINGS' (page heading 3.5.1.5), so residential_flat_building is right -- but a bare 'C.08' cites nothing in a 1,400-page DCP. Corrected to '3.5.1 C.08': the part is provable from the page, the sub-number is not, so none is invented. No number changed. This is the 2-bedroom limb of a three-limb clause.",
+  "corrections": {
+   "section_ref": "3.5.1 C.08",
+   "condition": "Apartment buildings (Part 3.5.1), per dwelling, 2-bedroom units; contiguous area with a minimum dimension of 2 metres."
+  }
+ },
+ "parramatta|private_open_space|residential_flat_building|C.08|110|16.0": {
+  "verdict": "CORRECT_AND_ACCEPT",
+  "note": "NEW, and the section_ref was not usable. Part 3.5.1 is 'RESIDENTIAL DEVELOPMENT APARTMENT BUILDINGS' (page heading 3.5.1.5), so residential_flat_building is right -- but a bare 'C.08' cites nothing in a 1,400-page DCP. Corrected to '3.5.1 C.08': the part is provable from the page, the sub-number is not, so none is invented. No number changed. This is the 3 or more-bedroom limb of a three-limb clause.",
+  "corrections": {
+   "section_ref": "3.5.1 C.08",
+   "condition": "Apartment buildings (Part 3.5.1), per dwelling, 3 or more-bedroom units; contiguous area with a minimum dimension of 2 metres."
+  }
+ },
+ "parramatta|private_open_space|boarding_house|C.48|123|8.0": {
+  "verdict": "ACCEPT_QUALIFIED",
+  "note": "NEW, but dangerously narrow if served plainly. This is the POS for an ON-SITE MANAGER'S accommodation in a boarding house -- not the POS a boarding house provides for its residents. Parramatta has no general boarding-house POS row, so a consumer asking the obvious question would get 8m2 and be wrong. Qualifier moved to the very front of the condition.",
+  "corrections": {
+   "condition": "ON-SITE MANAGER'S ACCOMMODATION ONLY -- this is not the boarding house's resident POS requirement. Where accommodation is provided for an on-site manager, one area of at least 8m2 with a minimum dimension of 2.5 metres, adjacent to that accommodation and not in the front setback area."
+  }
+ },
+ "parramatta|private_open_space|shop_top_housing|Table 8.1.1.2.7.1 (C.02)|437|15.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in the Epping Strategic Centre (Section 8.1.1). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside the Epping Strategic Centre (Section 8.1.1). The three smaller limbs of the same table were already rejected mechanically for quotes too short to be evidence ('Ground level apartments 15m2 3m' survived; 'Studio 4m2' did not) -- the right outcome for an interleaved table cell."
+ },
+ "parramatta|private_open_space|dwelling_house|DETACHED FAMILY DWELLING – STANDARD LOT, C.02|600|25.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in the Newington Local Centre (Section 8.2.5). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside the Newington Local Centre (Section 8.2.5)."
+ },
+ "parramatta|private_open_space|attached_dwelling|TERRACE HOUSE – NORTH TO THE STREET, C.02|600|25.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in the Newington Local Centre (Section 8.2.5). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside the Newington Local Centre (Section 8.2.5)."
+ },
+ "parramatta|private_open_space|semi_detached|TOWN HOUSE (SOUTH TO THE STREET), C.09|600|25.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in the Newington Local Centre (Section 8.2.5). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside the Newington Local Centre (Section 8.2.5)."
+ },
+ "parramatta|private_open_space|residential_flat_building|C.03|611|7.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in the Newington Local Centre (Section 8.2.5). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside the Newington Local Centre (Section 8.2.5). Residential flat buildings there are given 7m2 above ground and 10m2 at ground level, against the LGA-wide 8-16m2. Serving both is how a consumer ends up with a smaller number than the rule."
+ },
+ "parramatta|private_open_space|residential_flat_building|C.04|611|10.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in the Newington Local Centre (Section 8.2.5). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside the Newington Local Centre (Section 8.2.5). Residential flat buildings there are given 7m2 above ground and 10m2 at ground level, against the LGA-wide 8-16m2. Serving both is how a consumer ends up with a smaller number than the rule."
+ },
+ "parramatta|private_open_space|residential_flat_building|C.14|779|25.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in the Carlingford Local Centre (Section 8.2.8). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside the Carlingford Local Centre (Section 8.2.8)."
+ },
+ "parramatta|private_open_space|residential_flat_building|C.15|779|10.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in the Carlingford Local Centre (Section 8.2.8). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside the Carlingford Local Centre (Section 8.2.8)."
+ },
+ "parramatta|private_open_space|multi_dwelling_housing|For all dwellings (except residential flat buildings) with a site density of 40 dwellings per ha or less, item a)|875|20.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in Hunterford Estate, Oatlands (Section 8.3.9). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside Hunterford Estate, Oatlands (Section 8.3.9)."
+ },
+ "parramatta|private_open_space|multi_dwelling_housing|For all dwellings (except residential flat buildings) with a site density more than 40 dwellings per ha, item a)|875|35.0": {
+  "verdict": "REJECT",
+  "note": "SCOPE. Section 8 of the Parramatta DCP is the precinct part, and this clause sits in Hunterford Estate, Oatlands (Section 8.3.9). Parramatta's general POS answers are already captured from Part 3 (100m2 dwelling house and dual occupancy, 40m2 multi-dwelling housing, 12m2 secondary dwelling, 8-16m2 apartments). A precinct figure served beside them cannot be told apart from the general one, so it would override the right answer for every site outside Hunterford Estate, Oatlands (Section 8.3.9). DIRECTION as well: the clause reads 'Dwellings SHOULD be provided with a total minimum area of 35m2'. 'Should' is advisory; storing it as a minimum states a requirement the document does not."
+ }
+}

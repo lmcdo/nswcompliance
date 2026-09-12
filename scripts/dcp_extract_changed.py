@@ -47,15 +47,48 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from enrichment.pipeline import phase_failures, run_standard_enrichment
 
+# The fail-closed page-map guard. Imported rather than inlined so the same three
+# checks serve the pipeline and the standalone sweep -- a guard with two copies
+# drifts, and drift is the defect it exists to catch.
+from scripts.dcp_page_map_gate import PageMapUnusable, assert_map_usable
+
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-R2_ACCOUNT_ID        = os.environ["R2_ACCOUNT_ID"]
-R2_BUCKET_NAME       = os.environ["R2_BUCKET_NAME"]
-R2_ACCESS_KEY_ID     = os.environ["R2_ACCESS_KEY_ID"]
-R2_SECRET_ACCESS_KEY = os.environ["R2_SECRET_ACCESS_KEY"]
-DATABASE_URL         = os.environ.get("DATABASE_URL") or os.environ["SUPABASE_DB_URL"]
+# Read with .get(), NOT os.environ[...]. These are module scope, so a missing
+# key here raises at IMPORT and makes the whole module unimportable -- including
+# for a caller that only wants COUNCIL_PAGE_RANGES, which is plain data and needs
+# no credentials at all.
+#
+# That is not hypothetical. dcp_page_map_gate.all_page_maps() imports this module
+# for exactly those two dicts, and its --from-ledger mode is advertised as
+# needing DATABASE_URL and nothing else. On 2026-09-13 it failed in CI with
+# "FATAL: KeyError: 'R2_ACCOUNT_ID'" before running a single check. It passed
+# locally only because load_dotenv finds a .env in the repo root; CI has none.
+#
+# require_r2() is called where the credentials are actually USED, so a genuine
+# misconfiguration still fails loudly, at the point that can say what it needed.
+R2_ACCOUNT_ID        = os.environ.get("R2_ACCOUNT_ID")
+R2_BUCKET_NAME       = os.environ.get("R2_BUCKET_NAME")
+R2_ACCESS_KEY_ID     = os.environ.get("R2_ACCESS_KEY_ID")
+R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
+DATABASE_URL         = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
 R2_ENDPOINT = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+
+def require_r2() -> None:
+    """Fail loudly, and by name, at the point the credentials are needed."""
+    missing = [n for n, v in (
+        ("R2_ACCOUNT_ID", R2_ACCOUNT_ID), ("R2_BUCKET_NAME", R2_BUCKET_NAME),
+        ("R2_ACCESS_KEY_ID", R2_ACCESS_KEY_ID),
+        ("R2_SECRET_ACCESS_KEY", R2_SECRET_ACCESS_KEY)) if not v]
+    if missing:
+        raise SystemExit("FATAL: missing R2 credentials: " + ", ".join(missing))
+
+
+def require_database_url() -> None:
+    if not DATABASE_URL:
+        raise SystemExit("FATAL: no DATABASE_URL / SUPABASE_DB_URL")
 
 
 # ── Council-specific page range configs ─────────────────────────────────────
@@ -954,6 +987,28 @@ def is_running_header_repeat(
     return page_num - last_confirmed_page <= _RUNNING_HEADER_MAX_GAP
 
 
+def _looks_like_contents_page(text: str) -> bool:
+    """Is this page a contents list, as opposed to a page of numbered controls?
+
+    Delegates to dcp_toc_parse rather than re-deriving the distinction: that
+    module exists precisely to tell a contents entry (a short noun phrase, often
+    with dot leaders or a page number) from a control (a sentence), and carries
+    confusable-negative tests for body prose, numbered controls and wrapped
+    controls. Falls back to the old raw-count behaviour only if the import fails,
+    so a packaging mistake degrades to the previous behaviour rather than
+    suppressing nothing at all.
+    """
+    try:
+        from scripts.dcp_toc_parse import looks_like_contents, page_entries
+    except ImportError:  # pragma: no cover - running from inside scripts/
+        try:
+            from dcp_toc_parse import looks_like_contents, page_entries
+        except ImportError:
+            return False
+    coded, titled, density, heading = page_entries(text)
+    return looks_like_contents(coded, titled, density, heading)
+
+
 def classify_toc_or_divider_page(
     text: str, section_re: "re.Pattern[str]"
 ) -> tuple[bool, bool]:
@@ -987,10 +1042,31 @@ def classify_toc_or_divider_page(
     unchanged full-TOC behaviour (absorb), since that combination has
     never been observed and is out of this fix's scope."""
     toc_hits = len(section_re.findall(text))
-    is_full_toc = toc_hits >= 5
-    is_divider = (not is_full_toc) and toc_hits >= 2 and bool(
-        _SECTION_DIVIDER_RE.search(text[:300])
-    )
+
+    # The divider test runs FIRST and is unchanged. A divider page also reads as
+    # a contents page under the test below, so folding it into the full-TOC
+    # branch would drop discard=True and re-corrupt the two sections the
+    # 2026-09-05 fix was written for (chapter-7-5 pages 8 and 82).
+    is_divider = toc_hits >= 2 and bool(_SECTION_DIVIDER_RE.search(text[:300]))
+
+    # WAS `toc_hits >= 5`, changed 2026-09-12.
+    # A raw count of heading-shaped lines cannot tell a contents page from a page
+    # of numbered CONTROLS, and DCP body pages are full of the latter. Measured on
+    # canterbury_bankstown chapter-4-3: the document carries 22 real SECTION
+    # headings, its content pages carry 9-11 heading-shaped lines each ("4.6 Solid
+    # to void ratios of elevations...", "4.7 ..."), so EVERY content page tripped
+    # the >=5 threshold, was suppressed, and could not start a section. The
+    # chapter extracted 7 sections out of 22. Measured with the original pattern
+    # as well, so this is independent of the SECTION_RE widening alongside it.
+    #
+    # dcp_toc_parse.looks_like_contents already draws exactly this distinction --
+    # a contents entry is a short noun phrase, often with dot leaders or a page
+    # number; a control is a sentence -- and is tested against three confusable
+    # negatives (body prose, numbered controls, wrapped controls). Reused rather
+    # than re-derived. Verified on six real pages: the chapter's own contents page
+    # True, three wrongly-suppressed content pages False, both known divider pages
+    # True.
+    is_full_toc = (not is_divider) and _looks_like_contents_page(text)
     return (is_full_toc or is_divider), is_divider
 
 
@@ -1356,7 +1432,84 @@ class DCPExtractor:
     # Matches section numbers like "4.1.5", "2", "B1", or "C1.2" followed by a Title-cased heading.
     # [A-Z]? makes the letter prefix optional so both numeric-only and letter-prefixed
     # section codes (e.g. Waverley's "B1 WASTE", "C1 Low Density") are matched.
-    SECTION_RE = re.compile(r'^([A-Z]?\d+(?:\.\d+)*)\s+([A-Z][^\n]+)$', re.MULTILINE)
+    #
+    # THE PREFIX-WORD ALTERNATIVE, added 2026-09-12
+    # ---------------------------------------------
+    # Canterbury-Bankstown writes its headings as "SECTION 1-INTRODUCTION" and
+    # "SECTION 2-CONTRIBUTORY BUILDINGS (RANKINGS 1 AND 2)". The original pattern
+    # matches NONE of those -- and does match "O1 To ensure that the significance
+    # of heritage conservation areas...", which is an OBJECTIVE marker, not a
+    # section. So chapter-4-3 produced 9 "sections" from a 39-page document, with
+    # O1 appearing twice, while every real heading was invisible.
+    #
+    # Proven by reading the source PDF directly rather than inferring it: the
+    # pages render single-column and pdfplumber extracts them perfectly, so the
+    # long-standing `preflight_two_column` flag on this council is a separate
+    # false positive and was never the cause.
+    #
+    # This is the same defect class as the contents-page parser fixed earlier in
+    # the same session -- a prefix word before the number -- and the same word
+    # list as dcp_toc_parse.PREFIX_WORD.
+    #
+    # ADDITIVE ON PURPOSE. The original alternative is kept first and unchanged,
+    # so every council matching today matches identically; this only adds
+    # headings that previously matched nothing.
+    SECTION_RE = re.compile(
+        r'^(?:([A-Z]?\d+(?:\.\d+)*)\s+([A-Z][^\n]+)'
+        r'|(?:SECTION|PART|CHAPTER|DIVISION)\s+(\d+(?:\.\d+)*)\s*[-‐-―:]\s*([A-Z][^\n]+))$',
+        re.MULTILINE)
+
+    # The prefix-word heading on its own, so it can be preferred over a bare
+    # number found earlier on the same page. Extraction takes ONE heading per
+    # page, and on a canterbury_bankstown page the sub-item "4.6 Solid to void
+    # ratios..." appears above the real "SECTION 5-..." heading -- so without
+    # this priority the page is filed under 4.6 and the section is lost.
+    PREFIX_SECTION_RE = re.compile(
+        r'^(?:SECTION|PART|CHAPTER|DIVISION)\s+(\d+(?:\.\d+)*)'
+        r'\s*[-‐-―:]\s*([A-Z][^\n]+)$',
+        re.MULTILINE)
+
+    @classmethod
+    def _find_heading(cls, section_re, text):
+        """The heading to file this page under.
+
+        A document that labels its sections "SECTION 5-..." means those, not
+        whatever numbered sub-item happens to sit higher on the page. So a
+        prefix-word heading wins wherever one exists; everything else is
+        unchanged, and a council override pattern is never second-guessed.
+        """
+        if section_re is cls.SECTION_RE:
+            explicit = cls.PREFIX_SECTION_RE.search(text)
+            if explicit:
+                return explicit
+        return section_re.search(text)
+
+    @staticmethod
+    def _match_groups(pattern, match) -> tuple[str, str]:
+        """(code, title) from a match of EITHER the default two-alternative
+        SECTION_RE or a single-alternative council override.
+
+        Override patterns in COUNCIL_SECTION_RE_OVERRIDES have only two groups,
+        so indexing groups 3 and 4 unconditionally would raise on every council
+        that has one. Reading whatever groups exist keeps both shapes working.
+        """
+        g = match.groups()
+        code = next((x for x in g[0::2] if x), "")
+        title = next((x for x in g[1::2] if x), "")
+        return str(code).strip(), str(title).strip()
+
+    @staticmethod
+    def section_match_groups(match) -> tuple[str, str]:
+        """(code, title) from either SECTION_RE alternative.
+
+        The two alternatives fill different groups, so every call site must go
+        through this rather than reading .group(1)/.group(2) directly -- reading
+        them directly returns None for a prefix-word heading and silently drops
+        it, which is the failure this pattern was added to fix.
+        """
+        code = match.group(1) or match.group(3) or ""
+        title = match.group(2) or match.group(4) or ""
+        return code.strip(), title.strip()
 
     def __init__(self, pdf_path: Path, document_id: str, council: str | None = None):
         self.pdf_path = pdf_path
@@ -1483,9 +1636,13 @@ class DCPExtractor:
                 # 3-heading page would attach the same tables three times.
                 _page_tables_left = page_tables
                 for text in _segments:
-                    match = None if _suppress else section_re.search(text)
+                    match = None if _suppress else self._find_heading(section_re, text)
                     if match:
-                        new_code = match.group(1)
+                        # Through the accessor, never .group(1): a council
+                        # override pattern has one alternative, the default now
+                        # has two, and reading group(1) directly returns None for
+                        # a prefix-word heading and silently drops the section.
+                        new_code, _t = self._match_groups(section_re, match)
                         if current and is_running_header_repeat(
                             current["section_number"], new_code,
                             page_num, current["last_confirmed_page"],
@@ -1496,7 +1653,7 @@ class DCPExtractor:
                         if current:
                             current["page_end"] = page_num - 1
                             sections.append(current)
-                        title = match.group(2).strip()
+                        _c, title = self._match_groups(section_re, match)
                         # ── Heading continuation fix ──────────────────────────────
                         # Some PDFs (e.g. Marrickville) wrap long section titles
                         # across lines: the regex captures only the first line
@@ -1549,7 +1706,7 @@ class DCPExtractor:
                             title = title + ' ' + _stripped
                             _continuations += 1
                         current = {
-                            "section_number": match.group(1),
+                            "section_number": self._match_groups(section_re, match)[0],
                             "section_title": title,
                             "content": "",
                             "tables": [],
@@ -2660,6 +2817,19 @@ def suspect_reason(review_data: dict) -> str | None:
     if review_data.get("schema_fail"):
         return (f"schema_fail ({review_data.get('serious_artifact_provisions')}/"
                 f"{review_data.get('total_provisions')} provisions with serious artifacts)")
+    if review_data.get("coverage_unknown"):
+        # Distinct from coverage_fail on purpose. "We could not read this
+        # document's contents page" and "we read it and sections are missing"
+        # need different words, because the first one is a reason to go and look
+        # and the second is a finding. Collapsing them into a clean pass is the
+        # defect this whole guard is being repaired for.
+        return (f"coverage_unknown (contents page unreadable — "
+                f"{review_data.get('coverage_toc')} codes parsed, too few to judge)")
+    if review_data.get("attribution_fail"):
+        return (f"attribution_collapsed ({review_data.get('attribution_sections')} "
+                f"distinct sections extracted from a document listing "
+                f"{review_data.get('attribution_listed')} -- the text is there but "
+                f"the sub-sections are not addressable)")
     if review_data.get("coverage_fail"):
         return (f"coverage_fail ({review_data.get('coverage_missing')}/"
                 f"{review_data.get('coverage_toc')} TOC sections missing)")
@@ -3284,6 +3454,30 @@ def extract_chapter(
         subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
         ai_on = os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes")
 
+        # A hardcoded page map is only valid for the document it was written
+        # against, and nothing tied the two together. waverley's map describes a
+        # 473-page PDF; the one in R2 is 448 pages, so F1-F5 (460-473) extracted
+        # NOTHING for months and five parts went missing with no error anywhere.
+        #
+        # Checked HERE rather than after extract_pdf_isolated returns page_count,
+        # even though the count is free there: under AI_EXTRACTION the extraction
+        # this would validate has already been paid for in API credit by then.
+        # Page count is cheap on its own -- pdfplumber parses pages lazily.
+        if page_ranges:
+            with pdfplumber.open(pdf_path) as _pdf:
+                _pdf_pages = len(_pdf.pages)
+            try:
+                assert_map_usable(council, chapter_key, page_ranges, _pdf_pages)
+            except PageMapUnusable as exc:
+                # Same shape as the repealed-source reject below: refuse the
+                # chapter, leave needs_extraction TRUE so it keeps surfacing, and
+                # write nothing. A stale map does not get quietly re-applied.
+                print(f"    [page-map] {exc}")
+                print("    [page-map] chapter REJECTED - fix the map or derive "
+                      "parts from the running header, then re-run")
+                cur.close()
+                return False, None
+
         # The PDF work runs in its own process. Everything below this point is
         # cheap post-processing on plain dicts.
         result, err = extract_pdf_isolated(
@@ -3431,12 +3625,14 @@ def extract_chapter(
 
             # AI-path railguards (absolute-quality; only when AI extraction is on).
             # LLMs can silently drop whole sections or truncate a provision mid-text.
-            coverage_fail = truncation_fail = False
+            coverage_fail = truncation_fail = coverage_unknown = False
+            attribution_fail = False
+            attr_sections = attr_listed = 0
             coverage_toc = coverage_missing = truncation_flagged = 0
             if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
                 from scripts.ai_extractor import (
-                    coverage_gap, truncation_rate, toc_codes_from_pdf,
-                    COVERAGE_MISS_RATIO, TRUNCATION_RATIO,
+                    attribution_collapsed, coverage_gap, truncation_rate,
+                    toc_codes_from_pdf, COVERAGE_MISS_RATIO, TRUNCATION_RATIO,
                 )
                 toc = toc_codes_from_pdf(pdf_path)
                 extracted_codes = {
@@ -3445,7 +3641,18 @@ def extract_chapter(
                 }
                 cov_ratio, missing = coverage_gap(extracted_codes, toc)
                 coverage_toc, coverage_missing = len(toc), len(missing)
-                coverage_fail = cov_ratio > COVERAGE_MISS_RATIO
+                # FAIL CLOSED. cov_ratio is None when the contents page could not
+                # be read well enough to judge, and "could not judge" is now
+                # SUSPECT rather than clean. Reading it as clean is exactly how
+                # this guard reported "all present" for two and a half months
+                # while waverley was missing 11 parts.
+                coverage_unknown = cov_ratio is None
+                coverage_fail = coverage_unknown or cov_ratio > COVERAGE_MISS_RATIO
+                # Whole chapter filed under a handful of parent codes. The text
+                # is present and complete; the sub-section addressing is gone,
+                # so coverage_gap and truncation_rate are both silent.
+                attribution_fail, attr_sections, attr_listed = attribution_collapsed(
+                    extracted_codes, toc)
                 trunc_ratio, truncation_flagged = truncation_rate(provision_texts)
                 truncation_fail = (
                     len(provision_texts) >= SCHEMA_FAIL_MIN_PROVISIONS
@@ -3472,6 +3679,10 @@ def extract_chapter(
                 "serious_artifact_provisions": serious_flagged,
                 "schema_fail": schema_fail,
                 "coverage_fail": coverage_fail,
+                "coverage_unknown": coverage_unknown,
+                "attribution_fail": attribution_fail,
+                "attribution_sections": attr_sections,
+                "attribution_listed": attr_listed,
                 "coverage_missing": coverage_missing,
                 "coverage_toc": coverage_toc,
                 "truncation_fail": truncation_fail,
@@ -4227,6 +4438,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    require_r2()
+    require_database_url()
     s3 = boto3.client(
         "s3",
         endpoint_url=R2_ENDPOINT,
