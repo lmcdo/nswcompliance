@@ -36,6 +36,26 @@ That script asks this question of rows already in the table, every night. This
 asks it BEFORE anything is written, so a bad proposal never becomes a row, never
 reaches the nightly check, and never costs a human any review time.
 
+THE INPUT MATTERS AS MUCH AS THE CHECK
+--------------------------------------
+This verifies a proposal against the page text it was GIVEN. If that text was
+extracted badly, a correct control can be unquotable and will be rejected --
+a false negative that looks like diligence.
+
+Measured 2026-09-12. Candidate pages for the first run were pulled with a naive
+`page.extract_text()`. Four councils (ashfield, marrickville, city_of_sydney,
+hornsby) are in GEOMETRIC_COLUMN_COUNCILS -- their DCPs are two-column and that
+extractor interleaves the columns. Real controls were lost: hornsby p9's table row
+"Secondary boundary (on corner lots) = 3m" arrived interleaved with an unrelated
+driveway bullet, and p57's "secondary frontage adjoins an existing laneway...
+setback a minimum of 6 metres" was split across three lines with competing 8m/7m/4m
+figures in between. Both were correctly rejected as unquotable, and both are real.
+
+So: for any council in GEOMETRIC_COLUMN_COUNCILS, build candidate pages with
+`dcp_extract_changed._columnar_text(page)` and fall back to `extract_text()` only
+when it returns None. The extraction pipeline already does this; a harness that
+does not is handing the model worse input than production uses.
+
 WHAT IT CANNOT DO, STATED PLAINLY
 ---------------------------------
 It cannot tell whether a control was correctly INTERPRETED -- whether "3.5m" is
