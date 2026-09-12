@@ -140,3 +140,49 @@ class TestGuardFires:
         msg = str(exc.value)
         assert "31-60" in msg and "61-90" in msg
         assert "2 of 3 chunks" in msg
+
+
+class TestAttributionGuard:
+    """The OTHER marrickville defect: the text arrives, the addressing does not."""
+
+    def _g(self, extracted, toc):
+        from ai_extractor import attribution_collapsed
+        return attribution_collapsed(set(extracted), set(toc))
+
+    def test_the_stormwater_shape_is_flagged(self):
+        # 40 provisions all filed under "2.25", against 19 listed sections.
+        toc = {"2.25." + str(i) for i in range(1, 20)}
+        extracted = {"2.25 C" + str(i) for i in range(1, 41)}
+        collapsed, sections, listed = self._g(extracted, toc)
+        assert collapsed is True
+        assert sections == 1 and listed == 19
+
+    def test_a_properly_attributed_chapter_is_not_flagged(self):
+        toc = {"2.25." + str(i) for i in range(1, 20)}
+        extracted = {"2.25." + str(i) + " C1" for i in range(1, 18)}
+        collapsed, sections, _ = self._g(extracted, toc)
+        assert collapsed is False and sections == 17
+
+    def test_coverage_gap_stays_SILENT_on_the_same_input(self):
+        # The reason this guard has to exist. A parent code covers its children
+        # by the dotted-prefix rule, so coverage_gap sees nothing wrong with a
+        # chapter filed entirely under 2.25.
+        from ai_extractor import coverage_gap
+        toc = {"2.25." + str(i) for i in range(1, 20)}
+        extracted = {"2.25 C" + str(i) for i in range(1, 41)}
+        ratio, _missing = coverage_gap(extracted, toc)
+        assert ratio is not None
+        collapsed, _, _ = self._g(extracted, toc)
+        assert collapsed is True, "the guard must catch what coverage_gap cannot"
+
+    def test_a_toc_too_small_to_judge_does_not_flag(self):
+        # Not a pass being handed out: an unreadable contents page is already
+        # reported by coverage_unknown, and double-reporting it would make this
+        # guard fire on every small chapter.
+        collapsed, _, _ = self._g({"1.1 C1"}, {"1.1", "1.2"})
+        assert collapsed is False
+
+    def test_the_verdict_is_not_constant(self):
+        toc = {"3." + str(i) for i in range(1, 21)}
+        assert self._g({"3 C1"}, toc)[0] is True
+        assert self._g({"3." + str(i) for i in range(1, 21)}, toc)[0] is False

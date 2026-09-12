@@ -2673,6 +2673,11 @@ def suspect_reason(review_data: dict) -> str | None:
         # defect this whole guard is being repaired for.
         return (f"coverage_unknown (contents page unreadable — "
                 f"{review_data.get('coverage_toc')} codes parsed, too few to judge)")
+    if review_data.get("attribution_fail"):
+        return (f"attribution_collapsed ({review_data.get('attribution_sections')} "
+                f"distinct sections extracted from a document listing "
+                f"{review_data.get('attribution_listed')} -- the text is there but "
+                f"the sub-sections are not addressable)")
     if review_data.get("coverage_fail"):
         return (f"coverage_fail ({review_data.get('coverage_missing')}/"
                 f"{review_data.get('coverage_toc')} TOC sections missing)")
@@ -3469,11 +3474,13 @@ def extract_chapter(
             # AI-path railguards (absolute-quality; only when AI extraction is on).
             # LLMs can silently drop whole sections or truncate a provision mid-text.
             coverage_fail = truncation_fail = coverage_unknown = False
+            attribution_fail = False
+            attr_sections = attr_listed = 0
             coverage_toc = coverage_missing = truncation_flagged = 0
             if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
                 from scripts.ai_extractor import (
-                    coverage_gap, truncation_rate, toc_codes_from_pdf,
-                    COVERAGE_MISS_RATIO, TRUNCATION_RATIO,
+                    attribution_collapsed, coverage_gap, truncation_rate,
+                    toc_codes_from_pdf, COVERAGE_MISS_RATIO, TRUNCATION_RATIO,
                 )
                 toc = toc_codes_from_pdf(pdf_path)
                 extracted_codes = {
@@ -3489,6 +3496,11 @@ def extract_chapter(
                 # while waverley was missing 11 parts.
                 coverage_unknown = cov_ratio is None
                 coverage_fail = coverage_unknown or cov_ratio > COVERAGE_MISS_RATIO
+                # Whole chapter filed under a handful of parent codes. The text
+                # is present and complete; the sub-section addressing is gone,
+                # so coverage_gap and truncation_rate are both silent.
+                attribution_fail, attr_sections, attr_listed = attribution_collapsed(
+                    extracted_codes, toc)
                 trunc_ratio, truncation_flagged = truncation_rate(provision_texts)
                 truncation_fail = (
                     len(provision_texts) >= SCHEMA_FAIL_MIN_PROVISIONS
@@ -3516,6 +3528,9 @@ def extract_chapter(
                 "schema_fail": schema_fail,
                 "coverage_fail": coverage_fail,
                 "coverage_unknown": coverage_unknown,
+                "attribution_fail": attribution_fail,
+                "attribution_sections": attr_sections,
+                "attribution_listed": attr_listed,
                 "coverage_missing": coverage_missing,
                 "coverage_toc": coverage_toc,
                 "truncation_fail": truncation_fail,

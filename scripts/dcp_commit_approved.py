@@ -116,13 +116,44 @@ def fetch_registry_chapter(cur, council: str, chapter_key: str) -> dict | None:
     return dict(zip(cols, row))
 
 
-def _section_header_from_text(new_text: str) -> str | None:
+def _section_header_from_text(new_text: str, ref_number: str | None = None,
+                             document_id: str | None = None) -> str | None:
     """The reviewed new_text starts with '# <code> <title>' (build_provision_text);
-    recover that heading line for section_header. None for preamble/headerless text."""
+    recover that heading line for section_header. None for preamble/headerless text.
+
+    WHY ref_number IS A FALLBACK HERE (2026-09-12)
+    ----------------------------------------------
+    The heading line does not always carry the section code. Measured over the
+    12,124 live rows, 3,501 section_headers hold no code at all -- "Residential
+    parking generation rates", "Local Character and Streetscape" -- and a
+    provision with no code cannot be looked up by section, which is how the
+    product is asked for it.
+
+    The code was not lost. It is in ref_number (E1_4_2, 4a_1, 1_1) and was simply
+    never copied across. 2,330 of those rows are recoverable.
+
+    This fallback is what makes that repair DURABLE. Without it this function
+    recomputes section_header on EVERY commit from the heading line alone, so
+    scripts/dcp_restore_section_codes.py would be undone the next time each
+    chapter was committed -- the same shape as
+    project-precinct-keys-nulled-on-every-commit-2026-09, where a derived field
+    was silently reset by the pipeline that should have preserved it.
+
+    The heading line still WINS wherever it carries a code: that came from the
+    document, while the ref_number code is an inference. The fallback only fills
+    a gap, and returns None rather than inventing a code it cannot read.
+    """
+    head = None
     if new_text and new_text.startswith("#"):
-        head = new_text.partition("\n")[0].lstrip("# ").strip()
-        return head or None
-    return None
+        head = new_text.partition("\n")[0].lstrip("# ").strip() or None
+    try:
+        from scripts.dcp_section_code import repaired_header
+    except ImportError:  # running from inside scripts/
+        try:
+            from dcp_section_code import repaired_header
+        except ImportError:
+            return head
+    return repaired_header(head, ref_number, document_id) or head
 
 
 def commit_reviewed_from_queue(cur, council: str, chapter_key: str) -> tuple[int, int]:
@@ -199,7 +230,8 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str) -> tuple[int
             ) VALUES (%s,%s,%s,%s,%s,%s,%s,'ai-reviewed',%s,%s,TRUE,%s)
             """,
             (
-                document_id, ref_number, _section_header_from_text(new_text),
+                document_id, ref_number,
+                _section_header_from_text(new_text, ref_number, document_id),
                 new_text, new_page, chapter_key, page_range,
                 chapter_key, council, v2_actionable,
             ),

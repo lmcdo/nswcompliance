@@ -152,6 +152,10 @@ COVERAGE_MIN_TOC = 8       # only judge coverage when the TOC lists >= this many
 COVERAGE_MISS_RATIO = 0.25  # flag when > this fraction of TOC sections are missing
 TRUNCATION_MIN_CHARS = 40   # a provision shorter than this (and not a bare ref) is thin
 TRUNCATION_RATIO = 0.10     # flag when > this fraction of provisions look truncated/thin
+# Below this share of the document's listed sections actually appearing as
+# distinct extracted section codes, the extraction has collapsed the chapter
+# into a few parent codes. Measured: collapsed 0.05-0.21, healthy 0.85-0.91.
+ATTRIBUTION_MIN_RATIO = 0.5
 
 
 def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float | None, list[str]]:
@@ -188,6 +192,38 @@ def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float 
         and not any(e.startswith(c + ".") for e in extracted_codes)
     ]
     return len(missing) / len(toc_codes), sorted(missing)
+
+
+def attribution_collapsed(extracted_codes: set[str], toc_codes: set[str]) -> tuple[bool, int, int]:
+    """Did this extraction file a whole chapter under a handful of section codes?
+
+    -> (collapsed, distinct_sections_extracted, sections_listed)
+
+    MARRICKVILLE'S DOMINANT DEFECT, proven 2026-09-12 and invisible to every
+    other guard here. part2-s25-stormwater stores 40 provisions against a
+    document listing 19 sections, and all 40 carry the code "2.25" with a
+    control marker. The 19 real sub-sections -- 2.25.1 through 2.25.3.14 -- were
+    never recorded, so not one can be retrieved.
+
+    coverage_gap does NOT catch this. It asks whether TOC codes are covered, and
+    a parent code covers its children by the dotted-prefix rule, so a chapter
+    filed entirely under 2.25 looks partially covered rather than collapsed.
+    truncation_rate does not catch it either: the text is complete, it is the
+    ADDRESSING that is gone.
+
+    Measured separation, not a chosen threshold: collapsed chapters carry 5-21%
+    of their listed sections, healthy ones 85-91%.
+
+    Returns collapsed=False when the TOC is too small to judge. That is not a
+    pass being handed out -- coverage_unknown already covers an unreadable
+    contents page, and this guard deliberately does not double-report it.
+    """
+    if len(toc_codes) < COVERAGE_MIN_TOC:
+        return False, 0, len(toc_codes)
+    sections = {e.split(" ", 1)[0] for e in extracted_codes if e}
+    sections = {s for s in sections if s}
+    return (len(sections) / len(toc_codes) < ATTRIBUTION_MIN_RATIO,
+            len(sections), len(toc_codes))
 
 
 def truncation_rate(texts: list[str]) -> tuple[float, int]:
