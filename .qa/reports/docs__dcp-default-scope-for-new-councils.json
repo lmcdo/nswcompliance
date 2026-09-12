@@ -1,0 +1,94 @@
+{
+  "tier": "minor",
+  "justification": "Documentation only. One markdown file, no code, no query, no served data, no schema. It changes what a person decides to register for the next council, not what any machine does.",
+  "commit_hash": "fd358067",
+  "files": [
+    "docs/DCP_SCOPE_CONFIG_REFERENCE.md"
+  ],
+  "pre_impl": {
+    "existing_data": "Every figure in the new section was measured against the production database on 2026-09-10, not carried from an older document. dev_type distribution from dcp_setback_controls WHERE is_current (1,071 rows). Topic distribution from regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL (11,952 rows). The 234 City of Sydney map sheets from dcp_chapter_registry. The per-council table added in the second commit is a pass over every registered chapter title in dcp_chapter_registry (is_active, excluding City of Sydney's 234 map sheets), cross-referenced against r2_public_pdf_url and council_url to separate a scope gap from a missing document.",
+    "assumption_mismatch": "Yes, and it is the reason for the change. The existing document describes councils onboarded by registering and extracting the WHOLE DCP. Measured, the four topics the product renders as numeric controls are about a fifth of the extracted text, while heritage alone is a fifth and signage another 7.5%. The prevailing default spends most of the effort on content no common use case reaches.",
+    "new_vs_existing": "Adds one section to an existing reference. The per-council tables below it are untouched, and the section states explicitly what it does NOT change: precinct/heritage self-gating via v2_dcp_layer, zone-tier handling via the API use_specific layer, and the meaning of the two config fields.",
+    "prior_art": "This is the repo's existing scope document -- the one .claude/rules/enrichment.md already points at for LGA onboarding. Extended rather than duplicated. Checked that no separate scoping doc exists by reading the enrichment rule and the onboarding sequence in enrichment/CLAUDE.md.",
+    "external_source_error": "N/A -- no external service, no fetch, no runtime behaviour.",
+    "frontend_type": "N/A -- no frontend surface touched.",
+    "user_failure_mode": "The failure this section is most likely to CAUSE is named inside it: a council with six extracted chapters labelled as having 'DCP controls'. That would be silent and user-facing, which is why the section carries the warning and points at the daily flag check that now fails on exactly that."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/verify_lga_capability_flags.py",
+    "external_authority": "Not self-referential: the check reads the live database and compares it against the per-council capability files, neither of which this change touches. The numbers quoted in the doc were produced by direct SQL against production, and each is stated with the table and filter that produced it so a reader can re-run rather than trust the page.",
+    "fails_when": "A council's capability flag claims something the database does not support -- which is precisely the failure a narrowed scope invites, since six chapters is not a DCP. It exits 1 and names the council and the flag.",
+    "observed_red": "Observed today on this very failure mode, before this doc existed: the check found eight councils claiming hasDcpData=true with zero rows behind them, exits 1 naming each, and returns 0 once corrected. Re-forced by flipping one back to true.",
+    "measured": "Documentation change; no test count applies. The figures in the doc were each produced by a query run on 2026-09-10 and the queries are named in the text."
+  },
+  "functions": "N/A -- documentation only, no code changed.",
+  "values": [
+    {
+      "value": "Every number in the new section: 1,071 current setback-control rows; dwelling_house 308 / RFB 253 / multi-dwelling 166 / dual occupancy 103 / secondary dwelling 52 / shop-top 37; 11,952 served council provisions; heritage 19.9%, signage 7.5%, parking 7.8%, building_form 8.0%, setbacks 3.6%, height 3.9%, landscaping 3.8%; 234 City of Sydney map sheets.",
+      "read_at": "All measured against production on 2026-09-10 via read-only sessions, each with the table and WHERE clause stated inline in the document so the reader re-runs rather than quotes.",
+      "if_missing": "N/A -- measurements written into prose. They will drift as councils are onboarded; the document states the date and the query for each so drift is detectable rather than invisible."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Establish which development types the product's numeric controls actually serve, to justify narrowing the extraction scope to residential chapters.",
+      "file_line": "Not code -- run ad hoc while writing docs/DCP_SCOPE_CONFIG_REFERENCE.md; the filter is quoted in the document.",
+      "where_clause": "SELECT dev_type, count(*) FROM dcp_setback_controls WHERE is_current GROUP BY 1 -- is_current matters: without it superseded rows inflate every dev type and the residential skew could be an artefact of history rather than the live product."
+    },
+    {
+      "purpose": "Establish what a full DCP extraction actually yields by topic, to show how much of it the product never renders.",
+      "file_line": "Not code -- run ad hoc; the filter is quoted in the document.",
+      "where_clause": "is_current AND v2_is_actionable AND source_council IS NOT NULL -- the served set, and council-scoped: dropping the NULL-council rows is deliberate, since statewide instruments are not what a council onboarding decision is about."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The narrowed scope is adopted and the app keeps calling the result 'DCP controls'.",
+      "what_happens": "A council with six extracted chapters presents as fully covered. A planner relies on it, and the control that would have changed their answer sits in an unregistered chapter. Silent, user-facing, and exactly the overclaim removed from eight councils on 2026-09-10.",
+      "mitigated": true,
+      "how": "The document carries the warning in its own section rather than a footnote, names the PR where that overclaim was found and fixed, and points at scripts/verify_lga_capability_flags.py, which runs daily and fails when a flag outruns the data. The doc cannot enforce anything by itself -- the check is the enforcement, and it already exists and already fails on this.",
+      "repro": "Set a council's hasDcpData to true before its provisions land, then run python scripts/verify_lga_capability_flags.py -- exit 1, naming the council."
+    },
+    {
+      "scenario": "Heritage is read as 'skip it' rather than 'do it second'.",
+      "what_happens": "The largest single topic in every DCP is dropped permanently. The spatial layer says a property is in a conservation area; without the DCP text the app can say that and nothing about what it means, which is the question the user actually has.",
+      "mitigated": true,
+      "how": "Heritage is listed as item 6 IN the scope list, not in the out-of-scope list, with the reasoning stated in the same line: the spatial layer answers whether, the DCP answers what it means. The out-of-scope list beneath it is explicit and heritage is absent from it.",
+      "repro": "Read the two lists in the new section -- heritage appears only in the in-scope one."
+    },
+    {
+      "scenario": "The measured figures are quoted verbatim in six months as if still current.",
+      "what_happens": "Percentages shift as councils are onboarded -- heritage's 19.9% share is dominated by the three Inner West councils, so onboarding a council with a light heritage chapter moves it. A stale figure in a scope document becomes a stale decision.",
+      "mitigated": true,
+      "how": "Every figure is dated 2026-09-10 in the section header and each carries the table and filter that produced it, following the convention CLAUDE.md already sets for its own Database Quick Reference: re-run rather than quote. Not mitigated further -- there is no automated check on prose, and claiming one would be worse than the gap.",
+      "repro": "Re-run either query in the queries section and compare against the document."
+    },
+    {
+      "scenario": "Someone applies the six-chapter scope to a council whose DCP is structured as one consolidated document.",
+      "what_happens": "The scope is meaningless -- Parramatta's entire DCP is a single registry entry of 616 provisions, so 'register six chapters' cannot be followed and either the whole thing is taken or nothing is.",
+      "mitigated": false,
+      "how": "Not addressed, and named here rather than glossed. The section assumes a council that publishes per-chapter PDFs, which most do. A consolidated-DCP council needs the scope applied at extraction or tagging time instead of registration time, and that path is not written. It should be added the first time a consolidated council is onboarded, with a real example rather than a guess.",
+      "repro": "SELECT council, count(*) FROM dcp_chapter_registry WHERE is_active GROUP BY 1 -- parramatta returns 2, against 68 for canterbury_bankstown."
+    },
+    {
+      "scenario": "A future scope audit is automated by matching chapter titles against topic keywords.",
+      "what_happens": "It reports confident wrong answers on exactly the councils whose structure differs most. Applied to City of Sydney during this pass it found no residential, no parking and no landscaping chapters -- all three are present, inside section-3-general-provisions and section-4-development-types, because that council names its sections structurally rather than by topic. Acting on that output would mean re-registering chapters a council already has.",
+      "mitigated": true,
+      "how": "The failure is recorded in the document itself, with the council it happened on, so the next person reads it before writing the scan. The per-council table was produced by reading titles rather than matching them, and the document says any automated version must read chapter CONTENT instead.",
+      "repro": "Match 'residential|dwelling|parking|landscap' against city_of_sydney's chapter_key values -- zero hits, and the council has all of them."
+    },
+    {
+      "scenario": "Ku-ring-gai's provision count per chapter is read as an extraction defect.",
+      "what_happens": "Someone spends a session hunting a bug in the extractor. Its 358 provisions from 38 chapters looks bad against Woollahra's 739 from 27, but 15 of the 38 are site-specific local-centre and single-site parts contributing 115 of the total. Correcting for that, the gap narrows from roughly 3x to roughly 2.5x -- still worth a look, not the anomaly the raw ratio suggests.",
+      "mitigated": true,
+      "how": "The arithmetic is written into the document rather than the raw ratio, including the residual gap that remains after correcting for chapter mix, so the next reader inherits the qualified version. This corrects a claim made earlier in the same session on the unqualified number.",
+      "repro": "SELECT count(*) FROM dcp_chapter_registry WHERE is_active AND council='ku_ring_gai' AND chapter_key LIKE 'section-b-part-14%' -- 15 of 38."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No -- documentation only. The next council onboarded is the real test of whether the scope holds, and the daily capability check is what catches it if the labelling outruns the data."
+  }
+}

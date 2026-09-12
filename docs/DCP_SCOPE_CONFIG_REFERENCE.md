@@ -1,10 +1,168 @@
 # DCP Scope Config Reference
 
-**Last updated:** 2026-03-23
+**Last updated:** 2026-09-10
 **Source:** Research across 13 NSW councils (Inner West × 3, Inner East × 4, future pipeline × 6+)
 
 This document defines the `universalPartKeys` and `devTypeGatedPartKeys` values for each council's
 `lib/council-configs/{council}.json`. These are the only two fields that drive DA mode scope behaviour.
+
+---
+
+## Default scope for a NEW council — extract ~6 chapters, not the whole DCP
+
+**Added 2026-09-10.** Everything above describes councils already onboarded, where the
+whole DCP was registered and extracted. That is the wrong default for the next one, and
+the measurement says so plainly.
+
+### What the product actually consumes
+
+Every numeric control the app renders is **residential**, measured across all 1,071
+current rows of `dcp_setback_controls`:
+
+| dev_type | rows |
+|---|---|
+| dwelling_house | 308 |
+| residential_flat_building | 253 |
+| multi_dwelling_housing | 166 |
+| dual_occupancy | 103 |
+| secondary_dwelling | 52 |
+| shop_top_housing | 37 |
+
+No industrial, no childcare, no sex services, no places of worship. The chapters that
+produced them are equally narrow: parking chapters, landscaping chapters, low/medium
+density residential chapters, transport chapters.
+
+### What a full DCP extraction actually yields
+
+Measured across the 11,952 served council provisions on 2026-09-10:
+
+| topic | share |
+|---|---|
+| heritage | **19.9%** |
+| building_form | 8.0% |
+| parking | 7.8% |
+| **signage** | **7.5%** |
+| residential | 6.5% |
+| site_analysis | 5.6% |
+| height | 3.9% |
+| landscaping | 3.8% |
+| setbacks | 3.6% |
+| waste / roofing / fencing / safety | ~9% combined |
+
+So the four control topics the product renders are about a fifth of the text, while
+heritage alone is a fifth and signage is another 7.5%. Registering and extracting a whole
+DCP spends most of the effort on content no common use case reaches.
+
+### The default scope
+
+For a new council, register and extract these and nothing else:
+
+1. **General / introductory part** — how the DCP applies, definitions, site analysis.
+2. **Low and medium density residential** — the source of setbacks, height, site coverage,
+   private open space.
+3. **Residential flat buildings**, where the council separates it.
+4. **Parking and transport.**
+5. **Landscaping and trees.**
+6. **Heritage — second priority, not skipped.** It is the largest single topic and the
+   spatial layer already answers *whether* a property sits in a conservation area. What
+   the DCP adds is what that means for a design, which is a real question. Do it after
+   the first five, not instead of them.
+
+**Explicitly out of scope on a first pass:** signage, industrial, waste management,
+childcare, educational establishments, places of worship, licensed premises,
+telecommunications, sex services, outdoor dining — and any registry entry that is a
+**map sheet**. City of Sydney alone carries 234 registered map sheets that can never
+produce a provision; they inflate every backlog count that reads the registry.
+
+That is roughly six chapters instead of forty: five to six times less registration,
+extraction and review for the part people actually use.
+
+### ⚠ Narrowing the scope creates a claim problem — handle it in the same change
+
+A council with six extracted chapters does **not** have "DCP controls". Labelling it that
+way is the same overclaim removed on 2026-09-10, when eight councils were found asserting
+`hasDcpData: true` with zero rows behind them (PR #1075). Partial scope must surface as
+partial: "residential development controls", not "DCP".
+
+`scripts/verify_lga_capability_flags.py` runs daily and fails when a per-council flag
+claims something the database does not support. Setting a council's flag before its
+provisions land will turn that job red the next morning.
+
+### Per-council status, measured 2026-09-10
+
+A pass over every registered chapter title in `dcp_chapter_registry`. The finding
+that matters: **for most councils the scope was already chosen correctly, and the
+blocker is not scope at all.**
+
+Burwood has `part-4-residential`, `s4-landscaping`, `s4-table-4-parking`. Fairfield
+has `chapter-5-dwelling-houses`, `landscaping-controls`, `parking-controls`.
+Strathfield, Canada Bay, Liverpool, Ryde, Randwick, Camden — all the same shape.
+Somebody already picked residential + parking + landscaping for these councils.
+**None of them has a mirrored PDF**, so nothing can be extracted.
+
+**⚠ CORRECTED 2026-09-10, same day.** A first pass here said "50 chapters across 22
+councils have no mirrored PDF", counting `r2_public_pdf_url IS NULL`. That is the wrong
+column. Extraction reads **`r2_current_path`** — `extract_chapter` calls
+`s3.download_file(R2_BUCKET_NAME, r2_path, ...)` with it — and a chapter can be mirrored
+while the public-URL field is empty. Wingecarribee's three town plans are exactly that:
+mirrored, extractable, and reported as missing by the wrong query.
+
+Measured on the right column:
+
+- **39 chapters cannot be extracted** — no `r2_current_path`. Of those only **5** carry a
+  `council_url` the monitor could fetch from; the other **34** need the source document
+  located by a person.
+- **53 chapters ARE mirrored, have never been extracted, and are not flagged for
+  extraction.** Nothing needs fetching for these — canterbury_bankstown 20, marrickville
+  12, leichhardt 10, wingecarribee 3, and singles elsewhere. They are the cheapest work
+  available and the first pass missed them entirely by reading the wrong field.
+
+The lesson is the one this file already carries for chapter titles: a plausible column
+name is not the column the pipeline uses, and checking which one the code actually reads
+takes one grep.
+
+| Council | Registered | Core areas covered | Blocker |
+|---|---|---|---|
+| Ku-ring-gai | 38 | all six | none — see the yield note below |
+| Woollahra | 27 | five (no RFB part) | none |
+| City of Sydney | 8 + 234 map sheets | all six, inside sections 3 and 4 | none. Its DCP is structured by section, not topic — a topic-keyword scan reports it as empty, wrongly |
+| Canterbury-Bankstown | 68 | five (no RFB part) | 29 chapters awaiting extraction; **6 duplicate registrations** of the same waste chapter |
+| Penrith | 2 | parking, residential | needs general, landscaping, heritage |
+| Hornsby | 2 | residential, general | needs parking, landscaping, heritage |
+| Blacktown | 2 | residential, parking | needs general, landscaping, heritage |
+| Campbelltown | 2 | residential, RFB | needs general, parking, landscaping |
+| Georges River | 2 | general, residential | needs parking, landscaping, heritage |
+| Cumberland | 2 | residential, parking | parking chapter has no PDF |
+| Waverley | 4 | general, parking, landscaping | landscaping and transport have no PDF |
+| Northern Beaches | 4 | one consolidated DCP extracted | the three part-level entries have no PDF |
+| Parramatta | 2 | one consolidated DCP extracted | transport part has no PDF |
+| Bayside, Burwood, Camden, Canada Bay, Fairfield, Liverpool, Randwick, Ryde, Strathfield, Sutherland Shire, The Hills | 1–3 each | **already the right ones** | no mirrored PDF — the document must be found. Liverpool is the exception: it has URLs, but the council's firewall returns HTTP 403 to the fetcher |
+| Wingecarribee | 3 | town plans | **mirrored already** — needs extracting, not fetching. Listed as missing in the first pass, wrongly |
+
+### Two things this pass corrected
+
+**Ku-ring-gai's low yield is mostly chapter mix, not an extraction defect.** It produces
+358 provisions from 38 chapters where Woollahra produces 739 from 27. But **15 of its 38
+chapters are site-specific** `section-b-part-14a` … `14o` local-centre and single-site
+parts (Pymble Golf Club, 45–47 Tennyson Avenue), and they account for 115 of the 358.
+The remaining 23 general chapters yield about 10 provisions each against Woollahra's 27,
+so a gap remains — but it is much smaller than the headline suggests, and calling it a
+defect on the raw ratio would have been wrong.
+
+**A keyword scan cannot classify these chapters reliably.** Applied to City of Sydney it
+reported no residential, no parking and no landscaping, because their sections are named
+structurally. All three are present inside `section-3-general-provisions` and
+`section-4-development-types`. Any future automated scope audit must read chapter
+CONTENT or a human must read the titles — matching on the title text alone produces
+confident wrong answers on exactly the councils whose structure differs most.
+
+### What this does NOT change
+
+Precinct and heritage parts still self-gate through the for-property API layer system
+(`v2_dcp_layer` = condition / precinct) and still do not belong in either array. Zone-tier
+parts are still handled by the API `use_specific` layer. The two fields below drive DA
+mode scope behaviour exactly as before — this section narrows what gets *registered and
+extracted*, not how scope is expressed once it is in.
 
 ---
 
