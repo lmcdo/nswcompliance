@@ -76,7 +76,40 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-# The six default-scope buckets. Patterns match the council's own chapter naming,
+# ── the method ───────────────────────────────────────────────────────────────
+# A chapter is in scope when it answers a question the product will ask about a
+# REAL PROPERTY in that council. Two kinds of question, and only the first is the
+# same everywhere:
+#
+#   UNIVERSAL   every property has a zone, a lot and a development intent, so
+#               every property raises general / residential / RFB / parking /
+#               landscaping. Fixed, five buckets.
+#   CONDITIONAL a property raises a hazard question only when it CARRIES that
+#               overlay. Heritage, flood, acid sulfate, bushfire, riparian,
+#               biodiversity, landslide. Per council, derived from
+#               spatial_overlays -- not from a template.
+#
+# WHY THE FIXED SIX WAS WRONG
+# Measured 2026-09-12: our own spatial data puts flood across 72 LGAs, acid
+# sulfate across 51, riparian 66, landslide 6 -- and every council's mix differs
+# (Bayside acid sulfate + flood, Bega Valley acid sulfate only, Campbelltown
+# flood only). Yet only 4 of 29 councils have ANY hazard chapter registered,
+# because nothing asked for one.
+#
+# The scope doc made this argument for heritage and did not generalise it:
+# "the spatial layer already answers WHETHER a property sits in a conservation
+# area. What the DCP adds is what that means for a design." That is exactly the
+# flood case. We tell a user across 72 LGAs that their site is flood-affected and
+# hold no DCP flood control to say what that means for their floor level.
+#
+# WHAT "USER VALUE" MEANS HERE, HONESTLY
+# It is inferred from what the product can ASK and ANSWER, not from usage data.
+# There is no traffic to learn from (the prospector funnel was shelved empty), so
+# any claim resting on "users want X" would be invented. What is real: the
+# constraints the frontend surfaces, and the overlays a council's properties
+# actually carry.
+
+# The five universal buckets. Patterns match the council's own chapter naming,
 # which differs per council, so they are deliberately broad -- a chapter matching
 # no bucket is reported rather than silently treated as out of scope.
 BUCKETS: list[tuple[str, str]] = [
@@ -86,8 +119,42 @@ BUCKETS: list[tuple[str, str]] = [
     ("rfb_mixed", r"residential.?flat|rfb|apartment|mixed.?use"),
     ("parking", r"park|transport|access.?and.?mobility|traffic"),
     ("landscape", r"landscap|tree|vegetation|green"),
-    ("heritage", r"heritage|conservation|hca"),
 ]
+
+# Conditional buckets: required for a council ONLY when its properties carry the
+# matching overlay. layer_type values are spatial_overlays' own vocabulary.
+HAZARD_BUCKETS: list[tuple[str, str, tuple[str, ...]]] = [
+    ("heritage", r"heritage|conservation|hca", ("heritage",)),
+    ("flood", r"flood|stormwater|drainage|overland.?flow", ("flood",)),
+    ("acid_sulfate", r"acid.?sulfate|acid.?sulphate", ("acid_sulfate",)),
+    ("bushfire", r"bush.?fire", ("bushfire",)),
+    ("riparian", r"riparian|watercourse|foreshore", ("riparian", "foreshore_building_line")),
+    # Deliberately NARROW. An earlier version matched 'vegetation|tree', which
+    # claimed ku_ring_gai's "Part 13 Trees" and every other ordinary landscaping
+    # chapter -- reporting landscaping as MISSING and biodiversity as held, both
+    # wrong, from one over-broad pattern. Biodiversity is a distinct control set
+    # (habitat, corridors, threatened species), not a synonym for trees.
+    ("biodiversity", r"biodivers|habitat|threatened.?species|wildlife.?corridor",
+     ("biodiversity",)),
+    ("landslide", r"landslip|landslide|slope.?stab|geotech", ("landslide",)),
+]
+
+# council slug -> spatial_overlays.lga_name, for the ones a normalised compare
+# cannot reach. The first three are pre-2016 councils merged into Inner West:
+# their DCPs are still separate documents but their PROPERTIES are Inner West's,
+# so their overlay profile has to come from the merged LGA. Getting this wrong
+# silently gives a council an empty hazard profile and marks it complete.
+LGA_OVERRIDES = {
+    "ashfield": "INNER WEST",
+    "leichhardt": "INNER WEST",
+    "marrickville": "INNER WEST",
+    "inner_west": "INNER WEST",
+    "city_of_sydney": "SYDNEY",
+    "parramatta": "CITY OF PARRAMATTA",
+}
+# Not an LGA at all -- statewide instruments. Excluded rather than reported as
+# a council with no overlays.
+NOT_A_COUNCIL = {"state"}
 
 MIRRORED, HAVE_URL, HAVE_PAGE, NO_URL = (
     "MIRRORED", "NO_PDF_HAVE_URL", "NO_PDF_HAVE_PAGE", "NO_PDF_NO_URL")
@@ -96,12 +163,51 @@ RANK = {"": 0, NO_URL: 1, HAVE_PAGE: 2, HAVE_URL: 3, "NOT_EXTRACTED": 4, "SERVIN
 
 
 def bucket_for(chapter_key: str, label: str) -> str | None:
-    """Which of the six this chapter is, or None when it matches none of them."""
+    """Which bucket this chapter is, or None when it matches none.
+
+    Hazard patterns are tried FIRST. A chapter called "Flood and Stormwater
+    Management" contains neither 'residential' nor 'parking', but woollahra's
+    "Stormwater and Flood Risk" would otherwise be claimed by the landscape
+    pattern via 'water'. Specific before general.
+    """
     text = ((chapter_key or "") + " " + (label or "")).lower()
+    for name, pattern, _layers in HAZARD_BUCKETS:
+        if re.search(pattern, text):
+            return name
     for name, pattern in BUCKETS:
         if re.search(pattern, text):
             return name
     return None
+
+
+def normalise_lga(name: str) -> str:
+    return re.sub(r"[^a-z]", "", str(name or "").lower())
+
+
+def council_lga(council: str, overlay_lgas: set[str]) -> str | None:
+    """The spatial_overlays LGA whose properties this council's DCP governs."""
+    if council in NOT_A_COUNCIL:
+        return None
+    if council in LGA_OVERRIDES:
+        return LGA_OVERRIDES[council]
+    by_norm = {normalise_lga(l): l for l in overlay_lgas}
+    n = normalise_lga(council)
+    if n in by_norm:
+        return by_norm[n]
+    for norm, original in by_norm.items():
+        if norm.startswith(n) or n.startswith(norm):
+            return original
+    return None
+
+
+def required_buckets(layers_present: set[str]) -> list[str]:
+    """The buckets this council must hold: five universal, plus a hazard bucket
+    for every overlay its properties actually carry."""
+    required = [name for name, _ in BUCKETS]
+    for name, _pattern, layers in HAZARD_BUCKETS:
+        if layers_present & set(layers):
+            required.append(name)
+    return required
 
 
 def chapter_state(r2_path, council_url, page_url, serving: bool) -> str:
@@ -145,9 +251,17 @@ def collect():
                    WHERE is_current AND source_chapter_key IS NOT NULL
                    GROUP BY 1, 2""")
     serving = {(c, k) for c, k in cur.fetchall()}
+    # Which overlays each LGA's properties actually carry. This is what makes the
+    # target per-council instead of a template.
+    cur.execute("""SELECT lga_name, layer_type FROM spatial_overlays
+                   WHERE lga_name IS NOT NULL GROUP BY 1, 2""")
+    lga_layers: dict[str, set[str]] = defaultdict(set)
+    for lga, layer in cur.fetchall():
+        lga_layers[lga].add(layer)
     conn.close()
 
-    per = defaultdict(lambda: {name: "" for name, _ in BUCKETS})
+    all_names = [n for n, _ in BUCKETS] + [n for n, _, _ in HAZARD_BUCKETS]
+    per = defaultdict(lambda: {name: "" for name in all_names})
     blockers = defaultdict(list)
     unbucketed = defaultdict(list)
     for council, key, label, r2_path, url, page in registry:
@@ -160,39 +274,71 @@ def collect():
             per[council][bucket] = state
         if state != "SERVING":
             blockers[state].append((council, key, url or page or ""))
-    return per, blockers, unbucketed
+
+    # The per-council target, derived rather than templated.
+    required: dict[str, list[str]] = {}
+    lga_of: dict[str, str | None] = {}
+    for council in list(per) + [c for c, *_ in registry]:
+        if council in required or council in NOT_A_COUNCIL:
+            continue
+        lga = council_lga(council, set(lga_layers))
+        lga_of[council] = lga
+        required[council] = required_buckets(lga_layers.get(lga or "", set()))
+    return per, blockers, unbucketed, required, lga_of
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--gaps", action="store_true", help="only the missing work")
     args = ap.parse_args(argv)
-    per, blockers, unbucketed = collect()
+    per, blockers, unbucketed, required, lga_of = collect()
 
     short = {"SERVING": "yes", "NOT_EXTRACTED": "not extr", HAVE_URL: "url only",
              HAVE_PAGE: "page only", NO_URL: "NO URL", "": "-"}
+    def score(council):
+        req = required.get(council) or [n for n, _ in BUCKETS]
+        got = sum(1 for n in req if per[council][n] == "SERVING")
+        return got, len(req)
+
     if not args.gaps:
-        head = ("  council".ljust(24) +
-                "".join(n[:9].rjust(11) for n, _ in BUCKETS) + "have".rjust(7))
-        print("DEFAULT-SCOPE COVERAGE -- the six chapters the product needs")
-        print("(PR #1077, docs/DCP_SCOPE_CONFIG_REFERENCE.md)")
+        cols = [n for n, _ in BUCKETS] + [n for n, _, _ in HAZARD_BUCKETS]
+        head = ("  council".ljust(20) +
+                "".join(n[:8].rjust(10) for n in cols) + "have".rjust(8))
+        print("SCOPE COVERAGE -- five universal chapters plus a hazard chapter for")
+        print("every overlay THIS council's properties actually carry.")
+        print("A blank cell means that hazard does not apply here; '-' means it")
+        print("applies and we hold nothing.")
         print()
         print(head)
         print("  " + "-" * (len(head) - 2))
-        for council in sorted(per, key=lambda c: -sum(
-                1 for n, _ in BUCKETS if per[c][n] == "SERVING")):
-            got = sum(1 for n, _ in BUCKETS if per[council][n] == "SERVING")
-            print("  " + council.ljust(22) +
-                  "".join(short[per[council][n]].rjust(11) for n, _ in BUCKETS) +
-                  (str(got) + "/6").rjust(7))
-        done = sum(1 for c in per if all(
-            per[c][n] == "SERVING" for n, _ in BUCKETS))
-        none = sum(1 for c in per if not any(
-            per[c][n] == "SERVING" for n, _ in BUCKETS))
+        for council in sorted(per, key=lambda c: -score(c)[0] / max(score(c)[1], 1)):
+            if council in NOT_A_COUNCIL:
+                continue
+            req = set(required.get(council) or [])
+            cells = []
+            for n in cols:
+                if n not in req:
+                    cells.append("".rjust(10))          # not applicable here
+                else:
+                    cells.append(short[per[council][n]].rjust(10))
+            got, need = score(council)
+            print("  " + council.ljust(18) + "".join(cells) +
+                  (str(got) + "/" + str(need)).rjust(8))
+        done = sum(1 for c in per if c not in NOT_A_COUNCIL
+                   and score(c)[0] == score(c)[1])
+        none = sum(1 for c in per if c not in NOT_A_COUNCIL and score(c)[0] == 0)
         print("  " + "-" * (len(head) - 2))
-        print("  councils with all six: " + str(done) +
+        print("  councils meeting their OWN target: " + str(done) +
               "    with none: " + str(none) +
-              "    total: " + str(len(per)))
+              "    total: " + str(len([c for c in per if c not in NOT_A_COUNCIL])))
+        print()
+        print("  hazard chapters REQUIRED but not held (the gap the fixed six hid):")
+        for council in sorted(per):
+            req = set(required.get(council) or [])
+            miss = [n for n, _, _ in HAZARD_BUCKETS
+                    if n in req and per[council][n] != "SERVING"]
+            if miss:
+                print("   " + council.ljust(20) + ", ".join(miss))
 
     print()
     print("WHAT STANDS IN THE WAY (in-scope chapters not serving)")
