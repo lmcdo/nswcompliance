@@ -56,6 +56,31 @@ So: for any council in GEOMETRIC_COLUMN_COUNCILS, build candidate pages with
 when it returns None. The extraction pipeline already does this; a harness that
 does not is handing the model worse input than production uses.
 
+WHAT THE READING FOUND THAT THIS COULD NOT (first run, 2026-09-12)
+------------------------------------------------------------------
+All 11 proposals passed every check here, and four still needed changing. Worth
+knowing which kinds, because they recur:
+
+  DIRECTION. Two rows stored the CONCESSION as the requirement. "10m, which can
+  be reduced to 8m for a maximum of 1/3 of the building width" was stored as 8;
+  "Must be 6 metres ... may, at the discretion of Council, be reduced to 4.5
+  metres" was stored as 4.5. Both numbers are genuinely in their own quotes, so
+  nothing here objects -- and a consumer reading value_min gets the most
+  permissive figure as though it were the rule. The table's own convention is the
+  opposite (strathfield: front_setback 9 with "may be reduced..." in condition):
+  **value_min is the requirement, the concession goes in the condition.**
+
+  SCOPE. Two rows came from a precinct table (Pound Road) and one applies only
+  where a site adjoins a heritage conservation area. Served LGA-wide they would
+  OVERRIDE the council's real general answer with a site-specific one.
+
+  GRAIN. Two rows are upper-level massing setbacks, not ground-level. A correct
+  number answering a different question from the one asked.
+
+None of the three is visible to a verbatim-and-number test. They are visible to
+reading the clause. So the reading is not optional, and it is not the reviewer's
+job to find these first.
+
 WHAT IT CANNOT DO, STATED PLAINLY
 ---------------------------------
 It cannot tell whether a control was correctly INTERPRETED -- whether "3.5m" is
