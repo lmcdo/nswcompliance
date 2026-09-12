@@ -112,9 +112,21 @@ REQUIRED = ("council", "control_type", "dev_type", "applicability", "value_min",
 
 ACCEPT, REJECT = "ACCEPT", "REJECT"
 
-# These mirror the live CHECK constraints on dcp_setback_controls
-# (`control_type_canonical` and `dcp_setback_controls_applicability_check`) and
-# the observed dev_type vocabulary, which has no constraint of its own.
+# control_type is NOT redefined here. enrichment/config/control_type_vocabulary
+# is the declared single source of truth for these slugs -- it exists because
+# three copies of map_control_type had already drifted apart, and a fourth copy
+# in this file would be the same bug with a new name. It is imported.
+try:
+    from enrichment.config.control_type_vocabulary import CANONICAL_SET
+except ImportError:  # running from inside scripts/
+    sys.path.insert(0, os.path.join(_ROOT, "enrichment", "config"))
+    from control_type_vocabulary import CANONICAL_SET  # type: ignore
+
+VALID_CONTROL_TYPES = CANONICAL_SET
+
+# applicability and dev_type have no vocabulary module. These mirror the live
+# CHECK constraint `dcp_setback_controls_applicability_check` and the observed
+# dev_type values, which carry no constraint at all.
 #
 # They are here so a proposal with an invented value is rejected while it is
 # still a JSON row, rather than at INSERT time -- by which point a human has
@@ -122,17 +134,8 @@ ACCEPT, REJECT = "ACCEPT", "REJECT"
 # corrected downstream; it means the model chose a vocabulary rather than reading
 # one, which is the same defect as choosing a number.
 #
-# tests/test_dcp_control_candidates.py asserts these still match the live
-# constraint, so drift is caught rather than discovered.
-VALID_CONTROL_TYPES = frozenset({
-    "front_setback", "secondary_street_setback", "side_setback", "rear_setback",
-    "separation_from_dwelling", "privacy_separation", "car_parking",
-    "bicycle_parking", "driveway_width", "driveway_gradient", "max_site_coverage",
-    "max_height", "max_floor_area", "dwelling_size_min", "fencing_height_max",
-    "landscaping_min", "front_setback_landscaping", "deep_soil_min",
-    "tree_canopy_min", "communal_open_space_min", "private_open_space",
-    "solar_access_hours"})
-
+# tests/test_control_vocabulary_matches_db.py asserts all three still match the
+# live database, so drift is caught rather than discovered.
 VALID_APPLICABILITY = frozenset({
     "universal_residential", "secondary_dwelling_specific", "zone_specific",
     "precinct_specific", "development_specific", "sepp_statewide",

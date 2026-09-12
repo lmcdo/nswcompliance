@@ -57,6 +57,8 @@ def _check_constraint_values(name: str) -> set[str]:
 
 
 def test_control_type_allowlist_matches_the_live_constraint():
+    """The verifier imports this set from enrichment/config, so this test also
+    guards the declared single source of truth against the live constraint."""
     from scripts.dcp_verify_extracted_controls import VALID_CONTROL_TYPES
     live = _check_constraint_values("control_type_canonical")
     assert set(VALID_CONTROL_TYPES) == live, (
