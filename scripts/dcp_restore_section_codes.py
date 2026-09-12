@@ -128,7 +128,7 @@ def _say(text: str) -> None:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("--apply", action="store_true",
                     help="write. Without this the script is a dry run.")
     ap.add_argument("--council", help="restrict to one council")
@@ -232,13 +232,17 @@ def main(argv=None) -> int:
             "FATAL: backup holds " + str(n_backed) + " of " + str(len(ids)) +
             " rows. Nothing was written.")
     cur.executemany(
-        "UPDATE regulatory_provisions SET section_header = %s WHERE id = %s",
+        "UPDATE regulatory_provisions SET section_header = %s "
+        "WHERE id = %s AND is_current",
         [(new, rid) for rid, new in updates])
     conn.commit()
     print()
     print("WROTE " + str(len(updates)) + " rows.  backup: " + backup)
+    # The UNDO carries the same currency filter as the UPDATE it reverses.
+    # Without it a later run of this hint could rewrite a row that stopped
+    # being current after the change it is meant to undo.
     print("UNDO:  UPDATE regulatory_provisions p SET section_header = b.section_header")
-    print("       FROM " + backup + " b WHERE p.id = b.id;")
+    print("       FROM " + backup + " b WHERE p.id = b.id AND p.is_current;")
     conn.close()
     return 0
 

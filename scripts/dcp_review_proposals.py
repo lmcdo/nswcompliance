@@ -126,8 +126,8 @@ def apply_review(proposals: list[dict], verdicts: dict, pages: dict
             problems.append("UNREVIEWED  " + key)
             continue
 
-        verdict = str(entry.get("verdict", "")).upper()
-        note = str(entry.get("note", ""))
+        verdict = str(entry.get("verdict") or "").upper()
+        note = str(entry.get("note") or "")
         if verdict not in VALID_VERDICTS:
             problems.append("BAD VERDICT " + repr(verdict) + "  " + key)
             continue
@@ -168,7 +168,7 @@ def apply_review(proposals: list[dict], verdicts: dict, pages: dict
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("proposals", help="rows the mechanical verifier ACCEPTED")
     ap.add_argument("--verdicts", required=True,
                     help="JSON object: row_key -> {verdict, note, corrections}")

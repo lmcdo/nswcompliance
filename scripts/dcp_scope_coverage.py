@@ -288,7 +288,7 @@ def collect():
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("--gaps", action="store_true", help="only the missing work")
     args = ap.parse_args(argv)
     per, blockers, unbucketed, required, lga_of = collect()

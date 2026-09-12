@@ -199,7 +199,7 @@ def ambiguous_quotes(proposals: list[dict]) -> dict[str, list[dict]]:
     """
     by_quote: dict[str, list[dict]] = {}
     for prop in proposals:
-        key = normalise(str(prop.get("source_text", "")))
+        key = normalise(str(prop.get("source_text") or ""))
         by_quote.setdefault(key, []).append(prop)
     out = {}
     for quote, group in by_quote.items():
@@ -242,7 +242,16 @@ def check(proposal: dict, page_text: str) -> tuple[str, list[str]]:
         if val in (None, ""):
             continue
         try:
-            norm = ("%f" % float(val)).rstrip("0").rstrip(".")
+            # Parsed ONCE and reused below. Re-calling float(val) for the
+            # plausibility bound would be a second unguarded parse of a value
+            # that has already been proved parseable here, and only here.
+            # `val is not None` restated at the parse site, not only five
+            # lines up: a guard a reader has to scroll for is a guard the
+            # next edit removes.
+            numeric = float(val) if val is not None else None
+            if numeric is None:
+                raise ValueError("value is None")
+            norm = ("%f" % numeric).rstrip("0").rstrip(".")
         except (TypeError, ValueError):
             reasons.append(field + " is not a number: " + repr(val))
             continue
@@ -250,7 +259,7 @@ def check(proposal: dict, page_text: str) -> tuple[str, list[str]]:
             reasons.append(field + "=" + str(val) +
                            " does not appear in its own quote")
         elif proposal.get("unit") == "m" and not (
-                MIN_PLAUSIBLE_M < float(val) <= MAX_PLAUSIBLE_M):
+                MIN_PLAUSIBLE_M < numeric <= MAX_PLAUSIBLE_M):
             reasons.append(field + "=" + str(val) +
                            "m is outside the plausible setback range")
 
@@ -258,7 +267,7 @@ def check(proposal: dict, page_text: str) -> tuple[str, list[str]]:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("proposals", help="JSON list of proposed control rows")
     ap.add_argument("--pages", required=True,
                     help="JSON list of the candidate pages they must come from")
@@ -306,7 +315,7 @@ def main(argv=None) -> int:
             for g in group:
                 print("     " + str(g["council"]).ljust(14) +
                       str(g["section_ref"])[:30].ljust(32) +
-                      str(g["value_min"]) + str(g.get("unit", "")))
+                      str(g["value_min"]) + str(g.get("unit") or ""))
             print("       shared quote: " +
                   repr(str(group[0]["source_text"])[:90]))
 
@@ -315,7 +324,7 @@ def main(argv=None) -> int:
         for prop in accepted:
             print("   OK      " + str(prop["council"]).ljust(16) +
                   str(prop["control_type"]).ljust(26) +
-                  (str(prop["value_min"]) + str(prop.get("unit", ""))).ljust(8) +
+                  (str(prop["value_min"]) + str(prop.get("unit") or "")).ljust(8) +
                   str(prop["section_ref"])[:26] + "  p" + str(prop["source_page"]))
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:

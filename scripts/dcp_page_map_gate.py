@@ -415,9 +415,9 @@ def sweep(only_council: str | None, log):
             "1:" + rec["check1"]["status"][:4].ljust(5) +
             "2:" + rec["check2"]["status"][:4].ljust(5) +
             "3:" + rec["check3"]["status"][:4].ljust(5) +
-            "  past-end=" + str(len(rec["check1"].get("violations", []))) +
-            " wrong-pages=" + str(len(rec["check2"].get("violations", []))) +
-            " bad-rows=" + str(rec["check3"].get("rows_disagree", 0)))
+            "  past-end=" + str(len(rec["check1"].get("violations") or [])) +
+            " wrong-pages=" + str(len(rec["check2"].get("violations") or [])) +
+            " bad-rows=" + str(rec["check3"].get("rows_disagree") or 0))
     conn.close()
     return results
 
@@ -516,7 +516,7 @@ def sweep_from_ledger(only_council: str | None, log):
         results.append(rec)
         log("  " + label[:56].ljust(58) + "1:" + rec["check1"]["status"][:4].ljust(6) +
             "pdf=" + str(n) + "  past-end=" +
-            str(len(rec["check1"].get("violations", []))))
+            str(len(rec["check1"].get("violations") or [])))
     conn.close()
     return results
 
@@ -542,9 +542,9 @@ def summarise(results):
             "check3_status": r["check3"]["status"],
         }
         if r["check1"]["status"] != UNKNOWN:
-            counts["check1_violations"] = len(r["check1"].get("violations", []))
+            counts["check1_violations"] = len(r["check1"].get("violations") or [])
         if r["check2"]["status"] != UNKNOWN:
-            counts["check2_violations"] = len(r["check2"].get("violations", []))
+            counts["check2_violations"] = len(r["check2"].get("violations") or [])
         if r["check3"]["status"] != UNKNOWN:
             counts["check3_rows_disagree"] = r["check3"].get("rows_disagree", 0)
         per[r["label"]] = counts
@@ -562,7 +562,7 @@ def ratchet(now: dict, baseline: dict):
     not run against a baseline of 5 would report a 5 -> 0 improvement, which is
     how an unknown becomes a "fix".
     """
-    base = (baseline or {}).get("per_map", {})
+    base = ((baseline or {}).get("per_map") or {})
     regressions, improvements, no_baseline, not_measured = [], [], [], []
     for label, counts in now.items():
         b = base.get(label)
@@ -583,7 +583,7 @@ def ratchet(now: dict, baseline: dict):
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("--check", action="store_true", help="sweep every page map")
     ap.add_argument("--from-ledger", action="store_true",
                     help="CHECK 1 ONLY, from dcp_chapter_measurement.pdf_pages. "
@@ -637,8 +637,8 @@ def main(argv=None) -> int:
     log("")
     log("CHECK 2  ranges whose pages carry a different part's header")
     for r in results:
-        n = len(r["check2"].get("violations", []))
-        sh = len(r["check2"].get("start_shifts", []))
+        n = len(r["check2"].get("violations") or [])
+        sh = len(r["check2"].get("start_shifts") or [])
         if n or sh:
             log("   " + r["label"][:50].ljust(52) +
                 str(n) + " of " + str(r["n_ranges"]) + " on another part's pages" +
@@ -646,10 +646,10 @@ def main(argv=None) -> int:
     log("")
     log("CHECK 3  stored rows contradicting their own page's header")
     for r in results:
-        n = r["check3"].get("rows_disagree", 0)
+        n = r["check3"].get("rows_disagree") or 0
         if n:
             log("   " + r["label"][:50].ljust(52) + str(n) + " of " +
-                str(r["check3"].get("rows_checked", 0)) + " rows mislabelled")
+                str(r["check3"].get("rows_checked") or 0) + " rows mislabelled")
 
     unknown_pages = [r for r in results
                      if r.get("source") == "ledger"

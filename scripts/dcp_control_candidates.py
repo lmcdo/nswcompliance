@@ -360,7 +360,7 @@ def broken_candidates(found: list[dict], control: str) -> list[dict]:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("--control", required=True, choices=sorted(CONTROL_PATTERNS))
     ap.add_argument("--councils", required=True, help="comma-separated slugs")
     src = ap.add_mutually_exclusive_group(required=True)

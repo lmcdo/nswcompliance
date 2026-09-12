@@ -63,7 +63,7 @@ def ref_tail(ref_number: str | None, document_id: str | None) -> str:
     tail = str(ref_number)
     if document_id and tail.startswith(str(document_id)):
         tail = tail[len(str(document_id)):].lstrip("_")
-    return tail.split("__")[0].strip()
+    return tail.strip().split("__")[0].strip()
 
 
 def section_code(ref_number: str | None, document_id: str | None) -> str | None:

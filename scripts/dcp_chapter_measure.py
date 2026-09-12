@@ -472,7 +472,7 @@ def score_chapter(raw: dict, sibling_codes=frozenset()) -> dict:
         # must not be counted as a signal that ran. Woollahra: 26 chapters, real
         # rows, zero parseable codes -- an earlier draft scored 25 of them OK.
         if verdict == "NO_STORED_CODES":
-            verdict = "NO_ROWS" if raw.get("live_rows", 0) == 0 \
+            verdict = "NO_ROWS" if (raw.get("live_rows") or 0) == 0 \
                 else "NOT_MEASURED:NO_STORED_CODES"
         out["contents_verdict"] = verdict
         out["n_listed"] = len(listed)
@@ -674,8 +674,8 @@ def ratchet(summary: dict, baseline: dict):
     marked Fixed on a self-comparison that could not fail.
     """
     regressions, improvements, no_baseline = [], [], []
-    base = (baseline.get("ratchet") or {}).get("per_council", {})
-    for council, counts in summary.get("per_council", {}).items():
+    base = ((baseline.get("ratchet") or {}).get("per_council") or {})
+    for council, counts in (summary.get("per_council") or {}).items():
         b = base.get(council)
         for key in RATCHET_KEYS:
             now = counts.get(key, 0)
@@ -856,8 +856,8 @@ def write_ledger(scored: list[dict], run_source: str, log) -> int:
              json.dumps(c.get("missing_sample", [])), c.get("gap_verdict"),
              c.get("gap_count", 0), json.dumps(c.get("gap_sample", [])),
              c.get("header_verdict"), c.get("header_rows_checked", 0),
-             c.get("header_rows_disagree", 0),
-             json.dumps(c.get("header_examples", [])), c.get("capture_verdict"),
+             (c.get("header_rows_disagree") or 0),
+             json.dumps(c.get("header_examples") or []), c.get("capture_verdict"),
              c.get("capture_ratio"), c.get("pdf_text_chars"), c.get("stored_chars"),
              c.get("attribution_verdict"), c.get("attribution_ratio")))
         n += 1
@@ -902,14 +902,14 @@ def report(scored: list[dict], baseline: dict, log) -> int:
     log(row("TOTAL", t))
     log("")
     log("  listed sections not served, in chapters that serve something: " +
-        str(t.get("listed_not_served", 0)))
-    log("  listed sections in " + str(t.get("SERVES_NOTHING", 0)) +
+        str(t.get("listed_not_served") or 0))
+    log("  listed sections in " + str(t.get("SERVES_NOTHING") or 0) +
         " chapters that serve NOTHING: " +
-        str(t.get("not_served_empty_chapters", 0)))
+        str(t.get("not_served_empty_chapters") or 0))
     log("  -> total listed sections not served: " +
-        str(t.get("listed_not_served", 0) + t.get("not_served_empty_chapters", 0)))
+        str((t.get("listed_not_served") or 0) + (t.get("not_served_empty_chapters") or 0)))
     log("  rows contradicting their own page header: " +
-        str(t.get("mislabelled_rows", 0)))
+        str(t.get("mislabelled_rows") or 0))
     log("  chapters signal 2 could not judge (numbering shared with a sibling): " +
         str(t.get("SHARED_NUMBERING", 0)))
 
@@ -940,7 +940,7 @@ def report(scored: list[dict], baseline: dict, log) -> int:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("--sweep", action="store_true", help="measure (downloads PDFs)")
     ap.add_argument("--rescore", metavar="RAW_JSON",
                     help="re-derive verdicts from a stored raw sweep, no download")

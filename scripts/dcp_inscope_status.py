@@ -173,7 +173,7 @@ ORDER = ["GOOD", "PARTIAL", "FILED_WRONG", "UNVERIFIED", "NOTHING"]
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("--council")
     ap.add_argument("--list", action="store_true",
                     help="name every in-scope chapter and its state")
