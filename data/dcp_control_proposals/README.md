@@ -46,6 +46,29 @@ to a string comparison:
 | `secondary_street_setback` | 12 | 12 | **4** | parramatta |
 | `private_open_space` | 36 | 33 | **16** | parramatta, city_of_sydney |
 | `flood_freeboard_min` | 15 | 15 (dry run) | **5** | ashfield, canterbury_bankstown, ku_ring_gai, marrickville |
+| `corner_setback_11` | 11 | 10 | **3** | hornsby |
+
+`corner_setback_11` is the earlier corner-setback run (ashfield, hornsby,
+marrickville), reviewed once in a scratch file nobody else could run and put
+through this pipeline on 2026-09-12. Two verdicts changed on re-reading, both
+because evidence was checked this time that was not checked then:
+
+- **ashfield DS5.5** was accepted narrowly with an `applicability` qualifier. It
+  is now rejected: nothing filters on `applicability` (see DQ-99), so marking
+  scope in that column does not contain the scope.
+- **marrickville C11(i)** was corrected 4.5 → 6 and accepted. Our own table
+  already holds that 6m as `multi_dwelling_housing front_setback` at
+  `s4.2.4.3-C11(i)` — the same clause. The clause states a discretionary
+  reduction of the secondary building line to 4.5m without ever stating the
+  requirement it reduces from, so neither number can be stored, and storing 6
+  would re-serve the primary figure as the secondary one — the exact defect
+  DQ-40 created `secondary_street_setback` to fix.
+
+One row never reached the reading: **marrickville C29(iii)**, a clean, LGA-wide,
+boundary-relative 1.5m secondary setback for industrial development. `dev_type`
+has no industrial value — all 16 in use are residential or mixed_use — so the
+vocabulary gate stopped it. A vocabulary gap is a reason to hold a row, never a
+reason to reshape it until it fits.
 
 `flood_freeboard_min` is not yet in the `control_type` vocabulary, so the
 mechanical gate rejects all 15 until `migrations/071_flood_freeboard_control_type.sql`
