@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Measurement, gating and review infrastructure for DCP chapter completeness and numeric control extraction. No production data is written by anything in this branch: every script is read-only or writes JSON, migration 071 is deliberately NOT applied, and no control row is inserted. The risk it carries is the opposite one - a check that silently reads clean. Three separate silent-pass defects were found and fixed within the branch itself (a ratchet that emitted 0 for UNKNOWN, a candidate cap that destroyed the evidence it was selecting, and a review key that collapsed three rows onto one verdict), so the tier reflects that this code's failure mode is under-reporting, not corruption.",
-  "commit_hash": "5918bec8",
+  "commit_hash": "2d131696",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dcp_measurement_baseline.json",
