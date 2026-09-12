@@ -959,6 +959,28 @@ def is_running_header_repeat(
     return page_num - last_confirmed_page <= _RUNNING_HEADER_MAX_GAP
 
 
+def _looks_like_contents_page(text: str) -> bool:
+    """Is this page a contents list, as opposed to a page of numbered controls?
+
+    Delegates to dcp_toc_parse rather than re-deriving the distinction: that
+    module exists precisely to tell a contents entry (a short noun phrase, often
+    with dot leaders or a page number) from a control (a sentence), and carries
+    confusable-negative tests for body prose, numbered controls and wrapped
+    controls. Falls back to the old raw-count behaviour only if the import fails,
+    so a packaging mistake degrades to the previous behaviour rather than
+    suppressing nothing at all.
+    """
+    try:
+        from scripts.dcp_toc_parse import looks_like_contents, page_entries
+    except ImportError:  # pragma: no cover - running from inside scripts/
+        try:
+            from dcp_toc_parse import looks_like_contents, page_entries
+        except ImportError:
+            return False
+    coded, titled, density, heading = page_entries(text)
+    return looks_like_contents(coded, titled, density, heading)
+
+
 def classify_toc_or_divider_page(
     text: str, section_re: "re.Pattern[str]"
 ) -> tuple[bool, bool]:
@@ -992,10 +1014,31 @@ def classify_toc_or_divider_page(
     unchanged full-TOC behaviour (absorb), since that combination has
     never been observed and is out of this fix's scope."""
     toc_hits = len(section_re.findall(text))
-    is_full_toc = toc_hits >= 5
-    is_divider = (not is_full_toc) and toc_hits >= 2 and bool(
-        _SECTION_DIVIDER_RE.search(text[:300])
-    )
+
+    # The divider test runs FIRST and is unchanged. A divider page also reads as
+    # a contents page under the test below, so folding it into the full-TOC
+    # branch would drop discard=True and re-corrupt the two sections the
+    # 2026-09-05 fix was written for (chapter-7-5 pages 8 and 82).
+    is_divider = toc_hits >= 2 and bool(_SECTION_DIVIDER_RE.search(text[:300]))
+
+    # WAS `toc_hits >= 5`, changed 2026-09-12.
+    # A raw count of heading-shaped lines cannot tell a contents page from a page
+    # of numbered CONTROLS, and DCP body pages are full of the latter. Measured on
+    # canterbury_bankstown chapter-4-3: the document carries 22 real SECTION
+    # headings, its content pages carry 9-11 heading-shaped lines each ("4.6 Solid
+    # to void ratios of elevations...", "4.7 ..."), so EVERY content page tripped
+    # the >=5 threshold, was suppressed, and could not start a section. The
+    # chapter extracted 7 sections out of 22. Measured with the original pattern
+    # as well, so this is independent of the SECTION_RE widening alongside it.
+    #
+    # dcp_toc_parse.looks_like_contents already draws exactly this distinction --
+    # a contents entry is a short noun phrase, often with dot leaders or a page
+    # number; a control is a sentence -- and is tested against three confusable
+    # negatives (body prose, numbered controls, wrapped controls). Reused rather
+    # than re-derived. Verified on six real pages: the chapter's own contents page
+    # True, three wrongly-suppressed content pages False, both known divider pages
+    # True.
+    is_full_toc = (not is_divider) and _looks_like_contents_page(text)
     return (is_full_toc or is_divider), is_divider
 
 
@@ -1361,7 +1404,84 @@ class DCPExtractor:
     # Matches section numbers like "4.1.5", "2", "B1", or "C1.2" followed by a Title-cased heading.
     # [A-Z]? makes the letter prefix optional so both numeric-only and letter-prefixed
     # section codes (e.g. Waverley's "B1 WASTE", "C1 Low Density") are matched.
-    SECTION_RE = re.compile(r'^([A-Z]?\d+(?:\.\d+)*)\s+([A-Z][^\n]+)$', re.MULTILINE)
+    #
+    # THE PREFIX-WORD ALTERNATIVE, added 2026-09-12
+    # ---------------------------------------------
+    # Canterbury-Bankstown writes its headings as "SECTION 1-INTRODUCTION" and
+    # "SECTION 2-CONTRIBUTORY BUILDINGS (RANKINGS 1 AND 2)". The original pattern
+    # matches NONE of those -- and does match "O1 To ensure that the significance
+    # of heritage conservation areas...", which is an OBJECTIVE marker, not a
+    # section. So chapter-4-3 produced 9 "sections" from a 39-page document, with
+    # O1 appearing twice, while every real heading was invisible.
+    #
+    # Proven by reading the source PDF directly rather than inferring it: the
+    # pages render single-column and pdfplumber extracts them perfectly, so the
+    # long-standing `preflight_two_column` flag on this council is a separate
+    # false positive and was never the cause.
+    #
+    # This is the same defect class as the contents-page parser fixed earlier in
+    # the same session -- a prefix word before the number -- and the same word
+    # list as dcp_toc_parse.PREFIX_WORD.
+    #
+    # ADDITIVE ON PURPOSE. The original alternative is kept first and unchanged,
+    # so every council matching today matches identically; this only adds
+    # headings that previously matched nothing.
+    SECTION_RE = re.compile(
+        r'^(?:([A-Z]?\d+(?:\.\d+)*)\s+([A-Z][^\n]+)'
+        r'|(?:SECTION|PART|CHAPTER|DIVISION)\s+(\d+(?:\.\d+)*)\s*[-‐-―:]\s*([A-Z][^\n]+))$',
+        re.MULTILINE)
+
+    # The prefix-word heading on its own, so it can be preferred over a bare
+    # number found earlier on the same page. Extraction takes ONE heading per
+    # page, and on a canterbury_bankstown page the sub-item "4.6 Solid to void
+    # ratios..." appears above the real "SECTION 5-..." heading -- so without
+    # this priority the page is filed under 4.6 and the section is lost.
+    PREFIX_SECTION_RE = re.compile(
+        r'^(?:SECTION|PART|CHAPTER|DIVISION)\s+(\d+(?:\.\d+)*)'
+        r'\s*[-‐-―:]\s*([A-Z][^\n]+)$',
+        re.MULTILINE)
+
+    @classmethod
+    def _find_heading(cls, section_re, text):
+        """The heading to file this page under.
+
+        A document that labels its sections "SECTION 5-..." means those, not
+        whatever numbered sub-item happens to sit higher on the page. So a
+        prefix-word heading wins wherever one exists; everything else is
+        unchanged, and a council override pattern is never second-guessed.
+        """
+        if section_re is cls.SECTION_RE:
+            explicit = cls.PREFIX_SECTION_RE.search(text)
+            if explicit:
+                return explicit
+        return section_re.search(text)
+
+    @staticmethod
+    def _match_groups(pattern, match) -> tuple[str, str]:
+        """(code, title) from a match of EITHER the default two-alternative
+        SECTION_RE or a single-alternative council override.
+
+        Override patterns in COUNCIL_SECTION_RE_OVERRIDES have only two groups,
+        so indexing groups 3 and 4 unconditionally would raise on every council
+        that has one. Reading whatever groups exist keeps both shapes working.
+        """
+        g = match.groups()
+        code = next((x for x in g[0::2] if x), "")
+        title = next((x for x in g[1::2] if x), "")
+        return str(code).strip(), str(title).strip()
+
+    @staticmethod
+    def section_match_groups(match) -> tuple[str, str]:
+        """(code, title) from either SECTION_RE alternative.
+
+        The two alternatives fill different groups, so every call site must go
+        through this rather than reading .group(1)/.group(2) directly -- reading
+        them directly returns None for a prefix-word heading and silently drops
+        it, which is the failure this pattern was added to fix.
+        """
+        code = match.group(1) or match.group(3) or ""
+        title = match.group(2) or match.group(4) or ""
+        return code.strip(), title.strip()
 
     def __init__(self, pdf_path: Path, document_id: str, council: str | None = None):
         self.pdf_path = pdf_path
@@ -1488,9 +1608,13 @@ class DCPExtractor:
                 # 3-heading page would attach the same tables three times.
                 _page_tables_left = page_tables
                 for text in _segments:
-                    match = None if _suppress else section_re.search(text)
+                    match = None if _suppress else self._find_heading(section_re, text)
                     if match:
-                        new_code = match.group(1)
+                        # Through the accessor, never .group(1): a council
+                        # override pattern has one alternative, the default now
+                        # has two, and reading group(1) directly returns None for
+                        # a prefix-word heading and silently drops the section.
+                        new_code, _t = self._match_groups(section_re, match)
                         if current and is_running_header_repeat(
                             current["section_number"], new_code,
                             page_num, current["last_confirmed_page"],
@@ -1501,7 +1625,7 @@ class DCPExtractor:
                         if current:
                             current["page_end"] = page_num - 1
                             sections.append(current)
-                        title = match.group(2).strip()
+                        _c, title = self._match_groups(section_re, match)
                         # ── Heading continuation fix ──────────────────────────────
                         # Some PDFs (e.g. Marrickville) wrap long section titles
                         # across lines: the regex captures only the first line
@@ -1554,7 +1678,7 @@ class DCPExtractor:
                             title = title + ' ' + _stripped
                             _continuations += 1
                         current = {
-                            "section_number": match.group(1),
+                            "section_number": self._match_groups(section_re, match)[0],
                             "section_title": title,
                             "content": "",
                             "tables": [],
