@@ -10,7 +10,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.dcp_verify_extracted_controls import (  # noqa: E402
-    ACCEPT, REJECT, check, normalise, numbers_in,
+    ACCEPT, REJECT, VALID_APPLICABILITY, VALID_CONTROL_TYPES,
+    VALID_DEV_TYPES, check, normalise, numbers_in,
 )
 
 PAGE = (
@@ -24,6 +25,7 @@ PAGE = (
 def proposal(**kw):
     base = {
         "council": "bayside", "control_type": "secondary_street_setback",
+        "dev_type": "dwelling_house", "applicability": "universal_residential",
         "value_min": 1.5, "value_max": None, "unit": "m",
         "condition": "secondary road", "section_ref": "5.2 C2",
         "source_text": "The minimum building setback to a secondary road is 1.5m.",
@@ -142,3 +144,41 @@ class TestAmbiguousQuotes:
             self._p(3, "a", "A 3m setback applies to the secondary frontage here."),
             self._p(6, "b", "A 6m setback applies to the secondary frontage there."),
         ]) == {}
+
+
+class TestVocabulary:
+    """A value outside the schema's vocabulary is not a near miss to correct
+    downstream -- it means the model chose a vocabulary instead of reading one,
+    which is the same class of defect as choosing a number.
+
+    Caught here rather than at INSERT, because by INSERT a human has already
+    spent the review these checks exist to protect.
+    """
+
+    def test_an_invented_control_type_is_refused(self):
+        verdict, reasons = check(proposal(control_type="flood_planning_level"),
+                                 PAGE)
+        assert verdict == REJECT
+        assert any("control_type" in r and "vocabulary" in r for r in reasons)
+
+    def test_an_invented_dev_type_is_refused(self):
+        verdict, reasons = check(proposal(dev_type="apartment"), PAGE)
+        assert verdict == REJECT
+        assert any("dev_type" in r and "vocabulary" in r for r in reasons)
+
+    def test_an_invented_applicability_is_refused(self):
+        verdict, reasons = check(proposal(applicability="lga_wide"), PAGE)
+        assert verdict == REJECT
+        assert any("applicability" in r for r in reasons)
+
+    def test_a_missing_dev_type_is_refused_because_the_column_is_not_null(self):
+        verdict, reasons = check(proposal(dev_type=None), PAGE)
+        assert verdict == REJECT
+        assert any("missing field: dev_type" in r for r in reasons)
+
+    def test_the_vocabularies_are_not_empty(self):
+        # A frozenset() typo would make every proposal fail identically, which
+        # reads as "the model is bad" rather than "the gate is broken".
+        assert len(VALID_CONTROL_TYPES) == 22
+        assert len(VALID_APPLICABILITY) == 7
+        assert VALID_DEV_TYPES

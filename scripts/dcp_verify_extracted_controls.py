@@ -106,10 +106,44 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-REQUIRED = ("council", "control_type", "value_min", "unit", "condition",
-            "section_ref", "source_text", "source_page", "source_chapter")
+REQUIRED = ("council", "control_type", "dev_type", "applicability", "value_min",
+            "unit", "condition", "section_ref", "source_text", "source_page",
+            "source_chapter")
 
 ACCEPT, REJECT = "ACCEPT", "REJECT"
+
+# These mirror the live CHECK constraints on dcp_setback_controls
+# (`control_type_canonical` and `dcp_setback_controls_applicability_check`) and
+# the observed dev_type vocabulary, which has no constraint of its own.
+#
+# They are here so a proposal with an invented value is rejected while it is
+# still a JSON row, rather than at INSERT time -- by which point a human has
+# already spent the review. A value outside them is not a near miss to be
+# corrected downstream; it means the model chose a vocabulary rather than reading
+# one, which is the same defect as choosing a number.
+#
+# tests/test_dcp_control_candidates.py asserts these still match the live
+# constraint, so drift is caught rather than discovered.
+VALID_CONTROL_TYPES = frozenset({
+    "front_setback", "secondary_street_setback", "side_setback", "rear_setback",
+    "separation_from_dwelling", "privacy_separation", "car_parking",
+    "bicycle_parking", "driveway_width", "driveway_gradient", "max_site_coverage",
+    "max_height", "max_floor_area", "dwelling_size_min", "fencing_height_max",
+    "landscaping_min", "front_setback_landscaping", "deep_soil_min",
+    "tree_canopy_min", "communal_open_space_min", "private_open_space",
+    "solar_access_hours"})
+
+VALID_APPLICABILITY = frozenset({
+    "universal_residential", "secondary_dwelling_specific", "zone_specific",
+    "precinct_specific", "development_specific", "sepp_statewide",
+    "sepp_cdc_only"})
+
+VALID_DEV_TYPES = frozenset({
+    "dwelling_house", "residential_flat_building", "multi_dwelling_housing",
+    "dual_occupancy", "secondary_dwelling", "shop_top_housing", "multi_dwelling",
+    "universal_residential", "mixed_use", "attached_dwelling", "seniors_housing",
+    "boarding_house", "semi_detached", "manor_house", "group_home",
+    "other_residential"})
 
 # A setback in metres has a plausible range. Outside it, the "value" is a clause
 # number, a year or an area that happened to sit next to a unit.
@@ -179,6 +213,15 @@ def check(proposal: dict, page_text: str) -> tuple[str, list[str]]:
     for field in REQUIRED:
         if proposal.get(field) in (None, ""):
             reasons.append("missing field: " + field)
+    if reasons:
+        return REJECT, reasons
+
+    for field, allowed in (("control_type", VALID_CONTROL_TYPES),
+                           ("applicability", VALID_APPLICABILITY),
+                           ("dev_type", VALID_DEV_TYPES)):
+        if proposal[field] not in allowed:
+            reasons.append(field + "=" + repr(proposal[field]) +
+                           " is not in the vocabulary")
     if reasons:
         return REJECT, reasons
 
