@@ -1,0 +1,101 @@
+{
+  "tier": "standard",
+  "justification": "Changes which stored rules the property page's DCP tab returns, for every council: a SQL filter in one API route that silently dropped every rule with no topic. Read path only - no write, no schema change - but it alters served regulatory content, so standard rather than minor.",
+  "commit_hash": "838c7f30",
+  "files": [
+    "frontend-nextjs/lib/provision-sql-filters.ts",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "tests/test_provision_sql_filters.py"
+  ],
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_provision_sql_filters.py -o addopts= -v",
+    "fails_when": "the predicate read out of frontend-nextjs/lib/provision-sql-filters.ts, run by real Postgres over a VALUES list, drops the row whose v2_topic and v2_marker are both NULL, or keeps a row whose topic or marker is heritage",
+    "observed_red": "Eight VALUES rows through real Postgres. OLD predicate (origin/main): RED - dropped ['no topic, no marker', 'no topic, statewide, no chapter'] kept wrongly []\r | NEW shared predicate: PASS | Live, Marrickville restored chapters under the old filter served stormwater 40, low-density 186, mixed-use 182; under the fixed filter 46, 211, 210."
+  },
+  "pre_impl": {
+    "existing_data": "NULL-safe measurement on production 2026-09-13 (IS TRUE / IS NOT TRUE, not NOT(...)): the fixed filter newly shows 2,968 current actionable rules (438 council, 2,530 statewide) and hides none that were shown before. 58 untagged rules inside heritage chapters stay hidden. 34 newly shown rules mention heritage; sampled, they are conditions such as not on or in a heritage item.",
+    "assumption_mismatch": "The filter was written assuming every served row carries a topic. The layer tagger only processes rows whose v2_dcp_layer is NULL, so a row it tagged with a layer but could not place in a topic is never revisited, and stays NULL forever.",
+    "new_vs_existing": "Replaces five hand-copied strings inside route.ts with one exported constant in a new lib module. The by_topic grouping already maps a missing topic to 'other' (route.ts line 1118), so no grouping change was needed."
+  },
+  "functions": [
+    {
+      "name": "NOT_HERITAGE_SQL",
+      "file_line": "frontend-nextjs/lib/provision-sql-filters.ts:24",
+      "input": "No arguments; a SQL fragment interpolated into the provisions query for generic, use-specific and no-precinct precinct layers.",
+      "output": "A boolean predicate that is TRUE unless the row is tagged heritage by topic or marker in any case, or has no topic and comes from a chapter whose key names heritage.",
+      "if_none": "A NULL topic or marker is coalesced to an empty string; a NULL topic is kept unless its chapter key names heritage, where it stays hidden as before."
+    }
+  ],
+  "values": [
+    {
+      "value": "regulatory_provisions.v2_topic",
+      "read_at": "frontend-nextjs/app/api/provisions/for-property/route.ts:990",
+      "if_missing": "Treated as not heritage and returned; grouped under 'other' by the by_topic builder at route.ts:1118."
+    },
+    {
+      "value": "regulatory_provisions.v2_marker",
+      "read_at": "frontend-nextjs/app/api/provisions/for-property/route.ts:990",
+      "if_missing": "Unchanged behaviour: the existing IS NULL branch already treated a missing marker as not heritage."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Exclude heritage provisions from the generic and use-specific layers for a property that is not heritage, or is inside an HCA handled elsewhere",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:990",
+      "where_clause": "v2_is_actionable = true AND rp.is_current = TRUE AND v2_dcp_layer = $n AND ${NOT_HERITAGE_SQL}"
+    },
+    {
+      "purpose": "Heritage property without an HCA: keep non-heritage rows, unscoped rows, or rows in the requested precincts",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:998",
+      "where_clause": "(${NOT_HERITAGE_SQL} OR v2_precinct_id IS NULL OR v2_precinct_id = ANY($n::text[]))"
+    },
+    {
+      "purpose": "Precinct layer requested with no precinct id: exclude precinct rows and, for non-heritage properties, heritage rows",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:1047",
+      "where_clause": "v2_precinct_id IS NULL AND ${NOT_HERITAGE_SQL}"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "An untagged row is really heritage content, so the fix now shows a heritage control to a property that is not heritage listed.",
+      "what_happens": "A non-heritage owner sees a heritage rule under the 'other' group that does not apply to their lot.",
+      "mitigated": true,
+      "how": "Raised by cross-review round 1 (HIGH). Measured, then narrowed rather than argued: an untagged rule from a heritage chapter stays hidden (58 rows), so only untagged rules outside heritage chapters are newly shown. Of those, 34 mention heritage and the sampled ones are conditions on general controls. Pinned as VALUES cases in the database test.",
+      "repro": "SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable AND v2_topic IS NULL AND provision_text ~* 'heritage'"
+    },
+    {
+      "scenario": "A heritage marker stored as Heritage with a capital letter reaches a property that is not heritage listed.",
+      "what_happens": "The old marker comparison was case-sensitive, so that row would pass the filter and show a heritage control.",
+      "mitigated": true,
+      "how": "Raised by cross-review round 1 (MEDIUM). No live row is spelled that way today (907 markers, all lowercase), but the comparison now lowercases the marker, and a mixed-case marker row is one of the eight database test cases.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_provision_sql_filters.py -o addopts= -v"
+    },
+    {
+      "scenario": "Someone later hand-copies the old predicate back into the route, reintroducing the NULL drop in one of the five places.",
+      "what_happens": "Untagged rules vanish again for one layer only, which would be hard to notice from the page.",
+      "mitigated": true,
+      "how": "test_the_route_uses_the_shared_predicate_and_no_bare_copy_remains runs in the default pytest run and fails if the bare LOWER(v2_topic) comparison appears in route.ts; origin/main has 5 such copies, the branch 0.",
+      "repro": "python -m pytest tests/test_provision_sql_filters.py -q"
+    },
+    {
+      "scenario": "The shared constant is edited into a form that still reads correctly but mishandles NULL, for example swapping COALESCE for a plain LOWER call.",
+      "what_happens": "The drift guard still passes because the route imports the constant, while untagged rules are dropped again.",
+      "mitigated": true,
+      "how": "The database test reads the constant's exact text out of the lib file and runs it against real Postgres over four rows, so any semantic regression turns it red; its companion test proves the harness goes red on the pre-fix predicate and still returns the ordinary row, so an empty result cannot pass vacuously.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_provision_sql_filters.py -o addopts= -v"
+    },
+    {
+      "scenario": "The 2,530 statewide untagged rows start appearing on a view outside the DCP tab, for properties in councils the change was never looked at.",
+      "what_happens": "A page grows noticeably longer with statewide rules nobody reviewed on that surface.",
+      "mitigated": true,
+      "how": "Measured on the surface 2026-09-13, preview deployment against production, distinct provision ids: 20 Frampton Ave Marrickville 1,536 -> 1,714 (178 added, 0 removed, 0 mentioning heritage, all Marrickville DCP documents); 22 Yangoora Rd Belmore 175 -> 176 (1 added, 0 removed). No statewide rule appeared: the route's former_council document filter already scopes the DCP tab to the council's own documents.",
+      "repro": "curl -s -G <preview-url>/api/provisions/for-property --data-urlencode groupBy=toc --data-urlencode lga=CAMPBELLTOWN --data-urlencode zone=R2 --data-urlencode heritage=false, then the same call against https://canibuildit.com.au, and compare distinct provision ids"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Read-path SQL change only; nothing in the database changes.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: after deploy, call /api/provisions/for-property for 20 Frampton Ave Marrickville (R2, not heritage) and confirm distinct restored low-density rules served rise from 186 to 211."
+  }
+}
