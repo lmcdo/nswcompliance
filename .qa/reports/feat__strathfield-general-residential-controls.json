@@ -1,7 +1,7 @@
 {
   "tier": "critical",
-  "justification": "Writes the numeric DCP controls served for every Strathfield property (setbacks, parking, landscaping, deep soil, fencing, solar access). A wrong value, page or plan here is a wrong regulatory answer served with a citation.",
-  "commit_hash": "b8e8fb85",
+  "justification": "Writes the numeric DCP controls served for every Strathfield property (setbacks, parking, landscaping, deep soil, fencing, solar access). A wrong value, page, zone scope or plan here is a wrong regulatory answer served with a citation.",
+  "commit_hash": "pending",
   "files": [
     "scripts/insert_strathfield_general_residential.py",
     "tests/test_insert_strathfield_general_residential.py",
@@ -9,84 +9,84 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_insert_strathfield_general_residential.py -q",
-    "fails_when": "a stored number does not stand alone in its own quote (a digit inside a clause id like C3.1.1 or inside a longer number does not count), a condition uses an unquoted liability word, the R2 rear setback is not the 6-10m zone-specific range beside a 6m other-zones row, a row breaks a live CHECK value or the 38-page range, two rows share a live key, a ceiling is stored as a floor, a file other than the pinned plan passes the PDF check, or the quote matcher accepts a changed number, passages out of order or an empty passage",
-    "observed_red": "Mutant quote_on_page that always returns True: test_quote_with_a_changed_number_is_rejected, test_segments_out_of_order_are_rejected and test_empty_segment_is_rejected all FAILED. The first version's substring number check accepted value 3 in 'C3.1.1 ... is 10m' and 6 in '16m' (run 2026-09-14); the whole-token check rejects both, which test_number_check_rejects_clause_ids_and_longer_numbers pins. Forced against the real PDF: a side setback quote changed to '1.5m' and a rear setback moved to page 16 were each reported 'quote not on page N'; the repealed Part C file and a same-wording stand-in file are rejected by the SHA-256 pin before any page is read. Restored: 0 problems, 179 tests pass."
+    "fails_when": "a stored number does not stand alone in its own quote (a digit inside a clause id like C3.1.1 or inside a longer number does not count), a condition uses an unquoted liability word, a non-zone_specific row names a zone code, the served zone filter would drop a row for a zone it applies to (R2, R3, R4, E1 checked), the R2 rear setback is not the 6-10m range beside a 6m other-zones row, a row breaks a live CHECK value or the 38-page range, two rows share a live key, a ceiling is stored as a floor, a file other than the pinned plan passes the PDF check, or the quote matcher accepts a changed number, passages out of order or an empty passage",
+    "observed_red": "Mutant quote_on_page that always returns True: test_quote_with_a_changed_number_is_rejected, test_segments_out_of_order_are_rejected and test_empty_segment_is_rejected all FAILED. The first version's substring number check accepted value 3 in 'C3.1.1 ... is 10m' and 6 in '16m'; the whole-token check rejects both. With the earlier wording 'all zones other than R2 Low Density Residential' restored on the other-zones rear rows, test_zone_filter_leaves_each_zone_its_own_rear_and_side_rows FAILED for an R3 site ('the other-zones 6m rear row must survive for every zone'). The CI data-quality ledger went RED on DQ-32b (run 34783841058) for the '(C3.3.2)' clause id in two conditions; test_zone_code_in_a_condition_only_on_zone_specific_rows encodes that pattern. Forced against the real PDF: a changed quote and a wrong page were each reported; the repealed Part C file and a same-wording stand-in are rejected by the SHA-256 pin. Restored: 0 problems, 238 tests pass."
   },
   "pre_impl": {
     "existing_data": "Measured 2026-09-13/14: Strathfield had 25 dcp_setback_controls rows; the 23 current ones cited SCDCP 2005 Parts A, B and C and had been hidden (needs_review) once the council page showed those Parts repealed from 1 September 2026, so GET /api/dcp/structured-controls returned 0 controls for strathfield on all six dwelling types. dcp_plan_as_at.stated_date was 2006-05-03 (SCDCP 2005 commencement). Registry 720-722 named 'Strathfield DCP 2005'; no chapter held the new plan. No regulatory_provisions rows carry source_council='strathfield'.",
-    "assumption_mismatch": "The old rows assumed SCDCP 2005 Parts A-C were in force; the council repealed them and the General Residential DCP (adopted 28 July 2026, effective 1 September 2026, p4) replaced them. The new plan has no residential flat building controls, and it groups multi-dwelling housing, terraces and manor homes in one table row, while the frontend serves no terrace or manor-house dwelling type. Height in storeys is held by the 2026-07-27 DQ rule (every storeys max_height row is needs_review), so it is not stored. The first version stored the R2 rear setback as a flat 6m; C3.6.1 makes it the lesser of 10m and 20% of the site's average length with a 6m floor, so it is now the 6-10m range.",
-    "new_vs_existing": "Follows the per-council insert-script pattern (insert_wingecarribee_setbacks.py, which also stores a sliding rear setback as a min-max range): hand-curated rows with verbatim quote, section_ref and pdf_page, dup check, dry run. New in this script: --apply refuses unless --pdf is the SHA-256-pinned plan (the registry chapter's content_hash must match too) and every quote is found in order on its stated page; the old rows are superseded (is_current = FALSE, reason appended) in the same transaction; a live-count check before commit. No schema change, no change to any read path.",
+    "assumption_mismatch": "The old rows assumed SCDCP 2005 Parts A-C were in force; the council repealed them and the General Residential DCP (adopted 28 July 2026, effective 1 September 2026, p4) replaced them. The new plan has no residential flat building controls, and it groups multi-dwelling housing, terraces and manor homes in one table row, while the frontend serves no terrace or manor-house dwelling type. Height in storeys is held by the 2026-07-27 DQ rule, so it is not stored. The served zone filter (scripts/conveyancing_db.py fetch_dcp_setbacks) matches zone codes as substrings of the condition and cannot express 'other than', so rows for 'other zones' are worded without zone codes.",
+    "new_vs_existing": "Follows the per-council insert-script pattern (insert_wingecarribee_setbacks.py, which also stores a sliding rear setback as a min-max range): hand-curated rows with verbatim quote, section_ref and pdf_page, dup check, dry run. New in this script: --apply refuses unless --pdf is the SHA-256-pinned plan (the registry chapter's content_hash must match too) and every quote is found in order on its stated page; the old rows are superseded in the same transaction; a live-count check before commit; tests that replay the served zone filter and DQ-32b's zone pattern over the rows. No schema change, no change to any read path.",
     "external_source_error": "The source is the council PDF, downloaded by WebFetch because strathfield.nsw.gov.au refuses scripts, uploaded to R2 with its hash re-checked from the public URL, and pinned here by SHA-256. A different file (a draft, a later amendment, a repealed Part) stops the script before the database, and a registry chapter holding a different hash stops it before any write. If the council later amends the plan nothing here notices: the registry chapter has no council_url (r2_monitor only watches council_url), so the rows stay current until someone re-checks the page.",
-    "frontend_type": "Rows reach frontend-nextjs/app/api/dcp/structured-controls/route.ts through fetch_dcp_setbacks (is_current AND NOT needs_review): value_min/value_max number | null, unit string, condition string | null, pdf_page number, pdf_url string | null with #page=N because the chapter's URL is our R2 copy. The R2 rear setback sends value_min 6 and value_max 10 with the formula in condition. fencing_height_max is in MAXIMUM_CONTROL_TYPES, so the stored value_max renders as a ceiling. The three front_setback rows have no number, so data_status is 'not_applicable' and DcpStructuredControls.tsx renders 'assessed on merit' beside the averaging rule's wording.",
-    "user_failure_mode": "Before 2026-09-13 a Strathfield user saw repealed 2005 figures (for example a 9m front setback and 40% landscaping for dual occupancies) cited to Parts A-C; from 2026-09-13 they saw no DCP numbers at all. If this data were wrong the user would see a confident number with a link to the plan page; the quote on that page is the check, and the script cannot write a row whose quote is not there or whose file is not the adopted plan."
+    "frontend_type": "Rows reach frontend-nextjs/app/api/dcp/structured-controls/route.ts through fetch_dcp_setbacks (is_current AND NOT needs_review), and services/constraint_arithmetic.py, conveyancing.py, dcp_controls_api.py and intelligence_brief.py call it with a zone code: value_min/value_max number | null, unit string, condition string | null, pdf_page number, pdf_url string | null with #page=N because the chapter's URL is our R2 copy. The R2 rear setback sends value_min 6 and value_max 10 with the formula in condition. fencing_height_max is in MAXIMUM_CONTROL_TYPES, so the stored value_max renders as a ceiling. The three front_setback rows have no number, so data_status is 'not_applicable' and DcpStructuredControls.tsx renders 'assessed on merit' beside the averaging rule's wording.",
+    "user_failure_mode": "Before 2026-09-13 a Strathfield user saw repealed 2005 figures cited to Parts A-C; from 2026-09-13 they saw no DCP numbers at all. If this data were wrong the user would see a confident number with a link to the plan page, or, for a zone-scoped report, a missing rear or side setback for their zone with nothing to say it was dropped. The quote on the page, the pinned file, and the zone-filter tests are the checks."
   },
   "functions": [
     {
       "name": "quote_on_page",
-      "file_line": "scripts/insert_strathfield_general_residential.py:257",
+      "file_line": "scripts/insert_strathfield_general_residential.py:259",
       "input": "A quote whose non-adjacent passages are joined by ' ... ', and one page's extracted text.",
       "output": "True only when every passage appears on the page, in order, after normalising whitespace, dashes, superscript 2 and curly apostrophes.",
       "if_none": "An empty passage returns False; an empty page returns False for any non-empty quote."
     },
     {
       "name": "check_against_pdf",
-      "file_line": "scripts/insert_strathfield_general_residential.py:271",
+      "file_line": "scripts/insert_strathfield_general_residential.py:273",
       "input": "Path to a local copy of the plan, read as bytes for the hash and then page by page with PyMuPDF.",
       "output": "A list of problems: the file's SHA-256 is not the pinned plan, the page count is not 38, page 1 lacks the title, page 4 lacks the Amendment 1 dates, or a row's quote is not on its stated page. Empty means all passed.",
       "if_none": "A hash mismatch returns before PyMuPDF is imported; a page number beyond the file yields '' and so a problem, never a pass."
     },
     {
       "name": "main",
-      "file_line": "scripts/insert_strathfield_general_residential.py:295",
+      "file_line": "scripts/insert_strathfield_general_residential.py:297",
       "input": "Command-line arguments: --pdf with the path to a local copy of the plan, and optionally --apply to commit instead of rolling back.",
       "output": "Exit 0 after a rolled-back dry run or a commit; 1 on a PDF problem, missing registry chapter, registry hash mismatch, supersede miss, duplicate or count mismatch (all before commit); 2 when --apply is given without --pdf, before any connection.",
       "if_none": "No DATABASE_URL raises before any write; a missing registry chapter or a different registered hash returns 1 before the backup or any write."
     }
   ],
   "real_layer_exempt": {
-    "scripts/insert_strathfield_general_residential.py": "Run against the production database instead of a DB-marked test, because a test would have to write production rows. 2026-09-14 07:00: dry run then --apply 'COMMITTED' (23 superseded, 52 inserted). 07:32, after the PR cross-review: scratchpad strathfield_grdcp_correct.py imported this script's ROWS, ran check_against_pdf (pinned file, 55 quotes on their pages), updated rows 1230/1244/1258 to the R2 6-10m rear row and 1232/1246/1260 to the factual fence wording, inserted the three other-zones 6m rear rows, and confirmed 'live Strathfield rows now 55, ROWS 55, identical: True' before committing. validate_control_source_values.py passed afterwards. Re-running this script after the write stops with 'supersede matched 0 of 23 rows; nothing written'."
+    "scripts/insert_strathfield_general_residential.py": "Run against the production database instead of a DB-marked test, because a test would have to write production rows. 2026-09-14 07:00: dry run then --apply 'COMMITTED' (23 superseded, 52 inserted). Two follow-up correction steps run from the session scratchpad (not committed) imported this script's ROWS, re-ran check_against_pdf, backed up, updated by id and required every live Strathfield row to equal ROWS field for field before committing: 07:32 split the rear setback and fixed the fence wording (55 rows, identical: True); 07:42 reworded 7 conditions for the zone filter and DQ-32b (identical: True). Afterwards DQ-32b count 0 (CLEAN) and validate_control_source_values.py PASSED. Re-running this script after the write stops with 'supersede matched 0 of 23 rows; nothing written'."
   },
   "values": [
     {
       "value": "Each row's quote (and so its number) on its stated page of the SHA-256-pinned plan PDF; 55 rows, every stored number standing alone in its own quote. Written with dcp_version 'Strathfield DCP – General Residential Development, Amendment 1 (adopted 28 July 2026, effective 1 September 2026)', effective_date 2026-09-01, effective_date_basis stated_in_document.",
-      "read_at": "scripts/insert_strathfield_general_residential.py:271 (check_against_pdf)",
+      "read_at": "scripts/insert_strathfield_general_residential.py:273 (check_against_pdf)",
       "if_missing": "A different file, a quote not on its page, a page beyond the file, or a missing title or amendment line returns a problem and main exits 1 before connecting to the database."
     },
     {
       "value": "Registry chapter strathfield/general-residential-dcp-2026, active, with r2_public_pdf_url set and content_hash equal to the pinned SHA-256 (registry id 784)",
-      "read_at": "scripts/insert_strathfield_general_residential.py:320",
+      "read_at": "scripts/insert_strathfield_general_residential.py:322",
       "if_missing": "No chapter, or a chapter holding a different hash, returns 1 before the backup or any write."
     },
     {
-      "value": "Count of current, visible Strathfield rows after the insert (observed 55 after the correction)",
-      "read_at": "scripts/insert_strathfield_general_residential.py:367",
+      "value": "Count of current, visible Strathfield rows after the insert (observed 55 after the corrections)",
+      "read_at": "scripts/insert_strathfield_general_residential.py:369",
       "if_missing": "Any count other than len(ROWS) rolls the transaction back and main returns 1."
     }
   ],
   "queries": [
     {
       "purpose": "Backup every Strathfield row to CSV before any write, superseded rows included",
-      "file_line": "scripts/insert_strathfield_general_residential.py:329",
+      "file_line": "scripts/insert_strathfield_general_residential.py:331",
       "where_clause": "lga = %s ORDER BY is_current DESC, id (no currency filter on purpose: the rollback backup must hold the superseded rows too)"
     },
     {
       "purpose": "Registered plan chapter and its stored file hash, read before any write",
-      "file_line": "scripts/insert_strathfield_general_residential.py:320",
+      "file_line": "scripts/insert_strathfield_general_residential.py:322",
       "where_clause": "council = %s AND chapter_key = %s AND is_active AND r2_public_pdf_url IS NOT NULL"
     },
     {
       "purpose": "Supersede the 23 hidden rows cited to the repealed Parts",
-      "file_line": "scripts/insert_strathfield_general_residential.py:341",
+      "file_line": "scripts/insert_strathfield_general_residential.py:343",
       "where_clause": "id = ANY(%s) AND lga = %s AND is_current AND needs_review"
     },
     {
       "purpose": "Refuse a duplicate live row for the same dwelling type, control and condition",
-      "file_line": "scripts/insert_strathfield_general_residential.py:350",
+      "file_line": "scripts/insert_strathfield_general_residential.py:352",
       "where_clause": "lga = %s AND dev_type = %s AND control_type = %s AND COALESCE(condition, '') = COALESCE(%s, '') AND is_current"
     },
     {
       "purpose": "Confirm the served Strathfield set is exactly the inserted rows before commit",
-      "file_line": "scripts/insert_strathfield_general_residential.py:367",
+      "file_line": "scripts/insert_strathfield_general_residential.py:369",
       "where_clause": "lga = %s AND is_current AND NOT needs_review"
     }
   ],
@@ -106,39 +106,53 @@
       "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k pinned_plan -q"
     },
     {
-      "scenario": "The script runs before the plan is registered, or the registered chapter links a different file (scripts/insert_strathfield_general_residential.py:320, WHERE council = %s AND chapter_key = %s AND is_active AND r2_public_pdf_url IS NOT NULL).",
+      "scenario": "The script runs before the plan is registered, or the registered chapter links a different file (scripts/insert_strathfield_general_residential.py:322, WHERE council = %s AND chapter_key = %s AND is_active AND r2_public_pdf_url IS NOT NULL).",
       "what_happens": "Rows would be served with no citation link, or with a link to a PDF other than the one whose pages were checked.",
       "mitigated": true,
       "how": "main returns 1 when no row comes back or its content_hash is not SOURCE_SHA256, before the backup or any write.",
       "repro": "SELECT content_hash FROM dcp_chapter_registry WHERE council='strathfield' AND chapter_key='general-residential-dcp-2026'"
     },
     {
-      "scenario": "The script is run a second time after --apply (scripts/insert_strathfield_general_residential.py:341, WHERE id = ANY(%s) AND lga = %s AND is_current AND needs_review now matches 0 of the hidden rows).",
+      "scenario": "The script is run a second time after --apply (scripts/insert_strathfield_general_residential.py:343, WHERE id = ANY(%s) AND lga = %s AND is_current AND needs_review now matches 0 of the hidden rows).",
       "what_happens": "A naive insert would serve every number twice.",
       "mitigated": true,
       "how": "The supersede rowcount must equal 23 or the transaction rolls back; observed 'supersede matched 0 of 23 rows; nothing written', exit 1.",
       "repro": "python scripts/insert_strathfield_general_residential.py --pdf <plan.pdf>"
     },
     {
-      "scenario": "Someone has already put a live duplicate in place for one of these keys (scripts/insert_strathfield_general_residential.py:350, WHERE lga = %s AND dev_type = %s AND control_type = %s AND COALESCE(condition, '') = COALESCE(%s, '') AND is_current).",
+      "scenario": "Someone has already put a live duplicate in place for one of these keys (scripts/insert_strathfield_general_residential.py:352, WHERE lga = %s AND dev_type = %s AND control_type = %s AND COALESCE(condition, '') = COALESCE(%s, '') AND is_current).",
       "what_happens": "Two live rows for the same control would be served side by side.",
       "mitigated": true,
       "how": "The first duplicate rolls back the whole transaction; test_no_duplicate_live_keys also pins that the 55 rows have unique keys.",
       "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k duplicate -q"
     },
     {
-      "scenario": "Another current, visible Strathfield row exists outside the supersede list, so the served set would hold more than the plan's rows (scripts/insert_strathfield_general_residential.py:367, WHERE lga = %s AND is_current AND NOT needs_review).",
+      "scenario": "Another current, visible Strathfield row exists outside the supersede list, so the served set would hold more than the plan's rows (scripts/insert_strathfield_general_residential.py:369, WHERE lga = %s AND is_current AND NOT needs_review).",
       "what_happens": "A leftover row from a repealed Part would be served beside the new ones.",
       "mitigated": true,
-      "how": "The count must equal len(ROWS) or the transaction rolls back before commit; the 07:32 correction went further and compared every served field with ROWS (identical: True).",
+      "how": "The count must equal len(ROWS) or the transaction rolls back before commit; both follow-up correction steps compared every served field with ROWS (identical: True).",
       "repro": "SELECT count(*) FROM dcp_setback_controls WHERE lga='strathfield' AND is_current AND NOT needs_review"
     },
     {
       "scenario": "An R2 lot with a 60m average length: C3.6.1 gives the lesser of 10m and 12m, so 10m, but a single stored 6m row reads as the whole R2 rear requirement.",
       "what_happens": "A consumer taking the number alone would present a 6m rear setback where the plan requires 10m.",
       "mitigated": true,
-      "how": "The R2 row stores value_min 6 and value_max 10, zone_specific, with the formula in its condition; other zones get their own 6m row. test_r2_rear_setback_is_the_range_its_formula_can_produce pins it and the live rows were corrected at 07:32. A consumer still has to apply the formula for an exact figure.",
+      "how": "The R2 row stores value_min 6 and value_max 10, zone_specific, with the formula in its condition; other zones get their own 6m row. test_r2_rear_setback_is_the_range_its_formula_can_produce pins it. A consumer still has to apply the formula for an exact figure.",
       "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k r2_rear -q"
+    },
+    {
+      "scenario": "A zone-scoped report for an R3 or R4 Strathfield site calls fetch_dcp_setbacks with its zone, and an other-zones row is worded 'all zones other than R2' or 'R3 Medium Density zone or any other zone'.",
+      "what_happens": "The served filter keeps a zone_specific row only when its condition names the site's zone, so the R3 site loses the 6m rear row, the R4 site loses the 4m and 2m side rows, and the R2 site keeps a row that excludes it.",
+      "mitigated": true,
+      "how": "Other-zones conditions name no zone code; test_zone_filter_leaves_each_zone_its_own_rear_and_side_rows replays the filter for R2, R3, R4 and E1 and FAILED on the earlier wording. The live rows were reworded at 07:42.",
+      "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k zone_filter -q"
+    },
+    {
+      "scenario": "A condition on a universal_residential row carries a clause id such as '(C3.3.2)'.",
+      "what_happens": "DQ-32b reads C3 as a zone code on a row the zone filter never examines, and CI's data-quality ledger goes RED (run 34783841058).",
+      "mitigated": true,
+      "how": "Conditions carry no clause ids; test_zone_code_in_a_condition_only_on_zone_specific_rows applies DQ-32b's pattern to every non-zone_specific row. Live DQ-32b count 0 after 07:42.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-32b"
     },
     {
       "scenario": "A row is edited to value 3 while its quote only says 10m but starts with clause C3.1.1.",
@@ -151,7 +165,7 @@
       "scenario": "A condition shown to users paraphrases a word such as 'sufficient' that only the plan itself may say.",
       "what_happens": "The product would appear to judge adequacy rather than report the plan's text.",
       "mitigated": true,
-      "how": "test_condition_uses_no_unquoted_liability_word scans every condition; the fence condition now states that above 1200mm the plan requires justification addressing streetscape and sight lines, and the quote carries the plan's own sentence.",
+      "how": "test_condition_uses_no_unquoted_liability_word scans every condition; the fence condition states that above 1200mm the plan requires justification addressing streetscape and sight lines, and the quote carries the plan's own sentence.",
       "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k liability -q"
     },
     {
@@ -177,9 +191,9 @@
     }
   ],
   "post_merge": {
-    "db_reset": "No reset. The data change is already live: 2026-09-14 07:00 insert (registry 784 via the scratchpad register step, 23 rows superseded, 52 inserted, dcp_plan_as_at stated_date 2026-09-01) and the 07:32 correction to 55 rows. Backups in the main checkout: data/db_rollback_backups/*_pre_strathfield_grdcp_2026-09-14_0700.csv and dcp_setback_controls_pre_strathfield_grdcp_correction_2026-09-14_0732.csv. Merging changes no data.",
+    "db_reset": "No reset. The data change is already live: 2026-09-14 07:00 insert (registry 784 via the scratchpad register step, 23 rows superseded, 52 inserted, dcp_plan_as_at stated_date 2026-09-01), the 07:32 correction to 55 rows and the 07:42 wording sync. Backups in the main checkout: data/db_rollback_backups/*_pre_strathfield_grdcp_2026-09-14_0700.csv, dcp_setback_controls_pre_strathfield_grdcp_correction_2026-09-14_0732.csv and dcp_setback_controls_pre_strathfield_grdcp_sync_2026-09-14_0742.csv. Merging changes no data.",
     "secrets": "No.",
     "other_repo": "No.",
-    "manual_verify": "Yes: GET https://verify.plotdetect.com.au/api/dcp/structured-controls?council=strathfield for dwelling_house, dual_occupancy, multi_dwelling_housing and secondary_dwelling must return 15, 15, 20 and 5 controls, each pdf_url ending general-residential-dcp-2026.pdf#page=N, the rear setbacks as 6-10m (R2) and 6m (other zones), and as_at_line 'In force from 1 September 2026 (date stated in the plan document)'."
+    "manual_verify": "Yes: GET https://verify.plotdetect.com.au/api/dcp/structured-controls?council=strathfield for dwelling_house, dual_occupancy, multi_dwelling_housing and secondary_dwelling must return 15, 15, 20 and 5 controls, each pdf_url ending general-residential-dcp-2026.pdf#page=N, the rear setbacks as 6-10m (R2) and 6m (other zones, no zone code in the condition), and as_at_line 'In force from 1 September 2026 (date stated in the plan document)'; python scripts/dq_probe_live.py --id DQ-32b must print CLEAN."
   }
 }
