@@ -49,7 +49,7 @@ def _download_waverley_pdf(target: str) -> None:
     try:
         cur = conn.cursor()
         cur.execute("SELECT r2_current_path FROM dcp_chapter_registry "
-                    "WHERE council='waverley' AND chapter_key='waverley-dcp-2022'")
+                    "WHERE council='waverley' AND chapter_key='waverley-dcp-2022' AND is_active")
         row = cur.fetchone()
     finally:
         conn.close()

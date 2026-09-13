@@ -87,6 +87,27 @@ def test_no_rule_is_lost_in_the_diff_map():
     assert len({build_ref_number("doc", s["section_number"]) for s in out}) == len(out) == 2
 
 
+def test_two_table_only_sections_with_different_tables_are_both_kept():
+    """Cross-review: identity by text alone treats two empty-text sections as repeats
+    and drops the second table -- a different parking rate table, silently gone."""
+    first = [{"html": "<table><tr><td>1 space per dwelling</td></tr></table>", "page": 60}]
+    second = [{"html": "<table><tr><td>1 space per 40 square metres</td></tr></table>", "page": 61}]
+    out = finalise([sec("B7_7_2_2_controls", "", tables=first),
+                    sec("B7_7_2_2_controls", "", tables=second)])
+    assert len(out) == 2
+    assert out[1]["tables"] == second
+
+
+def test_a_suffix_never_collides_with_a_genuine_section_number():
+    """Cross-review: renaming the second "A" to "A_2" would collide with a real "A_2"
+    and the diff map would overwrite one of them."""
+    out = finalise([sec("A", "first"), sec("A", "second"), sec("A_2", "a genuine A_2")])
+    numbers = [s["section_number"] for s in out]
+    assert len(set(numbers)) == 3
+    assert out[2]["section_number"] == "A_2" and out[2]["content"] == "a genuine A_2"
+    assert out[1]["section_number"] == "A_3"
+
+
 def test_clean_input_is_returned_unchanged():
     clean = [sec("B1_1_1", "(a) one"), sec("B1_1_2", "(a) two")]
     assert finalise(clean) == clean

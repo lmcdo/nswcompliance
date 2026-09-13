@@ -209,6 +209,18 @@ def derive_ranges_from_headers(page_texts: list[str]) -> list[tuple[str, str, in
         if ranges:
             finished.add(ranges[-1][0])
         ranges.append([code, title, page, page])
+    # A part missing from INSIDE a numbered run (a 9 and an 11 with no 10) means that
+    # part's pages carried no header. Coverage can stay above the floor while one small
+    # part vanishes, so refuse rather than extract without it (cross-review, 2026-09-13).
+    # A missing LAST part of a letter cannot be seen this way; see KNOWN LIMIT above.
+    numbers_by_letter: dict[str, list[int]] = {}
+    for code, _title, _start, _end in ranges:
+        m = re.match(r"^([A-Z]{1,2})(\d{1,2})$", code)
+        if m:
+            numbers_by_letter.setdefault(m.group(1), []).append(int(m.group(2)))
+    for numbers in numbers_by_letter.values():
+        if sorted(numbers) != list(range(min(numbers), max(numbers) + 1)):
+            return []
     return [(c, t, a, b) for c, t, a, b in ranges]
 
 

@@ -1847,19 +1847,30 @@ class DCPExtractor:
           first and one rule was lost with no trace. Different text now gets a
           _2, _3 suffix so both survive; an exact repeat of the same text is dropped.
         """
+        # Identity is text AND tables: two table-only sections under one number carry
+        # different rules (cross-review, 2026-09-13), so comparing text alone would
+        # have dropped the second table as an "exact repeat".
+        # A suffix is chosen from numbers no section already holds, so a renamed
+        # repeat can never collide with a genuine "X_2" further down the chapter.
         out: list[dict[str, Any]] = []
-        seen: dict[str, list[str]] = {}
+        seen: dict[str, list[tuple]] = {}
+        taken = {s["section_number"] for s in sections}
         for sec in sections:
             content = (sec.get("content") or "").strip()
-            if not content and not sec.get("tables"):
+            tables = tuple(t.get("html", "") for t in (sec.get("tables") or []))
+            if not content and not tables:
                 continue
             number = sec["section_number"]
-            texts = seen.setdefault(number, [])
-            if content in texts:
+            identities = seen.setdefault(number, [])
+            if (content, tables) in identities:
                 continue
-            texts.append(content)
-            if len(texts) > 1:
-                sec = {**sec, "section_number": f"{number}_{len(texts)}"}
+            identities.append((content, tables))
+            if len(identities) > 1:
+                n = len(identities)
+                while f"{number}_{n}" in taken:
+                    n += 1
+                taken.add(f"{number}_{n}")
+                sec = {**sec, "section_number": f"{number}_{n}"}
             out.append(sec)
         return out
 

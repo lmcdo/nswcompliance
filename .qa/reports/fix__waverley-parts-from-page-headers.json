@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Replaces how waverley's DCP is divided into parts before extraction, changes what the page-range extractor emits for every council that uses page ranges, and adds a paid AI provider. The output becomes review-queue rows that, once approved, replace the rules served for a whole council.",
-  "commit_hash": "a965bc5b",
+  "commit_hash": "ec2efde4",
   "files": [
     "scripts/dcp_page_map_gate.py",
     "scripts/dcp_extract_changed.py",
@@ -105,6 +105,7 @@
       "repro": "python -m pytest tests/test_ai_extractor.py -k Sol -q"
     }
   ],
+  "break_it_review_round_1": "Cross-review on the first push raised 5 findings. Fixed: table-only sections compared by text alone, suffix collision with a genuine _2 number, a part missing inside a numbered run, and an is_active filter on the real-data test. Kept as a known limit: F5 starting mid-page under F4.",
   "post_merge": {
     "db_reset": "No schema or data change. Waverley is re-extracted separately, in review mode, into dcp_review_queue for human approval.",
     "secrets": "Only if AI_MODEL=sol is ever set on the Railway extraction service: OPENAI_API_KEY would need adding there. The free path used for waverley needs no key.",

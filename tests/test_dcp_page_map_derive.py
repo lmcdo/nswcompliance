@@ -79,6 +79,23 @@ def test_a_part_resuming_after_another_part_is_refused():
     assert derive_ranges_from_headers(pages) == []
 
 
+def test_a_part_missing_inside_a_numbered_run_is_refused():
+    """Cross-review: a small part whose pages lose their header leaves coverage above
+    the floor, and that part would simply not be extracted. A gap in the numbering is
+    the observable sign; a consecutive run is the confusable negative."""
+    safety = "B9"
+    public_art = "B10"
+    design = "B11"
+    gap = [part_page(safety, "Safety") for _ in range(6)]
+    gap += [part_page(design, "Design Excellence") for _ in range(6)]
+    assert derive_ranges_from_headers(gap) == []
+
+    whole = [part_page(safety, "Safety") for _ in range(6)]
+    whole += [part_page(public_art, "Public Art") for _ in range(2)]
+    whole += [part_page(design, "Design Excellence") for _ in range(6)]
+    assert [r[0] for r in derive_ranges_from_headers(whole)] == [safety, public_art, design]
+
+
 def test_too_few_headers_is_refused_not_guessed():
     pages = ["plain body text with no running header"] * 20
     pages[0] = part_page(WASTE, "Waste")
