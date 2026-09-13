@@ -1,0 +1,108 @@
+{
+  "tier": "critical",
+  "justification": "Changes what the page-range extractor emits for every council on that path: the page each rule cites, and for waverley the text of every rule. The output becomes review-queue rows that, once approved, replace the rules and citation pages served for a whole council.",
+  "commit_hash": "bbbefc45",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_rule_pages_and_page_furniture.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_rule_pages_and_page_furniture.py -q",
+    "fails_when": "a waverley page footer or running header reaches a rule's text, a page marker survives into a rule's text, a rule cites a page other than the one its heading is on, or a range with no intro text yields an intro rule made of its tables",
+    "observed_red": "Furniture strip unwired inside extract_by_page_ranges: FAILED test_extraction_itself_strips_furniture_and_cites_each_rules_page (the page footer reached the rule text), 1 failed 10 passed. Page assignment unwired: the same test FAILED (a page marker reached the rule text), 1 failed 10 passed. Marker-only intro given its tables again: FAILED test_page_markers_alone_do_not_make_an_intro_rule_out_of_the_tables (a marker-only intro became a rule), 1 failed 11 passed. All restored: 12 passed; the dcp, extract, page_map, supersede and fidelity suites 865 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13 on the mirrored 448-page waverley PDF while reviewing 666 queued changes before approval: 234 of 518 added or changed rules carried the printed footer inside their text, 127 carried the next page's running header mid-text, and every rule cited its part's first page (all 56 C1 rules said page 167). After this change, on the same PDF: 602 sections, 0 with the footer, 0 with a header mid-text, 0 markers left, 0 cited pages outside their own part, and for 593 of 593 rules long enough to test, the opening words are on the cited page. 84 sub-headings now come out as their own rules; every one of the 518 earlier section numbers is still present and none is duplicated.",
+    "assumption_mismatch": "split_content_at_subsections documented that sub-rules inherit the range's first page, and the page-range path never tracked page boundaries inside a range, while the review queue and provision rows take page_start as the citation page. Nothing removed the printed header and footer, which pdfplumber returns as ordinary text lines.",
+    "new_vs_existing": "strip_page_furniture reuses the page-map gate's PART_HEADER and HEADER_SCAN_LINES, so furniture removal and part derivation agree on what a header is, and runs only for HEADER_DERIVED_COUNCILS. Page tracking is a marker placed between pages and read after splitting, so split_content_at_subsections keeps its signature and its other caller, which never sees markers, is unchanged.",
+    "external_source_error": "If the council changes its footer title, the footer stops being stripped and shows as stray text in review; body text is never removed for it, because the footer is only removed when the exact title and a bare page number are the last lines of a page.",
+    "frontend_type": "No frontend change. page_start becomes the review queue's new_page and the provision's page. Rows reach users only after human approval and the commit job; how the property page links that page is checked separately after commit.",
+    "user_failure_mode": "Without this, a waverley citation opens the PDF at the part's first page, sometimes dozens of pages from the rule, and rule text carries a stray page number and part title mid-sentence. If the strip misfired it would remove at most a page's top two lines or its footer, which review compares against the PDF."
+  },
+  "functions": [
+    {
+      "name": "strip_page_furniture",
+      "file_line": "scripts/dcp_extract_changed.py:701",
+      "input": "One page's cleaned text and the council slug.",
+      "output": "For councils in HEADER_DERIVED_COUNCILS, the text without the running part header (code line and title line) near its top and without the footer title and page number at its end.",
+      "if_none": "Other councils get their input back as given, including None; a header-derived council's None or empty text returns an empty string."
+    },
+    {
+      "name": "assign_pages_from_markers",
+      "file_line": "scripts/dcp_extract_changed.py:737",
+      "input": "The sections split from one page range, in document order, whose text holds page markers, and the range's first page.",
+      "output": "The same sections with markers removed and page_start, page_end and pages running from the page the section's heading is on to the last page holding its text.",
+      "if_none": "An empty list returns an empty list; a section with no marker keeps the page carried from the section before it, starting at the range's first page."
+    },
+    {
+      "name": "extract_by_page_ranges",
+      "file_line": "scripts/dcp_extract_changed.py:1824",
+      "input": "Part page ranges and optional sub-section patterns for one chapter PDF.",
+      "output": "Sections with page furniture stripped and each rule's own pages, after shells and repeated numbers are resolved.",
+      "if_none": "An empty page contributes only its marker, which is removed; a range past the last page is clipped to the page count."
+    },
+    {
+      "name": "split_content_at_subsections",
+      "file_line": "scripts/dcp_extract_changed.py:2057",
+      "input": "A range's or section's text, possibly holding page markers, and one heading pattern.",
+      "output": "An intro section plus one section per heading; an intro made of page markers alone carries no tables, so it is emptied and dropped later.",
+      "if_none": "No heading match returns the input as one section."
+    }
+  ],
+  "values": [
+    {
+      "value": "page text from pdfplumber for every page of a range",
+      "read_at": "scripts/dcp_extract_changed.py:1852",
+      "if_missing": "An image-only page contributes an empty string; only its marker is added, so page counting still advances."
+    },
+    {
+      "value": "COUNCIL_FOOTER_TITLES, the printed footer title per council",
+      "read_at": "scripts/dcp_extract_changed.py:694",
+      "if_missing": "A council with no entry keeps its footer text; only the running header is stripped."
+    }
+  ],
+  "queries": "N/A - no query added or changed.",
+  "break_it": [
+    {
+      "scenario": "A table cell or control value such as 450 sits alone on the last line of a page.",
+      "what_happens": "It could be read as a page number and removed from the rule.",
+      "mitigated": true,
+      "how": "A bare number is removed only when the exact footer title is the line directly above it.",
+      "repro": "python -m pytest tests/test_dcp_rule_pages_and_page_furniture.py -k number_that_is_not_after -q"
+    },
+    {
+      "scenario": "The page where a part begins prints the running header and then a body heading repeating the part name.",
+      "what_happens": "The body heading could be stripped as furniture, losing the part's opening heading.",
+      "mitigated": true,
+      "how": "Only the first header match in the top lines is removed, with the one title line after it.",
+      "repro": "python -m pytest tests/test_dcp_rule_pages_and_page_furniture.py -k body_heading -q"
+    },
+    {
+      "scenario": "Every range's text now opens with a page marker, so the text before the first heading is never empty.",
+      "what_happens": "A range with no real intro text would get an intro section holding all its tables, kept as a table-only rule: new output for ashfield, ku_ring_gai and the TOC path.",
+      "mitigated": true,
+      "how": "An intro made of markers alone is emitted without tables, so its pages still count and finalise_ranged_sections drops it, as before the markers existed.",
+      "repro": "python -m pytest tests/test_dcp_rule_pages_and_page_furniture.py -k markers_alone -q"
+    },
+    {
+      "scenario": "A rule's heading is at the bottom of one page and its text continues on the next.",
+      "what_happens": "The citation could open at the page the text ends on rather than where the rule begins.",
+      "mitigated": true,
+      "how": "page_start is the page the heading is on; page_end is the last page that holds any of the rule's text.",
+      "repro": "python -m pytest tests/test_dcp_rule_pages_and_page_furniture.py -k running_onto_the_next_page -q"
+    },
+    {
+      "scenario": "Ashfield and ku_ring_gai also extract by page range.",
+      "what_happens": "Their next extraction cites each rule's own page instead of the range's first page.",
+      "mitigated": true,
+      "how": "Furniture stripping is gated to HEADER_DERIVED_COUNCILS, so their rule text is unchanged; only the cited page moves to the heading's page, and any changed row still goes through review.",
+      "repro": "python -m pytest tests/test_dcp_rule_pages_and_page_furniture.py -k other_councils_are_untouched -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No schema or data change. Waverley is re-queued from merged code in review mode.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: re-queue waverley in review mode, confirm no queued rule carries the footer and each cites the page its text is on, before any row is approved."
+  }
+}
