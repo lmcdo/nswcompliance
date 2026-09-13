@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "fetchDcpControls is the only way the site reads served numeric DCP controls. A saved backend answer reused across deployments serves stale output with no error: citation links stayed missing after their fix, and a control held for review can stay on screen.",
-  "commit_hash": "pending",
+  "commit_hash": "f983c2f5",
   "files": [
     "frontend-nextjs/lib/dcp-controls-client.ts",
     "frontend-nextjs/__tests__/lib/dcp-controls-client-no-store.test.ts"
