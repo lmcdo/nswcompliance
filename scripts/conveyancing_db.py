@@ -436,31 +436,34 @@ def apply_chapter_key_aliases(registry_pdf_urls: dict, lga_slug: str) -> dict:
     return result
 
 
-# prior-art-checked: the zone filter fetch_dcp_setbacks has always applied, moved here unchanged so it can be
-# tested directly, plus one exclusion form it could not express; no new data source.
-_FILTER_ZONE_CODES = ("R1", "R2", "R3", "R4", "R5", "E1", "B1", "B2", "MU1", "C2")  # noqa: zone-codes (the list the filter has always used, moved unchanged)
-_OTHER_THAN_ZONES = re.compile(r"\bOTHER THAN ((?:MU|R|E|B|C)\d(?:\s*(?:,|/|AND|OR)\s*(?:MU|R|E|B|C)\d)*)\b")
-_ZONE_TOKEN = re.compile(r"(?:MU|R|E|B|C)\d")
+# prior-art-checked: the zone filter fetch_dcp_setbacks has always applied, moved here so it can be tested
+# directly; it now reads zone codes of every Standard Instrument family as whole tokens, plus one exclusion
+# form. The backend image copies only services/ and scripts/conveyancing_db.py, so the pattern lives here
+# (enrichment/config/zone_taxonomy.py holds legacy->current aliases, not the families, and is not deployed).
+_ZONE_CODE = re.compile(r"(?<![A-Z0-9.])(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9](?![0-9]|\.[0-9])")
+_OTHER_THAN = re.compile(
+    r"\bOTHER THAN\s+((?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9]"
+    r"(?:\s*(?:,|/|AND|OR)\s*(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9])*)(?![0-9]|\.[0-9])")
 
 
 def zone_row_applies(applicability: Optional[str], condition: Optional[str], zone_prefix: str) -> bool:
     """Whether a DCP control row applies to a site whose zone code is ``zone_prefix`` (e.g. "R2").
 
     Only ``zone_specific`` rows with condition text are ever excluded, and only when a zone is known.
-    A condition containing "other than" followed directly by one or more zone codes (e.g. "zones other than
-    R2 Low Density Residential") applies to every zone except those codes. Any
-    other condition that names one of the filter's zone codes applies only when it also names the site's
-    zone; a condition naming no zone code applies everywhere (conservative, as before).
+    Zone codes are whole tokens of any Standard Instrument family (R, RU, RE, E, B, IN, SP, MU, C or W
+    followed by a digit); a clause id such as C3.3.2 is not a zone code. A condition with "other than"
+    followed directly by zone codes (e.g. "zones other than R2 Low Density Residential") applies to every
+    zone except those. Any other condition that names zone codes applies only to those zones; a condition
+    naming none applies everywhere. Legacy and current codes are not aliased (B2 does not match E1).
     """
     if not zone_prefix or applicability != "zone_specific" or not condition:
         return True
     cond_upper = condition.upper()
-    excluded = _OTHER_THAN_ZONES.search(cond_upper)
+    excluded = _OTHER_THAN.search(cond_upper)
     if excluded:
-        return zone_prefix not in _ZONE_TOKEN.findall(excluded.group(1))
-    if any(z in cond_upper for z in _FILTER_ZONE_CODES) and zone_prefix not in cond_upper:
-        return False
-    return True
+        return zone_prefix not in _ZONE_CODE.findall(excluded.group(1))
+    named = set(_ZONE_CODE.findall(cond_upper))
+    return not named or zone_prefix in named
 
 
 # prior-art-checked: same function, additive kwarg only — the proxy endpoint

@@ -280,6 +280,21 @@ class TestZoneFilter:
         assert _mod.zone_row_applies("universal_residential", "zones other than R2", "R2")
         assert _mod.zone_row_applies("zone_specific", "zones other than R2", "")
 
+    def test_every_zone_family_is_read_for_inclusion_and_exclusion(self):
+        # The old 10-code list missed SP, RU, RE, IN, W and most E/B codes: an "SP2 only" row reached R2 sites.
+        pairs = (("SP2", "R2"), ("RU5", "R2"), ("IN2", "R3"), ("W1", "R2"), ("RE1", "R4"), ("E3", "R2"), ("B4", "R3"))  # noqa: zone-codes (test zones)
+        for code, other in pairs:
+            only = f"{code} zone only"
+            assert _mod.zone_row_applies("zone_specific", only, code), (only, code)
+            assert not _mod.zone_row_applies("zone_specific", only, other), (only, other)
+            excluding = f"zones other than {code}"
+            assert not _mod.zone_row_applies("zone_specific", excluding, code), (excluding, code)
+            assert _mod.zone_row_applies("zone_specific", excluding, other), (excluding, other)
+
+    def test_clause_ids_are_not_zone_codes(self):
+        assert _mod.zone_row_applies("zone_specific", "additional setbacks apply (C3.3.2)", "R2")  # noqa: zone-codes (C3.3.2 is a clause id, the point of the test)
+        assert _mod.zone_row_applies("zone_specific", "see Part B2.1 for corner sites", "R3")  # noqa: zone-codes (B2.1 is a DCP part id, the point of the test)
+
     def test_secondary_dwelling_routed_to_sd(self):
         rows = [_make_row(dev_type="secondary_dwelling")]
         result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")
