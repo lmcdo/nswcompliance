@@ -208,6 +208,10 @@ def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
                    condition, source_text, section_ref, applicability
             FROM dcp_setback_controls
             WHERE lga = %s AND is_current = TRUE
+              -- A control held for review is not served anywhere else (the same guard
+              -- as conveyancing_db.fetch_dcp_setbacks); without it a number hidden as
+              -- wrong still reached the granny flat result (2026-09-13 spot check).
+              AND (needs_review IS NULL OR needs_review = FALSE)
               AND (applicability = 'secondary_dwelling_specific'
                    OR dev_type = 'secondary_dwelling')
             ORDER BY
