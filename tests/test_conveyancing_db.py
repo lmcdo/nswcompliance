@@ -280,7 +280,9 @@ class TestZoneFilter:
             assert ok("zone_specific", cond, "R3"), cond
         cond = "all zones other than R2 Low Density and R3 Medium Density"  # noqa: zone-codes (test condition text)
         assert not ok("zone_specific", cond, "R3") and not ok("zone_specific", cond, "R2") and ok("zone_specific", cond, "R4")  # noqa: zone-codes (test zones)
-        # A negation that names no zone leaves the zone scope alone.
+        # A negation that names no zone leaves the zone scope alone, even when a zone follows in the same clause.
+        cond = "other than corner lots, R3 zone only"  # noqa: zone-codes (test condition text)
+        assert ok("zone_specific", cond, "R3") and not ok("zone_specific", cond, "R2")  # noqa: zone-codes (test zones)
         assert ok("zone_specific", "corner lots other than battle-axe lots", "R2")
         assert ok("zone_specific", "R2 zone, except corner lots", "R2")
         assert not ok("zone_specific", "R2 zone, except corner lots", "R3")  # noqa: zone-codes (test condition text)
@@ -304,6 +306,9 @@ class TestZoneFilter:
     def test_clause_ids_are_not_zone_codes(self):
         assert _mod.zone_row_applies("zone_specific", "additional setbacks apply (C3.3.2)", "R2")  # noqa: zone-codes (C3.3.2 is a clause id, the point of the test)
         assert _mod.zone_row_applies("zone_specific", "see Part B2.1 for corner sites", "R3")  # noqa: zone-codes (B2.1 is a DCP part id, the point of the test)
+        assert _mod.zone_row_applies("zone_specific", "See Part B2 for corner-site controls", "R3")  # noqa: zone-codes (Part B2 is a DCP part, the point of the test)
+        assert _mod.zone_row_applies("zone_specific", "Clause C3 applies", "R2")  # noqa: zone-codes (Clause C3 is a clause, the point of the test)
+        assert not _mod.zone_row_applies("zone_specific", "R2 zone; see Part B2", "R3")  # noqa: zone-codes (a real zone still limits the row)
 
     def test_secondary_dwelling_routed_to_sd(self):
         rows = [_make_row(dev_type="secondary_dwelling")]

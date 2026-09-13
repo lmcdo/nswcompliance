@@ -442,6 +442,38 @@ def apply_chapter_key_aliases(registry_pdf_urls: dict, lga_slug: str) -> dict:
 # (enrichment/config/zone_taxonomy.py holds legacy->current aliases, not the families, and is not deployed).
 _ZONE_CODE = re.compile(r"(?<![A-Z0-9.])(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9](?![0-9]|\.[0-9])")
 _NEGATION = re.compile(r"\b(?:OTHER THAN|EXCEPT|EXCLUDING|NOT IN)\b")
+# A code directly after a document-reference word ("Part B2", "Clause C3") is a DCP part, not a zone.
+_DOC_REFERENCE = re.compile(
+    r"\b(?:PART|CLAUSE|CL|SECTION|CHAPTER|SCHEDULE|TABLE|FIGURE|APPENDIX|CONTROL)\.?\s+"
+    r"(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9][0-9A-Z.]*")
+_SPAN_TOKEN = re.compile(r"[A-Z0-9]+|[,/();]")
+_ZONE_CODE_WORD = re.compile(r"(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9]")
+# Words that may sit inside an exclusion list: joiners, articles and the words of NSW zone names. Any other
+# word ends the list, so "other than corner lots, R3 zone only" excludes nothing.
+_EXCLUSION_LIST_WORDS = frozenset(
+    "AND OR THE IN LAND ZONED ZONE ZONES , / ( ) LOW MEDIUM HIGH DENSITY RESIDENTIAL LARGE LOCAL CENTRE "
+    "COMMERCIAL CORE MIXED USE NEIGHBOURHOOD ENTERPRISE PRODUCTIVITY SUPPORT GENERAL HEAVY LIGHT INDUSTRIAL "
+    "INFRASTRUCTURE SPECIAL ACTIVITIES PUBLIC PRIVATE RECREATION ENVIRONMENTAL CONSERVATION MANAGEMENT LIVING "
+    "NATIONAL PARKS NATURE RESERVES WATERWAYS RECREATIONAL WORKING WATERFRONT PRIMARY PRODUCTION RURAL "
+    "LANDSCAPE FORESTRY VILLAGE BUSINESS".split())
+
+
+def _exclusion_list(text: str, start: int) -> tuple[int, set[str]]:
+    """Read the zone list that follows a negation keyword ending at ``start``.
+
+    Consumes zone codes and the words allowed in _EXCLUSION_LIST_WORDS; stops at ';' or the first other word.
+    Returns the end offset of the list and the zone codes in it.
+    """
+    end, codes = start, set()
+    for token in _SPAN_TOKEN.finditer(text, start):
+        word = token.group(0)
+        is_code = bool(_ZONE_CODE_WORD.fullmatch(word)) and not re.match(r"\.[0-9]", text[token.end():token.end() + 2])
+        if not is_code and word not in _EXCLUSION_LIST_WORDS:
+            break
+        if is_code:
+            codes.add(word)
+        end = token.end()
+    return end, codes
 
 
 def zone_row_applies(applicability: Optional[str], condition: Optional[str], zone_prefix: str) -> bool:
@@ -449,21 +481,22 @@ def zone_row_applies(applicability: Optional[str], condition: Optional[str], zon
 
     Only ``zone_specific`` rows with condition text are ever excluded, and only when a zone is known.
     Zone codes are whole tokens of any Standard Instrument family (R, RU, RE, E, B, IN, SP, MU, C or W
-    followed by a digit); a clause id such as C3.3.2 is not a zone code. Codes inside a negated clause -
-    from "other than", "except", "excluding" or "not in" to the next ";" (e.g. "zones other than the R2
-    zone") - are excluded zones. Codes anywhere else are the zones the row is limited to. A row is dropped
+    followed by a digit); a clause id such as C3.3.2, or a code after "Part", "Clause" and similar words, is
+    not a zone code. The zone list directly after "other than", "except", "excluding" or "not in" (e.g.
+    "zones other than the R2 zone", "other than R2 Low Density and R3 Medium Density") names excluded zones;
+    the list ends at the first word that is not a zone code, a zone-name word or a joiner. Codes anywhere
+    else are the zones the row is limited to. A row is dropped
     when the site's zone is excluded, or when the row is limited to zones that do not include it; a
     condition naming no zone code applies everywhere. Legacy and current codes are not aliased.
     """
     if not zone_prefix or applicability != "zone_specific" or not condition:
         return True
-    cond_upper = condition.upper()
+    cond_upper = _DOC_REFERENCE.sub(" ", condition.upper())
     excluded: set[str] = set()
     negated = [False] * len(cond_upper)
     for neg in _NEGATION.finditer(cond_upper):
-        end = cond_upper.find(";", neg.end())
-        end = len(cond_upper) if end < 0 else end
-        excluded.update(_ZONE_CODE.findall(cond_upper[neg.end():end]))
+        end, codes = _exclusion_list(cond_upper, neg.end())
+        excluded |= codes
         for i in range(neg.start(), end):
             negated[i] = True
     if zone_prefix in excluded:
