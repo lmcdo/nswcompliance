@@ -1,10 +1,11 @@
 {
   "tier": "critical",
   "justification": "Writes the numeric DCP controls served for every Strathfield property (setbacks, parking, landscaping, deep soil, fencing, solar access). A wrong value, page or plan here is a wrong regulatory answer served with a citation.",
-  "commit_hash": "2759db52",
+  "commit_hash": "344c2688",
   "files": [
     "scripts/insert_strathfield_general_residential.py",
-    "tests/test_insert_strathfield_general_residential.py"
+    "tests/test_insert_strathfield_general_residential.py",
+    "scripts/control_source_values_baseline.json"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_insert_strathfield_general_residential.py -q",
@@ -64,7 +65,7 @@
   ],
   "queries": [
     {
-      "purpose": "Refuse to write unless the plan is registered with a public copy to link to",
+      "purpose": "Registered plan chapter with a public copy, checked before any write",
       "file_line": "scripts/insert_strathfield_general_residential.py:296",
       "where_clause": "council = %s AND chapter_key = %s AND is_active AND r2_public_pdf_url IS NOT NULL"
     },
