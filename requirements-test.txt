@@ -110,3 +110,12 @@ PyYAML==6.0.3
 # the OOM regression would have been dark from the day it was written. Pinned to
 # match requirements.txt.
 reportlab==5.0.0
+
+# beautifulsoup4: tests/test_woollahra_scraper_skips_repealed.py drives the real
+# Woollahra hub scraper, which imports bs4 at module scope, to prove it no longer
+# offers the council's repealed-dcps archive as a chapter's current URL. bs4 was
+# declared only in scripts/requirements-monitor.txt, which CI does not install --
+# caught by the doc-claim ratchet on the first push, before the test could go dark.
+# The test parses with the stdlib html.parser, so lxml is NOT needed here.
+# Pinned to match scripts/requirements-monitor.txt.
+beautifulsoup4>=4.12
