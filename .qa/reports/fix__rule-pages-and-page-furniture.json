@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what the page-range extractor emits for every council on that path: the page each rule cites, and for waverley the text of every rule. The output becomes review-queue rows that, once approved, replace the rules and citation pages served for a whole council.",
-  "commit_hash": "pending",
+  "commit_hash": "bbbefc45",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_rule_pages_and_page_furniture.py"
