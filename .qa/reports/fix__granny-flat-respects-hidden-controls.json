@@ -1,0 +1,91 @@
+{
+  "tier": "critical",
+  "justification": "Changes which council numeric controls the granny flat tool shows a user. A control held for review because it is wrong was still served there, unlike every other surface.",
+  "commit_hash": "pending",
+  "files": [
+    "services/granny_flat.py",
+    "tests/test_granny_flat_mutation.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_granny_flat_mutation.py -q -k held_for_review",
+    "fails_when": "the secondary dwelling setback query in _fetch_sd_setbacks stops excluding rows with needs_review set",
+    "observed_red": "Guard line removed from the query: FAILED test_a_control_held_for_review_is_excluded_by_the_query, 1 failed 186 deselected. File restored byte-identical; test_granny_flat_mutation.py 187 passed; all granny flat tests 256 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13: a spot check of dcp_setback_controls against source PDFs and stored quotes set needs_review on 29 served numbers; after reading each against its PDF, 8 were confirmed and shown again and 19 stay hidden with the finding in review_reason. Four of the hidden rows are secondary dwelling controls (marrickville 1, 2, 6; cumberland 35) that _fetch_sd_setbacks selects by dev_type or applicability.",
+    "assumption_mismatch": "Hiding a control by needs_review assumed every reader honours the flag. conveyancing_db.fetch_dcp_setbacks and the structured-controls route do, and check_ts_dcp_readers.py reports no unguarded frontend reader, but services/granny_flat.py queries the table directly with is_current only.",
+    "new_vs_existing": "Adds the exact guard conveyancing_db.fetch_dcp_setbacks already uses, (needs_review IS NULL OR needs_review = FALSE), rather than re-routing the tool through that function, whose output shape differs.",
+    "external_source_error": "Not applicable to an external source; if every secondary dwelling control for a council is held, the query returns no rows and the tool falls back to its existing no-DCP-data path.",
+    "frontend_type": "No frontend change; the granny flat response carries fewer setback rows for affected councils.",
+    "user_failure_mode": "Without this, a granny flat result for a marrickville or cumberland lot shows setbacks that the spot check found are not the council's rule for secondary dwellings, such as a basement wall setback presented as a side setback."
+  },
+  "functions": [
+    {
+      "name": "_fetch_sd_setbacks",
+      "file_line": "services/granny_flat.py:195",
+      "input": "A database connection and the council slug for the lot being assessed.",
+      "output": "The council's current secondary dwelling setback controls that are not held for review, with the DCP name and URL.",
+      "if_none": "A missing slug returns None before querying; no qualifying rows returns None and the caller uses its existing fallback."
+    }
+  ],
+  "values": [
+    {
+      "value": "dcp_setback_controls.needs_review for each secondary dwelling control",
+      "read_at": "services/granny_flat.py:213",
+      "if_missing": "NULL counts as not held, matching conveyancing_db.fetch_dcp_setbacks."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Select a council's secondary dwelling setback controls for the granny flat result.",
+      "file_line": "services/granny_flat.py:209",
+      "where_clause": "lga = the council slug, is_current = TRUE, needs_review IS NULL OR FALSE, and applicability = secondary_dwelling_specific or dev_type = secondary_dwelling."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A secondary dwelling setback is hidden for review because it is wrong, such as cumberland's basement wall setback filed as a side setback.",
+      "what_happens": "The granny flat tool still shows it, because this reader ignored the flag every other surface honours.",
+      "mitigated": true,
+      "how": "The query now excludes needs_review rows; a unit test asserts the guard is in the executed SQL.",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -k held_for_review -q"
+    },
+    {
+      "scenario": "A council whose only secondary dwelling controls are all held for review.",
+      "what_happens": "The query returns nothing, which could look like a failure.",
+      "mitigated": true,
+      "how": "No rows already returns None and the tool uses its existing path for councils without DCP secondary dwelling data; the no-rows test covers it.",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -k no_rows_returns_none -q"
+    },
+    {
+      "scenario": "A control with needs_review NULL, as on rows inserted before the column existed.",
+      "what_happens": "A strict needs_review = FALSE would drop every legacy row and empty the tool.",
+      "mitigated": true,
+      "how": "The guard treats NULL as not held, the same expression conveyancing_db uses.",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -k held_for_review -q"
+    },
+    {
+      "scenario": "Another service reads dcp_setback_controls directly without the guard.",
+      "what_happens": "Hidden numbers would leak through that path too.",
+      "mitigated": true,
+      "how": "Swept services/ for direct reads of the table: granny_flat.py was the only one; the frontend readers are checked by scripts/check_ts_dcp_readers.py (no unexpected readers).",
+      "repro": "python scripts/check_ts_dcp_readers.py"
+    },
+    {
+      "scenario": "A control hidden for review is later corrected and un-hidden.",
+      "what_happens": "It must reappear in the granny flat tool without further code change.",
+      "mitigated": true,
+      "how": "The guard reads the live flag on every request; clearing needs_review restores the row.",
+      "repro": "python -m pytest tests/test_granny_flat_mutation.py -k basic_setback_row -q"
+    }
+  ],
+  "real_layer_exempt": {
+    "services/granny_flat.py": "Adds one WHERE condition identical to the guard already used and tested against production by conveyancing_db.fetch_dcp_setbacks; the SQL is asserted by a unit test and no granny flat real-DB test file exists to extend."
+  },
+  "post_merge": {
+    "db_reset": "No schema change. The 19 held controls and 8 re-shown controls were set directly on 2026-09-13 with a backup.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: run the granny flat tool for a marrickville lot and confirm the held secondary dwelling setbacks no longer appear."
+  }
+}

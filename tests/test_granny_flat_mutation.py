@@ -516,6 +516,20 @@ class TestFetchSdSetbacks:
         assert result["dcp_name"] == "Inner West DCP"
         assert result["dcp_url"] == "https://council.nsw.gov.au/dcp"
 
+    def test_a_control_held_for_review_is_excluded_by_the_query(self):
+        """A number hidden as wrong (needs_review) must not reach the granny flat result.
+        Found 2026-09-13: this was the one reader of dcp_setback_controls without the
+        guard every other served path uses, so four hidden secondary-dwelling setbacks
+        still appeared here."""
+        cur = FakeCursor()
+        executed = []
+        cur.execute = lambda sql, params=None: executed.append(" ".join(sql.split()))
+        cur.fetchall = lambda: []
+        cur.fetchone = lambda: None
+        _fetch_sd_setbacks(FakeConn(cursor=cur), "marrickville")
+        controls_sql = next(s for s in executed if "FROM dcp_setback_controls" in s)
+        assert "(needs_review IS NULL OR needs_review = FALSE)" in controls_sql
+
     def test_setback_with_vmin_and_vmax(self):
         """When vmin and vmax differ, both should appear."""
         cur = FakeCursor()
