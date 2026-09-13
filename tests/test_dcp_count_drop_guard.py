@@ -119,6 +119,27 @@ class TestDiffProvisionsCountDrop:
         diff = diff_provisions(new_sections, "c", "ch", "doc", cur)
         assert diff["status"] == "restructure"
 
+    def test_unchanged_rules_are_listed_with_their_new_page(self):
+        """A chapter replaced whole must queue its unchanged rules, so the diff has to
+        name them, and at the page they are on now (citations open at that page)."""
+        cur = _FakeCursor(_old_rows("doc", 30))
+        new_sections = [{**_section(i), "page_start": 100 + i, "page_end": 100 + i} for i in range(30)]
+        diff = diff_provisions(new_sections, "c", "ch", "doc", cur)
+        assert diff["unchanged_count"] == 30
+        assert len(diff["unchanged"]) == 30
+        first = next(u for u in diff["unchanged"] if u["ref_number"] == build_ref_number("doc", "S0"))
+        assert (first["old_page"], first["new_page"]) == (1, 100)
+        assert first["new_text"] == build_provision_text(new_sections[0])
+
+    def test_a_renumbered_rule_carries_its_new_page(self):
+        body = "Vehicle crossings must be located to retain street trees and on-street parking."
+        old = [(build_ref_number("doc", "S0"), build_provision_text(_section(0, body)), 60)]
+        cur = _FakeCursor(old)
+        moved = {**_section(9, body), "page_start": 61, "page_end": 61}
+        diff = diff_provisions([moved], "c", "ch", "doc", cur)
+        assert len(diff["renumbered"]) == 1
+        assert diff["renumbered"][0]["new_page"] == 61
+
     def test_minor_change_stays_ok(self):
         # 30 -> 28 (2 removed) is within tolerance: not a drop, not a restructure.
         cur = _FakeCursor(_old_rows("doc", 30))
