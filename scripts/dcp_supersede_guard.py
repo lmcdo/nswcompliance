@@ -25,11 +25,22 @@ The chapter's live section codes are read BEFORE the write and AFTER it, inside 
 same uncommitted transaction, and the outcome is judged -- not a prediction of it. One
 check therefore covers a full replace, a targeted update and a renumbering alike.
 
-  refused  when the chapter had at least MIN_CODES codes and MORE than LOSS_RATIO of
-           them are gone afterwards;
-  or       when it had too few codes to judge by but more than MIN_ROWS rules, and MORE
-           than LOSS_RATIO of the rules are gone;
-  allowed  otherwise -- including a first extraction, which has nothing to lose.
+When the chapter has at least MIN_CODES section codes, it is refused if EITHER
+  * MORE than LOSS_RATIO of its section codes are gone, or
+  * it had more than MIN_ROWS rules and MORE than ROW_LOSS_RATIO of them are gone,
+    even though the section codes survived. (Cross-review: a broken run emitting one
+    rule per section keeps every code and still deletes most of the chapter.)
+When it has too few codes to judge by, it is refused if it had more than MIN_ROWS rules
+and MORE than LOSS_RATIO of them are gone. Otherwise it is allowed -- including a first
+extraction, which has nothing to lose.
+
+WHY THE ROW BAR IS LOOSER WHEN SECTIONS ARE KEPT
+------------------------------------------------
+Extractors disagree about granularity. The pdfplumber path stored a clause's objectives
+and its controls as separate rules; the AI path emits one rule per clause. Waverley went
+607 -> 264 distinct rules that way (measured 2026-09-11), mostly consolidation rather
+than loss. A 50% row bar would refuse that; 75% refuses the incident (215 -> 26 is 88%)
+and the one-rule-per-section collapse (215 -> 38 is 82%) while letting it through.
 
 A renumbered chapter loses every old code and is refused too. That is deliberate: every
 served citation changes, which a person should see. The refusal says how many new codes
@@ -61,9 +72,10 @@ try:
 except ImportError:  # running from inside scripts/
     from dcp_chapter_measure import leading_code
 
-LOSS_RATIO = 0.5   # "most": strictly more than half gone
-MIN_CODES = 5      # fewer codes than this is too small to judge by codes
-MIN_ROWS = 20      # same floor as COUNT_DROP_MIN_BASELINE in dcp_extract_changed
+LOSS_RATIO = 0.5       # "most": strictly more than half gone
+ROW_LOSS_RATIO = 0.75  # rules gone while sections survive: strictly more than three-quarters
+MIN_CODES = 5          # fewer codes than this is too small to judge by codes
+MIN_ROWS = 20          # same floor as COUNT_DROP_MIN_BASELINE in dcp_extract_changed
 
 
 class SectionLossRefused(RuntimeError):
@@ -82,8 +94,8 @@ class Verdict:
     measure: str            # "codes" | "rows" | "not judged"
     before: int
     after: int
-    lost: tuple             # codes present before and absent after (codes measure only)
-    gained: int             # codes present after and absent before
+    lost: tuple             # section codes present before and absent after
+    gained: int             # section codes present after and absent before
 
     def describe(self, council: str, chapter_key: str) -> str:
         head = f"{council}/{chapter_key}: "
@@ -93,9 +105,10 @@ class Verdict:
                 f"lost ({len(self.lost) / self.before:.0%}), {self.gained} new. "
                 f"Lost e.g. {', '.join(self.lost[:8])}")
         if self.measure == "rows":
+            kept = "sections mostly kept, " if not self.lost else ""
             return head + (
-                f"too few section codes to judge by; {self.before} rules before, "
-                f"{self.after} after ({(self.before - self.after) / self.before:.0%} gone)")
+                f"{kept}{self.before} rules before, {self.after} after "
+                f"({(self.before - self.after) / self.before:.0%} gone)")
         return head + f"not judged -- {self.before} rules before is too few to measure"
 
 
@@ -117,13 +130,17 @@ def judge(before: Snapshot, after: Snapshot) -> Verdict:
     """Pure. Did `after` lose most of what `before` held?"""
     lost = tuple(sorted(before.codes - after.codes))
     gained = len(after.codes - before.codes)
+    rows_gone = before.rows - after.rows
     if len(before.codes) >= MIN_CODES:
-        refused = len(lost) > LOSS_RATIO * len(before.codes)
-        return Verdict(refused, "codes", len(before.codes), len(after.codes), lost, gained)
+        if len(lost) > LOSS_RATIO * len(before.codes):
+            return Verdict(True, "codes", len(before.codes), len(after.codes), lost, gained)
+        if before.rows > MIN_ROWS and rows_gone > ROW_LOSS_RATIO * before.rows:
+            return Verdict(True, "rows", before.rows, after.rows, lost, gained)
+        return Verdict(False, "codes", len(before.codes), len(after.codes), lost, gained)
     if before.rows > MIN_ROWS:
-        refused = (before.rows - after.rows) > LOSS_RATIO * before.rows
-        return Verdict(refused, "rows", before.rows, after.rows, (), gained)
-    return Verdict(False, "not judged", before.rows, after.rows, (), gained)
+        refused = rows_gone > LOSS_RATIO * before.rows
+        return Verdict(refused, "rows", before.rows, after.rows, lost, gained)
+    return Verdict(False, "not judged", before.rows, after.rows, lost, gained)
 
 
 def enforce(cur, council: str, chapter_key: str, before: Snapshot,
@@ -140,6 +157,6 @@ def enforce(cur, council: str, chapter_key: str, before: Snapshot,
               f"{verdict.describe(council, chapter_key)}")
         return verdict
     raise SectionLossRefused(
-        "REFUSED: this version would lose most of the chapter's sections. "
+        "REFUSED: this version would lose most of the chapter. "
         + verdict.describe(council, chapter_key)
         + f". If that is intended, re-run with --allow-section-loss {council}/{chapter_key}")

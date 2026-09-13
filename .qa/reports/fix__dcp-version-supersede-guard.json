@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a refusal inside the two code paths that write live regulatory provisions to the single production database. A wrong guard either lets a worse extraction replace good rules again, or blocks legitimate council amendments from ever going live.",
-  "commit_hash": "abbd2d3b",
+  "commit_hash": "ce93ef56",
   "files": [
     "scripts/dcp_supersede_guard.py",
     "scripts/dcp_commit_approved.py",
@@ -15,7 +15,7 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_dcp_commit_refuses_section_loss.py tests/test_dockerfile_monitors_imports.py -q",
     "fails_when": "the commit job commits a chapter whose live section codes fall from 38 to 8 without --allow-section-loss naming that chapter, or the monitor image stops copying the guard module both workers import",
-    "observed_red": "With the enforce_section_loss call deleted from dcp_commit_approved.py and the guard COPY deleted from Dockerfile.monitors: assert conn.commits == 0 -> E assert 1 == 0 ('a swap losing 30 of 38 sections was committed'); assert dca.main() == 1 -> E assert (2 == 1); Missing COPY in Dockerfile.monitors: scripts/dcp_commit_approved.py imports scripts.dcp_supersede_guard; 3 failed, 6 passed. Restored: 9 passed."
+    "observed_red": "With the enforce_section_loss call deleted from dcp_commit_approved.py and the guard COPY deleted from Dockerfile.monitors: assert conn.commits == 0 -> E assert 1 == 0 ('a swap losing 30 of 38 sections was committed'); assert dca.main() == 1 -> E assert (2 == 1); Missing COPY in Dockerfile.monitors: scripts/dcp_commit_approved.py imports scripts.dcp_supersede_guard; 3 failed, 6 passed. Restored: 9 passed. Row rule forced off (if False): test_keeping_every_section_but_few_rules_is_refused and test_the_row_bar_is_more_than_three_quarters_and_is_bounded_both_ways FAILED, 2 failed 10 passed; restored, 12 passed."
   },
   "pre_impl": {
     "existing_data": "Measured 2026-09-13 on production: marrickville part4-s1-low-density live version had 26 rules and 8 section codes while the switched-off earlier version had 215 rules and 38 codes; mixed use 225 to 19; stormwater 16 codes to 1.",
@@ -28,21 +28,21 @@
   "functions": [
     {
       "name": "snapshot",
-      "file_line": "scripts/dcp_supersede_guard.py:102",
+      "file_line": "scripts/dcp_supersede_guard.py:115",
       "input": "An open cursor inside the caller's transaction, a council slug and a chapter key.",
       "output": "A Snapshot holding the set of leading section codes of the chapter's current rows and the current row count.",
       "if_none": "A chapter with no current rows returns an empty code set and zero rows; NULL section headers count as rows with no code."
     },
     {
       "name": "judge",
-      "file_line": "scripts/dcp_supersede_guard.py:116",
+      "file_line": "scripts/dcp_supersede_guard.py:129",
       "input": "Two Snapshots of the same chapter: before the write and after it, within one transaction.",
-      "output": "A Verdict saying refused or not, the measure used (codes, rows, not judged), counts, the lost codes and how many codes are new.",
+      "output": "A Verdict: refused when more than half the section codes are gone, or when sections survive but more than three-quarters of the rules are gone; with the measure, counts, lost codes and new codes.",
       "if_none": "An empty before snapshot is not judged and is allowed, so a first extraction of a new chapter always passes."
     },
     {
       "name": "enforce",
-      "file_line": "scripts/dcp_supersede_guard.py:129",
+      "file_line": "scripts/dcp_supersede_guard.py:146",
       "input": "Cursor, council, chapter key, the before Snapshot, and the set of council/chapter names a person allowed.",
       "output": "The Verdict when allowed; raises SectionLossRefused naming the numbers and the exact override flag when refused.",
       "if_none": "An empty allowed set means nothing is overridden, which is what every scheduled run passes, so scheduled runs fail closed."
@@ -51,14 +51,14 @@
   "values": [
     {
       "value": "regulatory_provisions.section_header",
-      "read_at": "scripts/dcp_supersede_guard.py:111",
+      "read_at": "scripts/dcp_supersede_guard.py:124",
       "if_missing": "NULL header counts as a row with no section code; if too few codes exist the chapter is judged by row count instead."
     }
   ],
   "queries": [
     {
       "purpose": "Read the live section headers of one chapter before and after a commit, inside the same transaction",
-      "file_line": "scripts/dcp_supersede_guard.py:104",
+      "file_line": "scripts/dcp_supersede_guard.py:117",
       "where_clause": "source_council = %s AND source_chapter_key = %s AND is_current = TRUE"
     }
   ],
@@ -104,6 +104,13 @@
       "mitigated": true,
       "how": "Dockerfile.monitors copies dcp_supersede_guard.py and dcp_chapter_measure.py, and test_every_sibling_import_is_copied_into_the_image went red when the COPY was removed.",
       "repro": "python -m pytest tests/test_dockerfile_monitors_imports.py -q"
+    },
+    {
+      "scenario": "A broken run emits exactly one rule per section, so every section code survives while most of the rules are deleted.",
+      "what_happens": "A guard that only compares section codes allows it, and the chapter silently loses 177 of its 215 rules.",
+      "mitigated": true,
+      "how": "Cross-review round 1 (HIGH, real). With sections measurable the guard also refuses when more than three-quarters of the rules are gone. The bar is 75 percent rather than 50 so a consolidation like Waverley 607 to 264 rules, one rule per clause instead of objectives and controls apart, still passes. Forcing the row rule off turned two tests red.",
+      "repro": "python -m pytest tests/test_dcp_supersede_guard.py -k \"few_rules or row_bar or consolidation\" -q"
     }
   ],
   "post_merge": {

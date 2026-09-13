@@ -47,9 +47,31 @@ def test_the_threshold_is_more_than_half_and_is_bounded_both_ways():
     assert judge(before, Snapshot(first(before.codes, 4), 20)).refused       # 6 of 10 lost
 
 
+def test_keeping_every_section_but_few_rules_is_refused():
+    """Cross-review finding: a broken run emitting one rule per section keeps all 38
+    codes and still deletes 177 of 215 rules. A code-only guard let that through."""
+    before = Snapshot(codes("4.1", 38), 215)
+    v = judge(before, Snapshot(before.codes, 38))
+    assert v.refused and v.measure == "rows"
+    assert v.lost == ()
+
+
+def test_the_row_bar_is_more_than_three_quarters_and_is_bounded_both_ways():
+    before = Snapshot(codes("2.10", 20), 100)
+    assert not judge(before, Snapshot(before.codes, 25)).refused   # 75 of 100 gone
+    assert judge(before, Snapshot(before.codes, 24)).refused       # 76 of 100 gone
+
+
 # ---------------------------------------------------------------------------
 # 2. Confusable negatives -- when it must NOT refuse
 # ---------------------------------------------------------------------------
+
+def test_a_consolidation_that_keeps_its_sections_is_allowed():
+    """Waverley 607 -> 264 rules (measured 2026-09-11) was mostly the AI path emitting one
+    rule per clause where pdfplumber had stored objectives and controls separately. With
+    the sections kept, a 56% row drop is granularity, not loss."""
+    before = Snapshot(codes("B", 30), 607)
+    assert not judge(before, Snapshot(before.codes, 264)).refused
 
 def test_an_ordinary_amendment_is_allowed():
     """A council deletes three sections of twenty. That is an amendment, not a loss."""
