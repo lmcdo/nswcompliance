@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which stored rules the property page's DCP tab returns, for every council: a SQL filter in one API route that silently dropped every rule with no topic. Read path only - no write, no schema change - but it alters served regulatory content, so standard rather than minor.",
-  "commit_hash": "d323ec16",
+  "commit_hash": "64101e82",
   "files": [
     "frontend-nextjs/lib/provision-sql-filters.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
@@ -10,10 +10,10 @@
   "falsifiable_check": {
     "command": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_provision_sql_filters.py -o addopts= -v",
     "fails_when": "the predicate read out of frontend-nextjs/lib/provision-sql-filters.ts, run by real Postgres over a VALUES list, drops the row whose v2_topic and v2_marker are both NULL, or keeps a row whose topic or marker is heritage",
-    "observed_red": "Run against the pre-fix predicate from origin/main: OLD predicate (origin/main) -> kept ['ordinary topic'] | expected ['no topic, no marker', 'ordinary topic'] | RED. Against the shared predicate: kept ['no topic, no marker', 'ordinary topic'] | PASS. Live, Marrickville restored chapters under the old filter served stormwater 40, low-density 186, mixed-use 182; under the fixed filter 46, 211, 210."
+    "observed_red": "Eight VALUES rows through real Postgres. OLD predicate (origin/main): RED - dropped ['no topic, no marker', 'no topic, statewide, no chapter'] kept wrongly []\r | NEW shared predicate: PASS | Live, Marrickville restored chapters under the old filter served stormwater 40, low-density 186, mixed-use 182; under the fixed filter 46, 211, 210."
   },
   "pre_impl": {
-    "existing_data": "Measured on production 2026-09-13: 3,026 current actionable rows have v2_topic NULL and no heritage marker - 2,530 statewide generic, 298 council generic, 198 council precinct. Of all 3,026 only 34 mention heritage anywhere in their text.",
+    "existing_data": "NULL-safe measurement on production 2026-09-13 (IS TRUE / IS NOT TRUE, not NOT(...)): the fixed filter newly shows 2,968 current actionable rules (438 council, 2,530 statewide) and hides none that were shown before. 58 untagged rules inside heritage chapters stay hidden. 34 newly shown rules mention heritage; sampled, they are conditions such as not on or in a heritage item.",
     "assumption_mismatch": "The filter was written assuming every served row carries a topic. The layer tagger only processes rows whose v2_dcp_layer is NULL, so a row it tagged with a layer but could not place in a topic is never revisited, and stays NULL forever.",
     "new_vs_existing": "Replaces five hand-copied strings inside route.ts with one exported constant in a new lib module. The by_topic grouping already maps a missing topic to 'other' (route.ts line 1118), so no grouping change was needed."
   },
@@ -22,8 +22,8 @@
       "name": "NOT_HERITAGE_SQL",
       "file_line": "frontend-nextjs/lib/provision-sql-filters.ts:24",
       "input": "No arguments; a SQL fragment interpolated into the provisions query for generic, use-specific and no-precinct precinct layers.",
-      "output": "A boolean predicate that is TRUE for any row that is not tagged heritage by topic or marker, including rows with no topic.",
-      "if_none": "A NULL v2_topic is coalesced to an empty string, so the comparison is TRUE and the row is kept rather than silently dropped by NULL semantics."
+      "output": "A boolean predicate that is TRUE unless the row is tagged heritage by topic or marker in any case, or has no topic and comes from a chapter whose key names heritage.",
+      "if_none": "A NULL topic or marker is coalesced to an empty string; a NULL topic is kept unless its chapter key names heritage, where it stays hidden as before."
     }
   ],
   "values": [
@@ -60,8 +60,15 @@
       "scenario": "An untagged row is really heritage content, so the fix now shows a heritage control to a property that is not heritage listed.",
       "what_happens": "A non-heritage owner sees a heritage rule under the 'other' group that does not apply to their lot.",
       "mitigated": true,
-      "how": "Measured before changing anything: 34 of the 3,026 un-hidden rows mention heritage in their text, about 1%. Hiding 2,992 applicable rules to avoid showing 34 possibly-irrelevant ones is the wrong trade, and the rows still carry their section and citation so a reader can see what they are.",
+      "how": "Raised by cross-review round 1 (HIGH). Measured, then narrowed rather than argued: an untagged rule from a heritage chapter stays hidden (58 rows), so only untagged rules outside heritage chapters are newly shown. Of those, 34 mention heritage and the sampled ones are conditions on general controls. Pinned as VALUES cases in the database test.",
       "repro": "SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable AND v2_topic IS NULL AND provision_text ~* 'heritage'"
+    },
+    {
+      "scenario": "A heritage marker stored as Heritage with a capital letter reaches a property that is not heritage listed.",
+      "what_happens": "The old marker comparison was case-sensitive, so that row would pass the filter and show a heritage control.",
+      "mitigated": true,
+      "how": "Raised by cross-review round 1 (MEDIUM). No live row is spelled that way today (907 markers, all lowercase), but the comparison now lowercases the marker, and a mixed-case marker row is one of the eight database test cases.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database tests/test_provision_sql_filters.py -o addopts= -v"
     },
     {
       "scenario": "Someone later hand-copies the old predicate back into the route, reintroducing the NULL drop in one of the five places.",

@@ -12,6 +12,10 @@ The database tests below run THAT string, read out of the file, against real
 Postgres, so they cannot pass on a lookalike. They need no table data: the rows
 are a VALUES list, because what is under test is Postgres's own NULL semantics.
 
+The cross-reviewer's objection is pinned as cases, not argued in prose: an untagged
+row from a heritage chapter must stay hidden, and a mixed-case heritage marker must
+not slip through. A TAGGED row in a heritage chapter keeps its old behaviour.
+
 Run the database half:
     PYTEST_REAL_DB=1 pytest -m database tests/test_provision_sql_filters.py -o addopts=
 """
@@ -32,12 +36,16 @@ OLD_PREDICATE = (
     "(LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))"
 )
 
-# (label, v2_topic, v2_marker, should_be_kept)
+# (label, v2_topic, v2_marker, source_chapter_key, should_be_kept)
 CASES = [
-    ("no topic, no marker", None, None, True),
-    ("ordinary topic", "Parking", None, True),
-    ("heritage topic, mixed case", "Heritage", None, False),
-    ("no topic, heritage marker", None, "heritage", False),
+    ("no topic, no marker", None, None, "part4-s1-low-density", True),
+    ("no topic, statewide, no chapter", None, None, None, True),
+    ("ordinary topic", "Parking", None, "part2-s10-parking", True),
+    ("tagged topic inside a heritage chapter", "Parking", None, "part8-heritage", True),
+    ("heritage topic, mixed case", "Heritage", None, "part4-s1-low-density", False),
+    ("no topic, heritage marker", None, "heritage", None, False),
+    ("no topic, mixed-case heritage marker", None, "Heritage", None, False),
+    ("no topic, inside a heritage chapter", None, None, "part8-heritage", False),
 ]
 
 
@@ -56,6 +64,13 @@ def test_the_route_uses_the_shared_predicate_and_no_bare_copy_remains():
         "a hand-copied heritage predicate is back in the route; it drops every rule "
         "with no topic -- use NOT_HERITAGE_SQL"
     )
+
+
+def test_the_predicate_carries_no_percent_sign():
+    """psycopg2 reads '%' as a placeholder. The route uses $n placeholders and would not
+    care, but the database test runs this string through psycopg2 -- a '%' would make
+    that test error for the wrong reason rather than check anything."""
+    assert "%" not in shared_predicate()
 
 
 def _real_conn():
@@ -79,11 +94,12 @@ def _kept_labels(predicate: str) -> set[str]:
     conn = _real_conn()
     try:
         cur = conn.cursor()
-        rows = ", ".join(["(%s, %s::text, %s::text)"] * len(CASES))
-        params = [v for label, topic, marker, _ in CASES for v in (label, topic, marker)]
+        rows = ", ".join(["(%s, %s::text, %s::text, %s::text)"] * len(CASES))
+        params = [v for label, topic, marker, chapter, _ in CASES
+                  for v in (label, topic, marker, chapter)]
         cur.execute(
-            f"SELECT label FROM (VALUES {rows}) AS r(label, v2_topic, v2_marker) "
-            f"WHERE {predicate}",
+            f"SELECT label FROM (VALUES {rows}) "
+            f"AS r(label, v2_topic, v2_marker, source_chapter_key) WHERE {predicate}",
             params,
         )
         return {r[0] for r in cur.fetchall()}
@@ -94,7 +110,7 @@ def _kept_labels(predicate: str) -> set[str]:
 @pytest.mark.database
 def test_the_shared_predicate_keeps_untagged_rules_and_still_drops_heritage():
     kept = _kept_labels(shared_predicate())
-    assert kept == {label for label, _, _, keep in CASES if keep}
+    assert kept == {label for label, _, _, _, keep in CASES if keep}
 
 
 @pytest.mark.database

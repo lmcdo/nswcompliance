@@ -6,19 +6,25 @@
 /**
  * SQL predicate: this provision is NOT a heritage provision.
  *
- * A provision with no topic is not a heritage provision. The copies this replaces
- * compared `LOWER(v2_topic) != 'heritage'`, which evaluates to NULL -- not true --
- * when the topic is missing, so every untagged rule was silently dropped for every
- * non-heritage property. Found 2026-09-13 on Marrickville low-density housing, where
- * "4.1.6.3 C13 Maximum site coverage controls" was stored, current and actionable,
- * and never shown.
+ * A provision with no topic is not, by that fact, a heritage provision. The copies
+ * this replaces compared `LOWER(v2_topic) != 'heritage'`, which evaluates to NULL --
+ * not true -- when the topic is missing, so every untagged rule was silently dropped
+ * for every non-heritage property. Found 2026-09-13 on Marrickville low-density
+ * housing, where "4.1.6.3 C13 Maximum site coverage controls" was stored, current
+ * and actionable, and never shown.
  *
- * Measure the reach with:
- *   SELECT count(*) FROM regulatory_provisions
- *   WHERE is_current AND v2_is_actionable AND v2_topic IS NULL
- *     AND (v2_marker IS NULL OR v2_marker != 'heritage');
+ * Three parts, each measured on production before it was written:
+ *   1. topic is heritage (any case)            -> excluded
+ *   2. marker is heritage (any case)           -> excluded. Every stored marker is
+ *      lowercase today; the old comparison was case-sensitive and would have let a
+ *      'Heritage' marker through.
+ *   3. NO topic AND the row comes from a chapter whose key names heritage -> excluded.
+ *      An untagged rule inside a heritage chapter is the one kind that is plausibly
+ *      heritage-only content; 58 current rows. Rows WITH a topic keep their previous
+ *      behaviour, so this narrows nothing that was shown before. strpos rather than
+ *      LIKE so the string carries no '%' for a driver to misread as a placeholder.
  *
  * tests/test_provision_sql_filters.py runs this exact string against real Postgres.
  * Keep it a single-line template literal -- that test reads it out of this file.
  */
-export const NOT_HERITAGE_SQL = `(COALESCE(LOWER(v2_topic), '') != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;
+export const NOT_HERITAGE_SQL = `(COALESCE(LOWER(v2_topic), '') != 'heritage' AND COALESCE(LOWER(v2_marker), '') != 'heritage' AND (v2_topic IS NOT NULL OR strpos(LOWER(COALESCE(source_chapter_key, '')), 'heritage') = 0))`;
