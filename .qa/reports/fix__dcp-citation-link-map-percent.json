@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "fetch_dcp_setbacks is the one guarded read behind every served numeric DCP control. Its registry link-map query raised on every call and the except swallowed it, so every number has been served without a PDF citation link since 2026-08-26 - a silent wrong output on the served path.",
-  "commit_hash": "3f58d883",
+  "commit_hash": "76db1671",
   "files": [
     "scripts/conveyancing_db.py",
     "scripts/build_lot_search_index.py",

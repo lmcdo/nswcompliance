@@ -24,7 +24,9 @@ from unittest.mock import MagicMock
 
 REPO = Path(__file__).resolve().parents[1]
 ROOTS = ("scripts", "services", "src", "enrichment")
-BARE_PERCENT = re.compile(r"%(?![s(])")
+# After removing %% escapes, every remaining % must open a complete psycopg2
+# placeholder: %s or %(name)s. %(name), %()s and %(name)d all raise at execute().
+BARE_PERCENT = re.compile(r"%(?!s|\(\w+\)s)")
 
 sys.path.insert(0, str(REPO / "scripts"))
 from conveyancing_db import fetch_dcp_setbacks  # noqa: E402
@@ -77,6 +79,13 @@ def test_detector_flags_the_original_defect() -> None:
 def test_detector_flags_like_wildcard_with_params() -> None:
     src = "cur.execute(\"SELECT id FROM t WHERE name LIKE '%Road%' AND lga = %s\", (lga,))"
     assert len(stray_percents(src)) == 2
+
+
+def test_detector_flags_malformed_named_placeholders() -> None:
+    src = ("cur.execute(\"SELECT 1 FROM t WHERE a = %(name)\", params)\n"
+           "cur.execute(\"SELECT 1 FROM t WHERE a = %()s\", params)\n"
+           "cur.execute(\"SELECT 1 FROM t WHERE a = %(name)d\", params)\n")
+    assert len(stray_percents(src)) == 3
 
 
 def test_detector_allows_escapes_and_placeholders() -> None:
