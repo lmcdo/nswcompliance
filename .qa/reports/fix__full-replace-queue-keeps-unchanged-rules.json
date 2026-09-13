@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which rules the review queue holds for a chapter that is replaced whole. The commit job switches off every live rule of such a chapter and adds back only approved queue rows, so what the queue holds is exactly what stays served to users after approval.",
-  "commit_hash": "fa7268bf",
+  "commit_hash": "4deaf0d0",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_review_enqueue.py",
@@ -39,16 +39,22 @@
   "values": [
     {
       "value": "diff status and total_old, which decide is_full_replace",
-      "read_at": "scripts/dcp_extract_changed.py:4151",
+      "read_at": "scripts/dcp_extract_changed.py:4162",
       "if_missing": "A missing total_old counts as 0, which is a full replace, so the queue errs toward carrying every rule rather than dropping one."
     },
     {
       "value": "dcp_review_queue.summary text column",
-      "read_at": "scripts/dcp_extract_changed.py:4240",
+      "read_at": "scripts/dcp_extract_changed.py:4261",
       "if_missing": "NULL for changed, added and removed rows, as before."
     }
   ],
-  "queries": "INSERT INTO dcp_review_queue gains the existing summary column. No SELECT added or changed.",
+  "queries": [
+    {
+      "purpose": "Insert one review-queue row per queued rule, now also writing the existing summary column so a carried-over unchanged or renumbered rule says why it is in the queue.",
+      "file_line": "scripts/dcp_extract_changed.py:4261",
+      "where_clause": "None: a single-row INSERT. The refresh DELETE before it is unchanged and keeps its council, chapter_key and status = 'pending' filter."
+    }
+  ],
   "break_it": [
     {
       "scenario": "A waverley-sized restructure keeps 46 rules' text unchanged.",
@@ -70,6 +76,13 @@
       "mitigated": true,
       "how": "Renumbered rules of a full-replace chapter are queued as added under the new number, with the page they are on now and the old number in the summary.",
       "repro": "python -m pytest tests/test_dcp_review_enqueue.py -k renumbered_rule_under_its_new_number -q"
+    },
+    {
+      "scenario": "The fidelity check sees a carried-over row whose old and new text are identical and treats it as a defect.",
+      "what_happens": "A row auto-rejected under the current content hash would block the whole chapter at commit, so a harmless unchanged rule could stop waverley going live.",
+      "mitigated": true,
+      "how": "Auto-reject fires only for garbled glyphs, a junk reference or text emptied by stripping; identical text is none of these. The enqueue test runs the real classify_row_fidelity and asserts the carried-over row lands pending.",
+      "repro": "python -m pytest tests/test_dcp_review_enqueue.py -k unchanged_rules_at_their_new_page -q"
     },
     {
       "scenario": "Full-replace queues for other councils were built before this change and are still pending.",

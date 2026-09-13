@@ -116,6 +116,9 @@ class TestEnqueueReviewChanges:
         assert kept[4] == "changed"   # the queue's CHECK has no 'unchanged' type
         assert kept[6] == "Keep this rule." and kept[8] == 169
         assert kept[12] is True
+        # Identical old and new text must not look like a defect: an auto-rejected row
+        # under the current hash would block the whole chapter at commit.
+        assert kept[13] == "pending", f"carried-over row landed {kept[13]!r}"
         assert "unchanged" in (kept[15] or ""), "the reviewer is not told why the row is here"
 
     def test_a_targeted_amendment_leaves_unchanged_rules_out_of_the_queue(self):
