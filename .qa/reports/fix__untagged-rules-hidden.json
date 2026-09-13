@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which stored rules the property page's DCP tab returns, for every council: a SQL filter in one API route that silently dropped every rule with no topic. Read path only - no write, no schema change - but it alters served regulatory content, so standard rather than minor.",
-  "commit_hash": "f9826f07",
+  "commit_hash": "a4711a51",
   "files": [
     "frontend-nextjs/lib/provision-sql-filters.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
@@ -87,8 +87,8 @@
     {
       "scenario": "The 2,530 statewide untagged rows start appearing on a view outside the DCP tab, for properties in councils the change was never looked at.",
       "what_happens": "A page grows noticeably longer with statewide rules nobody reviewed on that surface.",
-      "mitigated": false,
-      "how": "Not yet measured on the surface. Before merge, the preview deployment's /api/provisions/for-property response is compared with production for a Marrickville address and one outside Inner West.",
+      "mitigated": true,
+      "how": "Measured on the surface 2026-09-13, preview deployment against production, distinct provision ids: 20 Frampton Ave Marrickville 1,536 -> 1,714 (178 added, 0 removed, 0 mentioning heritage, all Marrickville DCP documents); 22 Yangoora Rd Belmore 175 -> 176 (1 added, 0 removed). No statewide rule appeared: the route's former_council document filter already scopes the DCP tab to the council's own documents.",
       "repro": "curl -s -G <preview-url>/api/provisions/for-property --data-urlencode groupBy=toc --data-urlencode lga=CAMPBELLTOWN --data-urlencode zone=R2 --data-urlencode heritage=false, then the same call against https://canibuildit.com.au, and compare distinct provision ids"
     }
   ],
