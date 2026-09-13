@@ -56,6 +56,11 @@ COPY scripts/dcp_toc_parse.py ./scripts/dcp_toc_parse.py
 # ref_number. Without it in the image the fallback quietly stops working and the
 # codes start disappearing again on every commit -- the defect it exists to stop.
 COPY scripts/dcp_section_code.py ./scripts/dcp_section_code.py
+# The section-loss guard. Both DCP workers import it at MODULE level, and it imports
+# dcp_chapter_measure for the one definition of a section code. A missing COPY here is
+# an ImportError that stops both workers, not a quietly weaker check.
+COPY scripts/dcp_supersede_guard.py ./scripts/dcp_supersede_guard.py
+COPY scripts/dcp_chapter_measure.py ./scripts/dcp_chapter_measure.py
 COPY enrichment/ ./enrichment/
 # enrichment/pipeline.py imports load_ground_truth + load_slug_resolution from this
 # checker to decide whether a derived zone code exists in the row's LGA (DQ-30).

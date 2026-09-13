@@ -51,6 +51,10 @@ from enrichment.pipeline import phase_failures, run_standard_enrichment
 # checks serve the pipeline and the standalone sweep -- a guard with two copies
 # drifts, and drift is the defect it exists to catch.
 from scripts.dcp_page_map_gate import PageMapUnusable, assert_map_usable
+# The section-loss guard: a commit may not swap a chapter for a version that loses most
+# of its sections. Measured before the write, judged after it, same transaction.
+from scripts.dcp_supersede_guard import enforce as enforce_section_loss
+from scripts.dcp_supersede_guard import snapshot as section_snapshot
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -3375,6 +3379,7 @@ def extract_chapter(
     conn,
     dry_run: bool,
     review: bool = False,
+    allow_section_loss: frozenset = frozenset(),
 ) -> tuple[bool, dict | None]:
     """
     Download PDF, extract provisions, commit atomically.
@@ -3800,6 +3805,9 @@ def extract_chapter(
 
         if not dry_run and not review:
             try:
+                # Section-loss guard, part 1: the live chapter as it stands before any
+                # write. Part 2 judges it again just before conn.commit() below.
+                section_loss_before = section_snapshot(cur, council, chapter_key)
                 if status == "restructure" or first_extraction:
                     # Full replace: soft-delete all existing + bulk insert.
                     # Strict source_chapter_key = %s only — never wipe NULL-keyed
@@ -3982,6 +3990,11 @@ def extract_chapter(
                         _auto_verify_controls(cur, conn, council, chapter_key,
                                               "text_only_change", commit=False)
 
+                # Section-loss guard, part 2: judge the chapter as this transaction now
+                # holds it. A refusal raises into the except below and rolls back, and
+                # needs_extraction stays TRUE so the chapter is not silently dropped.
+                enforce_section_loss(cur, council, chapter_key, section_loss_before,
+                                     allow_section_loss)
                 conn.commit()
 
             except Exception as exc:
@@ -4436,6 +4449,11 @@ def main() -> None:
             "cadence. Pair with --review for the quarterly run."
         ),
     )
+    parser.add_argument(
+        "--allow-section-loss", action="append", default=[], metavar="COUNCIL/CHAPTER",
+        help=("Let ONE named chapter through the section-loss guard on a direct commit. "
+              "Repeatable. Only for a loss a person has checked against the source document."),
+    )
     args = parser.parse_args()
 
     require_r2()
@@ -4486,6 +4504,7 @@ def main() -> None:
             chapter, s3, conn,
             dry_run=args.dry_run,
             review=args.review,
+            allow_section_loss=frozenset(args.allow_section_loss),
         )
         if ok:
             succeeded += 1

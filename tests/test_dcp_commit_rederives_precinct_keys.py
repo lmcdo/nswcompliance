@@ -61,6 +61,12 @@ class _Cur:
     def fetchone(self):
         return (3,)
 
+    def fetchall(self):
+        # The section-loss guard reads the chapter's live headers before and after
+        # the swap. An empty chapter has nothing to lose, so it is allowed through
+        # and these tests keep measuring what they were written to measure.
+        return []
+
     def close(self):
         pass
 
