@@ -1278,6 +1278,41 @@ _MARGIN_LABEL_MIN_ALPHA_FRACTION = 0.7  # excludes a stacked NUMERIC column (pag
 # same page). Require the run to be contiguous under this gap, not just
 # same-column and short.
 _MARGIN_LABEL_MAX_GAP = 8.0
+# ⚠ Contiguity is NOT enough either -- measured 2026-09-13 on waverley DCP 2022: a
+# tightly leaded Objectives list stacks its "To" words 2.4pt apart (pages 129, 275, 356,
+# 359), and a sub-bullet list stacks its "o" markers the same way (page 7). Each passed
+# every check above, and the strip then deleted every character on the page whose x0
+# fell in that band -- letters out of words on other lines too ("STATUT RY", "appies",
+# "Objectiv", "(a) develop" for "(a) To develop"). 27 of 602 waverley rules lost text.
+# What separates them: a list marker has its own line's words right beside EVERY glyph,
+# while a running margin title stands in the margin. Nearest word overlapping a stacked
+# glyph vertically, measured: 2.1-11.4pt beside every glyph on the waverley false
+# positives; on the marrickville title 143.5pt on page 25, and on page 21 body text
+# ("wipe", "daily", "continued...") comes within 33.4-38.9pt of 6 of its 38 glyphs -- so a
+# single "no word within N" rule either keeps the lists or loses page 21's title. A glyph
+# counts as beside a word within _MARGIN_LABEL_BESIDE_WORD_PT; a run is a list, not a
+# title, when at least _MARGIN_LABEL_MAX_BESIDE_FRACTION of its glyphs are.
+_MARGIN_LABEL_BESIDE_WORD_PT = 20.0
+_MARGIN_LABEL_MAX_BESIDE_FRACTION = 0.5
+
+
+def _run_is_isolated(run: list[dict], words: list[dict]) -> bool:
+    """True when fewer than _MARGIN_LABEL_MAX_BESIDE_FRACTION of the run's glyphs have a
+    word outside the run beside them: overlapping the glyph vertically and within
+    _MARGIN_LABEL_BESIDE_WORD_PT horizontally. Words missing geometry are ignored. Pure."""
+    run_ids = {id(w) for w in run}
+    others = [o for o in words
+              if id(o) not in run_ids and None not in (o.get("x0"), o.get("x1"), o.get("top"), o.get("bottom"))]
+    beside = 0
+    for g in run:
+        for o in others:
+            if not (o["top"] < g["bottom"] and o["bottom"] > g["top"]):
+                continue
+            gap = o["x0"] - g["x1"] if o["x0"] >= g["x1"] else g["x0"] - o["x1"]
+            if gap < _MARGIN_LABEL_BESIDE_WORD_PT:
+                beside += 1
+                break
+    return beside / len(run) < _MARGIN_LABEL_MAX_BESIDE_FRACTION
 
 
 def find_vertical_margin_label_band(words: list[dict]) -> tuple[float, float] | None:
@@ -1315,6 +1350,8 @@ def find_vertical_margin_label_band(words: list[dict]) -> tuple[float, float] | 
         alpha_count = sum(1 for w in best_run if w["text"].isalpha())
         if alpha_count / len(best_run) < _MARGIN_LABEL_MIN_ALPHA_FRACTION:
             continue
+        if not _run_is_isolated(best_run, words):
+            continue   # a list marker with its line beside it, not a margin title
         return (
             min(w["x0"] for w in best_run) - 0.5,
             max(w["x1"] for w in best_run) + 0.5,
