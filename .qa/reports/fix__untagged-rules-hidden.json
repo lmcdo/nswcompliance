@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which stored rules the property page's DCP tab returns, for every council: a SQL filter in one API route that silently dropped every rule with no topic. Read path only - no write, no schema change - but it alters served regulatory content, so standard rather than minor.",
-  "commit_hash": "a4711a51",
+  "commit_hash": "838c7f30",
   "files": [
     "frontend-nextjs/lib/provision-sql-filters.ts",
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
