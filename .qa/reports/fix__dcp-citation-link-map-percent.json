@@ -1,0 +1,114 @@
+{
+  "tier": "critical",
+  "justification": "fetch_dcp_setbacks is the one guarded read behind every served numeric DCP control. Its registry link-map query raised on every call and the except swallowed it, so every number has been served without a PDF citation link since 2026-08-26 - a silent wrong output on the served path.",
+  "commit_hash": "0e82dc1c",
+  "files": [
+    "scripts/conveyancing_db.py",
+    "scripts/build_lot_search_index.py",
+    "tests/test_sql_percent_placeholders.py",
+    "scripts/control_source_values_baseline.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_sql_percent_placeholders.py -q",
+    "fails_when": "any parameterised execute() literal in scripts/, services/, src/ or enrichment/ holds a bare % (not %s, %(name)s or %%), or fetch_dcp_setbacks run through a cursor that %-formats parameterised SQL returns an empty registry_pdf_urls map",
+    "observed_red": "Run against origin/main's two files (bb4a463d) with the working tree untouched: the fetch_dcp_setbacks check logged 'fetch_dcp_setbacks registry pdf map: %o format: an integer is required, not str' and returned registry_pdf_urls {}; the scan returned conveyancing_db.py:519 '...discarded 60% of them.' and build_lot_search_index.py:144 '+45% in Sydney' and '79% of lots'. With the fix: 182 passed across the new file and test_conveyancing_db, test_dcp_as_at, test_dcp_controls_api, test_conveyancing_dcp_needs_review, test_lot_search."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13: GET https://verify.plotdetect.com.au/api/dcp/structured-controls returned pdf_url null for every control across penrith (12), hornsby (19), campbelltown (9), ku_ring_gai (5) and waverley (10), although 40 of those 55 carry a pdf_page. The same SQL on the production database raised IndexError('tuple index out of range') with the comment and returned 2 rows for penrith without it. git blame: the comment arrived in 188ac741 (#1012, 2026-08-26).",
+    "assumption_mismatch": "#1012 assumed an SQL comment is inert. psycopg2 %-formats the whole query string when params are passed, comments included. The existing tests could not see it: their MagicMock cursor's execute() ignores the SQL.",
+    "new_vs_existing": "No change to what the query selects or filters. The comment moves into Python comments. The same class in build_lot_search_index.py step 1 is fixed the same way. The new test is the first check in tests/ that inspects SQL literals for placeholder hazards.",
+    "external_source_error": "The external sources are the production database and the council or R2 PDF URLs the map hands out. If the link-map query fails for a database reason it still degrades to an empty map inside its savepoint (unchanged by this PR). A dead or wrong URL stored in dcp_chapter_registry is not detected here; it is served as stored.",
+    "frontend_type": "registry_pdf_urls is a {chapter_key: url string} dict read by frontend-nextjs/app/api/dcp/structured-controls/route.ts as r.registry_pdf_urls?.[row.source_chapter_key]; each control's pdf_url is string | null and gains #page=N only when isOwnCopy(url) and pdf_page is set. Shape unchanged by this PR; only the map is no longer always empty.",
+    "user_failure_mode": "Since 2026-08-26 every number on a council's controls tab showed its citation as dead grey text with no link to the PDF, with no error anywhere a user or operator would see. A recurrence of the same kind looks identical to the user; the new test fails the build before it ships."
+  },
+  "functions": [
+    {
+      "name": "fetch_dcp_setbacks",
+      "file_line": "scripts/conveyancing_db.py:441",
+      "input": "An open psycopg2 connection, an LGA slug that may be None, an optional zone code, and raise_on_error.",
+      "output": "The controls dict unchanged in shape; registry_pdf_urls is again the {chapter_key: url} map for the council's active registry chapters with any URL, extended by CHAPTER_KEY_ALIASES.",
+      "if_none": "A None slug still returns None before any query. If the link-map query fails for any other reason it still degrades to an empty map inside its savepoint, as before."
+    },
+    {
+      "name": "assign_overlays_for_lga",
+      "file_line": "scripts/build_lot_search_index.py:114",
+      "input": "An open connection, an LGA name from spatial_overlays and a dry_run flag.",
+      "output": "The same lot_search_index upsert; step 1 now runs instead of raising on the % in its SQL comments.",
+      "if_none": "dry_run or a zero lot count still returns the count before step 1, unchanged."
+    }
+  ],
+  "real_layer_exempt": {
+    "scripts/conveyancing_db.py": "Measured against the real database instead of a committed DB-marked test: the fixed fetch_dcp_setbacks on a normal read-only psycopg2 connection returned link maps of 2 chapters for penrith, 2 for cumberland, 3 for the_hills and 98 for marrickville (2026-09-13). The served layer is the Railway backend behind /api/dcp/structured-controls; post_merge.manual_verify checks it after deploy.",
+    "scripts/build_lot_search_index.py": "Step 1 writes lot_search_index for a whole LGA; running it here would rebuild production rows. The change removes comments only, and the scan plus psycopg2-style formatting covers the failure."
+  },
+  "values": "N/A - no stored value read or written changes; the queries select the same columns.",
+  "queries": [
+    {
+      "purpose": "Chapter-to-PDF URL map used to build every served numeric control's citation link",
+      "file_line": "scripts/conveyancing_db.py:531",
+      "where_clause": "council = %s AND is_active = TRUE AND COALESCE(r2_public_pdf_url, council_url, council_page_url) IS NOT NULL"
+    },
+    {
+      "purpose": "Step 1 upsert of base lot rows into lot_search_index for one LGA",
+      "file_line": "scripts/build_lot_search_index.py:157",
+      "where_clause": "so.layer_type = 'zone' AND so.lga_name = %s AND c.geom IS NOT NULL"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A later PR writes another explanatory comment with a percentage inside a parameterised SQL string, anywhere in scripts/ or services/.",
+      "what_happens": "Without a check the query raises on every call; where an except swallows it the output silently degrades, as here.",
+      "mitigated": true,
+      "how": "test_no_stray_percent_in_parameterised_sql scans every execute()/executemany() literal with params and fails naming file and line.",
+      "repro": "python -m pytest tests/test_sql_percent_placeholders.py -k no_stray -q"
+    },
+    {
+      "scenario": "The stray % is in an f-string or a string built in a variable before execute().",
+      "what_happens": "The scan only reads string literals passed directly, so it would not flag it.",
+      "mitigated": false,
+      "how": "Not mitigated, and stated in the test docstring. fetch_dcp_setbacks itself is also covered behaviourally by the psycopg2-style formatting test, which does not depend on how the string is built.",
+      "repro": "python -m pytest tests/test_sql_percent_placeholders.py -k survives_real_parameter_formatting -q"
+    },
+    {
+      "scenario": "A correct LIKE '%Road%' pattern in a parameterised query.",
+      "what_happens": "psycopg2 would raise on it too, so flagging it is right; the fix is %%.",
+      "mitigated": true,
+      "how": "test_detector_flags_like_wildcard_with_params pins that it is flagged; test_detector_allows_escapes_and_placeholders pins that %% and %(name)s are not.",
+      "repro": "python -m pytest tests/test_sql_percent_placeholders.py -k \"wildcard or escapes\" -q"
+    },
+    {
+      "scenario": "A query with no params, or sqlite's ? paramstyle, legitimately contains a literal %.",
+      "what_happens": "A naive scan would fail the build on correct code (services/council_validation_service.py and scripts/zone_verification_suite.py use sqlite with LIKE '%...%').",
+      "mitigated": true,
+      "how": "Calls without params, with params=None, and sqlite ? queries without %s are skipped; a test pins all three.",
+      "repro": "python -m pytest tests/test_sql_percent_placeholders.py -k does_not_format -q"
+    },
+    {
+      "scenario": "The link-map query fails for a different reason after this fix (a renamed column, a lost connection).",
+      "what_happens": "The savepoint except still swallows it: numbers are served with no link and only a warning is logged, exactly the silence that hid this for 18 days.",
+      "mitigated": false,
+      "how": "Not changed here: the degrade-to-empty design is deliberate so a citation failure never takes the controls down. Stated so the post-merge check watches the served output, not the log.",
+      "repro": "curl -s 'https://verify.plotdetect.com.au/api/dcp/structured-controls?council=penrith&dev_type=dwelling_house' | python -c \"import sys,json; d=json.load(sys.stdin); print(sum(1 for c in d['categories'] for x in c['controls'] if x['pdf_url']))\""
+    },
+    {
+      "scenario": "The new behavioural test passes because its fake returns the map even when execute() raises.",
+      "what_happens": "A test that cannot fail would give false confidence.",
+      "mitigated": true,
+      "how": "Observed red: the same fake run against origin/main's conveyancing_db.py returned registry_pdf_urls {} (the except path), so the assertion on the map fails there.",
+      "repro": "git show origin/main:scripts/conveyancing_db.py > /tmp/cdb.py and run the test body against it (see falsifiable_check.observed_red)"
+    },
+    {
+      "scenario": "The lot_search_index step 1 upsert (scripts/build_lot_search_index.py:157, WHERE so.layer_type = 'zone' AND so.lga_name = %s) gets an explanatory percentage back inside its SQL string.",
+      "what_happens": "cur.execute raises before any row is written, the build stops at step 1 for that LGA, and lot search keeps serving the old rows.",
+      "mitigated": true,
+      "how": "The placeholder scan reads this file; it reported build_lot_search_index.py:144 on origin/main and passes with the comments moved out.",
+      "repro": "python -m pytest tests/test_sql_percent_placeholders.py -k no_stray -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No schema or data change in this PR.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: after the backend deploys, GET https://verify.plotdetect.com.au/api/dcp/structured-controls?council=penrith&dev_type=dwelling_house must return controls with a non-null pdf_url (was 0 of 12), and council=cumberland&dev_type=residential_flat_building must link the 0.25 visitor rate to the Cumberland Part G PDF."
+  }
+}
