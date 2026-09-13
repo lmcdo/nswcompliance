@@ -83,7 +83,10 @@ def _real_conn():
     load_dotenv(main_checkout() / ".env")
     url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
     if not url:
-        pytest.skip("PYTEST_REAL_DB=1 set but no DATABASE_URL/SUPABASE_DB_URL available.")
+        # FAIL, not skip: the run asked for the database explicitly, and a skip exits 0,
+        # which reads as the check having passed. (Cross-review finding on this PR.)
+        pytest.fail("PYTEST_REAL_DB=1 was set but no DATABASE_URL/SUPABASE_DB_URL is "
+                    "available -- an explicitly requested database test must not pass by skipping.")
     import psycopg2
     conn = psycopg2.connect(url, connect_timeout=20)
     conn.set_session(readonly=True, autocommit=True)
