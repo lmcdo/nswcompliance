@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a refusal inside the two code paths that write live regulatory provisions to the single production database. A wrong guard either lets a worse extraction replace good rules again, or blocks legitimate council amendments from ever going live.",
-  "commit_hash": "c5110777",
+  "commit_hash": "abbd2d3b",
   "files": [
     "scripts/dcp_supersede_guard.py",
     "scripts/dcp_commit_approved.py",
