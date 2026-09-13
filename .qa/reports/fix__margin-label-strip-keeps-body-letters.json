@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which characters are deleted from every PDF page before rule text is extracted, for every council. A false positive deletes letters and words from served regulation; a false negative lets a sideways title's letters interleave into it.",
-  "commit_hash": "0818ea90",
+  "commit_hash": "4d3101bf",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_vertical_margin_label_guard.py"
