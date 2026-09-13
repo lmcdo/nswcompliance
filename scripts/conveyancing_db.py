@@ -441,9 +441,7 @@ def apply_chapter_key_aliases(registry_pdf_urls: dict, lga_slug: str) -> dict:
 # form. The backend image copies only services/ and scripts/conveyancing_db.py, so the pattern lives here
 # (enrichment/config/zone_taxonomy.py holds legacy->current aliases, not the families, and is not deployed).
 _ZONE_CODE = re.compile(r"(?<![A-Z0-9.])(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9](?![0-9]|\.[0-9])")
-_OTHER_THAN = re.compile(
-    r"\bOTHER THAN\s+((?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9]"
-    r"(?:\s*(?:,|/|AND|OR)\s*(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9])*)(?![0-9]|\.[0-9])")
+_NEGATION = re.compile(r"\b(?:OTHER THAN|EXCEPT|EXCLUDING|NOT IN)\b")
 
 
 def zone_row_applies(applicability: Optional[str], condition: Optional[str], zone_prefix: str) -> bool:
@@ -451,19 +449,28 @@ def zone_row_applies(applicability: Optional[str], condition: Optional[str], zon
 
     Only ``zone_specific`` rows with condition text are ever excluded, and only when a zone is known.
     Zone codes are whole tokens of any Standard Instrument family (R, RU, RE, E, B, IN, SP, MU, C or W
-    followed by a digit); a clause id such as C3.3.2 is not a zone code. A condition with "other than"
-    followed directly by zone codes (e.g. "zones other than R2 Low Density Residential") applies to every
-    zone except those. Any other condition that names zone codes applies only to those zones; a condition
-    naming none applies everywhere. Legacy and current codes are not aliased (B2 does not match E1).
+    followed by a digit); a clause id such as C3.3.2 is not a zone code. Codes inside a negated clause -
+    from "other than", "except", "excluding" or "not in" to the next ";" (e.g. "zones other than the R2
+    zone") - are excluded zones. Codes anywhere else are the zones the row is limited to. A row is dropped
+    when the site's zone is excluded, or when the row is limited to zones that do not include it; a
+    condition naming no zone code applies everywhere. Legacy and current codes are not aliased.
     """
     if not zone_prefix or applicability != "zone_specific" or not condition:
         return True
     cond_upper = condition.upper()
-    excluded = _OTHER_THAN.search(cond_upper)
-    if excluded:
-        return zone_prefix not in _ZONE_CODE.findall(excluded.group(1))
-    named = set(_ZONE_CODE.findall(cond_upper))
-    return not named or zone_prefix in named
+    excluded: set[str] = set()
+    negated = [False] * len(cond_upper)
+    for neg in _NEGATION.finditer(cond_upper):
+        end = cond_upper.find(";", neg.end())
+        end = len(cond_upper) if end < 0 else end
+        excluded.update(_ZONE_CODE.findall(cond_upper[neg.end():end]))
+        for i in range(neg.start(), end):
+            negated[i] = True
+    if zone_prefix in excluded:
+        return False
+    rest = "".join(" " if n else ch for ch, n in zip(cond_upper, negated))
+    limited_to = set(_ZONE_CODE.findall(rest))
+    return not limited_to or zone_prefix in limited_to
 
 
 # prior-art-checked: same function, additive kwarg only — the proxy endpoint

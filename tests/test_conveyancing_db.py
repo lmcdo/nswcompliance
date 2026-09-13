@@ -267,16 +267,26 @@ class TestZoneFilter:
         assert not _mod.zone_row_applies("zone_specific", cond, "R3")
         assert not _mod.zone_row_applies("zone_specific", cond, "E1")
 
-    def test_conditions_without_the_exclusion_form_decide_as_before(self):
-        # Confusable negatives: naming a zone still means "this zone only", and "other than" followed by
-        # words rather than a zone code is not an exclusion.
-        assert not _mod.zone_row_applies("zone_specific", "R2 Low Density zone", "R3")  # noqa: zone-codes (test condition text)
-        assert _mod.zone_row_applies("zone_specific", "R2 Low Density zone", "R2")
-        assert _mod.zone_row_applies("zone_specific", "corner lots other than battle-axe lots", "R2")
-        # "other than THE R2 zone" is not the exclusion form, so the inclusion rule decides: R2 is named, so an
-        # R2 site keeps the row and an R3 site does not. Writers must put the zone code directly after "other than".
-        assert _mod.zone_row_applies("zone_specific", "lots other than the R2 zone; R4 only", "R2")  # noqa: zone-codes (test condition text)
-        assert not _mod.zone_row_applies("zone_specific", "lots other than the R2 zone; R4 only", "R3")  # noqa: zone-codes (test condition text)
+    def test_exclusion_wordings_and_non_zone_negations(self):
+        ok = _mod.zone_row_applies
+        # Naming a zone still means "this zone only".
+        assert not ok("zone_specific", "R2 Low Density zone", "R3")  # noqa: zone-codes (test condition text)
+        assert ok("zone_specific", "R2 Low Density zone", "R2")
+        # Every way of excluding a zone excludes it, and only it (the cross-review case first).
+        wordings = ("zones other than the R2 zone", "except in the R2 zone", "excluding land zoned R2",
+                    "not in the R2 Low Density zone", "other than (R2)")
+        for cond in wordings:
+            assert not ok("zone_specific", cond, "R2"), cond
+            assert ok("zone_specific", cond, "R3"), cond
+        cond = "all zones other than R2 Low Density and R3 Medium Density"  # noqa: zone-codes (test condition text)
+        assert not ok("zone_specific", cond, "R3") and not ok("zone_specific", cond, "R2") and ok("zone_specific", cond, "R4")  # noqa: zone-codes (test zones)
+        # A negation that names no zone leaves the zone scope alone.
+        assert ok("zone_specific", "corner lots other than battle-axe lots", "R2")
+        assert ok("zone_specific", "R2 zone, except corner lots", "R2")
+        assert not ok("zone_specific", "R2 zone, except corner lots", "R3")  # noqa: zone-codes (test condition text)
+        # An exclusion clause ends at ';' - what follows can still limit the row.
+        cond = "lots other than the R2 zone; R4 only"  # noqa: zone-codes (test condition text)
+        assert not ok("zone_specific", cond, "R2") and not ok("zone_specific", cond, "R3") and ok("zone_specific", cond, "R4")  # noqa: zone-codes (test zones)
         assert _mod.zone_row_applies("universal_residential", "zones other than R2", "R2")
         assert _mod.zone_row_applies("zone_specific", "zones other than R2", "")
 
