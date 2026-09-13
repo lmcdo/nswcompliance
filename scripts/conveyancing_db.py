@@ -436,6 +436,43 @@ def apply_chapter_key_aliases(registry_pdf_urls: dict, lga_slug: str) -> dict:
     return result
 
 
+# prior-art-checked: the zone filter fetch_dcp_setbacks has always applied, moved here so it can be tested
+# directly; it now reads zone codes of every Standard Instrument family as whole tokens and never guesses an
+# exclusion. The backend image copies only services/ and scripts/conveyancing_db.py, so the pattern lives here
+# (enrichment/config/zone_taxonomy.py holds legacy->current aliases, not the families, and is not deployed).
+_ZONE_CODE = re.compile(r"(?<![A-Z0-9.])(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9](?![0-9]|\.[0-9])")
+# Wording that can make a named zone the one a row does NOT apply to. Zone scope written this way is not parsed.
+_EXCLUSION_WORDING = re.compile(
+    r"\b(?:OTHER\s+THAN|EXCEPT\w*|EXCLUD\w*|NOT\s+(?:IN|WITHIN|FOR)|APART\s+FROM|OUTSIDE|BUT\s+NOT)\b")
+# A code directly after a document-reference word ("Part B2", "Clause C3") is a DCP part, not a zone.
+_DOC_REFERENCE = re.compile(
+    r"\b(?:PART|CLAUSE|CL|SECTION|CHAPTER|SCHEDULE|TABLE|FIGURE|APPENDIX|CONTROL)\.?\s+"
+    r"(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9][0-9A-Z.]*")
+
+
+def zone_row_applies(applicability: Optional[str], condition: Optional[str], zone_prefix: str) -> bool:
+    """Whether a DCP control row applies to a site whose zone code is ``zone_prefix`` (e.g. "R2").
+
+    Only ``zone_specific`` rows with condition text are ever excluded, and only when a zone is known.
+    Zone codes are whole tokens of any Standard Instrument family (R, RU, RE, E, B, IN, SP, MU, C or W
+    followed by a digit); a clause id such as C3.3.2, or a code after "Part", "Clause" and similar words, is
+    not a zone code. A condition that names zone codes limits the row to those zones. Exclusions are not
+    guessed: when zone codes sit beside exclusion wording ("other than", "except", "excluding", "not in",
+    "apart from", "outside"), a named zone may be the one the row does not apply to, so the row is kept for
+    every zone with its condition shown. That errs towards showing a control, never towards hiding it, and
+    services/constraint_arithmetic takes the largest minimum and the smallest maximum, so an extra row
+    cannot loosen a computed limit. A condition naming no zone code applies everywhere. Legacy and current
+    codes are not aliased.
+    """
+    if not zone_prefix or applicability != "zone_specific" or not condition:
+        return True
+    cond_upper = _DOC_REFERENCE.sub(" ", condition.upper())
+    named = set(_ZONE_CODE.findall(cond_upper))
+    if not named or _EXCLUSION_WORDING.search(cond_upper):
+        return True
+    return zone_prefix in named
+
+
 # prior-art-checked: same function, additive kwarg only — the proxy endpoint
 # needs failure distinguishable from checked-none; no new capability.
 def fetch_dcp_setbacks(
@@ -611,14 +648,10 @@ def fetch_dcp_setbacks(
         # has no data for.
         if needs_review:
             continue
-        # Skip zone-specific controls that explicitly reference a DIFFERENT zone.
-        # Conservative: only skip when condition names zones AND our zone isn't among them.
-        if zone_prefix and applicability == "zone_specific" and condition:
-            cond_upper = condition.upper()
-            # Check if condition mentions specific zone codes (R1, R2, R3, etc.)
-            if any(z in cond_upper for z in ("R1", "R2", "R3", "R4", "R5", "E1", "B1", "B2", "MU1", "C2")) \
-               and zone_prefix not in cond_upper:
-                continue
+        # Skip zone-specific controls that do not apply to this site's zone, including rows written
+        # "other than <zone>" (see zone_row_applies).
+        if not zone_row_applies(applicability, condition, zone_prefix):
+            continue
         base_label = _CONTROL_TYPE_LABELS.get(
             ctrl_type, ctrl_type.replace("_", " ").title()
         )
