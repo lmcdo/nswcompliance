@@ -1,5 +1,6 @@
-"""Row data and quote matcher for scripts/insert_strathfield_general_residential.py (no DB, no PDF)."""
+"""Row data, source pin and quote matcher for scripts/insert_strathfield_general_residential.py (no DB, no PDF)."""
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -22,11 +23,20 @@ APPLICABILITIES = {"universal_residential", "secondary_dwelling_specific", "zone
 SERVED_DEV_TYPES = {"dwelling_house", "dual_occupancy", "multi_dwelling_housing", "secondary_dwelling"}
 REQUIRED = {"lga", "dev_type", "control_type", "value_min", "value_max", "unit", "condition", "applicability",
             "source_text", "section_ref", "pdf_page", "needs_review", "dcp_version", "source_chapter_key"}
+LIABILITY_WORDS = re.compile(r"\b(safe|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|"
+                             r"guaranteed|certified|confirmed|verified|ensure|assure|accurate|definitive|"
+                             r"comprehensive|reliable)\b", re.I)
 ROWS = mod.ROWS
 
 
+def printed(value, quote: str) -> bool:
+    """The number stands alone in the quote: not part of a clause id (C3.1.1), a longer number (16) or a decimal."""
+    forms = {f"{value:g}"} | ({f"{int(round(value * 1000))}mm"} if value < 100 else set())
+    return any(re.search(rf"(?<![\w.,]){re.escape(f)}(?!\d|[.,]\d)", quote) for f in forms)
+
+
 def test_row_count_and_types_served():
-    assert len(ROWS) >= 50
+    assert len(ROWS) == 55
     assert {r["dev_type"] for r in ROWS} == SERVED_DEV_TYPES
 
 
@@ -42,12 +52,35 @@ def test_row_fields_and_constraints(r):
     assert "max_height" != r["control_type"], "storeys rows are held by the DQ rule; none are inserted"
 
 
-@pytest.mark.parametrize("r", [r for r in ROWS if r["value_min"] is not None or r["value_max"] is not None],
-                         ids=lambda r: f"{r['dev_type']}-{r['control_type']}-{r['section_ref']}")
-def test_stored_number_is_printed_in_its_quote(r):
-    value = r["value_min"] if r["value_min"] is not None else r["value_max"]
-    printed = {f"{value:g}", f"{int(round(value * 1000))}mm"}
-    assert any(p in r["source_text"] for p in printed), (value, r["source_text"])
+@pytest.mark.parametrize("r", ROWS, ids=lambda r: f"{r['dev_type']}-{r['control_type']}-{r['section_ref']}")
+def test_every_stored_number_stands_alone_in_its_quote(r):
+    for value in (r["value_min"], r["value_max"]):
+        if value is not None:
+            assert printed(value, r["source_text"]), (value, r["source_text"])
+
+
+def test_number_check_rejects_clause_ids_and_longer_numbers():
+    assert not printed(3, "C3.1.1 The minimum front building setback is 10m")
+    assert not printed(6, "a setback of 16m")
+    assert not printed(1.5, "Lots less than 1,500m² 25%")
+    assert printed(1.2, "no higher than 1200mm.")
+    assert printed(3, "the secondary street side setback is 3m.")
+
+
+@pytest.mark.parametrize("r", ROWS, ids=lambda r: f"{r['dev_type']}-{r['control_type']}-{r['section_ref']}")
+def test_condition_uses_no_unquoted_liability_word(r):
+    assert not LIABILITY_WORDS.search(r["condition"]), r["condition"]
+
+
+@pytest.mark.parametrize("dev_type", ["dwelling_house", "dual_occupancy", "multi_dwelling_housing"])
+def test_r2_rear_setback_is_the_range_its_formula_can_produce(dev_type):
+    rear = [r for r in ROWS if r["dev_type"] == dev_type and r["control_type"] == "rear_setback"]
+    r2 = [r for r in rear if r["section_ref"].endswith("#C3.6.1")]
+    other = [r for r in rear if r["section_ref"].endswith("#C3.6.2")]
+    assert len(rear) == 2 and len(r2) == 1 and len(other) == 1
+    assert (r2[0]["value_min"], r2[0]["value_max"], r2[0]["applicability"]) == (6, 10, "zone_specific")
+    assert (other[0]["value_min"], other[0]["value_max"], other[0]["applicability"]) == (6, None, "zone_specific")
+    assert "20% of the average length" in r2[0]["condition"] and "other than R2" in other[0]["condition"]
 
 
 def test_maximums_are_stored_as_ceilings():
@@ -61,9 +94,17 @@ def test_no_duplicate_live_keys():
     assert len(keys) == len(set(keys))
 
 
-def test_supersede_list_is_the_23_hidden_rows():
+def test_supersede_list_and_source_pin():
     assert len(mod.SUPERSEDE_IDS) == len(set(mod.SUPERSEDE_IDS)) == 23
     assert mod.EFFECTIVE_DATE == "2026-09-01" and mod.EFFECTIVE_DATE_BASIS == "stated_in_document"
+    assert re.fullmatch(r"[0-9a-f]{64}", mod.SOURCE_SHA256)
+
+
+def test_a_file_that_is_not_the_pinned_plan_is_rejected_before_reading_pages(tmp_path):
+    other = tmp_path / "draft.pdf"
+    other.write_bytes(b"%PDF-1.7 a draft that keeps the same wording")
+    problems = mod.check_against_pdf(other)
+    assert len(problems) == 1 and "not the pinned General Residential DCP" in problems[0]
 
 
 PAGE = ("12 Strathfield Development Control Plan – General Residential Development C3.3 Side setbacks – "

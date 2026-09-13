@@ -11,8 +11,9 @@ have been repealed and replaced with the General Residential DCP"). Every Strath
 Parts; they were hidden on 2026-09-13 and are superseded here (is_current = FALSE), not deleted.
 
 Source: "Strathfield Development Control Plan – General Residential Development", 38 pages, List of
-amendments (p4): Amendment 1, adopted 28 July 2026, effective 1 September 2026. pdf_page is the PDF page
-(the printed page number matches). The plan covers dwelling houses, secondary dwellings, dual occupancies,
+amendments (p4): Amendment 1, adopted 28 July 2026, effective 1 September 2026. The file is pinned by
+SHA-256 (the same hash as registry chapter general-residential-dcp-2026). pdf_page is the PDF page (the
+printed page number matches). The plan covers dwelling houses, secondary dwellings, dual occupancies,
 multi-dwelling housing, terraces and manor homes; it does not cover residential flat buildings. Where one
 table row covers "Multi-Dwelling Housing, Terraces & Manor Homes", the row is stored under
 multi_dwelling_housing and the condition says so (no terrace or manor-house type is served).
@@ -25,12 +26,13 @@ Usage:
     python scripts/insert_strathfield_general_residential.py --pdf <plan.pdf>            # dry run
     python scripts/insert_strathfield_general_residential.py --pdf <plan.pdf> --apply    # write
 The dry run performs every write inside a transaction and rolls it back. --apply refuses to run unless
---pdf is given and every quote is found, in order, on its stated page.
+--pdf is given, the file is the pinned plan, and every quote is found, in order, on its stated page.
 """
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import os
 import sys
 from datetime import datetime
@@ -38,6 +40,9 @@ from pathlib import Path
 
 LGA = "strathfield"
 SOURCE_CHAPTER_KEY = "general-residential-dcp-2026"
+SOURCE_SHA256 = "f879c120e25868617a86bcaf5e23cd517b796dbbac1cd2b1acc6e763cef357da"
+TITLE_PAGE_1 = "Strathfield Development Control Plan – General Residential Development"
+AMENDMENT_PAGE_4 = "1 Council Endorsement of General Residential 28 July 2026 1 September 2026"
 DCP_VERSION = ("Strathfield DCP – General Residential Development, Amendment 1 "
                "(adopted 28 July 2026, effective 1 September 2026)")
 EFFECTIVE_DATE = "2026-09-01"
@@ -70,11 +75,15 @@ Q_FRONT = ("C3.1.1 The minimum front building setback is the average of the exis
            "consistent with the prevailing street setback in the block.")
 C_FRONT = ("no fixed figure: the average of the existing front setbacks of the site and the two dwellings either "
            "side (5 dwellings); otherwise consistent with the prevailing street setback in the block")
-Q_REAR = ("C3.6.1 For development in the R2 Low Density Residential zone, the minimum rear building setback for "  # noqa: zone-codes (verbatim plan text, clause C3.6.1 and the zone it names)
-          "all developments is: a) 10m or 20% of the average length of the site, whichever is lesser, b) Not less "
-          "than 6m." + SEGMENT + "C3.6.2 For development in all other zones, the minimum rear building setback is 6m.")
-C_REAR = ("R2 Low Density Residential zone: 10m or 20% of the average length of the site, whichever is lesser, "
-          "and not less than 6m; all other zones: 6m")
+# The R2 rear setback is a formula with a 6m floor and a 10m cap, so it is stored as the 6-10m range it can
+# produce; a single 6m would read as the whole R2 requirement. Other zones are a flat 6m.
+Q_REAR_R2 = ("C3.6.1 For development in the R2 Low Density Residential zone, the minimum rear building setback for "  # noqa: zone-codes (verbatim plan text, clause C3.6.1 and the zone it names)
+             "all developments is: a) 10m or 20% of the average length of the site, whichever is lesser, b) Not less "
+             "than 6m.")
+C_REAR_R2 = ("R2 Low Density Residential zone: 10m or 20% of the average length of the site, whichever is lesser, "
+             "and not less than 6m, so between 6m and 10m depending on the site's length")
+Q_REAR_OTHER = "C3.6.2 For development in all other zones, the minimum rear building setback is 6m."
+C_REAR_OTHER = "all zones other than R2 Low Density Residential"
 Q_SECONDARY = ("C12.1.1 For two storey developments orientated towards the primary road, the secondary street side "
                "setback is 3m. Any third storey must be setback an additional 1.5m.")
 C_SECONDARY = "corner sites; two storey developments orientated towards the primary road; any third storey an additional 1.5m"
@@ -84,8 +93,10 @@ C_SIDE_DH_DO = "two storey developments; where a third storey is permitted and p
 Q_PARK = "Dwelling Type Minimum Parking Spaces Required"
 Q_LAND = "C5.1.1 Residential developments are to achieve the following landscaped areas:"
 Q_DEEP = "C5.2.1 Residential developments are to achieve the following deep soil areas:"
-Q_FENCE_FRONT = "C6.1.1 Where a front fence is proposed, the fence is to be no higher than 1200mm."
-C_FENCE_FRONT = "front fence; a fence higher than 1200mm needs sufficient justification (streetscape, sight lines)"
+Q_FENCE_FRONT = ("C6.1.1 Where a front fence is proposed, the fence is to be no higher than 1200mm. Front fences "
+                 "proposed at greater than 1200mm are to be supported by sufficient justification, including "
+                 "consistency with the streetscape and potential impacts on sight lines.")
+C_FENCE_FRONT = "front fence; above 1200mm the plan requires justification addressing streetscape consistency and sight-line impacts"
 Q_FENCE_SIDE = "C6.2.1 Side and Rear boundary fencing is to be a maximum of 1.8m in height measured from existing ground level"
 C_FENCE_SIDE = "side and rear boundary fencing, measured from existing ground level"
 Q_SOLAR_OWN = ("C7.2.1 For developments proposing ≤4 dwellings, 50% of the private open space and the principal living "
@@ -106,7 +117,8 @@ def _shared(dev_type: str) -> list[dict]:
     """Rows whose passage names every dwelling type the plan's sections 1-12 apply to."""
     return [
         row(dev_type, "front_setback", None, None, "m", C_FRONT, Q_FRONT, "C3.1.1", 11),
-        row(dev_type, "rear_setback", 6, None, "m", C_REAR, Q_REAR, "C3.6.1-C3.6.2", 15),
+        row(dev_type, "rear_setback", 6, 10, "m", C_REAR_R2, Q_REAR_R2, "C3.6.1", 15, "zone_specific"),
+        row(dev_type, "rear_setback", 6, None, "m", C_REAR_OTHER, Q_REAR_OTHER, "C3.6.2", 15, "zone_specific"),
         row(dev_type, "secondary_street_setback", 3, None, "m", C_SECONDARY, Q_SECONDARY, "C12.1.1", 36),
         row(dev_type, "fencing_height_max", None, 1.2, "m", C_FENCE_FRONT, Q_FENCE_FRONT, "C6.1.1", 28),
         row(dev_type, "fencing_height_max", None, 1.8, "m", C_FENCE_SIDE, Q_FENCE_SIDE, "C6.2.1", 28),
@@ -257,15 +269,27 @@ def quote_on_page(quote: str, page_text: str) -> bool:
 
 
 def check_against_pdf(pdf_path: Path) -> list[str]:
-    """Problems found reading the plan; empty when the file is the plan and every quote is on its page."""
+    """Problems found reading the plan; empty when the file is the pinned plan and every quote is on its page.
+
+    The hash is checked first, so a draft or a later amendment that keeps the quoted wording cannot pass as
+    the adopted Amendment 1; the title and the p4 amendment line are then read from the file itself.
+    """
+    digest = hashlib.sha256(Path(pdf_path).read_bytes()).hexdigest()
+    if digest != SOURCE_SHA256:
+        return [f"{pdf_path} sha256 {digest[:12]} is not the pinned General Residential DCP ({SOURCE_SHA256[:12]})"]
     import fitz  # PyMuPDF, imported here so the row data loads without it
 
     with fitz.open(pdf_path) as doc:
         pages = {i: page.get_text() for i, page in enumerate(doc, start=1)}
-    if len(pages) != PDF_PAGES or "general residential" not in _norm(pages[1]):
-        return [f"{pdf_path} is not the 38-page General Residential DCP ({len(pages)} pages)"]
-    return [f"{r['dev_type']}/{r['control_type']} ({r['section_ref']}): quote not on page {r['pdf_page']}"
-            for r in ROWS if not quote_on_page(r["source_text"], pages.get(r["pdf_page"], ""))]
+    problems = []
+    if len(pages) != PDF_PAGES:
+        problems.append(f"expected {PDF_PAGES} pages, found {len(pages)}")
+    if not quote_on_page(TITLE_PAGE_1, pages.get(1, "")):
+        problems.append("page 1 does not carry the plan title")
+    if not quote_on_page(AMENDMENT_PAGE_4, pages.get(4, "")):
+        problems.append("page 4 does not carry the Amendment 1 adoption and effective dates")
+    return problems + [f"{r['dev_type']}/{r['control_type']} ({r['section_ref']}): quote not on page {r['pdf_page']}"
+                       for r in ROWS if not quote_on_page(r["source_text"], pages.get(r["pdf_page"], ""))]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -282,7 +306,7 @@ def main(argv: list[str] | None = None) -> int:
             print("PDF CHECK:", p)
         if problems:
             return 1
-        print(f"PDF check: all {len(ROWS)} quotes found on their pages")
+        print(f"PDF check: pinned file, all {len(ROWS)} quotes found on their pages")
 
     import psycopg2
     from dotenv import load_dotenv
@@ -292,10 +316,15 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cur = conn.cursor()
         cur.execute("SET statement_timeout = '30s'")
-        cur.execute("""SELECT id FROM dcp_chapter_registry WHERE council = %s AND chapter_key = %s
+        cur.execute("""SELECT content_hash FROM dcp_chapter_registry WHERE council = %s AND chapter_key = %s
                          AND is_active AND r2_public_pdf_url IS NOT NULL""", (LGA, SOURCE_CHAPTER_KEY))
-        if cur.fetchone() is None:
+        registered = cur.fetchone()
+        if registered is None:
             print(f"registry chapter {LGA}/{SOURCE_CHAPTER_KEY} with a public PDF copy is missing; register it first")
+            return 1
+        if registered[0] != SOURCE_SHA256:
+            print(f"registry chapter {LGA}/{SOURCE_CHAPTER_KEY} links a different file ({str(registered[0])[:12]}); "
+                  "the rows would cite a PDF other than the one checked")
             return 1
         cur.execute("SELECT * FROM dcp_setback_controls WHERE lga = %s ORDER BY is_current DESC, id", (LGA,))  # prior-art-checked: this script's own rollback backup, not a new data source
         backups = Path(__file__).resolve().parents[1] / "data" / "db_rollback_backups"
