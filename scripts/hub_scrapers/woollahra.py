@@ -5,11 +5,14 @@ Woollahra runs Drupal. DCP PDF links follow the pattern:
     /files/assets/public/v/1/plans-policies-publications/development-control-plans/{filename}.pdf
 
 The hub page also contains LEP documents — filter to DCP-related PDFs only.
+
+It ALSO carries every superseded chapter, in a /development-control-plans/repealed-dcps/
+archive on the same page. Those are skipped: see is_repealed_link.
 """
 
 import re
 from pathlib import PurePosixPath
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -28,6 +31,26 @@ HEADERS = {
 
 # Only match PDFs in the DCP subdirectory — skip LEP, heritage, etc.
 DCP_PATH_PATTERN = "/development-control-plans/"
+
+# prior-art-checked: this edits the existing Woollahra scraper rather than adding a data
+# source. The flagged neighbours are frontend heritage display components, not scrapers.
+# The same definition dcp_extract_changed uses to REJECT a repealed source
+# (_REPEALED_PATH, #1079). This one stops the scraper OFFERING it in the first place.
+# Matched as a token, so a slug that merely contains the letters is not caught.
+# tests/test_woollahra_scraper_skips_repealed.py pins the two patterns equal.
+_REPEALED = re.compile(r"(?<![a-z0-9])repealed(?![a-z0-9])", re.IGNORECASE)
+
+
+def is_repealed_link(url: str, label: str | None) -> bool:
+    """True when a hub link's URL or its visible label marks the document repealed.
+
+    Why it matters: an archived chapter's file name still carries the chapter name, so
+    it matches the same chapter_key as the in-force link. The archive sits lower on the
+    page, and r2_monitor.diff_urls keeps the LAST link per chapter_key -- so the monitor
+    recorded 19 of Woollahra's chapters as having "migrated" into the archive and
+    re-pointed the registry at repealed documents (found 2026-09-13).
+    """
+    return bool(_REPEALED.search(unquote(url or "")) or _REPEALED.search(label or ""))
 
 
 def scrape_woollahra(
@@ -65,6 +88,8 @@ def scrape_woollahra(
         seen_urls.add(full_url)
 
         raw_label = a.get_text(" ", strip=True)
+        if is_repealed_link(full_url, raw_label):
+            continue
         label = re.sub(r"\s*\(PDF[^)]*\)", "", raw_label).strip()
         if not label:
             label = PurePosixPath(urlparse(full_url).path).stem

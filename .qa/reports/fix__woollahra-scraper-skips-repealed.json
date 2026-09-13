@@ -1,0 +1,80 @@
+{
+  "tier": "standard",
+  "justification": "Changes which council URL the monthly monitor records for Woollahra DCP chapters. The monitor writes that URL to dcp_chapter_registry and mirrors whatever it points at, so a wrong filter either keeps serving repealed chapters or drops a current one.",
+  "commit_hash": "c5110777",
+  "files": [
+    "scripts/hub_scrapers/woollahra.py",
+    "tests/test_woollahra_scraper_skips_repealed.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_woollahra_scraper_skips_repealed.py -q",
+    "fails_when": "the scraper, run over a page listing a chapter's in-force PDF and then its repealed-dcps archive copy, produces links that make r2_monitor.diff_urls record a URL migration into the archive",
+    "observed_red": "Key test run against origin/main's scraper: AssertionError: the monitor would re-point chapter-b1-residential-precincts to [('chapter-b1-residential-precincts', 'https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/chapter-b1-residential-precincts.pdf', 'https://www.woollahra.nsw.gov.au/files/assets/public/v/1/plans-policies-publications/development-control-plans/repealed-dcps/woollahra-dcp-2015-repealed-7-december-2020-chapter_b1_residential_precincts.pdf')] -- 1 failed. With the fix restored: 11 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13: 19 of Woollahra's 27 active registry chapters point into /development-control-plans/repealed-dcps/. The monitor last reached the council page on 2026-09-01 and saw 171 PDF links; hub_expected_count is 16.",
+    "assumption_mismatch": "The scraper assumed every PDF under the DCP path is in force. The council keeps its archive of superseded chapters under that same path, with the chapter name still in each file name.",
+    "new_vs_existing": "#1079 made extraction reject a repealed source. This stops the scraper offering one, using the identical token pattern, pinned equal by a test so the two cannot drift."
+  },
+  "functions": [
+    {
+      "name": "is_repealed_link",
+      "file_line": "scripts/hub_scrapers/woollahra.py:44",
+      "input": "A hub link's absolute URL and its visible link text, either of which may be empty.",
+      "output": "True when the percent-decoded URL or the label contains the word repealed as a token, otherwise False.",
+      "if_none": "A missing URL or label is treated as an empty string, so it returns False rather than raising."
+    },
+    {
+      "name": "scrape_woollahra",
+      "file_line": "scripts/hub_scrapers/woollahra.py:56",
+      "input": "The council hub page URL, and the registry's chapter keys and chapter labels for Woollahra.",
+      "output": "One entry per in-force DCP PDF link with its matched chapter key; archive links are no longer returned at all.",
+      "if_none": "If every link is filtered out the existing HubScrapeError is raised, so the monitor skips the council and alerts instead of recording removals."
+    }
+  ],
+  "values": "N/A - the change reads no database value; the monitor's existing registry read is unchanged.",
+  "queries": "N/A - no query added or changed; the monitor's existing council_url UPDATE is unchanged.",
+  "break_it": [
+    {
+      "scenario": "The council renames its archive folder to something without the word repealed, such as superseded-dcps.",
+      "what_happens": "The filter misses the archive links and the last-link-wins behaviour re-points chapters into the archive again.",
+      "mitigated": false,
+      "how": "Not mitigated here, and stated rather than hidden: #1079's extraction reject keys on the same word and shares the blind spot. Each migration is still named in the monitor's Telegram digest.",
+      "repro": "python -m pytest tests/test_woollahra_scraper_skips_repealed.py -k recognised -q"
+    },
+    {
+      "scenario": "An in-force chapter's URL merely contains the letters, for example a slug like notrepealedstuff.",
+      "what_happens": "A substring filter would drop a current chapter and the monitor would report it removed from the hub.",
+      "mitigated": true,
+      "how": "The pattern matches repealed only as a token, not inside a longer word; the confusable negative is a parametrised test case.",
+      "repro": "python -m pytest tests/test_woollahra_scraper_skips_repealed.py -k in_force -q"
+    },
+    {
+      "scenario": "With the archive links gone, the council's misnamed D5 file chapter-d5-edgecliff-centre.pdf is the nearest file-name match for chapter D4 Edgecliff.",
+      "what_happens": "Last-link-wins would re-point D4 at the D5 file and extract the wrong chapter under D4.",
+      "mitigated": true,
+      "how": "The monitor passes the registry's chapter labels and label matching runs first; a test with the real registry and page labels asserts D4 stays on its own file and D5 takes the council's D5 link (filter applied at scripts/hub_scrapers/woollahra.py:91).",
+      "repro": "python -m pytest tests/test_woollahra_scraper_skips_repealed.py -k misnamed -q"
+    },
+    {
+      "scenario": "Filtering the archive drops the number of links below 80 percent of hub_expected_count, tripping the monitor's anomaly gate.",
+      "what_happens": "The monitor would skip Woollahra entirely and never repair the registry.",
+      "mitigated": true,
+      "how": "hub_expected_count is 16 and the council page lists about 41 in-force DCP PDFs (fetched 2026-09-13), so the filtered count stays well above the 12.8 threshold.",
+      "repro": "SELECT hub_expected_count, hub_last_pdf_count FROM dcp_chapter_registry WHERE council='woollahra' AND is_active LIMIT 1"
+    },
+    {
+      "scenario": "This merges after the monitor's 2026-09-15 02:00 UTC run.",
+      "what_happens": "That run uses the old scraper and records the same repealed URLs it already holds, so nothing changes until the following run.",
+      "mitigated": true,
+      "how": "The old behaviour is already the stored state, so a late merge delays the repair by one run and makes nothing worse; the moved-back test shows the fixed scraper re-points a chapter still in the archive.",
+      "repro": "python -m pytest tests/test_woollahra_scraper_skips_repealed.py -k moved_back -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No schema or data change in this PR. The next dcp-monitor run rewrites the Woollahra council_url values itself.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: after the next dcp-monitor run, SELECT count(*) FROM dcp_chapter_registry WHERE council='woollahra' AND is_active AND council_url ILIKE '%repealed%' should return 0, and a person opens the D5 file, which the council names edgecliff-centre."
+  }
+}
