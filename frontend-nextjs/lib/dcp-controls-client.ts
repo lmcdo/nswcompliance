@@ -61,6 +61,12 @@ export async function fetchDcpControls(
   try {
     res = await fetch(`${PYTHON_API}/pipeline/dcp-controls?${params}`, {
       signal: AbortSignal.timeout(20_000),
+      // Never reuse a stored response. Next 14 keeps server fetch() results in its
+      // Data Cache across deployments; on 2026-09-13 councils first requested before
+      // a backend fix kept serving the old answer (no citation links) while councils
+      // requested afterwards were correct. The same would keep a control that was
+      // since held for review on screen.
+      cache: 'no-store',
     });
   } catch (e) {
     throw new DcpControlsUnavailableError(
