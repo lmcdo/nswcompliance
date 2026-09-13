@@ -516,13 +516,18 @@ def fetch_dcp_setbacks(
         try:
             cur.execute("SAVEPOINT pdf_map_probe")
             try:
+                # Same fallback chain as the TS route: an unlinked citation is
+                # a dead grey ref in front of the reader, and the fallback URLs
+                # sit in the very same row. Requiring r2_public_pdf_url IS NOT
+                # NULL discarded 60 percent of them.
+                #
+                # Keep comments OUT of the SQL string. psycopg2 treats every %
+                # in a parameterised query as a placeholder, so a "60%" in an
+                # SQL comment raised IndexError on every call from 2026-08-26;
+                # the except below swallowed it and every number was served
+                # with no PDF link.
                 cur.execute(
                     """
-                    -- Same fallback chain as the TS route: an unlinked
-                    -- citation is a dead grey ref in front of the reader, and
-                    -- the fallback URLs sit in the very same row. Requiring
-                    -- r2_public_pdf_url IS NOT NULL discarded 60% of them.
-                    -- Line 406 of this file already COALESCEs these two.
                     SELECT chapter_key,
                            COALESCE(r2_public_pdf_url, council_url, council_page_url)
                     FROM dcp_chapter_registry

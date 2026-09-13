@@ -141,21 +141,23 @@ def assign_overlays_for_lga(conn, lga_name: str, dry_run: bool = False) -> int:
 
     # Step 1: Insert base lot data
     log.info("  Step 1: Insert base lot data...")
+    # Lot area: NOT shape_area. That column is an area computed on the flat Web
+    # Mercator projection, which stretches distance by 1/cos(latitude) and
+    # therefore area by 1/cos^2(latitude) -- about +45 percent in Sydney and
+    # worse further south. Measured 2026-08-10 over a 5,000-lot sample:
+    # shape_area/true = 1.4390, and multiplying by cos^2(lat) brings it to
+    # 1.0028, which identifies the projection exactly. planlotarea is the
+    # surveyed figure and is already correct (1.0003 of true on the same
+    # sample), so it stays the preferred source; only the fallback changes.
+    # 79 percent of lots have no planlotarea and took the inflated fallback.
+    #
+    # Keep comments OUT of the SQL string: psycopg2 reads every % in a
+    # parameterised query as a placeholder (tests/test_sql_percent_placeholders.py).
     cur.execute("""
         INSERT INTO lot_search_index (lotidstring, lga_name, lot_area_m2, urbanity, geom)
         SELECT DISTINCT ON (c.lotidstring)
             c.lotidstring,
             %s,
-            -- NOT shape_area. That column is an area computed on the flat Web
-            -- Mercator projection, which stretches distance by 1/cos(latitude)
-            -- and therefore area by 1/cos^2(latitude) -- about +45% in Sydney
-            -- and worse further south. Measured 2026-08-10 over a 5,000-lot
-            -- sample: shape_area/true = 1.4390, and multiplying by cos^2(lat)
-            -- brings it to 1.0028, which identifies the projection exactly.
-            -- planlotarea is the surveyed figure and is already correct
-            -- (1.0003 of true on the same sample), so it stays the preferred
-            -- source; only the fallback changes. 79% of lots have no
-            -- planlotarea and took the inflated fallback.
             COALESCE(c.planlotarea, ST_Area(c.geom::geography)),
             c.urbanity,
             c.geom
