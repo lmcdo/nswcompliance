@@ -1,0 +1,115 @@
+{
+  "tier": "critical",
+  "justification": "Adds a refusal inside the two code paths that write live regulatory provisions to the single production database. A wrong guard either lets a worse extraction replace good rules again, or blocks legitimate council amendments from ever going live.",
+  "commit_hash": "c5110777",
+  "files": [
+    "scripts/dcp_supersede_guard.py",
+    "scripts/dcp_commit_approved.py",
+    "scripts/dcp_extract_changed.py",
+    "Dockerfile.monitors",
+    "tests/test_dcp_supersede_guard.py",
+    "tests/test_dcp_commit_refuses_section_loss.py",
+    "tests/test_dcp_supersede_guard_real_db.py",
+    "tests/test_dcp_commit_rederives_precinct_keys.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_commit_refuses_section_loss.py tests/test_dockerfile_monitors_imports.py -q",
+    "fails_when": "the commit job commits a chapter whose live section codes fall from 38 to 8 without --allow-section-loss naming that chapter, or the monitor image stops copying the guard module both workers import",
+    "observed_red": "With the enforce_section_loss call deleted from dcp_commit_approved.py and the guard COPY deleted from Dockerfile.monitors: assert conn.commits == 0 -> E assert 1 == 0 ('a swap losing 30 of 38 sections was committed'); assert dca.main() == 1 -> E assert (2 == 1); Missing COPY in Dockerfile.monitors: scripts/dcp_commit_approved.py imports scripts.dcp_supersede_guard; 3 failed, 6 passed. Restored: 9 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13 on production: marrickville part4-s1-low-density live version had 26 rules and 8 section codes while the switched-off earlier version had 215 rules and 38 codes; mixed use 225 to 19; stormwater 16 codes to 1.",
+    "assumption_mismatch": "The commit path assumed an approved version is at least as good as the live one. Approval is per row, so nobody reviewing rows sees that whole sections vanished; AI extraction is non-deterministic between runs.",
+    "new_vs_existing": "dcp_extract_changed already had a row-count gate (is_count_drop) but only on its own path and only on row counts; dcp_commit_approved had no comparison at all. This adds one section-code check shared by both.",
+    "external_source_error": "The guard reads nothing external. If the database query fails, the exception rolls the transaction back and the chapter is not committed, which fails closed rather than writing unmeasured.",
+    "frontend_type": "No frontend change. The page reads regulatory_provisions through app/api/provisions/for-property, which this change does not touch; it only affects which version becomes current.",
+    "user_failure_mode": "Without the guard a property report silently loses setbacks, heights and floor space rules for a whole chapter. With a mistuned guard a real council amendment never goes live and the daily job fails loudly instead."
+  },
+  "functions": [
+    {
+      "name": "snapshot",
+      "file_line": "scripts/dcp_supersede_guard.py:102",
+      "input": "An open cursor inside the caller's transaction, a council slug and a chapter key.",
+      "output": "A Snapshot holding the set of leading section codes of the chapter's current rows and the current row count.",
+      "if_none": "A chapter with no current rows returns an empty code set and zero rows; NULL section headers count as rows with no code."
+    },
+    {
+      "name": "judge",
+      "file_line": "scripts/dcp_supersede_guard.py:116",
+      "input": "Two Snapshots of the same chapter: before the write and after it, within one transaction.",
+      "output": "A Verdict saying refused or not, the measure used (codes, rows, not judged), counts, the lost codes and how many codes are new.",
+      "if_none": "An empty before snapshot is not judged and is allowed, so a first extraction of a new chapter always passes."
+    },
+    {
+      "name": "enforce",
+      "file_line": "scripts/dcp_supersede_guard.py:129",
+      "input": "Cursor, council, chapter key, the before Snapshot, and the set of council/chapter names a person allowed.",
+      "output": "The Verdict when allowed; raises SectionLossRefused naming the numbers and the exact override flag when refused.",
+      "if_none": "An empty allowed set means nothing is overridden, which is what every scheduled run passes, so scheduled runs fail closed."
+    }
+  ],
+  "values": [
+    {
+      "value": "regulatory_provisions.section_header",
+      "read_at": "scripts/dcp_supersede_guard.py:111",
+      "if_missing": "NULL header counts as a row with no section code; if too few codes exist the chapter is judged by row count instead."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Read the live section headers of one chapter before and after a commit, inside the same transaction",
+      "file_line": "scripts/dcp_supersede_guard.py:104",
+      "where_clause": "source_council = %s AND source_chapter_key = %s AND is_current = TRUE"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council genuinely renumbers a chapter, so every old section code disappears and new ones replace them one for one.",
+      "what_happens": "The guard refuses a legitimate amendment and the daily commit job fails until someone acts.",
+      "mitigated": true,
+      "how": "Deliberate: every served citation changes, which a person should see. The refusal prints how many new codes arrived so a renumbering is recognisable, and --allow-section-loss council/chapter lets exactly that chapter through.",
+      "repro": "python -m pytest tests/test_dcp_supersede_guard.py -k renumbering -q"
+    },
+    {
+      "scenario": "Headers in the old version are bare control markers such as C7, which leading_code also reads as codes, inflating the before count.",
+      "what_happens": "More codes look lost than real sections, so a borderline swap is refused that arguably should pass.",
+      "mitigated": true,
+      "how": "This errs toward refusing, never toward letting a loss through, and the override exists for the checked case. Found by sampling marrickville tree-management, whose 25 codes were control markers.",
+      "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); from dcp_chapter_measure import leading_code; print(leading_code('C7 C7'))\""
+    },
+    {
+      "scenario": "A refusal happens inside the unattended Railway cron and nobody reads the log.",
+      "what_happens": "The better rules stay live, but a pending approval sits refused forever with no one aware.",
+      "mitigated": true,
+      "how": "A refusal is counted as a failed chapter, so dcp_commit_approved exits 1, which run_monitors treats as a failure and alerts on. The test asserts the exit code, not just the message.",
+      "repro": "python -m pytest tests/test_dcp_commit_refuses_section_loss.py -k rolled_back -q"
+    },
+    {
+      "scenario": "The direct-commit branch of dcp_extract_changed.extract_chapter swaps a chapter without going through the review queue.",
+      "what_happens": "If its wiring were wrong the same loss could land by the on-demand path even though the commit job is protected.",
+      "mitigated": false,
+      "how": "Wired the same way (snapshot before the first write, enforce before conn.commit) and the module-level import is pinned by the packaging test, but no behavioural test drives extract_chapter, which needs a PDF, R2 and preflight. Production cron runs extraction with --review, which never commits.",
+      "repro": "python -m pytest tests/test_dockerfile_monitors_imports.py -q"
+    },
+    {
+      "scenario": "A chapter whose rows carry no section codes at all, like ashfield's 747 uncoded rows, is replaced by a much smaller version.",
+      "what_happens": "A code-only rule would see nothing to lose and wave the collapse through.",
+      "mitigated": true,
+      "how": "Below five codes the guard judges by row count: more than 20 rows before and more than half gone is refused.",
+      "repro": "python -m pytest tests/test_dcp_supersede_guard.py -k too_few_codes -q"
+    },
+    {
+      "scenario": "The guard is added in code but the Railway monitor image is not rebuilt with the new module.",
+      "what_happens": "Both DCP workers crash at import with ModuleNotFoundError on their next scheduled run.",
+      "mitigated": true,
+      "how": "Dockerfile.monitors copies dcp_supersede_guard.py and dcp_chapter_measure.py, and test_every_sibling_import_is_copied_into_the_image went red when the COPY was removed.",
+      "repro": "python -m pytest tests/test_dockerfile_monitors_imports.py -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. No schema change and no data change; the guard only reads.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: the monitor image rebuilds on merge. Read the next dcp-commit deploy log on Railway and confirm it starts without ImportError."
+  }
+}

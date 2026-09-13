@@ -50,6 +50,9 @@ sys.path.insert(0, str(HERE))
 import psycopg2    # noqa: E402
 
 import dcp_extract_changed as dx  # noqa: E402
+# Refuses a swap that would lose most of a chapter's sections. See the module docstring.
+from scripts.dcp_supersede_guard import enforce as enforce_section_loss  # noqa: E402
+from scripts.dcp_supersede_guard import snapshot as section_snapshot  # noqa: E402
 
 
 def find_committable_chapters(cur) -> list[dict]:
@@ -246,8 +249,14 @@ def main() -> int:
         "--commit", action="store_true",
         help="Actually commit. Without this flag the worker is a dry run (reports only).",
     )
+    parser.add_argument(
+        "--allow-section-loss", action="append", default=[], metavar="COUNCIL/CHAPTER",
+        help=("Let ONE named chapter through the section-loss guard. Repeatable. Only for "
+              "a loss a person has checked against the council's source document."),
+    )
     args = parser.parse_args()
     dry_run = not args.commit
+    allowed_loss = frozenset(args.allow_section_loss)
 
     conn = psycopg2.connect(dx.DATABASE_URL)
     conn.autocommit = False
@@ -312,7 +321,14 @@ def main() -> int:
             # prior-art-checked: reuse not viable because the flagged matches are the
             # separate SEPP full-text import scripts; this is the DCP review-queue commit
             # path, writing dcp_review_queue-approved rows into regulatory_provisions.
+            # The live chapter is measured BEFORE the swap and judged AFTER it, in the
+            # same uncommitted transaction. A version missing most of the chapter's
+            # sections raises here, lands in the except below, and is rolled back --
+            # the approval is kept, so it is refused again every day until a person
+            # decides. 2026-09-13: this swap took marrickville low-density 215 -> 26.
+            before = section_snapshot(cur, council, chapter_key)
             superseded, inserted = commit_reviewed_from_queue(cur, council, chapter_key)
+            enforce_section_loss(cur, council, chapter_key, before, allowed_loss)
             # Resolve the worklist: the reviewed provisions are now live. The status
             # enum has no 'committed', so the resolved rows are deleted (the permanent
             # record is regulatory_provisions, extraction_method='ai-reviewed').
