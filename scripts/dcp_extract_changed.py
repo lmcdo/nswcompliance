@@ -4187,14 +4187,14 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
             # would have removed. The queue's CHECK has no 'unchanged' type, so they go
             # in as 'changed' (old and new text equal), at the page the new extraction
             # found them on, with a summary the review page shows saying why.
-            for u in diff.get("unchanged", []):
+            for u in diff.get("unchanged") or []:
                 rows.append((
                     "changed", u.get("ref_number"), u.get("old_text"), u.get("new_text"),
                     u.get("old_page"), u.get("new_page"), False,
                     "Text unchanged from the live rule. Queued because this chapter is "
                     "replaced whole, and a rule left out of the queue is dropped at commit.",
                 ))
-            for rn in diff.get("renumbered", []):
+            for rn in diff.get("renumbered") or []:
                 rows.append((
                     "added", rn.get("new_ref_number"), None, rn.get("text"),
                     None, rn.get("new_page"), False,
