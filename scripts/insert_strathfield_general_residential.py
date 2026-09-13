@@ -269,7 +269,7 @@ def check_against_pdf(pdf_path: Path) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description="Insert Strathfield numeric DCP controls from the General Residential DCP.")
     ap.add_argument("--pdf", type=Path, help="local copy of the plan; every quote is checked on its page")
     ap.add_argument("--apply", action="store_true", help="commit (default: roll back)")
     args = ap.parse_args(argv)
@@ -297,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
         if cur.fetchone() is None:
             print(f"registry chapter {LGA}/{SOURCE_CHAPTER_KEY} with a public PDF copy is missing; register it first")
             return 1
-        cur.execute("SELECT * FROM dcp_setback_controls WHERE lga = %s ORDER BY id", (LGA,))
+        cur.execute("SELECT * FROM dcp_setback_controls WHERE lga = %s ORDER BY is_current DESC, id", (LGA,))  # prior-art-checked: this script's own rollback backup, not a new data source
         backups = Path(__file__).resolve().parents[1] / "data" / "db_rollback_backups"
         backups.mkdir(parents=True, exist_ok=True)
         backup = backups / f"dcp_setback_controls_pre_strathfield_grdcp_{datetime.now():%Y-%m-%d_%H%M}.csv"

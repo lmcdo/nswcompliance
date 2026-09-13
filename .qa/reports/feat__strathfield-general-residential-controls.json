@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Writes the numeric DCP controls served for every Strathfield property (setbacks, parking, landscaping, deep soil, fencing, solar access). A wrong value, page or plan here is a wrong regulatory answer served with a citation.",
-  "commit_hash": "4bac7d91",
+  "commit_hash": "472d3461",
   "files": [
     "scripts/insert_strathfield_general_residential.py",
     "tests/test_insert_strathfield_general_residential.py",
@@ -38,7 +38,7 @@
     {
       "name": "main",
       "file_line": "scripts/insert_strathfield_general_residential.py:271",
-      "input": "--pdf <plan> and optionally --apply.",
+      "input": "Command-line arguments: --pdf with the path to a local copy of the plan, and optionally --apply to commit instead of rolling back.",
       "output": "Exit 0 after a rolled-back dry run or a commit; 1 on a PDF problem, missing registry chapter, supersede miss, duplicate or count mismatch (all rolled back); 2 when --apply is given without --pdf, before any connection.",
       "if_none": "No DATABASE_URL raises before any write; a missing registry chapter returns 1 before the backup or any write."
     }
@@ -64,6 +64,11 @@
     }
   ],
   "queries": [
+    {
+      "purpose": "Backup every Strathfield row to CSV before any write, superseded rows included",
+      "file_line": "scripts/insert_strathfield_general_residential.py:300",
+      "where_clause": "lga = %s ORDER BY is_current DESC, id (no currency filter on purpose: the rollback backup must hold the superseded rows too)"
+    },
     {
       "purpose": "Registered plan chapter with a public copy, checked before any write",
       "file_line": "scripts/insert_strathfield_general_residential.py:296",
