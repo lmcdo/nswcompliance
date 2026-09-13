@@ -27,6 +27,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { NOT_HERITAGE_SQL } from '@/lib/provision-sql-filters';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
 import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
 import { parseRefNumber } from '@/lib/see/refNumber';
@@ -986,19 +987,19 @@ async function queryLayer(
   // precinct boundaries, independently of LEP heritage schedules (precinct maps define scope)
   if (!filters.heritage && layer !== 'condition' && layer !== 'precinct') {
     // Property is not heritage - exclude all heritage provisions from generic/use-specific layers
-    sql += ` AND (LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;
+    sql += ` AND ${NOT_HERITAGE_SQL}`;
   } else if (filters.hca && layer !== 'condition' && layer !== 'precinct') {
     // Heritage with HCA - exclude from non-condition layers (handled by queryHeritageByHca)
-    sql += ` AND (LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;
+    sql += ` AND ${NOT_HERITAGE_SQL}`;
   } else if (filters.heritage && !filters.hca && layer !== 'condition' && layer !== 'precinct') {
     // Heritage without HCA - include but filter by precinct to avoid showing ALL precincts
     if (filters.precinct_id) {
       const precinctIds = filters.precinct_id.split(',').map((s: string) => s.trim()).filter(Boolean);
-      sql += ` AND ((LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage')) OR v2_precinct_id IS NULL OR v2_precinct_id = ANY($${paramIndex++}::text[]))`;
+      sql += ` AND (${NOT_HERITAGE_SQL} OR v2_precinct_id IS NULL OR v2_precinct_id = ANY($${paramIndex++}::text[]))`;
       params.push(precinctIds);
     } else {
       // No precinct specified - only show non-precinct heritage provisions
-      sql += ` AND ((LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage')) OR v2_precinct_id IS NULL)`;
+      sql += ` AND (${NOT_HERITAGE_SQL} OR v2_precinct_id IS NULL)`;
     }
   }
   // Note: Precinct layer (layer === 'precinct') is NOT filtered by heritage status
@@ -1043,7 +1044,7 @@ async function queryLayer(
       // Also filter heritage for non-heritage properties
       // (Provisions with v2_precinct_id IS NULL don't get precinct boundary protection)
       if (!filters.heritage) {
-        sql += ` AND (LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;
+        sql += ` AND ${NOT_HERITAGE_SQL}`;
       }
     }
   }
