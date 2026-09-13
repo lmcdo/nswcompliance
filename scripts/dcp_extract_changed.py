@@ -4219,14 +4219,18 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
                 rows.append((
                     "removed", rn.get("old_ref_number"), rn.get("old_text"), None,
                     None, None, False,
-                    f"Renumbered to {rn.get('new_ref_number')}; the same text is queued "
-                    "under the new number.",
+                    # The match is fuzzy (at least 90% alike over the first 200
+                    # characters), not equality, so neither summary claims the text is
+                    # the same (cross-review, 2026-09-13).
+                    f"Matched to {rn.get('new_ref_number')} under a new number (at least 90% "
+                    "alike in its first 200 characters). That rule is queued; compare the texts.",
                 ))
                 rows.append((
                     "added", rn.get("new_ref_number"), None, rn.get("text"),
                     None, rn.get("new_page"), False,
-                    f"Same text as live rule {rn.get('old_ref_number')}, under a new number. "
-                    "Queued because this chapter is replaced whole.",
+                    f"Matched to live rule {rn.get('old_ref_number')} under a new number (at "
+                    "least 90% alike in its first 200 characters). Queued because this chapter "
+                    "is replaced whole; compare with the old text.",
                 ))
 
         if not rows:

@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which rules the review queue holds for a chapter that is replaced whole. The commit job switches off every live rule of such a chapter and adds back only approved queue rows, so what the queue holds is exactly what stays served to users after approval.",
-  "commit_hash": "10832838",
+  "commit_hash": "04fe7ac7",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_review_enqueue.py",
@@ -20,7 +20,7 @@
     "existing_data": "Measured 2026-09-13, read-only, dry run from main 52a12b7a on waverley-dcp-2022: status=restructure, total_old=264, total_new=602, changed=70, added=486, removed=148, unchanged=46, renumbered=0, so is_full_replace is TRUE. dcp_review_queue CHECK allows change_type changed, added, removed, restructure only. All 987 waverley queue rows backed up to data/db_rollback_backups/waverley_review_queue_pre_requeue_2026-09-13.csv before any queue write.",
     "assumption_mismatch": "commit_reviewed_from_queue's docstring says a full-replace queue holds the whole chapter, and it soft-deletes every current row before inserting approved rows. enqueue_review_changes only ever queued changed, added and removed items, and diff_provisions kept only a count of unchanged rules, so the whole-chapter assumption was false whenever a restructure kept any rule's text.",
     "new_vs_existing": "Extends the existing diff and enqueue functions so the queue meets the commit worker's documented full-replace semantics, and adds one check inside the commit worker for queues built before the change. The check reuses the section-loss guard's --allow-section-loss override rather than adding a second flag. The existing summary column, already rendered by DcpReviewQueue.tsx, carries the reason instead of a new change_type, which would need a schema change.",
-    "external_source_error": "Not applicable to an external source. If the diff has no unchanged or renumbered key (an older caller), .get returns an empty list and the queue is built exactly as before.",
+    "external_source_error": "Not applicable to an external source. If a full-replace diff for a chapter with live rules has no unchanged list, or its lists do not add up to its totals (an older caller), enqueue raises before writing any row instead of building a partial queue.",
     "frontend_type": "No frontend change. summary is an existing nullable text column the review page already shows above a row; change_type values stay within the existing TypeScript union.",
     "user_failure_mode": "Without this, approving waverley would remove 46 rules from every waverley property page with no error; the section-loss guard only refuses losing more than half the section numbers. With it, a reviewer sees 46 more rows, labelled, whose text matches the live rule."
   },
@@ -34,7 +34,7 @@
     },
     {
       "name": "enqueue_review_changes",
-      "file_line": "scripts/dcp_extract_changed.py:4134",
+      "file_line": "scripts/dcp_extract_changed.py:4135",
       "input": "Review chapters, each with council, chapter key, document id, content hash and its diff.",
       "output": "Queue rows for changed, added and removed rules and, when the chapter is a full replace, for its unchanged rules (as changed) and renumbered rules (as added under the new number), each of those with a summary.",
       "if_none": "A diff with no rows of any kind enqueues nothing for that chapter. A full-replace diff for a chapter with live rules whose lists do not add up to its old and new totals, or that has no unchanged list, raises ValueError before any row is written."
@@ -50,19 +50,19 @@
   "values": [
     {
       "value": "diff status and total_old, which decide is_full_replace",
-      "read_at": "scripts/dcp_extract_changed.py:4162",
+      "read_at": "scripts/dcp_extract_changed.py:4163",
       "if_missing": "A missing total_old counts as 0, which is a full replace, so the queue errs toward carrying every rule rather than dropping one."
     },
     {
       "value": "dcp_review_queue.summary text column",
-      "read_at": "scripts/dcp_extract_changed.py:4261",
+      "read_at": "scripts/dcp_extract_changed.py:4292",
       "if_missing": "NULL for changed, added and removed rows, as before."
     }
   ],
   "queries": [
     {
       "purpose": "Insert one review-queue row per queued rule, now also writing the existing summary column so a carried-over unchanged or renumbered rule says why it is in the queue.",
-      "file_line": "scripts/dcp_extract_changed.py:4261",
+      "file_line": "scripts/dcp_extract_changed.py:4292",
       "where_clause": "None: a single-row INSERT. The refresh DELETE before it is unchanged and keeps its council, chapter_key and status = 'pending' filter."
     },
     {
