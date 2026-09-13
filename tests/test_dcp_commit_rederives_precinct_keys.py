@@ -111,7 +111,7 @@ def _wire(monkeypatch, councils, *, fail_on=(), derive_raises=False):
         lambda cur, council, chapter_key: {"content_hash": "h"},
     )
 
-    def _commit(cur, council, chapter_key):
+    def _commit(cur, council, chapter_key, allow_unqueued=False):
         if council in fail_on:
             raise RuntimeError(f"commit blew up for {council}")
         return (2, 5)

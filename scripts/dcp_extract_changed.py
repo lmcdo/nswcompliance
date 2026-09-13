@@ -3172,6 +3172,7 @@ def diff_provisions(
                 "old_ref_number": best_old_ref,
                 "new_ref_number": new_ref,
                 "text": new_prov["text"],
+                "old_text": unmatched_old[best_old_ref]["text"],
                 "new_page": new_prov["page"],
             })
             used_old.add(best_old_ref)
@@ -4187,6 +4188,24 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
             # would have removed. The queue's CHECK has no 'unchanged' type, so they go
             # in as 'changed' (old and new text equal), at the page the new extraction
             # found them on, with a summary the review page shows saying why.
+            #
+            # A diff that cannot account for every old and new rule is refused, not
+            # queued: missing lists read as empty would build exactly the partial queue
+            # this block exists to prevent (cross-review, 2026-09-13).
+            total_old = int(diff.get("total_old") or 0)
+            if total_old:
+                n = {k: len(diff.get(k) or []) for k in
+                     ("changed", "added", "removed", "unchanged", "renumbered")}
+                new_side = n["changed"] + n["unchanged"] + n["renumbered"] + n["added"]
+                old_side = n["changed"] + n["unchanged"] + n["renumbered"] + n["removed"]
+                if (diff.get("unchanged") is None or "total_new" not in diff
+                        or new_side != int(diff["total_new"] or 0) or old_side != total_old):
+                    raise ValueError(
+                        f"{council}/{chapter_key}: full-replace diff does not account for "
+                        f"every rule (new {new_side} of {diff.get('total_new')}, old "
+                        f"{old_side} of {total_old}, unchanged list "
+                        f"{'missing' if diff.get('unchanged') is None else 'present'}). "
+                        f"Refusing to queue a chapter whose commit would drop rules.")
             for u in diff.get("unchanged") or []:
                 rows.append((
                     "changed", u.get("ref_number"), u.get("old_text"), u.get("new_text"),
@@ -4195,6 +4214,14 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
                     "replaced whole, and a rule left out of the queue is dropped at commit.",
                 ))
             for rn in diff.get("renumbered") or []:
+                # Both numbers are named: the commit's completeness check requires every
+                # live rule, including the old number, to be accounted for in the queue.
+                rows.append((
+                    "removed", rn.get("old_ref_number"), rn.get("old_text"), None,
+                    None, None, False,
+                    f"Renumbered to {rn.get('new_ref_number')}; the same text is queued "
+                    "under the new number.",
+                ))
                 rows.append((
                     "added", rn.get("new_ref_number"), None, rn.get("text"),
                     None, rn.get("new_page"), False,

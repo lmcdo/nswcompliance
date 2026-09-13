@@ -105,7 +105,7 @@ class TestEnqueueReviewChanges:
         conn = MagicMock()
         cur = conn.cursor.return_value
         enqueue(conn, _review_chapter(
-            status="restructure", total_old=2,
+            status="restructure", total_old=2, total_new=2,
             changed=[{"ref_number": "doc_C1_1_1", "old_text": "6m", "new_text": "7m",
                       "has_numeric_change": True, "old_page": 167, "new_page": 168}],
             unchanged=[{"ref_number": "doc_C1_1_2", "old_text": "Keep this rule.",
@@ -140,15 +140,40 @@ class TestEnqueueReviewChanges:
         conn = MagicMock()
         cur = conn.cursor.return_value
         enqueue(conn, _review_chapter(
-            status="restructure", total_old=3,
+            status="restructure", total_old=2, total_new=1, unchanged=[],
             removed=[{"ref_number": "doc_gone", "old_text": "x"}],
             renumbered=[{"old_ref_number": "doc_B7_7_1", "new_ref_number": "doc_B7_7_2",
-                         "text": "Vehicle access rule.", "new_page": 61}]))
+                         "text": "Vehicle access rule.", "old_text": "Vehicle access rule.",
+                         "new_page": 61}]))
         rows = {p[3]: p for p in self._inserts(cur)}
         assert "doc_B7_7_2" in rows, "a renumbered rule of a full-replace chapter was not queued"
         moved = rows["doc_B7_7_2"]
         assert moved[4] == "added" and moved[6] == "Vehicle access rule." and moved[8] == 61
         assert "doc_B7_7_1" in (moved[15] or "")
+        # The old number is named as removed, so the commit's completeness check finds
+        # every live rule accounted for.
+        assert "doc_B7_7_1" in rows and rows["doc_B7_7_1"][4] == "removed"
+
+    def test_a_full_replace_diff_that_cannot_account_for_every_rule_is_refused(self):
+        """An older caller with no unchanged list would otherwise build the partial queue
+        this change exists to prevent (cross-review, 2026-09-13)."""
+        enqueue = _load_enqueue()
+        conn = MagicMock()
+        cur = conn.cursor.return_value
+        review = _review_chapter(
+            status="restructure", total_old=3, total_new=2,
+            changed=[{"ref_number": "doc_1", "old_text": "a", "new_text": "b",
+                      "has_numeric_change": False, "old_page": 1, "new_page": 1}],
+            added=[{"ref_number": "doc_2", "new_text": "c", "new_page": 2}],
+            removed=[{"ref_number": "doc_3", "old_text": "d"}])
+        try:
+            enqueue(conn, review)
+        except ValueError as exc:
+            assert "does not account for every rule" in str(exc)
+        else:
+            raise AssertionError("a full-replace diff with no unchanged list was queued")
+        assert not self._inserts(cur), "rows were written before the refusal"
+        conn.commit.assert_not_called()
 
     def test_added_and_removed_are_never_numeric(self):
         enqueue = _load_enqueue()

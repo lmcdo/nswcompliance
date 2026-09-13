@@ -30,9 +30,10 @@ class TestSectionHeaderFromText:
 class _FakeCursor:
     """Records execute() calls. fetchone() returns the is_full_replace flag; fetchall()
     returns the queued rows. rowcount is 7 for a blanket delete, 1 for a per-ref delete."""
-    def __init__(self, rows, full_replace=None):
+    def __init__(self, rows, full_replace=None, unqueued=()):
         self._rows = rows
         self._full_replace = full_replace
+        self._unqueued = list(unqueued)
         self.calls = []
         self._last = ""
 
@@ -49,6 +50,10 @@ class _FakeCursor:
         return (self._full_replace,)
 
     def fetchall(self):
+        # The full-replace completeness check asks for live refs the approved queue
+        # does not name; every other fetchall is the queued rows.
+        if "NOT EXISTS" in self._last:
+            return [(ref,) for ref in self._unqueued]
         return self._rows
 
 
@@ -100,6 +105,43 @@ class TestCommitReviewedFromQueue:
         inserts = [c for c in cur.calls if "INSERT INTO regulatory_provisions" in c[0]]
         assert inserted == 1 and len(inserts) == 1
         assert inserts[0][1][1] == "doc1__E1_1_3"
+
+    # -- A full replace must not drop a live rule the approved queue does not name ------
+    # Queues built before 2026-09-13 never held unchanged or renumbered rules. Measured
+    # then: 5 open full-replace chapters would have lost 92 live rules on commit.
+
+    def test_full_replace_refuses_when_a_live_rule_is_not_in_the_approved_queue(self):
+        cur = _FakeCursor(self._rows(), full_replace=True, unqueued=["doc1__A1_2"])
+        try:
+            commit_reviewed_from_queue(cur, "waverley", "waverley-dcp-2022")
+        except RuntimeError as exc:
+            assert "doc1__A1_2" in str(exc) and "--allow-section-loss" in str(exc)
+        else:
+            raise AssertionError("a full replace went ahead while a live rule was unqueued")
+        # refused before anything was switched off or inserted
+        assert not any("is_current = FALSE" in c[0] for c in cur.calls)
+        assert not any("INSERT INTO regulatory_provisions" in c[0] for c in cur.calls)
+
+    def test_a_person_can_let_a_checked_loss_through(self):
+        cur = _FakeCursor(self._rows(), full_replace=True, unqueued=["doc1__A1_2"])
+        superseded, inserted = commit_reviewed_from_queue(
+            cur, "waverley", "waverley-dcp-2022", allow_unqueued=True)
+        assert superseded == 7 and inserted == 2
+
+    def test_a_complete_full_replace_commits(self):
+        """Confusable negative: the check must not refuse a queue that names every rule."""
+        cur = _FakeCursor(self._rows(), full_replace=True, unqueued=[])
+        superseded, inserted = commit_reviewed_from_queue(cur, "waverley", "waverley-dcp-2022")
+        assert superseded == 7 and inserted == 2
+
+    def test_a_targeted_commit_does_not_run_the_completeness_check(self):
+        """A targeted commit supersedes only the refs it names, so unqueued live rules
+        stay live there and must not block it."""
+        rows = [("doc1", "doc1__E1_1_3", "# E1.1.3 Updated\n\nnew body", 6, "changed")]
+        cur = _FakeCursor(rows, full_replace=False, unqueued=["doc1__E1_1_9"])
+        _, inserted = commit_reviewed_from_queue(cur, "leichhardt", "part-e-water")
+        assert inserted == 1
+        assert not any("NOT EXISTS" in c[0] for c in cur.calls)
 
     def test_preamble_marked_non_actionable(self):
         cur = _FakeCursor(self._rows(), full_replace=True)

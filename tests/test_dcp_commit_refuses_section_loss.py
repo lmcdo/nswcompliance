@@ -77,7 +77,10 @@ def _wire(monkeypatch, before_headers, after_headers):
     monkeypatch.setattr(dca, "fetch_registry_chapter",
                         lambda cur, council, chapter_key: {"content_hash": "h"})
 
-    def _swap(cur, council, chapter_key):
+    def _swap(cur, council, chapter_key, allow_unqueued=False):
+        # Records what main() passed, so the override's wiring to the full-replace
+        # completeness check is pinned too.
+        _swap.seen = allow_unqueued
         db["headers"] = list(after_headers)   # the uncommitted transaction's view
         return (len(before_headers), len(after_headers))
 
@@ -122,6 +125,8 @@ def test_the_named_override_lets_that_chapter_commit(monkeypatch):
     rc = dca.main()
 
     assert conn.commits == 1 and rc != 1
+    # The same override lets that chapter past the unqueued-rule check.
+    assert dca.commit_reviewed_from_queue.seen is True
 
 
 def test_an_override_for_another_chapter_does_not_help(monkeypatch):
@@ -130,6 +135,7 @@ def test_an_override_for_another_chapter_does_not_help(monkeypatch):
                                       "--allow-section-loss", f"{COUNCIL}/part2-s25-stormwater"])
 
     assert dca.main() == 1 and conn.commits == 0
+    assert dca.commit_reviewed_from_queue.seen is False
 
 
 def test_an_ordinary_amendment_commits(monkeypatch):

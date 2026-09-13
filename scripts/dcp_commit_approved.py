@@ -159,7 +159,8 @@ def _section_header_from_text(new_text: str, ref_number: str | None = None,
     return repaired_header(head, ref_number, document_id) or head
 
 
-def commit_reviewed_from_queue(cur, council: str, chapter_key: str) -> tuple[int, int]:
+def commit_reviewed_from_queue(cur, council: str, chapter_key: str,
+                               allow_unqueued: bool = False) -> tuple[int, int]:
     """Make the HUMAN-APPROVED review-queue text the live provisions — verbatim, no
     re-extraction (which for non-deterministic AI would commit different, unreviewed
     text). Soft-delete is reversible (is_current=FALSE keeps the old rows).
@@ -186,6 +187,29 @@ def commit_reviewed_from_queue(cur, council: str, chapter_key: str) -> tuple[int
 
     superseded = 0
     if full_replace:
+        # A full replace drops every live rule the approved queue does not name. Queues
+        # built before 2026-09-13 never held unchanged or renumbered rules: measured then,
+        # 5 open chapters would have lost 92 live rules (waverley 84). Refuse instead; the
+        # caller rolls back and keeps the approval. Allowed only for a chapter a person has
+        # checked, via the same --allow-section-loss override as the section-loss guard.
+        cur.execute(
+            """
+            SELECT p.ref_number FROM regulatory_provisions p
+            WHERE p.source_council = %s AND p.source_chapter_key = %s AND p.is_current = TRUE
+              AND NOT EXISTS (
+                  SELECT 1 FROM dcp_review_queue q
+                  WHERE q.council = p.source_council AND q.chapter_key = p.source_chapter_key
+                    AND q.status = 'approved' AND q.ref_number = p.ref_number)
+            """,
+            (council, chapter_key),
+        )
+        unqueued = [r[0] for r in cur.fetchall()]
+        if unqueued and not allow_unqueued:
+            raise RuntimeError(
+                f"{len(unqueued)} live rule(s) of {council}/{chapter_key} are not in the "
+                f"approved queue, and a full replace would drop them (e.g. {unqueued[:3]}). "
+                f"Re-queue the chapter from current code, or pass --allow-section-loss "
+                f"{council}/{chapter_key} after checking the loss against the source document.")
         cur.execute(
             """
             UPDATE regulatory_provisions
@@ -327,7 +351,9 @@ def main() -> int:
             # the approval is kept, so it is refused again every day until a person
             # decides. 2026-09-13: this swap took marrickville low-density 215 -> 26.
             before = section_snapshot(cur, council, chapter_key)
-            superseded, inserted = commit_reviewed_from_queue(cur, council, chapter_key)
+            superseded, inserted = commit_reviewed_from_queue(
+                cur, council, chapter_key,
+                allow_unqueued=f"{council}/{chapter_key}" in allowed_loss)
             enforce_section_loss(cur, council, chapter_key, before, allowed_loss)
             # Resolve the worklist: the reviewed provisions are now live. The status
             # enum has no 'committed', so the resolved rows are deleted (the permanent
