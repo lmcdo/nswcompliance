@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which council URL the monthly monitor records for Woollahra DCP chapters. The monitor writes that URL to dcp_chapter_registry and mirrors whatever it points at, so a wrong filter either keeps serving repealed chapters or drops a current one.",
-  "commit_hash": "2a1a5763",
+  "commit_hash": "548ae1a7",
   "files": [
     "scripts/hub_scrapers/woollahra.py",
     "tests/test_woollahra_scraper_skips_repealed.py",
@@ -33,6 +33,9 @@
       "if_none": "If every link is filtered out the existing HubScrapeError is raised, so the monitor skips the council and alerts instead of recording removals."
     }
   ],
+  "real_layer_exempt": {
+    "scripts/hub_scrapers/woollahra.py": "The change is a filter over links already fetched; the requests.get call is untouched. A real-layer test cannot run from here: the council site returns HTTP 403 to every request from this machine, page and PDFs alike (measured 2026-09-13). The real layer is the dcp-monitor run on Railway, which reached the page on 2026-09-01, and post_merge.manual_verify checks its outcome in the registry."
+  },
   "values": "N/A - the change reads no database value; the monitor's existing registry read is unchanged.",
   "queries": "N/A - no query added or changed; the monitor's existing council_url UPDATE is unchanged.",
   "break_it": [
