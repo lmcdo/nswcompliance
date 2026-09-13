@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Replaces how waverley's DCP is divided into parts before extraction, changes what the page-range extractor emits for every council that uses page ranges, and adds a paid AI provider. The output becomes review-queue rows that, once approved, replace the rules served for a whole council.",
-  "commit_hash": "648bae39",
+  "commit_hash": "a965bc5b",
   "files": [
     "scripts/dcp_page_map_gate.py",
     "scripts/dcp_extract_changed.py",
