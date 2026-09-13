@@ -686,6 +686,80 @@ class TestRetryableTimeouts:
         assert _is_retryable(e400) is False
 
 
+class TestSolProvider:
+    """AI_MODEL=sol, added 2026-09-13: Anthropic's credit was exhausted and Mistral
+    returned 429 the same day, while the OpenAI key reached Sol. The SDK is stubbed --
+    CI's test requirements do not install openai, and no test should spend credit."""
+
+    def _stub_openai(self, monkeypatch, content):
+        captured = {}
+
+        class _Completions:
+            def create(self, **kwargs):
+                captured["request"] = kwargs
+                message = MagicMock()
+                message.content = content
+                choice = MagicMock()
+                choice.message = message
+                response = MagicMock()
+                response.choices = [choice]
+                return response
+
+        class _Chat:
+            completions = _Completions()
+
+        class _Client:
+            def __init__(self, **kwargs):
+                captured["client"] = kwargs
+                self.chat = _Chat()
+
+        stub = MagicMock()
+        stub.OpenAI = _Client
+        monkeypatch.setitem(sys.modules, "openai", stub)
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+        return captured
+
+    def test_sol_is_a_known_provider(self):
+        assert "sol" in _PROVIDERS
+
+    def test_it_sends_the_pdf_as_a_file_and_asks_for_json(self, monkeypatch):
+        cap = self._stub_openai(monkeypatch, '{"provisions": []}')
+        assert _ai_extractor_mod._call_sol(b"%PDF-1.4 test", "the prompt") == '{"provisions": []}'
+        request = cap["request"]
+        parts = request["messages"][0]["content"]
+        assert parts[0]["type"] == "file"
+        assert parts[0]["file"]["file_data"].startswith("data:application/pdf;base64,")
+        assert parts[1] == {"type": "text", "text": "the prompt"}
+        assert request["response_format"] == {"type": "json_object"}
+        assert request["model"] == "gpt-5.6-sol"
+
+    def test_the_client_is_bounded_and_leaves_retries_to_call_with_retry(self, monkeypatch):
+        cap = self._stub_openai(monkeypatch, "x")
+        _ai_extractor_mod._call_sol(b"%PDF", "p")
+        timeout = cap["client"]["timeout"]
+        assert timeout.connect is not None and timeout.read is not None
+        assert cap["client"]["max_retries"] == 0
+
+    def test_no_key_is_a_clear_error_not_a_silent_empty(self, monkeypatch):
+        self._stub_openai(monkeypatch, "x")
+        monkeypatch.delenv("OPENAI_API_KEY")
+        try:
+            _ai_extractor_mod._call_sol(b"%PDF", "p")
+            assert False, "should have raised"
+        except RuntimeError as e:
+            assert "OPENAI_API_KEY" in str(e)
+
+    def test_a_null_message_returns_empty_so_the_empty_parse_retry_can_act(self, monkeypatch):
+        self._stub_openai(monkeypatch, None)
+        assert _ai_extractor_mod._call_sol(b"%PDF", "p") == ""
+
+    def test_a_dropped_connection_is_retried(self):
+        class APIConnectionError(Exception):
+            pass
+        assert _is_retryable(APIConnectionError("connection reset")) is True
+        assert _is_retryable(ValueError("bad request")) is False
+
+
 class TestSonnetProvider:
     """AI_MODEL=sonnet, added 2026-09-05 after Haiku's real-chapter mislabeling
     rate proved too high for unreviewed sections."""

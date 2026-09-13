@@ -1,0 +1,115 @@
+{
+  "tier": "critical",
+  "justification": "Replaces how waverley's DCP is divided into parts before extraction, changes what the page-range extractor emits for every council that uses page ranges, and adds a paid AI provider. The output becomes review-queue rows that, once approved, replace the rules served for a whole council.",
+  "commit_hash": "06c8f18a",
+  "files": [
+    "scripts/dcp_page_map_gate.py",
+    "scripts/dcp_extract_changed.py",
+    "scripts/ai_extractor.py",
+    "tests/test_dcp_page_map_derive.py",
+    "tests/test_dcp_page_map_gate_derive_real_db.py",
+    "tests/test_dcp_ranged_sections_finalise.py",
+    "tests/test_ai_extractor.py",
+    "tests/test_ai_extractor_sol_integration.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_page_map_derive.py tests/test_dcp_ranged_sections_finalise.py -q",
+    "fails_when": "a part code that resumes after another part, or a document with too few headed pages, yields ranges instead of a refusal; or a heading-only section, or a repeated section number carrying different text, survives into the extractor output",
+    "observed_red": "Resumed-part refusal switched off: FAILED test_a_part_resuming_after_another_part_is_refused, 1 failed 7 passed. Coverage floor switched off: FAILED test_too_few_headers_is_refused_not_guessed, 1 failed 7 passed. Shell drop switched off: FAILED test_a_heading_only_shell_is_dropped_and_its_sibling_kept, 1 failed 6 passed. Duplicate suffix switched off: FAILED test_different_text_under_one_number_keeps_both and test_no_rule_is_lost_in_the_diff_map, 2 failed 5 passed. All restored: 8 passed and 7 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13 on the mirrored 448-page waverley PDF: the hardcoded map described 473 pages; 365 pages carry an exact part-code header giving 32 contiguous parts. Live waverley holds 264 rows, 153 served. The free extractor on header-derived parts produced 631 sections, including 29 heading-only Controls shells and 3 repeated section numbers.",
+    "assumption_mismatch": "The map assumed the document never changes shape. The page-range path assumed section numbers are unique, but diff_provisions keys sections by ref_number in a dict, so a repeated number silently overwrote a rule. The 12 September plan assumed waverley needs AI credit; the free extractor reads it cleanly once parts are right.",
+    "new_vs_existing": "derive_ranges_from_headers reuses the gate's own PART_HEADER and HEADER_SCAN_LINES, so the gate and the ranges cannot disagree about what a header is. The Sol provider extends ai_extractor's provider table rather than reusing sol_common, which sys.exits and imports a module the monitor image does not ship.",
+    "external_source_error": "If the council republishes with different headers, fewer than half the pages carry one or a code resumes, and derivation returns an empty list: the chapter is refused and needs_extraction stays true. If Sol is unreachable the call is bounded, retried on dropped connections, then fails the chunk.",
+    "frontend_type": "No frontend change. Extracted rows only reach the property page after a person approves them in the review queue and the commit job, now guarded against section loss, applies them.",
+    "user_failure_mode": "Without this, waverley users are served rules filed under the wrong part with eleven parts missing. If derivation broke, the chapter would be refused and users would keep today's 264 rows, never a wrongly divided set."
+  },
+  "functions": [
+    {
+      "name": "derive_ranges_from_headers",
+      "file_line": "scripts/dcp_page_map_gate.py:155",
+      "input": "The extracted text of every page of one DCP document, in page order, possibly empty strings for image-only pages.",
+      "output": "A list of part code, title, first page and last page, one per contiguous run of pages carrying that part's running header.",
+      "if_none": "An empty document, fewer than half the pages carrying a header, or a part code resuming after another part returns an empty list, which the caller treats as a refusal."
+    },
+    {
+      "name": "finalise_ranged_sections",
+      "file_line": "scripts/dcp_extract_changed.py:1834",
+      "input": "The section dicts produced by page-range extraction and sub-section splitting for one chapter, in document order.",
+      "output": "The same sections without heading-only shells, with exact repeats removed and distinct text under a repeated number suffixed _2, _3.",
+      "if_none": "An empty input returns an empty list; a section with no text but a table is kept rather than treated as a shell."
+    },
+    {
+      "name": "_call_sol",
+      "file_line": "scripts/ai_extractor.py:365",
+      "input": "The bytes of one PDF chunk and the extraction prompt, with OPENAI_API_KEY read from the environment.",
+      "output": "The model's JSON text for that chunk, which parse_provisions turns into provision dicts.",
+      "if_none": "A missing key raises a named RuntimeError; a response with no message content returns an empty string so the empty-parse retry can act."
+    }
+  ],
+  "values": [
+    {
+      "value": "page text from pdfplumber for every page of the chapter PDF",
+      "read_at": "scripts/dcp_extract_changed.py:3466",
+      "if_missing": "An image-only page contributes an empty string; enough of them drops header coverage below half and the chapter is refused."
+    },
+    {
+      "value": "OPENAI_API_KEY environment variable",
+      "read_at": "scripts/ai_extractor.py:365",
+      "if_missing": "RuntimeError naming the variable, raised before any request is made; only reached when AI_MODEL=sol."
+    }
+  ],
+  "queries": "N/A - no query added or changed.",
+  "break_it": [
+    {
+      "scenario": "The council republishes the DCP with a new layout where the part code is no longer on its own line at the top of each page.",
+      "what_happens": "Header coverage falls below half, derivation returns an empty list, and a guessed or stale map could otherwise be applied.",
+      "mitigated": true,
+      "how": "The caller refuses the chapter when derivation is empty and there is no hardcoded map left to fall back to; needs_extraction stays true so it keeps surfacing.",
+      "repro": "python -m pytest tests/test_dcp_page_map_derive.py -k too_few_headers -q"
+    },
+    {
+      "scenario": "A contents page lists parts as lines such as B1 Waste 4, which could be read as a running header.",
+      "what_happens": "A part would open on the contents page and swallow the pages up to its real start.",
+      "mitigated": true,
+      "how": "PART_HEADER matches the code alone on its line; contents lines carry a title and page number. Measured: A1's run starts on page 7, not the contents on page 3, and a test pins it.",
+      "repro": "python -m pytest tests/test_dcp_page_map_derive.py -k contents_line -q"
+    },
+    {
+      "scenario": "F5 Horticulture begins partway down page 431, under F4's running header.",
+      "what_happens": "F5's rules are extracted under F4's last sub-section numbers instead of under F5.",
+      "mitigated": false,
+      "how": "Page ranges cannot split a page. Stated in the function's docstring and the PR; the duplicate suffix keeps the F5 text from being overwritten, so it reaches review under an F4 number where a person can see it.",
+      "repro": "python -c \"import json,os; S=json.load(open(os.path.join(os.environ['TEMP'],'waverley_free_sections.json'),encoding='utf-8')); print([s['section_number'] for s in S if 'horticulture' in (s.get('content') or '').lower()])\""
+    },
+    {
+      "scenario": "A repeated section number carries different rules, as B14 14.1.1 and two F4 4.6 numbers did.",
+      "what_happens": "diff_provisions keys sections by ref_number, so the second rule overwrote the first and one rule vanished without a trace.",
+      "mitigated": true,
+      "how": "finalise_ranged_sections suffixes distinct text under a repeated number, so every rule survives into the diff map; the test asserts the ref_number set is as large as the output.",
+      "repro": "python -m pytest tests/test_dcp_ranged_sections_finalise.py -k lost_in_the_diff_map -q"
+    },
+    {
+      "scenario": "The page-range change also runs for ashfield and ku_ring_gai, whose chapters use hardcoded page ranges.",
+      "what_happens": "Their next extraction drops empty heading-only sections and suffixes repeated numbers, changing their diff against live rows.",
+      "mitigated": true,
+      "how": "Both changes only remove empty text or keep text that was being lost, never alter a rule's words; any resulting swap still goes through human review and the section-loss guard at commit.",
+      "repro": "python -m pytest tests/test_dcp_ranged_sections_finalise.py -k clean_input -q"
+    },
+    {
+      "scenario": "Sol stalls or the connection drops partway through a long chapter.",
+      "what_happens": "An unbounded call would hang the extraction job, or a dropped socket would fail the whole chapter on its first blip.",
+      "mitigated": true,
+      "how": "The client is bounded by a connect and read timeout with its own retries off, and APIConnectionError is now retryable through _call_with_retry.",
+      "repro": "python -m pytest tests/test_ai_extractor.py -k Sol -q"
+    }
+  ],
+  "break_it_review_round_1": "Cross-review on the first push raised 5 findings. Fixed: table-only sections compared by text alone, suffix collision with a genuine _2 number, a part missing inside a numbered run, and an is_active filter on the real-data test. Kept as a known limit: F5 starting mid-page under F4.",
+  "post_merge": {
+    "db_reset": "No schema or data change. Waverley is re-extracted separately, in review mode, into dcp_review_queue for human approval.",
+    "secrets": "Only if AI_MODEL=sol is ever set on the Railway extraction service: OPENAI_API_KEY would need adding there. The free path used for waverley needs no key.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: run the waverley extraction in review mode, confirm the queued rows cover all 32 parts, and a person approves them in /internal/dcp-review before the commit job applies them."
+  }
+}

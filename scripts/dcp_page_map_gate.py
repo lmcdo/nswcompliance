@@ -151,6 +151,79 @@ def page_part_codes(page_texts: list[str]) -> dict[int, str]:
     return out
 
 
+# ── derivation: part boundaries from the pages themselves ────────────────────
+def derive_ranges_from_headers(page_texts: list[str]) -> list[tuple[str, str, int, int]]:
+    """Part page ranges read off each page's own running header, not a hardcoded map.
+
+    WHY. Waverley's hardcoded map described a 473-page version of what is now a
+    448-page document: 22 of 33 parts sat on the wrong pages and F1-F5 pointed past
+    the end, so parts were missing or filed under the wrong code for months. A map
+    typed in once cannot notice the document changing. The page header can.
+
+    RULES, each measured on the waverley PDF on 2026-09-13 before it was written:
+      * A header is PART_HEADER on its own line within the first HEADER_SCAN_LINES
+        lines -- the SAME reading page_part_codes does, so the gate and the ranges
+        cannot disagree about what a header is. A contents line such as
+        "B1 Waste 4" is not a header, which is what keeps contents pages out.
+      * A run is the pages from a code's first header to its last. A page with no
+        header BETWEEN two pages of the same code belongs to that part (a
+        figure-only page). A page with no header AFTER a part is not carried
+        forward: every header-less run in waverley is annexures, a contents page
+        or the definitions, and carrying the last code forward would have filed
+        the Bondi Junction, Beachfront and village-centre annexures under the
+        last site-specific part printed before them.
+      * A code that reappears after a DIFFERENT part has begun means the header is
+        not a part marker in this document. Nothing is guessed: the result is [].
+      * Fewer than HEADER_MIN_PAGE_COVERAGE of pages carrying a header also gives [].
+      * The title is the first non-blank line after the code line on the run's
+        first page.
+
+    [] means "cannot derive". The caller must refuse the chapter, never fall back to
+    a hardcoded map -- a stale map is exactly what this replaces.
+
+    KNOWN LIMIT: a part that begins mid-page under the previous part's header
+    (waverley F5 Horticulture, inside page 431 under F4) is not separated from it.
+    Page ranges cannot split a page; that text is extracted under the earlier part.
+    """
+    heads: dict[int, tuple[str, str]] = {}
+    for i, txt in enumerate(page_texts, start=1):
+        raw = (txt or "").split("\n")
+        for j, line in enumerate(raw[:HEADER_SCAN_LINES]):
+            m = PART_HEADER.match(line.strip())
+            if m:
+                title = next((l.strip() for l in raw[j + 1:j + 3] if l.strip()), "")
+                heads[i] = (m.group(1), title)
+                break
+    if not page_texts or len(heads) / len(page_texts) < HEADER_MIN_PAGE_COVERAGE:
+        return []
+
+    ranges: list[list] = []
+    finished: set[str] = set()
+    for page in sorted(heads):
+        code, title = heads[page]
+        if ranges and ranges[-1][0] == code:
+            ranges[-1][3] = page
+            continue
+        if code in finished:
+            return []
+        if ranges:
+            finished.add(ranges[-1][0])
+        ranges.append([code, title, page, page])
+    # A part missing from INSIDE a numbered run (a 9 and an 11 with no 10) means that
+    # part's pages carried no header. Coverage can stay above the floor while one small
+    # part vanishes, so refuse rather than extract without it (cross-review, 2026-09-13).
+    # A missing LAST part of a letter cannot be seen this way; see KNOWN LIMIT above.
+    numbers_by_letter: dict[str, list[int]] = {}
+    for code, _title, _start, _end in ranges:
+        m = re.match(r"^([A-Z]{1,2})(\d{1,2})$", code)
+        if m:
+            numbers_by_letter.setdefault(m.group(1), []).append(int(m.group(2)))
+    for numbers in numbers_by_letter.values():
+        if sorted(numbers) != list(range(min(numbers), max(numbers) + 1)):
+            return []
+    return [(c, t, a, b) for c, t, a, b in ranges]
+
+
 def check_ranges_match_headers(ranges, page_part: dict[int, str],
                                pdf_pages: int | None) -> dict:
     """Does each range sit on pages that say they belong to that part?

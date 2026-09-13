@@ -50,7 +50,8 @@ from enrichment.pipeline import phase_failures, run_standard_enrichment
 # The fail-closed page-map guard. Imported rather than inlined so the same three
 # checks serve the pipeline and the standalone sweep -- a guard with two copies
 # drifts, and drift is the defect it exists to catch.
-from scripts.dcp_page_map_gate import PageMapUnusable, assert_map_usable
+from scripts.dcp_page_map_gate import (
+    PageMapUnusable, assert_map_usable, derive_ranges_from_headers)
 # The section-loss guard: a commit may not swap a chapter for a version that loses most
 # of its sections. Measured before the write, judged after it, same transaction.
 from scripts.dcp_supersede_guard import enforce as enforce_section_loss
@@ -99,58 +100,20 @@ def require_database_url() -> None:
 # Used as fallback when SECTION_RE can't detect chapter boundaries (e.g., multi-line headers).
 # Tuple format: (section_key, title, page_start, page_end)  — 1-indexed page numbers.
 
-WAVERLEY_PAGE_RANGES: list[tuple[str, str, int, int]] = [
-    # All page numbers are PDF physical pages (1-indexed), verified against pdfplumber output.
-    # Pages 1–11: cover/TOC/policy — excluded.
-    # Part B — General Controls
-    ("B1",  "Waste",                                          12,  23),
-    ("B2",  "Ecologically Sustainable Development",           24,  35),
-    ("B3",  "Landscaping, Biodiversity and Vegetation",       36,  48),
-    ("B4",  "Coastal Risk Management",                        49,  49),
-    ("B5",  "Water Management",                               50,  61),
-    ("B6",  "Accessibility and Adaptability",                 62,  66),
-    ("B7",  "Transport",                                      67,  86),
-    ("B8",  "Heritage",                                       87, 114),
-    ("B9",  "Safety",                                        115, 116),
-    ("B10", "Public Art",                                    117, 117),
-    ("B11", "Design Excellence",                             118, 119),
-    ("B12", "Subdivision",                                   120, 121),
-    ("B13", "Excavation",                                    122, 124),
-    ("B14", "Advertising and Signage",                       125, 135),
-    ("B15", "Public Domain",                                 136, 146),
-    ("B16", "Inter-War Buildings",                           147, 150),
-    ("B17", "Social Impact Assessment",                      151, 151),
-    # Pages 152–185: Part B annexures + Part C intro — excluded.
-    # Part C — Residential Development
-    ("C1",  "Low Density Residential",                       186, 218),
-    ("C2",  "Other Residential Development",                 219, 249),
-    # Page 250: Part D contents — excluded.
-    # Part D — Commercial Development
-    ("D1",  "Commercial and Retail Development",             251, 258),
-    ("D2",  "Outdoor Dining",                                259, 259),
-    # Pages 260–261: Part E intro/contents — excluded.
-    # Part E — Site Specific Development
-    ("E1",  "Bondi Junction",                                262, 315),
-    ("E2",  "Bondi Beachfront Area",                         316, 338),
-    ("E3",  "Local Village Centres",                         339, 373),
-    ("E4",  "Special Character Areas",                       374, 379),
-    ("E5",  "113 Macpherson Street Bronte",                  380, 385),
-    ("E6",  "194-214 Oxford Street",                         386, 394),
-    ("E7",  "Edina Estate",                                  395, 413),
-    # Pages 414–458: Part E annexures — excluded.
-    # Page 459: Part F contents — excluded.
-    # Part F — Development Specific
-    ("F1",  "Shared Residential Accommodation",              460, 461),
-    ("F2",  "Tourist and Visitor Accommodation",             462, 465),
-    ("F3",  "Child Care Centres",                            466, 466),
-    ("F4",  "Places of Public Worship",                      467, 472),
-    ("F5",  "Horticulture",                                  473, 473),
-    # Pages 474+: Definitions — excluded.
-]
-
 COUNCIL_PAGE_RANGES: dict[str, list[tuple[str, str, int, int]]] = {
-    "waverley": WAVERLEY_PAGE_RANGES,
+    # waverley's hardcoded map was deleted 2026-09-13. It described a 473-page
+    # version of what is now a 448-page document: 22 of 33 parts sat on the wrong
+    # pages, F1-F5 pointed past the end, and its E7 (Edina Estate) is not in the
+    # current document at all -- those pages are E-annexures. See
+    # HEADER_DERIVED_COUNCILS below for what replaced it.
 }
+
+# Councils whose part boundaries are read off each page's own running header at
+# extraction time (dcp_page_map_gate.derive_ranges_from_headers), so the ranges
+# describe the document being extracted and cannot go stale. Measured on waverley
+# 2026-09-13: 365 of 448 pages carry an exact part-code header, giving 32 clean
+# contiguous parts; every page without one is annexures, contents or definitions.
+HEADER_DERIVED_COUNCILS: frozenset[str] = frozenset({"waverley"})
 
 # ── Per-chapter page ranges (for councils with per-chapter PDFs) ─────────────
 # Key: (council, chapter_key) → page ranges within that chapter's PDF.
@@ -1865,7 +1828,51 @@ class DCPExtractor:
                         "pages":          pages_included,
                     })
         print()
-        return sections
+        return self.finalise_ranged_sections(sections)
+
+    @staticmethod
+    def finalise_ranged_sections(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Drop heading-only shells and make every section_number unique. Pure.
+
+        Measured on waverley 2026-09-13 with header-derived parts (631 sections):
+
+        * 29 sections were a "Controls" heading with NO text. Each one's controls sit
+          in the very next section, the numbered sub-section ("1.8 Car Parking --
+          Controls" empty, "1.8.1 ..." holding "(a) Approval for on-site parking...").
+          Kept, they would be served as empty rules. A section with no text but a
+          table is NOT a shell and is kept.
+        * 3 section_numbers appeared twice with DIFFERENT text (two B14 "14.1.1"
+          blocks; F5 Horticulture read under F4's last sub-section). diff_provisions
+          keys sections by ref_number in a dict, so the second silently overwrote the
+          first and one rule was lost with no trace. Different text now gets a
+          _2, _3 suffix so both survive; an exact repeat of the same text is dropped.
+        """
+        # Identity is text AND tables: two table-only sections under one number carry
+        # different rules (cross-review, 2026-09-13), so comparing text alone would
+        # have dropped the second table as an "exact repeat".
+        # A suffix is chosen from numbers no section already holds, so a renamed
+        # repeat can never collide with a genuine "X_2" further down the chapter.
+        out: list[dict[str, Any]] = []
+        seen: dict[str, list[tuple]] = {}
+        taken = {s["section_number"] for s in sections}
+        for sec in sections:
+            content = (sec.get("content") or "").strip()
+            tables = tuple(t.get("html", "") for t in (sec.get("tables") or []))
+            if not content and not tables:
+                continue
+            number = sec["section_number"]
+            identities = seen.setdefault(number, [])
+            if (content, tables) in identities:
+                continue
+            identities.append((content, tables))
+            if len(identities) > 1:
+                n = len(identities)
+                while f"{number}_{n}" in taken:
+                    n += 1
+                taken.add(f"{number}_{n}")
+                sec = {**sec, "section_number": f"{number}_{n}"}
+            out.append(sec)
+        return out
 
     def _table_to_html(self, table_data: list[list[str | None]]) -> str:
         """Convert pdfplumber table data to clean HTML."""
@@ -3456,6 +3463,26 @@ def extract_chapter(
         page_ranges = COUNCIL_CHAPTER_RANGES.get((council, chapter_key))
         if page_ranges is None:
             page_ranges = COUNCIL_PAGE_RANGES.get(council)
+        if page_ranges is None and council in HEADER_DERIVED_COUNCILS:
+            # Read the part boundaries off this PDF's own running headers, so they
+            # describe the document actually being extracted. Pages are released as
+            # they are read (the batch has been OOM-killed before). If nothing can be
+            # derived the chapter is REFUSED -- there is no hardcoded map to fall back
+            # to, and falling back to one is how waverley lost 11 parts.
+            header_texts: list[str] = []
+            with pdfplumber.open(pdf_path) as _pdf:
+                for _page in _pdf.pages:
+                    header_texts.append(_page.extract_text() or "")
+                    _release_page(_page)
+            page_ranges = derive_ranges_from_headers(header_texts)
+            if not page_ranges:
+                print("    [page-map] could not derive part boundaries from the running "
+                      "header (too few headed pages, or a part code resumes after "
+                      "another part). Chapter REJECTED.")
+                cur.close()
+                return False, None
+            print(f"    [page-map] {len(page_ranges)} parts derived from the running "
+                  f"headers of {len(header_texts)} pages")
         subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
         ai_on = os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes")
 
