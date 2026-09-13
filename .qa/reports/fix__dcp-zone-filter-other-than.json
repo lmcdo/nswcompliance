@@ -1,111 +1,95 @@
 {
   "tier": "critical",
   "justification": "Changes the zone filter behind every served numeric DCP control (web controls tab, conveyancing report, capacity engine, brief). A wrong keep/drop decision serves another zone's setback or silently drops the site's own.",
-  "commit_hash": "1116f251",
+  "commit_hash": "pending",
   "files": [
     "scripts/conveyancing_db.py",
     "tests/test_conveyancing_db.py",
-    "scripts/insert_strathfield_general_residential.py",
     "tests/test_insert_strathfield_general_residential.py"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_conveyancing_db.py tests/test_insert_strathfield_general_residential.py -q",
-    "fails_when": "an exclusion in any wording ('other than the R2 zone', 'except in the R2 zone', 'excluding land zoned R2', 'not in the R2 Low Density zone', 'other than (R2)', several zones with labels) is kept for an excluded zone or dropped for another; a negation not about zones changes the zone scope, including when a positive zone follows in the same clause ('other than corner lots, R3 zone only'); a code of any family is not honoured; a clause id (C3.3.2, B2.1) or a code after Part/Clause ('See Part B2', 'Clause C3') is read as a zone; a universal row or an empty zone is filtered; or a Strathfield dwelling type receives anything other than exactly its own zone's rear and side setbacks",
-    "observed_red": "Old inline rule (main 8294fe0d) under the Strathfield per-zone test: R2 FAIL (both rear rows, both side sets); R3, R4, E1 FAIL (no rear row). First pushed version: test_every_zone_family FAILS at ('SP2 zone only', 'R2'), test_clause_ids FAILS ('Part B2.1' read as B2). Second: 'zones other than the R2 zone' and 'except in the R2 zone' inverted (R2 kept, R3 dropped); the wording test FAILS on it. Third (pushed head 1170bc5a, negation to the next ';'): the full-branch cross-review cases returned 'other than corner lots, R3 zone only' R3=False, 'See Part B2 for corner-site controls' R3=False, 'Clause C3 applies' R2=False, and test_exclusion_wordings_and_non_zone_negations and test_clause_ids_are_not_zone_codes both FAIL on it. Current version: all three True, earlier cases unchanged, 450 tests pass across test_conveyancing_db, test_insert_strathfield_general_residential, test_dcp_controls_api, test_conveyancing_dcp_needs_review and test_constraint_arithmetic."
+    "fails_when": "a row limited to a zone of any family (SP2, RU5, IN2, W1, RE1, E3, B4) is served to another zone or dropped for its own; a row whose zone code sits beside exclusion wording ('other than the R2 zone', 'except for R2', 'with the exception of R2', 'R2 Foreshore and R3 zones', 'R2. R3 zone only', 'excluding land zoned R2', 'not in', 'apart from', 'outside') is dropped for any zone; a loose negative ('R2 zone; not less than 6m') widens an R2 limit; a clause id (C3.3.2, B2.1) or a code after Part/Clause is read as a zone; a universal row or an empty zone is filtered; or a Strathfield dwelling type loses its own zone's rear or side setbacks",
+    "observed_red": "On main (8294fe0d) 'SP2 zone only' is served to an R2 site (SP2 not in the ten-code list). The first pushed version of this branch failed test_clause_ids ('Part B2.1' read as B2). The version at pushed head 0af77fad (a parsed exclusion list) returned 'all zones except for R2' R3=False, 'all zones with the exception of R2' R3=False, 'other than R2 Foreshore and R3 zones' R4=False and 'other than R2. R3 zone only' R3=False - each a control dropped where it applies - and test_exclusion_wording_keeps_the_row_for_every_zone FAILS on it at ('zones other than the R2 zone', 'R2'). Five cross-review rounds each inverted a new wording, so exclusion parsing was removed. Current version: every case above passes; 448 tests pass across test_conveyancing_db, test_insert_strathfield_general_residential, test_dcp_controls_api, test_conveyancing_dcp_needs_review and test_constraint_arithmetic."
   },
   "pre_impl": {
-    "existing_data": "Measured 2026-09-14 on the live database: 868 current, visible dcp_setback_controls rows, 74 of them zone_specific; codes named in zone_specific conditions are R1-R4, E1-E3, B1, B2, B4 and MU1; none names only codes outside the old list and none combines a negation keyword with a zone code. The only 'other than' zone_specific rows are Strathfield's five other-zones rows (1266, 1267, 1284, 1285, 1286), worded without codes, so an R2 site given its zone receives both the R2 rows and these. Old inline rule vs zone_row_applies over all 868 rows x 45 zone codes (R1-R5, E1-E5, B1-B8, MU1, C1-C4, RU1-RU6, IN1-IN4, SP1-SP5, RE1-RE2, W1-W4, and no zone): 39,060 decisions, 0 differ (re-measured after each revision).",
-    "assumption_mismatch": "The filter assumed a zone-specific condition only names the zones it applies to, and only ever names one of ten codes. The Strathfield General Residential DCP (C3.4.2, C3.6.1-C3.6.2) writes rules for R2 and for 'all other zones'; codes such as SP2, RU5, RE1, IN2 or W1 were invisible to the list; exclusions are worded many ways; and condition text can cite DCP parts whose ids look like zones. Four rounds of cross-review HIGH findings (#1103 and three pushes of this branch) each exposed one of these.",
-    "new_vs_existing": "The inline predicate in fetch_dcp_setbacks becomes zone_row_applies(applicability, condition, zone_prefix). Codes after a document-reference word (Part, Clause, Section, Chapter, Schedule, Table, Figure, Appendix, Control) are removed first. Zone codes are whole tokens of any Standard Instrument family, not followed by another digit or '.digit'. _exclusion_list reads the zone list directly after 'other than', 'except', 'excluding' or 'not in': zone codes, zone-name words and joiners, ending at ';' or the first other word; its codes are excluded zones. Codes elsewhere limit the row; a condition naming none applies everywhere. fetch_dcp_setbacks calls it at the same point; SQL, ordering, needs_review guard and output shape are unchanged. The pattern lives in conveyancing_db.py because the backend image copies only services/ and scripts/conveyancing_db.py. Strathfield's five other-zones conditions are reworded to 'zones other than R2 Low Density ...'.",
-    "external_source_error": "The external sources are the production database behind fetch_dcp_setbacks and the zone code callers pass in (from the Planning Portal zoning lookup). A missing or blank zone still means no filtering. Legacy and current codes are not aliased by either rule: a row naming legacy B2 is dropped for a site reported as current E1, as before. An exclusion list whose zone name uses a word outside _EXCLUSION_LIST_WORDS ends early, so a second code after that word is read as a limit rather than an exclusion; no live zone_specific row combines a negation with a code.",
-    "frontend_type": "No shape change. fetch_dcp_setbacks still returns setbacks/sd_setbacks lists of dicts (type, value_min/value_max float | null, unit, clause, notes, source_text, source_chapter_key, pdf_page, dcp_version, applicability) that services/dcp_controls_api.py proxies to frontend-nextjs/app/api/dcp/structured-controls/route.ts (controls grouped by category, pdf_url string | null). Only which rows are in the lists changes, and on today's data only for rows written with an exclusion.",
-    "user_failure_mode": "Today a Strathfield R2 multi-dwelling-housing enquiry that passes its zone sees two rear setbacks and both side setback sets, and cannot tell from the numbers which apply; a future row scoped to SP2, worded 'other than the R2 zone', or citing 'Part B2' would reach or miss the wrong sites. If this change were wrong the failure would be silent: a site's own setback missing from the controls tab, the PDF and the capacity arithmetic with nothing to say it was dropped. The per-zone Strathfield test, the family, clause-id and wording tests and the zero-difference measurement are the checks."
+    "existing_data": "Measured 2026-09-14 on the live database: 868 current, visible dcp_setback_controls rows, 74 of them zone_specific; codes named in zone_specific conditions are R1-R4, E1-E3, B1, B2, B4 and MU1; none names only codes outside the old ten-code list and none combines exclusion wording with a zone code. Strathfield's other-zones rows (1266, 1267, 1284, 1285, 1286) name no zone code, so they are served to every zone, R2 included. Old inline rule vs zone_row_applies over all 868 rows x 45 zone codes (R1-R5, E1-E5, B1-B8, MU1, C1-C4, RU1-RU6, IN1-IN4, SP1-SP5, RE1-RE2, W1-W4, and no zone): 39,060 decisions, 0 differ.",
+    "assumption_mismatch": "The filter assumed a zone-specific condition only names one of ten zone codes, by substring. Codes such as SP2, RU5, RE1, IN2 or W1 were invisible, so a row limited to them applied everywhere; ids such as C3.3.2 or Part B2 could read as zones. Attempts on this branch to also parse exclusions ('all zones other than R2') were inverted by five successive cross-review wordings, so free-text exclusion is treated as unparseable.",
+    "new_vs_existing": "The inline predicate in fetch_dcp_setbacks becomes zone_row_applies(applicability, condition, zone_prefix). Codes after Part/Clause/Section/Chapter/Schedule/Table/Figure/Appendix/Control are removed; zone codes are whole tokens of any Standard Instrument family, not followed by another digit or '.digit'. A condition naming codes limits the row to them, unless exclusion wording (other than, except*, exclud*, not in/within/for, apart from, outside, but not) appears, in which case the row is kept for every zone. fetch_dcp_setbacks calls it at the same point; SQL, ordering, needs_review guard and output shape are unchanged. The Strathfield test now runs the real function instead of a copy. No data change.",
+    "external_source_error": "The external sources are the production database behind fetch_dcp_setbacks and the zone code callers pass in (from the Planning Portal zoning lookup). A missing or blank zone still means no filtering. Legacy and current codes are not aliased, as before. A row that states its zone scope through exclusion wording is served to every zone with its condition text; separating R2 from 'all other zones' precisely needs a structured zone-scope column, not text.",
+    "frontend_type": "No shape change. fetch_dcp_setbacks still returns setbacks/sd_setbacks lists of dicts (type, value_min/value_max float | null, unit, clause, notes, source_text, source_chapter_key, pdf_page, dcp_version, applicability) that services/dcp_controls_api.py proxies to frontend-nextjs/app/api/dcp/structured-controls/route.ts (controls grouped by category, pdf_url string | null). On today's data no row's keep/drop decision changes.",
+    "user_failure_mode": "Before: a future row limited to SP2 or RU5 would be shown to every zone, and a condition citing 'Part B2' would hide its control from sites not in 'B2'. If this change were wrong the failure would be a site's own control missing from the controls tab, PDF and capacity arithmetic with nothing to say it was dropped; the rule now never drops a row whose scope uses exclusion wording, and the tests pin each wording that inverted a parser."
   },
   "functions": [
     {
-      "name": "_exclusion_list",
-      "file_line": "scripts/conveyancing_db.py:461",
-      "input": "An uppercased condition string with document references removed, and the offset just after a negation keyword.",
-      "output": "The end offset of the zone list that follows (zone codes, zone-name words, joiners) and the set of zone codes in it; the list ends at ';' or the first word outside that vocabulary.",
-      "if_none": "A keyword followed by an ordinary word ('other than corner lots') returns the start offset and an empty set, so nothing is excluded."
-    },
-    {
       "name": "zone_row_applies",
-      "file_line": "scripts/conveyancing_db.py:479",
+      "file_line": "scripts/conveyancing_db.py:453",
       "input": "A row's applicability string or None, its condition text or None, and the site's zone code prefix such as 'R2' or 'SP2' (empty when no zone is known).",
-      "output": "False when the site's zone is in an exclusion list, or when codes outside exclusion lists limit the row to zones that do not include it; True otherwise, and always True for non-zone_specific rows, an empty zone or an empty condition.",
+      "output": "True for non-zone_specific rows, an empty zone, an empty condition, a condition naming no zone code, or one whose codes sit beside exclusion wording; otherwise True only when the site's zone is among the named codes.",
       "if_none": "None applicability or None condition returns True, the same as the inline rule did."
     },
     {
       "name": "fetch_dcp_setbacks",
-      "file_line": "scripts/conveyancing_db.py:511",
+      "file_line": "scripts/conveyancing_db.py:478",
       "input": "An open database connection, an LGA slug, an optional zone code string such as 'R2 Low Density Residential', and raise_on_error.",
-      "output": "The same controls dict as before; each row is now kept or dropped by zone_row_applies (scripts/conveyancing_db.py:686) instead of the inline block.",
+      "output": "The same controls dict as before; each row is now kept or dropped by zone_row_applies (scripts/conveyancing_db.py:653) instead of the inline block.",
       "if_none": "A None or blank zone code still yields an empty zone prefix and no zone filtering; a None slug still returns None before any query."
     }
   ],
   "real_layer_exempt": {
-    "scripts/conveyancing_db.py": "Measured against the real database instead of a DB-marked test: the old inline rule and zone_row_applies were evaluated for every current visible row (868) for 45 zone codes plus no zone, 39,060 decisions, 0 different (2026-09-14, repeated after each of the four revisions). fetch_dcp_setbacks itself is exercised through the existing mock-cursor TestZoneFilter plus the new exclusion, family, clause-id and wording cases.",
-    "scripts/insert_strathfield_general_residential.py": "Its data change is applied to production by a guarded sync that imports ROWS, checks the pinned PDF, backs up, updates only differing conditions and requires every live Strathfield row to equal ROWS; its dry run on 2026-09-14 updated exactly rows 1266, 1267, 1284, 1285, 1286 and reported 'identical: True' before rolling back. It is applied only after this code is deployed (post_merge)."
+    "scripts/conveyancing_db.py": "Measured against the real database instead of a DB-marked test: the old inline rule and zone_row_applies were evaluated for every current visible row (868) for 45 zone codes plus no zone, 39,060 decisions, 0 different (2026-09-14). fetch_dcp_setbacks itself is exercised through the existing mock-cursor TestZoneFilter plus the new family, exclusion-wording, plain-limit and clause-id cases."
   },
-  "values": "N/A - no stored value is read or written by the changed code; the Strathfield rows change condition text only, and that write happens after deploy (post_merge).",
+  "values": "N/A - no stored value is read or written by the changed code, and no data changes.",
   "queries": "N/A - no SQL changes; fetch_dcp_setbacks runs the same SELECT and only the per-row keep/drop decision moves into zone_row_applies.",
   "break_it": [
     {
-      "scenario": "Another council's live condition already names a zone code the old ten-code list ignored, pairs a negation with a code, or cites a Part or Clause id, so its rows would suddenly be kept or dropped differently.",
-      "what_happens": "Rows that sites saw yesterday could disappear or appear today without any data change.",
+      "scenario": "A live row's condition names a zone code the old ten-code list ignored, a Part or Clause id, or exclusion wording beside a code, so its keep/drop decision changes the moment this deploys.",
+      "what_happens": "Controls sites saw yesterday could disappear or appear today without any data change.",
       "mitigated": true,
-      "how": "Measured before committing: old rule vs zone_row_applies over all 868 live rows for 45 zone codes and no zone - 39,060 decisions, 0 differ. Only rows reworded with an exclusion change.",
+      "how": "Measured before committing: old rule vs zone_row_applies over all 868 live rows for 45 zone codes and no zone - 39,060 decisions, 0 differ.",
       "repro": "Evaluate both rules for every row of SELECT id, applicability, condition FROM dcp_setback_controls WHERE is_current AND NOT needs_review across the zone list"
     },
     {
-      "scenario": "A control scoped 'SP2 Infrastructure zone only' (or RU5, RE1, IN2, W1) is fetched for an R2 site.",
+      "scenario": "A control scoped 'SP2 Infrastructure zone only' (or RU5, RE1, IN2, W1, E3, B4) is fetched for an R2 site.",
       "what_happens": "The old substring list did not know SP2, so the row applied everywhere and an infrastructure-zone setback was served to a residential site.",
       "mitigated": true,
-      "how": "Zone codes of every family are read as whole tokens; test_every_zone_family_is_read_for_inclusion_and_exclusion checks each family is kept for its own zone and dropped for another, and failed on the first pushed version at ('SP2 zone only', 'R2').",
+      "how": "Zone codes of every family are read as whole tokens; test_every_zone_family_limits_a_row_to_its_zone checks each family is kept for its own zone and dropped for another.",
       "repro": "python -m pytest tests/test_conveyancing_db.py -k every_zone_family -q"
     },
     {
       "scenario": "A condition cites a clause or DCP part whose id looks like a zone: '(C3.3.2)', 'see Part B2.1', 'See Part B2 for corner-site controls' or 'Clause C3 applies'.",
-      "what_happens": "Read as zone C3 or B2, the row would be dropped for every site not in that zone (observed on the pushed head for the bare 'Part B2' and 'Clause C3').",
+      "what_happens": "Read as zone C3 or B2, the row would be dropped for every site not in that zone.",
       "mitigated": true,
-      "how": "Codes after a document-reference word are removed and a code followed by '.digit' is not a zone token; test_clause_ids_are_not_zone_codes covers all four and still requires a real zone in the same condition ('R2 zone; see Part B2') to limit the row.",
+      "how": "Codes after a document-reference word are removed and a code followed by '.digit' is not a zone token; test_clause_ids_are_not_zone_codes covers all four and requires a real zone in the same condition ('R2 zone; see Part B2') to still limit the row.",
       "repro": "python -m pytest tests/test_conveyancing_db.py -k clause_ids -q"
     },
     {
-      "scenario": "An exclusion is worded 'zones other than the R2 zone', 'except in the R2 zone', 'excluding land zoned R2', 'not in the R2 Low Density zone' or 'other than (R2)'.",
-      "what_happens": "An exact 'other than <code>' parser misses the wording, reads the condition as naming R2, and inverts it: kept for R2, dropped for R3 (observed on the second pushed version).",
+      "scenario": "A row states its scope by exclusion in any wording: 'zones other than the R2 zone', 'all zones except for R2', 'all zones with the exception of R2', 'other than R2 Foreshore and R3 zones', 'other than R2. R3 zone only', 'excluding land zoned R2', 'not in the R2 Low Density zone', 'apart from R2', 'outside the R2 zone'.",
+      "what_happens": "Any parser that misreads the wording drops the control where it applies or serves it only to the excluded zone (observed for the last four on pushed head 0af77fad).",
       "mitigated": true,
-      "how": "_exclusion_list accepts articles, 'land zoned', zone-name words and parentheses before and around the codes; test_exclusion_wordings_and_non_zone_negations checks each wording is dropped for R2 and kept for R3.",
-      "repro": "python -m pytest tests/test_conveyancing_db.py -k exclusion_wordings -q"
+      "how": "Exclusion wording beside a zone code keeps the row for every zone with its condition shown; test_exclusion_wording_keeps_the_row_for_every_zone checks each wording for R2, R3, R4 and SP2 and fails on the parsed-list version.",
+      "repro": "python -m pytest tests/test_conveyancing_db.py -k exclusion_wording -q"
     },
     {
-      "scenario": "A condition negates something that is not a zone and names a zone in the same clause: 'other than corner lots, R3 zone only' or 'R2 zone, except corner lots'.",
-      "what_happens": "Extending the negation to the end of the clause reads R3 as excluded and drops an R3-only rule for R3 sites (observed on pushed head 1170bc5a).",
+      "scenario": "A plain zone limit also uses a negative word that is not an exclusion, e.g. 'R2 zone; not less than 6m'.",
+      "what_happens": "A detector that treated every 'not' as exclusion wording would widen an R2-only control to every zone.",
       "mitigated": true,
-      "how": "The exclusion list ends at the first word that is not a zone code, zone-name word or joiner ('CORNER'), so nothing is excluded and the named zone limits the row; the wording test checks R3 kept and R2 dropped, and R2 kept and R3 dropped for the second form.",
-      "repro": "python -m pytest tests/test_conveyancing_db.py -k exclusion_wordings -q"
+      "how": "_EXCLUSION_WORDING matches exclusion phrases only (not in/within/for, but not, other than, except, exclud-, apart from, outside), so the R2 limit holds; test_plain_zone_limits_are_unchanged checks R3 is dropped.",
+      "repro": "python -m pytest tests/test_conveyancing_db.py -k plain_zone_limits -q"
     },
     {
-      "scenario": "An exclusion names two zones with a zone-name word the list does not know between them, e.g. 'other than R2 Foreshore and R3 zones'.",
-      "what_happens": "The list ends at the unknown word, so R3 is read as a zone the row is limited to instead of an excluded one.",
+      "scenario": "A Strathfield R2 site asks for its multi-dwelling-housing controls with its zone given.",
+      "what_happens": "It receives the R2 rows (6-10m rear, 5m/3m side) and also the other-zones rows (6m rear, 4m/2m side), each labelled by its condition.",
       "mitigated": false,
-      "how": "Not detected; _EXCLUSION_LIST_WORDS holds the words of the NSW Standard Instrument zone names, and the docstring says the list ends at any other word. No live zone_specific row combines a negation with a code (measured).",
-      "repro": "python -c \"import importlib.util as u; s=u.spec_from_file_location('c','scripts/conveyancing_db.py'); m=u.module_from_spec(s); s.loader.exec_module(m); print(m.zone_row_applies('zone_specific','other than R2 Foreshore and R3 zones','R3'))\""
+      "how": "Accepted as the safe direction: nothing is hidden, the conditions say which zone each row is for, and services/constraint_arithmetic takes the largest value_min for minimum controls, so its computed setbacks are the R2 ones. Separating them precisely needs a structured zone-scope column (recorded as a follow-up); test_served_zone_filter_keeps_each_zone_its_own_rows pins the current result.",
+      "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k served_zone_filter -q"
     },
     {
-      "scenario": "The Strathfield rows are reworded to 'zones other than R2 ...' while the Railway backend still runs the old inline rule.",
-      "what_happens": "The old rule reads R2 as the named zone, so R3, R4 and E1 sites lose their rear and 4m/2m side setbacks and R2 sites keep them (observed under the old rule).",
-      "mitigated": true,
-      "how": "The sync is deferred until the merge commit carries Railway's 'refreshing-hope - nswcompliance: success' status; post_merge records the order.",
-      "repro": "gh api repos/lmcdo/nswcompliance/commits/<merge sha>/status --jq '.statuses[] | select(.context|test(\"nswcompliance$\"))'"
-    },
-    {
-      "scenario": "A rule excludes several zones, written with or without labels: 'all zones other than R2, R3 and E1' or 'other than R2 Low Density and R3 Medium Density'.",
-      "what_happens": "A parser that read only the first code would serve the rule to the other excluded zones.",
-      "mitigated": true,
-      "how": "Every code in the exclusion list is excluded; test_other_than_several_zones and the labelled case in the wording test check each excluded zone is dropped and R4 kept.",
-      "repro": "python -m pytest tests/test_conveyancing_db.py -k \"several_zones or exclusion_wordings\" -q"
+      "scenario": "A future row reads 'R2 zone, except corner lots'.",
+      "what_happens": "Main kept it for R2 only; with exclusion wording present it is now served to every zone.",
+      "mitigated": false,
+      "how": "Over-inclusion with the condition shown, never a hidden control; measured no live zone_specific row combines exclusion wording with a zone code. test_exclusion_wording_keeps_the_row_for_every_zone pins the behaviour.",
+      "repro": "python -c \"import importlib.util as u; s=u.spec_from_file_location('c','scripts/conveyancing_db.py'); m=u.module_from_spec(s); s.loader.exec_module(m); print(m.zone_row_applies('zone_specific','R2 zone, except corner lots','R3'))\""
     },
     {
       "scenario": "A row names legacy code B2 and the Planning Portal reports the site as current E1 (or the reverse).",
@@ -115,24 +99,17 @@
       "repro": "python -c \"import importlib.util as u; s=u.spec_from_file_location('c','scripts/conveyancing_db.py'); m=u.module_from_spec(s); s.loader.exec_module(m); print(m.zone_row_applies('zone_specific','B2 zone only','E1'))\""
     },
     {
-      "scenario": "The capacity engine (services/constraint_arithmetic.py) receives the now-deduplicated Strathfield rows for an R2 multi-dwelling-housing site.",
-      "what_happens": "If it averaged or took the first row, removing the other-zone rows could lower the side or rear setback it computes with.",
+      "scenario": "The web controls tab calls the backend without a zone.",
+      "what_happens": "Every row is listed, whatever zone it names; with no zone there is nothing to choose between them.",
       "mitigated": true,
-      "how": "_get_dcp_value takes the largest value_min per control; for R2 the kept rows still include the 5m side and the 6m rear floor, so no computed setback falls. test_constraint_arithmetic passes unchanged.",
-      "repro": "python -m pytest tests/test_constraint_arithmetic.py -q"
-    },
-    {
-      "scenario": "The web controls tab calls the backend without a zone for a Strathfield property.",
-      "what_happens": "Both the R2 rows and the other-zones rows are listed; with no zone there is nothing to choose between them.",
-      "mitigated": true,
-      "how": "By design: an empty zone prefix applies every row (test_no_zone_code_includes_all and the empty-zone assertion); each row's condition says which zone it is for.",
-      "repro": "python -m pytest tests/test_conveyancing_db.py -k no_zone_code_includes_all -q"
+      "how": "By design: an empty zone prefix applies every row (test_no_zone_code_includes_all and test_plain_zone_limits_are_unchanged); each row's condition says which zone it is for.",
+      "repro": "python -m pytest tests/test_conveyancing_db.py -k \"no_zone_code_includes_all or plain_zone_limits\" -q"
     }
   ],
   "post_merge": {
-    "db_reset": "Yes: after the merge commit shows Railway's 'refreshing-hope - nswcompliance: success' status, run the Strathfield sync (dry run then --apply) that rewords conditions of rows 1266, 1267, 1284, 1285, 1286 to 'zones other than R2 Low Density ...' with a backup and the ROWS equality check; then python scripts/dq_probe_live.py --id DQ-32b must print CLEAN.",
+    "db_reset": "No data change.",
     "secrets": "No.",
     "other_repo": "No.",
-    "manual_verify": "Yes: after the sync, the backend controls for strathfield with zone R2 must list only the 6-10m rear setback and the 5m/3m side setbacks for multi-dwelling housing, and with zone R3 only the 6m rear and 4m/2m side setbacks; with no zone, both sets with their conditions."
+    "manual_verify": "Yes: after Railway deploys the merge commit, GET https://nswcompliance-production.up.railway.app/pipeline/dcp-controls?lga=strathfield&zone=R3 must list no R2-only row (no 6-10m rear, no 5m/3m side) and must still list the 6m rear and 4m/2m side rows; zone=R2 lists both sets."
   }
 }

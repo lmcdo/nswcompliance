@@ -80,7 +80,7 @@ def test_r2_rear_setback_is_the_range_its_formula_can_produce(dev_type):
     assert len(rear) == 2 and len(r2) == 1 and len(other) == 1
     assert (r2[0]["value_min"], r2[0]["value_max"], r2[0]["applicability"]) == (6, 10, "zone_specific")
     assert (other[0]["value_min"], other[0]["value_max"], other[0]["applicability"]) == (6, None, "zone_specific")
-    assert "20% of the average length" in r2[0]["condition"] and "other than R2" in other[0]["condition"]
+    assert "20% of the average length" in r2[0]["condition"] and "other than the low density" in other[0]["condition"]
 
 
 # DQ-32b's pattern (scripts/dq_probe_live.py): a zone code in a condition.
@@ -101,16 +101,18 @@ _CDB_SPEC.loader.exec_module(cdb)
 
 @pytest.mark.parametrize("zone", ["R2", "R3", "R4", "E1"])  # noqa: zone-codes (sample site zones)
 @pytest.mark.parametrize("dev_type", ["dwelling_house", "dual_occupancy", "multi_dwelling_housing"])
-def test_served_zone_filter_gives_each_zone_only_its_own_rear_and_side_rows(zone, dev_type):
-    """Runs the real filter (conveyancing_db.zone_row_applies): an R2 site gets only the R2 rows, any other
-    zone only the other-zones rows, never both."""
+def test_served_zone_filter_keeps_each_zone_its_own_rows(zone, dev_type):
+    """The real filter (conveyancing_db.zone_row_applies): R2 rows only for R2; the other-zones rows, which name
+    no zone code, for every zone. An R2 site therefore also sees the labelled other-zones rows."""
     kept = [r for r in ROWS if r["dev_type"] == dev_type
             and cdb.zone_row_applies(r["applicability"], r["condition"], zone)]
     rear = {(r["value_min"], r["value_max"]) for r in kept if r["control_type"] == "rear_setback"}
-    assert rear == ({(6, 10)} if zone == "R2" else {(6, None)})
+    assert (6, None) in rear, "the other-zones 6m rear row must survive for every zone"
+    assert ((6, 10) in rear) == (zone == "R2")
     if dev_type == "multi_dwelling_housing":
         side = {r["value_min"] for r in kept if r["control_type"] == "side_setback"}
-        assert side == ({1.2, 5, 3, 2.7} if zone == "R2" else {1.2, 4, 2, 2.7})
+        assert {4, 2} <= side, "the 'any other zone' side rows must survive for every zone"
+        assert ({5, 3} <= side) == (zone == "R2")
 
 
 def test_maximums_are_stored_as_ceilings():

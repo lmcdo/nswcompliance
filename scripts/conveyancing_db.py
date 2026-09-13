@@ -437,43 +437,17 @@ def apply_chapter_key_aliases(registry_pdf_urls: dict, lga_slug: str) -> dict:
 
 
 # prior-art-checked: the zone filter fetch_dcp_setbacks has always applied, moved here so it can be tested
-# directly; it now reads zone codes of every Standard Instrument family as whole tokens, plus one exclusion
-# form. The backend image copies only services/ and scripts/conveyancing_db.py, so the pattern lives here
+# directly; it now reads zone codes of every Standard Instrument family as whole tokens and never guesses an
+# exclusion. The backend image copies only services/ and scripts/conveyancing_db.py, so the pattern lives here
 # (enrichment/config/zone_taxonomy.py holds legacy->current aliases, not the families, and is not deployed).
 _ZONE_CODE = re.compile(r"(?<![A-Z0-9.])(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9](?![0-9]|\.[0-9])")
-_NEGATION = re.compile(r"\b(?:OTHER THAN|EXCEPT|EXCLUDING|NOT IN)\b")
+# Wording that can make a named zone the one a row does NOT apply to. Zone scope written this way is not parsed.
+_EXCLUSION_WORDING = re.compile(
+    r"\b(?:OTHER\s+THAN|EXCEPT\w*|EXCLUD\w*|NOT\s+(?:IN|WITHIN|FOR)|APART\s+FROM|OUTSIDE|BUT\s+NOT)\b")
 # A code directly after a document-reference word ("Part B2", "Clause C3") is a DCP part, not a zone.
 _DOC_REFERENCE = re.compile(
     r"\b(?:PART|CLAUSE|CL|SECTION|CHAPTER|SCHEDULE|TABLE|FIGURE|APPENDIX|CONTROL)\.?\s+"
     r"(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9][0-9A-Z.]*")
-_SPAN_TOKEN = re.compile(r"[A-Z0-9]+|[,/();]")
-_ZONE_CODE_WORD = re.compile(r"(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9]")
-# Words that may sit inside an exclusion list: joiners, articles and the words of NSW zone names. Any other
-# word ends the list, so "other than corner lots, R3 zone only" excludes nothing.
-_EXCLUSION_LIST_WORDS = frozenset(
-    "AND OR THE IN LAND ZONED ZONE ZONES , / ( ) LOW MEDIUM HIGH DENSITY RESIDENTIAL LARGE LOCAL CENTRE "
-    "COMMERCIAL CORE MIXED USE NEIGHBOURHOOD ENTERPRISE PRODUCTIVITY SUPPORT GENERAL HEAVY LIGHT INDUSTRIAL "
-    "INFRASTRUCTURE SPECIAL ACTIVITIES PUBLIC PRIVATE RECREATION ENVIRONMENTAL CONSERVATION MANAGEMENT LIVING "
-    "NATIONAL PARKS NATURE RESERVES WATERWAYS RECREATIONAL WORKING WATERFRONT PRIMARY PRODUCTION RURAL "
-    "LANDSCAPE FORESTRY VILLAGE BUSINESS".split())
-
-
-def _exclusion_list(text: str, start: int) -> tuple[int, set[str]]:
-    """Read the zone list that follows a negation keyword ending at ``start``.
-
-    Consumes zone codes and the words allowed in _EXCLUSION_LIST_WORDS; stops at ';' or the first other word.
-    Returns the end offset of the list and the zone codes in it.
-    """
-    end, codes = start, set()
-    for token in _SPAN_TOKEN.finditer(text, start):
-        word = token.group(0)
-        is_code = bool(_ZONE_CODE_WORD.fullmatch(word)) and not re.match(r"\.[0-9]", text[token.end():token.end() + 2])
-        if not is_code and word not in _EXCLUSION_LIST_WORDS:
-            break
-        if is_code:
-            codes.add(word)
-        end = token.end()
-    return end, codes
 
 
 def zone_row_applies(applicability: Optional[str], condition: Optional[str], zone_prefix: str) -> bool:
@@ -482,28 +456,21 @@ def zone_row_applies(applicability: Optional[str], condition: Optional[str], zon
     Only ``zone_specific`` rows with condition text are ever excluded, and only when a zone is known.
     Zone codes are whole tokens of any Standard Instrument family (R, RU, RE, E, B, IN, SP, MU, C or W
     followed by a digit); a clause id such as C3.3.2, or a code after "Part", "Clause" and similar words, is
-    not a zone code. The zone list directly after "other than", "except", "excluding" or "not in" (e.g.
-    "zones other than the R2 zone", "other than R2 Low Density and R3 Medium Density") names excluded zones;
-    the list ends at the first word that is not a zone code, a zone-name word or a joiner. Codes anywhere
-    else are the zones the row is limited to. A row is dropped
-    when the site's zone is excluded, or when the row is limited to zones that do not include it; a
-    condition naming no zone code applies everywhere. Legacy and current codes are not aliased.
+    not a zone code. A condition that names zone codes limits the row to those zones. Exclusions are not
+    guessed: when zone codes sit beside exclusion wording ("other than", "except", "excluding", "not in",
+    "apart from", "outside"), a named zone may be the one the row does not apply to, so the row is kept for
+    every zone with its condition shown. That errs towards showing a control, never towards hiding it, and
+    services/constraint_arithmetic takes the largest minimum and the smallest maximum, so an extra row
+    cannot loosen a computed limit. A condition naming no zone code applies everywhere. Legacy and current
+    codes are not aliased.
     """
     if not zone_prefix or applicability != "zone_specific" or not condition:
         return True
     cond_upper = _DOC_REFERENCE.sub(" ", condition.upper())
-    excluded: set[str] = set()
-    negated = [False] * len(cond_upper)
-    for neg in _NEGATION.finditer(cond_upper):
-        end, codes = _exclusion_list(cond_upper, neg.end())
-        excluded |= codes
-        for i in range(neg.start(), end):
-            negated[i] = True
-    if zone_prefix in excluded:
-        return False
-    rest = "".join(" " if n else ch for ch, n in zip(cond_upper, negated))
-    limited_to = set(_ZONE_CODE.findall(rest))
-    return not limited_to or zone_prefix in limited_to
+    named = set(_ZONE_CODE.findall(cond_upper))
+    if not named or _EXCLUSION_WORDING.search(cond_upper):
+        return True
+    return zone_prefix in named
 
 
 # prior-art-checked: same function, additive kwarg only — the proxy endpoint

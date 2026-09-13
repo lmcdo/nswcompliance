@@ -248,60 +248,39 @@ class TestZoneFilter:
         result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra", zone_code="r2 low density")
         assert len(result["setbacks"]) == 1
 
-    # --- "other than <zone>" exclusion (zone_row_applies) ---
+    # --- Zone codes of every family; exclusion wording is never guessed (zone_row_applies) ---
 
-    def test_other_than_row_excluded_for_the_named_zone(self):
-        rows = [_make_row(applicability="zone_specific", condition="zones other than R2 Low Density Residential")]
-        result = fetch_dcp_setbacks(_mock_conn(rows), "strathfield", zone_code="R2 Low Density Residential")
-        assert len(result["setbacks"]) == 0
-
-    def test_other_than_row_included_for_every_other_zone(self):
-        rows = [_make_row(applicability="zone_specific", condition="zones other than R2 Low Density Residential")]
-        for zone in ("R3", "R4 High Density Residential", "E1", "SP2"):  # noqa: zone-codes (sample site zones)
-            result = fetch_dcp_setbacks(_mock_conn(rows), "strathfield", zone_code=zone)
-            assert len(result["setbacks"]) == 1, zone
-
-    def test_other_than_several_zones(self):
-        cond = "all zones other than R2, R3 and E1"  # noqa: zone-codes (test condition text)
-        assert _mod.zone_row_applies("zone_specific", cond, "R4")
-        assert not _mod.zone_row_applies("zone_specific", cond, "R3")
-        assert not _mod.zone_row_applies("zone_specific", cond, "E1")
-
-    def test_exclusion_wordings_and_non_zone_negations(self):
-        ok = _mod.zone_row_applies
-        # Naming a zone still means "this zone only".
-        assert not ok("zone_specific", "R2 Low Density zone", "R3")  # noqa: zone-codes (test condition text)
-        assert ok("zone_specific", "R2 Low Density zone", "R2")
-        # Every way of excluding a zone excludes it, and only it (the cross-review case first).
-        wordings = ("zones other than the R2 zone", "except in the R2 zone", "excluding land zoned R2",
-                    "not in the R2 Low Density zone", "other than (R2)")
-        for cond in wordings:
-            assert not ok("zone_specific", cond, "R2"), cond
-            assert ok("zone_specific", cond, "R3"), cond
-        cond = "all zones other than R2 Low Density and R3 Medium Density"  # noqa: zone-codes (test condition text)
-        assert not ok("zone_specific", cond, "R3") and not ok("zone_specific", cond, "R2") and ok("zone_specific", cond, "R4")  # noqa: zone-codes (test zones)
-        # A negation that names no zone leaves the zone scope alone, even when a zone follows in the same clause.
-        cond = "other than corner lots, R3 zone only"  # noqa: zone-codes (test condition text)
-        assert ok("zone_specific", cond, "R3") and not ok("zone_specific", cond, "R2")  # noqa: zone-codes (test zones)
-        assert ok("zone_specific", "corner lots other than battle-axe lots", "R2")
-        assert ok("zone_specific", "R2 zone, except corner lots", "R2")
-        assert not ok("zone_specific", "R2 zone, except corner lots", "R3")  # noqa: zone-codes (test condition text)
-        # An exclusion clause ends at ';' - what follows can still limit the row.
-        cond = "lots other than the R2 zone; R4 only"  # noqa: zone-codes (test condition text)
-        assert not ok("zone_specific", cond, "R2") and not ok("zone_specific", cond, "R3") and ok("zone_specific", cond, "R4")  # noqa: zone-codes (test zones)
-        assert _mod.zone_row_applies("universal_residential", "zones other than R2", "R2")
-        assert _mod.zone_row_applies("zone_specific", "zones other than R2", "")
-
-    def test_every_zone_family_is_read_for_inclusion_and_exclusion(self):
+    def test_every_zone_family_limits_a_row_to_its_zone(self):
         # The old 10-code list missed SP, RU, RE, IN, W and most E/B codes: an "SP2 only" row reached R2 sites.
         pairs = (("SP2", "R2"), ("RU5", "R2"), ("IN2", "R3"), ("W1", "R2"), ("RE1", "R4"), ("E3", "R2"), ("B4", "R3"))  # noqa: zone-codes (test zones)
         for code, other in pairs:
             only = f"{code} zone only"
             assert _mod.zone_row_applies("zone_specific", only, code), (only, code)
             assert not _mod.zone_row_applies("zone_specific", only, other), (only, other)
-            excluding = f"zones other than {code}"
-            assert not _mod.zone_row_applies("zone_specific", excluding, code), (excluding, code)
-            assert _mod.zone_row_applies("zone_specific", excluding, other), (excluding, other)
+
+    def test_exclusion_wording_keeps_the_row_for_every_zone(self):
+        # A zone named beside exclusion wording may be the zone the row does NOT apply to. Each parser tried was
+        # inverted by a new wording, so the row is kept for every zone with its condition shown - never served
+        # only to the excluded zone, never dropped where it applies.
+        wordings = (
+            "zones other than the R2 zone", "all zones except for R2", "all zones with the exception of R2",
+            "other than R2 Foreshore and R3 zones", "other than R2. R3 zone only", "excluding land zoned R2",  # noqa: zone-codes (test condition text)
+            "not in the R2 Low Density zone", "apart from R2", "outside the R2 zone", "R2 zone, except corner lots",
+        )
+        for cond in wordings:
+            for zone in ("R2", "R3", "R4", "SP2"):  # noqa: zone-codes (sample site zones)
+                assert _mod.zone_row_applies("zone_specific", cond, zone), (cond, zone)
+        rows = [_make_row(applicability="zone_specific", condition="zones other than R2 Low Density Residential")]
+        result = fetch_dcp_setbacks(_mock_conn(rows), "strathfield", zone_code="R2 Low Density Residential")
+        assert len(result["setbacks"]) == 1
+
+    def test_plain_zone_limits_are_unchanged(self):
+        assert not _mod.zone_row_applies("zone_specific", "R2 Low Density zone", "R3")  # noqa: zone-codes (test condition text)
+        assert _mod.zone_row_applies("zone_specific", "R2 Low Density zone", "R2")
+        assert not _mod.zone_row_applies("zone_specific", "R2 zone; not less than 6m", "R3")  # noqa: zone-codes (a loose "not" is not an exclusion)
+        assert _mod.zone_row_applies("zone_specific", "corner lots other than battle-axe lots", "R2")
+        assert _mod.zone_row_applies("universal_residential", "R4 zone only", "R2")  # noqa: zone-codes (test condition text)
+        assert _mod.zone_row_applies("zone_specific", "R4 zone only", "")
 
     def test_clause_ids_are_not_zone_codes(self):
         assert _mod.zone_row_applies("zone_specific", "additional setbacks apply (C3.3.2)", "R2")  # noqa: zone-codes (C3.3.2 is a clause id, the point of the test)
