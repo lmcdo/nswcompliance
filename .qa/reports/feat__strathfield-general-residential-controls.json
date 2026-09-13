@@ -1,0 +1,135 @@
+{
+  "tier": "critical",
+  "justification": "Writes the numeric DCP controls served for every Strathfield property (setbacks, parking, landscaping, deep soil, fencing, solar access). A wrong value, page or plan here is a wrong regulatory answer served with a citation.",
+  "commit_hash": "pending",
+  "files": [
+    "scripts/insert_strathfield_general_residential.py",
+    "tests/test_insert_strathfield_general_residential.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_insert_strathfield_general_residential.py -q",
+    "fails_when": "a stored number is not printed in its own quote, a row uses a control_type or applicability outside the live CHECK constraints or a page outside the 38-page plan, two rows share a live key, a ceiling is stored as a floor, or the quote matcher accepts a changed number, passages out of order or an empty passage",
+    "observed_red": "Mutant quote_on_page that always returns True (written to the scratchpad and swapped into the test module): test_quote_with_a_changed_number_is_rejected, test_segments_out_of_order_are_rejected and test_empty_segment_is_rejected all FAILED; only the positive matching test passed, as expected. Forced against the real PDF: changing the dwelling-house side setback quote to '1.5m' and moving the rear setback to page 16 produced 'dwelling_house/side_setback (...#C3.3.1): quote not on page 12' and 'dwelling_house/rear_setback (...#C3.6.1-C3.6.2): quote not on page 16'; passing the repealed Part C file produced 'is not the 38-page General Residential DCP (56 pages)'. Restored: 0 problems, 110 tests pass."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13/14: Strathfield had 25 dcp_setback_controls rows; the 23 current ones cited SCDCP 2005 Parts A, B and C and had been hidden (needs_review) once the council page showed those Parts repealed from 1 September 2026, so GET /api/dcp/structured-controls returned 0 controls for strathfield on all six dwelling types. dcp_plan_as_at.stated_date was 2006-05-03 (SCDCP 2005 commencement). Registry 720-722 named 'Strathfield DCP 2005'; no chapter held the new plan. No regulatory_provisions rows carry source_council='strathfield'.",
+    "assumption_mismatch": "The old rows assumed SCDCP 2005 Parts A-C were in force; the council repealed them and the General Residential DCP (adopted 28 July 2026, effective 1 September 2026, p4) replaced them. The new plan has no residential flat building controls, and it groups multi-dwelling housing, terraces and manor homes in one table row, while the frontend serves no terrace or manor-house dwelling type. Height in storeys is held by the 2026-07-27 DQ rule (every storeys max_height row is needs_review), so it is not stored.",
+    "new_vs_existing": "Follows the per-council insert-script pattern (insert_wingecarribee_setbacks.py): hand-curated rows with verbatim quote, section_ref and pdf_page, dup check, dry run. New in this script: --apply refuses unless --pdf is given and every quote is found in order on its stated page; the old rows are superseded (is_current = FALSE, reason appended) in the same transaction instead of left current; a live-count check before commit. No schema change, no change to any read path.",
+    "external_source_error": "The source is the council PDF, downloaded by WebFetch because strathfield.nsw.gov.au refuses scripts, and uploaded to R2 with its hash re-checked from the public URL. If the file is not the plan (wrong page count or title) the script stops before the database. If the council later amends the plan nothing here notices: the registry chapter has no council_url (r2_monitor only watches council_url), so the rows stay current until someone re-checks the page.",
+    "frontend_type": "Rows reach frontend-nextjs/app/api/dcp/structured-controls/route.ts through fetch_dcp_setbacks (is_current AND NOT needs_review): value_min/value_max number | null, unit string, condition string | null, pdf_page number, pdf_url string | null with #page=N because the chapter's URL is our R2 copy. fencing_height_max is in MAXIMUM_CONTROL_TYPES, so the stored value_max renders as a ceiling. The three front_setback rows have no number, so data_status is 'not_applicable' and DcpStructuredControls.tsx renders 'assessed on merit' beside the averaging rule's wording.",
+    "user_failure_mode": "Before 2026-09-13 a Strathfield user saw repealed 2005 figures (for example a 9m front setback and 40% landscaping for dual occupancies) cited to Parts A-C; from 2026-09-13 they saw no DCP numbers at all. If this data were wrong the user would see a confident number with a link to the plan page; the quote on that page is the check, and the script cannot write a row whose quote is not there."
+  },
+  "functions": [
+    {
+      "name": "quote_on_page",
+      "file_line": "scripts/insert_strathfield_general_residential.py:245",
+      "input": "A quote whose non-adjacent passages are joined by ' ... ', and one page's extracted text.",
+      "output": "True only when every passage appears on the page, in order, after normalising whitespace, dashes, superscript 2 and curly apostrophes.",
+      "if_none": "An empty passage returns False; an empty page returns False for any non-empty quote."
+    },
+    {
+      "name": "check_against_pdf",
+      "file_line": "scripts/insert_strathfield_general_residential.py:259",
+      "input": "Path to a local copy of the plan.",
+      "output": "A list of problems: the file is not the 38-page General Residential DCP, or a row's quote is not on its stated page. Empty means every quote was found.",
+      "if_none": "A page number beyond the file yields '' and so a problem, never a pass."
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/insert_strathfield_general_residential.py:271",
+      "input": "--pdf <plan> and optionally --apply.",
+      "output": "Exit 0 after a rolled-back dry run or a commit; 1 on a PDF problem, missing registry chapter, supersede miss, duplicate or count mismatch (all rolled back); 2 when --apply is given without --pdf, before any connection.",
+      "if_none": "No DATABASE_URL raises before any write; a missing registry chapter returns 1 before the backup or any write."
+    }
+  ],
+  "real_layer_exempt": {
+    "scripts/insert_strathfield_general_residential.py": "Run against the production database instead of a DB-marked test, because a test would have to write production rows. 2026-09-14 07:00: dry run 'superseded 23, inserted 52; rolled back', then --apply 'COMMITTED'. Afterwards: 52 rows current on general-residential-dcp-2026, 23 not current; fetch_dcp_setbacks returned as_at_line 'In force from 1 September 2026 (date stated in the plan document)' and the new chapter in registry_pdf_urls; the live endpoint at 07:02 served dwelling_house 14/14, dual_occupancy 14/14, multi_dwelling_housing 19/19, secondary_dwelling 5/5, every one with a general-residential-dcp-2026.pdf#page= link. Re-running after the write stops with 'supersede matched 0 of 23 rows; nothing written'."
+  },
+  "values": "52 rows, each number copied from the plan and printed in its own quote (test_stored_number_is_printed_in_its_quote), each quote found on its PDF page by --pdf before writing. Every row: dcp_version 'Strathfield DCP – General Residential Development, Amendment 1 (adopted 28 July 2026, effective 1 September 2026)', effective_date 2026-09-01, effective_date_basis stated_in_document, extraction_method manual_curation, source_chapter_key general-residential-dcp-2026.",
+  "queries": [
+    {
+      "purpose": "Refuse to write unless the plan is registered with a public copy to link to",
+      "file_line": "scripts/insert_strathfield_general_residential.py:296",
+      "where_clause": "council = %s AND chapter_key = %s AND is_active AND r2_public_pdf_url IS NOT NULL"
+    },
+    {
+      "purpose": "Supersede the 23 hidden rows cited to the repealed Parts",
+      "file_line": "scripts/insert_strathfield_general_residential.py:312",
+      "where_clause": "id = ANY(%s) AND lga = %s AND is_current AND needs_review"
+    },
+    {
+      "purpose": "Refuse a duplicate live row for the same dwelling type, control and condition",
+      "file_line": "scripts/insert_strathfield_general_residential.py:321",
+      "where_clause": "lga = %s AND dev_type = %s AND control_type = %s AND COALESCE(condition, '') = COALESCE(%s, '') AND is_current"
+    },
+    {
+      "purpose": "Confirm the served Strathfield set is exactly the inserted rows before commit",
+      "file_line": "scripts/insert_strathfield_general_residential.py:338",
+      "where_clause": "lga = %s AND is_current AND NOT needs_review"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A quote is given the wrong page, or a number in a quote is mistyped (1.5m for 1.2m).",
+      "what_happens": "Without a check the row is served with a link that opens a page not saying that number.",
+      "mitigated": true,
+      "how": "check_against_pdf reports the row and main returns 1 before connecting; --apply without --pdf returns 2. Forced on the real PDF and caught (see observed_red).",
+      "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k \"rejected or apply_without_pdf\" -q"
+    },
+    {
+      "scenario": "The wrong file is passed to --pdf, for example the repealed SCDCP 2005 Part C.",
+      "what_happens": "Quotes could coincidentally match an older plan's wording.",
+      "mitigated": true,
+      "how": "check_against_pdf first requires 38 pages and 'General Residential' on page 1; Part C returned 'is not the 38-page General Residential DCP (56 pages)', exit 1.",
+      "repro": "python scripts/insert_strathfield_general_residential.py --pdf <strathfield-part-c-2020.pdf>"
+    },
+    {
+      "scenario": "The script runs before the plan is registered (scripts/insert_strathfield_general_residential.py:296, WHERE council = %s AND chapter_key = %s AND is_active AND r2_public_pdf_url IS NOT NULL returns no row).",
+      "what_happens": "Rows would be served with no citation link at all.",
+      "mitigated": true,
+      "how": "main returns 1 before the backup or any write.",
+      "repro": "Run the script against a database without registry chapter strathfield/general-residential-dcp-2026."
+    },
+    {
+      "scenario": "The script is run a second time after --apply (scripts/insert_strathfield_general_residential.py:312, WHERE id = ANY(%s) AND lga = %s AND is_current AND needs_review now matches 0).",
+      "what_happens": "A naive insert would serve every number twice.",
+      "mitigated": true,
+      "how": "The supersede rowcount must equal 23 or the transaction rolls back; observed 'supersede matched 0 of 23 rows; nothing written', exit 1.",
+      "repro": "python scripts/insert_strathfield_general_residential.py --pdf <plan.pdf>"
+    },
+    {
+      "scenario": "Someone has already put a live row in place for one of these keys (scripts/insert_strathfield_general_residential.py:321, WHERE lga = %s AND dev_type = %s AND control_type = %s AND COALESCE(condition, '') = COALESCE(%s, '') AND is_current).",
+      "what_happens": "Two rows for the same control would be served.",
+      "mitigated": true,
+      "how": "The first duplicate rolls back the whole transaction; test_no_duplicate_live_keys also pins that the 52 rows have unique keys.",
+      "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k duplicate -q"
+    },
+    {
+      "scenario": "Another current, visible Strathfield row exists that is not in the supersede list (scripts/insert_strathfield_general_residential.py:338, WHERE lga = %s AND is_current AND NOT needs_review returns more than 52).",
+      "what_happens": "A leftover row from a repealed Part would be served beside the new ones.",
+      "mitigated": true,
+      "how": "The count must equal len(ROWS) or the transaction rolls back before commit; observed 52 after commit.",
+      "repro": "SELECT count(*) FROM dcp_setback_controls WHERE lga='strathfield' AND is_current AND NOT needs_review"
+    },
+    {
+      "scenario": "Strathfield amends or replaces the General Residential DCP.",
+      "what_happens": "These rows stay current and are served as in force.",
+      "mitigated": false,
+      "how": "Not mitigated: the council site refuses scripts, so the chapter has no council_url and r2_monitor does not watch it. Stated in external_source_error so the re-check is a known manual task.",
+      "repro": "SELECT council_url FROM dcp_chapter_registry WHERE council='strathfield' AND chapter_key='general-residential-dcp-2026'"
+    },
+    {
+      "scenario": "A user asks about a terrace or manor home, or a residential flat building.",
+      "what_happens": "There is no terrace or manor-house dwelling type, and the new plan has no residential flat building controls.",
+      "mitigated": false,
+      "how": "Partly: the grouped rows sit under multi_dwelling_housing with a condition naming terraces and manor homes; residential flat buildings get no Strathfield DCP numbers rather than the repealed Part C rates.",
+      "repro": "curl -s 'https://verify.plotdetect.com.au/api/dcp/structured-controls?council=strathfield&dev_type=residential_flat_building'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No reset. The data change is already live: run from this branch on 2026-09-14 07:00 (registry 784 via the scratchpad register step, 23 rows superseded, 52 inserted, dcp_plan_as_at stated_date 2026-09-01). Backups: data/db_rollback_backups/*_pre_strathfield_grdcp_2026-09-14_0700.csv in the main checkout. Merging changes no data.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Done at 07:02 and repeatable: GET https://verify.plotdetect.com.au/api/dcp/structured-controls?council=strathfield&dev_type=dwelling_house returns 14 controls, each pdf_url ending general-residential-dcp-2026.pdf#page=N, and as_at_line 'In force from 1 September 2026 (date stated in the plan document)'."
+  }
+}
