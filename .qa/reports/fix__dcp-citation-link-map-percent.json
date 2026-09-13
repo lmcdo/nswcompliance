@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "fetch_dcp_setbacks is the one guarded read behind every served numeric DCP control. Its registry link-map query raised on every call and the except swallowed it, so every number has been served without a PDF citation link since 2026-08-26 - a silent wrong output on the served path.",
-  "commit_hash": "80636658",
+  "commit_hash": "93080c98",
   "files": [
     "scripts/conveyancing_db.py",
     "scripts/build_lot_search_index.py",
@@ -16,7 +16,10 @@
   "pre_impl": {
     "existing_data": "Measured 2026-09-13: GET https://verify.plotdetect.com.au/api/dcp/structured-controls returned pdf_url null for every control across penrith (12), hornsby (19), campbelltown (9), ku_ring_gai (5) and waverley (10), although 40 of those 55 carry a pdf_page. The same SQL on the production database raised IndexError('tuple index out of range') with the comment and returned 2 rows for penrith without it. git blame: the comment arrived in 188ac741 (#1012, 2026-08-26).",
     "assumption_mismatch": "#1012 assumed an SQL comment is inert. psycopg2 %-formats the whole query string when params are passed, comments included. The existing tests could not see it: their MagicMock cursor's execute() ignores the SQL.",
-    "new_vs_existing": "No change to what the query selects or filters. The comment moves into Python comments. The same class in build_lot_search_index.py step 1 is fixed the same way. The new test is the first check in tests/ that inspects SQL literals for placeholder hazards."
+    "new_vs_existing": "No change to what the query selects or filters. The comment moves into Python comments. The same class in build_lot_search_index.py step 1 is fixed the same way. The new test is the first check in tests/ that inspects SQL literals for placeholder hazards.",
+    "external_source_error": "The external sources are the production database and the council or R2 PDF URLs the map hands out. If the link-map query fails for a database reason it still degrades to an empty map inside its savepoint (unchanged by this PR). A dead or wrong URL stored in dcp_chapter_registry is not detected here; it is served as stored.",
+    "frontend_type": "registry_pdf_urls is a {chapter_key: url string} dict read by frontend-nextjs/app/api/dcp/structured-controls/route.ts as r.registry_pdf_urls?.[row.source_chapter_key]; each control's pdf_url is string | null and gains #page=N only when isOwnCopy(url) and pdf_page is set. Shape unchanged by this PR; only the map is no longer always empty.",
+    "user_failure_mode": "Since 2026-08-26 every number on a council's controls tab showed its citation as dead grey text with no link to the PDF, with no error anywhere a user or operator would see. A recurrence of the same kind looks identical to the user; the new test fails the build before it ships."
   },
   "functions": [
     {
@@ -93,6 +96,13 @@
       "mitigated": true,
       "how": "Observed red: the same fake run against origin/main's conveyancing_db.py returned registry_pdf_urls {} (the except path), so the assertion on the map fails there.",
       "repro": "git show origin/main:scripts/conveyancing_db.py > /tmp/cdb.py and run the test body against it (see falsifiable_check.observed_red)"
+    },
+    {
+      "scenario": "The lot_search_index step 1 upsert (scripts/build_lot_search_index.py:157, WHERE so.layer_type = 'zone' AND so.lga_name = %s) gets an explanatory percentage back inside its SQL string.",
+      "what_happens": "cur.execute raises before any row is written, the build stops at step 1 for that LGA, and lot search keeps serving the old rows.",
+      "mitigated": true,
+      "how": "The placeholder scan reads this file; it reported build_lot_search_index.py:144 on origin/main and passes with the comments moved out.",
+      "repro": "python -m pytest tests/test_sql_percent_placeholders.py -k no_stray -q"
     }
   ],
   "post_merge": {
