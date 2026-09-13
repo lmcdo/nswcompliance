@@ -1,0 +1,86 @@
+{
+  "tier": "critical",
+  "justification": "fetchDcpControls is the only way the site reads served numeric DCP controls. A saved backend answer reused across deployments serves stale output with no error: citation links stayed missing after their fix, and a control held for review can stay on screen.",
+  "commit_hash": "pending",
+  "files": [
+    "frontend-nextjs/lib/dcp-controls-client.ts",
+    "frontend-nextjs/__tests__/lib/dcp-controls-client-no-store.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/dcp-controls-client-no-store.test.ts",
+    "fails_when": "fetchDcpControls calls fetch without cache: 'no-store' (with or without a zone), or stops returning the backend body unchanged, or turns an unreachable or non-ok backend into a success",
+    "observed_red": "Run with origin/main's lib/dcp-controls-client.ts (2ba8a555) swapped in: 'asks the backend for a fresh response every time' and 'a zone-filtered request is not cached either' failed, Expected: \"no-store\" Received: undefined; Tests: 2 failed, 3 passed. With the fix: this file and __tests__/api/dcp-structured-controls.test.ts, 10 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13 after #1101 deployed (Railway 09:35 UTC, Vercel 09:39 UTC): GET nswcompliance-production.up.railway.app/pipeline/dcp-controls?lga=penrith returned 2 registry_pdf_urls on 6 of 6 calls. GET verify.plotdetect.com.au/api/dcp/structured-controls?council=penrith returned 0 controls with pdf_url on 5 of 5 calls (x-vercel-cache MISS), and 0 for hornsby and waverley, all requested before the deploy; blacktown returned 10 of 10, camden 9 of 9, randwick 8 of 10, none requested before. The backend responds directly (server railway-hikari, no CDN cache headers).",
+    "assumption_mismatch": "The route exports dynamic = 'force-dynamic', which was taken to keep every request fresh. The route response was fresh, but the backend answer fetched inside it was reused: server fetch() results sit in Next 14's Data Cache, which outlives deployments.",
+    "new_vs_existing": "One fetch option added in the one client every consumer uses (structured-controls, capacity/calculate, canibuildit/check, tod/parking-rates). No shape change; the route's own Cache-Control: s-maxage=60 is untouched.",
+    "external_source_error": "The external source is the Railway backend. An unreachable backend or a non-ok status still throws DcpControlsUnavailableError, which callers turn into a visible 503; tested. No response is ever read from a store now, so an outage is no longer masked by an old saved answer either.",
+    "frontend_type": "fetchDcpControls returns Promise<DcpControlsResult>: rows DcpControlRow[] and registry_pdf_urls Record<string, string> used by the structured-controls route to build pdf_url string | null. Types unchanged.",
+    "user_failure_mode": "Before: for any council whose backend answer was saved before a change, the controls tab kept showing the old answer indefinitely, citations as dead grey text after the link fix, and a number held for review could still show as a normal control. Nothing on screen or in the logs said the data was old."
+  },
+  "functions": [
+    {
+      "name": "fetchDcpControls",
+      "file_line": "frontend-nextjs/lib/dcp-controls-client.ts:54",
+      "input": "An LGA slug and an optional zone code.",
+      "output": "The backend's DcpControlsResult for that LGA, fetched fresh on every call.",
+      "if_none": "A null or empty zone is left off the query string as before; a failed request throws DcpControlsUnavailableError rather than returning an empty result."
+    }
+  ],
+  "real_layer_exempt": {
+    "frontend-nextjs/lib/dcp-controls-client.ts": "The failure lives in Vercel's production Data Cache, which a unit test cannot hold. The real layer is checked after deploy: post_merge.manual_verify requires penrith, hornsby and waverley to show citation links on the live site, which they did not with the cached answers."
+  },
+  "values": "N/A - no stored value is read or written by this change.",
+  "queries": "N/A - no SQL; the backend query in conveyancing_db.fetch_dcp_setbacks is unchanged.",
+  "break_it": [
+    {
+      "scenario": "A later refactor drops the cache option or replaces fetch with a wrapper that defaults to caching.",
+      "what_happens": "Saved backend answers would again be served after data or code changes, silently.",
+      "mitigated": true,
+      "how": "Two tests assert cache: 'no-store' on the call, with and without a zone; both fail on origin/main.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/dcp-controls-client-no-store.test.ts -t \"fresh response\""
+    },
+    {
+      "scenario": "Every page view now calls the backend, so a busy council page raises backend load and latency.",
+      "what_happens": "Slower responses or more Railway load than with a cache.",
+      "mitigated": true,
+      "how": "The structured-controls route still sends Cache-Control: s-maxage=60, so repeat views of the same URL are served by Vercel's edge for a minute; the backend work is one council's indexed read. Freshness of a legal control outranks the saving.",
+      "repro": "curl -sI 'https://verify.plotdetect.com.au/api/dcp/structured-controls?council=penrith&dev_type=dwelling_house' | grep -i cache-control"
+    },
+    {
+      "scenario": "The backend is down while the site is up.",
+      "what_happens": "With a cache the site might have shown old data; now it must say the source is unavailable.",
+      "mitigated": true,
+      "how": "A rejected fetch and a non-ok status both throw DcpControlsUnavailableError; two tests pin it, so an outage is never an empty success.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/dcp-controls-client-no-store.test.ts -t Unavailable"
+    },
+    {
+      "scenario": "Entries already saved in the production Data Cache before this deploy.",
+      "what_happens": "If they were still read, penrith and the others would stay without links after the fix ships.",
+      "mitigated": true,
+      "how": "A no-store fetch neither reads nor writes the Data Cache, so the stale entries are bypassed rather than needing a purge; the post-merge check confirms it on the councils that were stale.",
+      "repro": "curl -s 'https://verify.plotdetect.com.au/api/dcp/structured-controls?council=penrith&dev_type=dwelling_house' | python -c \"import sys,json; d=json.load(sys.stdin); print(sum(1 for c in d['categories'] for x in c['controls'] if x['pdf_url']))\""
+    },
+    {
+      "scenario": "The client starts transforming the backend body, for example dropping registry_pdf_urls.",
+      "what_happens": "Links would vanish again for every council, the same symptom as the cache.",
+      "mitigated": true,
+      "how": "A test asserts the body, including the link map, is returned unchanged.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/dcp-controls-client-no-store.test.ts -t unchanged"
+    },
+    {
+      "scenario": "Another server-side fetch of regulatory data elsewhere in the app relies on the same default caching.",
+      "what_happens": "It could serve stale regulatory data the same way.",
+      "mitigated": false,
+      "how": "Not audited in this PR; it fixes the one client proven stale. Stated so the other PYTHON_API_URL fetchers are checked separately.",
+      "repro": "grep -rn \"fetch(\\`\\${PYTHON_API}\" frontend-nextjs/app frontend-nextjs/lib"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: after the Vercel production deploy, GET https://verify.plotdetect.com.au/api/dcp/structured-controls?council=penrith&dev_type=dwelling_house must return controls with a non-null pdf_url (0 of 12 before), and the same for hornsby and waverley."
+  }
+}
