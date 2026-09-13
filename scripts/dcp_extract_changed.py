@@ -51,7 +51,8 @@ from enrichment.pipeline import phase_failures, run_standard_enrichment
 # checks serve the pipeline and the standalone sweep -- a guard with two copies
 # drifts, and drift is the defect it exists to catch.
 from scripts.dcp_page_map_gate import (
-    PageMapUnusable, assert_map_usable, derive_ranges_from_headers)
+    HEADER_SCAN_LINES, PART_HEADER, PageMapUnusable, assert_map_usable,
+    derive_ranges_from_headers)
 # The section-loss guard: a commit may not swap a chapter for a version that loses most
 # of its sections. Measured before the write, judged after it, same transaction.
 from scripts.dcp_supersede_guard import enforce as enforce_section_loss
@@ -680,6 +681,80 @@ def _clean_page_text(text: str, council: str | None) -> str:
             continue
         cleaned.append(line)
     return '\n'.join(cleaned)
+
+
+# ── Page furniture and the page each rule is on ─────────────────────────────
+# Found 2026-09-13 reviewing waverley's queued rules before approval: 234 of 518
+# carried the page footer and its page number mid-sentence, 127 carried the next
+# page's running header, and every rule cited the first page of its part. See
+# tests/test_dcp_rule_pages_and_page_furniture.py.
+
+# The title each council prints above its page number at the foot of every page.
+# Document furniture, not regulatory content.
+COUNCIL_FOOTER_TITLES: dict[str, str] = {
+    "waverley": "WAVERLEY DEVELOPMENT CONTROL PLAN 2022",
+}
+
+_BARE_PAGE_NUMBER = re.compile(r"^\d{1,3}$")
+
+
+def strip_page_furniture(text: str, council: str | None) -> str:
+    """Remove a page's running header and footer. Pure.
+
+    Only for councils whose parts come from the running header, where the header's
+    shape is already established. Header: a part code alone on a line within the
+    first HEADER_SCAN_LINES lines -- the same reading derive_ranges_from_headers
+    uses -- and the title line after it. Footer: the council's footer title with the
+    page number below it or on the same line. A number is removed only when that
+    title sits directly above it, so a control value or table cell at the foot of a
+    page is kept, and so is the title printed on a cover page.
+    """
+    if council not in HEADER_DERIVED_COUNCILS:
+        return text
+    lines = (text or "").split("\n")
+    for i, line in enumerate(lines[:HEADER_SCAN_LINES]):
+        if PART_HEADER.match(line.strip()):
+            del lines[i:i + 2]
+            break
+    title = COUNCIL_FOOTER_TITLES.get(council)
+    if title:
+        while lines and not lines[-1].strip():
+            lines.pop()
+        if (len(lines) >= 2 and _BARE_PAGE_NUMBER.match(lines[-1].strip())
+                and lines[-2].strip() == title):
+            del lines[-2:]
+        elif lines and re.fullmatch(re.escape(title) + r"\s+\d{1,3}", lines[-1].strip()):
+            lines.pop()
+    return "\n".join(lines)
+
+
+#: Put before each page's text by extract_by_page_ranges; removed again by
+#: assign_pages_from_markers once the page of every rule is known.
+PAGE_MARK = "⟦page {n}⟧"
+_PAGE_MARK_RE = re.compile(r"⟦page (\d+)⟧")
+
+
+def assign_pages_from_markers(sections: list[dict[str, Any]], first_page: int) -> list[dict[str, Any]]:
+    """Give each section the page its heading is on, and remove the page markers. Pure.
+
+    Sections come out of the splitter in document order, so the page at the start of
+    a section is the last marker seen before it, and a marker inside it moves the page
+    on. A marker with nothing after it -- the next page starting with the next heading
+    -- advances the page without extending this section's page_end.
+    """
+    current = first_page
+    out: list[dict[str, Any]] = []
+    for sec in sections:
+        content = sec.get("content") or ""
+        start = end = current
+        for m in _PAGE_MARK_RE.finditer(content):
+            current = int(m.group(1))
+            if _PAGE_MARK_RE.sub("", content[m.end():]).strip():
+                end = current
+        clean = re.sub(r"\n{3,}", "\n\n", _PAGE_MARK_RE.sub("", content)).strip()
+        out.append({**sec, "content": clean, "page_start": start, "page_end": end,
+                    "pages": list(range(start, end + 1))})
+    return out
 
 
 # ── Per-council column layout configs ────────────────────────────────────────
@@ -1776,7 +1851,10 @@ class DCPExtractor:
                     page = pdf.pages[page_num - 1]
                     text = self._page_text(page, page_num)
                     text = _clean_page_text(text, self.council)
-                    content += f"\n\n{text}"
+                    text = strip_page_furniture(text, self.council)
+                    # The marker lets assign_pages_from_markers give every rule the
+                    # page its heading is on, instead of the first page of the range.
+                    content += f"\n\n{PAGE_MARK.format(n=page_num)}\n{text}"
                     pages_included.append(page_num)
                     if not self.ocr_pages:
                         for tbl in page.extract_tables() or []:
@@ -1816,9 +1894,9 @@ class DCPExtractor:
                             )
                             further_split.extend(further)
                         sub_secs = further_split
-                    sections.extend(sub_secs)
+                    sections.extend(assign_pages_from_markers(sub_secs, page_start))
                 else:
-                    sections.append({
+                    sections.extend(assign_pages_from_markers([{
                         "section_number": section_key,
                         "section_title":  title,
                         "content":        content,
@@ -1826,7 +1904,7 @@ class DCPExtractor:
                         "page_start":     page_start,
                         "page_end":       clipped_end,
                         "pages":          pages_included,
-                    })
+                    }], page_start))
         print()
         return self.finalise_ranged_sections(sections)
 
@@ -1991,8 +2069,9 @@ def split_content_at_subsections(
 
     Each match of `pattern` (two groups: sub_number, sub_title) becomes its own
     provision.  Text before the first match becomes the intro provision if non-empty.
-    All sub-provisions inherit page_start — intra-section page boundaries are not
-    tracked at extraction time.
+    All sub-provisions inherit page_start here. On the page-range path the content
+    carries page markers, and assign_pages_from_markers then gives each sub-provision
+    the page its heading is on.
 
     Group 1 (sub_number) may be an empty string for keyword-only headings such as
     "Objectives" or "Controls" — in that case the sub_title is used for the key slug.
@@ -2026,11 +2105,16 @@ def split_content_at_subsections(
     # Intro provision: context/description text before the first sub-heading — never actionable
     intro_text = content[:matches[0].start()].strip()
     if intro_text:
+        # Page markers alone are not intro text. The section is still emitted so
+        # assign_pages_from_markers reads the pages it passes over, but without the
+        # tables: it is left empty and finalise_ranged_sections drops it, as a range
+        # with no intro text was dropped before the markers existed.
+        has_text = bool(_PAGE_MARK_RE.sub("", intro_text).strip())
         result.append({
             "section_number":   parent_key,
             "section_title":    parent_title,
             "content":          intro_text,
-            "tables":           tables,   # All tables stay with the intro provision
+            "tables":           tables if has_text else [],  # All tables stay with the intro provision
             "page_start":       page_start,
             "page_end":         page_end,
             "pages":            [],
