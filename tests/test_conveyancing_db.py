@@ -248,6 +248,38 @@ class TestZoneFilter:
         result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra", zone_code="r2 low density")
         assert len(result["setbacks"]) == 1
 
+    # --- "other than <zone>" exclusion (zone_row_applies) ---
+
+    def test_other_than_row_excluded_for_the_named_zone(self):
+        rows = [_make_row(applicability="zone_specific", condition="zones other than R2 Low Density Residential")]
+        result = fetch_dcp_setbacks(_mock_conn(rows), "strathfield", zone_code="R2 Low Density Residential")
+        assert len(result["setbacks"]) == 0
+
+    def test_other_than_row_included_for_every_other_zone(self):
+        rows = [_make_row(applicability="zone_specific", condition="zones other than R2 Low Density Residential")]
+        for zone in ("R3", "R4 High Density Residential", "E1", "SP2"):  # noqa: zone-codes (sample site zones)
+            result = fetch_dcp_setbacks(_mock_conn(rows), "strathfield", zone_code=zone)
+            assert len(result["setbacks"]) == 1, zone
+
+    def test_other_than_several_zones(self):
+        cond = "all zones other than R2, R3 and E1"  # noqa: zone-codes (test condition text)
+        assert _mod.zone_row_applies("zone_specific", cond, "R4")
+        assert not _mod.zone_row_applies("zone_specific", cond, "R3")
+        assert not _mod.zone_row_applies("zone_specific", cond, "E1")
+
+    def test_conditions_without_the_exclusion_form_decide_as_before(self):
+        # Confusable negatives: naming a zone still means "this zone only", and "other than" followed by
+        # words rather than a zone code is not an exclusion.
+        assert not _mod.zone_row_applies("zone_specific", "R2 Low Density zone", "R3")  # noqa: zone-codes (test condition text)
+        assert _mod.zone_row_applies("zone_specific", "R2 Low Density zone", "R2")
+        assert _mod.zone_row_applies("zone_specific", "corner lots other than battle-axe lots", "R2")
+        # "other than THE R2 zone" is not the exclusion form, so the inclusion rule decides: R2 is named, so an
+        # R2 site keeps the row and an R3 site does not. Writers must put the zone code directly after "other than".
+        assert _mod.zone_row_applies("zone_specific", "lots other than the R2 zone; R4 only", "R2")  # noqa: zone-codes (test condition text)
+        assert not _mod.zone_row_applies("zone_specific", "lots other than the R2 zone; R4 only", "R3")  # noqa: zone-codes (test condition text)
+        assert _mod.zone_row_applies("universal_residential", "zones other than R2", "R2")
+        assert _mod.zone_row_applies("zone_specific", "zones other than R2", "")
+
     def test_secondary_dwelling_routed_to_sd(self):
         rows = [_make_row(dev_type="secondary_dwelling")]
         result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")

@@ -80,7 +80,7 @@ def test_r2_rear_setback_is_the_range_its_formula_can_produce(dev_type):
     assert len(rear) == 2 and len(r2) == 1 and len(other) == 1
     assert (r2[0]["value_min"], r2[0]["value_max"], r2[0]["applicability"]) == (6, 10, "zone_specific")
     assert (other[0]["value_min"], other[0]["value_max"], other[0]["applicability"]) == (6, None, "zone_specific")
-    assert "20% of the average length" in r2[0]["condition"] and "other than the low density" in other[0]["condition"]
+    assert "20% of the average length" in r2[0]["condition"] and "other than R2" in other[0]["condition"]
 
 
 # DQ-32b's pattern (scripts/dq_probe_live.py): a zone code in a condition.
@@ -93,25 +93,24 @@ def test_zone_code_in_a_condition_only_on_zone_specific_rows(r):
         assert not ZONE_CODE.search(r["condition"]), r["condition"]
 
 
-def _zone_filter_keeps(r: dict, zone: str) -> bool:
-    """Copy of the served filter in scripts/conveyancing_db.py fetch_dcp_setbacks: a zone_specific row whose
-    condition names zones, but not the site's zone, is dropped."""
-    if r["applicability"] == "zone_specific" and r["condition"]:
-        cond = r["condition"].upper()
-        if any(z in cond for z in ("R1", "R2", "R3", "R4", "R5", "E1", "B1", "B2", "MU1", "C2")) and zone not in cond:  # noqa: zone-codes (literal copy of the served filter's list, so the test replays it exactly)
-            return False
-    return True
+_CDB_SPEC = importlib.util.spec_from_file_location(
+    "conveyancing_db", Path(__file__).parent.parent / "scripts" / "conveyancing_db.py")
+cdb = importlib.util.module_from_spec(_CDB_SPEC)
+_CDB_SPEC.loader.exec_module(cdb)
 
 
-@pytest.mark.parametrize("zone", ["R2", "R3", "R4", "E1"])  # noqa: zone-codes (sample site zones the test replays the filter for)
-def test_zone_filter_leaves_each_zone_its_own_rear_and_side_rows(zone):
-    kept = [r for r in ROWS if r["dev_type"] == "multi_dwelling_housing" and _zone_filter_keeps(r, zone)]
+@pytest.mark.parametrize("zone", ["R2", "R3", "R4", "E1"])  # noqa: zone-codes (sample site zones)
+@pytest.mark.parametrize("dev_type", ["dwelling_house", "dual_occupancy", "multi_dwelling_housing"])
+def test_served_zone_filter_gives_each_zone_only_its_own_rear_and_side_rows(zone, dev_type):
+    """Runs the real filter (conveyancing_db.zone_row_applies): an R2 site gets only the R2 rows, any other
+    zone only the other-zones rows, never both."""
+    kept = [r for r in ROWS if r["dev_type"] == dev_type
+            and cdb.zone_row_applies(r["applicability"], r["condition"], zone)]
     rear = {(r["value_min"], r["value_max"]) for r in kept if r["control_type"] == "rear_setback"}
-    side = {r["value_min"] for r in kept if r["control_type"] == "side_setback"}
-    assert (6, None) in rear, "the other-zones 6m rear row must survive for every zone"
-    assert ((6, 10) in rear) == (zone == "R2")
-    assert {4, 2} <= side, "the 'any other zone' side rows must survive for every zone"
-    assert ({5, 3} <= side) == (zone == "R2")
+    assert rear == ({(6, 10)} if zone == "R2" else {(6, None)})
+    if dev_type == "multi_dwelling_housing":
+        side = {r["value_min"] for r in kept if r["control_type"] == "side_setback"}
+        assert side == ({1.2, 5, 3, 2.7} if zone == "R2" else {1.2, 4, 2, 2.7})
 
 
 def test_maximums_are_stored_as_ceilings():

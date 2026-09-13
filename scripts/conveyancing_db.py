@@ -436,6 +436,33 @@ def apply_chapter_key_aliases(registry_pdf_urls: dict, lga_slug: str) -> dict:
     return result
 
 
+# prior-art-checked: the zone filter fetch_dcp_setbacks has always applied, moved here unchanged so it can be
+# tested directly, plus one exclusion form it could not express; no new data source.
+_FILTER_ZONE_CODES = ("R1", "R2", "R3", "R4", "R5", "E1", "B1", "B2", "MU1", "C2")  # noqa: zone-codes (the list the filter has always used, moved unchanged)
+_OTHER_THAN_ZONES = re.compile(r"\bOTHER THAN ((?:MU|R|E|B|C)\d(?:\s*(?:,|/|AND|OR)\s*(?:MU|R|E|B|C)\d)*)\b")
+_ZONE_TOKEN = re.compile(r"(?:MU|R|E|B|C)\d")
+
+
+def zone_row_applies(applicability: Optional[str], condition: Optional[str], zone_prefix: str) -> bool:
+    """Whether a DCP control row applies to a site whose zone code is ``zone_prefix`` (e.g. "R2").
+
+    Only ``zone_specific`` rows with condition text are ever excluded, and only when a zone is known.
+    A condition containing "other than" followed directly by one or more zone codes (e.g. "zones other than
+    R2 Low Density Residential") applies to every zone except those codes. Any
+    other condition that names one of the filter's zone codes applies only when it also names the site's
+    zone; a condition naming no zone code applies everywhere (conservative, as before).
+    """
+    if not zone_prefix or applicability != "zone_specific" or not condition:
+        return True
+    cond_upper = condition.upper()
+    excluded = _OTHER_THAN_ZONES.search(cond_upper)
+    if excluded:
+        return zone_prefix not in _ZONE_TOKEN.findall(excluded.group(1))
+    if any(z in cond_upper for z in _FILTER_ZONE_CODES) and zone_prefix not in cond_upper:
+        return False
+    return True
+
+
 # prior-art-checked: same function, additive kwarg only — the proxy endpoint
 # needs failure distinguishable from checked-none; no new capability.
 def fetch_dcp_setbacks(
@@ -611,14 +638,10 @@ def fetch_dcp_setbacks(
         # has no data for.
         if needs_review:
             continue
-        # Skip zone-specific controls that explicitly reference a DIFFERENT zone.
-        # Conservative: only skip when condition names zones AND our zone isn't among them.
-        if zone_prefix and applicability == "zone_specific" and condition:
-            cond_upper = condition.upper()
-            # Check if condition mentions specific zone codes (R1, R2, R3, etc.)
-            if any(z in cond_upper for z in ("R1", "R2", "R3", "R4", "R5", "E1", "B1", "B2", "MU1", "C2")) \
-               and zone_prefix not in cond_upper:
-                continue
+        # Skip zone-specific controls that do not apply to this site's zone, including rows written
+        # "other than <zone>" (see zone_row_applies).
+        if not zone_row_applies(applicability, condition, zone_prefix):
+            continue
         base_label = _CONTROL_TYPE_LABELS.get(
             ctrl_type, ctrl_type.replace("_", " ").title()
         )

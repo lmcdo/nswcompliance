@@ -83,9 +83,9 @@ Q_REAR_R2 = ("C3.6.1 For development in the R2 Low Density Residential zone, the
 C_REAR_R2 = ("R2 Low Density Residential zone: 10m or 20% of the average length of the site, whichever is lesser, "
              "and not less than 6m, so between 6m and 10m depending on the site's length")
 Q_REAR_OTHER = "C3.6.2 For development in all other zones, the minimum rear building setback is 6m."
-# Conditions of "other zones" rows name no zone code: fetch_dcp_setbacks drops a zone_specific row whose
-# condition names zones but not the site's zone, so "other than R2" would be kept for R2 and dropped elsewhere.
-C_REAR_OTHER = "zones other than the low density residential zone"
+# "Other zones" rows use the exclusion form "other than R2" that conveyancing_db.zone_row_applies reads: an R2
+# site is served only the R2 rows, and every other zone only these.
+C_REAR_OTHER = "zones other than R2 Low Density Residential"
 Q_SECONDARY = ("C12.1.1 For two storey developments orientated towards the primary road, the secondary street side "
                "setback is 3m. Any third storey must be setback an additional 1.5m.")
 C_SECONDARY = "corner sites; two storey developments orientated towards the primary road; any third storey an additional 1.5m"
@@ -188,13 +188,13 @@ ROWS = (
             Q_MDH_SIDE_A + SEGMENT + "In the R2 Low Density zone:" + SEGMENT + "b) 3m to the other side boundary "
             "including a 1.5m landscape strip", "C3.4.2", 12, "zone_specific"),
         row("multi_dwelling_housing", "side_setback", 4, None, "m",
-            f"medium density zone or any zone other than low density; {C_MDH_ORIENT}; to one side boundary, "
-            "including a minimum 2m wide deep soil area",
+            f"zones other than R2 Low Density (medium density or any other zone); {C_MDH_ORIENT}; to one side "
+            "boundary, including a minimum 2m wide deep soil area",
             Q_MDH_SIDE_A + SEGMENT + "In the R3 Medium Density zone or any other zone: a) 4m to one side boundary "
             "including a minimum 2m wide deep soil area", "C3.4.2", 12, "zone_specific"),
         row("multi_dwelling_housing", "side_setback", 2, None, "m",
-            f"medium density zone or any zone other than low density; {C_MDH_ORIENT}; to the other side boundary, "
-            "including a 1.5m landscape strip",
+            f"zones other than R2 Low Density (medium density or any other zone); {C_MDH_ORIENT}; to the other "
+            "side boundary, including a 1.5m landscape strip",
             Q_MDH_SIDE_A + SEGMENT + "In the R3 Medium Density zone or any other zone:" + SEGMENT + "b) 2m to the "
             "other side boundary including a 1.5m landscape strip", "C3.4.2", 12, "zone_specific"),
         row("multi_dwelling_housing", "side_setback", 2.7, None, "m",
