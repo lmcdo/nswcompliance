@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Writes the numeric DCP controls served for every Strathfield property (setbacks, parking, landscaping, deep soil, fencing, solar access). A wrong value, page or plan here is a wrong regulatory answer served with a citation.",
-  "commit_hash": "a69c57dd",
+  "commit_hash": "08c488d8",
   "files": [
     "scripts/insert_strathfield_general_residential.py",
     "tests/test_insert_strathfield_general_residential.py"
@@ -45,7 +45,23 @@
   "real_layer_exempt": {
     "scripts/insert_strathfield_general_residential.py": "Run against the production database instead of a DB-marked test, because a test would have to write production rows. 2026-09-14 07:00: dry run 'superseded 23, inserted 52; rolled back', then --apply 'COMMITTED'. Afterwards: 52 rows current on general-residential-dcp-2026, 23 not current; fetch_dcp_setbacks returned as_at_line 'In force from 1 September 2026 (date stated in the plan document)' and the new chapter in registry_pdf_urls; the live endpoint at 07:02 served dwelling_house 14/14, dual_occupancy 14/14, multi_dwelling_housing 19/19, secondary_dwelling 5/5, every one with a general-residential-dcp-2026.pdf#page= link. Re-running after the write stops with 'supersede matched 0 of 23 rows; nothing written'."
   },
-  "values": "52 rows, each number copied from the plan and printed in its own quote (test_stored_number_is_printed_in_its_quote), each quote found on its PDF page by --pdf before writing. Every row: dcp_version 'Strathfield DCP – General Residential Development, Amendment 1 (adopted 28 July 2026, effective 1 September 2026)', effective_date 2026-09-01, effective_date_basis stated_in_document, extraction_method manual_curation, source_chapter_key general-residential-dcp-2026.",
+  "values": [
+    {
+      "value": "Each row's quote (and so its number) on its stated page of the local plan PDF; 52 rows, every number also printed in its own quote (test_stored_number_is_printed_in_its_quote). Written with dcp_version 'Strathfield DCP – General Residential Development, Amendment 1 (adopted 28 July 2026, effective 1 September 2026)', effective_date 2026-09-01, effective_date_basis stated_in_document.",
+      "read_at": "scripts/insert_strathfield_general_residential.py:259 (check_against_pdf, PyMuPDF page text)",
+      "if_missing": "A quote not on its page, a page beyond the file, or a file that is not the 38-page plan returns a problem and main exits 1 before connecting to the database."
+    },
+    {
+      "value": "Registry chapter strathfield/general-residential-dcp-2026, active, with r2_public_pdf_url set (registry id 784)",
+      "read_at": "scripts/insert_strathfield_general_residential.py:296",
+      "if_missing": "main returns 1 before the backup or any write."
+    },
+    {
+      "value": "Count of current, visible Strathfield rows after the insert (observed 52)",
+      "read_at": "scripts/insert_strathfield_general_residential.py:338",
+      "if_missing": "Any count other than len(ROWS) rolls the transaction back and main returns 1."
+    }
+  ],
   "queries": [
     {
       "purpose": "Refuse to write unless the plan is registered with a public copy to link to",
