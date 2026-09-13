@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which rules the review queue holds for a chapter that is replaced whole. The commit job switches off every live rule of such a chapter and adds back only approved queue rows, so what the queue holds is exactly what stays served to users after approval.",
-  "commit_hash": "4deaf0d0",
+  "commit_hash": "6cc26a58",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_dcp_review_enqueue.py",
