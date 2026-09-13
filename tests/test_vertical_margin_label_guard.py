@@ -242,9 +242,10 @@ class TestAStackedListMarkerIsNotAMarginTitle:
 class _FakePage:
     """extract_words() returns fixture words; filter() records that the page was cut."""
 
-    def __init__(self, words, width=595.28):
+    def __init__(self, words, width=595.28, bbox=None):
         self._words = words
         self.width = width
+        self.bbox = bbox if bbox is not None else (0.0, 0.0, width, 842.0)
         self.filtered = False
 
     def extract_words(self):
@@ -293,6 +294,21 @@ class TestATitleSitsInThePageMargin:
                    for g in REAL_MARGIN_LABEL_WORDS]
         assert find_vertical_margin_label_band(shifted) is not None, "fixture no longer passes the neighbour check"
         assert find_vertical_margin_label_band(shifted, self.W) is None
+
+    def test_on_a_page_whose_box_starts_at_x100_the_margin_is_measured_from_the_box(self):
+        """Cross-review: a page box spanning x=100..695. An isolated stack at x=550 is inside
+        that page's text column; measured from x=0 it looked like the right margin."""
+        stack = [_w("To", 550.0, 561.2, b["top"], b["bottom"]) for b in WAVERLEY_P129_TO_BULLETS]
+        assert find_vertical_margin_label_band(stack, self.W) is not None, "fixture no longer exercises the offset"
+        page = _FakePage(stack, width=self.W, bbox=(100.0, 0.0, 100.0 + self.W, 842.0))
+        assert _strip_vertical_margin_label(page) is page
+        assert not page.filtered, "a stack inside an offset page's text column would be deleted"
+
+    def test_the_real_title_on_an_offset_page_is_still_stripped(self):
+        shifted = [_w(g["text"], g["x0"] + 100.0, g["x1"] + 100.0, g["top"], g["bottom"])
+                   for g in REAL_MARGIN_LABEL_WORDS]
+        page = _FakePage(shifted, width=self.W, bbox=(100.0, 0.0, 100.0 + self.W, 842.0))
+        assert _strip_vertical_margin_label(page) == "filtered page"
 
     def test_the_page_strip_passes_the_page_width(self):
         page = _FakePage(WAVERLEY_P129_TO_BULLETS + _moved(WAVERLEY_P129_TO_BULLETS, WAVERLEY_P129_LINE_MATES, 21.0))

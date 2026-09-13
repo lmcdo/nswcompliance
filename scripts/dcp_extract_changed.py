@@ -1323,8 +1323,8 @@ def _run_is_isolated(run: list[dict], words: list[dict]) -> bool:
     return beside / len(run) < _MARGIN_LABEL_MAX_BESIDE_FRACTION
 
 
-def find_vertical_margin_label_band(words: list[dict],
-                                    page_width: float | None = None) -> tuple[float, float] | None:
+def find_vertical_margin_label_band(words: list[dict], page_width: float | None = None,
+                                    page_left: float = 0.0) -> tuple[float, float] | None:
     """Detect a running margin-title band: a CONTIGUOUS run of
     >=_MARGIN_LABEL_MIN_RUN short, mostly-alphabetic words sharing one narrow
     (x0, x1) pair with near-zero vertical gaps between them (stacked glyphs of
@@ -1365,7 +1365,8 @@ def find_vertical_margin_label_band(words: list[dict],
             edge = page_width * _MARGIN_LABEL_EDGE_FRACTION
             rx0 = min(w["x0"] for w in best_run)
             rx1 = max(w["x1"] for w in best_run)
-            if not (rx1 <= edge or rx0 >= page_width - edge):
+            # From the page's own box: its left edge is not always x=0 (cross-review).
+            if not (rx1 <= page_left + edge or rx0 >= page_left + page_width - edge):
                 continue   # inside the text column: never strip, leave it for review
         return (
             min(w["x0"] for w in best_run) - 0.5,
@@ -1377,8 +1378,13 @@ def find_vertical_margin_label_band(words: list[dict],
 def _strip_vertical_margin_label(page: Any) -> Any:
     """Return `page` with a detected running margin-title band's characters
     removed, else `page` unchanged. See find_vertical_margin_label_band."""
-    band = find_vertical_margin_label_band(page.extract_words() or [],
-                                           float(getattr(page, "width", 0) or 0) or None)
+    # Measure the margin from the page's own box: a PDF page box can start at a non-zero x.
+    box = getattr(page, "bbox", None)
+    if box and len(box) == 4 and box[2] > box[0]:
+        left, width = float(box[0]), float(box[2] - box[0])
+    else:
+        left, width = 0.0, float(getattr(page, "width", 0) or 0)
+    band = find_vertical_margin_label_band(page.extract_words() or [], width or None, left)
     if band is None:
         return page
     bx0, bx1 = band
