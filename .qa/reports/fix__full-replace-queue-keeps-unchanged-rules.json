@@ -1,0 +1,89 @@
+{
+  "tier": "critical",
+  "justification": "Changes which rules the review queue holds for a chapter that is replaced whole. The commit job switches off every live rule of such a chapter and adds back only approved queue rows, so what the queue holds is exactly what stays served to users after approval.",
+  "commit_hash": "pending",
+  "files": [
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_review_enqueue.py",
+    "tests/test_dcp_count_drop_guard.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_review_enqueue.py tests/test_dcp_count_drop_guard.py -q",
+    "fails_when": "a full-replace chapter's unchanged or renumbered rule is left out of the queue, a targeted amendment queues its unchanged rules, the diff stops naming unchanged rules, or a renumbered rule loses the page it is on now",
+    "observed_red": "Full-replace block switched off: FAILED test_a_full_replace_queues_its_unchanged_rules_at_their_new_page and test_a_full_replace_queues_a_renumbered_rule_under_its_new_number, 2 failed 17 passed. Block forced on for every chapter: FAILED test_a_targeted_amendment_leaves_unchanged_rules_out_of_the_queue, 1 failed 18 passed. Diff stops listing unchanged rules: FAILED test_unchanged_rules_are_listed_with_their_new_page, 1 failed 18 passed. Renumbered entry without new_page: FAILED test_a_renumbered_rule_carries_its_new_page, 1 failed 18 passed. All restored (file byte-identical): 19 passed; dcp, extract, page_map, supersede, fidelity, enqueue and review suites 941 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured 2026-09-13, read-only, dry run from main 52a12b7a on waverley-dcp-2022: status=restructure, total_old=264, total_new=602, changed=70, added=486, removed=148, unchanged=46, renumbered=0, so is_full_replace is TRUE. dcp_review_queue CHECK allows change_type changed, added, removed, restructure only. All 987 waverley queue rows backed up to data/db_rollback_backups/waverley_review_queue_pre_requeue_2026-09-13.csv before any queue write.",
+    "assumption_mismatch": "commit_reviewed_from_queue's docstring says a full-replace queue holds the whole chapter, and it soft-deletes every current row before inserting approved rows. enqueue_review_changes only ever queued changed, added and removed items, and diff_provisions kept only a count of unchanged rules, so the whole-chapter assumption was false whenever a restructure kept any rule's text.",
+    "new_vs_existing": "Extends the existing diff and enqueue functions rather than changing the commit worker: the commit's full-replace semantics stay as documented, and the queue is made to meet them. The existing summary column, already rendered by DcpReviewQueue.tsx, carries the reason instead of a new change_type, which would need a schema change.",
+    "external_source_error": "Not applicable to an external source. If the diff has no unchanged or renumbered key (an older caller), .get returns an empty list and the queue is built exactly as before.",
+    "frontend_type": "No frontend change. summary is an existing nullable text column the review page already shows above a row; change_type values stay within the existing TypeScript union.",
+    "user_failure_mode": "Without this, approving waverley would remove 46 rules from every waverley property page with no error; the section-loss guard only refuses losing more than half the section numbers. With it, a reviewer sees 46 more rows, labelled, whose text matches the live rule."
+  },
+  "functions": [
+    {
+      "name": "diff_provisions",
+      "file_line": "scripts/dcp_extract_changed.py:3058",
+      "input": "The newly extracted sections for one chapter and a cursor over its current live provisions.",
+      "output": "The existing diff, plus an unchanged list naming each rule whose normalised text matches the live rule, with old and new text and page, and new_page on each renumbered entry.",
+      "if_none": "No live provisions gives an empty unchanged list; a rule with no page carries None as its page."
+    },
+    {
+      "name": "enqueue_review_changes",
+      "file_line": "scripts/dcp_extract_changed.py:4134",
+      "input": "Review chapters, each with council, chapter key, document id, content hash and its diff.",
+      "output": "Queue rows for changed, added and removed rules and, when the chapter is a full replace, for its unchanged rules (as changed) and renumbered rules (as added under the new number), each of those with a summary.",
+      "if_none": "A diff with no rows of any kind enqueues nothing for that chapter and clears nothing; missing unchanged or renumbered keys are treated as empty."
+    }
+  ],
+  "values": [
+    {
+      "value": "diff status and total_old, which decide is_full_replace",
+      "read_at": "scripts/dcp_extract_changed.py:4151",
+      "if_missing": "A missing total_old counts as 0, which is a full replace, so the queue errs toward carrying every rule rather than dropping one."
+    },
+    {
+      "value": "dcp_review_queue.summary text column",
+      "read_at": "scripts/dcp_extract_changed.py:4240",
+      "if_missing": "NULL for changed, added and removed rows, as before."
+    }
+  ],
+  "queries": "INSERT INTO dcp_review_queue gains the existing summary column. No SELECT added or changed.",
+  "break_it": [
+    {
+      "scenario": "A waverley-sized restructure keeps 46 rules' text unchanged.",
+      "what_happens": "The rules are not queued, the commit switches off every live rule of the chapter, and the 46 disappear from property pages.",
+      "mitigated": true,
+      "how": "A full-replace chapter queues each unchanged rule as a changed row at its new page.",
+      "repro": "python -m pytest tests/test_dcp_review_enqueue.py -k unchanged_rules_at_their_new_page -q"
+    },
+    {
+      "scenario": "A targeted amendment with hundreds of unchanged rules.",
+      "what_happens": "Queueing them all would bury the one real change under rows a reviewer must approve, for no benefit since the targeted commit leaves them live.",
+      "mitigated": true,
+      "how": "Unchanged rules are queued only when the chapter is a full replace.",
+      "repro": "python -m pytest tests/test_dcp_review_enqueue.py -k targeted_amendment_leaves -q"
+    },
+    {
+      "scenario": "A restructure moves a rule to a new number with the same text.",
+      "what_happens": "The fuzzy match files it as renumbered, which was never queued, so the old number was switched off and the new one never inserted.",
+      "mitigated": true,
+      "how": "Renumbered rules of a full-replace chapter are queued as added under the new number, with the page they are on now and the old number in the summary.",
+      "repro": "python -m pytest tests/test_dcp_review_enqueue.py -k renumbered_rule_under_its_new_number -q"
+    },
+    {
+      "scenario": "Full-replace queues for other councils were built before this change and are still pending.",
+      "what_happens": "They still lack their unchanged and renumbered rules; approving one would drop those rules.",
+      "mitigated": false,
+      "how": "Code cannot fix rows already queued. Measured 2026-09-13 across 37 open full-replace queues: 5 chapters hold live rules their queue does not name, 92 rules in all (waverley 84 before its re-queue; ku_ring_gai roseville 3 and gordon 2; city_of_sydney locality statements 2 and general provisions 1). Each must be re-queued from merged code before approval; recorded in the resume plan.",
+      "repro": "SELECT council, chapter_key, count(*) FROM dcp_review_queue WHERE status='pending' AND is_full_replace GROUP BY 1,2"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No schema or data change. Waverley is re-queued from merged code in review mode.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: re-queue waverley, confirm the queue holds 46 labelled unchanged rows and 602 non-removed rows in total before any approval."
+  },
+  "real_layer_exempt": {}
+}

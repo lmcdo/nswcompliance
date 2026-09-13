@@ -89,6 +89,64 @@ class TestEnqueueReviewChanges:
         conn = MagicMock()
         assert enqueue(conn, _review_chapter()) == 0
 
+    # -- A chapter replaced whole must queue every rule it keeps ---------------------
+    # dcp_commit_approved soft-deletes EVERY live row of a full-replace chapter, then
+    # inserts only the approved queue rows. A rule the queue never held is gone from
+    # the app. Measured 2026-09-13: waverley's re-extraction was a restructure with 46
+    # rules whose text had not changed, none of which were queued.
+
+    @staticmethod
+    def _inserts(cur):
+        return [c.args[1] for c in cur.execute.call_args_list
+                if "INSERT INTO dcp_review_queue" in c.args[0]]
+
+    def test_a_full_replace_queues_its_unchanged_rules_at_their_new_page(self):
+        enqueue = _load_enqueue()
+        conn = MagicMock()
+        cur = conn.cursor.return_value
+        enqueue(conn, _review_chapter(
+            status="restructure", total_old=2,
+            changed=[{"ref_number": "doc_C1_1_1", "old_text": "6m", "new_text": "7m",
+                      "has_numeric_change": True, "old_page": 167, "new_page": 168}],
+            unchanged=[{"ref_number": "doc_C1_1_2", "old_text": "Keep this rule.",
+                        "new_text": "Keep this rule.", "old_page": 167, "new_page": 169}]))
+        rows = {p[3]: p for p in self._inserts(cur)}
+        assert "doc_C1_1_2" in rows, "an unchanged rule of a full-replace chapter was not queued"
+        kept = rows["doc_C1_1_2"]
+        assert kept[4] == "changed"   # the queue's CHECK has no 'unchanged' type
+        assert kept[6] == "Keep this rule." and kept[8] == 169
+        assert kept[12] is True
+        assert "unchanged" in (kept[15] or ""), "the reviewer is not told why the row is here"
+
+    def test_a_targeted_amendment_leaves_unchanged_rules_out_of_the_queue(self):
+        """Confusable negative: a targeted commit supersedes only the refs the queue
+        names, so unchanged rules stay live without being queued."""
+        enqueue = _load_enqueue()
+        conn = MagicMock()
+        cur = conn.cursor.return_value
+        enqueue(conn, _review_chapter(
+            status="ok", total_old=40,
+            changed=[{"ref_number": "doc_1", "old_text": "a", "new_text": "b",
+                      "has_numeric_change": False, "old_page": 1, "new_page": 1}],
+            unchanged=[{"ref_number": "doc_2", "old_text": "same", "new_text": "same",
+                        "old_page": 2, "new_page": 2}]))
+        assert [p[3] for p in self._inserts(cur)] == ["doc_1"]
+
+    def test_a_full_replace_queues_a_renumbered_rule_under_its_new_number(self):
+        enqueue = _load_enqueue()
+        conn = MagicMock()
+        cur = conn.cursor.return_value
+        enqueue(conn, _review_chapter(
+            status="restructure", total_old=3,
+            removed=[{"ref_number": "doc_gone", "old_text": "x"}],
+            renumbered=[{"old_ref_number": "doc_B7_7_1", "new_ref_number": "doc_B7_7_2",
+                         "text": "Vehicle access rule.", "new_page": 61}]))
+        rows = {p[3]: p for p in self._inserts(cur)}
+        assert "doc_B7_7_2" in rows, "a renumbered rule of a full-replace chapter was not queued"
+        moved = rows["doc_B7_7_2"]
+        assert moved[4] == "added" and moved[6] == "Vehicle access rule." and moved[8] == 61
+        assert "doc_B7_7_1" in (moved[15] or "")
+
     def test_added_and_removed_are_never_numeric(self):
         enqueue = _load_enqueue()
         conn = MagicMock()

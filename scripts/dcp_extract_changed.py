@@ -3107,6 +3107,9 @@ def diff_provisions(
         "changed": [], "added": [], "removed": [],
         "renumbered": [], "page_shift": None,
         "unchanged_count": 0,
+        # The unchanged rules themselves, not only their count: a chapter replaced whole
+        # must queue them, or the commit drops them (enqueue_review_changes).
+        "unchanged": [],
         "total_old": len(old_provisions), "total_new": len(new_provisions),
     }
 
@@ -3121,6 +3124,13 @@ def diff_provisions(
             matched_new.add(ref)
             if _normalize_for_diff(old_prov["text"]) == _normalize_for_diff(new_prov["text"]):
                 result["unchanged_count"] += 1
+                result["unchanged"].append({
+                    "ref_number": ref,
+                    "old_text": old_prov["text"],
+                    "new_text": new_prov["text"],
+                    "old_page": old_prov["page"],
+                    "new_page": new_prov["page"],
+                })
             else:
                 old_nums = _extract_numbers(old_prov["text"] or "")
                 new_nums = _extract_numbers(new_prov["text"] or "")
@@ -3162,6 +3172,7 @@ def diff_provisions(
                 "old_ref_number": best_old_ref,
                 "new_ref_number": new_ref,
                 "text": new_prov["text"],
+                "new_page": new_prov["page"],
             })
             used_old.add(best_old_ref)
             used_new.add(new_ref)
@@ -4129,8 +4140,11 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
 
     Idempotent per chapter: existing pending rows for a (council, chapter_key) are
     cleared and re-inserted, so re-running --review refreshes the queue rather than
-    duplicating. Only changed/added/removed items are enqueued (page-only shifts
-    and unchanged provisions are not). Returns the number of rows enqueued.
+    duplicating. Changed/added/removed items are enqueued. Unchanged and renumbered
+    provisions are enqueued too when the chapter is a full replace, because the commit
+    worker drops every rule a full-replace queue does not hold; for a targeted
+    amendment they are not (page-only shifts there are still not enqueued).
+    Returns the number of rows enqueued.
     """
     cur = conn.cursor()
     total = 0
@@ -4141,22 +4155,52 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
         document_id = ch.get("document_id")
         content_hash = ch.get("content_hash")
 
+        # Full re-extraction vs targeted amendment — drives whether the commit worker
+        # blanket-replaces the chapter or updates only the changed refs. A restructure or
+        # an empty baseline (total_old == 0) is a full replace; anything else is targeted.
+        is_full_replace = (
+            diff.get("status") == "restructure" or int(diff.get("total_old") or 0) == 0
+        )
+
+        # (change_type, ref, old_text, new_text, old_page, new_page, numeric, summary)
         rows: list[tuple] = []
         for c in diff.get("changed", []):
             rows.append((
                 "changed", c.get("ref_number"), c.get("old_text"), c.get("new_text"),
-                c.get("old_page"), c.get("new_page"), bool(c.get("has_numeric_change")),
+                c.get("old_page"), c.get("new_page"), bool(c.get("has_numeric_change")), None,
             ))
         for a in diff.get("added", []):
             rows.append((
                 "added", a.get("ref_number"), None, a.get("new_text"),
-                None, a.get("new_page"), False,
+                None, a.get("new_page"), False, None,
             ))
         for r in diff.get("removed", []):
             rows.append((
                 "removed", r.get("ref_number"), r.get("old_text"), None,
-                None, None, False,
+                None, None, False, None,
             ))
+        if is_full_replace:
+            # dcp_commit_approved soft-deletes EVERY live row of a full-replace chapter,
+            # then inserts only approved queue rows, so a rule this queue does not hold
+            # is dropped from the app. Unchanged and renumbered rules were never queued:
+            # waverley's 2026-09-13 restructure had 46 unchanged rules that approval
+            # would have removed. The queue's CHECK has no 'unchanged' type, so they go
+            # in as 'changed' (old and new text equal), at the page the new extraction
+            # found them on, with a summary the review page shows saying why.
+            for u in diff.get("unchanged", []):
+                rows.append((
+                    "changed", u.get("ref_number"), u.get("old_text"), u.get("new_text"),
+                    u.get("old_page"), u.get("new_page"), False,
+                    "Text unchanged from the live rule. Queued because this chapter is "
+                    "replaced whole, and a rule left out of the queue is dropped at commit.",
+                ))
+            for rn in diff.get("renumbered", []):
+                rows.append((
+                    "added", rn.get("new_ref_number"), None, rn.get("text"),
+                    None, rn.get("new_page"), False,
+                    f"Same text as live rule {rn.get('old_ref_number')}, under a new number. "
+                    "Queued because this chapter is replaced whole.",
+                ))
 
         if not rows:
             continue
@@ -4164,13 +4208,6 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
         # Guard verdict for the whole chapter (count_drop / schema_fail / coverage_fail /
         # truncation_fail), stored on every row so the review UI can flag the chapter.
         reason = suspect_reason(ch)
-
-        # Full re-extraction vs targeted amendment — drives whether the commit worker
-        # blanket-replaces the chapter or updates only the changed refs. A restructure or
-        # an empty baseline (total_old == 0) is a full replace; anything else is targeted.
-        is_full_replace = (
-            diff.get("status") == "restructure" or int(diff.get("total_old") or 0) == 0
-        )
 
         # Refresh: drop stale pending rows for this chapter, then insert fresh.
         # Only 'pending' rows are cleared — approved history is preserved.
@@ -4189,7 +4226,7 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
             "WHERE council = %s AND chapter_key = %s AND status = 'rejected'",
             (council, chapter_key),
         )
-        for change_type, ref, old_t, new_t, old_p, new_p, has_num in rows:
+        for change_type, ref, old_t, new_t, old_p, new_p, has_num, summary in rows:
             # Fidelity gate: strip doubled-glyph running headers, then verdict the row.
             # A row-level 'failed' verdict whose reason is EXCLUSIVELY one of the three
             # near-certain defect classes (garbled_glyphs/junk_ref/emptied_by_strip --
@@ -4225,12 +4262,12 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
                     (council, chapter_key, document_id, ref_number, change_type,
                      old_text, new_text, old_page, new_page, has_numeric_change,
                      source_content_hash, suspect_reason, is_full_replace, status,
-                     fidelity_status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     fidelity_status, summary)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (council, chapter_key, document_id, ref, change_type,
                  old_t, new_t, old_p, new_p, has_num, content_hash, merged_reason,
-                 is_full_replace, row_status, fidelity),
+                 is_full_replace, row_status, fidelity, summary),
             )
             total += 1
 
