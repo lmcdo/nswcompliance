@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes the zone filter behind every served numeric DCP control (web controls tab, conveyancing report, capacity engine, brief). A wrong keep/drop decision serves another zone's setback or silently drops the site's own.",
-  "commit_hash": "pending",
+  "commit_hash": "a55f4a11",
   "files": [
     "scripts/conveyancing_db.py",
     "tests/test_conveyancing_db.py",
