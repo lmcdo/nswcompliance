@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which council numeric controls the granny flat tool shows a user. A control held for review because it is wrong was still served there, unlike every other surface.",
-  "commit_hash": "pending",
+  "commit_hash": "a0c5a605",
   "files": [
     "services/granny_flat.py",
     "tests/test_granny_flat_mutation.py"
