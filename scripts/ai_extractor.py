@@ -5,8 +5,9 @@ returns section dicts in the SAME shape the regex extractor produces, so the
 downstream diff / enqueue / guard pipeline is unchanged.
 
 Enabled by AI_EXTRACTION=1; off by default. Model picked by AI_MODEL
-(haiku | mistral). Validated on the watermarked Woollahra c2: Haiku 141 clean /
-$0.63, Mistral-small 89 clean / $0.04 (regex got 1 garbage blob).
+(haiku | sonnet | mistral | sol). Validated on the watermarked Woollahra c2: Haiku 141
+clean / $0.63, Mistral-small 89 clean / $0.04 (regex got 1 garbage blob). sol (OpenAI
+gpt-5.6-sol, OPENAI_API_KEY) added 2026-09-13 when Anthropic credit ran out.
 
 See ~/.claude/plans/ce-ai-extraction-decision-2026-07.md.
 
@@ -346,7 +347,47 @@ def _call_mistral(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
         return json.load(r)["choices"][0]["message"]["content"]
 
 
-_PROVIDERS = {"haiku": _call_haiku, "sonnet": _call_sonnet, "mistral": _call_mistral}
+# AI_MODEL=sol, added 2026-09-13. That day Anthropic answered "Your credit balance is
+# too low" and Mistral answered 429; the OPENAI_API_KEY in .env reaches Sol, which read
+# a test PDF back verbatim. Same contract as every provider here: one PDF chunk and the
+# prompt in, the JSON provisions object out, and nothing commits without review.
+# Bounded as a (connect, read) pair rather than one number, and the client does not
+# retry by itself -- _call_with_retry owns retries, so a failure is not retried twice.
+# prior-art-checked: extends this module's own provider table. scripts/sol_common.py
+# (the cross-review tool's OpenAI helper) is not reused: it imports qa_report_path,
+# which Dockerfile.monitors does not ship, and it sys.exit()s on any API error, which
+# would kill a whole extraction batch instead of failing one chunk into the retry path.
+SOL_MODEL = "gpt-5.6-sol"
+SOL_CONNECT_TIMEOUT = float(os.getenv("AI_SOL_CONNECT_TIMEOUT", "20"))
+SOL_READ_TIMEOUT = float(os.getenv("AI_SOL_READ_TIMEOUT", "900"))
+
+
+def _call_sol(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
+    import httpx
+    import openai
+    key = (os.environ.get("OPENAI_API_KEY") or "").strip()
+    if not key:
+        raise RuntimeError("AI_MODEL=sol needs OPENAI_API_KEY in the environment")
+    client = openai.OpenAI(
+        api_key=key,
+        timeout=httpx.Timeout(SOL_READ_TIMEOUT, connect=SOL_CONNECT_TIMEOUT),
+        max_retries=0,
+    )
+    data = base64.standard_b64encode(pdf_bytes).decode()
+    response = client.chat.completions.create(
+        model=os.getenv("AI_MODEL_ID", SOL_MODEL),
+        response_format={"type": "json_object"},
+        messages=[{"role": "user", "content": [
+            {"type": "file", "file": {"filename": "chunk.pdf",
+                                      "file_data": f"data:application/pdf;base64,{data}"}},
+            {"type": "text", "text": prompt}]}],
+    )
+    choice = response.choices[0] if response.choices else None
+    return getattr(getattr(choice, "message", None), "content", None) or ""
+
+
+_PROVIDERS = {"haiku": _call_haiku, "sonnet": _call_sonnet, "mistral": _call_mistral,
+              "sol": _call_sol}
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -358,7 +399,10 @@ def _is_retryable(exc: Exception) -> bool:
         return True
     name = type(exc).__name__
     status = getattr(exc, "status_code", None)
-    return name in ("RateLimitError", "OverloadedError", "APIStatusError", "APITimeoutError") \
+    # APIConnectionError: the OpenAI SDK's dropped-connection error carries no status
+    # code, so without its name here a reset socket mid-chapter would fail the chapter.
+    return name in ("RateLimitError", "OverloadedError", "APIStatusError", "APITimeoutError",
+                    "APIConnectionError") \
         or status in (429, 500, 502, 503, 529)
 
 
