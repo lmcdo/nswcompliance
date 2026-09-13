@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which council URL the monthly monitor records for Woollahra DCP chapters. The monitor writes that URL to dcp_chapter_registry and mirrors whatever it points at, so a wrong filter either keeps serving repealed chapters or drops a current one.",
-  "commit_hash": "c5110777",
+  "commit_hash": "831d14d2",
   "files": [
     "scripts/hub_scrapers/woollahra.py",
     "tests/test_woollahra_scraper_skips_repealed.py"
