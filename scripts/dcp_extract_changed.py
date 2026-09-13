@@ -1294,6 +1294,14 @@ _MARGIN_LABEL_MAX_GAP = 8.0
 # title, when at least _MARGIN_LABEL_MAX_BESIDE_FRACTION of its glyphs are.
 _MARGIN_LABEL_BESIDE_WORD_PT = 20.0
 _MARGIN_LABEL_MAX_BESIDE_FRACTION = 0.5
+# A running title sits in the page's outer margin; a list marker sits inside the text
+# column. Measured 2026-09-13: the marrickville title band starts at 92.6-93.6% of page
+# width on all 12 of its pages; the waverley false stacks sit at 17.8-30.5%, and text
+# columns start at 71-90pt (12-15%). A run is stripped only when it also lies within this
+# fraction of either page edge, so a list whose markers sit 20pt or more from their words
+# (which passes the neighbour check above) is still never deleted (cross-review). An
+# ambiguous run stays in the text, where a reviewer sees it garbled, rather than deleted.
+_MARGIN_LABEL_EDGE_FRACTION = 0.12
 
 
 def _run_is_isolated(run: list[dict], words: list[dict]) -> bool:
@@ -1315,7 +1323,8 @@ def _run_is_isolated(run: list[dict], words: list[dict]) -> bool:
     return beside / len(run) < _MARGIN_LABEL_MAX_BESIDE_FRACTION
 
 
-def find_vertical_margin_label_band(words: list[dict]) -> tuple[float, float] | None:
+def find_vertical_margin_label_band(words: list[dict],
+                                    page_width: float | None = None) -> tuple[float, float] | None:
     """Detect a running margin-title band: a CONTIGUOUS run of
     >=_MARGIN_LABEL_MIN_RUN short, mostly-alphabetic words sharing one narrow
     (x0, x1) pair with near-zero vertical gaps between them (stacked glyphs of
@@ -1352,6 +1361,12 @@ def find_vertical_margin_label_band(words: list[dict]) -> tuple[float, float] | 
             continue
         if not _run_is_isolated(best_run, words):
             continue   # a list marker with its line beside it, not a margin title
+        if page_width:
+            edge = page_width * _MARGIN_LABEL_EDGE_FRACTION
+            rx0 = min(w["x0"] for w in best_run)
+            rx1 = max(w["x1"] for w in best_run)
+            if not (rx1 <= edge or rx0 >= page_width - edge):
+                continue   # inside the text column: never strip, leave it for review
         return (
             min(w["x0"] for w in best_run) - 0.5,
             max(w["x1"] for w in best_run) + 0.5,
@@ -1362,7 +1377,8 @@ def find_vertical_margin_label_band(words: list[dict]) -> tuple[float, float] | 
 def _strip_vertical_margin_label(page: Any) -> Any:
     """Return `page` with a detected running margin-title band's characters
     removed, else `page` unchanged. See find_vertical_margin_label_band."""
-    band = find_vertical_margin_label_band(page.extract_words() or [])
+    band = find_vertical_margin_label_band(page.extract_words() or [],
+                                           float(getattr(page, "width", 0) or 0) or None)
     if band is None:
         return page
     bx0, bx1 = band

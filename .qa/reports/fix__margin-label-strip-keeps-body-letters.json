@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which characters are deleted from every PDF page before rule text is extracted, for every council. A false positive deletes letters and words from served regulation; a false negative lets a sideways title's letters interleave into it.",
-  "commit_hash": "38bb8870",
+  "commit_hash": "0818ea90",
   "files": [
     "scripts/dcp_extract_changed.py",
     "tests/test_vertical_margin_label_guard.py"
@@ -9,7 +9,7 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_vertical_margin_label_guard.py -q",
     "fails_when": "a stacked list marker with its line's words beside it (the waverley 'To' bullets or 'o' sub-bullets, or markers 19pt from their words) is taken as a margin title and its band stripped; or the real marrickville title stops being found when body text sits 33-39pt from some of its glyphs, or when one stray word sits beside one glyph",
-    "observed_red": "Isolation check switched off: FAILED test_to_bullets_with_their_words_beside_them_are_not_a_title, test_sub_bullets_with_their_items_beside_them_are_not_a_title, test_markers_19pt_from_their_words_are_still_not_a_title, test_a_page_with_a_to_bullet_list_is_left_untouched, 4 failed 11 passed. Beside-word distance set to 0: the same 4 failed, 11 passed. Old single-distance rule (any word within 40pt rejects): FAILED test_the_title_with_body_text_33pt_from_some_letters_is_still_a_title, 1 failed 14 passed. Fraction set so one close word rejects: FAILED test_one_stray_word_beside_one_letter_does_not_undo_a_title, 1 failed 15 passed. File restored byte-identical after each; 16 passed; extraction, DCP, page-map, fidelity, enqueue, review, commit and pdf suites 1070 passed."
+    "observed_red": "Isolation check switched off: FAILED test_to_bullets_with_their_words_beside_them_are_not_a_title, test_sub_bullets_with_their_items_beside_them_are_not_a_title, test_markers_19pt_from_their_words_are_still_not_a_title, test_a_page_with_a_to_bullet_list_is_left_untouched, 4 failed 11 passed. Beside-word distance set to 0: the same 4 failed, 11 passed. Old single-distance rule (any word within 40pt rejects): FAILED test_the_title_with_body_text_33pt_from_some_letters_is_still_a_title, 1 failed 14 passed. Fraction set so one close word rejects: FAILED test_one_stray_word_beside_one_letter_does_not_undo_a_title, 1 failed 15 passed. File restored byte-identical after each; 16 passed; extraction, DCP, page-map, fidelity, enqueue, review, commit and pdf suites 1070 passed. Second round, page-edge rule after cross-review: edge check switched off: FAILED test_markers_21pt_from_their_words_in_the_text_column_are_not_a_title, test_an_isolated_stack_in_the_middle_of_the_page_is_left_alone, test_the_page_strip_passes_the_page_width, 3 failed 17 passed. Page strip not passing the width: FAILED test_the_page_strip_passes_the_page_width, 1 failed 19 passed. Edge zone 0.5: the same 3 failed, 17 passed. Edge zone 0.02: FAILED test_a_page_with_a_real_margin_title_is_still_stripped, test_the_real_title_in_the_right_margin_is_found_with_the_page_width, 2 failed 18 passed. Restored byte-identical; 20 passed; suites 1075 passed. On the real PDFs the page strip fires on 0 of 448 waverley pages and on all 12 marrickville title pages."
   },
   "pre_impl": {
     "existing_data": "Measured 2026-09-13 on waverley DCP 2022 (448 pages) and marrickville part7-s3-sex-industry (28 pages). Before: the strip fired on 5 waverley pages (7, 129, 275, 356, 359), stacked 'To' bullets and 'o' sub-bullets whose nearest same-line word is 2.1-11.4pt away, and deleted 65-128 characters per page. 27 of 602 waverley rules had a line whose words are not in order on their PDF pages (251 of 8,191 lines). The real marrickville running title is on 12 odd pages; on page 25 its nearest word is 143.5pt away, on page 21 body text is 33.4-38.9pt from 6 of 38 glyphs. After: the strip fires on 0 waverley pages and all 12 marrickville title pages; waverley pages read identically to plain pdfplumber; re-extracted, 16 rules and 98 lines mismatch, and all 98 lines read the same in plain pdfplumber text (table cell order), none lost by our reading.",
@@ -22,21 +22,21 @@
   "functions": [
     {
       "name": "_run_is_isolated",
-      "file_line": "scripts/dcp_extract_changed.py:1299",
+      "file_line": "scripts/dcp_extract_changed.py:1307",
       "input": "The stacked glyph words of one candidate run and every word on the page.",
       "output": "True when fewer than half of the run's glyphs have a word outside the run overlapping them vertically within 20pt horizontally.",
       "if_none": "Words missing any geometry key are ignored; a run whose glyphs have no neighbours returns True."
     },
     {
       "name": "find_vertical_margin_label_band",
-      "file_line": "scripts/dcp_extract_changed.py:1318",
-      "input": "The pdfplumber extract_words() output for one page, each word with its text and bounding box.",
-      "output": "The (x0, x1) band of a running sideways title, now only when the run also passes _run_is_isolated.",
+      "file_line": "scripts/dcp_extract_changed.py:1326",
+      "input": "The pdfplumber extract_words() output for one page, each word with its text and bounding box, and optionally the page width.",
+      "output": "The (x0, x1) band of a running sideways title, now only when the run passes _run_is_isolated and, when the page width is given, lies within _MARGIN_LABEL_EDGE_FRACTION of a page edge.",
       "if_none": "An empty list, no qualifying run, or a run with words beside most glyphs returns None."
     },
     {
       "name": "_strip_vertical_margin_label",
-      "file_line": "scripts/dcp_extract_changed.py:1362",
+      "file_line": "scripts/dcp_extract_changed.py:1377",
       "input": "One pdfplumber page object from a council DCP PDF, before any text is extracted from it.",
       "output": "The page with the detected title band's characters removed, or the same page object when no title is detected.",
       "if_none": "No band returns the page unchanged; unchanged code, pinned by a wiring test because its behaviour follows the detector."
@@ -54,9 +54,14 @@
       "if_missing": "Not optional: a module constant; the stray-word test fails if it is set so one close word rejects."
     },
     {
-      "value": "page words from pdfplumber extract_words()",
-      "read_at": "scripts/dcp_extract_changed.py:1365",
-      "if_missing": "An empty or missing word list returns no band and the page is read unstripped."
+      "value": "_MARGIN_LABEL_EDGE_FRACTION, how close to a page edge a run must lie to be a title",
+      "read_at": "scripts/dcp_extract_changed.py:1304",
+      "if_missing": "Not optional: a module constant; probing 0.5 and 0.02 turns tests red in both directions."
+    },
+    {
+      "value": "page words from pdfplumber extract_words() and the page width",
+      "read_at": "scripts/dcp_extract_changed.py:1380",
+      "if_missing": "An empty word list returns no band and the page is read unstripped; a page with no width skips the edge check, and the only caller always passes pdfplumber's page width, pinned by a wiring test."
     }
   ],
   "queries": "N/A - no query added or changed.",
@@ -92,9 +97,16 @@
     {
       "scenario": "A list whose markers sit more than 20pt from their text, for example tab-indented markers.",
       "what_happens": "The run would still pass as a title and its band would be stripped, as before this change.",
+      "mitigated": true,
+      "how": "Raised by cross-review on the first push. A run must also lie within 12% of a page edge: every waverley stack sat at 17.8-30.5% of page width, the real marrickville title at 92.6-93.6% on all 12 pages, and text columns start at 12-15%. A list in the text column is never stripped, whatever its marker gap.",
+      "repro": "python -m pytest tests/test_vertical_margin_label_guard.py -k 21pt -q"
+    },
+    {
+      "scenario": "A council prints its running title inside the text column, or in a margin wider than 12% of the page.",
+      "what_happens": "The title is no longer stripped, so its letters interleave into the rule text on those pages.",
       "mitigated": false,
-      "how": "Not observed on waverley or marrickville (widest measured marker gap 11.4pt). The 19pt boundary is pinned by a test; wider gaps are an accepted residual, visible as garbled or missing letters in review.",
-      "repro": "python -m pytest tests/test_vertical_margin_label_guard.py -k 19pt -q"
+      "how": "Deliberate: an ambiguous stack is left in the text, where review shows garbled lines, instead of being deleted with body letters. Not observed on the two councils measured.",
+      "repro": "python -m pytest tests/test_vertical_margin_label_guard.py -k middle_of_the_page -q"
     },
     {
       "scenario": "Other councils' live and queued rules were extracted with the old strip.",

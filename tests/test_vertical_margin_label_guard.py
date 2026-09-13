@@ -242,8 +242,9 @@ class TestAStackedListMarkerIsNotAMarginTitle:
 class _FakePage:
     """extract_words() returns fixture words; filter() records that the page was cut."""
 
-    def __init__(self, words):
+    def __init__(self, words, width=595.28):
         self._words = words
+        self.width = width
         self.filtered = False
 
     def extract_words(self):
@@ -263,3 +264,37 @@ class TestThePageStripUsesTheCheck:
     def test_a_page_with_a_real_margin_title_is_still_stripped(self):
         page = _FakePage(REAL_MARGIN_LABEL_WORDS + MARRICKVILLE_P25_LINE_MATES)
         assert _strip_vertical_margin_label(page) == "filtered page"
+
+
+def _moved(bullets, mates, gap):
+    """Each line's word moved to `gap` points right of its marker."""
+    return [_w(m["text"], b["x1"] + gap, b["x1"] + gap + (m["x1"] - m["x0"]), m["top"], m["bottom"])
+            for b, m in zip(bullets, mates)]
+
+
+class TestATitleSitsInThePageMargin:
+    """Cross-review 2026-09-13: markers 20pt or more from their words pass the neighbour
+    check. A real title also sits in the page's outer margin (92.6-93.6% across on all 12
+    marrickville pages); every waverley false stack sat at 17.8-30.5%."""
+
+    W = 595.28
+
+    def test_markers_21pt_from_their_words_in_the_text_column_are_not_a_title(self):
+        words = WAVERLEY_P129_TO_BULLETS + _moved(WAVERLEY_P129_TO_BULLETS, WAVERLEY_P129_LINE_MATES, 21.0)
+        assert find_vertical_margin_label_band(words) is not None, "fixture no longer passes the neighbour check"
+        assert find_vertical_margin_label_band(words, self.W) is None
+
+    def test_the_real_title_in_the_right_margin_is_found_with_the_page_width(self):
+        words = REAL_MARGIN_LABEL_WORDS + MARRICKVILLE_P21_WORDS_NEAR_TITLE
+        assert find_vertical_margin_label_band(words, self.W) == (557.91 - 0.5, 571.95 + 0.5)
+
+    def test_an_isolated_stack_in_the_middle_of_the_page_is_left_alone(self):
+        shifted = [_w(g["text"], g["x0"] - 260.0, g["x1"] - 260.0, g["top"], g["bottom"])
+                   for g in REAL_MARGIN_LABEL_WORDS]
+        assert find_vertical_margin_label_band(shifted) is not None, "fixture no longer passes the neighbour check"
+        assert find_vertical_margin_label_band(shifted, self.W) is None
+
+    def test_the_page_strip_passes_the_page_width(self):
+        page = _FakePage(WAVERLEY_P129_TO_BULLETS + _moved(WAVERLEY_P129_TO_BULLETS, WAVERLEY_P129_LINE_MATES, 21.0))
+        assert _strip_vertical_margin_label(page) is page
+        assert not page.filtered, "a list in the text column would be deleted"
