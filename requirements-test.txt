@@ -31,7 +31,7 @@ psycopg2-binary>=2.9
 # NOTE: this could not be verified on the author's Windows machine — rasterio's
 # DLL load fails there under a long venv path (MAX_PATH), unrelated to CI.
 rasterio>=1.3
-pyproj>=3.6,<4
+pyproj>=3.8.0,<4
 # PyMuPDF: tests/test_dcp_as_at.py::TestExtractorSelectionRules generates real
 # PDFs to exercise the extractor-selection rules, and the module under test
 # (scripts/extract_dcp_stated_dates.py:95,139) opens them with fitz. Absent

@@ -189,7 +189,7 @@ yarl==1.24.5
 # Satellite product dependencies (Phase 0A)
 rasterio==1.5.0
 geopandas==1.1.4
-pyproj>=3.6,<4
+pyproj>=3.8.0,<4
 pyogrio>=0.13.0
 pystac-client==0.9.0
 odc-stac==0.5.3
