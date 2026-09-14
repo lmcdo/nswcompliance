@@ -44,8 +44,8 @@ export default function CouncilsPage() {
               description: 'Site Controls runs as an iframe embed. No API integration, no data export, no IT procurement process. Add one line of HTML to your pre-DA guidance page.',
             },
             {
-              title: 'Privacy safe',
-              description: 'PlotDetect queries the NSW Planning Portal directly. No council data is stored, exported, or shared. All data sources are public government datasets.',
+              title: 'No access to council systems',
+              description: 'Site Controls reads the NSW Planning Portal and the planning documents your council has already published. Nothing is installed on, or connected to, council systems.',
             },
             {
               title: 'Queried live, or dated',

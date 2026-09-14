@@ -1,0 +1,136 @@
+{
+  "tier": "critical",
+  "justification": "Changes what the outreach gate accepts as proof that served numbers come from the plan in force (claim 17) and what the councils page promises about council data (claim 12), and adds a column to a production table. A gate check that passes wrongly lets outreach go out on a false claim.",
+  "commit_hash": "226a9d10",
+  "files": [
+    ".claude/dq_checks.json",
+    "frontend-nextjs/app/for/councils/page.tsx",
+    "migrations/073_dcp_plan_confirmed_plan_name.sql",
+    "scripts/outreach_claim_checks.py",
+    "tests/test_outreach_claim_checks_plan_and_zone.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls (served numbers: source_chapter_key, applicability, condition, zones_include, zones_exclude), dcp_chapter_registry (dcp_name, is_active, council_url, council_page_url), dcp_plan_as_at (one row per council; currency_confirmed_at set on 0 of 28), the served regulatory_provisions set, frontend-nextjs/shared/zone-taxonomy.json and conveyancing_db.zone_row_applies. The only new stored field is dcp_plan_as_at.currency_confirmed_plan.",
+    "assumption_mismatch": "The first plan-in-force check assumed a council's confirmation covers everything it serves, but dcp_plan_as_at records when a plan was confirmed, not which, and one council can serve numbers from several registered plans: waverley serves 7 from Waverley DCP 2012 beside 42 from DCP 2022 (measured 2026-09-14). Claim 12 assumed no council material is kept, while 553 chapter PDFs are hosted for page links.",
+    "new_vs_existing": "Replaces the query inside the existing every_served_council_has_a_current_plan_check and adds two sub-checks built only from existing parts: sql_count, no_rendered_phrase, _connect, zone_row_applies and the translation table. The page change rewords one existing card in a static array.",
+    "external_source_error": "No external service is called. If the translation table cannot be read or maps nothing, the zone guard returns FAIL rather than PASS; if the database cannot be reached, every sub-check returns UNKNOWN, which the gate runner never counts as ready.",
+    "frontend_type": "Copy-only change inside a static array of title and description strings on /for/councils; no component props, types, data fetching or rendering logic change.",
+    "user_failure_mode": "Were the plan check wrong in the passing direction, outreach could claim numbers come from the plan in force while waverley still serves 2012 numbers. Were the old card kept, a council reader would be told no council data is stored while copies of that council's PDFs are hosted."
+  },
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 python -m pytest tests/test_outreach_claim_checks_plan_and_zone.py -o addopts=\"\" -q (DATABASE_URL set); python scripts/outreach_claim_checks.py OC-17; python scripts/outreach_claim_checks.py OC-12",
+    "external_authority": "The SQL sub-checks run against fixture rows with known answers in temporary tables of a real Postgres session, not against a mock; the zone guard runs the production serve filter against the repo's translation table; the production runs are compared with counts measured independently beforehand by read-only queries (66 untraced numbers, waverley's two plans, 0 retired-zone losses).",
+    "fails_when": "A council confirmed for a different plan than it serves passes; a number with no chapter key or an inactive chapter escapes the trace; two plan names read as one; a rule scoped only by a retired zone code is not reported; a rule for every zone that merely mentions a retired code is reported; or claim 12 stops counting untraced numbers or rules.",
+    "observed_red": "Forced, each restored afterwards. Dropping the 'confirmation names the plan' condition: FAILED test_the_plan_in_force_check_names_each_way_a_council_can_fail, 1 failed 6 passed. Treating a blank chapter key as external: same test FAILED, 1 failed 6 passed. Inverting the zone guard's successor test: 3 failed 4 passed. Letting an inactive chapter satisfy claim 12's join: assert 3 == 4, FAILED. Dropping claim 12's rules half: assert 3 == 4, FAILED. Removing 'r.id IS NULL OR' was not caught and cannot be: with a LEFT JOIN miss both address columns are NULL, so the count is unchanged.",
+    "measured": "38 passed across the new file, tests/test_dq_check_outreach.py, tests/test_sql_percent_placeholders.py and tests/test_outreach_docs_tracked.py, fixture-table tests included. Production: OC-12 FAILS (retired wording 0, untraced council material 66); OC-17 FAILS (plan in force: 28 councils; retired-zone guard 0). Both rows are declared false, so the gate stays consistent."
+  },
+  "functions": [
+    {
+      "name": "every_served_council_has_a_current_plan_check",
+      "file_line": "scripts/outreach_claim_checks.py:251",
+      "input": "No arguments; reads the served numbers, the active chapter registry and dcp_plan_as_at through _PLAN_IN_FORCE_SQL on a fresh connection.",
+      "output": "PASS when no council fails; otherwise FAIL with the number of failing councils and the first four with their reasons.",
+      "if_none": "A connection that cannot be opened returns UNKNOWN; a query that raises returns FAIL, because a check that no longer runs must be visible rather than quiet."
+    },
+    {
+      "name": "no_site_loses_a_rule_to_a_retired_zone_code",
+      "file_line": "scripts/outreach_claim_checks.py:280",
+      "input": "No arguments; reads legacyToCurrentAliases from frontend-nextjs/shared/zone-taxonomy.json and the served rows' applicability, condition and stored zone scope.",
+      "output": "PASS when no served row applies to a retired code but not to its successor; otherwise FAIL naming the rows and codes.",
+      "if_none": "An unreadable or empty translation table returns FAIL, since nothing would have been checked; no connection returns UNKNOWN; NULL scope arrays are handled by zone_row_applies itself."
+    }
+  ],
+  "values": [
+    {
+      "value": "dcp_plan_as_at.currency_confirmed_plan, the registry plan name a person confirmed as in force.",
+      "read_at": "_PLAN_IN_FORCE_SQL, compared with IS DISTINCT FROM against the single plan name a council serves.",
+      "if_missing": "NULL on every row today; a council with no named confirmation fails, and the new CHECK refuses a confirmation date without a plan name or a plan name without a date."
+    },
+    {
+      "value": "legacyToCurrentAliases in frontend-nextjs/shared/zone-taxonomy.json, inverted into retired code to current codes.",
+      "read_at": "no_site_loses_a_rule_to_a_retired_zone_code, on every run.",
+      "if_missing": "FAIL with the reason; the guard never passes on a table it could not read."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Plan in force behind every served council's numbers",
+      "file_line": "scripts/outreach_claim_checks.py:221",
+      "where_clause": "Served numbers (SERVED: is_current, not needs_review, not the statewide or umbrella slugs) whose COALESCE(source_chapter_key, '') is not an _external_ key, LEFT JOINed to dcp_chapter_registry on council, chapter_key and is_active, grouped by council, LEFT JOINed to dcp_plan_as_at on lga."
+    },
+    {
+      "purpose": "Served rows read by the retired zone guard",
+      "file_line": "scripts/outreach_claim_checks.py:309",
+      "where_clause": "FROM dcp_setback_controls WHERE SERVED (is_current AND needs_review not TRUE AND lga not nsw_statewide or inner_west)."
+    },
+    {
+      "purpose": "Claim twelve untraced council numbers and rules",
+      "file_line": "scripts/outreach_claim_checks.py:331",
+      "where_clause": "Numbers: ids in the SERVED set, non-_external_ key, with no active registry chapter or one with neither council_url nor council_page_url. Rules: is_current AND v2_is_actionable, source_council set and not 'state', same registry test."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A person confirms Plan B as in force for a council whose served numbers all come from Plan A, the cross-review finding on #1115.",
+      "what_happens": "The first version of the plan in force check passed that council, so claim 17 could pass while every served number came from a superseded plan.",
+      "mitigated": true,
+      "how": "The confirmation must now name the plan (currency_confirmed_plan) and equal the single plan the council serves; the fixture council 'wrong' is reported as 'confirmation names Plan B 2024', and removing the condition fails the test.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_outreach_claim_checks_plan_and_zone.py::test_the_plan_in_force_check_names_each_way_a_council_can_fail -o addopts=\"\""
+    },
+    {
+      "scenario": "A served number has no source_chapter_key at all, so the external-instrument exclusion evaluates NULL NOT LIKE '_external_%' as NULL.",
+      "what_happens": "Written without COALESCE the row silently drops out of the served set, and a council whose numbers cannot be traced to any plan could pass.",
+      "mitigated": true,
+      "how": "COALESCE(source_chapter_key, '') keeps it in, where it counts as untraced; the fixture council 'nullkey' pins it and the forced removal failed the test.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_outreach_claim_checks_plan_and_zone.py -k plan_in_force -o addopts=\"\""
+    },
+    {
+      "scenario": "An active registry chapter has no dcp_name, beside a named chapter of the same council.",
+      "what_happens": "count(DISTINCT dcp_name) ignores NULL, so the council would read as serving one plan and a confirmation of the named plan would cover numbers of unknown origin.",
+      "mitigated": true,
+      "how": "The plan is COALESCE(dcp_name, '(no plan name)'), so an unnamed chapter counts as a second plan and the council fails with '2 plan names served'.",
+      "repro": "SELECT council, chapter_key FROM dcp_chapter_registry WHERE is_active AND dcp_name IS NULL"
+    },
+    {
+      "scenario": "A rule for every zone mentions a retired code as a distance, like canada_bay 816: 'within 800m station or 400m B3/B4'.",
+      "what_happens": "A text-pattern guard would report it as a site losing its rule, and a guard that cries wolf is switched off.",
+      "mitigated": true,
+      "how": "The guard asks the serve filter itself, which applies universal rows to every zone; test_a_rule_for_every_zone_that_mentions_a_retired_code_passes pins it, and production reads 0 with those rows served.",
+      "repro": "python -m pytest tests/test_outreach_claim_checks_plan_and_zone.py -k retired -o addopts=\"\""
+    },
+    {
+      "scenario": "The translation table is renamed or its legacyToCurrentAliases key disappears in a regeneration.",
+      "what_happens": "With an empty successor map the loop checks nothing and the zone guard would report 0 served rows losing a rule.",
+      "mitigated": true,
+      "how": "An unreadable table or an empty successor map returns FAIL with the reason, never PASS.",
+      "repro": "Rename frontend-nextjs/shared/zone-taxonomy.json and run python scripts/outreach_claim_checks.py OC-17: the retired zone line reads FAIL, translation table unreadable."
+    },
+    {
+      "scenario": "Claim twelve's trace joins a retired (inactive) registry chapter that still records a council_url.",
+      "what_happens": "Numbers served from a chapter nobody maintains would count as coming from a published council document.",
+      "mitigated": true,
+      "how": "The join requires r.is_active; forcing it off turned the fixture count from 4 to 3 and failed test_claim_12_counts_council_material_with_no_published_source.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_outreach_claim_checks_plan_and_zone.py::test_claim_12_counts_council_material_with_no_published_source -o addopts=\"\""
+    },
+    {
+      "scenario": "Someone records a confirmation date for a council without naming the plan, or names a plan with no date.",
+      "what_happens": "A dated confirmation with no plan would read as 'confirmation names no plan'; a plan with no date would look like a confirmation that never happened.",
+      "mitigated": true,
+      "how": "Migration 073's CHECK dcp_plan_as_at_confirmation_names_its_plan requires both or neither; verified present on production after applying.",
+      "repro": "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'dcp_plan_as_at_confirmation_names_its_plan'"
+    },
+    {
+      "scenario": "The half of claim twelve saying nothing is installed on or connected to council systems changes, for example an integration is added.",
+      "what_happens": "No command would notice; the claim would stay declared as it is.",
+      "mitigated": false,
+      "how": "Stated in the OC-12 row's passes_when: that half is the embed's design (an iframe of this app) and no command checks it. The checked half is the one that was false.",
+      "repro": "Read .claude/dq_checks.json OC-12 passes_when."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- migration 073 was applied to production on 2026-09-14 at 18:01 after a dry run (backup data/db_rollback_backups/dcp_plan_as_at_pre_073_2026-09-14_1801.csv, 28 rows before and after); ADD COLUMN IF NOT EXISTS and the guarded constraint make a re-run a no-op.",
+    "secrets": "No -- no new environment variables or credentials.",
+    "other_repo": "No -- single repository.",
+    "manual_verify": "Yes -- after the Vercel deploy, /for/councils shows the 'No access to council systems' card and not 'Privacy safe'; and python scripts/dq_check.py --outreach still exits 3 with OC-12 and OC-17 reported as not yet true."
+  }
+}
