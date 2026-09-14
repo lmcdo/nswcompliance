@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what the single guarded DCP read serves to every surface: precinct-only rules stop being returned council-wide, and every served number is worded from its own unit and from whether the council's sentence actually states a maximum. It also corrects two probes that measured the wrong population and flips three ledger rows, so a wrong edit here either serves a wrong number or turns a gate green on nothing.",
-  "commit_hash": "1bdaebc8",
+  "commit_hash": "7830b97c",
   "files": [
     "scripts/conveyancing_db.py",
     "scripts/outreach_claim_checks.py",
@@ -12,6 +12,7 @@
     "tests/test_conveyancing_db.py",
     "tests/test_dq_probe_precinct_rows_served_lga_wide_real_db.py",
     "tests/test_outreach_claim_checks_ranges_and_citations.py",
+    "tests/test_conveyancing_db_served_scope_real_db.py",
     ".claude/dq_checks.json",
     ".claude/DATA_QUALITY_TRACKER.md",
     ".qa/reports/fix__scope-ranges-citations-batch.json"
@@ -128,7 +129,7 @@
       "repro": "python scripts/verify_coverage_stats.py --field dcpSetbackTripleCouncils"
     }
   ],
-  "mutation_analysis": "Six mutations run, not described, via a script that edits one target string, runs the two test files, and restores the original bytes: all six caught by the named test (1, 4, 2, 2, 1, 1 failures). Clean run after restoration: 101 passed. Wider suites touching these modules: 446 passed, 19 skipped; granny flat, leichhardt, integration, fidelity gate files: 309 passed, 168 skipped. Full ledger python scripts/dq_check.py exit 0 on this branch.",
+  "mutation_analysis": "Six mutations run, not described, via a script that edits one target string, runs the two test files, and restores the original bytes: all six caught by the named test (1, 4, 2, 2, 1, 1 failures). Clean run after restoration: 101 passed. Wider suites touching these modules: 446 passed, 19 skipped; granny flat, leichhardt, integration, fidelity gate files: 309 passed, 168 skipped. Full ledger python scripts/dq_check.py exit 0 on this branch. Real layer: tests/test_conveyancing_db_served_scope_real_db.py asks fetch_dcp_setbacks against production for every council holding a current precinct_specific row and for every council storing a non-metre unit: 2 passed. With the precinct skip removed it failed listing ashfield front_setback, leichhardt front_setback twice and ryde car_parking.",
   "residual_risk": "Precinct rows are now absent rather than shown scoped, so a property inside Haberfield's Yasmar Estate does not see its own 4m rule until a precinct match exists. services/granny_flat.py words its own numbers and was not changed. OC-8 and OC-12 still fail on citations that need their source documents.",
   "post_merge": {
     "db_reset": "No schema change. The DQ-32c condition text for rows 10, 257, 259 and 799 was written to production before this PR with backup dcp_setback_controls_pre_dq32c_conditions_2026-09-14_1924.csv, so the ledger flip lands with data already in place.",
