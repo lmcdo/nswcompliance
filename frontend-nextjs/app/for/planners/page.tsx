@@ -9,7 +9,7 @@ import { COVERAGE_DISPLAY } from '@/lib/coverage';
 export const metadata: Metadata = {
   title: 'For Town Planners & Planning Consultants — PlotDetect',
   description:
-    'Zone permissibility, LEP/DCP controls, SEPP requirements, spatial overlays, and flood/bushfire status — for any NSW address, with clause citations. Built for planning professionals.',
+    'Zone permissibility, LEP/DCP controls, SEPP requirements, spatial overlays, and flood/bushfire status — for any NSW address. Built for planning professionals.',
   keywords: [
     'planning consultant tools',
     'town planner software',
@@ -35,7 +35,7 @@ const LOOKUPS = [
   },
   {
     task: 'DCP numeric controls',
-    description: `Setbacks, parking rates, landscaping, site coverage — numeric fields with clause citations. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs, ${COVERAGE_DISPLAY.dcpSetbackRows} rows.`,
+    description: `Setbacks, parking rates, landscaping, site coverage — numeric fields with their source. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs, ${COVERAGE_DISPLAY.dcpSetbackRows} rows.`,
   },
   {
     task: 'SEPP applicability check',
@@ -60,7 +60,7 @@ const WORKFLOW_STEPS = [
   {
     icon: Layers,
     title: 'Review the controls',
-    description: 'Zone, LEP, DCP, SEPP, spatial overlays — all on one screen with clause citations.',
+    description: 'Zone, LEP, DCP, SEPP, spatial overlays — all on one screen, each with its source.',
   },
   {
     icon: FileText,
@@ -102,7 +102,7 @@ export default function PlannersPage() {
         </div>
       </section>
 
-      {/* Time savings table */}
+      {/* What it pulls together */}
       <section className="bg-gray-50 border-y border-gray-100 py-12 px-6">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-xl font-bold text-gray-900 mb-2">What it pulls together</h2>
@@ -118,15 +118,6 @@ export default function PlannersPage() {
                 <p className="text-xs text-gray-500">{description}</p>
               </div>
             ))}
-          </div>
-          <div className="mt-6 bg-teal-50 rounded-xl border border-teal-200 p-4">
-            <div className="flex items-baseline justify-between">
-              <p className="font-bold text-teal-800 text-sm">Total time saved per site</p>
-              <p className="text-teal-600 font-bold text-sm">~90 minutes</p>
-            </div>
-            <p className="text-xs text-teal-600 mt-1">
-              At 3 sites/week, that&apos;s 4.5 hours back — or 2 extra billable assessments.
-            </p>
           </div>
         </div>
       </section>
@@ -162,7 +153,7 @@ export default function PlannersPage() {
             {[
               'Not a planning assessment — it gathers data, you interpret it',
               'Not a DA preparation tool — it shows controls, not application forms',
-              'Not a replacement for council pre-lodgement — it saves time before the meeting',
+              'Not a replacement for council pre-lodgement — it helps you prepare for the meeting',
               'Not legal advice — all data links to the source instrument',
             ].map((item) => (
               <div key={item} className="flex items-start gap-2">

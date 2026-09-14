@@ -113,7 +113,7 @@ export function DCPInterestForm({ councilName, address }: DCPInterestFormProps) 
                 </span>
               </div>
               <p className="text-xs text-gray-500 mb-2">
-                Provision text with TOC browser, PDF page images, topic filters, and precinct-specific controls.
+                Provision text with TOC browser, PDF page images and topic filters.
               </p>
               <span className="text-xs px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
                 Inner West (Ashfield, Marrickville, Leichhardt)

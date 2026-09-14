@@ -207,6 +207,19 @@ def dcp_plans_are_dated() -> Result:
     return (PASS if not dateless else FAIL), f"served councils with no plan date: {len(dateless)} {dateless[:5]}"
 
 
+def every_served_council_has_a_current_plan_check() -> Result:
+    """Every served council's plan version must have been confirmed as the one in force within 90 days.
+
+    Added 2026-09-14 after measuring councils whose plan changed while an older version was served
+    (Northern Beaches, Canada Bay, Randwick, Burwood, The Hills; Strathfield before them). A repeal is not
+    visible in a URL, so the repealed-source query alone cannot catch it; a dated confirmation can."""
+    return sql_count(
+        "served councils with no plan-in-force confirmation in the last 90 days",
+        "SELECT count(*) FROM (SELECT DISTINCT lga FROM dcp_setback_controls WHERE " + SERVED + ") s "
+        "LEFT JOIN dcp_plan_as_at a ON a.lga = s.lga "
+        "WHERE a.currency_confirmed_at IS NULL OR a.currency_confirmed_at < NOW() - INTERVAL '90 days'")
+
+
 def not_yet_grounded(label: str, reason: str) -> Result:
     """A part of a kept claim that nothing can verify yet. It fails until someone replaces this
     sub-check with a real one; it never passes by itself."""
@@ -257,7 +270,7 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     "OC-11": [
         lambda: sql_count("councils whose LEP zones are all complete",
                           "SELECT count(*) FROM (SELECT lga FROM lep_zone_coverage GROUP BY lga "
-                          "HAVING bool_and(is_complete)) t", expect=26),
+                          "HAVING bool_and(COALESCE(is_complete, FALSE))) t", expect=26),
     ],
     "OC-13": [
         lambda: pytest_files("tests/test_coverage_source_derived_stats.py",
@@ -273,7 +286,8 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     "OC-15": [
         lambda: no_rendered_phrase("retired planner time savings",
                                    r"TIME_SAVINGS|10 minutes, not 2 hours|2 hours to 10 minutes|"
-                                   r"\b(5|10|15|20|30)–(10|15|20|30|60) min\b"),
+                                   r"\b(5|10|15|20|30)–(10|15|20|30|60) min\b|time saved|hours back|"
+                                   r"minutes saved|hours saved|billable assessments"),
     ],
     # Run through this script, not a bare "python -m pytest" row: sys.executable is the interpreter that
     # launched the gate. A bare "python" resolves through PATH, and on this machine that is a different
@@ -292,6 +306,9 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
                           "council_url ILIKE '%repealed%' OR r2_current_path ILIKE '%repealed%' "
                           "OR r2_public_pdf_url ILIKE '%repealed%')"),
         no_range_printed_as_a_maximum,
+        every_served_council_has_a_current_plan_check,
+        lambda: probe("DQ-88"),
+        lambda: probe("DQ-33"),
     ],
 }
 

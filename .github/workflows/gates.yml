@@ -320,6 +320,22 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/dq_check.py
 
+      # The outreach stop signal (~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md,
+      # claim set decided 2026-09-14). HERE, beside the ledger, for the same reason: this job has both
+      # node_modules (one claim part is a jest test) and the database, so every part can really run.
+      # Passes on exit 0 (ready) or 3 (not ready, every failing claim honestly declared false).
+      # FAILS on exit 1 (a declared state contradicts its check) and on exit 2 (a part could not run):
+      # a gate that is green when it could not look is not a gate.
+      - name: Outreach claims (declared state must match the checks)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set +e
+          python scripts/dq_check.py --outreach
+          rc=$?
+          [ "$rc" -eq 0 ] || [ "$rc" -eq 3 ]
+
       # Railway cron drift. On 2026-09-10 SIX of eight services ran a schedule
       # different from their own railway.*.toml and nobody knew: extraction had
       # been demoted from nightly to weekly, so flagged council chapters sat
@@ -586,20 +602,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/check_served_answer_quality.py --baseline
-      # The outreach stop signal (~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md,
-      # claim set decided 2026-09-14). This job has the database, so the claim checks can run here.
-      # It FAILS only on exit 1: a claim's declared state contradicts its check, in either direction.
-      # Exit 3 (not ready: claims honestly declared false) and exit 2 (a claim needs something this
-      # job lacks, e.g. jest's node_modules) are the recorded state, not a regression. Done means
-      # exit 0, run where every check can run.
-      - name: Outreach claims (declared state must match the checks)
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          set +e
-          python scripts/dq_check.py --outreach
-          rc=$?
-          [ "$rc" -eq 0 ] || [ "$rc" -eq 2 ] || [ "$rc" -eq 3 ]
       # Real-database integration tests, BLOCKING, on the one trigger
       # guaranteed to fire. Named directly in session (2026-09-04): every
       # test in tests/*.py that carries @pytest.mark.database is deselected

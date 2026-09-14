@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds the project's finish line for outreach and wires it into CI, and changes public copy on nine surfaces (two claims retired, one published count corrected). A gate that can pass while a public claim is false would re-create the exact failure the outreach hold exists for; a CI step that is wrong blocks or silently waves through every PR.",
-  "commit_hash": "bdef3714",
+  "commit_hash": "4dee1624",
   "files": [
     ".claude/dq_checks.json",
     ".github/workflows/gates.yml",
@@ -33,7 +33,7 @@
   "falsifiable_check": {
     "command": "python -m pytest tests/test_dq_check_outreach.py tests/test_dq_check.py tests/test_coverage_source_derived_stats.py -q -o addopts= && python scripts/dq_check.py --outreach",
     "fails_when": "_outreach returns 0 while any blocking claim is declared false, has no check, is contradicted or could not be verified; a claim declared true whose check fails, or declared false whose check passes, is not reported as a contradiction (exit 1); a row that does not block outreach changes the result; OC rows are reported as ledger orphans or counted in the DQ caps; verify_coverage_stats --field accepts an unknown key or checks fields it was not asked for; a retired phrase renders anywhere under frontend-nextjs app, components or lib; dcpFullCouncils reappears in coverage.ts; or the committed claim set is not OC-1..OC-17 with every row blocking outreach and carrying a check or a reason.",
-    "observed_red": "Forced in tests: each exit code (0, 1, 2, 3) is produced by in-memory rows, and run_one returns RED for 'true' + failing and 'false' + passing. On real data the first full run declared every row false and reported 7 CONTRADICTED (OC-1, 2, 3, 5, 9, 11, 15), proving the both-way enforcement bites before those rows were set true. verify_coverage_stats.py --field nope exits 1; --field dcpSetbackTripleCouncils reported 'published 23 vs live 22' (DRIFT), corrected here. The first run also exposed three defects in the gate itself, each fixed and re-run: OC-16 errored under a PATH interpreter (now sys.executable; a collection error is FAIL), OC-17 called DQ-99 through the wrong script (now every DQ part runs the ledger's own check), and OC-14 still found 'Full structured DCP' in DCPInterestForm.tsx (reworded). tests/test_dq_check.py initially failed test_no_orphan_entries and test_the_three_ratchets_measure_different_sets on the new rows; both now exclude OC- rows. 49 targeted tests pass; full suite 6,333 passed with one failure that was a mid-run edit of dq_checks.json and passes alone. The second full run then reported OC-16 CONTRADICTED again: dq_check.run_one itself launched the composite with the PATH python, so the fix inside outreach_claim_checks.py never took effect. run_one now substitutes sys.executable for a bare python argv, for every row.",
+    "observed_red": "Forced in tests: each exit code (0, 1, 2, 3) is produced by in-memory rows, and run_one returns RED for 'true' + failing and 'false' + passing. On real data the first full run declared every row false and reported 7 CONTRADICTED (OC-1, 2, 3, 5, 9, 11, 15), proving the both-way enforcement bites before those rows were set true. verify_coverage_stats.py --field nope exits 1; --field dcpSetbackTripleCouncils reported 'published 23 vs live 22' (DRIFT), corrected here. The first run also exposed three defects in the gate itself, each fixed and re-run: OC-16 errored under a PATH interpreter (now sys.executable; a collection error is FAIL), OC-17 called DQ-99 through the wrong script (now every DQ part runs the ledger's own check), and OC-14 still found 'Full structured DCP' in DCPInterestForm.tsx (reworded). tests/test_dq_check.py initially failed test_no_orphan_entries and test_the_three_ratchets_measure_different_sets on the new rows; both now exclude OC- rows. 49 targeted tests pass; full suite 6,333 passed with one failure that was a mid-run edit of dq_checks.json and passes alone. The second full run then reported OC-16 CONTRADICTED again: dq_check.run_one itself launched the composite with the PATH python, so the fix inside outreach_claim_checks.py never took effect. run_one now substitutes sys.executable for a bare python argv, for every row. Cross-review on the first push raised five HIGH findings, all fixed: CI accepted exit 2 (now fails; the step moved to the Jest job, which has the database and node_modules); the repealed-plan check relied on URL text (OC-17 now also requires a plan-in-force confirmation within 90 days); bool_and ignored NULL completeness (coalesced); and two changed surfaces promised precinct-specific controls and clause citations (removed). The widened OC-15 scan then found the planners page's '~90 minutes / 4.5 hours back' block, which the first scan missed (removed).",
     "measured": "Third full run against production, final state of this branch: 9 of 17 claims pass (OC-1, 2, 3, 5, 9, 11, 14, 15, 16), 8 not yet (OC-4, 6, 7, 8, 10, 13, 17 honestly declared false; OC-12 no check), 0 not verified, 0 contradicted; exit 3. Second full run against production after the fixes: 7 of 17 claims passed with 2 contradictions, both explained and fixed in this branch (OC-14 now holds and is declared true; OC-16 failed only through the PATH interpreter). First full run against production, rows then all declared false: 7 checks passed, 9 failed honestly, OC-12 has no check, OC-16 errored (fixed; 123 calibration tests pass). Failing parts: OC-4 DQ-76/78/97/29; OC-6 DQ-96; OC-7 production depth delivery unobserved; OC-8 79 of 837 served numbers lack a clause, sentence or PDF link, plus DQ-39; OC-10 DQ-61 and DQ-70; OC-13 riskLayers ungrounded; OC-17 DQ-66, DQ-32c, DQ-61, DQ-70, 19 repealed-plan chapters, 32 ranges printed as a maximum."
   },
   "functions": [
@@ -53,7 +53,7 @@
     },
     {
       "name": "main",
-      "file_line": "scripts/outreach_claim_checks.py:304",
+      "file_line": "scripts/outreach_claim_checks.py:321",
       "input": "A single claim id such as OC-8 from the command line, which must be one of the composite claims defined in CLAIMS.",
       "output": "Runs every sub-check for that claim, prints PASS/FAIL/UNKNOWN per part, exits 0 if all pass, 1 if any fail, 2 if none fail and any could not run.",
       "if_none": "An unknown or missing claim id prints usage and exits 1."
@@ -85,6 +85,13 @@
       "input": "Optional argv; --field followed by COVERAGE keys limits the check to those published figures, as the outreach claim rows need.",
       "output": "The same drift report as before for the selected keys; exit 0 current, 1 drift or an unknown key, 2 database unreachable.",
       "if_none": "argv None means no options (tests call main() under pytest); an unknown key exits 1 before connecting."
+    },
+    {
+      "name": "every_served_council_has_a_current_plan_check",
+      "file_line": "scripts/outreach_claim_checks.py:210",
+      "input": "No arguments; it counts served councils in dcp_setback_controls whose dcp_plan_as_at currency confirmation is missing or older than 90 days.",
+      "output": "PASS when that count is 0; FAIL with the count otherwise, so a council whose plan changed cannot pass unconfirmed.",
+      "if_none": "A council with no dcp_plan_as_at row counts as unconfirmed; an unreachable database is UNKNOWN."
     }
   ],
   "real_layer_exempt": {
@@ -117,18 +124,23 @@
     },
     {
       "purpose": "Councils whose LEP zones are all marked complete, for the permitted-uses claim",
-      "file_line": "scripts/outreach_claim_checks.py:259",
-      "where_clause": "GROUP BY lga HAVING bool_and(is_complete) -- counted, must equal 26"
+      "file_line": "scripts/outreach_claim_checks.py:272",
+      "where_clause": "GROUP BY lga HAVING bool_and(COALESCE(is_complete, FALSE)) -- counted, must equal 26; an unknown zone counts as incomplete"
     },
     {
       "purpose": "Active registry chapters sourced from a repealed-plan archive, for the plan-in-force claim",
-      "file_line": "scripts/outreach_claim_checks.py:291",
+      "file_line": "scripts/outreach_claim_checks.py:305",
       "where_clause": "is_active AND (council_url ILIKE '%repealed%' OR r2_current_path ILIKE '%repealed%' OR r2_public_pdf_url ILIKE '%repealed%')"
     },
     {
       "purpose": "The existing published-coverage queries, now filterable per field",
       "file_line": "scripts/verify_coverage_stats.py:247",
       "where_clause": "unchanged per-field queries in QUERIES; --field only selects which run"
+    },
+    {
+      "purpose": "Served councils whose plan version has not been confirmed as the one in force in the last 90 days",
+      "file_line": "scripts/outreach_claim_checks.py:219",
+      "where_clause": "a.currency_confirmed_at IS NULL OR a.currency_confirmed_at < NOW() - INTERVAL '90 days' over the served councils (is_current AND (needs_review IS NULL OR needs_review = FALSE))"
     }
   ],
   "break_it": [
@@ -143,7 +155,7 @@
       "scenario": "The database is unreachable, or jest's node_modules are absent, so some claim checks cannot run.",
       "what_happens": "A gate that folded 'could not look' into pass would report ready without looking.",
       "mitigated": true,
-      "how": "Exit 2 from any part is UNKNOWN; _outreach returns 2 and never 0. test_could_not_verify_is_never_ready forces it.",
+      "how": "Exit 2 from any part is UNKNOWN and _outreach returns 2, never 0. The CI step runs in the Jest job, which has both the database and node_modules, and passes only on 0 or 3, so a part that could not run fails CI. test_could_not_verify_is_never_ready forces the exit code.",
       "repro": "python -m pytest tests/test_dq_check_outreach.py -k could_not_verify -q -o addopts="
     },
     {
@@ -156,8 +168,8 @@
     {
       "scenario": "A council repeals its plan without the word 'repealed' in any URL we hold (scripts/outreach_claim_checks.py:291, WHERE is_active AND (council_url ILIKE '%repealed%' OR r2_current_path ILIKE '%repealed%' OR r2_public_pdf_url ILIKE '%repealed%')), as Strathfield did.",
       "what_happens": "That part of OC-17 passes while numbers from a repealed plan are served.",
-      "mitigated": false,
-      "how": "Not caught by this query. It is one of the eight UNKNOWN items recorded in the spec §10 (oldest plan dates and the unmonitored councils) whose one measurement is a check of each council's policy page; until measured, OC-17 also fails on DQ-61 and DQ-70, so the gate cannot be ready.",
+      "mitigated": true,
+      "how": "The URL query alone does not catch it, so OC-17 also requires every served council's plan version to be confirmed in force within 90 days (scripts/outreach_claim_checks.py:219, WHERE a.currency_confirmed_at IS NULL OR a.currency_confirmed_at < NOW() - INTERVAL '90 days'). Measured 2026-09-14: Northern Beaches, Canada Bay, Randwick, Burwood and The Hills have a newer plan in force than the version held, and none is confirmed, so the gate cannot pass.",
       "repro": "python scripts/outreach_claim_checks.py OC-17"
     },
     {
@@ -208,6 +220,20 @@
       "mitigated": true,
       "how": "--field rejects any key that is not checkable before connecting (exit 1, observed with --field nope), and each OC row's claim text names the COVERAGE keys its check passes so a mismatch is visible in review; the published-figure test_every_published_number_is_checked_by_something still covers every key.",
       "repro": "python scripts/verify_coverage_stats.py --field nope"
+    },
+    {
+      "scenario": "An LGA has zone rows marked complete plus one whose completeness is unknown (scripts/outreach_claim_checks.py:272, GROUP BY lga HAVING bool_and(COALESCE(is_complete, FALSE))).",
+      "what_happens": "bool_and ignores NULL, so the council would count toward 'permitted uses for 26 councils' with a zone of unknown completeness.",
+      "mitigated": true,
+      "how": "NULL is coalesced to FALSE, so an unknown zone makes the council incomplete; flagged by cross-review on the first push.",
+      "repro": "python scripts/outreach_claim_checks.py OC-11"
+    },
+    {
+      "scenario": "Copy changed in this branch keeps or adds a promise a failing claim contradicts: 'precinct-specific controls' (DQ-99 serves precinct rules council-wide), 'with clause citations' (OC-8 fails), or a '~90 minutes saved' block the first phrase scan missed.",
+      "what_happens": "The site would state, in text this branch touched, something the gate itself measures as false.",
+      "mitigated": true,
+      "how": "The three phrases were removed or reworded, and OC-15's scan now also matches 'time saved', 'hours back', 'minutes saved', 'hours saved' and 'billable assessments'. A broader '~N minutes' pattern was tried and dropped: it matched a processing-time note ('takes ~3 minutes to download satellite tiles'), which is not a savings claim.",
+      "repro": "python scripts/outreach_claim_checks.py OC-15"
     }
   ],
   "post_merge": {
