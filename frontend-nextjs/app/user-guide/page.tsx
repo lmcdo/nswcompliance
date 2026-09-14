@@ -693,7 +693,7 @@ export default function UserGuidePage() {
                   </li>
                   <li className="flex gap-2">
                     <span className="text-teal-600 flex-shrink-0">✓</span>
-                    <span><strong>Clause references:</strong> PDF page numbers link directly to source documents for accurate citation in planning reports</span>
+                    <span><strong>Clause references:</strong> Each rule links to the source document it was read from; check the clause in that document before citing it in a planning report</span>
                   </li>
                   <li className="flex gap-2">
                     <span className="text-teal-600 flex-shrink-0">✓</span>

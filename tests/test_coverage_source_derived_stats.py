@@ -17,7 +17,8 @@ could not be verified — only a reason nobody had written the check. The same
 exemption is what let `lgasCovered: 130` sit on the homepage claiming more
 councils than NSW contains.
 
-WHAT IS DELIBERATELY NOT HERE: riskLayers. See the last test.
+A fourth, riskLayers ("8 risk layers"), was retired on 2026-09-14 (outreach claim OC-13):
+nothing in the repo produced an 8.
 """
 import re
 import sys
@@ -92,36 +93,42 @@ def test_the_retired_full_councils_figure_stays_retired():
     )
 
 
-def test_risk_layers_is_the_one_number_with_no_source():
-    """riskLayers: 8 is a HEADLINE stat on the homepage and on two audience pages,
-    and nothing in this repo produces an 8.
+AUDIENCE_PAGES_WITH_STATS = [
+    ROOT / "frontend-nextjs" / "app" / "for" / "homebuyers" / "page.tsx",
+    ROOT / "frontend-nextjs" / "app" / "for" / "buyers-agents" / "page.tsx",
+]
 
-    Searched: the homepage's own CLIMATE_HAZARDS (4), the /climate-risk hazards
-    section (5), the open-data dataset catalogue (7), the capability tiles, and
-    every table whose name contains 'risk'. None is 8, and no table matches at all.
 
-    This test does NOT assert a value, because inventing one would be exactly the
-    defect: a number that reads as measured because somebody wrote a query that
-    returns it. It asserts the number is still 8 and therefore still unverified,
-    so that the open decision -- ground it against a real list, or retire it --
-    stays visible instead of ageing into apparent fact.
+def test_the_retired_risk_layers_figure_stays_retired():
+    """riskLayers ("8 risk layers") was retired on 2026-09-14 (outreach claim OC-13).
+
+    It was a headline stat on the homepage and two audience pages, and nothing in this
+    repo produced an 8. Searched on 2026-09-11: the homepage's CLIMATE_HAZARDS (4), the
+    /climate-risk hazards section (5), the open-data catalogue (7), the capability tiles,
+    and every table whose name contains 'risk'. An unsourced number is grounded or
+    removed, never adjusted to another guess, so it was removed. Re-adding it, under the
+    key or as a tile, would republish a number nothing can check.
     """
-    assert published()["riskLayers"] == 8, (
-        "riskLayers changed. If it now has a real source, replace this test with a "
-        "check against that source. If it was edited to a different guess, do not: "
-        "an unverifiable number should be grounded or removed, not adjusted."
+    # All code in coverage.ts, not only the COVERAGE object that published() parses: the first cut of this
+    # retirement removed the number and left COVERAGE_DISPLAY.riskLayers = '8' exported, and only the
+    # outreach gate's rendered-phrase check noticed.
+    code = [line for line in COVERAGE_TS.read_text(encoding="utf-8").splitlines()
+            if not line.strip().startswith(("*", "/*", "//"))]
+    assert not any("riskLayers" in line for line in code), (
+        "coverage.ts exports riskLayers again (COVERAGE or COVERAGE_DISPLAY); it has no source (retired, OC-13)"
     )
-    ts = COVERAGE_TS.read_text(encoding="utf-8")
-    assert "riskLayers" in ts and "UNVERIFIED" in ts, (
-        "coverage.ts must say in the comment block that riskLayers has no source"
-    )
+    for page in [HOMEPAGE, *AUDIENCE_PAGES_WITH_STATS]:
+        text = page.read_text(encoding="utf-8")
+        assert "riskLayers" not in text and "Risk layers" not in text, (
+            f"{page.relative_to(ROOT).as_posix()} shows the retired risk layers figure"
+        )
 
 
 # ── the ratchet: no published number may be checked by nothing ───────────────
-# riskLayers is the ONE key allowed to have no source check, and only because it
-# has its own test above keeping that fact visible. Adding to this set is a
-# deliberate act that shows up in review; forgetting to write a check is not.
-UNGROUNDED_BY_DECISION = {"riskLayers"}
+# A key may go unchecked only with its own test keeping that fact visible. The set
+# has been empty since riskLayers was retired; adding to it is a deliberate act that
+# shows up in review, while forgetting to write a check is not.
+UNGROUNDED_BY_DECISION: set[str] = set()
 
 VERIFY_SCRIPT = ROOT / "scripts" / "verify_coverage_stats.py"
 THIS_TEST = Path(__file__)
@@ -161,7 +168,7 @@ def test_the_ungrounded_set_stays_small_and_deliberate():
     """UNGROUNDED_BY_DECISION is an escape hatch, and an escape hatch that grows
     quietly is the exemption that let 'editorial' mean 'unverifiable' for months.
     Every member needs its own visible test, so the set is asserted by name."""
-    assert UNGROUNDED_BY_DECISION == {"riskLayers"}, (
-        "the ungrounded set changed. Each member must have a test keeping its "
-        "open decision visible, like test_risk_layers_is_the_one_number_with_no_source."
+    assert UNGROUNDED_BY_DECISION == set(), (
+        "the ungrounded set changed. Each member must have a test keeping its open "
+        "decision visible; the last member, riskLayers, was retired rather than kept."
     )

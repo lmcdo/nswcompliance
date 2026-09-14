@@ -1,0 +1,114 @@
+{
+  "tier": "critical",
+  "justification": "Changes three public pages' headline statistics and two guides' promises about citations, changes what the bulk PDF uploader writes to dcp_chapter_registry, and changes what the outreach gate accepts for claims 8 and 13. A wrong change either republishes an unsourced number or lets citation links drift onto the wrong document again.",
+  "commit_hash": "9098c77f",
+  "files": [
+    ".claude/dq_checks.json",
+    "frontend-nextjs/app/for/buyers-agents/page.tsx",
+    "frontend-nextjs/app/for/homebuyers/page.tsx",
+    "frontend-nextjs/app/page.tsx",
+    "frontend-nextjs/app/quick-guide/page.tsx",
+    "frontend-nextjs/app/user-guide/page.tsx",
+    "frontend-nextjs/lib/coverage.ts",
+    "scripts/outreach_claim_checks.py",
+    "scripts/r2_upload_pdfs.py",
+    "tests/test_coverage_source_derived_stats.py",
+    "tests/test_r2_upload_registry_link.py"
+  ],
+  "pre_impl": {
+    "existing_data": "frontend-nextjs/lib/coverage.ts COVERAGE and COVERAGE_DISPLAY (riskLayers 8, flagged UNVERIFIED on 2026-09-11); the stat strips on the homepage, /for/homebuyers and /for/buyers-agents; dcp_chapter_registry.r2_current_path and r2_public_pdf_url, which the citation links read; scripts/r2_monitor.py R2_PUBLIC_BASE.",
+    "assumption_mismatch": "The uploader assumed moving r2_current_path was enough, but citation links read r2_public_pdf_url: 15 active chapters' links named an older copy, and Waverley DCP 2022's opened a 490-page PDF while its rules cite the 448-page current one (28 of 30 sampled rules on the cited page in the current copy, 1 of 30 in the linked copy). The coverage tests assumed COVERAGE was the only export, so removing the number left COVERAGE_DISPLAY.riskLayers = '8' behind unnoticed.",
+    "new_vs_existing": "Extends the existing upsert_registry statement with one derived column, using the same public base r2_monitor.py already writes. Removes one existing key and three existing tiles. Adds one sql_count sub-check to claim 8 and replaces claim 13's placeholder with the existing no_rendered_phrase building block.",
+    "external_source_error": "The R2 public base is a constant shared with r2_monitor.py and pinned equal by a test. If a hosted copy were not publicly downloadable the link would 404; all 15 repaired links were requested and returned HTTP 200 before the database change was committed.",
+    "frontend_type": "COVERAGE_DISPLAY loses the riskLayers key; no remaining code references it (searched app, components, lib and __tests__), so the CoverageKey type narrows without breaking a caller. Three stat grids change from four columns to three to match the tiles left.",
+    "user_failure_mode": "A homebuyer or buyers' agent read '8 risk layers' as a measured capability with no list behind it. A planner following a Waverley citation landed ten to twenty pages from the rule. The guides promised exact, accurate pages that several chapters do not deliver."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_coverage_source_derived_stats.py tests/test_r2_upload_registry_link.py tests/test_dq_check_outreach.py -o addopts=\"\" -q; python scripts/outreach_claim_checks.py OC-13; python scripts/outreach_claim_checks.py OC-8",
+    "external_authority": "The uploader test pins the public base against r2_monitor.py's own constant, a different module; the retired-figure checks read the rendered page sources, not the test's own list; the link sub-check reads production dcp_chapter_registry, where the mismatch was measured independently beforehand (15 before the repair, 0 after, by both an exact suffix comparison and LIKE).",
+    "fails_when": "A re-upload moves r2_current_path without the link; the link and current path name different version folders; riskLayers is exported again from COVERAGE or COVERAGE_DISPLAY; a Risk layers tile returns to any of the three pages; or any active chapter's public link stops ending with its current path.",
+    "observed_red": "Forced, each restored afterwards. Removing r2_public_pdf_url from the uploader's UPDATE SET: FAILED test_the_link_is_written_from_the_current_copy_on_insert_and_on_update, 1 failed 4 passed. Putting a Risk layers tile back on /for/homebuyers: FAILED test_the_retired_risk_layers_figure_stays_retired. Re-exporting COVERAGE_DISPLAY.riskLayers: FAILED test_the_retired_risk_layers_figure_stays_retired, 1 failed 6 passed. Before that test was strengthened, the outreach gate itself caught the leftover export: OC-13 FAIL, 1 rendered occurrence ['frontend-nextjs/lib/coverage.ts:164'].",
+    "measured": "25 passed across the three test files. OC-13 HOLDS (4 passed; 0 rendered occurrences). OC-8 FAILS for its existing reasons (72 of 835 served numbers missing a clause, sentence or PDF link; DQ-39), and its new link sub-check PASSES at 0. Full gate on this branch: 10 of 17 claims pass, 0 contradicted, exit 3."
+  },
+  "functions": [
+    {
+      "name": "upsert_registry",
+      "file_line": "scripts/r2_upload_pdfs.py:1159",
+      "input": "A cursor, one registry row dict with council, chapter_key, r2_current_path, r2_version_label and the source metadata, and the dry_run flag.",
+      "output": "One INSERT ... ON CONFLICT statement whose parameters add r2_public_pdf_url built from R2_PUBLIC_BASE and r2_current_path, set on insert and on update.",
+      "if_none": "r2_current_path None gives r2_public_pdf_url None, so a chapter with no hosted copy is never given a link; a dry run executes nothing."
+    }
+  ],
+  "real_layer_exempt": {
+    "scripts/r2_upload_pdfs.py": "A real run uploads PDFs to production R2 and upserts production registry rows, so it cannot run as a test. The statement's effect was measured on production instead: the same link rule applied to the 15 mismatched chapters in a backed-up, dry-run-first transaction, with every new link requested and returning HTTP 200 before commit. tests/test_r2_upload_registry_link.py executes the real function source and pins the SQL and parameters."
+  },
+  "values": [
+    {
+      "value": "R2_PUBLIC_BASE, the public host of the hosted PDF copies.",
+      "read_at": "Module import of scripts/r2_upload_pdfs.py, used in upsert_registry.",
+      "if_missing": "Not optional -- a literal; test_the_base_matches_the_one_the_change_monitor_uses fails if it drifts from scripts/r2_monitor.py."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Chapter public link compared with the current hosted copy (claim 8)",
+      "file_line": "scripts/outreach_claim_checks.py:384",
+      "where_clause": "is_active AND r2_current_path IS NOT NULL AND r2_public_pdf_url IS NOT NULL AND right(r2_public_pdf_url, length(r2_current_path) + 1) <> ('/' || r2_current_path)"
+    },
+    {
+      "purpose": "Registry upsert written by the bulk uploader",
+      "file_line": "scripts/r2_upload_pdfs.py:1159",
+      "where_clause": "INSERT with ON CONFLICT (council, chapter_key) DO UPDATE; no WHERE, one row per call, keyed by the unique council and chapter pair."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council PDF is re-uploaded by the bulk uploader into a new version folder, the way 15 chapters' current copies moved.",
+      "what_happens": "The registry upsert moved r2_current_path and left the public link on the old copy, so citations opened a different document from the one the rules were read from.",
+      "mitigated": true,
+      "how": "The link is derived from r2_current_path in the same statement and updated on conflict; removing it from the UPDATE fails test_the_link_is_written_from_the_current_copy_on_insert_and_on_update.",
+      "repro": "python -m pytest tests/test_r2_upload_registry_link.py -o addopts=\"\""
+    },
+    {
+      "scenario": "The claim 8 link check is written with LIKE '%' || r2_current_path, and a path contains an underscore.",
+      "what_happens": "An underscore is a LIKE wildcard, so a public link to a different copy whose path differs only at that character would count as matching and the chapter link check would pass wrongly.",
+      "mitigated": true,
+      "how": "The check compares the exact suffix with right(r2_public_pdf_url, length(r2_current_path) + 1) against '/' || r2_current_path; measured 0 on production, the same as the LIKE form today.",
+      "repro": "SELECT count(*) FROM dcp_chapter_registry WHERE is_active AND r2_current_path IS NOT NULL AND r2_public_pdf_url IS NOT NULL AND right(r2_public_pdf_url, length(r2_current_path) + 1) <> ('/' || r2_current_path)"
+    },
+    {
+      "scenario": "The number is removed from COVERAGE but COVERAGE_DISPLAY still exports riskLayers = '8'.",
+      "what_happens": "Any page could render the unsourced figure again from the display map while every test reading COVERAGE passed; this is exactly what the first cut of this change left behind.",
+      "mitigated": true,
+      "how": "The retired-figure test now scans every non-comment line of coverage.ts, and claim 13's rendered-phrase check scans app, components and lib; re-adding the display key fails the test.",
+      "repro": "python -m pytest tests/test_coverage_source_derived_stats.py -k risk_layers -o addopts=\"\""
+    },
+    {
+      "scenario": "Someone restores the tile as a literal, { value: '8', label: 'Risk layers' }, without touching coverage.ts.",
+      "what_happens": "The coverage key check alone would pass while the page shows the retired figure.",
+      "mitigated": true,
+      "how": "The test reads the homepage and both audience pages for 'Risk layers', and claim 13 checks rendered sources for the label; the forced tile on /for/homebuyers failed the test.",
+      "repro": "python scripts/outreach_claim_checks.py OC-13"
+    },
+    {
+      "scenario": "One tile is removed from a four-column stat grid.",
+      "what_happens": "The strip would render three tiles and an empty fourth column on wide screens, which reads as missing content.",
+      "mitigated": true,
+      "how": "The three grids change from sm:grid-cols-4 to sm:grid-cols-3 in the same edit as the tile removal.",
+      "repro": "Open /, /for/homebuyers and /for/buyers-agents at a width of 640px or more and check the stat strip shows three evenly spaced tiles."
+    },
+    {
+      "scenario": "A per-council registry script (populate_waverley_registry.py and its siblings) is re-run and moves r2_current_path without the link.",
+      "what_happens": "Links could drift onto an older copy again, the way the 15 did, with nothing at write time preventing it.",
+      "mitigated": false,
+      "how": "Not changed here: those scripts are one-off council loaders. The claim 8 sub-check fails as soon as any active chapter's link names a different copy, so the drift is caught at the next gate run rather than prevented.",
+      "repro": "python scripts/outreach_claim_checks.py OC-8 -- the 'public PDF link is not their current copy' line."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- the 15 links were repaired in production on 2026-09-14 at 18:19 (backup data/db_rollback_backups/dcp_chapter_registry_pre_public_link_current_2026-09-14_1819.csv); this change only stops the uploader recreating the mismatch.",
+    "secrets": "No -- no new environment variables.",
+    "other_repo": "No -- single repository.",
+    "manual_verify": "Yes -- after the Vercel deploy, the homepage, /for/homebuyers and /for/buyers-agents show three stat tiles with no 'Risk layers'; /user-guide and /quick-guide no longer promise exact or accurate pages; python scripts/dq_check.py --outreach reports 10 of 17 with OC-13 passing."
+  }
+}

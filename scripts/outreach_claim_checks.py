@@ -375,9 +375,16 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
             "production host (claim inventory §5.1). Replace this with a probe of the production flood "
             "answer for a Tweed, Wollongong or Redbank address."),
     ],
+    # Added 2026-09-14: 15 active chapters' public links named an older copy than the one their rules were read
+    # from, so Waverley DCP 2022's link opened a 490-page PDF while its rules cite the 448-page one. Compared
+    # exactly, not with LIKE: an underscore in a path is a LIKE wildcard.
     "OC-8": [
         every_served_number_is_cited,
         lambda: probe("DQ-39"),
+        lambda: sql_count("active chapters whose public PDF link is not their current copy",
+                          "SELECT count(*) FROM dcp_chapter_registry WHERE is_active "
+                          "AND r2_current_path IS NOT NULL AND r2_public_pdf_url IS NOT NULL "
+                          "AND right(r2_public_pdf_url, length(r2_current_path) + 1) <> ('/' || r2_current_path)"),
     ],
     "OC-9": [
         lambda: pytest_files("tests/test_conveyancing_da_threestate.py", "tests/test_typed_absence_fixes.py",
@@ -402,12 +409,12 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         lambda: sql_count("served council numbers and rules not traced to a published council document",
                           _UNTRACED_COUNCIL_MATERIAL_SQL),
     ],
+    # "8 risk layers" was retired 2026-09-14: nothing in the repo produced an 8, so it could not be grounded.
+    # The two counts left are checked against their sources; the retired figure must stay off every page.
     "OC-13": [
         lambda: pytest_files("tests/test_coverage_source_derived_stats.py",
-                             k="gov_data_sources or secondary_dwelling"),
-        lambda: not_yet_grounded(
-            "8 risk layers", "coverage.ts marks riskLayers UNVERIFIED with no source list. Ground it against a "
-            "real list and replace this sub-check with that check."),
+                             k="gov_data_sources or secondary_dwelling or risk_layers"),
+        lambda: no_rendered_phrase("retired '8 risk layers'", r"riskLayers|Risk layers|\b8 risk layers\b"),
     ],
     "OC-14": [
         lambda: no_rendered_phrase("retired '7 councils with full structured provisions'",
