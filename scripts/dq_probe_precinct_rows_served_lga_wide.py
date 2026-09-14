@@ -57,36 +57,50 @@ if _HERE not in sys.path:
 
 import dq_db  # noqa: E402
 
-# Reproduced from scripts/conveyancing_db.fetch_dcp_setbacks. If that guard
-# changes, this probe measures a population no user sees -- the exact failure
-# DQ-97 hit on 2026-09-10, when its count went to zero because the rows moved
-# rather than because anything was repaired.
-_SERVED_GUARD = "is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE)"
+# prior-art-checked: reuse, not a new source -- the verdict now comes from calling
+# scripts/conveyancing_db.fetch_dcp_setbacks itself (the one guarded read every
+# surface proxies); the flagged frontend files render provisions and do not read
+# dcp_setback_controls scope.
+#
+# The rows that would be served if the read ignored scope: current and not held for
+# review. Used only to choose which councils to ask; the verdict comes from the
+# serve path below.
+_CANDIDATE_GUARD = "is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE)"
 
 _SCOPED = ("precinct_specific",)
 
 
 def run() -> int:
+    """Asks fetch_dcp_setbacks for each council holding a scope-limited row and counts the
+    scope-limited entries it returns. Reproducing its guard as a string would pass as soon
+    as the string was edited to exclude them, whether or not the read changed; this fails
+    the moment the read serves one again. Since 2026-09-14 the read skips them, the
+    "excluding precinct_specific from the LGA-wide answer" fix described above."""
+    import conveyancing_db as cdb
+
     with dq_db.session() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT lga, dev_type, control_type, value_min, unit, section_ref, "
-            "       left(coalesce(condition, ''), 70) "
-            "FROM dcp_setback_controls "
-            "WHERE " + _SERVED_GUARD + " AND applicability = ANY(%s) "
-            "ORDER BY lga, control_type, section_ref",
+            "SELECT DISTINCT lga FROM dcp_setback_controls "
+            "WHERE " + _CANDIDATE_GUARD + " AND applicability = ANY(%s) ORDER BY lga",
             (list(_SCOPED),),
         )
-        rows = cur.fetchall()
-    if not rows:
-        print("PASSED: no scope-limited control row passes the served guard.")
+        councils = [r[0] for r in cur.fetchall()]
+        served = []
+        for lga in councils:
+            result = cdb.fetch_dcp_setbacks(conn, lga, raise_on_error=True) or {}
+            for entry in (result.get("setbacks") or []) + (result.get("sd_setbacks") or []):
+                if entry.get("applicability") in _SCOPED:
+                    served.append((lga, entry.get("dev_type"), entry.get("semantic_type"),
+                                   entry.get("value_min"), entry.get("unit"), entry.get("notes")))
+    if not served:
+        print("PASSED: the serve path returns no scope-limited control row council-wide "
+              "(" + str(len(councils)) + " council(s) hold such rows).")
         return 0
-    print(str(len(rows)) + " scope-limited row(s) are SERVED LGA-wide "
-          "(DQ-99, not yet fixed -- the guarded read does not carry scope):")
-    for lga, dev, ctl, vmin, unit, ref, cond in rows:
-        print("  %-14s %-26s %-22s %s%-6s %-28s" % (
-            lga, dev, ctl, vmin, unit or "", str(ref)[:28]))
-        print("      scope: " + str(cond))
+    print(str(len(served)) + " scope-limited row(s) are SERVED LGA-wide by fetch_dcp_setbacks (DQ-99):")
+    for lga, dev, ctl, vmin, unit, cond in served:
+        print("  %-14s %-26s %-22s %s%-6s" % (lga, dev, ctl, vmin, unit or ""))
+        print("      scope: " + str(cond)[:70])
     return 1
 
 

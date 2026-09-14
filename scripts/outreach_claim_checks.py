@@ -164,34 +164,65 @@ def no_rendered_phrase(label: str, pattern: str) -> Result:
 # ── sub-checks specific to one claim ───────────────────────────────────────────────────────────────
 
 def every_served_number_is_cited() -> Result:
+    """Claim 8 is about NUMBERS, so only entries carrying a value are counted. A served "no set number" note
+    (e.g. "No maximum site coverage specified in the DCP") has no number to cite; whether council material
+    traces to a published document is claim 12's check."""
     entries, why = served_entries()
     if entries is None:
         return UNKNOWN, f"served citations: {why}"
     missing = []
+    numbers = 0
     for lga, e, urls in entries:
+        if e.get("value_min") is None and e.get("value_max") is None:
+            continue
+        numbers += 1
         url = urls.get(e.get("source_chapter_key") or "") or ""
         has_pdf = ".pdf" in url.lower() or "r2.dev" in url.lower()
         if not (e.get("clause") or "").strip() or not (e.get("source_text") or "").strip() or not has_pdf:
             missing.append(f"{lga}/{e.get('semantic_type')}")
     return ((PASS if not missing else FAIL),
             f"served numbers missing a clause, the council's sentence or a PDF link: "
-            f"{len(missing)} of {len(entries)} {missing[:4]}")
+            f"{len(missing)} of {numbers} {missing[:4]}")
+
+
+#: The council's own sentence states a maximum. Read here, independently of how the serve path words it.
+_SOURCE_STATES_MAXIMUM = re.compile(r"\bmax(?:imum)?\b", re.I)
+_SOURCE_DENIES_BEFORE = re.compile(r"\b(?:no|not|without|non)\b(?:\s+[A-Za-z]+){0,2}\s*$", re.I)
+_SOURCE_DENIES_AFTER = re.compile(r"^\s*(?:[A-Za-z]+\s+)?(?:(?:is|are)\s+)?(?:not|n/a|none)\b", re.I)
+
+
+def _source_states_maximum(text: str) -> bool:
+    """"no maximum applies" and "maximum not specified" name the word while denying it."""
+    return any(not (_SOURCE_DENIES_BEFORE.search(text[max(0, m.start() - 40):m.start()])
+                    or _SOURCE_DENIES_AFTER.search(text[m.end():m.end() + 40]))
+               for m in _SOURCE_STATES_MAXIMUM.finditer(text))
 
 
 def no_range_printed_as_a_maximum() -> Result:
-    """A between-rule (e.g. R2 rear setback 6-10 m) must not read as '10 m maximum' in the report."""
+    """A between-rule (e.g. a rear setback of 3-6 m by lot width) must not read as a maximum the plan does not
+    set, and a number must print in its own unit.
+
+    A range may still read "minimum ... maximum" when the council's sentence states a maximum, as canada_bay's
+    "Minimum 1, maximum 2 car parking spaces" does. Measured 2026-09-14 before the wording fix: 33 served ranges,
+    and every number printed in metres, so 18 parking rates read "1 m minimum; 2 m maximum"."""
     entries, why = served_entries()
     if entries is None:
         return UNKNOWN, f"range wording: {why}"
-    bad = []
+    bad, wrong_unit = [], []
     for lga, e, _ in entries:
         vmin, vmax, sem = e.get("value_min"), e.get("value_max"), (e.get("semantic_type") or "")
+        requirement = e.get("requirement") or ""
         is_ceiling = sem.startswith("max_") or sem.endswith("_max")
         if (vmin is not None and vmax is not None and float(vmin) < float(vmax) and not is_ceiling
-                and "maximum" in (e.get("requirement") or "").lower()):
+                and "maximum" in requirement.lower()
+                and not _source_states_maximum(e.get("source_text") or "")):
             bad.append(f"{lga}/{sem}")
-    return ((PASS if not bad else FAIL),
-            f"served ranges printed with a 'maximum' the plan does not set: {len(bad)} {bad[:4]}")
+        unit = (e.get("unit") or "").strip()
+        if (vmin is not None or vmax is not None) and unit and unit not in requirement:
+            wrong_unit.append(f"{lga}/{sem}")
+    return ((PASS if not bad and not wrong_unit else FAIL),
+            f"served ranges printed with a 'maximum' the plan does not set: {len(bad)} {bad[:4]}; "
+            f"numbers printed in a unit other than their own: {len(wrong_unit)} {wrong_unit[:4]}")
 
 
 def dcp_plans_are_dated() -> Result:

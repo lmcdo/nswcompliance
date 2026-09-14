@@ -680,13 +680,25 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "Current setback controls flagged by a DQ derivability sweep",
         # review_reason carries the sweep tag, so this counts rows a human
         # already judged un-derivable from their own quote -- not a guess.
+        #
+        # SERVED rows only, corrected 2026-09-14. The first version counted
+        # every current row with a tag, and on that date its 38 were 20 rows
+        # already held back (needs_review) -- never shown to anyone -- plus 18
+        # served rows whose tag was the DQ-40 re-file NOTE ("re-filed
+        # front_setback -> secondary_street_setback"), a record of a repair,
+        # not a derivability flag. So it read 38 while no served number was
+        # flagged, and could only fall by hiding or retiring rows nobody sees.
+        # The held-back rows stay candidates for a source check; they are not
+        # served values, which is what this row is about.
         "SELECT count(*) FROM dcp_setback_controls "
-        "WHERE is_current AND review_reason IS NOT NULL "
-        "AND (review_reason LIKE 'DQ %%' OR review_reason LIKE '[DQ-%%')",
+        "WHERE is_current AND NOT COALESCE(needs_review, false) "
+        "AND review_reason IS NOT NULL "
+        "AND (review_reason LIKE 'DQ %%' OR review_reason LIKE '[DQ-%%') "
+        "AND review_reason NOT LIKE '[DQ-40 %%'",
         (),
-        "Rows whose stored number a reviewer could not derive from the quoted "
-        "source_text. The number IS the product, so each one is a served value "
-        "with no evidence behind it.",
+        "Served rows whose stored number a reviewer could not derive from the "
+        "quoted source_text. The number IS the product, so each one is a served "
+        "value with no evidence behind it.",
     ),
     "DQ-29": (
         "SERVED provisions matching the doubled-character OCR corruption pattern",

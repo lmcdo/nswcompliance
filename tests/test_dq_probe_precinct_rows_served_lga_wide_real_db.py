@@ -77,6 +77,12 @@ def test_the_probes_guard_still_matches_the_serve_paths_guard():
     for clause in ("is_current = true",
                    "(needs_review is null or needs_review = false)"):
         assert clause in probe, "the probe has lost the serve path's guard: " + clause
+    # Since 2026-09-14 the serve path skips precinct rules, and the probe asks the serve path itself rather
+    # than restating that skip as SQL, so it cannot pass on an edited string while the read still serves them.
+    assert 'applicability == "precinct_specific"' in _SERVE_PATH.read_text(encoding="utf-8"), (
+        "fetch_dcp_setbacks no longer skips precinct_specific rows")
+    assert "fetch_dcp_setbacks(" in _PROBE.read_text(encoding="utf-8"), (
+        "the probe no longer asks the serve path for its verdict")
 
 
 def test_precinct_specific_is_still_an_allowed_applicability_value():
