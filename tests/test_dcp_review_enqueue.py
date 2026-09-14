@@ -154,6 +154,30 @@ class TestEnqueueReviewChanges:
         # every live rule accounted for.
         assert "doc_B7_7_1" in rows and rows["doc_B7_7_1"][4] == "removed"
 
+    def test_a_targeted_amendment_queues_a_renumbered_rule_under_both_numbers(self):
+        """The direct path renames a renumbered live rule; the commit worker can apply only
+        what the queue holds, and it now records that the chapter matches the new PDF. A
+        targeted queue without the rename left the rule served under its old number with
+        nothing saying so (2026-09-14)."""
+        enqueue = _load_enqueue()
+        conn = MagicMock()
+        cur = conn.cursor.return_value
+        enqueue(conn, _review_chapter(
+            status="ok", total_old=40, total_new=40,
+            changed=[{"ref_number": "doc_1", "old_text": "a", "new_text": "b",
+                      "has_numeric_change": False, "old_page": 1, "new_page": 1}],
+            renumbered=[{"old_ref_number": "doc_B7_7_1", "new_ref_number": "doc_B7_7_2",
+                         "text": "Vehicle access rule.", "old_text": "Vehicle access rule.",
+                         "new_page": 61}]))
+        rows = {p[3]: p for p in self._inserts(cur)}
+        assert "doc_B7_7_2" in rows, "a renumbered rule of a targeted amendment was not queued"
+        moved = rows["doc_B7_7_2"]
+        assert moved[4] == "added" and moved[6] == "Vehicle access rule." and moved[8] == 61
+        assert moved[13] == "pending"
+        assert "doc_B7_7_1" in rows and rows["doc_B7_7_1"][4] == "removed"
+        # Still a targeted amendment: the commit supersedes only the refs named.
+        assert moved[12] is False and rows["doc_B7_7_1"][12] is False
+
     def test_a_full_replace_diff_that_cannot_account_for_every_rule_is_refused(self):
         """An older caller with no unchanged list would otherwise build the partial queue
         this change exists to prevent (cross-review, 2026-09-13)."""
