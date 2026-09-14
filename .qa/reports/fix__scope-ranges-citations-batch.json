@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what the single guarded DCP read serves to every surface: precinct-only rules stop being returned council-wide, and every served number is worded from its own unit and from whether the council's sentence actually states a maximum. It also corrects two probes that measured the wrong population and flips three ledger rows, so a wrong edit here either serves a wrong number or turns a gate green on nothing.",
-  "commit_hash": "d960dc61",
+  "commit_hash": "1bdaebc8",
   "files": [
     "scripts/conveyancing_db.py",
     "scripts/outreach_claim_checks.py",
@@ -19,7 +19,7 @@
   "falsifiable_check": {
     "command": "python -m pytest -q -o addopts= tests/test_conveyancing_db.py tests/test_outreach_claim_checks_ranges_and_citations.py",
     "fails_when": "Six mutations were injected one at a time and each turned a named test red, then the files were restored byte-for-byte (101 passed after). 1 precinct skip removed: test_a_precinct_rule_is_not_served_council_wide fails. 2 every number printed in metres: 4 fail incl. test_a_number_prints_in_its_own_unit and the real-wording test. 3 every range printed as minimum and maximum: test_a_range_the_plan_does_not_call_a_maximum_prints_as_a_range fails. 4 the check stops reading the council's sentence for a maximum: test_a_maximum_the_councils_sentence_states_passes fails. 5 the check stops comparing units: test_a_number_printed_in_metres_when_its_unit_is_spaces_fails fails. 6 the check counts no-number notes as numbers: test_a_no_set_number_note_is_not_counted_as_a_number fails.",
-    "observed_red": "Printed by scripts/mutate_batch.py against this branch, each line from pytest: 'CAUGHT precinct rules served council-wide again: 1 failed' (FAILED tests/test_conveyancing_db.py::TestSetbackFormatting::test_a_precinct_rule_is_not_served_council_wide); 'CAUGHT every number printed in metres: 4 failed'; 'CAUGHT every range printed as minimum and maximum: 2 failed'; 'CAUGHT check no longer reads the council's sentence for a maximum: 2 failed'; 'CAUGHT check no longer compares units: 1 failed'; 'CAUGHT check counts no-number notes as numbers: 1 failed'; then 'restored: 101 passed in 0.53s'. Against production before the fix, the DQ-99 probe printed 7 scope-limited rows served LGA-wide and the DQ-32c probe printed 4.",
+    "observed_red": "Printed by a one-off mutation runner kept outside the repo, run against this branch, each line from pytest: 'CAUGHT precinct rules served council-wide again: 1 failed' (FAILED tests/test_conveyancing_db.py::TestSetbackFormatting::test_a_precinct_rule_is_not_served_council_wide); 'CAUGHT every number printed in metres: 4 failed'; 'CAUGHT every range printed as minimum and maximum: 2 failed'; 'CAUGHT check no longer reads the council's sentence for a maximum: 2 failed'; 'CAUGHT check no longer compares units: 1 failed'; 'CAUGHT check counts no-number notes as numbers: 1 failed'; then 'restored: 101 passed in 0.53s'. Against production before the fix, the DQ-99 probe printed 7 scope-limited rows served LGA-wide and the DQ-32c probe printed 4.",
     "external_authority": "The council's own quoted sentence (source_text) decides whether a maximum is stated, and the row's stored unit decides the unit; neither is inferred from control_type. Live production measured on this branch: the DQ-99 probe asks fetch_dcp_setbacks and returns 0, DQ-39 returns 0, DQ-32c returns 0, the range and unit sub-check passes, and the triple-setback council count is 21."
   },
   "pre_impl": {
