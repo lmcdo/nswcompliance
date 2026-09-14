@@ -163,7 +163,7 @@ jobs:
       # Do not reintroduce a shell step here.
       - name: Raise or clear the alarm
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           FAILED: >-
             ${{ steps.ledger.outcome }},${{ steps.as_at.outcome }},${{ steps.manifests.outcome }},${{ steps.coverage_stats.outcome }},${{ steps.lga_flags.outcome }},${{ steps.schema.outcome }},${{ steps.provenance.outcome }},${{ steps.source_values.outcome }},${{ steps.answer_quality.outcome }},${{ steps.page_maps.outcome }}
