@@ -23,7 +23,7 @@ export const CONVEYANCING_LGAS: ConveyancingLgaData[] = [
     slug: 'inner-west',
     relatedSlugs: ['city-of-sydney', 'canada-bay', 'bayside', 'canterbury-bankstown'],
     faqs: [
-      { q: 'What planning data is available for Inner West properties?', a: 'Inner West has the most comprehensive coverage — full structured DCP provisions (setbacks, parking, landscaping, site coverage) plus LEP, SEPP, heritage, flood, and spatial overlays.' },
+      { q: 'What planning data is available for Inner West properties?', a: 'Inner West has the deepest coverage — DCP rule text and numeric controls (setbacks, parking, landscaping, site coverage) plus LEP, SEPP, heritage, flood, and spatial overlays.' },
       { q: 'Does the report cover all three former councils?', a: 'Yes — Ashfield, Marrickville, and Leichhardt DCP controls are all included with precinct-level matching for the correct address.' },
       { q: 'How quickly is the report generated?', a: 'The free summary is instant. The full PDF report is generated within minutes and emailed to you after payment.' },
       { q: 'Is this a replacement for a Section 10.7 certificate?', a: 'No. This is a supplementary planning intelligence report covering data that 10.7 certificates don\'t address.' },

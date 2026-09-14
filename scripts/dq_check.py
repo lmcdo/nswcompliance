@@ -101,11 +101,19 @@ _CHECKS = _ROOT / ".claude" / "dq_checks.json"
 #: into something Python refuses to compile at all.
 _NUL = chr(0)
 
-#: Only these two declared states carry an enforceable expectation. "partial",
+#: Only these declared states carry an enforceable expectation. "partial",
 #: "backlog", "accepted" and friends are genuinely ambiguous -- a partial fix
 #: can legitimately pass or fail its check -- and inventing an expectation for
 #: them would manufacture exactly the false precision this file exists to remove.
-_ENFORCED = {"fixed": 0, "open": 1}
+#: "true"/"false" are the outreach-claim states (see _OUTREACH_PREFIX).
+_ENFORCED = {"fixed": 0, "open": 1, "true": 0, "false": 1}
+
+#: Outreach-claim rows: ~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md,
+#: claim set decided by the user on 2026-09-14. They sit in dq_checks.json beside the DQ rows
+#: but are NOT markdown ledger rows, so the ledger coverage check and the three caps ignore
+#: them. `declared` is "true" (the public claim holds, its check must pass) or "false" (known
+#: not to hold yet, its check must fail) -- enforced both ways, exactly like fixed/open.
+_OUTREACH_PREFIX = "OC-"
 
 _TIMEOUT = 900
 
@@ -189,6 +197,13 @@ def run_one(dq_id: str, spec: dict, verbose: bool = False) -> tuple[str, str]:
             f"UNVERIFIED rather than failing. It is not evidence either way."
         )
 
+    # A bare "python" resolves through PATH, which need not be the interpreter running this file. On
+    # the 2026-09-14 outreach run it was a different venv, and a check whose test imports packages only
+    # this interpreter has errored on collection and read as a failing claim. Run checks with the same
+    # interpreter as the runner; in CI the two are already identical, so nothing there changes.
+    if cmd and cmd[0] in ("python", "python3"):
+        cmd = [sys.executable, *cmd[1:]]
+
     try:
         # Optional "cwd" on a check spec, relative to the repo root. Some
         # defects live in a subproject and their check will not run from here:
@@ -242,6 +257,16 @@ def run_one(dq_id: str, spec: dict, verbose: bool = False) -> tuple[str, str]:
         return "RED", (
             "declared FIXED but the check FAILS - a regression, or a fix that "
             "never held. " + (spec.get("red_when") or "")
+        )
+    if declared == "true":
+        return "RED", (
+            "declared TRUE but the check FAILS - the public claim no longer holds. "
+            + (spec.get("red_when") or "")
+        )
+    if declared == "false":
+        return "RED", (
+            "declared FALSE but the check PASSES - the claim now appears to hold and "
+            "the row never caught up. Verify, then set declared to 'true'."
         )
     return "RED", (
         "declared OPEN but the check PASSES - it appears to be fixed and the "
@@ -713,6 +738,80 @@ def unread_baselines() -> list[str]:
     return out
 
 
+def _claim_number(claim_id: str) -> int:
+    digits = re.sub(r"\D", "", claim_id)
+    return int(digits) if digits else 0
+
+
+def _outreach() -> int:
+    """The outreach stop signal: is every public claim we intend to make true?
+
+    Spec: ~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md, claim set decided
+    2026-09-14. "Done" means this returns 0 and nothing else does. Exit codes:
+
+      0  every blocking claim is declared true and its check passes. The stop signal. It is
+         evidence for lifting the outreach hold, never the decision.
+      3  not done yet, and the file is honest about it: every claim still failing is declared
+         false or has no check, and no declared-true claim fails. CI accepts this.
+      1  the file contradicts reality: a claim declared true fails, or one declared false now
+         passes. CI fails on this, as it does on the DQ status ratchet.
+      2  a blocking claim could not be verified here (no database, a probe that could not run,
+         or declared unverifiable) and nothing was contradicted. Never counted as done.
+
+    The spec's §6 folded "not done" into exit 1; it is split out so the gate can run in CI from
+    today, while most claims are still false, without CI being permanently red.
+    """
+    checks = load_checks()
+    rows = {k: v for k, v in checks.items()
+            if k.startswith(_OUTREACH_PREFIX) and isinstance(v, dict) and v.get("blocks_outreach")}
+    if not rows:
+        print("OUTREACH: FAILED - no blocking outreach claim rows in .claude/dq_checks.json.")
+        return 1
+
+    passing, not_yet, contradicted, unverified = [], [], [], []
+    for cid in sorted(rows, key=_claim_number):
+        spec = rows[cid]
+        claim = spec.get("claim") or ""
+        if spec.get("declared") == "unverifiable":
+            unverified.append(cid)
+            print(f"  UNVERIFIABLE  {cid}: {claim}")
+            continue
+        verdict, detail = run_one(cid, spec)
+        if verdict == "RED":
+            contradicted.append(cid)
+            print(f"  CONTRADICTED  {cid}: {claim}\n                {detail}")
+        elif verdict in ("UNKNOWN", "ERROR"):
+            unverified.append(cid)
+            print(f"  NOT VERIFIED  {cid}: {claim}\n                {detail}")
+        elif verdict == "NO-CHECK":
+            not_yet.append(cid)
+            print(f"  NO CHECK      {cid}: {claim}\n                "
+                  f"{spec.get('why_no_check') or 'no reason recorded'}")
+        elif spec.get("declared") == "true":
+            passing.append(cid)
+            print(f"  PASS          {cid}: {claim}")
+        else:
+            not_yet.append(cid)
+            print(f"  NOT YET       {cid}: {claim}")
+
+    print()
+    print(f"OUTREACH: {len(passing)} of {len(rows)} claims pass; {len(not_yet)} not yet; "
+          f"{len(unverified)} not verified here; {len(contradicted)} contradicted.")
+    if contradicted:
+        print("OUTREACH: FAILED - a claim's declared state contradicts its check. Fix the row "
+              "that is wrong, in the same PR that changed the truth.")
+        return 1
+    if unverified:
+        print("OUTREACH: NOT VERIFIED - at least one claim could not be checked here. Not done.")
+        return 2
+    if not_yet:
+        print("OUTREACH: NOT READY - the file is consistent; the claims above are not yet true.")
+        return 3
+    print("OUTREACH: READY - every blocking claim passes. The outreach hold still lifts only "
+          "on the user's explicit say-so.")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--id", help="run a single DQ id")
@@ -724,7 +823,12 @@ def main() -> int:
                     help="print the defect status report, generated not typed")
     ap.add_argument("--progress", action="store_true",
                     help="show how long each tracked number has been standing still")
+    ap.add_argument("--outreach", action="store_true",
+                    help="run the outreach claim rows: exit 0 only when every blocking claim passes")
     args = ap.parse_args()
+
+    if args.outreach:
+        return _outreach()
 
     if args.progress:
         return _progress()
@@ -737,7 +841,8 @@ def main() -> int:
 
     # --- coverage: the ledger cannot grow rows nobody has to think about ---
     missing = [i for i in ids if i not in checks]
-    orphan = [i for i in checks if i not in ids and not i.startswith("_")]
+    orphan = [i for i in checks if i not in ids and not i.startswith("_")
+              and not i.startswith(_OUTREACH_PREFIX)]
 
     if args.list:
         for dq in ids:

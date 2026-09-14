@@ -60,7 +60,7 @@ const DATA_POINTS = [
   },
   {
     label: 'DCP numeric controls',
-    detail: `Setbacks, parking rates, landscaping, site coverage, building separation — ${COVERAGE_DISPLAY.dcpSetbackRows} rows across ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs. Full structured provisions for ${COVERAGE_DISPLAY.dcpFullCouncils} councils.`,
+    detail: `Setbacks, parking rates, landscaping, site coverage, building separation — ${COVERAGE_DISPLAY.dcpSetbackRows} rows across ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs.`,
   },
   {
     label: 'SEPP requirements',

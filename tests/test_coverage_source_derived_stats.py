@@ -1,12 +1,14 @@
 """The published numbers that come from SOURCE FILES, not the database.
 
 `scripts/verify_coverage_stats.py` verifies everything in `coverage.ts` that a SQL
-query can answer. Three published figures cannot be reached that way, and until
+query can answer. Two published figures cannot be reached that way, and until
 this file they were verified by nothing at all:
 
     govDataSources             the DATA_SOURCES list rendered on the homepage
     secondaryDwellingCouncils  a generated file, sourced from an EXTERNAL project
-    dcpFullCouncils            councils with a structured DCP config
+
+A third, dcpFullCouncils ("7 councils with full structured provisions"), was retired on
+2026-09-14 (outreach claim OC-14): no council holds its own target set of DCP chapters.
 
 `coverage.ts` calls this group "editorial/config-derived facts ... (not
 auto-verifiable)". That was true of the mechanism, not of the facts: each is a
@@ -81,26 +83,12 @@ def test_the_secondary_dwelling_data_states_when_it_was_generated():
     assert m, "secondary-dwelling-stats.ts no longer records DATA_AS_OF"
 
 
-def test_dcp_full_councils_matches_the_configs_that_exist():
-    """7 = 3 Inner West + 4 distinct councils in COUNCIL_CONFIGS.
-
-    The registry has SIX keys and four councils -- `sydney_dcp` and `ku-ring-gai`
-    are aliases whose values are the same config object as their siblings. Counting
-    keys would publish 9. This counts distinct config OBJECTS, which is what
-    "councils with a structured config" means.
-    """
-    src = CONFIG_INIT.read_text(encoding="utf-8")
-    m = re.search(r"COUNCIL_CONFIGS:\s*dict\[str,\s*dict\]\s*=\s*\{(.*?)\n\}", src, re.S)
-    assert m, "COUNCIL_CONFIGS not found"
-    distinct_configs = set(re.findall(r":\s*(\w+_CONFIG)", m.group(1)))
-    inner_west = {"ASHFIELD_CONFIG", "LEICHHARDT_CONFIG", "MARRICKVILLE_CONFIG"}
-    for name in inner_west:
-        assert name in src, f"{name} is no longer imported by enrichment/config"
-    expected = len(distinct_configs) + len(inner_west)
-    assert published()["dcpFullCouncils"] == expected, (
-        f"coverage.ts publishes dcpFullCouncils={published()['dcpFullCouncils']} but "
-        f"{expected} configs exist: {sorted(distinct_configs)} plus Inner West's "
-        f"{sorted(inner_west)}"
+def test_the_retired_full_councils_figure_stays_retired():
+    """dcpFullCouncils was retired on 2026-09-14 (outreach claim OC-14). A "full" council
+    would have to hold its own target set of DCP chapters, and none does. Re-adding the key
+    would republish a claim the user decided to stop making."""
+    assert "dcpFullCouncils" not in published(), (
+        "coverage.ts publishes dcpFullCouncils again; it was retired by decision (OC-14)"
     )
 
 

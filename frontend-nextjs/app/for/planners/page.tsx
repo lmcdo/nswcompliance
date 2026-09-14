@@ -9,7 +9,7 @@ import { COVERAGE_DISPLAY } from '@/lib/coverage';
 export const metadata: Metadata = {
   title: 'For Town Planners & Planning Consultants — PlotDetect',
   description:
-    'Cut site analysis from 2 hours to 10 minutes. Zone permissibility, LEP/DCP controls, SEPP requirements, spatial overlays, and flood/bushfire status — for any NSW address. Built for planning professionals.',
+    'Zone permissibility, LEP/DCP controls, SEPP requirements, spatial overlays, and flood/bushfire status — for any NSW address. Built for planning professionals.',
   keywords: [
     'planning consultant tools',
     'town planner software',
@@ -22,41 +22,31 @@ export const metadata: Metadata = {
   ],
 };
 
-const TIME_SAVINGS = [
+// Retired 2026-09-14 (outreach claim OC-15): a before/after time table ("30–60 min -> 10 seconds")
+// had no measurement on either side. What each lookup returns is stated; how long it saves is not.
+const LOOKUPS = [
   {
     task: 'Zone + permitted uses lookup',
-    before: '10–15 min',
-    after: 'Instant',
     description: 'Zone code, full permitted/prohibited table, and legislation URL — from the Planning Portal API, not a PDF.',
   },
   {
     task: 'LEP numeric controls',
-    before: '5–10 min',
-    after: 'Instant',
     description: 'FSR, height, minimum lot size, heritage listing, acid sulfate soil class — per lot, not per map sheet.',
   },
   {
-    task: 'DCP controls extraction',
-    before: '30–60 min',
-    after: '10 seconds',
-    description: `Setbacks, parking rates, landscaping, site coverage — numeric fields with clause citations. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs, ${COVERAGE_DISPLAY.dcpSetbackRows} rows. Full structured provisions for ${COVERAGE_DISPLAY.dcpFullCouncils} councils.`,
+    task: 'DCP numeric controls',
+    description: `Setbacks, parking rates, landscaping, site coverage — numeric fields with their source. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs, ${COVERAGE_DISPLAY.dcpSetbackRows} rows.`,
   },
   {
     task: 'SEPP applicability check',
-    before: '15–20 min',
-    after: 'Instant',
     description: 'Housing SEPP, Exempt & Complying, Transport & Infrastructure, Resilience & Hazards — which clauses apply to this address.',
   },
   {
     task: 'Spatial overlay check',
-    before: '10–15 min',
-    after: 'Instant',
     description: 'Flood prone land, bushfire prone land, heritage conservation area, riparian corridor, foreshore building line, ANEF contours.',
   },
   {
     task: 'Flood depth + bushfire BAL',
-    before: '20–30 min (if available)',
-    after: 'Instant',
     description: `Modelled flood depth at ARI return periods for the ${COVERAGE_DISPLAY.floodDepthStudies} ingested council studies that carry depth; flood water level for Hawkesbury; the mapped flood planning area elsewhere. Bush Fire Prone Land category and estimated BAL band.`,
   },
 ];
@@ -70,7 +60,7 @@ const WORKFLOW_STEPS = [
   {
     icon: Layers,
     title: 'Review the controls',
-    description: 'Zone, LEP, DCP, SEPP, spatial overlays — all on one screen with clause citations.',
+    description: 'Zone, LEP, DCP, SEPP, spatial overlays — all on one screen, each with its source.',
   },
   {
     icon: FileText,
@@ -93,12 +83,12 @@ export default function PlannersPage() {
           </span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-          Site analysis in 10 minutes, not 2 hours
+          The planning data for a site, on one screen
         </h1>
         <p className="text-gray-500 text-lg max-w-xl">
           You already know the planning system. You don&apos;t need it explained — you need the data
-          pulled together faster. PlotDetect gives you zone permissibility, LEP/DCP controls, SEPP
-          applicability, and spatial overlays for any NSW address, instantly.
+          pulled together. PlotDetect gives you zone permissibility, LEP/DCP controls, SEPP
+          applicability, and spatial overlays for any NSW address, each with its source.
         </p>
         <div className="flex flex-wrap gap-3 mt-8">
           <TrackedLink
@@ -112,36 +102,22 @@ export default function PlannersPage() {
         </div>
       </section>
 
-      {/* Time savings table */}
+      {/* What it pulls together */}
       <section className="bg-gray-50 border-y border-gray-100 py-12 px-6">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">What it replaces</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">What it pulls together</h2>
           <p className="text-sm text-gray-500 mb-6">
-            Time estimates based on manual lookups across Planning Portal, council DCP PDFs, and spatial viewers.
+            The lookups you would otherwise run across the Planning Portal, council DCP PDFs, and spatial viewers.
           </p>
           <div className="space-y-3">
-            {TIME_SAVINGS.map(({ task, before, after, description }) => (
+            {LOOKUPS.map(({ task, description }) => (
               <div key={task} className="bg-white rounded-xl border border-gray-200 p-4">
-                <div className="flex items-baseline justify-between mb-1">
+                <div className="mb-1">
                   <h3 className="font-semibold text-gray-900 text-sm">{task}</h3>
-                  <div className="flex items-center gap-2 text-xs flex-shrink-0">
-                    <span className="text-gray-400 line-through">{before}</span>
-                    <ArrowRight className="w-3 h-3 text-gray-300" />
-                    <span className="text-teal-600 font-semibold">{after}</span>
-                  </div>
                 </div>
                 <p className="text-xs text-gray-500">{description}</p>
               </div>
             ))}
-          </div>
-          <div className="mt-6 bg-teal-50 rounded-xl border border-teal-200 p-4">
-            <div className="flex items-baseline justify-between">
-              <p className="font-bold text-teal-800 text-sm">Total time saved per site</p>
-              <p className="text-teal-600 font-bold text-sm">~90 minutes</p>
-            </div>
-            <p className="text-xs text-teal-600 mt-1">
-              At 3 sites/week, that&apos;s 4.5 hours back — or 2 extra billable assessments.
-            </p>
           </div>
         </div>
       </section>
@@ -177,7 +153,7 @@ export default function PlannersPage() {
             {[
               'Not a planning assessment — it gathers data, you interpret it',
               'Not a DA preparation tool — it shows controls, not application forms',
-              'Not a replacement for council pre-lodgement — it saves time before the meeting',
+              'Not a replacement for council pre-lodgement — it helps you prepare for the meeting',
               'Not legal advice — all data links to the source instrument',
             ].map((item) => (
               <div key={item} className="flex items-start gap-2">

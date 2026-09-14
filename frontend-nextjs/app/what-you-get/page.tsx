@@ -28,13 +28,6 @@ const TIERS = [
       'Council DCP controls extracted into numeric fields with clause citations. Coverage expands as each council is onboarded — everywhere else we surface the source document to check.',
     stat: `${COVERAGE_DISPLAY.dcpNumericCouncils} councils`,
   },
-  {
-    label: 'Full structured DCP',
-    scope: 'Every provision type, precinct-aware',
-    detail:
-      'The complete Development Control Plan — all provision types, precinct filtering and DA-mode workflow — for the councils with a full structured build.',
-    stat: `${COVERAGE_DISPLAY.dcpFullCouncils} councils`,
-  },
 ];
 
 export default function WhatYouGetPage() {
