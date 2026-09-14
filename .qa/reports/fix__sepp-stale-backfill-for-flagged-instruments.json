@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what the production legislation monitor writes to housing_sepp_standards and cdc_eligibility_standards on every run, fixes a crash in the path that records a detected SEPP change, and closes a data-quality row and an outreach claim that both read those tables. A wrong change either stamps notices on standards that reflect the current law, or leaves amended standards serving with no notice.",
-  "commit_hash": "9f1225ce",
+  "commit_hash": "c797de50",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
