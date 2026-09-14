@@ -62,7 +62,7 @@ const DOMAINS: { domain: string; items: Capability[] }[] = [
         title: 'DCP controls',
         data: 'Setbacks, parking rates, landscaping and site coverage as numeric fields with clause citations.',
         youCanDo: 'Design to the actual council controls before lodging a DA.',
-        coverage: `${COVERAGE_DISPLAY.dcpNumericCouncils} councils numeric · ${COVERAGE_DISPLAY.dcpFullCouncils} full structured`,
+        coverage: `${COVERAGE_DISPLAY.dcpNumericCouncils} councils numeric`,
         source: 'Council Development Control Plans',
         href: '/assessment',
         personas: ['conveyancer', 'planner', 'builder'],

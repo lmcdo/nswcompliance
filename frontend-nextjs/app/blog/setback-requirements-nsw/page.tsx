@@ -442,7 +442,7 @@ export default function SetbackRequirementsNSWPage() {
           PlotDetect extracts DCP setback controls into structured numeric fields with clause
           citations — front, side, rear, and secondary street setbacks — for{' '}
           <Link href="/assessment" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">
-            {COVERAGE_DISPLAY.dcpNumericCouncils} LGAs covering numeric controls and {COVERAGE_DISPLAY.dcpFullCouncils} councils with full structured provisions
+            {COVERAGE_DISPLAY.dcpNumericCouncils} LGAs covering numeric controls
           </Link>.
           Enter your address to see which setbacks apply.
         </p>

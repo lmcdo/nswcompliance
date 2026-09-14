@@ -924,6 +924,252 @@
       "passes_when": "exit 0 - no row marked precinct_specific passes the served guard (lga, is_current, needs_review) that scripts/conveyancing_db.fetch_dcp_setbacks applies",
       "red_when": "a scope-limited row is served LGA-wide. Reads 7 on 2026-09-12: ashfield front_setback 4.0m (Haberfield Yasmar Estate), leichhardt front_setback 1.0m x2 (Birchgrove, Balmain neighbourhood minimums), ryde car_parking x4 (Macquarie Park Corridor). This CAN reach 0, unlike DQ-97/98 - the fix is for the guarded read to carry scope, not for the rows to be deleted.",
       "note": "Registered 2026-09-12. applicability is selected and passed through to consumers but never filtered on, so a precinct control is served to every address in the LGA. The probe reproduces the consumer's guard exactly; if fetch_dcp_setbacks changes its guard, this probe measures a population no user sees - the failure DQ-97 hit on 2026-09-10, when its count went to zero because the rows moved rather than because anything was repaired."
+    },
+    "OC-1": {
+      "kind": "outreach_claim",
+      "claim": "Numeric DCP controls, each cited to its clause, for the published number of councils (coverage.ts dcpNumericCouncils).",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/verify_coverage_stats.py",
+        "--field",
+        "dcpNumericCouncils"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - the live served council count equals the published figure",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: check passed on the gate's first full run against production"
+    },
+    "OC-2": {
+      "kind": "outreach_claim",
+      "claim": "The published number of councils holding front, side and rear setbacks (dcpSetbackTripleCouncils) is the live number.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/verify_coverage_stats.py",
+        "--field",
+        "dcpSetbackTripleCouncils"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - the live count equals the published figure",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: check passed on the gate's first full run against production"
+    },
+    "OC-3": {
+      "kind": "outreach_claim",
+      "claim": "1,000+ numeric DCP controls (dcpSetbackRows).",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/verify_coverage_stats.py",
+        "--field",
+        "dcpSetbackRows"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - the live row count is at least the published figure",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: check passed on the gate's first full run against production"
+    },
+    "OC-4": {
+      "kind": "outreach_claim",
+      "claim": "53,000+ provisions, 39,000+ of them actionable (provisionsTotal, dcpActionableProvisions).",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "false",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-4"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - both live counts are at least the published figures, and no served rule text carries extraction residue (DQ-76), scrambled map labels (DQ-78), margin fragments (DQ-97) or doubled-letter corruption (DQ-29)",
+      "red_when": "the declared state and the check disagree in either direction"
+    },
+    "OC-5": {
+      "kind": "outreach_claim",
+      "claim": "All 128 NSW councils covered by the statewide layers relayed from the Planning Portal (lgasCovered).",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/verify_coverage_stats.py",
+        "--field",
+        "lgasCovered"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - the live zone-layer council count equals the published figure and never exceeds 128",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: check passed on the gate's first full run against production"
+    },
+    "OC-6": {
+      "kind": "outreach_claim",
+      "claim": "2,039 heritage areas; 470+ definitions; 45 SEPP standards; 23 ADG criteria.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "false",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-6"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - each live count matches its published figure, and no Housing SEPP standard a known amendment should have staled is still served (DQ-96)",
+      "red_when": "the declared state and the check disagree in either direction"
+    },
+    "OC-7": {
+      "kind": "outreach_claim",
+      "claim": "Council flood studies: 4 ingested, modelled flood depth from 3.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "false",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-7"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - the published counts match FLOOD_STUDIES and depth delivery is observed in production",
+      "red_when": "the declared state and the check disagree in either direction"
+    },
+    "OC-8": {
+      "kind": "outreach_claim",
+      "claim": "Every served DCP number carries its clause, the council's own sentence and a link to the source PDF.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "false",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-8"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three, and no served number fails its own quote (DQ-39)",
+      "red_when": "the declared state and the check disagree in either direction"
+    },
+    "OC-9": {
+      "kind": "outreach_claim",
+      "claim": "We refuse rather than guess: missing data is stated, never shown as 'no', and no verdict is reported that we did not compute.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-9"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - the three-state and fabricated-verdict tests pass, DQ-50 is clean, and the lead-verdict integrity test passes",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: check passed on the gate's first full run against production"
+    },
+    "OC-10": {
+      "kind": "outreach_claim",
+      "claim": "Planning Portal data is queried live; DCP data is dated to the plan it came from.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "false",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-10"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - every served council resolves a plan date, and DQ-61 and DQ-70 are clean",
+      "red_when": "the declared state and the check disagree in either direction"
+    },
+    "OC-11": {
+      "kind": "outreach_claim",
+      "claim": "Permitted uses by zone for 26 councils.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-11"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - 26 councils have every LEP zone marked complete",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: check passed on the gate's first full run against production"
+    },
+    "OC-12": {
+      "kind": "outreach_claim",
+      "claim": "No council data is stored, exported or shared; all data sources are public government datasets (/for/councils).",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "false",
+      "check": null,
+      "blocks_outreach": true,
+      "why_no_check": "Needs a definition before a check: 'council data' is not defined anywhere in the repo, and 'all data sources are public government datasets' must be tested against the list the embed actually calls. One bounded measurement decides it."
+    },
+    "OC-13": {
+      "kind": "outreach_claim",
+      "claim": "102 councils for secondary dwellings; 8 risk layers; 7 government data sources.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "false",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-13"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - the source-derived counts match their sources and riskLayers is grounded",
+      "red_when": "the declared state and the check disagree in either direction"
+    },
+    "OC-14": {
+      "kind": "outreach_claim",
+      "claim": "RETIRED 2026-09-14: the site no longer says '7 councils with full structured provisions'.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-14"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - no rendered page, component or lib string makes the retired claim",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: no rendered occurrence after DCPInterestForm was reworded"
+    },
+    "OC-15": {
+      "kind": "outreach_claim",
+      "claim": "RETIRED 2026-09-14: the site no longer states planner time savings ('10 minutes, not 2 hours', before/after minutes).",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-15"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - no rendered page, component or lib string makes the retired claim",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: check passed on the gate's first full run against production"
+    },
+    "OC-16": {
+      "kind": "outreach_claim",
+      "claim": "Shadow sun position is validated against an independent implementation (NREL SPA).",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "true",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-16"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - the calibration test passes against its pre-registered mark",
+      "red_when": "the declared state and the check disagree in either direction",
+      "verified": "2026-09-14: 123 calibration tests passed through the gate's own interpreter"
+    },
+    "OC-17": {
+      "kind": "outreach_claim",
+      "claim": "The rules and numbers shown apply to this property, from the plan in force.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "declared": "false",
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-17"
+      ],
+      "blocks_outreach": true,
+      "passes_when": "exit 0 - no precinct or town rule is served council-wide (DQ-99, DQ-66), no slot is ambiguous (DQ-32c), plans are versioned and current (DQ-61, DQ-70), no active chapter comes from a repealed plan, and no range is printed as a maximum",
+      "red_when": "the declared state and the check disagree in either direction"
     }
   }
 }

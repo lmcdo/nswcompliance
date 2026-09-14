@@ -55,7 +55,9 @@
  *                                FROM dcp_setback_controls WHERE is_current
  *                                  AND (needs_review IS NULL OR needs_review=FALSE)
  *                                  AND lga<>'nsw_statewide' AND lga<>'inner_west' GROUP BY lga)
- *                                SELECT count(*) FILTER (WHERE f>0 AND s>0 AND r>0) FROM t; -> 23
+ *                                SELECT count(*) FILTER (WHERE f>0 AND s>0 AND r>0) FROM t; -> 22
+ *                                (23 until 2026-09-14, when the outreach gate's first run measured 22
+ *                                live; an exact count must never overstate.)
  *                                (was 24 as of 2026-08-24; re-verified 2026-09-01 and re-derived
  *                                independently against a fresh session, not just the script's own
  *                                claim. burwood, cumberland, ku_ring_gai, parramatta and woollahra
@@ -70,10 +72,13 @@
  * Fields WITHOUT a DB query below are config- or source-derived. "Editorial" was
  * never a reason a number COULD NOT be verified — only a reason nobody had written
  * the check, which is how `lgasCovered: 130` claimed more councils than NSW has.
- * Three of them are now checked against their real source by
+ * Two of them are now checked against their real source by
  * tests/test_coverage_source_derived_stats.py: govDataSources (the homepage's own
- * DATA_SOURCES list), secondaryDwellingCouncils (the generated stats file) and
- * dcpFullCouncils (the configs that exist).
+ * DATA_SOURCES list) and secondaryDwellingCouncils (the generated stats file).
+ *
+ * dcpFullCouncils ("7 councils with full structured provisions") was RETIRED on
+ * 2026-09-14 by the user's decision on the outreach claim set (claim OC-14): no council
+ * holds its own target set of DCP chapters, so no council is "full". Do not re-add it.
  *
  * ⚠ riskLayers IS UNVERIFIED AND HAS NO SOURCE. Searched 2026-09-11: the
  * homepage's CLIMATE_HAZARDS (4), the /climate-risk hazards section (5), the
@@ -84,8 +89,6 @@
  * guess, which would only make it look measured.
  *
  * The remaining fields are frozen here so they stay consistent across pages:
- *   dcpFullCouncils            7 councils with full structured DCP configs
- *                                (3 Inner West _tag_x methods + 4 in COUNCIL_CONFIGS)
  *   seppStandards / adgCriteria  NOW DB-VERIFIED, see verify_coverage_stats.py.
  *                                seppStandards was published as 33 while
  *                                housing_sepp_standards held 45 AND /planning-standards
@@ -126,8 +129,7 @@ export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
   dcpNumericCouncils: 26,
-  dcpSetbackTripleCouncils: 23,
-  dcpFullCouncils: 7,
+  dcpSetbackTripleCouncils: 22,
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
@@ -150,8 +152,7 @@ export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
   dcpNumericCouncils: '26',
-  dcpSetbackTripleCouncils: '23',
-  dcpFullCouncils: '7',
+  dcpSetbackTripleCouncils: '22',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',

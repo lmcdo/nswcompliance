@@ -104,16 +104,16 @@ export function DCPInterestForm({ councilName, address }: DCPInterestFormProps) 
 
         {showCoverage && (
           <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-4">
-            {/* Full structured DCP */}
+            {/* DCP rule text (the earlier label was retired 2026-09-14, outreach claim OC-14) */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full bg-teal-500" />
                 <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Full structured DCP
+                  DCP rule text
                 </span>
               </div>
               <p className="text-xs text-gray-500 mb-2">
-                Complete provision text with TOC browser, PDF page images, topic filters, and precinct-specific controls.
+                Provision text with TOC browser, PDF page images, topic filters, and precinct-specific controls.
               </p>
               <span className="text-xs px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
                 Inner West (Ashfield, Marrickville, Leichhardt)

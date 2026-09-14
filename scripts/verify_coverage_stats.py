@@ -173,7 +173,25 @@ def parse_coverage_ts() -> dict[str, int]:
     return {k: int(v.replace(",", "")) for k, v in re.findall(r"(\w+):\s*([\d,]+)", body)}
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+    ap = argparse.ArgumentParser(description="Verify published coverage stats against the live database.")
+    ap.add_argument("--field", nargs="+", metavar="KEY",
+                    help="check only these COVERAGE keys (the outreach claim rows in "
+                         ".claude/dq_checks.json each name the keys their claim rests on)")
+    # argv=None means "no options", not sys.argv: tests call main() directly under pytest,
+    # whose own arguments must not be parsed as ours. The script entry point passes sys.argv.
+    args = ap.parse_args([] if argv is None else argv)
+    only = set(args.field) if args.field else None
+    checkable = set(QUERIES) | {"floodStudies", "floodDepthStudies"}
+    if only is not None and not only <= checkable:
+        print(f"ERROR: not a checkable COVERAGE key: {', '.join(sorted(only - checkable))}",
+              file=sys.stderr)
+        return 1
+
+    def wanted(key: str) -> bool:
+        return only is None or key in only
+
     try:
         from dotenv import load_dotenv
         import psycopg2
@@ -219,6 +237,8 @@ def main() -> int:
     print(f"  {'stat':<34}{'published':>11}{'live':>10}   status")
     print("  " + "-" * 66)
     for key, (label, sql) in QUERIES.items():
+        if not wanted(key):
+            continue
         want = published.get(key)
         if want is None:
             print(f"  {label:<34}{'—':>11}{'—':>10}   MISSING from coverage.ts")
@@ -239,34 +259,37 @@ def main() -> int:
     # --- non-DB invariants -------------------------------------------------
     # floodStudies: parsed from services/flood_truth.py, not the database.
     want_fs = published.get("floodStudies")
-    try:
-        live_fs = live_flood_study_count()
-    except Exception as exc:  # noqa: BLE001
-        print(f"  {'Council flood studies':<34}{'—':>11}{'—':>10}   UNREADABLE ({exc})")
-        drift.append(f"floodStudies: cannot read FLOOD_STUDIES ({exc})")
-    else:
-        ok = want_fs == live_fs
-        print(f"  {'Council flood studies':<34}{want_fs if want_fs is not None else '—':>11}"
-              f"{live_fs:>10}   {'OK' if ok else 'DRIFT'}")
-        if not ok:
-            drift.append(f"floodStudies: published {want_fs} vs FLOOD_STUDIES {live_fs}")
+    if wanted("floodStudies"):
+        try:
+            live_fs = live_flood_study_count()
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {'Council flood studies':<34}{'—':>11}{'—':>10}   UNREADABLE ({exc})")
+            drift.append(f"floodStudies: cannot read FLOOD_STUDIES ({exc})")
+        else:
+            ok = want_fs == live_fs
+            print(f"  {'Council flood studies':<34}{want_fs if want_fs is not None else '—':>11}"
+                  f"{live_fs:>10}   {'OK' if ok else 'DRIFT'}")
+            if not ok:
+                drift.append(f"floodStudies: published {want_fs} vs FLOOD_STUDIES {live_fs}")
 
     # floodDepthStudies: the subset that can answer DEPTH. Separate from the
     # count above ON PURPOSE -- any copy making a depth claim must read this one.
     want_fd = published.get("floodDepthStudies")
-    try:
-        live_fd = live_flood_depth_study_count()
-    except Exception as exc:  # noqa: BLE001
-        print(f"  {'  ...of those, with DEPTH':<34}{'—':>11}{'—':>10}   UNREADABLE ({exc})")
-        drift.append(f"floodDepthStudies: cannot read FLOOD_STUDIES ({exc})")
-    else:
-        ok = want_fd == live_fd
-        print(f"  {'  ...of those, with DEPTH':<34}{want_fd if want_fd is not None else '—':>11}"
-              f"{live_fd:>10}   {'OK' if ok else 'DRIFT'}")
-        if not ok:
-            drift.append(
-                f"floodDepthStudies: published {want_fd} vs has_depth=True count {live_fd}")
-    if (want_fd is not None and want_fs is not None) and want_fd > want_fs:
+    if wanted("floodDepthStudies"):
+        try:
+            live_fd = live_flood_depth_study_count()
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {'  ...of those, with DEPTH':<34}{'—':>11}{'—':>10}   UNREADABLE ({exc})")
+            drift.append(f"floodDepthStudies: cannot read FLOOD_STUDIES ({exc})")
+        else:
+            ok = want_fd == live_fd
+            print(f"  {'  ...of those, with DEPTH':<34}{want_fd if want_fd is not None else '—':>11}"
+                  f"{live_fd:>10}   {'OK' if ok else 'DRIFT'}")
+            if not ok:
+                drift.append(
+                    f"floodDepthStudies: published {want_fd} vs has_depth=True count {live_fd}")
+    if ((wanted("floodStudies") or wanted("floodDepthStudies"))
+            and want_fd is not None and want_fs is not None and want_fd > want_fs):
         drift.append(
             f"floodDepthStudies {want_fd} exceeds floodStudies {want_fs} — "
             "more studies answer depth than exist")
@@ -275,7 +298,7 @@ def main() -> int:
     # check that "130+" needed and did not have.
     total = published.get("totalNswCouncils")
     covered = published.get("lgasCovered")
-    if total is not None and covered is not None and covered > total:
+    if wanted("lgasCovered") and total is not None and covered is not None and covered > total:
         drift.append(
             f"lgasCovered: {covered} exceeds totalNswCouncils {total} — "
             "claims more councils than NSW has"
@@ -293,4 +316,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

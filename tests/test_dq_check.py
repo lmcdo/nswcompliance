@@ -58,7 +58,9 @@ def test_no_orphan_entries(dq):
     """An entry for a row that no longer exists means the ledger moved on."""
     checks = dq.load_checks()
     ids = set(dq.ledger_ids())
-    orphans = [i for i in checks if i not in ids and not i.startswith("_")]
+    # Outreach claim rows (OC-) are not markdown ledger rows by design; see dq_check._OUTREACH_PREFIX.
+    orphans = [i for i in checks if i not in ids and not i.startswith("_")
+               and not i.startswith(dq._OUTREACH_PREFIX)]
     assert not orphans, f"dq_checks.json has entries not in the ledger: {orphans}"
 
 
@@ -314,7 +316,9 @@ def test_the_three_ratchets_measure_different_sets(dq):
     all rows, unresolved-without-check, fixed-without-check."""
     checks = dq.load_checks()
     doc = json.loads(_CHECKS.read_text(encoding="utf-8"))
-    all_null = [k for k, v in checks.items() if not v.get("check")]
+    # The caps count DQ ledger rows only; outreach claim rows (OC-) are governed by --outreach.
+    all_null = [k for k, v in checks.items()
+                if not v.get("check") and not k.startswith(dq._OUTREACH_PREFIX)]
     unresolved_null = _unverified(checks, dq._UNRESOLVED)
     fixed_null = _fixed_no_check(checks)
     assert doc["_max_no_check"] == len(all_null)
