@@ -78,12 +78,17 @@ def _violations(path: Path) -> list[str]:
     return out
 
 
-@pytest.mark.parametrize("path", _pages(), ids=lambda p: str(p.relative_to(APP)))
+def _rel(path: Path) -> str:
+    return str(path.relative_to(APP)).replace("\\", "/")
+
+
+# Allowlisted files are not collected here at all: a skipped test counts against the CI
+# skip-total ratchet (scripts/check_dependency_skips.py) as a test that did not run. Each one is
+# still checked, both ways, by test_every_allowlisted_file_still_states_a_count below.
+@pytest.mark.parametrize("path", [p for p in _pages() if _rel(p) not in ALLOWED], ids=_rel)
 def test_no_page_hardcodes_a_council_count(path: Path):
-    rel = str(path.relative_to(APP)).replace("\\", "/")
+    rel = _rel(path)
     found = _violations(path)
-    if rel in ALLOWED:
-        pytest.skip(f"allowed: {ALLOWED[rel]}")
     assert not found, (
         f"{rel} states a council count as a literal. Use COVERAGE_DISPLAY so it "
         f"moves with the data, or add the file to ALLOWED with the reason:\n  "
