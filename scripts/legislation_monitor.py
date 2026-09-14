@@ -137,7 +137,7 @@ def mark_dependent_standards_stale(
     )
     cur = conn.cursor()
     for table, predicate in STANDARDS_TABLES_BY_INSTRUMENT.get(instrument_key, []):
-        where = "stale_since IS NULL" + (f" AND ({predicate})" if predicate else "")
+        where = "stale_since IS NULL" + (f" AND ({_as_parameterised_sql(predicate)})" if predicate else "")
         cur.execute(
             f"UPDATE {table} SET stale_since = NOW(), stale_reason = %s WHERE {where}",
             (reason,),
@@ -148,6 +148,67 @@ def mark_dependent_standards_stale(
                 f"served with a notice until re-checked"
             )
     cur.close()
+    return notes
+
+
+# prior-art-checked: reuse not viable as-is -- this EXTENDS the existing W3 auto-stale code in this same file
+# (STANDARDS_TABLES_BY_INSTRUMENT and mark_dependent_standards_stale), reusing its table map, predicates and
+# notice wording. dq_probe_live.py's DQ-96 probe only counts the gap; the other flagged files neither stamp
+# stale_since nor read instrument_registry.needs_review.
+def _as_parameterised_sql(predicate: str) -> str:
+    """A STANDARDS_TABLES_BY_INSTRUMENT predicate, ready for a statement that also takes %s parameters.
+
+    psycopg2 formats every % in such a statement, so "ILIKE '%housing%'" read '%h' as a placeholder and
+    raised IndexError (checked with cursor.mogrify, 2026-09-14). The first SEPP Housing or E&C Codes change
+    detected after #839 would have raised inside check_instrument: the instrument logged as an error rather
+    than reported as changed, and its standards rows left with no notice. Doubling each % sends it through
+    as a literal."""
+    return predicate.replace("%", "%%")
+
+
+def backfill_stale_for_flagged_instruments(conn) -> list[str]:
+    """Stamp the standards rows an ALREADY-flagged amendment should have staled.
+
+    mark_dependent_standards_stale runs only when a check sees a version change happen, so an instrument
+    flagged before that path existed (#839, 2026-07-29) was never stamped. On 2026-09-14, 33 SEPP Housing
+    standards stored before its 2026-05-15 change, and 2 tied to the E&C Codes SEPP, were served with no
+    notice (DQ-96). This runs on every monitor run, so the gap cannot recur for the next instrument.
+
+    Stamps only rows stored BEFORE the detected change (a row stored afterwards may already reflect the
+    amended text), only rows with no notice yet (the first notice wins), and dates the notice from the
+    change, not from today. Returns lines for the log."""
+    notes: list[str] = []
+    cur = conn.cursor()
+    try:
+        for instrument_key, tables in STANDARDS_TABLES_BY_INSTRUMENT.items():
+            cur.execute(
+                "SELECT instrument_label, current_version, last_changed FROM instrument_registry "
+                "WHERE instrument_key = %s AND is_active AND needs_review AND last_changed IS NOT NULL",
+                (instrument_key,),
+            )
+            flagged = cur.fetchone()
+            if flagged is None:
+                continue
+            label, current_version, last_changed = flagged
+            reason = (
+                f"{label} version changed (detected {last_changed:%Y-%m-%d}; now "
+                f"{current_version or 'unknown'}). This standard was stored before that change "
+                f"and has not been re-checked."
+            )
+            for table, predicate in tables:
+                where = "stale_since IS NULL AND created_at < %s" + (
+                    f" AND ({_as_parameterised_sql(predicate)})" if predicate else "")
+                cur.execute(
+                    f"UPDATE {table} SET stale_since = %s, stale_reason = %s WHERE {where}",
+                    (last_changed, reason, last_changed),
+                )
+                if cur.rowcount:
+                    notes.append(
+                        f"  {table}: {cur.rowcount} standards row(s) stored before the {label} change "
+                        f"marked STALE — served with a notice until re-checked"
+                    )
+    finally:
+        cur.close()
     return notes
 
 
@@ -840,6 +901,22 @@ def main():
                 stored_version=instrument["current_version"],
                 source=source_used, error=str(exc),
             ))
+
+    # Every run, whatever the source said: an instrument already flagged before the fresh-change path could
+    # stamp its standards (DQ-96) gets them stamped here. Independent of this run's fetches, so a fetch
+    # failure above does not skip it; a failure here is reported, never allowed to hide the checks above.
+    try:
+        backfill_notes = backfill_stale_for_flagged_instruments(conn)
+        if args.dry_run:
+            conn.rollback()
+        else:
+            conn.commit()
+        for note in backfill_notes:
+            print(f"  [stale backfill]{' (dry run, rolled back)' if args.dry_run else ''} {note.strip()}")
+    except Exception as exc:
+        conn.rollback()
+        print(f"  [stale backfill] ERROR {exc}")
+        send_telegram(f"Legislation Monitor ERROR\nStale-notice backfill failed: {exc}")
 
     conn.close()
 

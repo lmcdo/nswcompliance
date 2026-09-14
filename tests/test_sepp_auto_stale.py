@@ -153,11 +153,13 @@ class TestMonitorMarking:
         conn = FakeConn()
         mark_stale(conn, "sepp_housing_2021", "SEPP (Housing) 2021", "a", "b")
         housing_sql = next(s for s, _ in conn._cur.executed if "housing_sepp_standards" in s)
-        assert "ILIKE '%housing%'" in housing_sql
+        # %% because the statement also takes a %s parameter: psycopg2 formats every %, and an unescaped
+        # '%housing%' raised IndexError (tests/test_legislation_monitor_stale_backfill.py runs it for real).
+        assert "ILIKE '%%housing%%'" in housing_sql
         conn2 = FakeConn()
         mark_stale(conn2, "sepp_exempt_complying_2008", "E&C Codes SEPP", "a", "b")
         ec_housing_sql = next(s for s, _ in conn2._cur.executed if "housing_sepp_standards" in s)
-        assert "ILIKE '%exempt%'" in ec_housing_sql
+        assert "ILIKE '%%exempt%%'" in ec_housing_sql
         cdc_sql = next(s for s, _ in conn2._cur.executed if "cdc_eligibility_standards" in s)
         assert "ILIKE" not in cdc_sql   # whole table is E&C-derived
 
