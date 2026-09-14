@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds the project's finish line for outreach and wires it into CI, and changes public copy on nine surfaces (two claims retired, one published count corrected). A gate that can pass while a public claim is false would re-create the exact failure the outreach hold exists for; a CI step that is wrong blocks or silently waves through every PR.",
-  "commit_hash": "b6cc16f1",
+  "commit_hash": "bdef3714",
   "files": [
     ".claude/dq_checks.json",
     ".github/workflows/gates.yml",
