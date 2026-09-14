@@ -33,6 +33,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
+import outreach_flood_depth_probe as flood_probe  # noqa: E402  (path set above)
+
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 Result = tuple[str, str]
 
@@ -374,12 +376,6 @@ SELECT (SELECT count(*) FROM dcp_setback_controls s
            AND (r.id IS NULL OR (r.council_url IS NULL AND r.council_page_url IS NULL)))"""
 
 
-def not_yet_grounded(label: str, reason: str) -> Result:
-    """A part of a kept claim that nothing can verify yet. It fails until someone replaces this
-    sub-check with a real one; it never passes by itself."""
-    return FAIL, f"{label}: {reason}"
-
-
 # ── the claims ─────────────────────────────────────────────────────────────────────────────────────
 
 CLAIMS: dict[str, list[Callable[[], Result]]] = {
@@ -400,11 +396,7 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     ],
     "OC-7": [
         lambda: _coverage_fields("floodStudies", "floodDepthStudies"),
-        lambda: not_yet_grounded(
-            "flood depth delivered in production",
-            "the R2 raster download for the depth studies has never been observed succeeding on the "
-            "production host (claim inventory §5.1). Replace this with a probe of the production flood "
-            "answer for a Tweed, Wollongong or Redbank address."),
+        lambda: flood_probe.flood_depth_delivered_in_production(),
     ],
     # Added 2026-09-14: 15 active chapters' public links named an older copy than the one their rules were read
     # from, so Waverley DCP 2022's link opened a 490-page PDF while its rules cite the 448-page one. Compared

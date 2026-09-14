@@ -1,0 +1,120 @@
+{
+  "tier": "standard",
+  "justification": "Replaces claim 7's placeholder sub-check with a live observation of the production flood answer and flips OC-7 to true. No served code changes, but a wrong probe would let the outreach gate report modelled depth as delivered when the production host cannot sample the rasters. 2026-09-15: also hardens the probe against three verified cross-review findings (valid JSON of the wrong shape raised instead of failing, a NaN or infinite depth passed, a non-production host could produce a production PASS) and flips OC-12 to true after the production re-link/retire of its 29 untraced rows.",
+  "commit_hash": "42e390c8",
+  "files": [
+    "scripts/outreach_flood_depth_probe.py",
+    "scripts/outreach_claim_checks.py",
+    "tests/test_outreach_flood_depth_probe.py",
+    ".claude/dq_checks.json",
+    ".qa/reports/fix__oc7-flood-depth-probe.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/outreach_claim_checks.py OC-7",
+    "fails_when": "Production does not name a depth study at its point, names it without a 1% AEP depth, returns a depth more than 5 cm from the council raster cell, or returns an HTTP error; or FLOOD_STUDIES gains or loses a has_depth study without a matching probe point.",
+    "observed_red": "Before this change the same command printed 'FAIL flood depth delivered in production: the R2 raster download for the depth studies has never been observed succeeding' and the outreach run listed 'NOT YET OC-7'. Six mutations of the probe were run one at a time against the unit tests: any named study counts (1 failed), a missing depth passes (1 failed), depth not compared (1 failed), unreachable reads as pass (1 failed), one study's failure hidden (2 failed), has_depth ignored when listing keys (3 failed); restored: 8 passed, 1 deselected.",
+    "external_authority": "The councils' own design rasters decide the expected depth: tweed Tweed_001_1p_d_Max.tif holds 2.008 m at row 3285 col 10500 (EPSG:28356), wollongong Wollongong_1pct_d_Max.asc 1.214 m, redbank RedbankCk_DES_1pcAEP_d_Max_ProcessedOutput.tif 1.473 m. Production answered 2.01, 1.21 and 1.47 on 2026-09-14, and again inside the integration test run."
+  },
+  "pre_impl": {
+    "existing_data": "FloodRequest takes address, lat, lng, report_id and persist; persist=false suppresses every report and audit write. The answer carries outputs.flood_studies with study_key and design['1pct'].depth_m. verify_coverage_stats already counts has_depth studies from the FLOOD_STUDIES source block.",
+    "assumption_mismatch": "The Tweed depth raster has no CRS in its header, so a naive conversion failed; the study config supplies EPSG:28356. The first Redbank cell picked from a decimated read was no-data at full resolution, so the point was re-picked with a full-resolution window.",
+    "new_vs_existing": "One new probe module beside outreach_claim_checks.py, which sits at the 500-line limit; the claim wiring replaces a placeholder lambda and removes the placeholder helper it no longer uses."
+  },
+  "functions": [
+    {
+      "name": "judge",
+      "file_line": "scripts/outreach_flood_depth_probe.py:84",
+      "input": "A study key, the depth the council raster holds at the probe cell, and the production answer body.",
+      "output": "PASS with the depth when the named study's 1% AEP depth is within 5 cm; FAIL naming what was missing or different otherwise.",
+      "if_none": "Any level of the body that is not the expected object or list (body, outputs, flood_studies, design, 1pct) is treated as naming no study or giving no depth and fails, never raises; a depth that is None, a bool, a non-number, NaN or infinite fails even when a level is present."
+    },
+    {
+      "name": "ask",
+      "file_line": "scripts/outreach_flood_depth_probe.py:67",
+      "input": "A study key and the probe cell's latitude and longitude, posted to the production flood route with persist false.",
+      "output": "The decoded answer body, or None with the reason and whether the host was reached at all.",
+      "if_none": "An HTTP error or a non-JSON body reports reached=True so the claim fails; a connection error or timeout reports reached=False so the claim is unknown, never passed."
+    },
+    {
+      "name": "flood_depth_delivered_in_production",
+      "file_line": "scripts/outreach_flood_depth_probe.py:105",
+      "input": "No arguments; reads FLOOD_STUDIES has_depth keys from source and asks production at every probe point in parallel.",
+      "output": "The worst verdict across the studies with one detail per study: FAIL beats UNKNOWN, which beats PASS. An all-PASS set of answers from a host other than the canonical production origin is UNKNOWN, naming the host.",
+      "if_none": "If services/flood_truth.py cannot be read or its depth study keys differ from the probe points, it fails before making any call."
+    },
+    {
+      "name": "depth_study_keys",
+      "file_line": "scripts/outreach_flood_depth_probe.py:51",
+      "input": "The path to services/flood_truth.py; parses the FLOOD_STUDIES block by its top-level study entries.",
+      "output": "The set of study keys whose entry contains has_depth set to True, currently tweed, wollongong and redbank.",
+      "if_none": "A missing FLOOD_STUDIES block raises RuntimeError, which the caller turns into a failure rather than an empty set."
+    }
+  ],
+  "values": [
+    {
+      "value": "outputs.flood_studies[].design['1pct'].depth_m from the production answer",
+      "read_at": "scripts/outreach_flood_depth_probe.py:96",
+      "if_missing": "Missing or null depth is a failure for that study, reported with the level if one was returned."
+    }
+  ],
+  "queries": "N/A - no database access; the probe makes three HTTP calls to the production flood route with persist false.",
+  "break_it": [
+    {
+      "scenario": "The production host loses the Redbank rasters and answers with an empty flood_studies list.",
+      "what_happens": "The route still returns 200, but judge finds no redbank entry and the claim fails naming redbank.",
+      "mitigated": true,
+      "how": "Worst-verdict aggregation; test_one_study_failing_fails_the_claim_even_when_others_pass caught the mutation that hid it.",
+      "repro": "python -m pytest tests/test_outreach_flood_depth_probe.py -o addopts= -k one_study_failing"
+    },
+    {
+      "scenario": "Production answers with the Hawkesbury level-only study instead of the expected depth study.",
+      "what_happens": "A named study with a level but no depth could read as depth delivered if any study counted.",
+      "mitigated": true,
+      "how": "judge matches the exact study_key and requires a numeric 1% AEP depth; the level-only confusable negative is a test.",
+      "repro": "python -m pytest tests/test_outreach_flood_depth_probe.py -o addopts= -k level_only"
+    },
+    {
+      "scenario": "CI cannot reach the Railway host because of a network outage during the gates run.",
+      "what_happens": "The claim reports UNKNOWN and the outreach run exits 2, never PASS, so nothing is counted as done.",
+      "mitigated": true,
+      "how": "Connection errors return reached=False and map to UNKNOWN; the mutation turning that into PASS was caught.",
+      "repro": "OUTREACH_PRODUCTION_API=https://127.0.0.1:9 python scripts/outreach_claim_checks.py OC-7"
+    },
+    {
+      "scenario": "A fourth depth study is added to FLOOD_STUDIES without a probe point.",
+      "what_happens": "The published depth count would rise while production delivery for the new study was never observed.",
+      "mitigated": true,
+      "how": "The probe fails before calling production when its points differ from the has_depth keys; the test also ties them to verify_coverage_stats' count.",
+      "repro": "python -m pytest tests/test_outreach_flood_depth_probe.py -o addopts= -k points_cover"
+    },
+    {
+      "scenario": "Production answers 200 with valid JSON of another shape, e.g. outputs as a list or design as a list.",
+      "what_happens": "The old .get chain raised AttributeError, aborting the claim check instead of reporting why the answer is unusable.",
+      "mitigated": true,
+      "how": "Each level is isinstance-checked; the reverted .get chain was caught by 4 parametrised wrong-shape cases (the empty-list shapes the old code happened to survive are kept as confusable cases).",
+      "repro": "python -m pytest tests/test_outreach_flood_depth_probe.py -o addopts= -k wrong_shape"
+    },
+    {
+      "scenario": "Production encodes a depth as NaN or Infinity, which json.loads accepts.",
+      "what_happens": "abs(NaN - expected) > tolerance is False, so the study read as delivered with no usable depth.",
+      "mitigated": true,
+      "how": "math.isfinite is required before the tolerance comparison; removing it was caught by 3 cases (NaN, Infinity, -Infinity).",
+      "repro": "python -m pytest tests/test_outreach_flood_depth_probe.py -o addopts= -k non_finite"
+    },
+    {
+      "scenario": "OUTREACH_PRODUCTION_API points the probe at staging or a fixture server that returns the expected depths.",
+      "what_happens": "The claim would report depth delivered in production from a host that is not production.",
+      "mitigated": true,
+      "how": "An all-PASS result from a host other than the canonical origin is UNKNOWN; removing the guard was caught, and the trailing-slash confusable negative caught an over-strict comparison.",
+      "repro": "python -m pytest tests/test_outreach_flood_depth_probe.py -o addopts= -k \"other_than_production or trailing_slash\""
+    }
+  ],
+  "mutation_analysis": "Six mutations run against the probe with restoration from the original bytes; each caught by its named test. Live: the integration case passed against production in 19.7 s, and python scripts/outreach_claim_checks.py OC-7 printed HOLDS with tweed 2.01, wollongong 1.21, redbank 1.47. 2026-09-15 hardening, run on temporary mutated copies: non-finite depth accepted (3 failed), shape guards reverted to the old .get chain (4 failed), host guard removed (1 failed), trailing slash not normalised (1 failed); the unmutated copy passed 14 of 14. Full file: 21 passed including the live production case in 19.5 s. OC-12 flip: python scripts/outreach_claim_checks.py OC-12 printed HOLDS (untraced 0) after the production change.",
+  "residual_risk": "One cell per study proves the host samples each raster, not every return period or every address; historical events are not checked. Each gates run makes three production flood calls (about 20 s in parallel).",
+  "post_merge": {
+    "db_reset": "No. No schema or data change; persist=false writes nothing.",
+    "secrets": "None. The production route is public and takes no key.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "No manual step: the gates run executes the probe against production on every run."
+  }
+}

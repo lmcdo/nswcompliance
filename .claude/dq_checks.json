@@ -1025,7 +1025,8 @@
       "kind": "outreach_claim",
       "claim": "Council flood studies: 4 ingested, modelled flood depth from 3.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-      "declared": "false",
+      "declared": "true",
+      "verified": "2026-09-14: production POST /pipeline/flood (persist=false) at one raster cell per depth study named the study and returned its 1% AEP depth: tweed 2.01 m (raster cell 2.008), wollongong 1.21 m (1.214), redbank 1.47 m (1.473). Replaces the not-yet-grounded sub-check with scripts/outreach_flood_depth_probe.py.",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
@@ -1097,7 +1098,8 @@
       "kind": "outreach_claim",
       "claim": "Site Controls reads the NSW Planning Portal and the planning documents a council has already published; nothing is installed on, or connected to, council systems (/for/councils). Reworded 2026-09-14 from 'No council data is stored', which the council PDFs kept for page links contradicted.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#11",
-      "declared": "false",
+      "declared": "true",
+      "verified": "2026-09-15: check passed against production after its 29 untraced served rows were resolved: 8 re-linked to the hosted page that carries the council's sentence (checked verbatim before writing) and 21 retired (10 solar summaries served for every housing type, 4 internal notes, 5 numbers found only in site-specific chapters, 2 numbers the plan does not set). Backup data/db_rollback_backups/dcp_setback_controls_pre_oc8_relink_retire_2026-09-15_0739.csv. Untraced 29 -> 0; councils with front, side and rear setbacks (21) and with numeric controls (28) unchanged.",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
