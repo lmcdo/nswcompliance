@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what the outreach gate accepts as proof that served numbers come from the plan in force (claim 17) and what the councils page promises about council data (claim 12), and adds a column to a production table. A gate check that passes wrongly lets outreach go out on a false claim.",
-  "commit_hash": "d4888ea9",
+  "commit_hash": "226a9d10",
   "files": [
     ".claude/dq_checks.json",
     "frontend-nextjs/app/for/councils/page.tsx",
