@@ -76,6 +76,10 @@ describe('noNumberLabel — a rule with no number is described, not called a mer
     expect(noNumberLabel({})).toBe('No set number');
   });
 
+  it('a non-string value from a malformed response falls back instead of throwing', () => {
+    expect(noNumberLabel({ plain_summary: 42 as unknown as string })).toBe('No set number');
+  });
+
   it('the component no longer prints "assessed on merit"', () => {
     const src = fs.readFileSync(
       path.join(__dirname, '../../components/compliance/DcpStructuredControls.tsx'),

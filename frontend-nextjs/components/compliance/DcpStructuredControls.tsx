@@ -127,7 +127,8 @@ export function formatValue(control: StructuredControl): string {
  * assessment, which misdescribes a rule that is calculated from the neighbouring buildings.
  */
 export function noNumberLabel(control: Pick<StructuredControl, 'plain_summary'>): string {
-  const summary = control.plain_summary?.trim();
+  const raw: unknown = control.plain_summary;
+  const summary = typeof raw === 'string' ? raw.trim() : '';
   return summary ? summary : 'No set number';
 }
 

@@ -297,7 +297,8 @@ export async function GET(request: NextRequest) {
         pdf_page: row.pdf_page != null ? Number(row.pdf_page) : null,
         pdf_url: pdfUrl,
         data_status: dataStatus,
-        plain_summary: row.plain_summary ?? null,
+        // Only a string is wording; anything else from an older or malformed backend is dropped, not rendered.
+        plain_summary: typeof row.plain_summary === 'string' ? row.plain_summary : null,
       });
     }
 
