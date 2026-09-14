@@ -1148,24 +1148,35 @@ def upload_to_r2(s3: object, content: bytes, key: str, dry_run: bool = False) ->
         raise
 
 
+#: Public base of the hosted copies, the same one r2_monitor.py uses when a PDF changes. The public
+#: link is written from r2_current_path in the same statement, so an upload can never leave it on an
+#: older copy. This upsert used to move r2_current_path alone: on 2026-09-14, 15 active chapters'
+#: links named an older version than their current copy, and Waverley DCP 2022's link opened a
+#: 490-page PDF while its rules cite pages of the 448-page one.
+R2_PUBLIC_BASE = "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/"
+
+
 def upsert_registry(cur, row: dict, dry_run: bool = False):
-    """Insert or update a row in dcp_chapter_registry."""
+    """Insert or update a row in dcp_chapter_registry. The public PDF link is derived from
+    r2_current_path, never passed separately, so the two cannot disagree."""
     if dry_run:
         print(f"    [dry-run] would upsert registry: {row['council']}/{row['chapter_key']}")
         return
+    path = row["r2_current_path"]
+    params = {**row, "r2_public_pdf_url": (R2_PUBLIC_BASE + path) if path else None}
     cur.execute(
         """
         INSERT INTO dcp_chapter_registry (
             council, dcp_name, doc_type, chapter_key, chapter_label, sort_order,
             council_url, council_page_url,
-            r2_current_path, r2_version_label,
+            r2_current_path, r2_version_label, r2_public_pdf_url,
             content_hash, url_content_length, url_etag, url_last_modified,
             url_last_checked, url_last_changed,
             is_active, notes
         ) VALUES (
             %(council)s, %(dcp_name)s, %(doc_type)s, %(chapter_key)s, %(chapter_label)s, %(sort_order)s,
             %(council_url)s, %(council_page_url)s,
-            %(r2_current_path)s, %(r2_version_label)s,
+            %(r2_current_path)s, %(r2_version_label)s, %(r2_public_pdf_url)s,
             %(content_hash)s, %(url_content_length)s, %(url_etag)s, %(url_last_modified)s,
             %(url_last_checked)s, %(url_last_changed)s,
             TRUE, %(notes)s
@@ -1178,6 +1189,7 @@ def upsert_registry(cur, row: dict, dry_run: bool = False):
             council_page_url  = EXCLUDED.council_page_url,
             r2_current_path   = EXCLUDED.r2_current_path,
             r2_version_label  = EXCLUDED.r2_version_label,
+            r2_public_pdf_url = EXCLUDED.r2_public_pdf_url,
             content_hash      = EXCLUDED.content_hash,
             url_content_length = EXCLUDED.url_content_length,
             url_etag          = EXCLUDED.url_etag,
@@ -1186,7 +1198,7 @@ def upsert_registry(cur, row: dict, dry_run: bool = False):
             url_last_changed  = EXCLUDED.url_last_changed,
             updated_at        = NOW()
         """,
-        row,
+        params,
     )
 
 

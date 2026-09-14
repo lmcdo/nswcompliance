@@ -365,7 +365,7 @@ export default function QuickGuidePage() {
             </div>
             <div className="flex gap-2">
               <span className="text-teal-600">•</span>
-              <span><strong>PDF Icons:</strong> Click to view the exact page from the original SEPP or LEP document</span>
+              <span><strong>PDF Icons:</strong> Click to open the original SEPP or LEP document</span>
             </div>
             <div className="flex gap-2">
               <span className="text-teal-600">•</span>

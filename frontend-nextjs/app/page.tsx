@@ -116,7 +116,6 @@ const QUESTIONS = [
 const STATS = [
   { value: COVERAGE_DISPLAY.provisionsTotal, label: 'Provisions indexed' },
   { value: COVERAGE_DISPLAY.lgasCovered, label: 'LGAs covered' },
-  { value: COVERAGE_DISPLAY.riskLayers, label: 'Risk layers' },
   { value: COVERAGE_DISPLAY.govDataSources, label: 'Gov data sources' },
 ];
 
@@ -263,7 +262,7 @@ export default function HomePage() {
 
       {/* ── Stats strip ── */}
       <section className="bg-slate-950 border-t border-slate-800/50 py-10 px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-8">
           {STATS.map(({ value, label }) => (
             <div key={label} className="text-center">
               <div className="text-3xl font-bold text-white tracking-tight">{value}</div>

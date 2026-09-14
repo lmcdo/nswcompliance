@@ -1042,7 +1042,7 @@
         "OC-8"
       ],
       "blocks_outreach": true,
-      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three, and no served number fails its own quote (DQ-39)",
+      "passes_when": "exit 0 - every served number read through fetch_dcp_setbacks has all three, no served number fails its own quote (DQ-39), and no active chapter's public PDF link names a different copy from the one its rules were read from (r2_public_pdf_url ends with r2_current_path)",
       "red_when": "the declared state and the check disagree in either direction"
     },
     "OC-9": {
@@ -1105,16 +1105,16 @@
     },
     "OC-13": {
       "kind": "outreach_claim",
-      "claim": "102 councils for secondary dwellings; 8 risk layers; 7 government data sources.",
-      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-      "declared": "false",
+      "claim": "102 councils for secondary dwellings; 7 government data sources. ('8 risk layers' retired 2026-09-14: nothing in the repo produced an 8, so it could not be grounded.)",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#11",
+      "declared": "true",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
         "OC-13"
       ],
       "blocks_outreach": true,
-      "passes_when": "exit 0 - the source-derived counts match their sources and riskLayers is grounded",
+      "passes_when": "exit 0 - the secondary-dwelling and government-source counts match their sources, and the retired risk layers figure is on no rendered page and not in coverage.ts",
       "red_when": "the declared state and the check disagree in either direction"
     },
     "OC-14": {

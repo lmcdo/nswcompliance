@@ -151,10 +151,9 @@ export default function HomebuyersPage() {
 
       {/* Stats strip */}
       <section className="bg-slate-950 border-t border-slate-800/50 py-8 px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-6">
           {[
             { value: COVERAGE_DISPLAY.lgasCovered, label: 'LGAs covered' },
-            { value: COVERAGE_DISPLAY.riskLayers, label: 'Risk layers' },
             { value: COVERAGE_DISPLAY.govDataSources, label: 'Gov data sources' },
             { value: 'Free', label: 'To start' },
           ].map(({ value, label }) => (

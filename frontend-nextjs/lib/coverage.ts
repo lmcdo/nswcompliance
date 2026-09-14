@@ -80,13 +80,12 @@
  * 2026-09-14 by the user's decision on the outreach claim set (claim OC-14): no council
  * holds its own target set of DCP chapters, so no council is "full". Do not re-add it.
  *
- * ⚠ riskLayers IS UNVERIFIED AND HAS NO SOURCE. Searched 2026-09-11: the
- * homepage's CLIMATE_HAZARDS (4), the /climate-risk hazards section (5), the
- * open-data catalogue (7), the capability tiles, and every table whose name
- * contains 'risk' — nothing produces an 8, and no such table exists. It is a
- * HEADLINE stat on the homepage and two audience pages. It must be grounded
- * against a real list or removed; it must not be quietly adjusted to another
- * guess, which would only make it look measured.
+ * riskLayers ("8 risk layers") was RETIRED on 2026-09-14 (outreach claim OC-13). It was a
+ * headline stat on the homepage and two audience pages, and nothing produced an 8: searched
+ * 2026-09-11, the homepage's CLIMATE_HAZARDS (4), the /climate-risk hazards section (5), the
+ * open-data catalogue (7), the capability tiles, and every table whose name contains 'risk'.
+ * An unsourced number is grounded or removed, never adjusted to another guess. Do not re-add
+ * it without a source and a check against that source.
  *
  * The remaining fields are frozen here so they stay consistent across pages:
  *   seppStandards / adgCriteria  NOW DB-VERIFIED, see verify_coverage_stats.py.
@@ -121,7 +120,7 @@
  *                                "130+" until 2026-08-24, i.e. more councils than NSW has.
  *                                Live: SELECT count(DISTINCT lga_name) FROM spatial_overlays
  *                                WHERE layer_type='zone' -> 128, and the CDC record -> 128.
- *   riskLayers / govDataSources  named on the homepage
+ *   govDataSources             named on the homepage (DATA_SOURCES)
  */
 
 /** Exact integers — each either DB-verified (see header) or a frozen editorial fact. */
@@ -140,7 +139,6 @@ export const COVERAGE = {
   floodDepthStudies: 3,
   totalNswCouncils: 128,
   lgasCovered: 128,
-  riskLayers: 8,
   govDataSources: 7,
 } as const;
 
@@ -163,7 +161,6 @@ export const COVERAGE_DISPLAY = {
   floodDepthStudies: '3',
   totalNswCouncils: '128',
   lgasCovered: '128',
-  riskLayers: '8',
   govDataSources: '7',
 } as const;
 
