@@ -6,7 +6,7 @@ psycopg2-binary==2.9.13
 python-dotenv==1.2.3
 requests==2.34.2
 httpx==0.28.1
-anthropic==0.120.2
+anthropic==1.5.0
 boto3==1.43.92
 supabase==2.31.0
 
