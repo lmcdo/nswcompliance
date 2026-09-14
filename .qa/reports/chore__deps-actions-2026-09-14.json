@@ -1,0 +1,24 @@
+{
+  "tier": "minor",
+  "justification": "Two workflow files only: actions/github-script 7 to 9 (Dependabot #1025), re-pushed from a normal branch because Dependabot runs get no repository secrets and no QA report, so their gates can never pass.",
+  "commit_hash": "70b63bbb",
+  "files": [
+    ".github/workflows/data-watch.yml",
+    ".github/workflows/main-red-alarm.yml"
+  ],
+  "break_it": [
+    {
+      "scenario": "github-script 9 changes its runtime or the injected github client, so the script inside data-watch or main-red-alarm throws.",
+      "what_happens": "The alarm that opens an issue when main has no passing gates run, or the data-watch job, stops working silently; neither runs on a pull request, so this branch's gates do not exercise them.",
+      "mitigated": false,
+      "how": "Not covered by the PR checks. After merge, trigger data-watch by hand (workflow_dispatch) and read the main-red-alarm run on the next push to main; revert if either fails.",
+      "repro": "gh workflow run data-watch.yml && gh run list --workflow data-watch.yml -L 1"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: run data-watch by hand and check the main-red-alarm run after the merge push both complete. Dependabot closes #1025 once main carries the same version."
+  }
+}
