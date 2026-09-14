@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Requirement files only: Dependabot's Python majors group (#1029) — openai 2 to 3, anthropic 0.120 to 1.5, cryptography 49 to 50, portalocker 3 to 4, stringzilla 4 to 5, websockets 16 to 17, xxhash 3 to 4 — re-pushed from a normal branch because Dependabot runs get no repository secrets and no QA report, so their gates can never pass.",
-  "commit_hash": "42b47b3e",
+  "commit_hash": "909820fb",
   "files": [
     "requirements.txt",
     "scripts/requirements-monitor.txt",
