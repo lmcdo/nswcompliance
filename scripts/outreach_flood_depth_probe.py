@@ -18,12 +18,14 @@ measurement the check compares against, never a value served to anyone. Producti
 return a 1% AEP depth within 5 cm of it (the route rounds to 2 dp). persist=false, so the call writes nothing.
 
 Verdicts: PASS every depth study answered with its recorded depth; FAIL a study was not named, was named
-without a depth, answered a different depth, or the route returned an HTTP error; UNKNOWN the route could not
-be reached at all (never PASS).
+without a finite depth, answered a different depth, the answer was not the expected shape, or the route returned
+an HTTP error; UNKNOWN the route could not be reached at all, or OUTREACH_PRODUCTION_API pointed the probe at a
+host other than production (answers from anywhere else cannot show delivery in production). Never PASS then.
 """
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import urllib.error
@@ -32,7 +34,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PRODUCTION_API = os.environ.get("OUTREACH_PRODUCTION_API", "https://nswcompliance-production.up.railway.app")
+CANONICAL_PRODUCTION_API = "https://nswcompliance-production.up.railway.app"
+PRODUCTION_API = os.environ.get("OUTREACH_PRODUCTION_API", CANONICAL_PRODUCTION_API)
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 
 #: (study_key, lat, lng, 1% AEP depth in metres held by the council raster at that cell)
@@ -80,13 +83,19 @@ def ask(study: str, lat: float, lng: float) -> tuple[dict | None, str, bool]:
 
 def judge(study: str, expected_m: float, body: dict) -> tuple[str, str]:
     """PASS only when the answer names this study and gives its 1% AEP depth within tolerance."""
-    studies = [s for s in ((body or {}).get("outputs") or {}).get("flood_studies") or [] if isinstance(s, dict)]
+    # Every level is type-checked: valid JSON of the wrong shape is a FAIL with a reason, never an exception.
+    outputs = body.get("outputs") if isinstance(body, dict) else None
+    listed = outputs.get("flood_studies") if isinstance(outputs, dict) else None
+    studies = [s for s in listed if isinstance(s, dict)] if isinstance(listed, list) else []
     entry = next((s for s in studies if s.get("study_key") == study), None)
     if entry is None:
         return FAIL, f"{study}: not named in the answer (studies named: {[s.get('study_key') for s in studies]})"
-    one_pct = (entry.get("design") or {}).get("1pct") or {}
+    design = entry.get("design")
+    one_pct = design.get("1pct") if isinstance(design, dict) else None
+    one_pct = one_pct if isinstance(one_pct, dict) else {}
     depth = one_pct.get("depth_m")
-    if isinstance(depth, bool) or not isinstance(depth, (int, float)):
+    # json.loads accepts NaN and Infinity, and abs(NaN - x) > tolerance is False, so a non-finite depth would pass.
+    if isinstance(depth, bool) or not isinstance(depth, (int, float)) or not math.isfinite(depth):
         return FAIL, f"{study}: named without a 1% AEP depth (depth {depth!r}, level {one_pct.get('level_m_ahd')!r})"
     if abs(depth - expected_m) > TOLERANCE_M:
         return FAIL, f"{study}: 1% AEP depth {depth} m, but the raster cell holds {expected_m} m"
@@ -112,7 +121,11 @@ def flood_depth_delivered_in_production() -> tuple[str, str]:
             verdicts.append(judge(study, expected, body))
     kinds = {v for v, _ in verdicts}
     worst = FAIL if FAIL in kinds else UNKNOWN if UNKNOWN in kinds else PASS
-    return worst, "depth in production: " + "; ".join(detail for _, detail in verdicts)
+    detail = "; ".join(d for _, d in verdicts)
+    if worst == PASS and PRODUCTION_API.rstrip("/") != CANONICAL_PRODUCTION_API:
+        return UNKNOWN, (f"depth in production: answered by {PRODUCTION_API}, not the production host "
+                         f"{CANONICAL_PRODUCTION_API}, so it cannot show delivery in production; {detail}")
+    return worst, "depth in production: " + detail
 
 
 if __name__ == "__main__":
