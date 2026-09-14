@@ -2,6 +2,11 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { VERIFY_LGAS, VERIFY_LGA_SLUG_MAP } from '@/lib/lga-data/verify-lgas'
+import {
+  profileTile,
+  dcpControlsTile,
+  type CouncilProfile,
+} from '@/lib/council-profile-tile'
 import { sanitizeHTML } from '@/lib/sanitize'
 import { BreadcrumbJsonLd, DatasetJsonLd } from '@/lib/json-ld'
 import { query } from '@/lib/database/pool-manager'
@@ -203,6 +208,48 @@ async function fetchTopicSummary(slug: string, name: string): Promise<{ topics: 
 }
 
 /* ------------------------------------------------------------------ */
+/*  Council profile                                                     */
+/* ------------------------------------------------------------------ */
+
+
+
+/**
+ * Facts about the council as a whole, for the profile tile.
+ *
+ * Returns null when anything is unknown, and the tile then falls back to the
+ * generic copy. That is deliberate: this tile makes a claim ABOUT A COUNCIL on
+ * a public page, so a failed query must produce no claim rather than a wrong
+ * or empty-looking one. Same fail-quiet convention as fetchTopicSummary above.
+ */
+async function fetchCouncilProfile(slug: string, name: string): Promise<CouncilProfile | null> {
+  try {
+    const controlsRes = await query(
+      `SELECT count(*)::int AS n,
+              count(DISTINCT source_chapter_key)::int AS chapters
+         FROM dcp_setback_controls
+        WHERE is_current = TRUE AND lga = $1
+          AND (needs_review IS NULL OR needs_review = FALSE)`,
+      [slug]
+    )
+    const controls = (controlsRes.rows[0]?.n as number) ?? 0
+
+    const precinctRes = await query(
+      `SELECT count(DISTINCT v2_precinct_id)::int AS n
+         FROM regulatory_provisions
+        WHERE is_current = TRUE AND v2_is_actionable = TRUE
+          AND source_council = $1 AND v2_precinct_id IS NOT NULL`,
+      [slug]
+    )
+    const precincts = (precinctRes.rows[0]?.n as number) ?? 0
+
+    return { controls, precincts }
+  } catch (err) {
+    console.error(`[planning-controls] Council profile query failed for ${slug}:`, err)
+    return null
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Page component                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -212,11 +259,16 @@ export default async function PlanningControlsLgaPage(
   const lga = VERIFY_LGA_SLUG_MAP[params['lga-slug']]
   if (!lga) notFound()
 
-  const { topics, total } = lga.hasDcpData
-    ? await fetchTopicSummary(lga.slug, lga.name)
-    : { topics: [], total: 0 }
+  const [{ topics, total }, profile] = await Promise.all([
+    lga.hasDcpData
+      ? fetchTopicSummary(lga.slug, lga.name)
+      : Promise.resolve({ topics: [] as TopicSummary[], total: 0 }),
+    fetchCouncilProfile(lga.slug, lga.name),
+  ])
 
   const showTopics = total >= MIN_PROVISIONS_FOR_TOPICS && topics.length >= 3
+  const middleTile = dcpControlsTile(profile, total, showTopics)
+  const thirdTile = profileTile(profile)
 
   return (
     <div className="max-w-2xl mx-auto px-6">
@@ -249,16 +301,19 @@ export default async function PlanningControlsLgaPage(
           <p className="text-xs text-gray-400 mt-0.5">Three tiers of controls</p>
         </div>
         <div className="rounded-lg bg-gray-50 p-4">
-          <p className="text-xs text-gray-500">DCP controls</p>
-          <p className="text-sm font-semibold text-gray-900 mt-1">
-            {showTopics ? `${total.toLocaleString()} provisions` : lga.hasDcpData ? 'Available' : 'Coming soon'}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">Structured provisions</p>
+          <p className="text-xs text-gray-500">{middleTile.label}</p>
+          <p className="text-sm font-semibold text-gray-900 mt-1">{middleTile.value}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{middleTile.sub}</p>
         </div>
         <div className="rounded-lg bg-gray-50 p-4">
-          <p className="text-xs text-gray-500">Coverage</p>
-          <p className="text-sm font-semibold text-gray-900 mt-1">All NSW</p>
-          <p className="text-xs text-gray-400 mt-0.5">LEP + SEPP for every address</p>
+          {/* Was "Coverage / All NSW / LEP + SEPP for every address" on every
+              council page -- true, identical everywhere, and therefore worth
+              nothing to a reader. The council's own shape is the useful thing,
+              and it is computed across the whole LGA rather than retrieved from
+              a document. profileTile falls back to the old copy when unknown. */}
+          <p className="text-xs text-gray-500">{thirdTile.label}</p>
+          <p className="text-sm font-semibold text-gray-900 mt-1">{thirdTile.value}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{thirdTile.sub}</p>
         </div>
       </div>
 

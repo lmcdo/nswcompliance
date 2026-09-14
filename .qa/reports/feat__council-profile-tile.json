@@ -1,0 +1,114 @@
+{
+  "tier": "standard",
+  "justification": "Changes public, indexed text that makes claims about a whole council. No served regulatory data moves and no provision content changes, but the previous version of this same tile said 'Available' for eight councils that had nothing — so the failure mode here is a false public claim, not a wrong number in a report.",
+  "commit_hash": "31dcbfdf",
+  "files": [
+    "frontend-nextjs/lib/council-profile-tile.ts",
+    "frontend-nextjs/lib/council-profile-tile.test.ts",
+    "frontend-nextjs/app/(tools)/planning-controls/[lga-slug]/page.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "Two reads, both against tables already in use: dcp_setback_controls (served row count per lga: is_current and not held for review) and regulatory_provisions (distinct v2_precinct_id for the council's served rows). No new table, no new column, no migration. An earlier version also read spatial_overlays for a 'Main constraint' tile; removed before merge (see break_it).",
+    "assumption_mismatch": "Two, found by cross-review before merge. (1) The 'Main constraint' tile took the overlay layer with the largest share of overlay ROWS as the council's defining constraint, but a row count is not an area: heritage mapped as many small polygons outnumbers one flood polygon covering most of an LGA. (2) The control count read is_current only, so rows held for review (not served, e.g. numbers from a repealed plan) were counted in a public 'N structured controls' claim.",
+    "new_vs_existing": "Extends the existing three-tile grid on a page that already exists for every council. No new page, no new route, no new component file beyond the pure helper.",
+    "prior_art": "The prior-art guard blocked the first write and named six candidates. Opened them: ServicingTile, LepControls, StateLevelControls, ConstraintArithmeticCard and api/dcp/structured-controls all operate at PROPERTY level for one address; this is an LGA-wide computed fact with no address involved. The only true alternative home was the page itself, where the logic started — moving it out is the point, because a server component cannot be unit-tested and these strings are public claims. Grepped lib/*.ts for TileContent, tileCopy and profileTile: no existing helper. Reason recorded in the file header.",
+    "external_source_error": "N/A -- no external service. Both reads go through the app's existing query() helper against the production database; any failure returns null for the whole profile. A null profile renders the generic all-NSW copy in the third tile and 'Not counted / Could not be read just now' in the middle tile, never 'Not yet published'.",
+    "frontend_type": "The tile functions take a CouncilProfile or null and always return a fully-populated TileContent (label, value, sub) — never undefined, so no branch can render an empty tile. Counts are cast to ::int in SQL and defaulted with ?? 0 in TS.",
+    "user_failure_mode": "Visible and safe in the wrong direction. A failed query renders wording true of every council ('All NSW') or says the count could not be read, rather than a blank, a zero, or a claim that nothing is published. The dangerous direction would be silent overstatement, which is what the old 'Available' did."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest lib/council-profile-tile.test.ts",
+    "fails_when": "Any branch renders the word 'Available'; any tile names a constraint or the page reads spatial_overlays; a null profile produces anything other than the generic copy (third tile) or 'Not counted' (middle tile); a null profile claims 'Not yet published'; the control count query lacks the needs_review filter; or showTopics with a zero total renders '0 provisions'.",
+    "observed_red": "Forced, not assumed. Reintroducing 'Available' as the final fallback broke 3 of the original 14 tests. For the pre-merge fixes: the new tests 'never names a main constraint', 'does not claim Not yet published when the count could not be read' and 'excludes rows held for review' each fail against the pushed head 9587bbae (the page still read spatial_overlays and 'Main constraint', dcpControlsTile(null) returned 'Coming soon / Not yet published', and the count query had no needs_review filter).",
+    "measured": "11 tests pass on the fixed code. Against the pushed head 9587bbae's lib and page with these tests: 3 of 11 fail (never names a main constraint; does not claim Not yet published when the count could not be read; excludes rows held for review)."
+  },
+  "functions": [
+    {
+      "name": "profileTile",
+      "file_line": "frontend-nextjs/lib/council-profile-tile.ts",
+      "input": "A CouncilProfile object with the council's served control count and precinct count, or null when either profile query failed.",
+      "output": "TileContent for the third tile: a precinct count if the council's served provisions carry precincts, else the generic all-NSW copy.",
+      "if_none": "null profile returns the generic copy verbatim. An unknown never renders as a claim about a council.",
+      "three_state": "precincts known / none / nothing known. The last two render the same true-everywhere copy."
+    },
+    {
+      "name": "dcpControlsTile",
+      "file_line": "frontend-nextjs/lib/council-profile-tile.ts",
+      "input": "CouncilProfile or null, the provision total, and whether topics are being shown on the page.",
+      "output": "TileContent for the middle tile: provision count, else 'Not counted' when the profile is unknown, else structured-control count, else 'Coming soon'.",
+      "if_none": "null profile with no provisions gives 'Not counted / Could not be read just now' — neither a guessed count nor a claim that nothing is published. showTopics with a zero total falls through rather than rendering '0 provisions'.",
+      "three_state": "full provision text / structured numbers only / nothing published, plus the unknown case kept separate from 'nothing'."
+    },
+    {
+      "name": "fetchCouncilProfile",
+      "file_line": "frontend-nextjs/app/(tools)/planning-controls/[lga-slug]/page.tsx",
+      "input": "The council's lowercase slug and its display name, taken from the verify-lgas entry that the page already resolved from the URL segment.",
+      "output": "CouncilProfile with the served control count and precinct count, or null on any failure.",
+      "if_none": "Returns null for the WHOLE profile rather than a partial one, so a single failed query cannot produce a half-measured tile. Logs to console like the adjacent fetchTopicSummary.",
+      "three_state": "profile read / query failed (null) / council genuinely has nothing (zeros, which the tile functions handle)."
+    }
+  ],
+  "values": "N/A - no constant or stored value drives a decision any more; the 20% overlay-share threshold was removed with the 'Main constraint' tile.",
+  "queries": [
+    {
+      "purpose": "Count this council's served structured numeric controls, for the middle tile.",
+      "file_line": "fetchCouncilProfile, planning-controls/[lga-slug]/page.tsx",
+      "where_clause": "is_current = TRUE AND lga = $1 AND (needs_review IS NULL OR needs_review = FALSE) -- the same served guard as conveyancing_db.fetch_dcp_setbacks, so superseded rows and rows held for review do not inflate a public count."
+    },
+    {
+      "purpose": "Count distinct precincts on this council's served provisions, for the third tile.",
+      "file_line": "fetchCouncilProfile, planning-controls/[lga-slug]/page.tsx",
+      "where_clause": "is_current AND v2_is_actionable AND source_council = $1 AND v2_precinct_id IS NOT NULL -- the served set, so the number matches what a user can actually reach."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The tile says 'Available' again, or some equivalent vague word, for a council with nothing behind it.",
+      "what_happens": "Exactly the defect corrected on 2026-09-10, when eight councils publicly claimed DCP controls with zero rows. Public, indexed, and invisible from the inside.",
+      "mitigated": true,
+      "how": "A test enumerates every reachable branch of dcpControlsTile and asserts none renders 'Available', case-insensitively. Verified it fails by reintroducing the defect: 3 of 14 tests broke.",
+      "repro": "Change the final fallback in dcpControlsTile to 'Available' and run npx jest lib/council-profile-tile.test.ts."
+    },
+    {
+      "scenario": "A council's heritage is mapped as many small polygons while flood is one polygon covering most of the LGA.",
+      "what_happens": "The removed 'Main constraint' tile ranked layers by share of overlay rows, so it would have named heritage the main constraint where flood covers far more land — a public overstatement with a true-looking percentage.",
+      "mitigated": true,
+      "how": "The tile, its threshold and the spatial_overlays query were removed before merge. The test 'never names a main constraint' asserts no tile label mentions a constraint and the page no longer reads spatial_overlays.",
+      "repro": "npx jest lib/council-profile-tile.test.ts -t 'main constraint'"
+    },
+    {
+      "scenario": "A council's numbers are held for review (for example Strathfield's figures from repealed plans on 2026-09-13) while still is_current (fetchCouncilProfile, WHERE is_current = TRUE AND lga = $1 AND (needs_review IS NULL OR needs_review = FALSE)).",
+      "what_happens": "Counting is_current alone would publish 'N structured controls' for rows the product does not serve.",
+      "mitigated": true,
+      "how": "The count carries the same needs_review guard as fetch_dcp_setbacks; a test reads the query text and fails without it.",
+      "repro": "npx jest lib/council-profile-tile.test.ts -t 'held for review'"
+    },
+    {
+      "scenario": "The profile query fails (database timeout) for a council that has structured controls.",
+      "what_happens": "The middle tile would say 'Coming soon / Not yet published' — a false statement that the council has nothing.",
+      "mitigated": true,
+      "how": "dcpControlsTile(null, ...) returns 'Not counted / Could not be read just now'; tested.",
+      "repro": "npx jest lib/council-profile-tile.test.ts -t 'could not be read'"
+    },
+    {
+      "scenario": "The tested helper and the rendered page drift apart, so the tests pass while the page shows something else.",
+      "what_happens": "The tests become theatre — green while the public page renders untested logic. This nearly happened: the first version of this change left an inline copy of the branching in the JSX.",
+      "mitigated": true,
+      "how": "The JSX renders {middleTile.value} and {thirdTile.value} directly from the two functions. The page holds no branching of its own, so there is nothing left to drift.",
+      "repro": "grep the page for 'Coming soon' or 'All NSW' -- both appear only in the lib, not in the JSX."
+    },
+    {
+      "scenario": "The precinct count is read without the served-set filters (fetchCouncilProfile, WHERE is_current AND v2_is_actionable AND source_council = $1 AND v2_precinct_id IS NOT NULL), so it counts precincts on provisions no user can reach.",
+      "what_happens": "A council shows '158 precincts' on a public page while most of those precincts sit on superseded or non-actionable rows.",
+      "mitigated": true,
+      "how": "The query carries is_current AND v2_is_actionable, the pair that defines the served set elsewhere in this repo; v2_precinct_id IS NOT NULL keeps a NULL bucket from counting as a precinct.",
+      "repro": "Drop v2_is_actionable from the precinct query and compare the count for city_of_sydney -- it rises above the number of precincts the app will serve."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes -- open /planning-controls/burwood and /planning-controls/campbelltown: no 'Main constraint' tile on either; the middle tile shows a provision count, a structured-control count, or 'Coming soon', never 'Available'. /planning-controls/city-of-sydney shows a precinct count in the third tile."
+  }
+}
