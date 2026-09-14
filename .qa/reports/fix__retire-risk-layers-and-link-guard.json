@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes three public pages' headline statistics and two guides' promises about citations, changes what the bulk PDF uploader writes to dcp_chapter_registry, and changes what the outreach gate accepts for claims 8 and 13. A wrong change either republishes an unsourced number or lets citation links drift onto the wrong document again.",
-  "commit_hash": "64c9ec37",
+  "commit_hash": "9098c77f",
   "files": [
     ".claude/dq_checks.json",
     "frontend-nextjs/app/for/buyers-agents/page.tsx",
