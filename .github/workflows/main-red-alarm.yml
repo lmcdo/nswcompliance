@@ -71,7 +71,7 @@ jobs:
     steps:
       - name: Assess main
         id: assess
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -171,7 +171,7 @@ jobs:
 
       - name: Raise or update the alarm
         if: steps.assess.outputs.state == 'broken'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           DETAIL: ${{ steps.assess.outputs.detail }}
           RUN_URL: ${{ steps.assess.outputs.url }}
@@ -240,7 +240,7 @@ jobs:
 
       - name: Stand the alarm down
         if: steps.assess.outputs.state == 'ok'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           DETAIL: ${{ steps.assess.outputs.detail }}
         with:
