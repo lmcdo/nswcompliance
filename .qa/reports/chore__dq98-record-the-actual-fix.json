@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes a data-quality ledger row and the probe behind it. No served data moves. But the probe is a gate input, and a ledger row that describes a fix nobody built is how this repo has been wrong before, so it is not trivial.",
-  "commit_hash": "9176a8c5",
+  "commit_hash": "71ab4c69",
   "files": [
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/dq_checks.json",
