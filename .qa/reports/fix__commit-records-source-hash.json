@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what the governance commit writes: which PDF version dcp_chapter_registry says the live rules came from (the freshness signal DQ-70 and outreach claims 10 and 17 read), and which rule numbers are live after a targeted amendment is committed. A wrong answer here serves a stale rule while every check says it is current.",
-  "commit_hash": "f4f89307",
+  "commit_hash": "ae9e2e67",
   "files": [
     "scripts/dcp_commit_approved.py",
     "scripts/dcp_extract_changed.py",
