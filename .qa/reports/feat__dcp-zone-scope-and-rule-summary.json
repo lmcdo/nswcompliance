@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which numeric DCP controls every zone-scoped caller receives (conveyancing report, capacity engine, brief, controls API) and what the web controls tab prints for a control with no number. A wrong keep/drop serves another zone's setback or hides the site's own.",
-  "commit_hash": "pending",
+  "commit_hash": "e89da816",
   "files": [
     "migrations/072_dcp_zone_scope_and_plain_summary.sql",
     "scripts/conveyancing_db.py",
