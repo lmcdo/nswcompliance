@@ -68,6 +68,15 @@ def test_a_maximum_the_councils_sentence_states_passes(monkeypatch):
     assert occ.no_range_printed_as_a_maximum()[0] == occ.PASS
 
 
+def test_a_maximum_the_councils_sentence_denies_fails(monkeypatch):
+    """Cross-review 2026-09-14: 'no maximum applies' names the word, so a bare search passed a printed maximum."""
+    _serve(monkeypatch, _entry(semantic_type="rear_setback", value_min=3.0, value_max=6.0,
+                               requirement="3 m minimum; 6 m maximum",
+                               source_text="Minimum setback varies from 3m to 6m; no maximum applies"))
+    verdict, detail = occ.no_range_printed_as_a_maximum()
+    assert verdict == occ.FAIL and "set: 1" in detail
+
+
 def test_a_number_printed_in_metres_when_its_unit_is_spaces_fails(monkeypatch):
     """The 2026-09-14 case: every number printed as metres, so a parking rate read '1 m minimum'."""
     _serve(monkeypatch, _entry(semantic_type="car_parking", value_min=1.0, unit="spaces/dwelling",

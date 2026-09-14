@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what the single guarded DCP read serves to every surface: precinct-only rules stop being returned council-wide, and every served number is worded from its own unit and from whether the council's sentence actually states a maximum. It also corrects two probes that measured the wrong population and flips three ledger rows, so a wrong edit here either serves a wrong number or turns a gate green on nothing.",
-  "commit_hash": "0f9f9d32",
+  "commit_hash": "7605920d",
   "files": [
     "scripts/conveyancing_db.py",
     "scripts/outreach_claim_checks.py",
@@ -19,8 +19,8 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest -q -o addopts= tests/test_conveyancing_db.py tests/test_outreach_claim_checks_ranges_and_citations.py",
-    "fails_when": "Six mutations were injected one at a time and each turned a named test red, then the files were restored byte-for-byte (101 passed after). 1 precinct skip removed: test_a_precinct_rule_is_not_served_council_wide fails. 2 every number printed in metres: 4 fail incl. test_a_number_prints_in_its_own_unit and the real-wording test. 3 every range printed as minimum and maximum: test_a_range_the_plan_does_not_call_a_maximum_prints_as_a_range fails. 4 the check stops reading the council's sentence for a maximum: test_a_maximum_the_councils_sentence_states_passes fails. 5 the check stops comparing units: test_a_number_printed_in_metres_when_its_unit_is_spaces_fails fails. 6 the check counts no-number notes as numbers: test_a_no_set_number_note_is_not_counted_as_a_number fails.",
-    "observed_red": "Printed by a one-off mutation runner kept outside the repo, run against this branch, each line from pytest: 'CAUGHT precinct rules served council-wide again: 1 failed' (FAILED tests/test_conveyancing_db.py::TestSetbackFormatting::test_a_precinct_rule_is_not_served_council_wide); 'CAUGHT every number printed in metres: 4 failed'; 'CAUGHT every range printed as minimum and maximum: 2 failed'; 'CAUGHT check no longer reads the council's sentence for a maximum: 2 failed'; 'CAUGHT check no longer compares units: 1 failed'; 'CAUGHT check counts no-number notes as numbers: 1 failed'; then 'restored: 101 passed in 0.53s'. Against production before the fix, the DQ-99 probe printed 7 scope-limited rows served LGA-wide and the DQ-32c probe printed 4.",
+    "fails_when": "Six mutations were injected one at a time and each turned a named test red, then the files were restored byte-for-byte (101 passed after). 1 precinct skip removed: test_a_precinct_rule_is_not_served_council_wide fails. 2 every number printed in metres: 4 fail incl. test_a_number_prints_in_its_own_unit and the real-wording test. 3 every range printed as minimum and maximum: test_a_range_the_plan_does_not_call_a_maximum_prints_as_a_range fails. 4 the check stops reading the council's sentence for a maximum: test_a_maximum_the_councils_sentence_states_passes fails. 5 the check stops comparing units: test_a_number_printed_in_metres_when_its_unit_is_spaces_fails fails. 6 the check counts no-number notes as numbers: test_a_no_set_number_note_is_not_counted_as_a_number fails. 7 serve path ignores denials via a bare keyword search (reverts _states to a plain match): test_a_range_whose_sentence_denies_a_maximum_prints_as_a_range fails. 8 serve path misses the 'maximum not specified' denial wording: test_a_range_whose_sentence_denies_a_maximum_prints_as_a_range fails. 9 serve path treats any later 'not' in the sentence as a denial, not just one near the word: test_a_stated_maximum_near_other_negation_still_counts fails. 10 the claim-17 check's own independent denial reading (_source_states_maximum) is removed: test_a_maximum_the_councils_sentence_denies_fails fails.",
+    "observed_red": "Printed by a one-off mutation runner kept outside the repo, run against this branch, each line from pytest: 'CAUGHT precinct rules served council-wide again: 1 failed' (FAILED tests/test_conveyancing_db.py::TestSetbackFormatting::test_a_precinct_rule_is_not_served_council_wide); 'CAUGHT every number printed in metres: 4 failed'; 'CAUGHT every range printed as minimum and maximum: 2 failed'; 'CAUGHT check no longer reads the council's sentence for a maximum: 2 failed'; 'CAUGHT check no longer compares units: 1 failed'; 'CAUGHT check counts no-number notes as numbers: 1 failed'; then 'restored: 101 passed in 0.53s'. Against production before the fix, the DQ-99 probe printed 7 scope-limited rows served LGA-wide and the DQ-32c probe printed 4. A second mutation run against the denial fix, same pattern (inject, run both test files, restore byte-for-byte): 'CAUGHT serve path ignores denials (bare search): 1 failed, 103 passed' (FAILED tests/test_conveyancing_db.py::TestSetbackFormatting::test_a_range_whose_sentence_denies_a_maximum_prints_as_a_range); 'CAUGHT serve path misses 'maximum not specified': 1 failed, 103 passed' (FAILED tests/test_conveyancing_db.py::TestSetbackFormatting::test_a_range_whose_sentence_denies_a_maximum_prints_as_a_range); 'CAUGHT serve path treats any later 'not' as a denial: 1 failed, 103 passed' (FAILED tests/test_conveyancing_db.py::TestSetbackFormatting::test_a_stated_maximum_near_other_negation_still_counts); 'CAUGHT claim check ignores denials: 1 failed, 103 passed' (FAILED tests/test_outreach_claim_checks_ranges_and_citations.py::test_a_maximum_the_councils_sentence_denies_fails); then 'restored byte-for-byte; 104 passed'.",
     "external_authority": "The council's own quoted sentence (source_text) decides whether a maximum is stated, and the row's stored unit decides the unit; neither is inferred from control_type. Live production measured on this branch: the DQ-99 probe asks fetch_dcp_setbacks and returns 0, DQ-39 returns 0, DQ-32c returns 0, the range and unit sub-check passes, and the triple-setback council count is 21."
   },
   "pre_impl": {
@@ -34,24 +34,59 @@
   "functions": [
     {
       "name": "requirement_text",
-      "file_line": "scripts/conveyancing_db.py:495",
+      "file_line": "scripts/conveyancing_db.py:510",
       "input": "control_type, value_min, value_max, unit and the council's quoted source_text for one served control row.",
       "output": "A requirement string in the row's own unit: a range as 'a-b unit' unless the sentence states both minimum and maximum, otherwise 'value unit minimum' or 'value unit maximum' for ceiling controls.",
       "if_none": "Unit None defaults to metres as before; value_min None with a value_max prints the maximum; source_text None is treated as empty so a range prints as a plain range, never as a maximum."
     },
     {
       "name": "fetch_dcp_setbacks",
-      "file_line": "scripts/conveyancing_db.py:524",
+      "file_line": "scripts/conveyancing_db.py:539",
       "input": "An open connection and a council slug; reads current, not-held-back dcp_setback_controls rows for that council.",
       "output": "Served control entries for every surface, now excluding rows whose applicability is precinct_specific and wording each prescribed number through requirement_text.",
       "if_none": "Applicability None is not precinct_specific so the row is still served exactly as before; a council with only precinct rows for a control returns no entry for it rather than a scoped number."
     },
     {
       "name": "no_range_printed_as_a_maximum",
-      "file_line": "scripts/outreach_claim_checks.py:192",
+      "file_line": "scripts/outreach_claim_checks.py:201",
       "input": "Served entries from the real serve path for every council, each with value_min, value_max, unit, requirement and source_text.",
       "output": "FAIL listing councils where a range reads as a maximum the council's sentence does not state, or a number prints in a unit other than its own; PASS otherwise.",
       "if_none": "When the serve path could not be read it returns UNKNOWN with the reason, never PASS; entries with no value are skipped for the unit comparison."
+    },
+    {
+      "name": "_states",
+      "file_line": "scripts/conveyancing_db.py:498",
+      "input": "A compiled word pattern (_STATES_MINIMUM or _STATES_MAXIMUM) and the council's quoted source_text for one row.",
+      "output": "True only for a use of the word that is not a denial: no negation word (no/not/without/non) within two words before it, and no 'not/n/a/none' right after it. 'no maximum applies' and 'maximum not specified' both return False.",
+      "if_none": "Empty or missing text has no matches, so both _states(_STATES_MINIMUM,...) and _states(_STATES_MAXIMUM,...) are False and the range falls to the neutral 'X-Y unit' wording."
+    },
+    {
+      "name": "_source_states_maximum",
+      "file_line": "scripts/outreach_claim_checks.py:194",
+      "input": "The council's source_text for one served entry, read independently of how requirement_text already worded it.",
+      "output": "True only for an affirmative use of 'max/maximum', using the same denial patterns as _states (a negation word within two words before, or 'not/n/a/none' right after).",
+      "if_none": "Empty or missing source_text has no matches and returns False, so an entry with no quoted sentence is never read as stating a maximum."
+    },
+    {
+      "name": "test_a_range_whose_sentence_denies_a_maximum_prints_as_a_range",
+      "file_line": "tests/test_conveyancing_db.py:426",
+      "input": "Two source_text variants that both name 'maximum' while denying it: 'no maximum applies' and 'Maximum not specified.', each with vmin=3.0, vmax=6.0.",
+      "output": "requirement == '3-6 m' for both, not '3 m minimum; 6 m maximum'.",
+      "if_none": "Caught mutations 7 and 8 (serve path reverted to a bare keyword search; serve path missing the 'not specified' denial wording)."
+    },
+    {
+      "name": "test_a_stated_maximum_near_other_negation_still_counts",
+      "file_line": "tests/test_conveyancing_db.py:434",
+      "input": "source_text 'Minimum 1, maximum 2 car parking spaces, not including visitor spaces' — a confusable negative where 'not' qualifies visitor spaces, not the maximum.",
+      "output": "requirement == '1 spaces/dwelling minimum; 2 spaces/dwelling maximum' — the stated maximum still counts.",
+      "if_none": "Caught mutation 9 (treating any later 'not' in the sentence as a denial, which would have wrongly suppressed this stated maximum)."
+    },
+    {
+      "name": "test_a_maximum_the_councils_sentence_denies_fails",
+      "file_line": "tests/test_outreach_claim_checks_ranges_and_citations.py:71",
+      "input": "A served entry with requirement '3 m minimum; 6 m maximum' but source_text 'Minimum setback varies from 3m to 6m; no maximum applies'.",
+      "output": "no_range_printed_as_a_maximum() returns FAIL with 'set: 1' in the detail.",
+      "if_none": "Caught mutation 10 (the claim-17 check's own independent denial reading removed, which would have returned PASS on a wrongly-printed maximum)."
     },
     {
       "name": "every_served_number_is_cited",

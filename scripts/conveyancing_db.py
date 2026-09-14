@@ -490,6 +490,21 @@ def zone_row_applies(applicability: Optional[str], condition: Optional[str], zon
 
 _STATES_MINIMUM = re.compile(r"\bmin(?:imum)?\b", re.I)
 _STATES_MAXIMUM = re.compile(r"\bmax(?:imum)?\b", re.I)
+#: A denial names the word too: "no maximum applies", "not a fixed minimum", "maximum not specified".
+_DENIED_BEFORE = re.compile(r"\b(?:no|not|without|non)\b(?:\s+[A-Za-z]+){0,2}\s*$", re.I)
+_DENIED_AFTER = re.compile(r"^\s*(?:[A-Za-z]+\s+)?(?:(?:is|are)\s+)?(?:not|n/a|none)\b", re.I)
+
+
+def _states(word: "re.Pattern[str]", text: str) -> bool:
+    """True when the sentence uses the word affirmatively at least once.
+
+    A bare keyword search read "Minimum setback varies from 3m to 6m; no maximum applies" as stating a maximum
+    (cross-review, 2026-09-14). A denial falls through to the neutral "X–Y unit" wording, which claims less."""
+    for m in word.finditer(text):
+        if not (_DENIED_BEFORE.search(text[max(0, m.start() - 40):m.start()])
+                or _DENIED_AFTER.search(text[m.end():m.end() + 40])):
+            return True
+    return False
 
 
 def requirement_text(control_type: Optional[str], vmin, vmax, unit: Optional[str],
@@ -510,7 +525,7 @@ def requirement_text(control_type: Optional[str], vmin, vmax, unit: Optional[str
     is_ceiling = kind.startswith("max_") or kind.endswith("_max")
     if vmin is not None and vmax is not None and vmin != vmax:
         text = source_text or ""
-        if _STATES_MINIMUM.search(text) and _STATES_MAXIMUM.search(text):
+        if _states(_STATES_MINIMUM, text) and _states(_STATES_MAXIMUM, text):
             return f"{fmt(vmin)} minimum; {fmt(vmax)} maximum"
         return f"{vmin:g}–{fmt(vmax)}"
     value = vmin if vmin is not None else vmax

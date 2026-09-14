@@ -423,6 +423,21 @@ class TestSetbackFormatting:
         entry = fetch_dcp_setbacks(_mock_conn(rows), "canada_bay")["setbacks"][0]
         assert entry["requirement"] == "1 spaces/dwelling minimum; 2 spaces/dwelling maximum"
 
+    def test_a_range_whose_sentence_denies_a_maximum_prints_as_a_range(self):
+        # Cross-review 2026-09-14: both keywords appear, so a bare search printed a 6 m maximum the plan denies.
+        for text in ("Minimum setback varies from 3m to 6m; no maximum applies",
+                     "Minimum 3m, rising to 6m by lot width. Maximum not specified."):
+            rows = [_make_row(vmin=3.0, vmax=6.0, source_text=text)]
+            entry = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")["setbacks"][0]
+            assert entry["requirement"] == "3–6 m", text
+
+    def test_a_stated_maximum_near_other_negation_still_counts(self):
+        # Confusable negative: the "not" qualifies visitor spaces, not the maximum.
+        rows = [_make_row(ctrl_type="car_parking", vmin=1.0, vmax=2.0, unit="spaces/dwelling",
+                          source_text="Minimum 1, maximum 2 car parking spaces, not including visitor spaces")]
+        entry = fetch_dcp_setbacks(_mock_conn(rows), "canada_bay")["setbacks"][0]
+        assert entry["requirement"] == "1 spaces/dwelling minimum; 2 spaces/dwelling maximum"
+
     def test_a_number_prints_in_its_own_unit(self):
         # Every number used to print as metres: "1 m minimum" for a parking rate.
         rows = [_make_row(ctrl_type="car_parking", vmin=1.0, vmax=None, unit="spaces/dwelling")]

@@ -187,6 +187,15 @@ def every_served_number_is_cited() -> Result:
 
 #: The council's own sentence states a maximum. Read here, independently of how the serve path words it.
 _SOURCE_STATES_MAXIMUM = re.compile(r"\bmax(?:imum)?\b", re.I)
+_SOURCE_DENIES_BEFORE = re.compile(r"\b(?:no|not|without|non)\b(?:\s+[A-Za-z]+){0,2}\s*$", re.I)
+_SOURCE_DENIES_AFTER = re.compile(r"^\s*(?:[A-Za-z]+\s+)?(?:(?:is|are)\s+)?(?:not|n/a|none)\b", re.I)
+
+
+def _source_states_maximum(text: str) -> bool:
+    """"no maximum applies" and "maximum not specified" name the word while denying it."""
+    return any(not (_SOURCE_DENIES_BEFORE.search(text[max(0, m.start() - 40):m.start()])
+                    or _SOURCE_DENIES_AFTER.search(text[m.end():m.end() + 40]))
+               for m in _SOURCE_STATES_MAXIMUM.finditer(text))
 
 
 def no_range_printed_as_a_maximum() -> Result:
@@ -206,7 +215,7 @@ def no_range_printed_as_a_maximum() -> Result:
         is_ceiling = sem.startswith("max_") or sem.endswith("_max")
         if (vmin is not None and vmax is not None and float(vmin) < float(vmax) and not is_ceiling
                 and "maximum" in requirement.lower()
-                and not _SOURCE_STATES_MAXIMUM.search(e.get("source_text") or "")):
+                and not _source_states_maximum(e.get("source_text") or "")):
             bad.append(f"{lga}/{sem}")
         unit = (e.get("unit") or "").strip()
         if (vmin is not None or vmax is not None) and unit and unit not in requirement:
