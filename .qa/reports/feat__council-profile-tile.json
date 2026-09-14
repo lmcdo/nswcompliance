@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes public, indexed text that makes claims about a whole council. No served regulatory data moves and no provision content changes, but the previous version of this same tile said 'Available' for eight councils that had nothing — so the failure mode here is a false public claim, not a wrong number in a report.",
-  "commit_hash": "6c84f262",
+  "commit_hash": "42e3dd05",
   "files": [
     "frontend-nextjs/lib/council-profile-tile.ts",
     "frontend-nextjs/lib/council-profile-tile.test.ts",
