@@ -128,7 +128,8 @@
       "why_no_check": "Upstream NSW Planning Portal staleness, not fixable here. The guard is the identity match in fetch_dcp_as_at_dates.py; a check should assert the guard exists rather than that the portal is correct."
     },
     "DQ-39": {
-      "declared": "partial",
+      "declared": "fixed",
+      "fixed_by": "2026-09-14 - the probe was measuring the wrong population, and once it measured the right one it read 0. Its 38 on that date were 20 rows already held back (needs_review, never shown) plus 18 served rows whose tag is the DQ-40 re-file note (a record of a repair, not a derivability flag). No served number carries a derivability flag. The 20 held-back rows stay candidates for a source check; they are not served.",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
@@ -435,7 +436,8 @@
       "note": "Fixed 2026-08-12: 59 of 76 tagged zone_specific (backup dcp_setback_controls_dq32b_backup_20260812). The other 17 must NOT be tagged - 8 canada_bay rows are PROXIMITY conditions ('within 400m of B3/B4'), 7 are clause/table references the regex mistook for zones, 1 is a road classification, 1 has an explicit fallback, 1 qualifies a sub-case only. Tagging any would DELETE a correct control, because the filter is skip-only. Excluded by id rather than by loosening the regex, so a NEW untagged zone-naming row still fails."
     },
     "DQ-32c": {
-      "declared": "open",
+      "declared": "fixed",
+      "fixed_by": "2026-09-14 - the four still-served rows (ids 10, 257, 259, 799) are each the base rate beside siblings that carry a condition, and each row's own quoted sentence names its case. The condition written is those words, nothing added: 10 'houses', 259 'each dwelling', 257 'each multi dwelling housing unit', 799 'per dwelling'. Ids 2 and 6 had already left the served set. Backup data/db_rollback_backups/dcp_setback_controls_pre_dq32c_conditions_*.csv.",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
@@ -917,12 +919,13 @@
       "update_2026-09-10": "THE FIX SHIPPED, AND IT IS NOT THE ONE THIS ROW DESCRIBED. This row proposed splitting oversized PDFs into overlapping chunks, and named a 139MB canterbury_bankstown chapter as the cause. Measured, that diagnosis was wrong twice over. (1) It named _maybe_toc_override and _extract_sequential as the two full passes; _maybe_toc_override only runs for woollahra and leichhardt, so for canterbury_bankstown the second pass is actually _maybe_route_via_ocr. (2) It framed the problem as oversized PDFs. It was not. pdfplumber caches every page's parsed objects for the life of the PDF object and nothing dropped them, so memory climbed across the WHOLE batch: a 4.3MB ashfield chapter peaked at 611 MB and left 214 MB resident. Three chapters in one process peaked at 1,361 MB and held 628 MB afterwards. WHAT SHIPPED INSTEAD (PR #1073): each page is released after it is read (flush_cache plus the textmap lru_cache -- both needed, measured separately at 626 MB and 1,325 MB against 1,356 MB with neither, and 426 MB with both), and the PDF work now runs in its own process so a SIGKILL cannot take the batch down. Output proven byte-identical to the previous code on three real chapters covering both extraction paths, same sha256 over sections and over tables. THE 30MB GUARD IS GONE, deliberately: after the page fix, peak memory does not track file size at all -- ku_ring_gai/section-b-part-14e is 35MB and peaks at 726 MB while canterbury_bankstown/chapter-7-6 is 139MB and peaks at 440 MB. A size threshold blocked seven chapters that extract fine and would have waved the heaviest one through. Do not reintroduce one. Five of the seven were extracted locally to confirm; the two city_of_sydney chapters have no R2 URL and could not be tested, which is the untested-file case process isolation exists to survive. THE PROBE ALSO CHANGED, and that is half the point. It counted chapters over 30MB, so it could never reach 0 while large councils exist -- a check watching a field its own fix had abandoned. It now counts large chapters that have NEVER been extracted: 3 today, and 0 once the nightly run clears them. Left declared OPEN rather than fixed until a production run proves it, because everything above was measured on a developer machine."
     },
     "DQ-99": {
-      "declared": "open",
+      "declared": "fixed",
+      "fixed_by": "2026-09-14 - scripts/conveyancing_db.fetch_dcp_setbacks skips applicability='precinct_specific' rows (it has no precinct to match them against), and the probe now asks that function for its verdict instead of restating its guard. The 7 rows stay in the table, correct inside their precincts. Consequence measured and published: ashfield's only front setback was the Haberfield Yasmar Estate rule, so councils holding front, side and rear setbacks 22 -> 21 (coverage.ts).",
       "check": [
         "python",
         "scripts/dq_probe_precinct_rows_served_lga_wide.py"
       ],
-      "passes_when": "exit 0 - no row marked precinct_specific passes the served guard (lga, is_current, needs_review) that scripts/conveyancing_db.fetch_dcp_setbacks applies",
+      "passes_when": "exit 0 - fetch_dcp_setbacks, asked for every council holding a precinct_specific row, returns none of them",
       "red_when": "a scope-limited row is served LGA-wide. Reads 7 on 2026-09-12: ashfield front_setback 4.0m (Haberfield Yasmar Estate), leichhardt front_setback 1.0m x2 (Birchgrove, Balmain neighbourhood minimums), ryde car_parking x4 (Macquarie Park Corridor). This CAN reach 0, unlike DQ-97/98 - the fix is for the guarded read to carry scope, not for the rows to be deleted.",
       "note": "Registered 2026-09-12. applicability is selected and passed through to consumers but never filtered on, so a precinct control is served to every address in the LGA. The probe reproduces the consumer's guard exactly; if fetch_dcp_setbacks changes its guard, this probe measures a population no user sees - the failure DQ-97 hit on 2026-09-10, when its count went to zero because the rows moved rather than because anything was repaired."
     },

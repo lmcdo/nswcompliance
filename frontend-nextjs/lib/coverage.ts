@@ -54,10 +54,13 @@
  *                                  count(*) FILTER (WHERE control_type='rear_setback')  r
  *                                FROM dcp_setback_controls WHERE is_current
  *                                  AND (needs_review IS NULL OR needs_review=FALSE)
+ *                                  AND applicability IS DISTINCT FROM 'precinct_specific'
  *                                  AND lga<>'nsw_statewide' AND lga<>'inner_west' GROUP BY lga)
- *                                SELECT count(*) FILTER (WHERE f>0 AND s>0 AND r>0) FROM t; -> 22
- *                                (23 until 2026-09-14, when the outreach gate's first run measured 22
- *                                live; an exact count must never overstate.)
+ *                                SELECT count(*) FILTER (WHERE f>0 AND s>0 AND r>0) FROM t; -> 21
+ *                                (22 until later on 2026-09-14, when precinct-only rules stopped being
+ *                                served council-wide (DQ-99): ashfield's only front setback was the
+ *                                Haberfield Yasmar Estate rule. 23 until the outreach gate's first run
+ *                                that morning measured 22 live; an exact count must never overstate.)
  *                                (was 24 as of 2026-08-24; re-verified 2026-09-01 and re-derived
  *                                independently against a fresh session, not just the script's own
  *                                claim. burwood, cumberland, ku_ring_gai, parramatta and woollahra
@@ -128,7 +131,7 @@ export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
   dcpNumericCouncils: 26,
-  dcpSetbackTripleCouncils: 22,
+  dcpSetbackTripleCouncils: 21,
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
@@ -150,7 +153,7 @@ export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
   dcpNumericCouncils: '26',
-  dcpSetbackTripleCouncils: '22',
+  dcpSetbackTripleCouncils: '21',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',

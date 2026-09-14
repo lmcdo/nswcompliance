@@ -106,6 +106,10 @@ QUERIES: dict[str, tuple[str, str]] = {
         "  COUNT(*) FILTER (WHERE control_type = 'rear_setback')  AS r "
         "FROM dcp_setback_controls WHERE is_current "
         "  AND (needs_review IS NULL OR needs_review = FALSE) "
+        # Precinct-only rules are not served council-wide (DQ-99, 2026-09-14), so
+        # they cannot make a council count: ashfield's only front setback was the
+        # Haberfield Yasmar Estate rule.
+        "  AND applicability IS DISTINCT FROM 'precinct_specific' "
         "  AND lga <> 'nsw_statewide' AND lga <> 'inner_west' GROUP BY lga) "
         "SELECT COUNT(*) FROM t WHERE f > 0 AND s > 0 AND r > 0",
     ),

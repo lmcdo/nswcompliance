@@ -488,6 +488,37 @@ def zone_row_applies(applicability: Optional[str], condition: Optional[str], zon
     return zone_prefix in named
 
 
+_STATES_MINIMUM = re.compile(r"\bmin(?:imum)?\b", re.I)
+_STATES_MAXIMUM = re.compile(r"\bmax(?:imum)?\b", re.I)
+
+
+def requirement_text(control_type: Optional[str], vmin, vmax, unit: Optional[str],
+                     source_text: Optional[str]) -> str:
+    """The requirement line for a control that carries a number, in the row's own unit.
+
+    Until 2026-09-14 every number printed as metres, so a parking rate read "1 m minimum; 2 m maximum"; a
+    maximum control whose ceiling is stored in value_min (max_site_coverage, max_height) read "60 m minimum";
+    and a range such as a rear setback of 3-6 m by lot width read as a 6 m maximum the plan does not set.
+    A range keeps "minimum ... maximum" only when the council's own sentence states both; otherwise it prints
+    as "X–Y unit", which is how the web view (DcpStructuredControls.formatValue) already shows it."""
+    u = (unit or "m").strip() or "m"
+
+    def fmt(value) -> str:
+        return f"{value:g}{u}" if u == "%" else f"{value:g} {u}"
+
+    kind = control_type or ""
+    is_ceiling = kind.startswith("max_") or kind.endswith("_max")
+    if vmin is not None and vmax is not None and vmin != vmax:
+        text = source_text or ""
+        if _STATES_MINIMUM.search(text) and _STATES_MAXIMUM.search(text):
+            return f"{fmt(vmin)} minimum; {fmt(vmax)} maximum"
+        return f"{vmin:g}–{fmt(vmax)}"
+    value = vmin if vmin is not None else vmax
+    if is_ceiling or vmin is None:
+        return f"{fmt(value)} maximum"
+    return f"{fmt(value)} minimum"
+
+
 # prior-art-checked: same function, additive kwarg only — the proxy endpoint
 # needs failure distinguishable from checked-none; no new capability.
 def fetch_dcp_setbacks(
@@ -664,6 +695,11 @@ def fetch_dcp_setbacks(
         # has no data for.
         if needs_review:
             continue
+        # A precinct control is the answer inside one precinct only, and usually more permissive than the
+        # council's general rule. This read has no precinct to match it against, so it is not served
+        # council-wide (DQ-99). 2026-09-14: leichhardt served a 1.0 m Birchgrove front setback to every house.
+        if applicability == "precinct_specific":
+            continue
         # Skip zone-specific controls that do not apply to this site's zone, including rows written
         # "other than <zone>" (see zone_row_applies).
         if not zone_row_applies(applicability, condition, zone_prefix, zones_include, zones_exclude):
@@ -674,12 +710,7 @@ def fetch_dcp_setbacks(
 
         if vmin is not None or vmax is not None:
             control_kind = "prescribed"
-            parts: list[str] = []
-            if vmin is not None:
-                parts.append(f"{vmin:g} m minimum")
-            if vmax is not None and vmax != vmin:
-                parts.append(f"{vmax:g} m maximum")
-            requirement = "; ".join(parts) if parts else f"{vmin or vmax:g} m"
+            requirement = requirement_text(ctrl_type, vmin, vmax, unit, source_text)
         else:
             control_kind = "site_derived"
             requirement = source_text or plain_summary or "No set number — see the plan"

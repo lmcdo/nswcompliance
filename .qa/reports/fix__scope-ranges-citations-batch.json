@@ -1,0 +1,138 @@
+{
+  "tier": "critical",
+  "justification": "Changes what the single guarded DCP read serves to every surface: precinct-only rules stop being returned council-wide, and every served number is worded from its own unit and from whether the council's sentence actually states a maximum. It also corrects two probes that measured the wrong population and flips three ledger rows, so a wrong edit here either serves a wrong number or turns a gate green on nothing.",
+  "commit_hash": "pending",
+  "files": [
+    "scripts/conveyancing_db.py",
+    "scripts/outreach_claim_checks.py",
+    "scripts/dq_probe_precinct_rows_served_lga_wide.py",
+    "scripts/dq_probe_live.py",
+    "scripts/verify_coverage_stats.py",
+    "frontend-nextjs/lib/coverage.ts",
+    "tests/test_conveyancing_db.py",
+    "tests/test_dq_probe_precinct_rows_served_lga_wide_real_db.py",
+    "tests/test_outreach_claim_checks_ranges_and_citations.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".qa/reports/fix__scope-ranges-citations-batch.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest -q -o addopts= tests/test_conveyancing_db.py tests/test_outreach_claim_checks_ranges_and_citations.py",
+    "fails_when": "Six mutations were injected one at a time and each turned a named test red, then the files were restored byte-for-byte (101 passed after). 1 precinct skip removed: test_a_precinct_rule_is_not_served_council_wide fails. 2 every number printed in metres: 4 fail incl. test_a_number_prints_in_its_own_unit and the real-wording test. 3 every range printed as minimum and maximum: test_a_range_the_plan_does_not_call_a_maximum_prints_as_a_range fails. 4 the check stops reading the council's sentence for a maximum: test_a_maximum_the_councils_sentence_states_passes fails. 5 the check stops comparing units: test_a_number_printed_in_metres_when_its_unit_is_spaces_fails fails. 6 the check counts no-number notes as numbers: test_a_no_set_number_note_is_not_counted_as_a_number fails.",
+    "external_authority": "The council's own quoted sentence (source_text) decides whether a maximum is stated, and the row's stored unit decides the unit; neither is inferred from control_type. Live production measured on this branch: the DQ-99 probe asks fetch_dcp_setbacks and returns 0, DQ-39 returns 0, DQ-32c returns 0, the range and unit sub-check passes, and the triple-setback council count is 21."
+  },
+  "pre_impl": {
+    "existing_data": "fetch_dcp_setbacks already selected applicability and passed it through untouched; the TS client comments that consumers must not fabricate it. Seven rows carry precinct_specific. The wording helper printed every number as metres and any min/max pair as minimum plus maximum.",
+    "assumption_mismatch": "The DQ-39 probe was assumed to count served values flagged underivable; its 38 were 20 held-back rows nobody sees plus 18 served rows tagged with the DQ-40 re-file note. The precinct probe restated the guard as SQL, so it could pass on an edited string while the read still served them.",
+    "new_vs_existing": "No new module. requirement_text replaces inline wording inside conveyancing_db; the probe now calls the existing fetch_dcp_setbacks instead of copying its guard; one new test file covers two existing sub-checks.",
+    "external_source_error": "If the database is unreachable the probe raises through fetch_dcp_setbacks(raise_on_error=True) and exits non-zero without printing PASSED, so a connection failure cannot read as zero precinct rows served.",
+    "frontend_type": "The requirement string stays a plain string on the same field; the TS client renders it as before. coverage.ts changes one exported integer and its display string from 22 to 21, both typed as const literals.",
+    "user_failure_mode": "Before: an Ashfield buyer saw the Yasmar Estate 4m front setback as the council rule, a Ryde parking rate read '1 m minimum', and a 3-6m lot-width range read as a 6m maximum the plan never sets. After: the precinct rule is absent council-wide and numbers print in their own unit."
+  },
+  "functions": [
+    {
+      "name": "requirement_text",
+      "file_line": "scripts/conveyancing_db.py:495",
+      "input": "control_type, value_min, value_max, unit and the council's quoted source_text for one served control row.",
+      "output": "A requirement string in the row's own unit: a range as 'a-b unit' unless the sentence states both minimum and maximum, otherwise 'value unit minimum' or 'value unit maximum' for ceiling controls.",
+      "if_none": "Unit None defaults to metres as before; value_min None with a value_max prints the maximum; source_text None is treated as empty so a range prints as a plain range, never as a maximum."
+    },
+    {
+      "name": "fetch_dcp_setbacks",
+      "file_line": "scripts/conveyancing_db.py:524",
+      "input": "An open connection and a council slug; reads current, not-held-back dcp_setback_controls rows for that council.",
+      "output": "Served control entries for every surface, now excluding rows whose applicability is precinct_specific and wording each prescribed number through requirement_text.",
+      "if_none": "Applicability None is not precinct_specific so the row is still served exactly as before; a council with only precinct rows for a control returns no entry for it rather than a scoped number."
+    },
+    {
+      "name": "no_range_printed_as_a_maximum",
+      "file_line": "scripts/outreach_claim_checks.py:192",
+      "input": "Served entries from the real serve path for every council, each with value_min, value_max, unit, requirement and source_text.",
+      "output": "FAIL listing councils where a range reads as a maximum the council's sentence does not state, or a number prints in a unit other than its own; PASS otherwise.",
+      "if_none": "When the serve path could not be read it returns UNKNOWN with the reason, never PASS; entries with no value are skipped for the unit comparison."
+    },
+    {
+      "name": "every_served_number_is_cited",
+      "file_line": "scripts/outreach_claim_checks.py:166",
+      "input": "Served entries plus the chapter-to-PDF map; only entries carrying a value_min or value_max are counted as numbers.",
+      "output": "FAIL with 'N of M numbers' lacking a PDF link or the council's sentence; PASS only when every served number has both.",
+      "if_none": "A no-number note such as 'No maximum site coverage specified' is not counted; an entry whose source_text is empty still counts as uncited and fails."
+    }
+  ],
+  "values": [
+    {
+      "value": "applicability on dcp_setback_controls rows",
+      "read_at": "scripts/conveyancing_db.py:701",
+      "if_missing": "NULL is not precinct_specific, so the row is served as before; only the explicit CHECK-constrained value precinct_specific is skipped."
+    },
+    {
+      "value": "unit on dcp_setback_controls rows",
+      "read_at": "scripts/conveyancing_db.py:495",
+      "if_missing": "Blank or NULL unit falls back to metres, the previous behaviour, and the unit sub-check skips rows without a unit."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "DQ-39: count SERVED setback controls carrying a DQ derivability flag, excluding DQ-40 re-file notes",
+      "file_line": "scripts/dq_probe_live.py:693",
+      "where_clause": "is_current AND NOT COALESCE(needs_review, false) AND review_reason IS NOT NULL AND (review_reason LIKE 'DQ %%' OR review_reason LIKE '[DQ-%%') AND review_reason NOT LIKE '[DQ-40 %%'"
+    },
+    {
+      "purpose": "Published triple-setback council count, now excluding precinct-only rows the serve path no longer returns",
+      "file_line": "scripts/verify_coverage_stats.py",
+      "where_clause": "is_current AND (needs_review IS NULL OR needs_review=FALSE) AND applicability IS DISTINCT FROM 'precinct_specific' AND lga<>'nsw_statewide' AND lga<>'inner_west'"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone removes the precinct skip from fetch_dcp_setbacks while leaving the probe's SQL untouched.",
+      "what_happens": "Precinct rules would be served council-wide again, but the probe asks fetch_dcp_setbacks itself so it goes red.",
+      "mitigated": true,
+      "how": "Probe calls the serve path; unit test test_a_precinct_rule_is_not_served_council_wide caught the mutation; the real-db test asserts the skip and the call are present.",
+      "repro": "Replace 'if applicability == \"precinct_specific\":' with 'if False:' in scripts/conveyancing_db.py and run python -m pytest tests/test_conveyancing_db.py -o addopts="
+    },
+    {
+      "scenario": "A parking rate row with unit spaces/dwelling is worded by a helper that assumes metres.",
+      "what_happens": "Users would read '1 m minimum' for a parking rate; the claim 17 unit sub-check fails and two unit tests fail.",
+      "mitigated": true,
+      "how": "requirement_text formats with the row's own unit; wrong_unit comparison in no_range_printed_as_a_maximum; mutation 2 turned four tests red.",
+      "repro": "Change the fmt return to f\"{value:g} m\" in requirement_text and run python -m pytest tests/test_outreach_claim_checks_ranges_and_citations.py -o addopts="
+    },
+    {
+      "scenario": "A lot-width range such as rear setback 3m to 6m is printed as '3 m minimum; 6 m maximum'.",
+      "what_happens": "A buyer would believe the plan caps the rear setback at 6m when it only varies the minimum by lot width.",
+      "mitigated": true,
+      "how": "Both minimum and maximum are printed only when the council's own sentence states both words; otherwise it prints as a range, and the sub-check reads source_text independently.",
+      "repro": "Replace the _STATES_MINIMUM and _STATES_MAXIMUM condition with 'if True:' and run python -m pytest tests/test_conveyancing_db.py -o addopts="
+    },
+    {
+      "scenario": "The DQ-39 probe is later widened back to all current rows including held-back ones.",
+      "what_happens": "It would read 38 again while no served number is flagged, and DQ-39 declared fixed would turn the ledger red.",
+      "mitigated": true,
+      "how": "The ledger enforces declared state both ways, and the probe's comment records the population and the 20 plus 18 breakdown measured on 2026-09-14.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-39 after deleting 'AND NOT COALESCE(needs_review, false)' from its SQL, then python scripts/dq_check.py"
+    },
+    {
+      "scenario": "The claim 8 check counts 'No maximum site coverage specified' notes as uncited numbers.",
+      "what_happens": "Claim 8 could never pass for notes that have no number to cite, so the gate measures the wrong thing forever.",
+      "mitigated": true,
+      "how": "Entries without value_min and value_max are skipped; test_a_no_set_number_note_is_not_counted_as_a_number caught mutation 6.",
+      "repro": "Replace the value_min/value_max None skip with 'if False:' in every_served_number_is_cited and run python -m pytest tests/test_outreach_claim_checks_ranges_and_citations.py -o addopts="
+    },
+    {
+      "scenario": "The published triple-setback count stays at 22 after Ashfield loses its only front setback row.",
+      "what_happens": "The site would overstate coverage by one council and claim OC-2 would contradict its declared true state.",
+      "mitigated": true,
+      "how": "verify_coverage_stats applies the same precinct exclusion and coverage.ts is 21; OC-2 passed on this branch's outreach run.",
+      "repro": "python scripts/verify_coverage_stats.py --field dcpSetbackTripleCouncils"
+    }
+  ],
+  "mutation_analysis": "Six mutations run, not described, via a script that edits one target string, runs the two test files, and restores the original bytes: all six caught by the named test (1, 4, 2, 2, 1, 1 failures). Clean run after restoration: 101 passed. Wider suites touching these modules: 446 passed, 19 skipped; granny flat, leichhardt, integration, fidelity gate files: 309 passed, 168 skipped. Full ledger python scripts/dq_check.py exit 0 on this branch.",
+  "residual_risk": "Precinct rows are now absent rather than shown scoped, so a property inside Haberfield's Yasmar Estate does not see its own 4m rule until a precinct match exists. services/granny_flat.py words its own numbers and was not changed. OC-8 and OC-12 still fail on citations that need their source documents.",
+  "post_merge": {
+    "db_reset": "No schema change. The DQ-32c condition text for rows 10, 257, 259 and 799 was written to production before this PR with backup dcp_setback_controls_pre_dq32c_conditions_2026-09-14_1924.csv, so the ledger flip lands with data already in place.",
+    "secrets": "None written or read beyond the existing DATABASE_URL in the repo-root .env.",
+    "other_repo": "No. Single repository; the Railway backend picks up conveyancing_db.py on its next deploy.",
+    "manual_verify": "Yes: after the backend deploys, request DCP controls for ashfield and confirm no 4m Yasmar Estate front setback is returned, and for ryde confirm a parking rate reads in spaces per dwelling."
+  }
+}

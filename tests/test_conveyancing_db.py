@@ -409,12 +409,45 @@ class TestSetbackFormatting:
         assert entry["value_min"] is None
         assert entry["value_max"] is None
 
-    def test_prescribed_min_and_max(self):
-        rows = [_make_row(vmin=3.0, vmax=9.0)]
+    def test_a_range_the_plan_does_not_call_a_maximum_prints_as_a_range(self):
+        # A rear setback of 3-9 m by lot width is not a 9 m maximum (2026-09-14: burwood rear 3-6 m read that way).
+        rows = [_make_row(vmin=3.0, vmax=9.0, source_text="Rear setback 3m to 9m depending on lot depth")]
         result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")
         entry = result["setbacks"][0]
-        assert "3 m minimum" in entry["requirement"]
-        assert "9 m maximum" in entry["requirement"]
+        assert entry["requirement"] == "3–9 m"
+        assert "maximum" not in entry["requirement"]
+
+    def test_a_range_the_plan_states_as_minimum_and_maximum_keeps_both(self):
+        rows = [_make_row(ctrl_type="car_parking", vmin=1.0, vmax=2.0, unit="spaces/dwelling",
+                          source_text="Minimum 1, maximum 2 car parking spaces (Table C-B)")]
+        entry = fetch_dcp_setbacks(_mock_conn(rows), "canada_bay")["setbacks"][0]
+        assert entry["requirement"] == "1 spaces/dwelling minimum; 2 spaces/dwelling maximum"
+
+    def test_a_number_prints_in_its_own_unit(self):
+        # Every number used to print as metres: "1 m minimum" for a parking rate.
+        rows = [_make_row(ctrl_type="car_parking", vmin=1.0, vmax=None, unit="spaces/dwelling")]
+        entry = fetch_dcp_setbacks(_mock_conn(rows), "fairfield")["setbacks"][0]
+        assert entry["requirement"] == "1 spaces/dwelling minimum"
+        rows = [_make_row(ctrl_type="landscaping_min", vmin=30.0, vmax=None, unit="%")]
+        entry = fetch_dcp_setbacks(_mock_conn(rows), "fairfield")["setbacks"][0]
+        assert entry["requirement"] == "30% minimum"
+
+    def test_a_maximum_control_reads_as_a_maximum(self):
+        # A ceiling stored in value_min read "60 m minimum".
+        rows = [_make_row(ctrl_type="max_site_coverage", vmin=60.0, vmax=None, unit="%")]
+        entry = fetch_dcp_setbacks(_mock_conn(rows), "blacktown")["setbacks"][0]
+        assert entry["requirement"] == "60% maximum"
+        rows = [_make_row(ctrl_type="car_parking", vmin=None, vmax=2.0, unit="spaces/dwelling")]
+        entry = fetch_dcp_setbacks(_mock_conn(rows), "waverley")["setbacks"][0]
+        assert entry["requirement"] == "2 spaces/dwelling maximum"
+
+    def test_a_precinct_rule_is_not_served_council_wide(self):
+        # DQ-99: leichhardt served a 1.0 m Birchgrove neighbourhood minimum to every house in the council.
+        rows = [_make_row(vmin=1.0, applicability="precinct_specific",
+                          condition="Birchgrove neighbourhood minimum"),
+                _make_row(vmin=6.0, applicability="universal_residential")]
+        result = fetch_dcp_setbacks(_mock_conn(rows), "leichhardt")
+        assert [e["value_min"] for e in result["setbacks"]] == [6.0]
 
     def test_prescribed_min_equals_max(self):
         rows = [_make_row(vmin=6.0, vmax=6.0)]
