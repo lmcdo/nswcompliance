@@ -9,7 +9,7 @@ python-dotenv>=1.2.2
 semgrep>=1.172.0
 
 # mutation_health.py (mutmut drives pytest over services/*)
-mutmut>=3.6.0,<4
+mutmut>=3.7.0,<4
 pytest>=8.0
 hypothesis>=6.0
 icontract>=2.7.3
