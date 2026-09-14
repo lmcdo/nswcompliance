@@ -1,11 +1,11 @@
-boto3>=1.43.64
-psycopg2-binary>=2.9.12
+boto3>=1.43.92
+psycopg2-binary>=2.9.13
 requests>=2.34.2
-python-dotenv>=1.2.2
+python-dotenv>=1.2.3
 beautifulsoup4>=4.12
 lxml>=6.1.1
 pdfplumber>=0.11.10
-pypdf>=6.14.2
+pypdf>=6.18.0
 anthropic>=0.120.2
 # property-alerts dispatcher reuses services/threat_radar.py, a FastAPI router
 # module — importing it needs fastapi even in the cron context (pydantic already
