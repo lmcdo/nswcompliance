@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Frontend package manifest and lockfile only: Dependabot's npm minor-and-patch group (#1107), re-pushed from a normal branch because Dependabot runs get no repository secrets and no QA report, so their gates can never pass. The npm majors group (#1028) is not included (issue #770 stages it).",
-  "commit_hash": "pending",
+  "commit_hash": "6afcf3e9",
   "files": [
     "frontend-nextjs/package.json",
     "frontend-nextjs/package-lock.json"
