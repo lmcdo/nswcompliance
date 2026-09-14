@@ -1,0 +1,24 @@
+{
+  "tier": "minor",
+  "justification": "Frontend package manifest and lockfile only: Dependabot's npm minor-and-patch group (#1107), re-pushed from a normal branch because Dependabot runs get no repository secrets and no QA report, so their gates can never pass. The npm majors group (#1028) is not included (issue #770 stages it).",
+  "commit_hash": "6afcf3e9",
+  "files": [
+    "frontend-nextjs/package.json",
+    "frontend-nextjs/package-lock.json"
+  ],
+  "break_it": [
+    {
+      "scenario": "A minor release in the group changes a type, a default or a build step, so the Next.js build, type check or a Jest suite breaks.",
+      "what_happens": "Vercel fails to build the site, or a page renders differently from before.",
+      "mitigated": true,
+      "how": "The CI gates run (Jest, dev server boot, type check) and the Vercel preview build on this branch decide the merge; nothing merges on a failed or missing run.",
+      "repro": "python scripts/check_pr_gates.py <this PR>"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: confirm the Vercel production deploy of the merge commit succeeds. Dependabot closes #1107 once main carries the same versions."
+  }
+}
