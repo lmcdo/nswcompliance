@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes what the single guarded DCP read serves to every surface: precinct-only rules stop being returned council-wide, and every served number is worded from its own unit and from whether the council's sentence actually states a maximum. It also corrects two probes that measured the wrong population and flips three ledger rows, so a wrong edit here either serves a wrong number or turns a gate green on nothing.",
-  "commit_hash": "7605920d",
+  "commit_hash": "ba71c58d",
   "files": [
     "scripts/conveyancing_db.py",
     "scripts/outreach_claim_checks.py",
