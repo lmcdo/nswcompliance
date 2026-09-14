@@ -4200,10 +4200,11 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
 
     Idempotent per chapter: existing pending rows for a (council, chapter_key) are
     cleared and re-inserted, so re-running --review refreshes the queue rather than
-    duplicating. Changed/added/removed items are enqueued. Unchanged and renumbered
-    provisions are enqueued too when the chapter is a full replace, because the commit
-    worker drops every rule a full-replace queue does not hold; for a targeted
-    amendment they are not (page-only shifts there are still not enqueued).
+    duplicating. Changed/added/removed items are enqueued, and renumbered provisions
+    under both numbers in either mode. Unchanged provisions are enqueued too when the
+    chapter is a full replace, because the commit worker drops every rule a full-replace
+    queue does not hold; for a targeted amendment they are not (page-only shifts there
+    are still not enqueued).
     Returns the number of rows enqueued.
     """
     cur = conn.cursor()
@@ -4272,25 +4273,29 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
                     "Text unchanged from the live rule. Queued because this chapter is "
                     "replaced whole, and a rule left out of the queue is dropped at commit.",
                 ))
-            for rn in diff.get("renumbered") or []:
-                # Both numbers are named: the commit's completeness check requires every
-                # live rule, including the old number, to be accounted for in the queue.
-                rows.append((
-                    "removed", rn.get("old_ref_number"), rn.get("old_text"), None,
-                    None, None, False,
-                    # The match is fuzzy (at least 90% alike over the first 200
-                    # characters), not equality, so neither summary claims the text is
-                    # the same (cross-review, 2026-09-13).
-                    f"Matched to {rn.get('new_ref_number')} under a new number (at least 90% "
-                    "alike in its first 200 characters). That rule is queued; compare the texts.",
-                ))
-                rows.append((
-                    "added", rn.get("new_ref_number"), None, rn.get("text"),
-                    None, rn.get("new_page"), False,
-                    f"Matched to live rule {rn.get('old_ref_number')} under a new number (at "
-                    "least 90% alike in its first 200 characters). Queued because this chapter "
-                    "is replaced whole; compare with the old text.",
-                ))
+        # A renumbered rule is queued in BOTH modes, under both numbers. For a full replace,
+        # the commit's completeness check requires every live rule, including the old
+        # number, to be accounted for. For a targeted amendment, the direct path above
+        # renames the live rule, but the commit worker can only apply what the queue holds:
+        # until 2026-09-14 a targeted approval left the rule served under its old number,
+        # and dcp_commit_approved now records that the chapter matches the new PDF.
+        for rn in diff.get("renumbered") or []:
+            rows.append((
+                "removed", rn.get("old_ref_number"), rn.get("old_text"), None,
+                None, None, False,
+                # The match is fuzzy (at least 90% alike over the first 200
+                # characters), not equality, so neither summary claims the text is
+                # the same (cross-review, 2026-09-13).
+                f"Matched to {rn.get('new_ref_number')} under a new number (at least 90% "
+                "alike in its first 200 characters). That rule is queued; compare the texts.",
+            ))
+            rows.append((
+                "added", rn.get("new_ref_number"), None, rn.get("text"),
+                None, rn.get("new_page"), False,
+                f"Matched to live rule {rn.get('old_ref_number')} under a new number (at "
+                "least 90% alike in its first 200 characters). Queued so the rule is served "
+                "under its new number; compare with the old text.",
+            ))
 
         if not rows:
             continue

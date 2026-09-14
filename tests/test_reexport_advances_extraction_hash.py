@@ -79,12 +79,20 @@ def test_reexport_update_still_advances_content_hash():
     assert "content_hash=%s" in re.sub(r"\s+", " ", _reexport_update_sql())
 
 
-def test_only_the_extractor_and_the_reexport_branch_write_the_field():
-    """If a third writer appears, this reasoning needs revisiting.
+def test_only_the_known_writers_write_the_field():
+    """If another writer appears, this reasoning needs revisiting.
 
     The whole diagnosis rests on the field having exactly one writer before this
     change. A new one silently invalidates that, so it should break a test
     rather than a conclusion.
+
+    The third writer, dcp_commit_approved.py, was added deliberately on 2026-09-14:
+    the review-queue commit cleared needs_extraction without recording the hash, so
+    110 served rules committed after their PDF changed still counted in DQ-70. It
+    writes the approved source hash only after its currency guard has matched it to
+    content_hash, and keeps the recorded value when an approval carries none
+    (tests/test_dcp_commit_approved_records_hash.py). Any further writer still
+    breaks this test.
     """
     writers = set()
     for path in (ROOT / "scripts").glob("*.py"):
@@ -95,5 +103,5 @@ def test_only_the_extractor_and_the_reexport_branch_write_the_field():
             if line.lstrip().startswith(("#", "--", "AND", "OR")):
                 continue
             writers.add(path.name)
-    assert writers <= {"dcp_extract_changed.py", "r2_monitor.py"}, (
+    assert writers <= {"dcp_extract_changed.py", "r2_monitor.py", "dcp_commit_approved.py"}, (
         f"a new writer of provisions_extracted_from_hash appeared: {writers}")

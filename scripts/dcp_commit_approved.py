@@ -362,9 +362,24 @@ def main() -> int:
                 "DELETE FROM dcp_review_queue WHERE council=%s AND chapter_key=%s AND status='approved'",
                 (council, chapter_key),
             )
+            # Record WHICH version of the PDF the now-live rules came from, as the direct
+            # extraction path already does (dcp_extract_changed.py, "Mark chapter extracted").
+            # This line used to clear the flag and record nothing, so the registry kept the
+            # pre-change fingerprint: on 2026-09-14, 110 served rules written here after their
+            # PDF changed still read as stale in DQ-70, indistinguishable from stale ones.
+            # approved_hash is the source_content_hash every approved row was reviewed against,
+            # and the currency guard above has already required it to equal the registry's
+            # content_hash. It holds for a targeted commit too: its queue carries every
+            # difference the direct path applies (changed, added, removed, and renumbered
+            # rules under both numbers -- enqueue_review_changes), so the rules it leaves
+            # untouched are the ones whose text matched the new PDF. A legacy approval with no
+            # recorded hash cannot say which version it reflects, so it clears the flag and
+            # leaves the recorded fingerprint as it was.
             cur.execute(
-                "UPDATE dcp_chapter_registry SET needs_extraction=FALSE WHERE council=%s AND chapter_key=%s",
-                (council, chapter_key),
+                "UPDATE dcp_chapter_registry SET needs_extraction=FALSE, "
+                "provisions_extracted_from_hash = COALESCE(%s, provisions_extracted_from_hash) "
+                "WHERE council=%s AND chapter_key=%s",
+                (approved_hash, council, chapter_key),
             )
             conn.commit()
             print(f"  [committed] {council}/{chapter_key} -- {inserted} reviewed provisions "

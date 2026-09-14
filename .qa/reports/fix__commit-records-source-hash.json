@@ -1,0 +1,117 @@
+{
+  "tier": "critical",
+  "justification": "Changes what the governance commit writes: which PDF version dcp_chapter_registry says the live rules came from (the freshness signal DQ-70 and outreach claims 10 and 17 read), and which rule numbers are live after a targeted amendment is committed. A wrong answer here serves a stale rule while every check says it is current.",
+  "commit_hash": "8eb0a285",
+  "files": [
+    "scripts/dcp_commit_approved.py",
+    "scripts/dcp_extract_changed.py",
+    "tests/test_dcp_commit_approved_records_hash.py",
+    "tests/test_dcp_commit_reviewed.py",
+    "tests/test_dcp_review_enqueue.py",
+    "tests/test_reexport_advances_extraction_hash.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry.content_hash (the PDF fingerprint r2_monitor stores) and provisions_extracted_from_hash (the fingerprint the live rules were written from); dcp_review_queue.source_content_hash and is_full_replace, written at enqueue. No new column, table or data source.",
+    "assumption_mismatch": "The commit worker assumed clearing needs_extraction was enough. Only the direct extraction path recorded provisions_extracted_from_hash, so 110 served rules committed after their PDF changed still counted as stale in DQ-70 (measured 2026-09-14), indistinguishable from rules that really are stale. Second mismatch, found while fixing the first: the review queue left renumbered rules out of targeted amendments, while the direct path renames them.",
+    "new_vs_existing": "Extends two existing statements rather than adding anything: the registry UPDATE at the end of a commit gains the fingerprint (the same column the direct path at dcp_extract_changed.py 'Mark chapter extracted' writes), and the existing renumbered-rule loop in enqueue_review_changes moves out of the full-replace branch so it runs in both modes.",
+    "external_source_error": "The fingerprint comes from R2 via r2_monitor, not from this change. If the monitor never stored a hash, dcp_review_queue.source_content_hash is NULL, approved_hash is NULL, and the COALESCE leaves the recorded fingerprint untouched rather than inventing one.",
+    "frontend_type": "No frontend type changes. The frontend reads provisions and the needs_review numbers-hidden flag, neither of whose shape changes; only which registry rows DQ-70 counts as stale changes.",
+    "user_failure_mode": "Before: a chapter a person reviewed and committed after its PDF changed still read as stale, so a genuinely stale chapter hid among false ones; and a targeted approval left a renumbered rule served under its old number. After, if the fix were wrong in the other direction, a stale chapter would read as current. The tests pin both directions."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_commit_approved_records_hash.py tests/test_dcp_review_enqueue.py tests/test_dcp_commit_reviewed.py tests/test_dcp_commit_refuses_section_loss.py tests/test_dcp_commit_rederives_precinct_keys.py -o addopts=\"\" -q",
+    "external_authority": "The fake registry applies the worker's UPDATE the way Postgres evaluates the two forms it can take (COALESCE keeps the old value on NULL; a plain assignment overwrites), and the renumbering test is written against what the direct extraction path does to a renumbered rule, a different code path from the one under test.",
+    "fails_when": "A committed chapter keeps its old fingerprint; a legacy approval with no stored hash overwrites the recorded fingerprint; a stale or refused approval or a dry run touches the registry; or a targeted amendment's renumbered rule is left out of the queue or turns the queue into a full replace.",
+    "observed_red": "Forced three ways, each restored afterwards. Fingerprint dropped from the UPDATE: FAILED test_a_commit_records_the_pdf_version_the_rules_were_reviewed_against, 1 failed 4 passed. COALESCE replaced by a plain %s: FAILED test_a_legacy_approval_with_no_hash_keeps_the_recorded_fingerprint, 1 failed 4 passed. Renumbered loop limited to full replace again: FAILED test_a_targeted_amendment_queues_a_renumbered_rule_under_both_numbers, 1 failed 8 passed.",
+    "measured": "42 passed in 49.32s across the five files. Read-only production query of open review queues, 2026-09-14: 39 chapters, 36 full replace, 3 targeted (ku_ring_gai section-a-part-8-mixed-use and section-a-part-9-non-residential, woollahra chapter-e1-parking-access on hold), each with pending rows."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/dcp_commit_approved.py:270",
+      "input": "Command line flags --commit and --allow-section-loss; candidate chapters from find_committable_chapters, each carrying approved_hash and hash_variants.",
+      "output": "Exit code 0, 1 or 2 as before. For each committed chapter the registry row now has needs_extraction FALSE and provisions_extracted_from_hash set to the approved hash.",
+      "if_none": "approved_hash None (legacy queue rows with no stored hash): the flag is cleared and the COALESCE keeps whatever fingerprint was already recorded, so DQ-70 keeps counting the chapter."
+    },
+    {
+      "name": "enqueue_review_changes",
+      "file_line": "scripts/dcp_extract_changed.py:4194",
+      "input": "A connection and the review chapters from a --review run, each with its diff: changed, added, removed, unchanged, renumbered, total_old, total_new, status.",
+      "output": "Rows inserted into dcp_review_queue. Renumbered rules now go in as the old number removed and the new number added in both modes; unchanged rules still only for a full replace.",
+      "if_none": "A diff with no renumbered key or an empty list adds no rows for it; the loop reads diff.get('renumbered') or an empty list, so a missing key is the same as none."
+    }
+  ],
+  "real_layer_exempt": {
+    "scripts/dcp_commit_approved.py": "A real-database run of the commit worker commits approved rules into production regulatory_provisions and edits the registry, so it cannot be run as a test. The behaviour was measured read-only instead: the open queue modes query (39 chapters, 3 targeted, all with pending rows) and the earlier DQ-70 measurement of 110 false-positive rules. The fake registry test applies both UPDATE forms with Postgres semantics.",
+    "scripts/dcp_extract_changed.py": "enqueue_review_changes writes to the production dcp_review_queue, and a --review run downloads from R2 and replaces a chapter's pending rows, so it cannot run as a test. Only the position of an existing loop changes; tests/test_dcp_review_enqueue.py executes the real function source against a mock connection and pins both modes."
+  },
+  "values": [
+    {
+      "value": "approved_hash: MAX(dcp_review_queue.source_content_hash) over the chapter's rows, with hash_variants the count of distinct hashes.",
+      "read_at": "find_committable_chapters in scripts/dcp_commit_approved.py, before the loop; the currency guard requires hash_variants of 1 and approved_hash equal to the registry content_hash.",
+      "if_missing": "NULL when every row predates stored hashes. The guard lets it through as before, and the registry UPDATE keeps the recorded fingerprint rather than writing one nobody checked."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Registry fingerprint update after a chapter commit",
+      "file_line": "scripts/dcp_commit_approved.py:379",
+      "where_clause": "WHERE council=%s AND chapter_key=%s -- exactly the chapter committed in the same transaction; runs only after commit_reviewed_from_queue and the section-loss guard succeed, and is rolled back with them."
+    },
+    {
+      "purpose": "Review queue insert of renumbered rules for targeted amendments",
+      "file_line": "scripts/dcp_extract_changed.py:4356",
+      "where_clause": "An INSERT with no WHERE; it follows the unchanged, chapter-scoped DELETE FROM dcp_review_queue WHERE council=%s AND chapter_key=%s AND status='pending' and the rejected-to-superseded UPDATE with the same scope."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A targeted queue built before this change, which never held its renumbered rules, is approved and committed; the registry fingerprint update now says the chapter matches the new PDF.",
+      "what_happens": "The renumbered rule stays live under its old number while DQ-70 reads the chapter as current, so nothing flags it.",
+      "mitigated": true,
+      "how": "Measured before building: only 3 targeted queues are open (ku_ring_gai part-8 and part-9, woollahra e1 which is on hold) and every one still has pending rows, so none can commit. Each has needs_extraction TRUE, so the next --review run deletes the pending rows and re-queues from a fresh diff that now includes renumbered rules, which arrive pending and block the chapter until a person reviews them.",
+      "repro": "SELECT council, chapter_key, bool_or(is_full_replace), count(*) FILTER (WHERE status IN ('pending','in_progress','needs_info')) FROM dcp_review_queue WHERE status IN ('approved','pending','in_progress','needs_info') GROUP BY 1,2 HAVING NOT bool_or(is_full_replace)"
+    },
+    {
+      "scenario": "A legacy approval whose queue rows carry no source_content_hash reaches the registry fingerprint update.",
+      "what_happens": "Writing the registry's current content_hash would claim the rules match a PDF version nobody compared them with, and DQ-70 would stop counting a chapter that may be stale.",
+      "mitigated": true,
+      "how": "COALESCE(%s, provisions_extracted_from_hash) leaves the recorded value when approved_hash is NULL; test_a_legacy_approval_with_no_hash_keeps_the_recorded_fingerprint fails if it becomes a plain assignment.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_records_hash.py::test_a_legacy_approval_with_no_hash_keeps_the_recorded_fingerprint -o addopts=\"\""
+    },
+    {
+      "scenario": "The council publishes another PDF after the review, so the approval is stale when the commit runs.",
+      "what_happens": "If the update ran anyway, the old reviewed rules would be stamped with the newest fingerprint and read as current.",
+      "mitigated": true,
+      "how": "The currency guard skips the chapter before any write when approved_hash differs from the registry content_hash; test_a_stale_approval_records_nothing asserts zero registry updates and the old fingerprint.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_records_hash.py::test_a_stale_approval_records_nothing -o addopts=\"\""
+    },
+    {
+      "scenario": "The commit is refused part-way, by the unqueued-rule check or the section-loss guard, after some provisions were switched off.",
+      "what_happens": "A registry row saying the chapter matches the new PDF would survive while its rules were rolled back to the old ones.",
+      "mitigated": true,
+      "how": "The fingerprint update sits after both checks inside the same transaction; a refusal raises before it and conn.rollback() discards anything earlier. test_a_refused_commit_records_nothing asserts no update, one rollback and no commit.",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_records_hash.py::test_a_refused_commit_records_nothing -o addopts=\"\""
+    },
+    {
+      "scenario": "A reviewer approves the removed half of a renumbered pair in the queue and rejects the added half, as a bad extraction of the new number.",
+      "what_happens": "If the chapter still committed, the rule would disappear from the app entirely: the old number switched off and the new one never inserted.",
+      "mitigated": true,
+      "how": "find_committable_chapters counts a rejected row under the current content hash as blocking, so the chapter does not commit until the pair is resolved; the pair is two ordinary rows, so the existing rule applies unchanged.",
+      "repro": "SELECT count(*) FROM dcp_review_queue q JOIN dcp_chapter_registry r ON r.council=q.council AND r.chapter_key=q.chapter_key WHERE q.status='rejected' AND q.source_content_hash=r.content_hash -- the HAVING clause in find_committable_chapters"
+    },
+    {
+      "scenario": "A targeted amendment moves unchanged rules to new pages; page-only shifts are still not queued, and the registry fingerprint update records the new PDF.",
+      "what_happens": "Unchanged rules keep citing their old page while the chapter reads as current. Their text matches the new PDF; their page reference may not.",
+      "mitigated": false,
+      "how": "Not changed here, deliberately: the direct extraction path records the fingerprint after a targeted update without moving unchanged rules' pages either, so this is existing behaviour of both paths, not something this change introduces. Page accuracy is a citation question (outreach claim 8), separate from which PDF version the text came from.",
+      "repro": "Read the targeted update block in scripts/dcp_extract_changed.py (the 'Targeted update' branch of extract_chapter): it updates pdf_page only for diff['changed'] rows and never for diff['unchanged']."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- no schema change and no data change; the earlier data fix for DQ-70 (backup dcp_chapter_registry_pre_dq70_flag_hash_2026-09-14_1528.csv) is already applied.",
+    "secrets": "No -- no new environment variables; the commit worker uses the same DATABASE_URL.",
+    "other_repo": "No -- single repository.",
+    "manual_verify": "Yes -- after the next chapter is committed by the Railway dcp-commit job (railway.dcp-commit.toml), run SELECT council, chapter_key, content_hash = provisions_extracted_from_hash FROM dcp_chapter_registry WHERE council = '<committed council>' AND chapter_key = '<chapter>' and expect true, and confirm python scripts/dq_check.py DQ-70 no longer counts that chapter."
+  }
+}

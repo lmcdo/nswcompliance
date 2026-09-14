@@ -143,6 +143,21 @@ class TestCommitReviewedFromQueue:
         assert inserted == 1
         assert not any("NOT EXISTS" in c[0] for c in cur.calls)
 
+    def test_a_targeted_commit_serves_a_renumbered_rule_under_its_new_number_only(self):
+        """enqueue_review_changes queues a targeted renumbering as the old number removed
+        and the new number added; committed, the old number goes and the new one is live."""
+        rows = [
+            ("doc1", "doc1__B7_7_1", None, None, "removed"),
+            ("doc1", "doc1__B7_7_2", "# B7.7.2 Vehicle access\n\nVehicle access rule.", 61, "added"),
+        ]
+        cur = _FakeCursor(rows, full_replace=False)
+        _, inserted = commit_reviewed_from_queue(cur, "ku_ring_gai", "section-a-part-8-mixed-use")
+        switched_off = [c[1][2] for c in cur.calls
+                        if "is_current = FALSE" in c[0] and "ref_number = %s" in c[0]]
+        assert "doc1__B7_7_1" in switched_off
+        inserts = [c[1] for c in cur.calls if "INSERT INTO regulatory_provisions" in c[0]]
+        assert inserted == 1 and inserts[0][1] == "doc1__B7_7_2" and inserts[0][4] == 61
+
     def test_preamble_marked_non_actionable(self):
         cur = _FakeCursor(self._rows(), full_replace=True)
         commit_reviewed_from_queue(cur, "leichhardt", "part-a")
