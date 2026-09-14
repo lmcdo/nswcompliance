@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Two workflow files only: actions/github-script 7 to 9 (Dependabot #1025), re-pushed from a normal branch because Dependabot runs get no repository secrets and no QA report, so their gates can never pass.",
-  "commit_hash": "pending",
+  "commit_hash": "70b63bbb",
   "files": [
     ".github/workflows/data-watch.yml",
     ".github/workflows/main-red-alarm.yml"
