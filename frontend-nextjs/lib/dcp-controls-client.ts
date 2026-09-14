@@ -28,6 +28,9 @@ export interface DcpControlRow {
   // The row's stored applicability constraint, passed through unchanged —
   // consumers must never fabricate a plausible value in its place.
   applicability: string | null;
+  // Plain-English wording for a control with no fixed number (e.g. "Average of neighbours' setbacks").
+  // Absent from older backends, so optional.
+  plain_summary?: string | null;
 }
 
 export interface DcpControlsResult {

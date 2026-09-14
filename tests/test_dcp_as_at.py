@@ -170,7 +170,7 @@ class TestPlanAsAtAuthorityOrder:
 def _control_row(section_ref="A-1.1"):
     return ("dwelling_house", "front_setback", 4.5, None, "m", "",
             "Provide a front setback.", section_ref, "general", False,
-            "part_3", 12, "v2022-current")
+            "part_3", 12, "v2022-current", None, None, None)  # + zones_include, zones_exclude, plain_summary
 
 
 class TestFetchDcpSetbacksAsAt:

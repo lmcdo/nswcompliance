@@ -31,6 +31,8 @@ interface StructuredControl {
   pdf_page: number | null;
   pdf_url: string | null;
   data_status?: ControlDataStatus;
+  // Plain-English wording for a control with no fixed number; absent from older API responses.
+  plain_summary?: string | null;
 }
 
 interface ControlCategory {
@@ -116,6 +118,18 @@ export function formatValue(control: StructuredControl): string {
   }
   if (value_max !== null) return `≤ ${value_max}${unitStr}`;
   return '—';
+}
+
+/**
+ * What to show in the value column when a control sets no fixed number.
+ * The plan's own rule, in plain English, when one is stored (e.g. "Worked out from neighbours'
+ * setbacks"); otherwise a neutral "No set number". It used to label every such row a merit
+ * assessment, which misdescribes a rule that is calculated from the neighbouring buildings.
+ */
+export function noNumberLabel(control: Pick<StructuredControl, 'plain_summary'>): string {
+  const raw: unknown = control.plain_summary;
+  const summary = typeof raw === 'string' ? raw.trim() : '';
+  return summary ? summary : 'No set number';
 }
 
 function hasNumericValue(control: StructuredControl): boolean {
@@ -282,9 +296,9 @@ export function DcpStructuredControls({
                                 pending
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-0.5 text-xs text-gray-400">
-                                <MinusCircle className="w-3 h-3" />
-                                assessed on merit
+                              <span className="inline-flex items-start justify-end gap-0.5 text-xs text-gray-500">
+                                <MinusCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                {noNumberLabel(control)}
                               </span>
                             )}
                           </div>

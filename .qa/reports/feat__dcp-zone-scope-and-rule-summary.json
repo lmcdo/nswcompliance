@@ -1,0 +1,190 @@
+{
+  "tier": "critical",
+  "justification": "Changes which numeric DCP controls every zone-scoped caller receives (conveyancing report, capacity engine, brief, controls API) and what the web controls tab prints for a control with no number. A wrong keep/drop serves another zone's setback or hides the site's own.",
+  "commit_hash": "0b60ea0d",
+  "files": [
+    "migrations/072_dcp_zone_scope_and_plain_summary.sql",
+    "scripts/conveyancing_db.py",
+    "scripts/insert_strathfield_general_residential.py",
+    "services/granny_flat.py",
+    "frontend-nextjs/lib/dcp-controls-client.ts",
+    "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "tests/test_conveyancing_db.py",
+    "tests/test_insert_strathfield_general_residential.py",
+    "tests/test_conveyancing_dcp_needs_review.py",
+    "tests/test_granny_flat_mutation.py",
+    "tests/test_conveyancing_clause_citation.py",
+    "tests/test_dcp_as_at.py",
+    "tests/test_sql_percent_placeholders.py",
+    "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
+    "frontend-nextjs/__tests__/components/dcp-structured-controls.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_conveyancing_db.py tests/test_insert_strathfield_general_residential.py tests/test_conveyancing_dcp_needs_review.py tests/test_granny_flat_mutation.py -q && cd frontend-nextjs && npx jest __tests__/api/dcp-structured-controls.test.ts __tests__/components/dcp-structured-controls.test.tsx",
+    "fails_when": "a row with zones_exclude {R2} is served to an R2 site or dropped for R3; a row with zones_include {R2} is served to R3 or dropped for R2; condition text or applicability overrides a stored scope; lower-case or padded codes are not matched; an unknown zone drops a scoped row; empty arrays stop the text rule applying; a Strathfield R2 site receives both the R2 and the other-zones rear or side setbacks; a zone_specific Strathfield row carries no scope or both; a no-number row lacks plain wording or uses a liability word; the backend requirement for a no-number row says merit; plain_summary is not passed through the route; or the controls tab prints 'assessed on merit'",
+    "observed_red": "Mutant zone_row_applies with the zones_include/zones_exclude branch removed: 7 failed, 438 passed (test_exclude_drops_the_row_for_that_zone_only, test_include_keeps_the_row_for_that_zone_only, test_explicit_scope_overrides_condition_text_and_applicability, test_scope_codes_are_compared_trimmed_and_upper_case, and test_served_zone_filter_keeps_each_zone_its_own_rows for all three R2 dwelling types). Before the tuple fix, test_conveyancing_dcp_needs_review failed 3 tests with 'not enough values to unpack (expected 16, got 13)', and test_granny_flat_mutation asserted the old 'Merit-based' text. The component test failed while the phrase still appeared in a comment. Restored: 445 passed in the two main files, 18 jest tests passed."
+  },
+  "pre_impl": {
+    "existing_data": "Measured live 2026-09-14: dcp_setback_controls had 24 columns and 1,126 rows, 868 current and visible. Strathfield's five other-zones rows (1266, 1267, 1284, 1285, 1286) name no zone code, so since #1105 they were served to every zone including R2, beside the R2 rows 1230, 1244, 1258, 1264, 1265. 86 current visible rows across 25 councils have no number; Strathfield's three (1229, 1243, 1257) are the front setback averaging rule. The web controls tab printed 'assessed on merit' for all of them.",
+    "assumption_mismatch": "The zone filter assumed a row's zone scope can be read from its condition text. Exclusion wording ('zones other than the low density residential zone') cannot be parsed reliably (five cross-review rounds on #1105), so an R2 site saw figures the plan sets for other zones. The tab assumed every no-number control is a merit assessment; Strathfield's is a calculated average of neighbouring setbacks.",
+    "new_vs_existing": "Migration 072 adds nullable zones_include text[], zones_exclude text[] (a CHECK allows at most one) and plain_summary text. zone_row_applies takes the two arrays and decides on them before the unchanged text rule. fetch_dcp_setbacks selects the three columns, passes plain_summary out, and its no-number fallback reads source_text, then plain_summary, then 'No set number — see the plan'. services/granny_flat.py gets the same neutral fallback. The route passes plain_summary through; DcpStructuredControls shows noNumberLabel(control). Only Strathfield rows carry the new fields.",
+    "external_source_error": "The source is the production database. The columns were added before this PR (backup dcp_setback_controls_pre_072_2026-09-14_1301.csv) so the schema contract and the deployed backend see them; the running backend ignores them until this deploys. If a future insert leaves both arrays NULL the text rule applies exactly as before, so nothing is lost, only not narrowed. A zone code the Planning Portal returns in another form (legacy B2 for current E1) is not aliased, as before.",
+    "frontend_type": "fetch_dcp_setbacks entries gain plain_summary: str | None. frontend-nextjs/lib/dcp-controls-client.ts DcpControlRow.plain_summary?: string | null (optional because an older backend omits it); route.ts StructuredControl.plain_summary: string | null via row.plain_summary ?? null; DcpStructuredControls.tsx StructuredControl.plain_summary?: string | null, rendered by noNumberLabel, which trims and falls back to 'No set number'. zones_include/zones_exclude stay inside the backend.",
+    "user_failure_mode": "Before: a Strathfield R2 user saw a 6-10m rear setback and a 6m 'other zones' rear setback together, and the averaging rule was labelled 'assessed on merit'. If this were wrong the user would lose the site's own setback with nothing to say it was hidden; the tests pin both directions for R2, R3, R4 and E1, and the measurement shows no other council's decision changed."
+  },
+  "functions": [
+    {
+      "name": "zone_row_applies",
+      "file_line": "scripts/conveyancing_db.py:453",
+      "input": "A row's applicability string or None, its condition text or None, the site's zone code prefix such as 'R2' (empty when unknown), and the row's zones_include and zones_exclude lists or None.",
+      "output": "True for an empty zone; otherwise, when zones_include has codes, True only if the zone is among them; when zones_exclude has codes, True unless the zone is among them; otherwise the unchanged text rule from #1105.",
+      "if_none": "None or empty arrays fall through to the text rule; None applicability or condition returns True as before."
+    },
+    {
+      "name": "fetch_dcp_setbacks",
+      "file_line": "scripts/conveyancing_db.py:493",
+      "input": "An open database connection, an LGA slug, an optional zone code string such as 'R2 Low Density Residential', and raise_on_error.",
+      "output": "The same controls dict; each entry now carries plain_summary, rows are kept or dropped with their stored scope (line 669), and a no-number requirement falls back to plain_summary then 'No set number — see the plan' (line 685).",
+      "if_none": "A None plain_summary is passed out as None; a None or blank zone still applies every row."
+    },
+    {
+      "name": "noNumberLabel",
+      "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:129",
+      "input": "A structured control object whose optional plain_summary field is a string, null, blank or absent.",
+      "output": "The trimmed plain_summary when it has text, otherwise the string 'No set number'.",
+      "if_none": "null, undefined or whitespace-only returns 'No set number'."
+    },
+    {
+      "name": "row",
+      "file_line": "scripts/insert_strathfield_general_residential.py:63",
+      "input": "The dwelling type, control type, numbers, unit, condition, quote, clause, page and applicability for one Strathfield control, plus optional zones_include, zones_exclude and plain_summary.",
+      "output": "A dict of every column the insert writes, with the three new fields defaulting to None.",
+      "if_none": "Omitted scope and summary are stored as NULL, which the served filter treats as no stored scope."
+    }
+  ],
+  "real_layer_exempt": {
+    "services/granny_flat.py": "Only the fallback string for a no-number row changes ('Merit-based assessment — refer to DCP' becomes 'No set number — see the plan'); the query, its parameters and the row handling are untouched, so a real database adds nothing a mock cursor does not. tests/test_granny_flat_mutation.py::TestFetchSdSetbacks::test_setback_both_none_no_source_text pins the new text.",
+    "migrations/072_dcp_zone_scope_and_plain_summary.sql": "Applied to production 2026-09-14 13:01 after a dry run in a rolled-back transaction: backup of all 1,126 rows, columns 24 -> 27, row count unchanged, CHECK present, new columns nullable with no default.",
+    "scripts/conveyancing_db.py": "Measured against the real database instead of a DB-marked test: old zone_row_applies (no scope) vs new (with the stored scope) for all 868 current visible rows x 12 zone codes (R1-R5, E1, E2, MU1, B4, RU5, SP2, C4): 5 decisions differ, all Strathfield rows 1266, 1267, 1284, 1285, 1286 for R2, True -> False. Only Strathfield's 13 rows carry the new fields.",
+    "scripts/insert_strathfield_general_residential.py": "The live rows were brought to match ROWS from the session scratchpad (not committed): the step imported this script's ROWS, re-ran check_against_pdf on the pinned PDF, backed up the 55 rows, updated only zones_include, zones_exclude and plain_summary on 13 rows by id, and required every live Strathfield row to equal ROWS field for field (15 fields) and no other council's row to carry the new fields before committing (identical: True, 2026-09-14 13:01)."
+  },
+  "values": [
+    {
+      "value": "zones_include and zones_exclude text[] per current visible row (Strathfield: {R2} include on 1230, 1244, 1258, 1264, 1265; {R2} exclude on 1266, 1267, 1284, 1285, 1286; NULL elsewhere)",
+      "read_at": "scripts/conveyancing_db.py:531 (SELECT), used at scripts/conveyancing_db.py:669",
+      "if_missing": "NULL or an empty array: the text rule decides, exactly as before this change."
+    },
+    {
+      "value": "plain_summary text per current visible row (Strathfield 1229, 1243, 1257: \"Worked out from neighbours' setbacks\"; NULL elsewhere)",
+      "read_at": "scripts/conveyancing_db.py:531 (SELECT), used at scripts/conveyancing_db.py:685 and passed out in the entry",
+      "if_missing": "The backend requirement uses source_text, else 'No set number — see the plan'; the tab shows 'No set number'."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Served controls for one council with the stored zone scope and plain wording, current and not held for review",
+      "file_line": "scripts/conveyancing_db.py:531",
+      "where_clause": "lga = %s AND is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A Strathfield R2 site asks for multi-dwelling-housing controls through the served controls query (scripts/conveyancing_db.py:531, WHERE lga = %s AND is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE)).",
+      "what_happens": "Before this change it received the R2 rows (6-10m rear, 5m/3m side) and the other-zones rows (6m rear, 4m/2m side) together.",
+      "mitigated": true,
+      "how": "The other-zones rows carry zones_exclude {R2} and the R2 rows zones_include {R2}; test_served_zone_filter_keeps_each_zone_its_own_rows checks R2, R3, R4 and E1 for three dwelling types and failed for R2 on the mutant without the scope branch.",
+      "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k served_zone_filter -q"
+    },
+    {
+      "scenario": "The deploy changes keep/drop decisions for councils other than Strathfield through the served controls query (scripts/conveyancing_db.py:531, WHERE lga = %s AND is_current = TRUE).",
+      "what_happens": "Controls other sites saw yesterday could disappear today.",
+      "mitigated": true,
+      "how": "Measured before committing: old vs new decisions over all 868 live rows x 12 zones, 5 differ, all Strathfield R2; the sync refused to commit if any other council's row carried the new fields.",
+      "repro": "SELECT lga, count(*) FROM dcp_setback_controls WHERE zones_include IS NOT NULL OR zones_exclude IS NOT NULL OR plain_summary IS NOT NULL GROUP BY lga"
+    },
+    {
+      "scenario": "A row's condition names R3 while its stored scope says zones_include {R2}, or its applicability is universal_residential.",
+      "what_happens": "If text were read first the row would go to the wrong zone.",
+      "mitigated": true,
+      "how": "The stored scope is checked before applicability and text; test_explicit_scope_overrides_condition_text_and_applicability.",
+      "repro": "python -m pytest tests/test_conveyancing_db.py -k explicit_scope_overrides -q"
+    },
+    {
+      "scenario": "A future insert writes both zones_include and zones_exclude on one row.",
+      "what_happens": "Two contradictory scopes; the include would silently win.",
+      "mitigated": true,
+      "how": "The database refuses the write: CHECK dcp_setback_controls_zone_scope_one_side (zones_include IS NULL OR zones_exclude IS NULL), confirmed present after the migration.",
+      "repro": "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'dcp_setback_controls_zone_scope_one_side' AND conrelid = 'dcp_setback_controls'::regclass"
+    },
+    {
+      "scenario": "A restore, staging or rebuilt database holding the Strathfield rows gains the columns from migration 072 alone, without the scratchpad sync.",
+      "what_happens": "Every new field would be NULL, the text rule would decide, and an R2 site would again be served both the R2 and the other-zones setbacks.",
+      "mitigated": true,
+      "how": "Migration 072 backfills the 13 rows by lga, source_chapter_key, section_ref and value, only where nothing is stored. Forced on production inside a rolled-back transaction: the 13 rows cleared, the migration run, the result equal to the live scope; a second run changed nothing. test_migration_072_backfills_exactly_the_rows_this_script_scopes ties the SQL to ROWS.",
+      "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k migration_072 -q"
+    },
+    {
+      "scenario": "A row is stored with zones_include = ARRAY[NULL]::text[] or a blank element.",
+      "what_happens": "Python receives [None]; read as the code 'NONE' it would hide the control for every real zone.",
+      "mitigated": true,
+      "how": "NULL and blank elements are dropped before comparing, and a scope with no real code falls back to the text rule; test_null_or_blank_elements_never_exclude_a_real_zone.",
+      "repro": "python -m pytest tests/test_conveyancing_db.py -k null_or_blank -q"
+    },
+    {
+      "scenario": "A constraint named dcp_setback_controls_zone_scope_one_side already exists on another table.",
+      "what_happens": "A name-only existence check would skip adding the CHECK here, so contradictory scopes could be stored.",
+      "mitigated": true,
+      "how": "The DO block checks conname AND conrelid = 'dcp_setback_controls'::regclass.",
+      "repro": "SELECT conrelid::regclass FROM pg_constraint WHERE conname = 'dcp_setback_controls_zone_scope_one_side'"
+    },
+    {
+      "scenario": "A scope is written as ' r2 ' or an empty array.",
+      "what_happens": "A case- or space-sensitive compare would drop the row for its own zone; an empty include would drop it everywhere.",
+      "mitigated": true,
+      "how": "Codes are trimmed and upper-cased; empty arrays are falsy and fall back to the text rule. test_scope_codes_are_compared_trimmed_and_upper_case and test_empty_arrays_fall_back_to_the_text_rule.",
+      "repro": "python -m pytest tests/test_conveyancing_db.py -k \"trimmed_and_upper or empty_arrays\" -q"
+    },
+    {
+      "scenario": "The web controls tab calls the backend with no zone.",
+      "what_happens": "Both the R2 and the other-zones rows are listed; nothing chooses between them.",
+      "mitigated": false,
+      "how": "By design: with no zone every row is shown with its condition naming the zone it is for. test_unknown_zone_keeps_every_scoped_row pins it.",
+      "repro": "python -m pytest tests/test_conveyancing_db.py -k unknown_zone_keeps -q"
+    },
+    {
+      "scenario": "A Railway deploy of this backend runs before the columns exist, or the old backend runs after they exist.",
+      "what_happens": "The new SELECT would fail on a missing column and every council's controls would be unavailable.",
+      "mitigated": true,
+      "how": "Migration 072 was applied to production before the PR; the old backend does not select the new columns, so it is unaffected. A failed SELECT still surfaces as source-unavailable (503), never an empty success.",
+      "repro": "SELECT column_name FROM information_schema.columns WHERE table_name='dcp_setback_controls' AND column_name IN ('zones_include','zones_exclude','plain_summary')"
+    },
+    {
+      "scenario": "A control with no number and no stored wording reaches the controls tab or the PDF report.",
+      "what_happens": "It used to be labelled a merit assessment, which misdescribes rules that are calculated, mapped or set by another instrument.",
+      "mitigated": true,
+      "how": "The tab shows 'No set number' and the backend 'No set number — see the plan'; the condition and quote stay beside it. noNumberLabel tests and test_site_derived_no_source_text; the component test fails if the old phrase returns.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/dcp-structured-controls.test.tsx -t noNumberLabel"
+    },
+    {
+      "scenario": "Plain wording is added that states a judgement, or a row with a number also carries wording.",
+      "what_happens": "The product would appear to assess the site, or show words where the plan gives a figure.",
+      "mitigated": true,
+      "how": "test_a_row_without_a_number_carries_plain_wording checks every Strathfield row: wording only on no-number rows, at most 40 characters, no liability word.",
+      "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k plain_wording -q"
+    },
+    {
+      "scenario": "The other 22 councils with no-number rows have no plain wording stored.",
+      "what_happens": "Their rows show 'No set number' rather than a description of the rule.",
+      "mitigated": false,
+      "how": "Accepted: neutral and not wrong; each needs its own rule read from its plan before wording is written.",
+      "repro": "SELECT lga, count(*) FROM dcp_setback_controls WHERE is_current AND NOT needs_review AND value_min IS NULL AND value_max IS NULL AND plain_summary IS NULL GROUP BY lga"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No reset. The data change is already live: migration 072 applied 2026-09-14 13:01 (backup data/db_rollback_backups/dcp_setback_controls_pre_072_2026-09-14_1301.csv in the main checkout) and 13 Strathfield rows synced straight after (backup dcp_setback_controls_pre_strathfield_zone_scope_2026-09-14_1301.csv). Merging changes no data.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: after Railway deploys the merge commit, GET https://nswcompliance-production.up.railway.app/pipeline/dcp-controls?lga=strathfield&zone=R2 must list no 6m-only rear row and no 4m/2m side rows, zone=R3 must list no 6-10m rear and no 5m/3m side rows, and the three front setback rows must carry plain_summary \"Worked out from neighbours' setbacks\"."
+  }
+}

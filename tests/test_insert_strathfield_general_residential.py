@@ -22,7 +22,8 @@ APPLICABILITIES = {"universal_residential", "secondary_dwelling_specific", "zone
                    "development_specific", "sepp_statewide", "sepp_cdc_only"}
 SERVED_DEV_TYPES = {"dwelling_house", "dual_occupancy", "multi_dwelling_housing", "secondary_dwelling"}
 REQUIRED = {"lga", "dev_type", "control_type", "value_min", "value_max", "unit", "condition", "applicability",
-            "source_text", "section_ref", "pdf_page", "needs_review", "dcp_version", "source_chapter_key"}
+            "source_text", "section_ref", "pdf_page", "needs_review", "dcp_version", "source_chapter_key",
+            "zones_include", "zones_exclude", "plain_summary"}
 LIABILITY_WORDS = re.compile(r"\b(safe|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|"
                              r"guaranteed|certified|confirmed|verified|ensure|assure|accurate|definitive|"
                              r"comprehensive|reliable)\b", re.I)
@@ -102,17 +103,72 @@ _CDB_SPEC.loader.exec_module(cdb)
 @pytest.mark.parametrize("zone", ["R2", "R3", "R4", "E1"])  # noqa: zone-codes (sample site zones)
 @pytest.mark.parametrize("dev_type", ["dwelling_house", "dual_occupancy", "multi_dwelling_housing"])
 def test_served_zone_filter_keeps_each_zone_its_own_rows(zone, dev_type):
-    """The real filter (conveyancing_db.zone_row_applies): R2 rows only for R2; the other-zones rows, which name
-    no zone code, for every zone. An R2 site therefore also sees the labelled other-zones rows."""
+    """The real filter (conveyancing_db.zone_row_applies) with each row's explicit zone scope: the R2 figures
+    only for an R2 site, the other-zones figures for every zone except R2 - never both."""
     kept = [r for r in ROWS if r["dev_type"] == dev_type
-            and cdb.zone_row_applies(r["applicability"], r["condition"], zone)]
+            and cdb.zone_row_applies(r["applicability"], r["condition"], zone, r["zones_include"], r["zones_exclude"])]
     rear = {(r["value_min"], r["value_max"]) for r in kept if r["control_type"] == "rear_setback"}
-    assert (6, None) in rear, "the other-zones 6m rear row must survive for every zone"
     assert ((6, 10) in rear) == (zone == "R2")
+    assert ((6, None) in rear) == (zone != "R2"), "the other-zones 6m rear row is not for an R2 site"
+    assert len(rear) == 1
     if dev_type == "multi_dwelling_housing":
         side = {r["value_min"] for r in kept if r["control_type"] == "side_setback"}
-        assert {4, 2} <= side, "the 'any other zone' side rows must survive for every zone"
         assert ({5, 3} <= side) == (zone == "R2")
+        assert (4 in side) == (zone != "R2") and ({4, 2} <= side) == (zone != "R2")
+        assert 5 not in side or zone == "R2"
+
+
+@pytest.mark.parametrize("r", ROWS, ids=lambda r: f"{r['dev_type']}-{r['control_type']}-{r['section_ref']}")
+def test_every_zone_specific_row_carries_exactly_one_explicit_scope(r):
+    scoped = [bool(r["zones_include"]), bool(r["zones_exclude"])]
+    if r["applicability"] == "zone_specific":
+        assert scoped.count(True) == 1, r["condition"]
+    else:
+        assert scoped == [False, False], r["condition"]
+
+
+@pytest.mark.parametrize("r", ROWS, ids=lambda r: f"{r['dev_type']}-{r['control_type']}-{r['section_ref']}")
+def test_a_row_without_a_number_carries_plain_wording(r):
+    if r["value_min"] is None and r["value_max"] is None:
+        assert r["plain_summary"] and len(r["plain_summary"]) <= 40, r["condition"]
+        assert not LIABILITY_WORDS.search(r["plain_summary"]), r["plain_summary"]
+    else:
+        assert r["plain_summary"] is None, "a row with a number shows the number"
+
+
+MIGRATION_072 = Path(__file__).parent.parent / "migrations" / "072_dcp_zone_scope_and_plain_summary.sql"
+_REF_VALUE = re.compile(r"\('([^']+)',\s*([0-9.]+)\)")
+
+
+def _backfill(sql: str, column: str) -> str:
+    """The WHERE block of the migration's UPDATE that sets ``column``."""
+    parts = sql.split(f"SET {column} =")
+    assert len(parts) == 2, f"expected one backfill UPDATE for {column}"
+    return parts[1].split(";", 1)[0]
+
+
+def test_migration_072_backfills_exactly_the_rows_this_script_scopes():
+    """A database that gains the columns from the migration alone (a restore or staging copy) must scope and word
+    the same Strathfield rows as ROWS, or an R2 site there is served both the R2 and the other-zones figures."""
+    sql = MIGRATION_072.read_text(encoding="utf-8")
+    for column in ("zones_include", "zones_exclude"):
+        block = _backfill(sql, column)
+        assert block.lstrip().startswith("ARRAY['R2']") and mod.LOW_DENSITY_ZONE == ["R2"]  # noqa: zone-codes (the scope the plan names)
+        assert f"source_chapter_key = '{mod.SOURCE_CHAPTER_KEY}'" in block and f"lga = '{mod.LGA}'" in block
+        keys = {(ref, float(v)) for ref, v in _REF_VALUE.findall(block)}
+        scoped = [r for r in ROWS if r[column]]
+        assert keys == {(r["section_ref"], float(r["value_min"])) for r in scoped}
+        assert all(r[column] == mod.LOW_DENSITY_ZONE for r in scoped)
+        for r in ROWS:
+            if (r["section_ref"], float(r["value_min"] if r["value_min"] is not None else -1)) in keys \
+                    and r["control_type"] in ("rear_setback", "side_setback"):
+                assert r[column], f"the backfill would scope an unscoped row: {r['condition']}"
+    block = _backfill(sql, "plain_summary")
+    worded = [r for r in ROWS if r["plain_summary"]]
+    assert {r["plain_summary"] for r in worded} == {mod.S_FRONT}
+    assert block.lstrip().startswith("'" + mod.S_FRONT.replace("'", "''") + "'")
+    assert {r["section_ref"] for r in worded} == {f"{mod.SOURCE_CHAPTER_KEY}#C3.1.1"}
+    assert f"section_ref = '{mod.SOURCE_CHAPTER_KEY}#C3.1.1'" in block and "control_type = 'front_setback'" in block
 
 
 def test_maximums_are_stored_as_ceilings():

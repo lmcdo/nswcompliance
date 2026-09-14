@@ -9,7 +9,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { formatValue } from '@/components/compliance/DcpStructuredControls';
+import { formatValue, noNumberLabel } from '@/components/compliance/DcpStructuredControls';
 
 type Ctl = Parameters<typeof formatValue>[0];
 
@@ -61,6 +61,32 @@ describe('formatValue — max controls render ≤, not ≥', () => {
 
   it('no numeric value renders the em-dash placeholder', () => {
     expect(formatValue(mk({}))).toBe('—');
+  });
+});
+
+describe('noNumberLabel — a rule with no number is described, not called a merit assessment', () => {
+  it("shows the plan's rule in plain words when one is stored", () => {
+    expect(noNumberLabel({ plain_summary: "Worked out from neighbours' setbacks" }))
+      .toBe("Worked out from neighbours' setbacks");
+  });
+
+  it('falls back to a neutral "No set number" when none is stored, blank, or the field is absent', () => {
+    expect(noNumberLabel({ plain_summary: null })).toBe('No set number');
+    expect(noNumberLabel({ plain_summary: '   ' })).toBe('No set number');
+    expect(noNumberLabel({})).toBe('No set number');
+  });
+
+  it('a non-string value from a malformed response falls back instead of throwing', () => {
+    expect(noNumberLabel({ plain_summary: 42 as unknown as string })).toBe('No set number');
+  });
+
+  it('the component no longer prints "assessed on merit"', () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, '../../components/compliance/DcpStructuredControls.tsx'),
+      'utf8',
+    );
+    expect(src).not.toMatch(/assessed on merit/i);
+    expect(src).toContain('noNumberLabel(control)');
   });
 });
 

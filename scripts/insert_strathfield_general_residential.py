@@ -61,11 +61,19 @@ REVIEW_NOTE = ("Inserted 2026-09-13 from the Strathfield General Residential DCP
 
 
 def row(dev_type, control_type, vmin, vmax, unit, condition, source_text, ref, page,
-        applicability="universal_residential"):
+        applicability="universal_residential", zones_include=None, zones_exclude=None, plain_summary=None):
     return {"lga": LGA, "dev_type": dev_type, "control_type": control_type, "value_min": vmin,
             "value_max": vmax, "unit": unit, "condition": condition, "applicability": applicability,
             "source_text": source_text, "section_ref": f"{SOURCE_CHAPTER_KEY}#{ref}", "pdf_page": page,
-            "needs_review": False, "dcp_version": DCP_VERSION, "source_chapter_key": SOURCE_CHAPTER_KEY}
+            "needs_review": False, "dcp_version": DCP_VERSION, "source_chapter_key": SOURCE_CHAPTER_KEY,
+            "zones_include": zones_include, "zones_exclude": zones_exclude, "plain_summary": plain_summary}
+
+
+# Explicit zone scope (migration 072). C3.6.1 and C3.4.2 name "the R2 Low Density Residential zone" and set
+# the other figures for every other zone, so those rows are scoped to, or away from, that one zone.
+LOW_DENSITY_ZONE = ["R2"]  # noqa: zone-codes (the zone the plan's own clauses C3.6.1 and C3.4.2 name)
+# C3.1.1 sets no figure; the setback is the average of the site and the two dwellings either side.
+S_FRONT = "Worked out from neighbours' setbacks"
 
 
 # ── Passages shared by several dwelling types ─────────────────────────────────────────────────
@@ -118,9 +126,11 @@ MDH_GROUP = "the plan's row covers multi-dwelling housing, terraces and manor ho
 def _shared(dev_type: str) -> list[dict]:
     """Rows whose passage names every dwelling type the plan's sections 1-12 apply to."""
     return [
-        row(dev_type, "front_setback", None, None, "m", C_FRONT, Q_FRONT, "C3.1.1", 11),
-        row(dev_type, "rear_setback", 6, 10, "m", C_REAR_R2, Q_REAR_R2, "C3.6.1", 15, "zone_specific"),
-        row(dev_type, "rear_setback", 6, None, "m", C_REAR_OTHER, Q_REAR_OTHER, "C3.6.2", 15, "zone_specific"),
+        row(dev_type, "front_setback", None, None, "m", C_FRONT, Q_FRONT, "C3.1.1", 11, plain_summary=S_FRONT),
+        row(dev_type, "rear_setback", 6, 10, "m", C_REAR_R2, Q_REAR_R2, "C3.6.1", 15, "zone_specific",
+            zones_include=LOW_DENSITY_ZONE),
+        row(dev_type, "rear_setback", 6, None, "m", C_REAR_OTHER, Q_REAR_OTHER, "C3.6.2", 15, "zone_specific",
+            zones_exclude=LOW_DENSITY_ZONE),
         row(dev_type, "secondary_street_setback", 3, None, "m", C_SECONDARY, Q_SECONDARY, "C12.1.1", 36),
         row(dev_type, "fencing_height_max", None, 1.2, "m", C_FENCE_FRONT, Q_FENCE_FRONT, "C6.1.1", 28),
         row(dev_type, "fencing_height_max", None, 1.8, "m", C_FENCE_SIDE, Q_FENCE_SIDE, "C6.2.1", 28),
@@ -182,21 +192,24 @@ ROWS = (
         row("multi_dwelling_housing", "side_setback", 5, None, "m",
             f"R2 Low Density zone; {C_MDH_ORIENT}; to one side boundary, including a minimum 3m wide deep soil area",
             Q_MDH_SIDE_A + SEGMENT + "In the R2 Low Density zone: a) 5m to one side boundary including a minimum 3m "
-            "wide deep soil area with landscaping capable of providing a visual buffer", "C3.4.2", 12, "zone_specific"),
+            "wide deep soil area with landscaping capable of providing a visual buffer", "C3.4.2", 12, "zone_specific",
+            zones_include=LOW_DENSITY_ZONE),
         row("multi_dwelling_housing", "side_setback", 3, None, "m",
             f"R2 Low Density zone; {C_MDH_ORIENT}; to the other side boundary, including a 1.5m landscape strip",
             Q_MDH_SIDE_A + SEGMENT + "In the R2 Low Density zone:" + SEGMENT + "b) 3m to the other side boundary "
-            "including a 1.5m landscape strip", "C3.4.2", 12, "zone_specific"),
+            "including a 1.5m landscape strip", "C3.4.2", 12, "zone_specific", zones_include=LOW_DENSITY_ZONE),
         row("multi_dwelling_housing", "side_setback", 4, None, "m",
             f"medium density zone or any zone other than low density; {C_MDH_ORIENT}; to one side boundary, "
             "including a minimum 2m wide deep soil area",
             Q_MDH_SIDE_A + SEGMENT + "In the R3 Medium Density zone or any other zone: a) 4m to one side boundary "
-            "including a minimum 2m wide deep soil area", "C3.4.2", 12, "zone_specific"),
+            "including a minimum 2m wide deep soil area", "C3.4.2", 12, "zone_specific",
+            zones_exclude=LOW_DENSITY_ZONE),
         row("multi_dwelling_housing", "side_setback", 2, None, "m",
             f"medium density zone or any zone other than low density; {C_MDH_ORIENT}; to the other side boundary, "
             "including a 1.5m landscape strip",
             Q_MDH_SIDE_A + SEGMENT + "In the R3 Medium Density zone or any other zone:" + SEGMENT + "b) 2m to the "
-            "other side boundary including a 1.5m landscape strip", "C3.4.2", 12, "zone_specific"),
+            "other side boundary including a 1.5m landscape strip", "C3.4.2", 12, "zone_specific",
+            zones_exclude=LOW_DENSITY_ZONE),
         row("multi_dwelling_housing", "side_setback", 2.7, None, "m",
             "three storey developments: at level 2 (1.2m at ground and level 1 plus an additional 1.5m)",
             "C3.4.4 Three storey developments must feature an additional 1.5m setback for the second level. With a "
@@ -359,12 +372,13 @@ def main(argv: list[str] | None = None) -> int:
                              (lga, dev_type, control_type, value_min, value_max, unit, condition, applicability,
                               source_text, section_ref, pdf_page, dcp_version, is_current, extraction_method,
                               source_chapter_key, needs_review, review_reason, last_verified_at,
-                              effective_date, effective_date_basis)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE,%s,%s,FALSE,%s,%s,%s,%s)""",
+                              effective_date, effective_date_basis, zones_include, zones_exclude, plain_summary)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE,%s,%s,FALSE,%s,%s,%s,%s,%s,%s,%s)""",
                         (LGA, r["dev_type"], r["control_type"], r["value_min"], r["value_max"], r["unit"],
                          r["condition"], r["applicability"], r["source_text"], r["section_ref"], r["pdf_page"],
                          DCP_VERSION, EXTRACTION_METHOD, SOURCE_CHAPTER_KEY, REVIEW_NOTE, verified,
-                         EFFECTIVE_DATE, EFFECTIVE_DATE_BASIS))
+                         EFFECTIVE_DATE, EFFECTIVE_DATE_BASIS, r["zones_include"], r["zones_exclude"],
+                         r["plain_summary"]))
         cur.execute("""SELECT count(*) FROM dcp_setback_controls
                         WHERE lga = %s AND is_current AND NOT needs_review""", (LGA,))
         live = cur.fetchone()[0]

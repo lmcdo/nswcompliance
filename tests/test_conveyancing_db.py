@@ -187,6 +187,10 @@ def _make_row(
     source_chapter_key="woollahra-dcp-2015-part-c2",
     pdf_page=None,
     dcp_version="DCP 2015",
+    # Added 2026-09-14 with migration 072: explicit zone scope and plain wording.
+    zones_include=None,
+    zones_exclude=None,
+    plain_summary=None,
 ):
     # needs_review defaults to False deliberately. fetch_dcp_setbacks applies a
     # fail-closed per-row guard that drops flagged controls, so defaulting to
@@ -194,7 +198,7 @@ def _make_row(
     # asserting on nothing.
     return (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
             section_ref, applicability, needs_review, source_chapter_key,
-            pdf_page, dcp_version)
+            pdf_page, dcp_version, zones_include, zones_exclude, plain_summary)
 
 
 class TestZoneFilter:
@@ -318,6 +322,65 @@ class TestZoneFilter:
         assert result["caveat"] is None
 
 
+# ── Explicit zone scope (migration 072) ──
+
+
+class TestExplicitZoneScope:
+    """zones_include / zones_exclude decide before the condition text is read."""
+
+    def _kept(self, rows, zone):
+        result = fetch_dcp_setbacks(_mock_conn(rows), "strathfield", zone_code=zone)
+        return [(s["value_min"], s["value_max"]) for s in result["setbacks"]]
+
+    def test_exclude_drops_the_row_for_that_zone_only(self):
+        # The Strathfield case: "zones other than the low density residential zone" names no zone code, so
+        # the text rule keeps it everywhere. The explicit scope removes it for an R2 site alone.
+        rows = [_make_row(ctrl_type="rear_setback", vmin=6.0, applicability="zone_specific",
+                          condition="zones other than the low density residential zone",
+                          zones_exclude=["R2"])]  # noqa: zone-codes (fixture scope)
+        assert self._kept(rows, "R2") == []  # noqa: zone-codes (fixture zone)
+        assert self._kept(rows, "R3") == [(6.0, None)]  # noqa: zone-codes (fixture zone)
+
+    def test_include_keeps_the_row_for_that_zone_only(self):
+        rows = [_make_row(ctrl_type="rear_setback", vmin=6.0, vmax=10.0, applicability="zone_specific",
+                          condition="low density residential zone", zones_include=["R2"])]  # noqa: zone-codes (fixture scope)
+        assert self._kept(rows, "R2") == [(6.0, 10.0)]  # noqa: zone-codes (fixture zone)
+        assert self._kept(rows, "R3") == []  # noqa: zone-codes (fixture zone)
+
+    def test_explicit_scope_overrides_condition_text_and_applicability(self):
+        # The condition names R3, and the row is not even tagged zone_specific: the stored scope still wins.
+        rows = [_make_row(applicability="universal_residential", condition="R3 Medium Density",  # noqa: zone-codes (fixture text)
+                          zones_include=["R2"])]  # noqa: zone-codes (fixture scope)
+        assert len(self._kept(rows, "R2")) == 1  # noqa: zone-codes (fixture zone)
+        assert self._kept(rows, "R3") == []  # noqa: zone-codes (fixture zone)
+
+    def test_scope_codes_are_compared_trimmed_and_upper_case(self):
+        rows = [_make_row(zones_exclude=[" r2 "])]  # noqa: zone-codes (fixture scope)
+        assert self._kept(rows, "R2") == []  # noqa: zone-codes (fixture zone)
+
+    def test_unknown_zone_keeps_every_scoped_row(self):
+        rows = [_make_row(zones_include=["R2"]), _make_row(ctrl_type="rear_setback", zones_exclude=["R2"])]  # noqa: zone-codes (fixture scope)
+        result = fetch_dcp_setbacks(_mock_conn(rows), "strathfield")
+        assert len(result["setbacks"]) == 2
+
+    def test_null_or_blank_elements_never_exclude_a_real_zone(self):
+        # ARRAY[NULL] reaches Python as [None]; read as the string "NONE" it would hide the row for every zone.
+        only_null = [_make_row(zones_include=[None])]
+        assert len(self._kept(only_null, "R2")) == 1  # noqa: zone-codes (fixture zone)
+        assert len(self._kept(only_null, "R3")) == 1  # noqa: zone-codes (fixture zone)
+        blank = [_make_row(zones_include=["", "  "])]
+        assert len(self._kept(blank, "R3")) == 1  # noqa: zone-codes (fixture zone)
+        mixed = [_make_row(zones_exclude=[None, "R2"])]  # noqa: zone-codes (fixture scope)
+        assert self._kept(mixed, "R2") == []  # noqa: zone-codes (fixture zone)
+        assert len(self._kept(mixed, "R3")) == 1  # noqa: zone-codes (fixture zone)
+
+    def test_empty_arrays_fall_back_to_the_text_rule(self):
+        rows = [_make_row(applicability="zone_specific", condition="R3 Medium Density",  # noqa: zone-codes (fixture text)
+                          zones_include=[], zones_exclude=[])]
+        assert self._kept(rows, "R2") == []  # noqa: zone-codes (fixture zone)
+        assert len(self._kept(rows, "R3")) == 1  # noqa: zone-codes (fixture zone)
+
+
 # ── Setback value formatting ──
 
 
@@ -367,10 +430,27 @@ class TestSetbackFormatting:
         assert "Average of adjoining" in entry["requirement"]
 
     def test_site_derived_no_source_text(self):
+        # A rule with no number is not a merit assessment; the fallback names neither.
         rows = [_make_row(vmin=None, vmax=None, source_text=None)]
         result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")
         entry = result["setbacks"][0]
-        assert "Merit-based" in entry["requirement"]
+        assert entry["requirement"] == "No set number — see the plan"
+        assert "merit" not in entry["requirement"].lower()
+        assert entry["plain_summary"] is None
+
+    def test_site_derived_uses_plain_summary_when_no_source_text(self):
+        rows = [_make_row(vmin=None, vmax=None, source_text=None,
+                          plain_summary="Worked out from neighbours' setbacks")]
+        entry = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")["setbacks"][0]
+        assert entry["requirement"] == "Worked out from neighbours' setbacks"
+        assert entry["plain_summary"] == "Worked out from neighbours' setbacks"
+
+    def test_plain_summary_passes_through_beside_the_quote(self):
+        rows = [_make_row(vmin=None, vmax=None, source_text="Average of adjoining setbacks",
+                          plain_summary="Worked out from neighbours' setbacks")]
+        entry = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")["setbacks"][0]
+        assert entry["requirement"] == "Average of adjoining setbacks"
+        assert entry["plain_summary"] == "Worked out from neighbours' setbacks"
 
     def test_zero_minimum(self):
         rows = [_make_row(vmin=0, vmax=None)]

@@ -128,6 +128,26 @@ describe('GET /api/dcp/structured-controls', () => {
     expect(statuses).not.toContain('under_review');
   });
 
+  test('passes the plain wording of a no-number rule through, and null when the backend has none', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
+      proxyRow({ value_min: null, plain_summary: "Worked out from neighbours' setbacks" }),
+      proxyRow({ semantic_type: 'rear_setback' }),
+      proxyRow({ semantic_type: 'side_setback', value_min: null, plain_summary: 42 }),
+    ]));
+    const res = await GET(req('council=waverley'));
+    const data = await res.json();
+    const served = data.categories.flatMap(
+      (c: { controls: { control_type: string; data_status: string; plain_summary: string | null }[] }) => c.controls,
+    );
+    const side = served.find((x: { control_type: string }) => x.control_type === 'side_setback');
+    expect(side.plain_summary).toBeNull();
+    const front = served.find((x: { control_type: string }) => x.control_type === 'front_setback');
+    const rear = served.find((x: { control_type: string }) => x.control_type === 'rear_setback');
+    expect(front.data_status).toBe('not_applicable');
+    expect(front.plain_summary).toBe("Worked out from neighbours' setbacks");
+    expect(rear.plain_summary).toBeNull();
+  });
+
   test('empty dev_type reports the dev types the guarded rows actually carry', async () => {
     mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
       proxyRow({ dev_type: 'secondary_dwelling' }),

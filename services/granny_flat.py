@@ -270,7 +270,8 @@ def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
                 parts.append(f"{vmax:g} m maximum")
             requirement = "; ".join(parts) if parts else f"{vmin or vmax:g} m"
         else:
-            requirement = source_text or "Merit-based assessment — refer to DCP"
+            # A control with no number is a rule (e.g. an average of neighbours), not a merit assessment.
+            requirement = source_text or "No set number — see the plan"
 
         sd_setbacks.append({
             "type": label,

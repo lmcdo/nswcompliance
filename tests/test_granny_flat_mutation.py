@@ -591,7 +591,8 @@ class TestFetchSdSetbacks:
         conn = FakeConn(cursor=cur)
         result = _fetch_sd_setbacks(conn, "test_lga")
         sb = result["sd_setbacks"][0]
-        assert "Merit-based" in sb["requirement"] or "refer to DCP" in sb["requirement"]
+        # A control with no number is a rule, not a merit assessment (2026-09-14).
+        assert sb["requirement"] == "No set number — see the plan"
 
     def test_dcp_name_from_lga_slug(self):
         """lga_slug is converted to title case with underscores → spaces."""
