@@ -1,0 +1,29 @@
+{
+  "tier": "minor",
+  "justification": "Dependency requirement files only: Dependabot's Python minor-and-patch group (#1108) plus odc-geo (#1032), mutmut (#1031) and pyproj (#1030), re-pushed from a normal branch because Dependabot runs get no repository secrets and no QA report, so their gates can never pass.",
+  "commit_hash": "pending",
+  "files": [
+    "requirements.txt",
+    "requirements-test.txt",
+    "requirements-latentscope.txt",
+    "scripts/requirements-extract.txt",
+    "scripts/requirements-maintenance.txt",
+    "scripts/requirements-monitor.txt",
+    "services/requirements.txt"
+  ],
+  "break_it": [
+    {
+      "scenario": "A minor or patch release in the group changes behaviour a test relies on, or two pins in different requirement files disagree after the merge of the four Dependabot changes.",
+      "what_happens": "The backend image, a Railway monitor or the CI test job installs a set that fails to resolve or behaves differently from the pinned set before.",
+      "mitigated": true,
+      "how": "The one conflict (requirements-test.txt: rasterio and pyproj) was resolved to the newer bound on both lines, matching requirements.txt. The CI gates run on this branch decides the merge; nothing merges on a failed or missing run.",
+      "repro": "python scripts/check_pr_gates.py <this PR>"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: Railway rebuilds images that install these files; confirm the nswcompliance deploy status on the merge commit is success. Dependabot closes #1108, #1032, #1031 and #1030 once main carries the same versions."
+  }
+}
