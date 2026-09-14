@@ -1,0 +1,25 @@
+{
+  "tier": "minor",
+  "justification": "Requirement files only: Dependabot's Python majors group (#1029) — openai 2 to 3, anthropic 0.120 to 1.5, cryptography 49 to 50, portalocker 3 to 4, stringzilla 4 to 5, websockets 16 to 17, xxhash 3 to 4 — re-pushed from a normal branch because Dependabot runs get no repository secrets and no QA report, so their gates can never pass.",
+  "commit_hash": "909820fb",
+  "files": [
+    "requirements.txt",
+    "scripts/requirements-monitor.txt",
+    "services/requirements.txt"
+  ],
+  "break_it": [
+    {
+      "scenario": "openai 3 or anthropic 1 renames or removes a client call used by the AI extraction or brief code, in a path the test suite mocks rather than calls.",
+      "what_happens": "Tests pass while a Railway job or the backend fails at runtime on its first real API call.",
+      "mitigated": false,
+      "how": "The CI gates run on this branch decides the merge, but mocked SDK calls cannot catch an API change. If the gates pass, check the Railway deploy and the next dcp-extract and brief runs; revert on any SDK error.",
+      "repro": "grep -rn \"from openai\\|import openai\\|from anthropic\\|import anthropic\" services scripts enrichment src"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: confirm the Railway deploys of the merge commit succeed and the next dcp-extract run logs no SDK errors. Dependabot closes #1029 once main carries the same versions."
+  }
+}
