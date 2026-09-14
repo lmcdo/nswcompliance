@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which numeric DCP controls every zone-scoped caller receives (conveyancing report, capacity engine, brief, controls API) and what the web controls tab prints for a control with no number. A wrong keep/drop serves another zone's setback or hides the site's own.",
-  "commit_hash": "e89da816",
+  "commit_hash": "af9a0053",
   "files": [
     "migrations/072_dcp_zone_scope_and_plain_summary.sql",
     "scripts/conveyancing_db.py",
@@ -64,6 +64,7 @@
     }
   ],
   "real_layer_exempt": {
+    "services/granny_flat.py": "Only the fallback string for a no-number row changes ('Merit-based assessment — refer to DCP' becomes 'No set number — see the plan'); the query, its parameters and the row handling are untouched, so a real database adds nothing a mock cursor does not. tests/test_granny_flat_mutation.py::TestFetchSdSetbacks::test_setback_both_none_no_source_text pins the new text.",
     "migrations/072_dcp_zone_scope_and_plain_summary.sql": "Applied to production 2026-09-14 13:01 after a dry run in a rolled-back transaction: backup of all 1,126 rows, columns 24 -> 27, row count unchanged, CHECK present, new columns nullable with no default.",
     "scripts/conveyancing_db.py": "Measured against the real database instead of a DB-marked test: old zone_row_applies (no scope) vs new (with the stored scope) for all 868 current visible rows x 12 zone codes (R1-R5, E1, E2, MU1, B4, RU5, SP2, C4): 5 decisions differ, all Strathfield rows 1266, 1267, 1284, 1285, 1286 for R2, True -> False. Only Strathfield's 13 rows carry the new fields.",
     "scripts/insert_strathfield_general_residential.py": "The live rows were brought to match ROWS from the session scratchpad (not committed): the step imported this script's ROWS, re-ran check_against_pdf on the pinned PDF, backed up the 55 rows, updated only zones_include, zones_exclude and plain_summary on 13 rows by id, and required every live Strathfield row to equal ROWS field for field (15 fields) and no other council's row to carry the new fields before committing (identical: True, 2026-09-14 13:01)."
