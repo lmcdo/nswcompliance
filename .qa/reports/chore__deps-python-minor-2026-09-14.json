@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Dependency requirement files only: Dependabot's Python minor-and-patch group (#1108) plus odc-geo (#1032), mutmut (#1031) and pyproj (#1030), re-pushed from a normal branch because Dependabot runs get no repository secrets and no QA report, so their gates can never pass.",
-  "commit_hash": "pending",
+  "commit_hash": "395775ab",
   "files": [
     "requirements.txt",
     "requirements-test.txt",
