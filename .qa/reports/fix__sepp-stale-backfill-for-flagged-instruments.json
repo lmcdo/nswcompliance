@@ -1,0 +1,120 @@
+{
+  "tier": "critical",
+  "justification": "Changes what the production legislation monitor writes to housing_sepp_standards and cdc_eligibility_standards on every run, fixes a crash in the path that records a detected SEPP change, and closes a data-quality row and an outreach claim that both read those tables. A wrong change either stamps notices on standards that reflect the current law, or leaves amended standards serving with no notice.",
+  "commit_hash": "c797de50",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json",
+    "deploy/flyio-legislation-monitor/legislation_monitor.py",
+    "scripts/legislation_monitor.py",
+    "tests/test_legislation_monitor_stale_backfill.py",
+    "tests/test_sepp_auto_stale.py"
+  ],
+  "pre_impl": {
+    "existing_data": "instrument_registry (needs_review, last_changed, current_version) for sepp_housing_2021 and sepp_exempt_complying_2008; housing_sepp_standards (45 rows) and cdc_eligibility_standards (3 rows), each with created_at, stale_since and stale_reason; STANDARDS_TABLES_BY_INSTRUMENT and mark_dependent_standards_stale in scripts/legislation_monitor.py.",
+    "assumption_mismatch": "The auto-stale path assumed every amendment would be seen happening by a check. Both SEPPs were flagged before the path shipped (15 May and 8 June; #839 on 29 July), so it never ran for them and 35 standards served with no notice. The path also assumed an f-string predicate containing ILIKE '%housing%' could share a statement with a %s parameter; psycopg2 formats every %, and cursor.mogrify raised IndexError on exactly those statements.",
+    "new_vs_existing": "Extends the existing auto-stale code in the same file: the new sweep reuses STANDARDS_TABLES_BY_INSTRUMENT, its predicates and its notice wording, and runs from the existing main loop. The escaping helper is applied to the existing function too. The fly.io copy receives only the escaping fix, not the sweep.",
+    "external_source_error": "The instrument dates come from instrument_registry, written by earlier monitor runs from the PCO feed. If last_changed is NULL the instrument is skipped rather than given an invented date. A failure inside the sweep is rolled back, reported to Telegram, and does not hide or undo the instrument checks that ran before it.",
+    "frontend_type": "No frontend change. services/housing_sepp_eligibility.py and services/cdc_screen.py already read stale_since and stale_reason into their result objects; no page renders them yet, which the PR states.",
+    "user_failure_mode": "Before: an eligibility answer used Housing SEPP standards from before a detected amendment with nothing saying the law had changed, and the next real SEPP Housing or E&C change would have been logged as a monitor error instead of an alert. After, if the sweep were wrong, a standard stored after an amendment could wrongly carry a 'not re-checked' notice; the created_at test and the fixture rows pin that it does not."
+  },
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 python -m pytest tests/test_legislation_monitor_stale_backfill.py tests/test_sepp_auto_stale.py tests/test_sql_percent_placeholders.py tests/test_housing_sepp_eligibility.py -o addopts=\"\" -q (DATABASE_URL set); python scripts/dq_probe_live.py --id DQ-96",
+    "external_authority": "The database tests run both functions through the real psycopg2 driver and Postgres against temporary fixture tables with known answers, not a mock; the placeholder failure was first reproduced independently with cursor.mogrify on the production connection; DQ-96's probe is a separate, pre-existing query (scripts/dq_probe_live.py) that counts the gap without calling the sweep.",
+    "fails_when": "The sweep stamps a row stored after its instrument's change, overwrites an existing notice, stamps an instrument nobody flagged, dates the notice from today instead of the change, is no longer called from main, or the predicates go back to an unescaped % beside a parameter.",
+    "observed_red": "Forced, each restored afterwards. Letting the sweep reach rows stored after the change: 2 failed, 6 passed. Removing the % escaping: 3 failed, 5 passed, including test_the_fresh_transition_path_runs_through_a_real_driver. Removing the call from main: 1 failed, 7 passed. Before any change, cursor.mogrify on the existing statements printed 'RAISE housing (fresh path, as written): IndexError: tuple index out of range' for both predicate forms, and OK for the escaped form.",
+    "measured": "63 passed across the four test files, fixture-table tests included. Production, dry run first and then applied with no CI run in progress: exactly housing_sepp_standards ids 1-33 and 36, 45 stamped (33 SEPP Housing rows dated 2026-05-15, 2 E&C rows dated 2026-06-08), 0 cdc_eligibility_standards rows (all 3 stored 2026-07-27, after E&C's change). After commit: python scripts/dq_probe_live.py --id DQ-96 count 0 (was 35); python scripts/outreach_claim_checks.py OC-6 HOLDS."
+  },
+  "functions": [
+    {
+      "name": "backfill_stale_for_flagged_instruments",
+      "file_line": "scripts/legislation_monitor.py:169",
+      "input": "An open connection. Reads instrument_registry for each instrument in STANDARDS_TABLES_BY_INSTRUMENT that is active, flagged for review and has a last_changed date.",
+      "output": "Log lines naming each standards table and how many rows were stamped; the rows get stale_since set to the change date and a reason naming the instrument, the detected date and the current version.",
+      "if_none": "An instrument with no flag or no last_changed is skipped; a row already carrying stale_since is never touched; with nothing to stamp the function returns an empty list."
+    },
+    {
+      "name": "_as_parameterised_sql",
+      "file_line": "scripts/legislation_monitor.py:158",
+      "input": "One predicate string from STANDARDS_TABLES_BY_INSTRUMENT, such as source_document ILIKE '%housing%'.",
+      "output": "The same predicate with every % doubled, so psycopg2 passes it to Postgres as a literal in a statement that also takes %s parameters.",
+      "if_none": "Not called for a table with no predicate; callers test the predicate before calling, so None never reaches it."
+    },
+    {
+      "name": "mark_dependent_standards_stale",
+      "file_line": "scripts/legislation_monitor.py:124",
+      "input": "An open connection, the instrument key and label, and the old and new version strings of a change a check has just detected.",
+      "output": "Unchanged behaviour: stamps rows with no notice yet using NOW() and returns log lines; its predicates are now escaped so the statement can be formatted.",
+      "if_none": "An unmapped instrument returns an empty list with no statement executed, as before."
+    }
+  ],
+  "values": [
+    {
+      "value": "instrument_registry.last_changed, the time the monitor recorded a version change for the instrument.",
+      "read_at": "backfill_stale_for_flagged_instruments, once per mapped instrument on every monitor run.",
+      "if_missing": "NULL skips the instrument entirely, because a notice dated from an unknown change would be invented."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Flagged instrument lookup for the stale notice sweep",
+      "file_line": "scripts/legislation_monitor.py:185",
+      "where_clause": "WHERE instrument_key = %s AND is_active AND needs_review AND last_changed IS NOT NULL"
+    },
+    {
+      "purpose": "Standards rows stamped by the stale notice sweep",
+      "file_line": "scripts/legislation_monitor.py:202",
+      "where_clause": "WHERE stale_since IS NULL AND created_at < %s (the instrument's last_changed) AND the instrument's own escaped predicate, if the table has one"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A standards row was stored after the instrument's change, like the 10 SEPP Housing secondary-dwelling rows stored on 2026-05-31, and the stale notice sweep runs.",
+      "what_happens": "Without the created_at condition it would be told it predates the amendment and has not been re-checked, which may be false for a row read from the amended text.",
+      "mitigated": true,
+      "how": "Only rows with created_at before last_changed are stamped; the fixture's row 34 stays clean and the production dry run left ids 34, 35 and 37-44 untouched. Forcing the condition off failed 2 tests.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_legislation_monitor_stale_backfill.py::test_the_sweep_stamps_exactly_the_rows_stored_before_each_change -o addopts=\"\""
+    },
+    {
+      "scenario": "The next SEPP Housing version change is detected by a check and the fresh path runs its UPDATE with ILIKE '%housing%' beside a %s parameter.",
+      "what_happens": "psycopg2 raised IndexError while formatting, check_instrument failed, the instrument was logged as an error rather than alerted as changed, and its standards stayed without a notice.",
+      "mitigated": true,
+      "how": "Predicates are doubled through _as_parameterised_sql in both paths; test_the_fresh_transition_path_runs_through_a_real_driver runs the statement through Postgres and failed when the escaping was removed.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_legislation_monitor_stale_backfill.py::test_the_fresh_transition_path_runs_through_a_real_driver -o addopts=\"\""
+    },
+    {
+      "scenario": "A standards row already carries a notice from an earlier change and the stale notice sweep runs again on the next monitor pass.",
+      "what_happens": "Overwriting it would move the date to a later change and lose which amendment first made the row stale.",
+      "mitigated": true,
+      "how": "Every UPDATE requires stale_since IS NULL; fixture row 90 keeps 'an earlier notice', and a second run returns no lines and changes nothing.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_legislation_monitor_stale_backfill.py::test_a_second_run_changes_nothing -o addopts=\"\""
+    },
+    {
+      "scenario": "An instrument has old standards rows but nobody has flagged a change for it.",
+      "what_happens": "A sweep keyed on row age alone would stamp current standards as out of date.",
+      "mitigated": true,
+      "how": "The flagged instrument lookup requires needs_review AND last_changed IS NOT NULL; the fixture with both instruments unflagged stamps nothing.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_legislation_monitor_stale_backfill.py::test_an_instrument_that_is_not_flagged_is_left_alone -o addopts=\"\""
+    },
+    {
+      "scenario": "The stale notice sweep raises mid-run, for example on a lock timeout, after the instrument checks in the same run have succeeded.",
+      "what_happens": "An unhandled exception there would crash the run before the summary and the change alert, hiding the checks that did work.",
+      "mitigated": true,
+      "how": "The call in main is wrapped: it rolls back only its own statements, prints the error and sends a Telegram alert, then the run continues to its summary. The instrument checks commit inside their own loop before the sweep starts.",
+      "repro": "Read scripts/legislation_monitor.py main around the backfill_stale_for_flagged_instruments call: try, rollback on exception, send_telegram, then conn.close and the summary."
+    },
+    {
+      "scenario": "The fly.io deployment keeps running its own copy of the monitor.",
+      "what_happens": "That copy has already drifted from the scripts copy and would still crash on the next SEPP Housing or E&C change until redeployed, and it does not run the sweep.",
+      "mitigated": false,
+      "how": "The escaping fix is applied to deploy/flyio-legislation-monitor/legislation_monitor.py, but it takes effect only after someone runs fly deploy; the sweep is not copied because the Railway monitor already runs it against the same database and the copy has drifted in other ways. Stated in the PR.",
+      "repro": "diff scripts/legislation_monitor.py deploy/flyio-legislation-monitor/legislation_monitor.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No -- the sweep was run once against production before merge (backups data/db_rollback_backups/housing_sepp_standards_pre_stale_backfill_*.csv and cdc_eligibility_standards_pre_stale_backfill_*.csv); later runs are no-ops unless another instrument is flagged.",
+    "secrets": "No -- no new environment variables.",
+    "other_repo": "No -- single repository.",
+    "manual_verify": "Yes -- after the next Railway legislation run, its log shows either no stale backfill lines or only rows for a newly flagged instrument, and python scripts/dq_probe_live.py --id DQ-96 reads 0. The fly.io app needs fly deploy -a plotdetect-legislation-monitor for its copy of the escaping fix to take effect."
+  }
+}

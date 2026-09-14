@@ -136,7 +136,9 @@ def mark_dependent_standards_stale(
     )
     cur = conn.cursor()
     for table, predicate in STANDARDS_TABLES_BY_INSTRUMENT.get(instrument_key, []):
-        where = "stale_since IS NULL" + (f" AND ({predicate})" if predicate else "")
+        # %% because this statement also takes a %s parameter: psycopg2 formats every %, and an unescaped
+        # "ILIKE '%housing%'" raised IndexError (2026-09-14). Same fix as scripts/legislation_monitor.py.
+        where = "stale_since IS NULL" + (f" AND ({predicate.replace('%', '%%')})" if predicate else "")
         cur.execute(
             f"UPDATE {table} SET stale_since = NOW(), stale_reason = %s WHERE {where}",
             (reason,),

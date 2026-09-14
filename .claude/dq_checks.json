@@ -879,7 +879,8 @@
       "note": "CORRECTED 2026-09-05 MULTIPLE TIMES across the same session; see .claude/DATA_QUALITY_TRACKER.md's DQ-95 row for the full narrative (preflight-banner misread, Sol's flagged-vs-confirmed catch, the real commit, the ch5-1/ch5-2 mischaracterisation caught and reverted, then a real extractor fix). FINAL STATE: 39 of 54 chapters committed for real. 13 held back: the original 11 scanner-flagged chapters (1 of those 11, chapter-7-5, manually confirmed; the other 10 are unverified scanner flags) + 2 more manually confirmed during the fidelity review (chapter-7-2-city-west, chapter-9-1-general-requirements) -- held back WHOLE because the commit code path cannot exclude a single provision, only a chapter. The 2 cb-dcp-2023-ch5-* rows were wrongly counted in an earlier version of this exclusion list -- they are a separately-handled amendment (setbacks already manually extracted into dcp_setback_controls) and were reverted back to needs_extraction=FALSE, their correct pre-existing state. A real code fix (classify_toc_or_divider_page() in scripts/dcp_extract_changed.py) was written and verified for the section-divider-mini-TOC class of defect (root-caused against the real PDF, full-batch regression-checked across all 39 committed chapters, 11 new tests) -- it does not clear any of the 13. Of those 13, only 3 have a VERIFIED defect at all: chapter-7-5 (garbled map/key-site pages -- a different, harder defect than the divider contamination this fix already cleared from its 1.1/2.1/5.1), chapter-7-2 (a jumbled setback-figure table) and chapter-9-1 (a map legend mis-captured as a provision) -- these are three DIFFERENT defects, not one shared class. The other 10 are unverified scanner flags and need individual review before any fix is assigned. This same investigation surfaced a real, already-live defect in chapter-11-15-marco-avenue's committed content (Sol HIGH cross-review, confidence 0.98, caught and fixed the extractor bug itself). RECOMMITTED 2026-09-05: re-ran `--council canterbury_bankstown --chapter chapter-11-15-marco-avenue --all` using the merged fix. Verified live: the 100%-junk `2_1` provision is gone (targeted update: 1 removed), and `1_1`'s divider-prefix contamination is gone too (1 updated) -- `1_1` still carries a residual map-label artifact ('Gowlland Reserve'), the same separate, deferred garbled-map defect class as chapter-7-5, not something this fix claims to solve. Backed up the 5 pre-recommit rows first (data/db_rollback_backups/regulatory_provisions_chapter_11_15_marco_avenue_pre_recommit_2026-09-05.json)."
     },
     "DQ-96": {
-      "declared": "open",
+      "declared": "fixed",
+      "fixed_by": "2026-09-14 - scripts/legislation_monitor.py backfill_stale_for_flagged_instruments, run on every monitor pass and once against production (backups housing_sepp_standards_pre_stale_backfill_2026-09-14_*.csv): exactly the 35 rows stamped (ids 1-33 dated 2026-05-15, 36 and 45 dated 2026-06-08), probe 35 -> 0. The per-instrument legislative review stays open under DQ-88; this row is the missing notice.",
       "check": [
         "python",
         "scripts/dq_probe_live.py",
@@ -1007,7 +1008,7 @@
       "kind": "outreach_claim",
       "claim": "2,039 heritage areas; 470+ definitions; 45 SEPP standards; 23 ADG criteria.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-      "declared": "false",
+      "declared": "true",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
