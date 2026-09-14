@@ -1025,7 +1025,8 @@
       "kind": "outreach_claim",
       "claim": "Council flood studies: 4 ingested, modelled flood depth from 3.",
       "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-      "declared": "false",
+      "declared": "true",
+      "verified": "2026-09-14: production POST /pipeline/flood (persist=false) at one raster cell per depth study named the study and returned its 1% AEP depth: tweed 2.01 m (raster cell 2.008), wollongong 1.21 m (1.214), redbank 1.47 m (1.473). Replaces the not-yet-grounded sub-check with scripts/outreach_flood_depth_probe.py.",
       "check": [
         "python",
         "scripts/outreach_claim_checks.py",
