@@ -19,15 +19,19 @@
  * The governing principle: an unknown must never render as a claim. Every
  * branch below either states something measured, or falls back to wording that
  * is true of every council in NSW.
+ *
+ * A "Main constraint" tile (the overlay layer with the largest share of mapped
+ * overlay ROWS) was removed before merge: a row count is not an area. Heritage
+ * mapped as many small polygons outnumbers one flood polygon covering most of a
+ * council, so the tile could name heritage the main constraint where flood
+ * covers far more land. Nothing measured supports that claim, so it is not made.
  */
 
 export type CouncilProfile = {
-  /** rows in dcp_setback_controls for this council */
+  /** served rows in dcp_setback_controls for this council (current, not held for review) */
   controls: number
   /** distinct v2_precinct_id on its served provisions */
   precincts: number
-  /** the overlay layer that defines this LGA, if one does */
-  dominant: { layer: string; pct: number } | null
 }
 
 export type TileContent = {
@@ -37,39 +41,9 @@ export type TileContent = {
 }
 
 /**
- * Overlay layer -> the words a reader uses.
- *
- * Only layers that constrain what can be built are listed. A layer absent from
- * this map is never surfaced: naming one we cannot explain in three words is
- * worse than naming none, and it would put an unexplained technical term on a
- * public page.
- */
-export const CONSTRAINT_LABEL: Record<string, string> = {
-  heritage: 'Heritage',
-  flood: 'Flood',
-  bushfire: 'Bushfire',
-  biodiversity: 'Biodiversity',
-  acid_sulfate: 'Acid sulfate soils',
-  riparian: 'Riparian land',
-  coastal: 'Coastal management',
-  landslide: 'Landslide risk',
-}
-
-/**
- * Below this share, the layer is not the defining feature of the LGA and
- * calling it the main constraint would overstate it.
- *
- * 20% is read off the measured spread on 2026-09-10 rather than chosen:
- * Campbelltown flood 89%, Burwood heritage 47%, Hornsby heritage 25%,
- * Northern Beaches biodiversity 15%, then a long tail in single digits. The
- * gap between 25 and 15 is where "this defines the council" stops being true.
- */
-export const DOMINANT_MIN_PCT = 20
-
-/**
  * Third tile. Was "Coverage / All NSW / LEP + SEPP for every address" on every
- * council page — true, identical everywhere, and therefore worth nothing to a
- * reader. Falls back to exactly that when nothing specific is known.
+ * council page — true, identical everywhere. Shows the precinct count when the
+ * council's served provisions carry precincts; otherwise exactly that copy.
  */
 export function profileTile(profile: CouncilProfile | null): TileContent {
   const generic: TileContent = {
@@ -79,13 +53,6 @@ export function profileTile(profile: CouncilProfile | null): TileContent {
   }
   if (!profile) return generic
 
-  if (profile.dominant && profile.dominant.pct >= DOMINANT_MIN_PCT) {
-    return {
-      label: 'Main constraint',
-      value: `${profile.dominant.layer} ${Math.round(profile.dominant.pct)}%`,
-      sub: 'Share of mapped overlays in this LGA',
-    }
-  }
   if (profile.precincts > 0) {
     return {
       label: 'Precincts',
@@ -99,6 +66,10 @@ export function profileTile(profile: CouncilProfile | null): TileContent {
 /**
  * Middle tile. Prefers the provision count, then the structured-control count,
  * then says the plain truth. Never the word "Available".
+ *
+ * An unknown profile (the count query failed) is not the same as a council with
+ * nothing: saying "Not yet published" for it would be a false claim about that
+ * council, so it says the count could not be read instead.
  */
 export function dcpControlsTile(
   profile: CouncilProfile | null,
@@ -112,7 +83,10 @@ export function dcpControlsTile(
       sub: 'Full provision text',
     }
   }
-  if (profile && profile.controls > 0) {
+  if (!profile) {
+    return { label: 'DCP controls', value: 'Not counted', sub: 'Could not be read just now' }
+  }
+  if (profile.controls > 0) {
     return {
       label: 'DCP controls',
       value: `${profile.controls} structured controls`,

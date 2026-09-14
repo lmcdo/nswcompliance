@@ -5,8 +5,6 @@ import { VERIFY_LGAS, VERIFY_LGA_SLUG_MAP } from '@/lib/lga-data/verify-lgas'
 import {
   profileTile,
   dcpControlsTile,
-  CONSTRAINT_LABEL,
-  DOMINANT_MIN_PCT,
   type CouncilProfile,
 } from '@/lib/council-profile-tile'
 import { sanitizeHTML } from '@/lib/sanitize'
@@ -229,7 +227,8 @@ async function fetchCouncilProfile(slug: string, name: string): Promise<CouncilP
       `SELECT count(*)::int AS n,
               count(DISTINCT source_chapter_key)::int AS chapters
          FROM dcp_setback_controls
-        WHERE is_current = TRUE AND lga = $1`,
+        WHERE is_current = TRUE AND lga = $1
+          AND (needs_review IS NULL OR needs_review = FALSE)`,
       [slug]
     )
     const controls = (controlsRes.rows[0]?.n as number) ?? 0
@@ -243,35 +242,7 @@ async function fetchCouncilProfile(slug: string, name: string): Promise<CouncilP
     )
     const precincts = (precinctRes.rows[0]?.n as number) ?? 0
 
-    // spatial_overlays keys on an UPPERCASE lga_name while the DCP tables use a
-    // lowercase slug -- two vocabularies for one council. Normalising both to
-    // letters-only is what makes canterbury_bankstown meet CANTERBURY-BANKSTOWN.
-    const overlayRes = await query(
-      `WITH mine AS (
-         SELECT layer_type, count(*)::int AS n
-           FROM spatial_overlays
-          WHERE regexp_replace(lower(lga_name), '[^a-z0-9]', '', 'g')
-              = regexp_replace(lower($1),        '[^a-z0-9]', '', 'g')
-          GROUP BY layer_type
-       )
-       SELECT layer_type, n, (100.0 * n / NULLIF(sum(n) OVER (), 0))::numeric(5,1) AS pct
-         FROM mine ORDER BY n DESC`,
-      [slug]
-    )
-    const overlayRows = overlayRes.rows as Array<{ layer_type: string; n: number; pct: string }>
-
-    let dominant: { layer: string; pct: number } | null = null
-    for (const row of overlayRows) {
-      const label = CONSTRAINT_LABEL[row.layer_type]
-      if (!label) continue
-      const pct = Number(row.pct)
-      if (Number.isFinite(pct) && pct >= DOMINANT_MIN_PCT) {
-        dominant = { layer: label, pct: Math.round(pct) }
-      }
-      break
-    }
-
-    return { controls, precincts, dominant }
+    return { controls, precincts }
   } catch (err) {
     console.error(`[planning-controls] Council profile query failed for ${slug}:`, err)
     return null
