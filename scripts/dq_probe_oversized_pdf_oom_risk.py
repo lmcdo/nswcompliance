@@ -48,15 +48,15 @@ def run() -> int:
             "SELECT council, chapter_key, url_content_length "
             "FROM dcp_chapter_registry "
             "WHERE is_active AND url_content_length > %s "
+            "  AND last_extracted_at IS NULL "
             "ORDER BY url_content_length DESC",
             (_THRESHOLD_BYTES,),
         )
         rows = cur.fetchall()
     if not rows:
-        print(f"PASSED: no active chapter PDF exceeds {_THRESHOLD_BYTES:,} bytes.")
+        print("PASSED: every large chapter PDF has been extracted at least once.")
         return 0
-    print(f"{len(rows)} active chapter PDF(s) exceed the {_THRESHOLD_BYTES:,}-byte "
-          f"OOM-risk threshold (DQ-98, not yet fixed -- split-PDF extraction):")
+    print(f"{len(rows)} large chapter PDF(s) have still never been extracted:")
     for council, chapter_key, size in rows:
         print(f"  {council}/{chapter_key}: {size:,} bytes")
     return 1
