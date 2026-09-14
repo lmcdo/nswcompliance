@@ -136,6 +136,41 @@ def test_a_row_without_a_number_carries_plain_wording(r):
         assert r["plain_summary"] is None, "a row with a number shows the number"
 
 
+MIGRATION_072 = Path(__file__).parent.parent / "migrations" / "072_dcp_zone_scope_and_plain_summary.sql"
+_REF_VALUE = re.compile(r"\('([^']+)',\s*([0-9.]+)\)")
+
+
+def _backfill(sql: str, column: str) -> str:
+    """The WHERE block of the migration's UPDATE that sets ``column``."""
+    parts = sql.split(f"SET {column} =")
+    assert len(parts) == 2, f"expected one backfill UPDATE for {column}"
+    return parts[1].split(";", 1)[0]
+
+
+def test_migration_072_backfills_exactly_the_rows_this_script_scopes():
+    """A database that gains the columns from the migration alone (a restore or staging copy) must scope and word
+    the same Strathfield rows as ROWS, or an R2 site there is served both the R2 and the other-zones figures."""
+    sql = MIGRATION_072.read_text(encoding="utf-8")
+    for column in ("zones_include", "zones_exclude"):
+        block = _backfill(sql, column)
+        assert block.lstrip().startswith("ARRAY['R2']") and mod.LOW_DENSITY_ZONE == ["R2"]  # noqa: zone-codes (the scope the plan names)
+        assert f"source_chapter_key = '{mod.SOURCE_CHAPTER_KEY}'" in block and f"lga = '{mod.LGA}'" in block
+        keys = {(ref, float(v)) for ref, v in _REF_VALUE.findall(block)}
+        scoped = [r for r in ROWS if r[column]]
+        assert keys == {(r["section_ref"], float(r["value_min"])) for r in scoped}
+        assert all(r[column] == mod.LOW_DENSITY_ZONE for r in scoped)
+        for r in ROWS:
+            if (r["section_ref"], float(r["value_min"] if r["value_min"] is not None else -1)) in keys \
+                    and r["control_type"] in ("rear_setback", "side_setback"):
+                assert r[column], f"the backfill would scope an unscoped row: {r['condition']}"
+    block = _backfill(sql, "plain_summary")
+    worded = [r for r in ROWS if r["plain_summary"]]
+    assert {r["plain_summary"] for r in worded} == {mod.S_FRONT}
+    assert block.lstrip().startswith("'" + mod.S_FRONT.replace("'", "''") + "'")
+    assert {r["section_ref"] for r in worded} == {f"{mod.SOURCE_CHAPTER_KEY}#C3.1.1"}
+    assert f"section_ref = '{mod.SOURCE_CHAPTER_KEY}#C3.1.1'" in block and "control_type = 'front_setback'" in block
+
+
 def test_maximums_are_stored_as_ceilings():
     for r in ROWS:
         if r["control_type"] == "fencing_height_max":

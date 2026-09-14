@@ -363,6 +363,17 @@ class TestExplicitZoneScope:
         result = fetch_dcp_setbacks(_mock_conn(rows), "strathfield")
         assert len(result["setbacks"]) == 2
 
+    def test_null_or_blank_elements_never_exclude_a_real_zone(self):
+        # ARRAY[NULL] reaches Python as [None]; read as the string "NONE" it would hide the row for every zone.
+        only_null = [_make_row(zones_include=[None])]
+        assert len(self._kept(only_null, "R2")) == 1  # noqa: zone-codes (fixture zone)
+        assert len(self._kept(only_null, "R3")) == 1  # noqa: zone-codes (fixture zone)
+        blank = [_make_row(zones_include=["", "  "])]
+        assert len(self._kept(blank, "R3")) == 1  # noqa: zone-codes (fixture zone)
+        mixed = [_make_row(zones_exclude=[None, "R2"])]  # noqa: zone-codes (fixture scope)
+        assert self._kept(mixed, "R2") == []  # noqa: zone-codes (fixture zone)
+        assert len(self._kept(mixed, "R3")) == 1  # noqa: zone-codes (fixture zone)
+
     def test_empty_arrays_fall_back_to_the_text_rule(self):
         rows = [_make_row(applicability="zone_specific", condition="R3 Medium Density",  # noqa: zone-codes (fixture text)
                           zones_include=[], zones_exclude=[])]

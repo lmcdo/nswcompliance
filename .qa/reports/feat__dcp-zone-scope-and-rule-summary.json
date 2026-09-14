@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes which numeric DCP controls every zone-scoped caller receives (conveyancing report, capacity engine, brief, controls API) and what the web controls tab prints for a control with no number. A wrong keep/drop serves another zone's setback or hides the site's own.",
-  "commit_hash": "af9a0053",
+  "commit_hash": "c12340a2",
   "files": [
     "migrations/072_dcp_zone_scope_and_plain_summary.sql",
     "scripts/conveyancing_db.py",
@@ -43,9 +43,9 @@
     },
     {
       "name": "fetch_dcp_setbacks",
-      "file_line": "scripts/conveyancing_db.py:489",
+      "file_line": "scripts/conveyancing_db.py:493",
       "input": "An open database connection, an LGA slug, an optional zone code string such as 'R2 Low Density Residential', and raise_on_error.",
-      "output": "The same controls dict; each entry now carries plain_summary, rows are kept or dropped with their stored scope (line 665), and a no-number requirement falls back to plain_summary then 'No set number — see the plan' (line 681).",
+      "output": "The same controls dict; each entry now carries plain_summary, rows are kept or dropped with their stored scope (line 669), and a no-number requirement falls back to plain_summary then 'No set number — see the plan' (line 685).",
       "if_none": "A None plain_summary is passed out as None; a None or blank zone still applies every row."
     },
     {
@@ -72,32 +72,32 @@
   "values": [
     {
       "value": "zones_include and zones_exclude text[] per current visible row (Strathfield: {R2} include on 1230, 1244, 1258, 1264, 1265; {R2} exclude on 1266, 1267, 1284, 1285, 1286; NULL elsewhere)",
-      "read_at": "scripts/conveyancing_db.py:527 (SELECT), used at scripts/conveyancing_db.py:665",
+      "read_at": "scripts/conveyancing_db.py:531 (SELECT), used at scripts/conveyancing_db.py:669",
       "if_missing": "NULL or an empty array: the text rule decides, exactly as before this change."
     },
     {
       "value": "plain_summary text per current visible row (Strathfield 1229, 1243, 1257: \"Worked out from neighbours' setbacks\"; NULL elsewhere)",
-      "read_at": "scripts/conveyancing_db.py:527 (SELECT), used at scripts/conveyancing_db.py:681 and passed out in the entry",
+      "read_at": "scripts/conveyancing_db.py:531 (SELECT), used at scripts/conveyancing_db.py:685 and passed out in the entry",
       "if_missing": "The backend requirement uses source_text, else 'No set number — see the plan'; the tab shows 'No set number'."
     }
   ],
   "queries": [
     {
       "purpose": "Served controls for one council with the stored zone scope and plain wording, current and not held for review",
-      "file_line": "scripts/conveyancing_db.py:527",
+      "file_line": "scripts/conveyancing_db.py:531",
       "where_clause": "lga = %s AND is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE)"
     }
   ],
   "break_it": [
     {
-      "scenario": "A Strathfield R2 site asks for multi-dwelling-housing controls through the served controls query (scripts/conveyancing_db.py:527, WHERE lga = %s AND is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE)).",
+      "scenario": "A Strathfield R2 site asks for multi-dwelling-housing controls through the served controls query (scripts/conveyancing_db.py:531, WHERE lga = %s AND is_current = TRUE AND (needs_review IS NULL OR needs_review = FALSE)).",
       "what_happens": "Before this change it received the R2 rows (6-10m rear, 5m/3m side) and the other-zones rows (6m rear, 4m/2m side) together.",
       "mitigated": true,
       "how": "The other-zones rows carry zones_exclude {R2} and the R2 rows zones_include {R2}; test_served_zone_filter_keeps_each_zone_its_own_rows checks R2, R3, R4 and E1 for three dwelling types and failed for R2 on the mutant without the scope branch.",
       "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k served_zone_filter -q"
     },
     {
-      "scenario": "The deploy changes keep/drop decisions for councils other than Strathfield through the served controls query (scripts/conveyancing_db.py:527, WHERE lga = %s AND is_current = TRUE).",
+      "scenario": "The deploy changes keep/drop decisions for councils other than Strathfield through the served controls query (scripts/conveyancing_db.py:531, WHERE lga = %s AND is_current = TRUE).",
       "what_happens": "Controls other sites saw yesterday could disappear today.",
       "mitigated": true,
       "how": "Measured before committing: old vs new decisions over all 868 live rows x 12 zones, 5 differ, all Strathfield R2; the sync refused to commit if any other council's row carried the new fields.",
@@ -115,7 +115,28 @@
       "what_happens": "Two contradictory scopes; the include would silently win.",
       "mitigated": true,
       "how": "The database refuses the write: CHECK dcp_setback_controls_zone_scope_one_side (zones_include IS NULL OR zones_exclude IS NULL), confirmed present after the migration.",
-      "repro": "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'dcp_setback_controls_zone_scope_one_side'"
+      "repro": "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'dcp_setback_controls_zone_scope_one_side' AND conrelid = 'dcp_setback_controls'::regclass"
+    },
+    {
+      "scenario": "A restore, staging or rebuilt database holding the Strathfield rows gains the columns from migration 072 alone, without the scratchpad sync.",
+      "what_happens": "Every new field would be NULL, the text rule would decide, and an R2 site would again be served both the R2 and the other-zones setbacks.",
+      "mitigated": true,
+      "how": "Migration 072 backfills the 13 rows by lga, source_chapter_key, section_ref and value, only where nothing is stored. Forced on production inside a rolled-back transaction: the 13 rows cleared, the migration run, the result equal to the live scope; a second run changed nothing. test_migration_072_backfills_exactly_the_rows_this_script_scopes ties the SQL to ROWS.",
+      "repro": "python -m pytest tests/test_insert_strathfield_general_residential.py -k migration_072 -q"
+    },
+    {
+      "scenario": "A row is stored with zones_include = ARRAY[NULL]::text[] or a blank element.",
+      "what_happens": "Python receives [None]; read as the code 'NONE' it would hide the control for every real zone.",
+      "mitigated": true,
+      "how": "NULL and blank elements are dropped before comparing, and a scope with no real code falls back to the text rule; test_null_or_blank_elements_never_exclude_a_real_zone.",
+      "repro": "python -m pytest tests/test_conveyancing_db.py -k null_or_blank -q"
+    },
+    {
+      "scenario": "A constraint named dcp_setback_controls_zone_scope_one_side already exists on another table.",
+      "what_happens": "A name-only existence check would skip adding the CHECK here, so contradictory scopes could be stored.",
+      "mitigated": true,
+      "how": "The DO block checks conname AND conrelid = 'dcp_setback_controls'::regclass.",
+      "repro": "SELECT conrelid::regclass FROM pg_constraint WHERE conname = 'dcp_setback_controls_zone_scope_one_side'"
     },
     {
       "scenario": "A scope is written as ' r2 ' or an empty array.",

@@ -471,10 +471,14 @@ def zone_row_applies(applicability: Optional[str], condition: Optional[str], zon
     """
     if not zone_prefix:
         return True
-    if zones_include:
-        return zone_prefix in {str(z).strip().upper() for z in zones_include}
-    if zones_exclude:
-        return zone_prefix not in {str(z).strip().upper() for z in zones_exclude}
+    # NULL or blank elements (e.g. ARRAY[NULL]) are ignored, so they can never exclude a real zone; a scope
+    # holding no real code falls through to the text rule.
+    include = {str(z).strip().upper() for z in (zones_include or []) if z is not None and str(z).strip()}
+    exclude = {str(z).strip().upper() for z in (zones_exclude or []) if z is not None and str(z).strip()}
+    if include:
+        return zone_prefix in include
+    if exclude:
+        return zone_prefix not in exclude
     if applicability != "zone_specific" or not condition:
         return True
     cond_upper = _DOC_REFERENCE.sub(" ", condition.upper())
