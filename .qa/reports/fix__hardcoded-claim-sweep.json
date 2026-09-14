@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Every coverage check built to date reads frontend-nextjs/lib/coverage.ts. A number typed as a literal on a page is invisible to all of them — the standing gap that let lgasCovered:130 sit on the homepage claiming more councils than NSW contains, and the reason the August audit only ever examined seven /for/ pages. This sweeps all 150 .tsx pages, fixes the two live overstatements it found, and adds a guard so the class cannot return. Standard, not Critical: copy and one test file; no data written, no logic changed, and both corrections narrow a claim rather than widening one.",
-  "commit_hash": "1c722b16",
+  "commit_hash": "ca52395e",
   "files": [
     "frontend-nextjs/app/for/students/page.tsx",
     "frontend-nextjs/app/dcp-browse/layout.tsx",
