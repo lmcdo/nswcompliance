@@ -167,6 +167,8 @@ export interface StructuredControl {
   pdf_page: number | null;
   pdf_url: string | null;
   data_status: ControlDataStatus;
+  /** Plain-English wording shown instead of a number when the plan sets no fixed figure. */
+  plain_summary: string | null;
 }
 
 export interface ControlCategory {
@@ -295,6 +297,7 @@ export async function GET(request: NextRequest) {
         pdf_page: row.pdf_page != null ? Number(row.pdf_page) : null,
         pdf_url: pdfUrl,
         data_status: dataStatus,
+        plain_summary: row.plain_summary ?? null,
       });
     }
 

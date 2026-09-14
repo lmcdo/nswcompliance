@@ -450,8 +450,13 @@ _DOC_REFERENCE = re.compile(
     r"(?:RU|RE|IN|SP|MU|R|E|B|C|W)[0-9][0-9A-Z.]*")
 
 
-def zone_row_applies(applicability: Optional[str], condition: Optional[str], zone_prefix: str) -> bool:
+def zone_row_applies(applicability: Optional[str], condition: Optional[str], zone_prefix: str,
+                     zones_include: Optional[list] = None, zones_exclude: Optional[list] = None) -> bool:
     """Whether a DCP control row applies to a site whose zone code is ``zone_prefix`` (e.g. "R2").
+
+    An explicit zone scope decides first (migration 072): ``zones_include`` limits the row to those zone
+    codes and ``zones_exclude`` applies it to every zone except those. Without either, the condition text is
+    read as below.
 
     Only ``zone_specific`` rows with condition text are ever excluded, and only when a zone is known.
     Zone codes are whole tokens of any Standard Instrument family (R, RU, RE, E, B, IN, SP, MU, C or W
@@ -464,7 +469,13 @@ def zone_row_applies(applicability: Optional[str], condition: Optional[str], zon
     cannot loosen a computed limit. A condition naming no zone code applies everywhere. Legacy and current
     codes are not aliased.
     """
-    if not zone_prefix or applicability != "zone_specific" or not condition:
+    if not zone_prefix:
+        return True
+    if zones_include:
+        return zone_prefix in {str(z).strip().upper() for z in zones_include}
+    if zones_exclude:
+        return zone_prefix not in {str(z).strip().upper() for z in zones_exclude}
+    if applicability != "zone_specific" or not condition:
         return True
     cond_upper = _DOC_REFERENCE.sub(" ", condition.upper())
     named = set(_ZONE_CODE.findall(cond_upper))
@@ -512,7 +523,8 @@ def fetch_dcp_setbacks(
             """
             SELECT dev_type, control_type, value_min, value_max, unit,
                    condition, source_text, section_ref, applicability,
-                   needs_review, source_chapter_key, pdf_page, dcp_version
+                   needs_review, source_chapter_key, pdf_page, dcp_version,
+                   zones_include, zones_exclude, plain_summary
             FROM dcp_setback_controls
             WHERE lga = %s AND is_current = TRUE
               AND (needs_review IS NULL OR needs_review = FALSE)
@@ -638,7 +650,7 @@ def fetch_dcp_setbacks(
 
     for (dev_type, ctrl_type, vmin, vmax, unit, condition, source_text,
          section_ref, applicability, needs_review, source_chapter_key,
-         pdf_page, dcp_version) in rows:
+         pdf_page, dcp_version, zones_include, zones_exclude, plain_summary) in rows:
         # Fail-closed on currency (mirrors the web route /api/dcp/structured-controls):
         # a control flagged for human review after a DCP amendment must never render
         # as an authoritative number in the PDF. The SQL WHERE already excludes
@@ -650,7 +662,7 @@ def fetch_dcp_setbacks(
             continue
         # Skip zone-specific controls that do not apply to this site's zone, including rows written
         # "other than <zone>" (see zone_row_applies).
-        if not zone_row_applies(applicability, condition, zone_prefix):
+        if not zone_row_applies(applicability, condition, zone_prefix, zones_include, zones_exclude):
             continue
         base_label = _CONTROL_TYPE_LABELS.get(
             ctrl_type, ctrl_type.replace("_", " ").title()
@@ -666,7 +678,7 @@ def fetch_dcp_setbacks(
             requirement = "; ".join(parts) if parts else f"{vmin or vmax:g} m"
         else:
             control_kind = "site_derived"
-            requirement = source_text or "Merit-based assessment — refer to DCP"
+            requirement = source_text or plain_summary or "No set number — see the plan"
 
         entry = {
             "type":         base_label,
@@ -690,6 +702,9 @@ def fetch_dcp_setbacks(
             "pdf_page":     pdf_page,
             "dcp_version":  dcp_version,
             "applicability": applicability,
+            # prior-art-checked: additive field on the same guarded row, no new source. Plain-English
+            # wording for a control with no fixed number (migration 072); None when not written.
+            "plain_summary": plain_summary,
         }
 
         is_sd = (

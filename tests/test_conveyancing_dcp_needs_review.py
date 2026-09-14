@@ -53,9 +53,10 @@ def _row(dev_type, ctrl_type, vmin, needs_review, section_ref="3.2"):
     # Column order matches the SELECT in fetch_dcp_setbacks:
     # (dev_type, control_type, value_min, value_max, unit, condition,
     #  source_text, section_ref, applicability, needs_review,
-    #  source_chapter_key, pdf_page, dcp_version)
+    #  source_chapter_key, pdf_page, dcp_version,
+    #  zones_include, zones_exclude, plain_summary)
     return (dev_type, ctrl_type, vmin, None, "m", None, None, section_ref,
-            "all", needs_review, "part_3", 12, "v2022-current")
+            "all", needs_review, "part_3", 12, "v2022-current", None, None, None)
 
 
 def _semantic_types(result):
