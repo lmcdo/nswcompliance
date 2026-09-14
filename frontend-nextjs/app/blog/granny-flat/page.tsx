@@ -5,11 +5,12 @@ import { ArrowRight } from 'lucide-react'
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer'
 import { COUNCIL_STATS, DATA_AS_OF } from '@/lib/lga-data/secondary-dwelling-stats'
 import { BlogPostingJsonLd } from '@/lib/json-ld';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'Granny Flat Statistics by Council — NSW Secondary Dwelling Data | PlotDetect',
   description:
-    'Secondary dwelling DA and CDC statistics for 102 NSW councils. Application volumes, CDC pathway rates, processing times, and build costs from NSW Planning Portal data.',
+    `Secondary dwelling DA and CDC statistics for ${COVERAGE_DISPLAY.secondaryDwellingCouncils} NSW councils. Application volumes, CDC pathway rates, processing times, and build costs from NSW Planning Portal data.`,
   keywords: [
     'granny flat statistics NSW',
     'secondary dwelling data by council',
@@ -74,7 +75,7 @@ export default function GrannyFlatBlogIndexPage() {
     <div className="max-w-5xl mx-auto px-6 py-16">
       <BlogPostingJsonLd
         title="Granny Flat Statistics by Council — NSW Secondary Dwelling Data"
-        description="Secondary dwelling DA and CDC statistics for 102 NSW councils. Application volumes, CDC pathway rates, processing times, and build costs from NSW Planning Portal data."
+        description={`Secondary dwelling DA and CDC statistics for ${COVERAGE_DISPLAY.secondaryDwellingCouncils} NSW councils. Application volumes, CDC pathway rates, processing times, and build costs from NSW Planning Portal data.`}
         slug="granny-flat"
         date="2026-05-20"
       />

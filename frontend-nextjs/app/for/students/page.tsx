@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { GraduationCap, ArrowRight, AlertTriangle } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'For Students & Lecturers — PlotDetect',
@@ -96,8 +97,8 @@ export default function StudentsPage() {
               not take you anywhere.
             </li>
             <li>
-              <strong>Coverage is uneven.</strong> 28 councils have numeric controls
-              extracted. Outside those you will get considerably less, and that is a gap
+              <strong>Coverage is uneven.</strong> {COVERAGE_DISPLAY.dcpNumericCouncils} council
+              areas have numeric controls extracted. Outside those you will get considerably less, and that is a gap
               rather than a fault.
             </li>
             <li>
