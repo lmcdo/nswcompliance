@@ -771,7 +771,7 @@ def _outreach() -> int:
     passing, not_yet, contradicted, unverified = [], [], [], []
     for cid in sorted(rows, key=_claim_number):
         spec = rows[cid]
-        claim = spec.get("claim", "")
+        claim = spec.get("claim") or ""
         if spec.get("declared") == "unverifiable":
             unverified.append(cid)
             print(f"  UNVERIFIABLE  {cid}: {claim}")
@@ -786,7 +786,7 @@ def _outreach() -> int:
         elif verdict == "NO-CHECK":
             not_yet.append(cid)
             print(f"  NO CHECK      {cid}: {claim}\n                "
-                  f"{spec.get('why_no_check', 'no reason recorded')}")
+                  f"{spec.get('why_no_check') or 'no reason recorded'}")
         elif spec.get("declared") == "true":
             passing.append(cid)
             print(f"  PASS          {cid}: {claim}")

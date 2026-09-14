@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds the project's finish line for outreach and wires it into CI, and changes public copy on nine surfaces (two claims retired, one published count corrected). A gate that can pass while a public claim is false would re-create the exact failure the outreach hold exists for; a CI step that is wrong blocks or silently waves through every PR.",
-  "commit_hash": "3207248d",
+  "commit_hash": "b6cc16f1",
   "files": [
     ".claude/dq_checks.json",
     ".github/workflows/gates.yml",
@@ -201,6 +201,13 @@
       "mitigated": true,
       "how": "run_one replaces a bare python/python3 argv[0] with sys.executable before running any check; in CI the two are identical.",
       "repro": "python scripts/dq_check.py --id OC-16"
+    },
+    {
+      "scenario": "A claim row names the wrong COVERAGE key, so the per-field run of the existing coverage queries (scripts/verify_coverage_stats.py:247, the unchanged per-field queries in QUERIES now filterable per field) checks an unrelated figure and passes.",
+      "what_happens": "The claim would read as verified on a number it does not state; an unknown or misspelt key could also silently check nothing.",
+      "mitigated": true,
+      "how": "--field rejects any key that is not checkable before connecting (exit 1, observed with --field nope), and each OC row's claim text names the COVERAGE keys its check passes so a mismatch is visible in review; the published-figure test_every_published_number_is_checked_by_something still covers every key.",
+      "repro": "python scripts/verify_coverage_stats.py --field nope"
     }
   ],
   "post_merge": {

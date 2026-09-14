@@ -70,7 +70,7 @@ def probe(dq_id: str) -> Result:
         return FAIL, f"{dq_id}: no ledger row to run ({exc})"
     cmd = list(spec.get("check") or [])
     if not cmd:
-        return FAIL, f"{dq_id}: the ledger row has no check ({spec.get('why_no_check', 'no reason')})"
+        return FAIL, f"{dq_id}: the ledger row has no check ({spec.get('why_no_check') or 'no reason'})"
     if cmd[0] in ("python", "python3"):
         cmd[0] = sys.executable
     cwd = ROOT / spec["cwd"] if spec.get("cwd") else ROOT
