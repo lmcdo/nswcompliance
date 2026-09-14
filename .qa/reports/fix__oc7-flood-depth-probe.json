@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Replaces claim 7's placeholder sub-check with a live observation of the production flood answer and flips OC-7 to true. No served code changes, but a wrong probe would let the outreach gate report modelled depth as delivered when the production host cannot sample the rasters.",
-  "commit_hash": "46e0820b",
+  "commit_hash": "5cc4566b",
   "files": [
     "scripts/outreach_flood_depth_probe.py",
     "scripts/outreach_claim_checks.py",
