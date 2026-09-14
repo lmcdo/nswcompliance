@@ -1091,12 +1091,17 @@
     },
     "OC-12": {
       "kind": "outreach_claim",
-      "claim": "No council data is stored, exported or shared; all data sources are public government datasets (/for/councils).",
-      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
+      "claim": "Site Controls reads the NSW Planning Portal and the planning documents a council has already published; nothing is installed on, or connected to, council systems (/for/councils). Reworded 2026-09-14 from 'No council data is stored', which the council PDFs kept for page links contradicted.",
+      "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#11",
       "declared": "false",
-      "check": null,
+      "check": [
+        "python",
+        "scripts/outreach_claim_checks.py",
+        "OC-12"
+      ],
       "blocks_outreach": true,
-      "why_no_check": "Needs a definition before a check: 'council data' is not defined anywhere in the repo, and 'all data sources are public government datasets' must be tested against the list the embed actually calls. One bounded measurement decides it."
+      "passes_when": "exit 0 - the retired wording is on no rendered page, and every served council number and rule comes from an active registered chapter that records the council's published address (council_url or council_page_url). 'Nothing is installed on or connected to council systems' is the embed's design (an iframe of this app); no command checks that half.",
+      "red_when": "the declared state and the check disagree in either direction"
     },
     "OC-13": {
       "kind": "outreach_claim",
@@ -1168,7 +1173,7 @@
         "OC-17"
       ],
       "blocks_outreach": true,
-      "passes_when": "exit 0 - no precinct or town rule is served council-wide (DQ-99, DQ-66), no slot is ambiguous (DQ-32c), plans are versioned and current (DQ-61, DQ-70), no active chapter comes from a repealed plan, and no range is printed as a maximum",
+      "passes_when": "exit 0 - no precinct or town rule is served council-wide (DQ-99, DQ-66), no slot is ambiguous (DQ-32c), plans are versioned and current (DQ-61, DQ-70), no active chapter comes from a repealed plan, no range is printed as a maximum, every council's served numbers trace to one registered plan that a person confirmed in force within 90 days by name (dcp_plan_as_at.currency_confirmed_plan), no served row applies to a retired zone code but not its successor, amended instruments are applied (DQ-88), and no rule is served to a development type its own text excludes (DQ-33)",
       "red_when": "the declared state and the check disagree in either direction"
     }
   }

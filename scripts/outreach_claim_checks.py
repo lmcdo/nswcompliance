@@ -207,17 +207,140 @@ def dcp_plans_are_dated() -> Result:
     return (PASS if not dateless else FAIL), f"served councils with no plan date: {len(dateless)} {dateless[:5]}"
 
 
+# prior-art-checked: reuse not viable as-is -- these sub-checks CALL the existing serve filter
+# (conveyancing_db.zone_row_applies) and the existing translation table (shared/zone-taxonomy.json) and read
+# the existing registry and dcp_plan_as_at tables. dq_probe_live.py's DQ-61 asks only whether a version date
+# is recorded, not which plan is served or confirmed, so it cannot answer the cross-review finding; the
+# flagged frontend files display provisions and are not checks.
+
+#: One row per served council that fails, with the first reason that applies. SERVED carries is_current
+#: and needs_review. Numbers keyed _external_* come from state instruments (the LEP, the Apartment Design
+#: Guide), not a council plan; their currency is DQ-88, which OC-17 also runs. A NULL chapter key is not
+#: external: it cannot be traced, so it fails. A registered chapter with no plan name counts as a plan of
+#: its own, so it can never merge silently into a named one.
+_PLAN_IN_FORCE_SQL = f"""
+WITH served AS (
+    SELECT lga, source_chapter_key FROM dcp_setback_controls
+     WHERE {SERVED} AND COALESCE(source_chapter_key, '') NOT LIKE '\\_external\\_%'
+), traced AS (
+    SELECT s.lga, r.id AS registry_id, COALESCE(r.dcp_name, '(no plan name)') AS plan
+      FROM served s
+      LEFT JOIN dcp_chapter_registry r
+        ON r.council = s.lga AND r.chapter_key = s.source_chapter_key AND r.is_active
+), per_council AS (
+    SELECT lga,
+           count(*) FILTER (WHERE registry_id IS NULL) AS untraced,
+           count(DISTINCT plan) FILTER (WHERE registry_id IS NOT NULL) AS plans,
+           min(plan) FILTER (WHERE registry_id IS NOT NULL) AS plan
+      FROM traced GROUP BY lga
+)
+SELECT p.lga,
+       CASE WHEN p.untraced > 0 THEN p.untraced || ' number(s) trace to no active chapter'
+            WHEN p.plans <> 1 THEN p.plans || ' plan names served'
+            WHEN a.currency_confirmed_at IS NULL THEN 'no confirmation'
+            WHEN a.currency_confirmed_at < NOW() - INTERVAL '90 days' THEN 'confirmation older than 90 days'
+            ELSE 'confirmation names ' || COALESCE(a.currency_confirmed_plan, 'no plan') END AS reason
+  FROM per_council p
+  LEFT JOIN dcp_plan_as_at a ON a.lga = p.lga
+ WHERE p.untraced > 0 OR p.plans <> 1
+    OR a.currency_confirmed_at IS NULL OR a.currency_confirmed_at < NOW() - INTERVAL '90 days'
+    OR a.currency_confirmed_plan IS DISTINCT FROM p.plan
+ ORDER BY p.lga"""
+
+
 def every_served_council_has_a_current_plan_check() -> Result:
-    """Every served council's plan version must have been confirmed as the one in force within 90 days.
+    """Every council's served DCP numbers come from ONE registered plan, and a person confirmed within 90
+    days that THAT plan is the one in force.
 
     Added 2026-09-14 after measuring councils whose plan changed while an older version was served
     (Northern Beaches, Canada Bay, Randwick, Burwood, The Hills; Strathfield before them). A repeal is not
-    visible in a URL, so the repealed-source query alone cannot catch it; a dated confirmation can."""
-    return sql_count(
-        "served councils with no plan-in-force confirmation in the last 90 days",
-        "SELECT count(*) FROM (SELECT DISTINCT lga FROM dcp_setback_controls WHERE " + SERVED + ") s "
-        "LEFT JOIN dcp_plan_as_at a ON a.lga = s.lga "
-        "WHERE a.currency_confirmed_at IS NULL OR a.currency_confirmed_at < NOW() - INTERVAL '90 days'")
+    visible in a URL, so the repealed-source query alone cannot catch it; a dated confirmation can.
+
+    The first version joined dcp_plan_as_at by council only, so a recent confirmation of one plan passed a
+    council still serving numbers from another (cross-review of #1115). Measured the same day: waverley
+    serves 7 numbers from Waverley DCP 2012 beside 42 from Waverley DCP 2022. The confirmation now has to
+    name the plan (dcp_plan_as_at.currency_confirmed_plan, migration 073), and a council whose numbers
+    cannot all be traced to one registered plan fails before any confirmation is looked at."""
+    conn = _connect()
+    if conn is None:
+        return UNKNOWN, "plan in force: database unreachable"
+    try:
+        with conn.cursor() as cur:
+            cur.execute(_PLAN_IN_FORCE_SQL)
+            failing = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001 - a query that no longer runs is a broken check: FAIL
+        return FAIL, f"plan in force: query failed ({exc})"
+    finally:
+        conn.close()
+    return ((PASS if not failing else FAIL),
+            f"served councils without one confirmed plan in force behind every number: {len(failing)} "
+            f"{[f'{lga} ({reason})' for lga, reason in failing[:4]]}")
+
+
+def no_site_loses_a_rule_to_a_retired_zone_code() -> Result:
+    """No served row applies to a pre-2023 zone code but not to the code that replaced it.
+
+    The serve filter reads zone codes as written and does not alias legacy codes (zone_row_applies), so a
+    row scoped to "B1, B2, B4 zones" with no stored scope hid itself from every E1 and MU1 site. Three such
+    rows were given a stored scope on 2026-09-14 (ashfield 504, sutherland 242 and 243); this keeps it at 0.
+    It asks the serve filter itself, using the repo's translation table, rather than matching text: a rule
+    for every zone that mentions "within 400m B3/B4" (canada_bay 816 and 824) is correctly not counted."""
+    try:
+        taxonomy = json.loads((ROOT / "frontend-nextjs" / "shared" / "zone-taxonomy.json")
+                              .read_text(encoding="utf-8"))
+        aliases = taxonomy["legacyToCurrentAliases"]
+    except (OSError, ValueError, KeyError) as exc:
+        return FAIL, f"retired zone codes: translation table unreadable ({exc})"
+    successors: dict[str, list[str]] = {}
+    for current, members in aliases.items():
+        for member in members:
+            if member != current:
+                successors.setdefault(member, []).append(current)
+    if not successors:
+        return FAIL, "retired zone codes: the translation table maps no retired code, so nothing was checked"
+    conn = _connect()
+    if conn is None:
+        return UNKNOWN, "retired zone codes: database unreachable"
+    try:
+        import conveyancing_db as cdb
+        with conn.cursor() as cur:
+            # SERVED carries is_current and needs_review.
+            cur.execute("SELECT id, lga, applicability, condition, zones_include, zones_exclude "
+                        f"FROM dcp_setback_controls WHERE {SERVED}")
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001 - a check that cannot read the rows is broken: FAIL
+        return FAIL, f"retired zone codes: could not read the served rows ({exc})"
+    finally:
+        conn.close()
+    lost: list[str] = []
+    for row_id, lga, applicability, condition, include, exclude in rows:
+        for legacy, currents in successors.items():
+            if (cdb.zone_row_applies(applicability, condition, legacy, include, exclude)
+                    and not all(cdb.zone_row_applies(applicability, condition, code, include, exclude)
+                                for code in currents)):
+                lost.append(f"{lga}/{row_id} {legacy}")
+                break
+    return ((PASS if not lost else FAIL),
+            f"served rows that apply to a retired zone code but not to its successor: {len(lost)} {lost[:4]}")
+
+
+#: Claim 12: every served council number and rule comes from an active registered chapter that records
+#: where the council publishes it. SERVED carries is_current and needs_review; provisions are the served
+#: set (is_current AND v2_is_actionable). _external_* numbers come from state instruments, not a council
+#: document, and are left to the claims about those instruments.
+_UNTRACED_COUNCIL_MATERIAL_SQL = f"""
+SELECT (SELECT count(*) FROM dcp_setback_controls s
+          LEFT JOIN dcp_chapter_registry r
+            ON r.council = s.lga AND r.chapter_key = s.source_chapter_key AND r.is_active
+         WHERE s.id IN (SELECT id FROM dcp_setback_controls WHERE {SERVED})
+           AND COALESCE(s.source_chapter_key, '') NOT LIKE '\\_external\\_%'
+           AND (r.id IS NULL OR (r.council_url IS NULL AND r.council_page_url IS NULL)))
+     + (SELECT count(*) FROM regulatory_provisions p
+          LEFT JOIN dcp_chapter_registry r
+            ON r.council = p.source_council AND r.chapter_key = p.source_chapter_key AND r.is_active
+         WHERE p.is_current AND p.v2_is_actionable
+           AND p.source_council IS NOT NULL AND p.source_council <> 'state'
+           AND (r.id IS NULL OR (r.council_url IS NULL AND r.council_page_url IS NULL)))"""
 
 
 def not_yet_grounded(label: str, reason: str) -> Result:
@@ -272,6 +395,13 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
                           "SELECT count(*) FROM (SELECT lga FROM lep_zone_coverage GROUP BY lga "
                           "HAVING bool_and(COALESCE(is_complete, FALSE))) t", expect=26),
     ],
+    # Reworded 2026-09-14: "No council data is stored" was contradicted by the council PDFs kept so each rule
+    # can link to its page. The claim is now what is true, and the retired wording must stay gone.
+    "OC-12": [
+        lambda: no_rendered_phrase("retired 'No council data is stored'", r"No council data is stored|Privacy safe"),
+        lambda: sql_count("served council numbers and rules not traced to a published council document",
+                          _UNTRACED_COUNCIL_MATERIAL_SQL),
+    ],
     "OC-13": [
         lambda: pytest_files("tests/test_coverage_source_derived_stats.py",
                              k="gov_data_sources or secondary_dwelling"),
@@ -307,6 +437,7 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
                           "OR r2_public_pdf_url ILIKE '%repealed%')"),
         no_range_printed_as_a_maximum,
         every_served_council_has_a_current_plan_check,
+        no_site_loses_a_rule_to_a_retired_zone_code,
         lambda: probe("DQ-88"),
         lambda: probe("DQ-33"),
     ],
