@@ -65,6 +65,12 @@ def find_committable_chapters(cur) -> list[dict]:
     re-extraction superseded it (2026-07 triage finding). Superseded rejected
     rows stay in the table as audit history; they just stop blocking.
     """
+    # approved_hash and hash_variants describe the APPROVED rows only. Until 2026-09-15 both
+    # were taken over every queue row, so a chapter's superseded or rejected history from an
+    # earlier PDF counted as a second version of its approval: every Woollahra chapter then had
+    # 2-3 hashes across its queue and 1 among its approved rows, and would have been skipped as
+    # "approved rows span multiple source hashes" (or as stale, when MAX picked the old hash)
+    # however carefully its current rows were reviewed. Mixed approvals are still caught.
     cur.execute(
         """
         SELECT q.council, q.chapter_key,
@@ -74,8 +80,8 @@ def find_committable_chapters(cur) -> list[dict]:
                       OR (q.status = 'rejected'
                           AND q.source_content_hash = r.content_hash)
                ) AS blocking,
-               MAX(q.source_content_hash) AS approved_hash,
-               COUNT(DISTINCT q.source_content_hash) AS hash_variants
+               MAX(q.source_content_hash) FILTER (WHERE q.status = 'approved') AS approved_hash,
+               COUNT(DISTINCT q.source_content_hash) FILTER (WHERE q.status = 'approved') AS hash_variants
         FROM dcp_review_queue q
         JOIN dcp_chapter_registry r
           ON r.council = q.council AND r.chapter_key = q.chapter_key
