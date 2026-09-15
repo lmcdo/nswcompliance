@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Every Wingecarribee number served to a property cited the Bowral Town Plan, which does not govern a Mittagong or Moss Vale property and whose table numbers do not resolve there (DQ-66). The user decided on 2026-09-15 to cite each town's plan. This changes the served citation text for 29 numbers and adds a database table, so a wrong join, a borrowed page or a silent read failure would put a false reference in front of a reader.",
-  "commit_hash": "3cebb453",
+  "commit_hash": "b0389a2b",
   "files": [
     "migrations/074_dcp_clause_sibling_citations.sql",
     "migrations/075_wingecarribee_sibling_citations_seed.sql",
@@ -41,7 +41,7 @@
     },
     {
       "name": "fetch_dcp_setbacks",
-      "file_line": "scripts/conveyancing_db.py:597",
+      "file_line": "scripts/conveyancing_db.py:608",
       "input": "A connection, the council slug and the property's zone.",
       "output": "The served controls; each entry's clause now names every plan publishing its clause and also_cited lists them with pages and links.",
       "if_none": "Unchanged: no rows returns None; the sibling read failing leaves also_cited [] and the caveat in the clause."
@@ -50,7 +50,7 @@
   "values": [
     {
       "value": "sibling_citations[(source_chapter_key, section_ref)]",
-      "read_at": "scripts/conveyancing_db.py:810",
+      "read_at": "scripts/conveyancing_db.py:821",
       "if_missing": "No sibling entry for the row's own clause: also_cited is [] and cite_clause applies its fallback."
     }
   ],
