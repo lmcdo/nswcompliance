@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Every Wingecarribee number served to a property cited the Bowral Town Plan, which does not govern a Mittagong or Moss Vale property and whose table numbers do not resolve there (DQ-66). The user decided on 2026-09-15 to cite each town's plan. This changes the served citation text for 29 numbers and adds a database table, so a wrong join, a borrowed page or a silent read failure would put a false reference in front of a reader.",
-  "commit_hash": "524ffdc1",
+  "commit_hash": "ff5b539d",
   "files": [
     "migrations/074_dcp_clause_sibling_citations.sql",
     "migrations/075_wingecarribee_sibling_citations_seed.sql",
