@@ -1,0 +1,138 @@
+{
+  "tier": "standard",
+  "justification": "Every Wingecarribee number served to a property cited the Bowral Town Plan, which does not govern a Mittagong or Moss Vale property and whose table numbers do not resolve there (DQ-66). The user decided on 2026-09-15 to cite each town's plan. This changes the served citation text for 29 numbers and adds a database table, so a wrong join, a borrowed page or a silent read failure would put a false reference in front of a reader.",
+  "commit_hash": "ff5b539d",
+  "files": [
+    "migrations/074_dcp_clause_sibling_citations.sql",
+    "migrations/075_wingecarribee_sibling_citations_seed.sql",
+    "scripts/conveyancing_db.py",
+    "scripts/dq_probe_live.py",
+    ".claude/dq_checks.json",
+    "tests/test_cite_clause.py",
+    "tests/test_dcp_setbacks_cite_each_town_plan.py",
+    "tests/test_dq_check.py",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".qa/reports/fix__wingecarribee-cite-each-town-plan.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-66",
+    "fails_when": "A control served council-wide cites one town plan while an active sibling town plan of the same DCP has no recorded citation for that row's own clause.",
+    "observed_red": "Before the citations existed every served Wingecarribee number cited only the Bowral plan (DQ-66 measured 30 on 2026-08-13, still open on main). After migration 074 and its 28 rows the probe printed 'count : 0 CLEAN', and fetch_dcp_setbacks('wingecarribee', 'R2') through this branch served 29 entries, all 29 with two sibling citations; e.g. 'part-c-s2/C2.13.2(a)-Table-C2.2 — Bowral Town Plan (as amended 23 Sep 2015), p.200. The same clause is in: Mittagong Town Plan (as amended 17 Jun 2015), part-c-s2/C2.13.2(a)-Table-C2.1, p.195; Moss Vale Town Plan (as amended 17 Jun 2015), part-c-s2/C2.13.2(a)-Table-C2.1, p.200.' Ashfield's citation is unchanged.",
+    "external_authority": "Each plan's clause A1.3 'Land To Which This Plan Applies': 'This Development Control Plan applies to all land in Bowral edged red Figure A1.1' (Mittagong: 'all land in Mittagong and Welby edged black and hatched'; Moss Vale likewise), so the plans cover mapped areas, not suburbs. Every served clause was located in our R2 copies of all three plans, each hash-matched to dcp_chapter_registry.content_hash, with every number of every served control on the recorded page."
+  },
+  "pre_impl": {
+    "existing_data": "30 current Wingecarribee rows in dcp_setback_controls, all source_chapter_key wingecarribee-bowral-town-plan, 14 distinct served section_refs (1 more row is needs_review); registry 759-761 active under dcp_name 'Wingecarribee DCP 2010', 760/761 had no r2_public_pdf_url although their R2 copies exist.",
+    "assumption_mismatch": "The 2026-08-13 plan assumed suburb boundaries could stand in for the town plans; the plans' own text says each applies to an area edged on its own map, so that mapping would have guessed boundaries.",
+    "new_vs_existing": "One new table (074) and one read in fetch_dcp_setbacks's existing savepoint pattern; cite_clause gains an optional argument and keeps its measured caveat as the fallback. The 16-column serve SELECT is unchanged, so existing fixtures still fit."
+  },
+  "functions": [
+    {
+      "name": "cite_clause",
+      "file_line": "scripts/conveyancing_db.py:82",
+      "input": "A section_ref, the council, the chapter key and, optionally, the sibling citations for that clause with this row's page.",
+      "output": "The reference with its own plan and page followed by every sibling plan at its own clause and page; without siblings, the previous behaviour including the measured town-plan caveat.",
+      "if_none": "No section_ref returns ''; sibling entries with no plan or clause are ignored; an empty sibling list falls back to the caveat."
+    },
+    {
+      "name": "_sibling_citations",
+      "file_line": "scripts/conveyancing_db.py:558",
+      "input": "A cursor and the council slug.",
+      "output": "{(chapter_key, section_ref): {'plan': label, 'also': [(label, clause, page, link), ...]}} for active chapters only.",
+      "if_none": "No rows returns {}; a failed read raises and the caller's savepoint turns it into {} so the caveat is shown."
+    },
+    {
+      "name": "fetch_dcp_setbacks",
+      "file_line": "scripts/conveyancing_db.py:608",
+      "input": "A connection, the council slug and the property's zone.",
+      "output": "The served controls; each entry's clause now names every plan publishing its clause and also_cited lists them with pages and links.",
+      "if_none": "Unchanged: no rows returns None; the sibling read failing leaves also_cited [] and the caveat in the clause."
+    }
+  ],
+  "values": [
+    {
+      "value": "sibling_citations[(source_chapter_key, section_ref)]",
+      "read_at": "scripts/conveyancing_db.py:821",
+      "if_missing": "No sibling entry for the row's own clause: also_cited is [] and cite_clause applies its fallback."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Read where each cited clause of the council is also published in a sibling plan, with that plan's label, clause, page and link, for active chapters only.",
+      "file_line": "scripts/conveyancing_db.py:558",
+      "where_clause": "FROM dcp_clause_sibling_citations c JOIN dcp_chapter_registry own ON own.council = c.council AND own.chapter_key = c.chapter_key AND own.is_active = TRUE JOIN dcp_chapter_registry sib ON sib.council = c.council AND sib.chapter_key = c.sibling_chapter_key AND sib.is_active = TRUE WHERE c.council = %s"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The read of where each clause is also published fails (table missing on a database without migration 074, or a connection error).",
+      "what_happens": "Without a fallback every number would silently cite Bowral alone again, or the whole controls section would fail.",
+      "mitigated": true,
+      "how": "The read runs in its own savepoint; a failure leaves the map empty and cite_clause shows the measured caveat. test_an_unreadable_sibling_table_still_says_the_plan_covers_one_town; removing the fallback failed 4 tests.",
+      "repro": "python -m pytest tests/test_dcp_setbacks_cite_each_town_plan.py -o addopts= -k unreadable"
+    },
+    {
+      "scenario": "A citation recorded for one clause is borrowed by another clause of the same plan.",
+      "what_happens": "A setback would be cited to the landscaping table's page in the sibling plan: a reference that does not hold the number.",
+      "mitigated": true,
+      "how": "Lookup is keyed on (chapter_key, section_ref); test_a_sibling_citation_for_another_clause_is_not_borrowed caught a plan-only lookup.",
+      "repro": "python -m pytest tests/test_dcp_setbacks_cite_each_town_plan.py -o addopts= -k borrowed"
+    },
+    {
+      "scenario": "DQ-66 is satisfied by any citation into any sibling plan.",
+      "what_happens": "One recorded clause would silence the probe for every row, and a Mittagong citation would excuse a missing Moss Vale one.",
+      "mitigated": true,
+      "how": "The probe requires the row's own clause, the plan it cites and each specific sibling; test_dq66_needs_a_citation_for_the_rows_own_clause_in_each_sibling_plan caught the dropped clause match.",
+      "repro": "python -m pytest tests/test_dq_check.py -o addopts= -k dq66"
+    },
+    {
+      "scenario": "A sibling plan numbers the same table differently (Bowral Table C2.2 is Table C2.1 in Mittagong and Moss Vale).",
+      "what_happens": "Copying Bowral's reference would point the reader at a table that does not exist in their town's plan.",
+      "mitigated": true,
+      "how": "The one-off data script rewrote the table label from the label printed on the sibling page and refused unless exactly one label was printed there; the stored sibling refs read Table-C2.1.",
+      "repro": "SELECT sibling_chapter_key, sibling_section_ref, sibling_pdf_page FROM dcp_clause_sibling_citations WHERE section_ref LIKE '%Table%'"
+    },
+    {
+      "scenario": "A reader is told one town plan applies to the whole shire.",
+      "what_happens": "The citation would overstate a plan's reach, the defect DQ-66 exists for.",
+      "mitigated": true,
+      "how": "The multi-plan citation ends 'Each plan applies only to the area it covers'; test_it_does_not_say_any_one_plan_applies_everywhere.",
+      "repro": "python -m pytest tests/test_cite_clause.py -o addopts= -k applies_everywhere"
+    },
+    {
+      "scenario": "A council that publishes one plan receives sibling wording.",
+      "what_happens": "Every other council's citations would change with nothing behind them.",
+      "mitigated": true,
+      "how": "Sibling data exists only where rows are recorded; test_a_council_with_one_plan_is_unchanged and the live Ashfield read both return the bare reference.",
+      "repro": "python -m pytest tests/test_dcp_setbacks_cite_each_town_plan.py -o addopts= -k one_plan"
+    },
+    {
+      "scenario": "A fresh, staging or restored database applies migration 074 (cross-review HIGH on the first push).",
+      "what_happens": "The table would be empty there, every Wingecarribee number would fall back to the one-town caveat, and DQ-66 would read non-zero while the ledger says fixed.",
+      "mitigated": true,
+      "how": "Migration 075 seeds the 28 verified citations with ON CONFLICT DO NOTHING and sets the sibling plans' R2 links. Checked against production inside a rolled-back transaction: re-running 074 + 075 left 28 rows; deleting all 28 and running 075 alone rebuilt 28 rows across 14 clauses and 2 sibling plans.",
+      "repro": "psql -f migrations/074_dcp_clause_sibling_citations.sql -f migrations/075_wingecarribee_sibling_citations_seed.sql; SELECT count(*) FROM dcp_clause_sibling_citations WHERE council = 'wingecarribee'"
+    },
+    {
+      "scenario": "A citation row points at another active chapter of the council that belongs to a different plan (cross-review MEDIUM).",
+      "what_happens": "The served citation would say the same clause is in an unrelated plan.",
+      "mitigated": true,
+      "how": "The read joins the sibling chapter on the same dcp_name as the cited chapter; test_a_sibling_must_be_a_chapter_of_the_same_plan failed when that predicate was removed.",
+      "repro": "python -m pytest tests/test_dcp_setbacks_cite_each_town_plan.py -o addopts= -k same_plan"
+    },
+    {
+      "scenario": "One sibling citation row has a blank clause, e.g. Moss Vale's sibling_section_ref is '' (cross-review HIGH).",
+      "what_happens": "DQ-66 would count the row as a citation and read 0, while the served citation listed Mittagong only and looked complete.",
+      "mitigated": true,
+      "how": "Migration 075 adds non-blank CHECK constraints on every identifier; the probe requires btrim(sibling_section_ref) <> ''; _sibling_citations drops the whole clause when any sibling row is blank so the caveat is shown. test_a_blank_sibling_clause_does_not_leave_a_plan_silently_out and the probe's structural test cover both halves.",
+      "repro": "python -m pytest tests/test_dcp_setbacks_cite_each_town_plan.py tests/test_dq_check.py -o addopts= -k \"blank or dq66\""
+    }
+  ],
+  "mutation_analysis": "Five mutations on working copies, restored after, against tests/test_cite_clause.py, tests/test_dcp_setbacks_cite_each_town_plan.py and tests/test_dq_check.py: cite_clause ignores siblings -> 4 failed; sibling matched on plan only -> 1 failed; probe drops the clause match -> 1 failed; fallback caveat removed -> 4 failed; also_cited emptied -> 1 failed. Unmutated: 64 passed; with the wider conveyancing suites 176 passed. After the cross-review: removing the same-plan join predicate -> 1 failed; unmutated 65 passed across the three files. Second cross-review round: a blank sibling row no longer dropping its clause -> 1 failed; the probe accepting a blank sibling clause -> 1 failed; unmutated 178 passed with the conveyancing suites. Migration 075 applied to production 2026-09-15 (5 non-blank constraints added, 28 rows unchanged); DQ-66 still CLEAN with the stricter probe.",
+  "residual_risk": "The sibling pages point into the v1.0-baseline copies of the Mittagong and Moss Vale plans. If the council re-issues a town plan the monitor flags the chapter by content hash, but nothing re-locates these citations, and DQ-66 counts presence, not page accuracy. Migration 075 carries production's rows verbatim, so a correction to a citation must be made in both places. Part C Sections 16+ (town-specific precincts, DQ-67) remain unserved.",
+  "post_merge": {
+    "db_reset": "No reset. Migrations 074 and 075 were applied to production on 2026-09-15 (074 and the rows by a guarded one-off script with registry backup dcp_chapter_registry_pre_wingecarribee_siblings_*; 075 reproduces those rows and is a no-op there). Both are idempotent; any other database gets the same 28 citations by running them.",
+    "secrets": "None.",
+    "other_repo": "No.",
+    "manual_verify": "python scripts/dq_probe_live.py --id DQ-66 prints count 0; a Wingecarribee report shows three plan names in each DCP citation. This PR also declares DQ-88 fixed (ledger and tracker): the Codes SEPP, Inner West LEP and Housing SEPP text refreshes and flag clears were applied to production on 2026-09-15, and dq_probe_live.py --id DQ-88 prints count 0."
+  }
+}

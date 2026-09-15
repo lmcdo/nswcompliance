@@ -122,6 +122,45 @@ class TestAPlanThatGovernsOneTownSaysSo:
         assert cite_clause(self.REF) == self.REF
 
 
+class TestEachTownPlanIsCited:
+    """User decision 2026-09-15: "cite each town's plan". Each Wingecarribee town
+    plan applies to the land on its own map, so a number cannot be matched to one
+    town without guessing a boundary; instead it cites every plan that publishes
+    the clause, each at its own clause and page (dcp_clause_sibling_citations).
+    """
+
+    REF = "part-c-s2/C2.13.2(a)-Table-C2.2"
+    CH = "wingecarribee-bowral-town-plan"
+    SIB = {
+        "plan": "Bowral Town Plan (as amended 23 Sep 2015)",
+        "page": 200,
+        "also": [
+            ("Mittagong Town Plan (as amended 17 Jun 2015)", "part-c-s2/C2.13.2(a)-Table-C2.1", 195, "https://r2/m.pdf"),
+            ("Moss Vale Town Plan (as amended 17 Jun 2015)", "part-c-s2/C2.13.2(a)-Table-C2.1", 200, "https://r2/mv.pdf"),
+        ],
+    }
+
+    def test_every_plan_is_named_with_its_own_clause_and_page(self):
+        out = cite_clause(self.REF, "wingecarribee", self.CH, self.SIB)
+        assert self.REF in out and "Bowral Town Plan" in out and "p.200" in out
+        for plan, clause, page, _url in self.SIB["also"]:
+            assert plan in out, f"{plan} is not cited"
+            assert f"{plan}, {clause}, p.{page}" in out, f"{plan} is not cited at its own clause and page"
+
+    def test_it_does_not_add_the_fallback_caveat_once_every_plan_is_cited(self):
+        """Confusable negative: the measured caveat is for when the siblings are unknown."""
+        out = cite_clause(self.REF, "wingecarribee", self.CH, self.SIB)
+        assert "numerically identical" not in out
+
+    def test_it_does_not_say_any_one_plan_applies_everywhere(self):
+        assert "only to the area it covers" in cite_clause(self.REF, "wingecarribee", self.CH, self.SIB)
+
+    def test_no_sibling_rows_falls_back_to_the_measured_caveat_not_to_one_plan(self):
+        """If the citations could not be read, the reader must still be told the plan covers one town."""
+        out = cite_clause(self.REF, "wingecarribee", self.CH, {"plan": "Bowral Town Plan", "also": []})
+        assert "table numbers differ" in out
+
+
 def test_the_rule_can_say_yes_and_no():
     """Control case.
 

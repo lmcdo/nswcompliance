@@ -161,24 +161,27 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "instead would raise the dateless count the as-at ratchet guards.",
     ),
     "DQ-66": (
-        "Controls served shire-wide but cited to a plan covering one town",
-        # Wingecarribee publishes its DCP as separate town plans. Three are
-        # registered active -- Bowral, Mittagong, Moss Vale -- and only Bowral
-        # has been extracted, so every citation we serve for the shire names
-        # the Bowral plan.
+        "Controls served shire-wide but cited to only one of a council's town plans",
+        # Wingecarribee publishes its DCP as separate town plans -- Bowral,
+        # Mittagong, Moss Vale -- each applying to the land edged on its own map,
+        # not to a suburb. The served controls were read from Bowral's.
         #
-        # What this does NOT measure is wrong numbers. Part C Sections 2-4,
-        # which back all 32 stored controls, are numerically IDENTICAL across
-        # the three plans (verified 2026-08-13 against all three PDFs, each
-        # hash-matched to dcp_chapter_registry.content_hash: 100/40/16 numeric
-        # tokens per section, zero differences in all six pairwise
-        # comparisons). A Moss Vale property gets the right number with a
-        # citation into a plan that does not govern it, and the table numbering
-        # differs between the plans -- Bowral's Table C2.2 is Table C2.1 in
-        # Moss Vale -- so the reference does not even resolve.
+        # What this does NOT measure is wrong numbers. Part C Sections 2-4 are
+        # numerically IDENTICAL across the three plans (2026-08-13, hash-matched
+        # PDFs), and on 2026-09-15 every served clause was located in the other
+        # two with the same numbers. The defect is the citation: naming one
+        # town's plan tells a Mittagong or Moss Vale owner nothing, and the
+        # table numbering differs (Bowral's Table C2.2 is Table C2.1 there).
         #
-        # Counts rows, not councils, because the fix is per-plan extraction and
-        # the count falls as each sibling plan lands.
+        # Remedy chosen 2026-09-15 ("cite each town's plan"): every served
+        # clause cites every town plan that publishes it, recorded per clause
+        # and sibling in dcp_clause_sibling_citations (migration 074) and
+        # rendered by conveyancing_db.cite_clause. This counts served rows whose
+        # clause has no citation into some active sibling town plan of the same
+        # DCP. It no longer accepts "the sibling plan has controls of its own":
+        # extracting a sibling would triple-serve identical numbers while each
+        # copy still cited one town. The citation must match the row's own
+        # clause AND the specific sibling, or one citation would excuse them all.
         "SELECT count(*) FROM dcp_setback_controls d "
         "JOIN dcp_chapter_registry r "
         "  ON r.council = d.lga AND r.chapter_key = d.source_chapter_key "
@@ -190,24 +193,18 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "                 AND s.chapter_key <> r.chapter_key AND s.is_active "
         "                 AND s.chapter_label ~* "
         "                     '(town|village|locality|precinct)[[:space:]]+plan' "
-        # `NOT COALESCE(needs_review, false)` here too, matching the outer
-        # query. Without it "the sibling has controls" would be satisfied by
-        # rows that are FLAGGED and therefore never served: the sibling plan
-        # would still contribute nothing to any property, the mis-citation
-        # would be exactly as unresolved, and the probe would stop counting.
-        # A check that goes quiet while the defect stands is the silent-pass
-        # shape this ledger exists to remove (caught by the pre-push
-        # reviewer, 2026-08-13).
-        "                 AND NOT EXISTS (SELECT 1 FROM dcp_setback_controls e "
-        "                                  WHERE e.lga = s.council "
-        "                                    AND e.source_chapter_key = s.chapter_key "
-        "                                    AND e.is_current "
-        "                                    AND NOT COALESCE(e.needs_review, false)))",
+        "                 AND NOT EXISTS (SELECT 1 FROM dcp_clause_sibling_citations c "
+        "                                  WHERE c.council = r.council "
+        "                                    AND c.chapter_key = r.chapter_key "
+        "                                    AND c.section_ref = d.section_ref "
+        "                                    AND c.sibling_chapter_key = s.chapter_key "
+        "                                    AND btrim(c.sibling_section_ref) <> ''))",
         (),
-        "Each row is served to a whole council area while citing a plan that "
-        "covers one town, because sibling town plans exist in the registry with "
-        "nothing extracted from them. Measured 30 on 2026-08-13 (wingecarribee, "
-        "all from the Bowral Town Plan). The label regex matches 3 of 655 "
+        "Each row is served to a whole council area citing one town plan while a "
+        "sibling town plan of the same DCP publishes the clause and no citation "
+        "into it is recorded. Measured 30 on 2026-08-13 (wingecarribee, all from "
+        "the Bowral Town Plan); 0 once dcp_clause_sibling_citations holds its 28 "
+        "citations (14 served clauses x 2 sibling plans, 2026-09-15). The label regex matches 3 of 655 "
         "registry rows and all 3 are these; leichhardt's Balmain and Birchgrove "
         "rows and the_hills' Showground Precinct rows are place-scoped too but "
         "SELF-DISCLOSING -- each names its locality in its own condition text -- "
