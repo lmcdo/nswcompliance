@@ -25,8 +25,9 @@ def _entry(**kw):
     return base
 
 
-def _serve(monkeypatch, *entries, urls=PDF):
+def _serve(monkeypatch, *entries, urls=PDF, instruments=None):
     monkeypatch.setattr(occ, "served_entries", lambda: ([("council", e, urls) for e in entries], ""))
+    monkeypatch.setattr(occ, "registered_instruments", lambda: {} if instruments is None else instruments)
 
 
 # ── claim 8: every served NUMBER is cited ──────────────────────────────────────────────────────────
@@ -48,6 +49,91 @@ def test_a_no_set_number_note_is_not_counted_as_a_number(monkeypatch):
 def test_a_number_missing_its_sentence_still_fails(monkeypatch):
     _serve(monkeypatch, _entry(source_text=""))
     assert occ.every_served_number_is_cited()[0] == occ.FAIL
+
+
+SUTHERLAND_LEP = {"council": frozenset({"epi-2015-0319"})}
+
+
+def _lep_row(url):
+    return (_entry(source_chapter_key="sutherland-lep-2015-schedule-3", clause="LEP 2015 Schedule 3",
+                   source_text="A setback from the side boundaries of at least 1.5m"),
+            {"sutherland-lep-2015-schedule-3": url})
+
+
+def test_an_lep_clause_linked_to_the_official_legislation_page_passes(monkeypatch):
+    """Sutherland LEP 2015 Sch 3 numbers are published on legislation.nsw.gov.au, not in a council PDF."""
+    entry, urls = _lep_row("https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3")
+    _serve(monkeypatch, entry, urls=urls, instruments=SUTHERLAND_LEP)
+    verdict, detail = occ.every_served_number_is_cited()
+    assert verdict == occ.PASS and "0 of 1" in detail
+
+
+def test_the_legislation_home_page_is_not_a_source_link(monkeypatch):
+    """Confusable negative: the right site, but no instrument is opened."""
+    entry, urls = _lep_row("https://legislation.nsw.gov.au/")
+    _serve(monkeypatch, entry, urls=urls, instruments=SUTHERLAND_LEP)
+    assert occ.every_served_number_is_cited()[0] == occ.FAIL
+
+
+def test_another_councils_lep_on_the_legislation_site_is_not_a_source_link(monkeypatch):
+    """Confusable negative: a real instrument view, but Woollahra LEP 2014 (epi-2015-0020) is not this council's."""
+    entry, urls = _lep_row("https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0020")
+    _serve(monkeypatch, entry, urls=urls, instruments=SUTHERLAND_LEP)
+    assert occ.every_served_number_is_cited()[0] == occ.FAIL
+
+
+class _FakeCursor:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def execute(self, *args):
+        pass
+
+    def fetchall(self):
+        return self.rows
+
+
+class _FakeConn:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def cursor(self):
+        return _FakeCursor(self.rows)
+
+    def close(self):
+        pass
+
+
+def test_a_longer_registry_id_does_not_register_its_prefix(monkeypatch):
+    """Confusable negative: epi-2024-12345 must not make epi-2024-1234 count as registered, while an ordinary
+    legislation_url with a section anchor still registers its instrument."""
+    rows = [("council", "epi-2024-12345", None),
+            ("council", None, "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3")]
+    monkeypatch.setattr(occ, "_connect", lambda: _FakeConn(rows))
+    assert occ.registered_instruments() == {"council": frozenset({"epi-2015-0319"})}
+
+
+def test_an_unreadable_instrument_registry_is_unknown_not_a_pass(monkeypatch):
+    entry, urls = _lep_row("https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2015-0319#sch.3")
+    _serve(monkeypatch, entry, urls=urls)
+    monkeypatch.setattr(occ, "registered_instruments", lambda: None)
+    assert occ.every_served_number_is_cited()[0] == occ.UNKNOWN
+
+
+def test_a_council_hub_page_or_a_look_alike_host_is_still_not_a_source_link(monkeypatch):
+    """Confusable negatives: a DCP hub page lists documents rather than being one, and a host that merely starts
+    with the legislation site's name is someone else's site."""
+    urls = {"hub": "https://www.sutherlandshire.nsw.gov.au/plan-and-build/Planning-considerations/development-control-plan-dcp",
+            "fake": "https://legislation.nsw.gov.au.example.com/view/whole/html/inforce/current/epi-2015-0319"}
+    _serve(monkeypatch, _entry(source_chapter_key="hub"), _entry(source_chapter_key="fake"), urls=urls)
+    verdict, detail = occ.every_served_number_is_cited()
+    assert verdict == occ.FAIL and "2 of 2" in detail
 
 
 # ── claim 17: a range is not a maximum, and a number keeps its unit ────────────────────────────────
