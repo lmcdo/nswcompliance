@@ -56,17 +56,20 @@ _BARE_INSTRUMENT = {
 
 # Wingecarribee publishes its DCP as three town plans — Bowral, Mittagong and
 # Moss Vale — and all 30 served controls are extracted from BOWRAL's, then
-# served across the whole shire. The NUMBERS are not wrong: all three plans were
-# hash-matched and Part C Sections 2-4, which back every stored control, are
-# numerically identical (100/40/16 numeric tokens per section, zero differences
-# across all six pairwise comparisons). The defect is the CITATION — it names a
-# plan that does not govern a Mittagong or Moss Vale property, and table
-# numbering differs between the plans, so it does not resolve there.
+# served across the whole shire. Each plan applies to the land edged on its own
+# Figure A1.1 map, not to a suburb, so a property cannot be matched to its plan
+# without guessing a boundary (user decision 2026-09-15: "cite each town's plan").
 #
-# Saying so is the cheaper and truer of the two recorded options. The other —
-# match address to suburb to town plan — needs a suburb-to-plan mapping the
-# shire's own scoping does not publish for every suburb, and guessing one would
-# cite a different wrong plan.
+# Every served number was located on 2026-09-15 under the same clause code, with
+# the same numbers, in the Mittagong and Moss Vale plans — at different pages, and
+# with Bowral's Table C2.2 numbered Table C2.1 in the other two. Those locations
+# live in dcp_clause_sibling_citations (migration 074), so the served citation
+# names all three plans, each at its own clause and page.
+#
+# _SHARED_TOWN_PLANS is only the FALLBACK for when that table cannot be read or
+# holds nothing for a clause: it states what was measured (identical numbers,
+# different table numbers) rather than silently citing Bowral alone. DQ-66
+# counts every clause the table does not cover.
 _SHARED_TOWN_PLANS = {
     "wingecarribee": (
         "Bowral Town Plan",
@@ -80,12 +83,18 @@ def cite_clause(
     section_ref: str | None,
     lga: str | None = None,
     chapter_key: str | None = None,
+    siblings: dict | None = None,
 ) -> str:
     """The reader-facing citation, or an honest statement about its limits.
 
     Anything carrying structure — a number, a part, a table — keeps its
     reference: 'part-c-table-cb' is imperfect but it tells a reader where to
     look, and rewriting it would be a judgement per reference.
+
+    siblings, when the same clause is published in other plans of the council:
+    {"plan": this row's plan label, "page": its page, "also": [(plan label,
+    clause, page, url), ...]}. The citation then names every plan, each at its
+    own clause and page.
     """
     ref = (section_ref or "").strip()
     if not ref:
@@ -94,6 +103,16 @@ def cite_clause(
     name = _BARE_INSTRUMENT.get(ref.upper())
     if name and ref.upper() == ref.strip().upper() and " " not in ref:
         return f"{name} — no clause recorded"
+
+    also = [a for a in ((siblings or {}).get("also") or []) if a and a[0] and a[1]]
+    if also:
+        own_plan = (siblings or {}).get("plan") or "this plan"
+        own_page = (siblings or {}).get("page")
+        here = f"{ref} — {own_plan}" + (f", p.{own_page}" if own_page else "")
+        there = "; ".join(f"{plan}, {clause}" + (f", p.{page}" if page else "")
+                          for plan, clause, page, *_ in also)
+        return (f"{here}. The same clause is in: {there}. "
+                f"Each plan applies only to the area it covers.")
 
     shared = _SHARED_TOWN_PLANS.get((lga or "").strip().lower())
     if shared and "town-plan" in (chapter_key or ""):
@@ -536,6 +555,45 @@ def requirement_text(control_type: Optional[str], vmin, vmax, unit: Optional[str
 
 # prior-art-checked: same function, additive kwarg only — the proxy endpoint
 # needs failure distinguishable from checked-none; no new capability.
+def _sibling_citations(cur, lga_slug: str) -> dict:
+    """Clauses of this council that are published in more than one plan.
+
+    Returns {(chapter_key, section_ref): {"plan": that chapter's label,
+    "also": [(sibling plan label, sibling clause, sibling page, sibling link), ...]}}
+    from dcp_clause_sibling_citations (migration 074), active chapters only.
+    Raises on a failed read; fetch_dcp_setbacks runs it inside a savepoint and
+    treats a failure as "no sibling citations known".
+
+    prior-art-checked: reuse not viable because no existing code reads where a
+    clause is also published; the flagged registry scripts (add_new_chapter.py,
+    _check_iw_registry.py, _diag_registry_state.py) read chapter rows for other
+    purposes, and the per-chapter link map above is reused for the sibling link
+    (same COALESCE chain), not duplicated.
+    """
+    cur.execute(
+        """
+        SELECT c.chapter_key, c.section_ref, own.chapter_label,
+               sib.chapter_label, c.sibling_section_ref, c.sibling_pdf_page,
+               COALESCE(sib.r2_public_pdf_url, sib.council_url, sib.council_page_url)
+        FROM dcp_clause_sibling_citations c
+        JOIN dcp_chapter_registry own
+          ON own.council = c.council AND own.chapter_key = c.chapter_key
+         AND own.is_active = TRUE
+        JOIN dcp_chapter_registry sib
+          ON sib.council = c.council AND sib.chapter_key = c.sibling_chapter_key
+         AND sib.is_active = TRUE
+        WHERE c.council = %s
+        ORDER BY c.chapter_key, c.section_ref, sib.chapter_label
+        """,
+        (lga_slug,),
+    )
+    found: dict = {}
+    for chapter_key, section_ref, own_label, sib_label, sib_ref, sib_page, sib_url in cur.fetchall() or []:
+        item = found.setdefault((chapter_key, section_ref), {"plan": own_label, "also": []})
+        item["also"].append((sib_label, sib_ref, sib_page, sib_url))
+    return found
+
+
 def fetch_dcp_setbacks(
     conn,
     lga_slug: Optional[str],
@@ -648,6 +706,25 @@ def fetch_dcp_setbacks(
         except Exception as e:
             logger.warning("fetch_dcp_setbacks pdf-map savepoint: %s", e)
 
+        # Where a cited clause is also published in a sibling plan of the same
+        # council (Wingecarribee's three town plans, migration 074), so the
+        # citation names every plan at its own clause and page. Savepoint-
+        # isolated like the map above: a failure leaves the map empty, and
+        # cite_clause then falls back to its measured caveat rather than
+        # citing one town's plan alone.
+        sibling_citations: dict = {}
+        try:
+            cur.execute("SAVEPOINT sibling_citation_probe")
+            try:
+                sibling_citations = _sibling_citations(cur, lga_slug)
+                cur.execute("RELEASE SAVEPOINT sibling_citation_probe")
+            except Exception as e:
+                logger.warning("fetch_dcp_setbacks sibling citations: %s", e)
+                sibling_citations = {}
+                cur.execute("ROLLBACK TO SAVEPOINT sibling_citation_probe")
+        except Exception as e:
+            logger.warning("fetch_dcp_setbacks sibling-citation savepoint: %s", e)
+
         # Plan-level "as at" (campaign item 3). A failure here must not take
         # the controls down with it — but it must also stay DISTINGUISHABLE
         # from "checked, no date exists" (typed-absence doctrine): 'resolved'
@@ -730,6 +807,7 @@ def fetch_dcp_setbacks(
             control_kind = "site_derived"
             requirement = source_text or plain_summary or "No set number — see the plan"
 
+        sibling = sibling_citations.get((source_chapter_key, section_ref))
         entry = {
             "type":         base_label,
             # The real development form — WITHOUT this, the capacity engine's
@@ -743,7 +821,12 @@ def fetch_dcp_setbacks(
             "value_min":    float(vmin) if vmin is not None else None,
             "value_max":    float(vmax) if vmax is not None else None,
             "unit":         unit or "m",
-            "clause":       cite_clause(section_ref, lga_slug, source_chapter_key),
+            "clause":       cite_clause(section_ref, lga_slug, source_chapter_key,
+                                        {**sibling, "page": pdf_page} if sibling else None),
+            # Every other plan this clause is published in (migration 074), each
+            # at its own clause, page and link; [] when it is in one plan only.
+            "also_cited":   [{"plan": plan, "clause": clause, "pdf_page": page, "url": url}
+                             for plan, clause, page, url in (sibling or {}).get("also", [])],
             "notes":        condition or "",
             # Raw citation fields for the /pipeline/dcp-controls proxy (item
             # 5): TS consumers shape these; the guards stay HERE.

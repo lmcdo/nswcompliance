@@ -171,19 +171,17 @@ def test_the_checks_file_is_valid_json():
 # ── Probe SQL must define "served" the same way everywhere ───────────────────
 
 def test_probe_sql_uses_one_definition_of_a_served_row():
-    """A probe that measures served rows in its outer query must not accept
-    FLAGGED rows as evidence in a subquery.
+    """A probe that measures served rows must scope every mention of a control
+    to served rows: current AND not flagged for review.
 
-    DQ-66 asks whether a sibling town plan has any controls of its own. Written
-    with a bare `e.is_current`, a sibling holding only `needs_review` rows would
-    satisfy it — so the probe would stop counting while the sibling still served
-    nothing and the mis-citation stood. The count going quiet without the defect
-    being fixed is the exact silent-pass shape this ledger exists to remove.
+    DQ-66 once asked whether a sibling town plan had controls of its own, and a
+    bare `e.is_current` there let a sibling holding only flagged rows satisfy it
+    while the mis-citation stood. The remedy is now a recorded citation into each
+    sibling (migration 074), but the rule stands for every is_current the probe
+    contains.
 
     Asserted structurally rather than against the database, because the bug is
-    invisible in today's data: both siblings currently hold zero rows, so the
-    count is 30 either way. It would only appear once someone part-extracted a
-    sibling — which is precisely when nobody would be re-reading this SQL.
+    invisible in today's data.
     """
     import re
     import sys
@@ -195,11 +193,37 @@ def test_probe_sql_uses_one_definition_of_a_served_row():
     _headline, sql, _params, _means = dq_probe_live.PROBES["DQ-66"]
     current = len(re.findall(r"is_current", sql))
     guards = len(re.findall(r"NOT COALESCE\(\s*\w+\.needs_review,\s*false\s*\)", sql))
-    assert current >= 2, "expected the outer query and the sibling subquery to both scope to current rows"
+    assert current >= 1, "expected the probe to scope controls to current rows"
     assert guards == current, (
         f"{current} is_current filter(s) but only {guards} needs_review guard(s) — "
         "one of them treats a flagged row as served"
     )
+
+
+def test_dq66_needs_a_citation_for_the_rows_own_clause_in_each_sibling_plan():
+    """DQ-66 reaches zero only through a citation of the SAME clause into EACH
+    sibling plan (dcp_clause_sibling_citations).
+
+    Drop the clause match and one recorded citation for any clause would excuse
+    every row citing that plan; drop the sibling match and a citation into
+    Mittagong would excuse a missing one into Moss Vale. Either way the probe
+    would go quiet while a number still cited one town. Asserted structurally:
+    today every clause has both citations, so the count is 0 with or without
+    these predicates.
+    """
+    import re
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import dq_probe_live
+
+    _headline, sql, _params, _means = dq_probe_live.PROBES["DQ-66"]
+    flat = re.sub(r"\s+", " ", sql)
+    assert "dcp_clause_sibling_citations" in flat
+    assert re.search(r"c\.section_ref = d\.section_ref", flat), "citation not tied to the row's own clause"
+    assert re.search(r"c\.sibling_chapter_key = s\.chapter_key", flat), "citation not tied to each sibling plan"
+    assert re.search(r"c\.chapter_key = r\.chapter_key", flat), "citation not tied to the plan the row cites"
 
 
 # ── An UNFINISHED row must be provable ───────────────────────────────────────
